@@ -44,11 +44,10 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
-      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    memChunk.writeAlignedValues(times, columns, bitMaps, failedIndices, schemaList, start, end);
+    memChunk.writeAlignedValues(times, columns, bitMaps, schemaList, start, end);
   }
 
   @Override
@@ -75,12 +74,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public void write(
-      long insertTime,
-      Object[] objectValue,
-      List<Integer> failedIndices,
-      List<IMeasurementSchema> schemaList) {
-    memChunk.writeAlignedValue(insertTime, objectValue, failedIndices, schemaList);
+  public void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+    memChunk.writeAlignedValue(insertTime, objectValue, schemaList);
   }
 
   @Override

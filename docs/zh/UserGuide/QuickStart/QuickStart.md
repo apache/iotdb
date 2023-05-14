@@ -18,18 +18,18 @@
     under the License.
 
 -->
+
 # 快速上手
-## 快速上手
 
 本文将介绍关于 IoTDB 使用的基本流程，如果需要更多信息，请浏览我们官网的 [指引](../IoTDB-Introduction/What-is-IoTDB.md).
 
-### 安装环境
+## 安装环境
 
 安装前需要保证设备上配有 JDK>=1.8 的运行环境，并配置好 JAVA_HOME 环境变量。
 
 设置最大文件打开数为 65535。
 
-### 安装步骤
+## 安装步骤
 
 IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行安装——下载二进制可运行程序、使用源码、使用 docker 镜像。
 
@@ -37,55 +37,42 @@ IoTDB 支持多种安装途径。用户可以使用三种方式对 IoTDB 进行�
 
 * 二进制可运行程序：请从 [下载](https://iotdb.apache.org/Download/) 页面下载最新的安装包，解压后即完成安装。
 
-* 使用 Docker 镜像：dockerfile 文件位于 [github](https://github.com/apache/iotdb/blob/master/docker/src/main)
+* 使用 Docker 镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
 
-### 软件目录结构
+## 软件目录结构
 
 * sbin 启动和停止脚本目录
 * conf 配置文件目录
 *  tools 系统工具目录
 *  lib 依赖包目录
 
-### IoTDB 试用
+## IoTDB 试用
 
 用户可以根据以下操作对 IoTDB 进行简单的试用，若以下操作均无误，则说明 IoTDB 安装成功。
 
-#### 启动 IoTDB
+### 启动 IoTDB
 
 用户可以使用 sbin 文件夹下的 start-server 脚本启动 IoTDB。
 
 Linux 系统与 MacOS 系统启动命令如下：
 
 ```
-> nohup sbin/start-server.sh -f >/dev/null 2>&1 &
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
 or
-> nohup sbin/start-server.sh -b
+> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
 ```
-可选参数:
-- 默认不含任何参数时, iotdb 将在后台启动，并且不在控制台打印日志
-- "-v": 查看iotdb版本
-- "-f": 在控制台前台启动iotdb (v0.14前是默认设置)
-- "-b": 在后台启动iotdb，控制台不打印日志
-- "-p \<pidfile\>": 将pid保存到指定的文件中
-- "-h": 查看帮助
-- "printgc"(必须是最后一个参数): 打印GC日志 (从v0.14起，该参数将被-g取代)
-- "-g": 打印GC日志
-- "-c \<config folder\>": 设置IOTDB_CONF变量的值，从而修改配置文件所在文件夹
-- "-D <a=b>": 设置Java的系统环境变量或其他参数
-- "-H \<filePath\> 当OOM异常时存储堆快照到\<filePath\> (仅 Linux/Mac生效, 且要求iotdb内存小于16GB)"
-- "-E <\filePath\> save error file of JVM to \<filePath\> (仅 Linux/Mac生效)"
-- "-X \<command\> 等价于JVM中 -XX:\<command\>"
-- 
+
 Windows 系统启动命令如下：
 
 ```
-> sbin\start-server.bat 
+> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
 ```
+- "-c" and "-rpc_port" 都是可选的。
+- 选项 "-c" 指定了配置文件所在的文件夹。
+- 选项 "-rpc_port" 指定了启动的 rpc port。
+- 如果两个选项同时指定，那么* rpc_port *将会覆盖* conf_path *下面的配置。
 
-Windows 系统支持 -c, -v, -f, -b 四个参数。
-
-
-#### 使用 Cli 工具
+### 使用 Cli 工具
 
 IoTDB 为用户提供多种与服务器交互的方式，在此我们介绍使用 Cli 工具进行写入、查询数据的基本步骤。
 
@@ -119,7 +106,7 @@ IoTDB> login successfully
 IoTDB>
 ```
 
-#### IoTDB 的基本操作
+### IoTDB 的基本操作
 
 在这里，我们首先介绍一下使用 Cli 工具创建时间序列、插入数据并查看数据的方法。
 
@@ -251,7 +238,7 @@ IoTDB> exit
 
 想要浏览更多 IoTDB 数据库支持的命令，请浏览 [SQL Reference](../Reference/SQL-Reference.md).
 
-#### 停止 IoTDB
+### 停止 IoTDB
 
 用户可以使用$IOTDB_HOME/sbin 文件夹下的 stop-server 脚本停止 IoTDB。
 
@@ -267,19 +254,7 @@ Windows 系统停止命令如下：
 > $sbin\stop-server.bat
 ```
 
-#### IoTDB 的权限管理
-
-初始安装后的 IoTDB 中有一个默认用户：root，默认密码为 root。该用户为管理员用户，固定拥有所有权限，无法被赋予、撤销权限，也无法被删除。
-
-您可以通过以下命令修改其密码：
-```
-ALTER USER <username> SET PASSWORD <password>;
-Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
-```
-
-权限管理的具体内容可以参考：[权限管理](https://iotdb.apache.org/zh/UserGuide/V0.13.x/Administration-Management/Administration.html)
-
-### 基础配置
+## 基础配置
 
 配置文件在"conf"文件夹下，包括：
 

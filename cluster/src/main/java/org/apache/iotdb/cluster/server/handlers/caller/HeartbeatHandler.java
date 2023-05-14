@@ -114,9 +114,9 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         peer.setMatchIndex(-1);
       }
 
-      // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 5
-      // heartbeats. If the follower is installing snapshot currently, we reset the counter.
-      if (lastLogIdx == peer.getLastHeartBeatIndex() && !resp.isInstallingSnapshot()) {
+      // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 3
+      // heartbeats
+      if (lastLogIdx == peer.getLastHeartBeatIndex()) {
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peer.incInconsistentHeartbeatNum();
         if (inconsistentNum >= 5) {

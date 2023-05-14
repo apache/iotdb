@@ -20,28 +20,19 @@
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -133,43 +124,5 @@ public class TsFileSequenceReaderTest {
     // test for non-exist device "d3"
     Assert.assertTrue(reader.readChunkMetadataInDevice("d3").isEmpty());
     reader.close();
-  }
-
-  @Test
-  public void testReadEmptyPageInSelfCheck() throws IOException, WriteProcessException {
-    int oldMaxPagePointNum =
-        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
-    File testFile = new File(FILE_PATH);
-
-    // create tsfile with empty page
-    try (TsFileWriter tsFileWriter = new TsFileWriter(testFile)) {
-      // register aligned timeseries
-      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
-      alignedMeasurementSchemas.add(
-          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      alignedMeasurementSchemas.add(
-          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-      tsFileWriter.registerAlignedTimeseries(new Path("d1"), alignedMeasurementSchemas);
-
-      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
-      // only write s1
-      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
-      TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, "d1", writeMeasurementScheams, 25, 0, 0, true);
-
-      // write s1 and s2, fill 2 empty pages for s2
-      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, "d1", writeMeasurementScheams, 10, 25, 0, true);
-    } finally {
-      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldMaxPagePointNum);
-    }
-
-    // read tsfile with selfCheck method
-    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    Assert.assertEquals(
-        TsFileCheckStatus.COMPLETE_FILE,
-        reader.selfCheck(new HashMap<>(), new ArrayList<>(), false));
   }
 }

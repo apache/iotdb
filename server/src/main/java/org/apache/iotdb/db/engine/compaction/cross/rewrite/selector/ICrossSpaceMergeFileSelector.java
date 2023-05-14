@@ -31,7 +31,5 @@ public interface ICrossSpaceMergeFileSelector {
 
   List[] select() throws MergeException;
 
-  List<Long> getMemoryCost();
-
   int getConcurrentMergeNum();
 }

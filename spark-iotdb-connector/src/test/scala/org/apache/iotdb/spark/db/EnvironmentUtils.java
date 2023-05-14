@@ -31,7 +31,6 @@ import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
@@ -44,7 +43,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
@@ -112,7 +111,7 @@ public class EnvironmentUtils {
       Assert.fail();
     }
     StorageEngine.getInstance().reset();
-    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
+    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
     // clean wal
     MultiFileLogNodeManager.getInstance().stop();
@@ -124,7 +123,7 @@ public class EnvironmentUtils {
     }
     // close metadata
     IoTDB.metaManager.clear();
-    MetricService.getInstance().stop();
+    MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
 

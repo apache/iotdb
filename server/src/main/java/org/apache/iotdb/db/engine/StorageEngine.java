@@ -23,15 +23,6 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
-import org.apache.iotdb.db.doublelive.OperationSyncConsumer;
-import org.apache.iotdb.db.doublelive.OperationSyncDDLProtector;
-import org.apache.iotdb.db.doublelive.OperationSyncDMLProtector;
-import org.apache.iotdb.db.doublelive.OperationSyncLogService;
-import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
-import org.apache.iotdb.db.doublelive.OperationSyncProducer;
-import org.apache.iotdb.db.doublelive.OperationSyncWriteTask;
-import org.apache.iotdb.db.engine.archiving.ArchivingManager;
-import org.apache.iotdb.db.engine.archiving.ArchivingOperate;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -59,30 +50,20 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.isession.util.SystemStatus;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -90,11 +71,8 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -108,33 +86,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class StorageEngine implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
+
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
-  private static final long HEARTBEAT_CHECK_INTERVAL = 30L;
-  private static final long SECONDARY_METRIC_INTERVAL = 30L;
-
-  /* OperationSync module */
-  private static final boolean isEnableOperationSync =
-      IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
-  private static SessionPool operationSyncSessionPool;
-  private static OperationSyncProducer operationSyncProducer;
-  private static OperationSyncDDLProtector operationSyncDDLProtector;
-  private static OperationSyncLogService operationSyncDDLLogService;
-  private static AtomicBoolean isSecondaryAlive = new AtomicBoolean(false);
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
@@ -169,85 +134,8 @@ public class StorageEngine implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
-  ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
-      arrayListBlockQueue;
 
-  private ArchivingManager archivingManager = ArchivingManager.getInstance();
-
-  private StorageEngine() {
-    if (isEnableOperationSync) {
-      // Open OperationSync
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      int cacheNum = config.getOperationSyncProducerCacheNum();
-
-      // create SessionPool for OperationSync
-      operationSyncSessionPool =
-          new SessionPool(
-              config.getSecondaryAddress(),
-              config.getSecondaryPort(),
-              config.getSecondaryUser(),
-              config.getSecondaryPassword(),
-              config.getSecondarySessionPoolMaxSize(),
-              config.isRpcThriftCompressionEnable());
-      ThreadPoolExecutor threadPool =
-          new ThreadPoolExecutor(
-              cacheNum + 5,
-              cacheNum + 5,
-              3,
-              TimeUnit.SECONDS,
-              new ArrayBlockingQueue<>(5),
-              new ThreadPoolExecutor.AbortPolicy());
-
-      // create operationSyncDDLProtector and operationSyncDDLLogService
-      ScheduledExecutorService secondaryCheckThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Check");
-
-      secondaryCheckThread.scheduleAtFixedRate(
-          this::checkSecondaryIsLife, 0L, HEARTBEAT_CHECK_INTERVAL, TimeUnit.SECONDS);
-
-      operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncSessionPool);
-      threadPool.execute(operationSyncDDLProtector);
-      operationSyncDDLLogService =
-          new OperationSyncLogService("OperationSyncDDLLog", operationSyncDDLProtector);
-      threadPool.execute(operationSyncDDLLogService);
-
-      // create OperationSyncProducer
-      arrayListBlockQueue = new ArrayList<>(cacheNum);
-      for (int i = 0; i < cacheNum; i++) {
-        BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-            blockingQueue = new ArrayBlockingQueue<>(config.getOperationSyncProducerCacheSize());
-        arrayListBlockQueue.add(blockingQueue);
-      }
-      OperationSyncDMLProtector operationSyncDMLProtector =
-          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncSessionPool);
-      threadPool.execute(operationSyncDMLProtector);
-      OperationSyncLogService operationSyncDMLLogService =
-          new OperationSyncLogService("OperationSyncDMLLog", operationSyncDMLProtector);
-      operationSyncProducer =
-          new OperationSyncProducer(arrayListBlockQueue, operationSyncDMLLogService);
-      // create OperationSyncDMLProtector and OperationSyncDMLLogService
-      threadPool.execute(operationSyncDMLLogService);
-      // create OperationSyncConsumer
-      for (int i = 0; i < cacheNum; i++) {
-        threadPool.execute(
-            new OperationSyncConsumer(
-                arrayListBlockQueue.get(i), operationSyncSessionPool, operationSyncDMLLogService));
-      }
-      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-        ScheduledExecutorService secondaryMetricThread =
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Metric");
-        secondaryMetricThread.scheduleAtFixedRate(
-            this::secondaryMetric, 0L, SECONDARY_METRIC_INTERVAL, TimeUnit.SECONDS);
-      }
-      logger.info("Successfully initialize OperationSync!");
-    } else {
-      operationSyncSessionPool = null;
-      operationSyncProducer = null;
-      operationSyncDDLProtector = null;
-      operationSyncDDLLogService = null;
-      arrayListBlockQueue = null;
-    }
-  }
+  private StorageEngine() {}
 
   public static StorageEngine getInstance() {
     return InstanceHolder.INSTANCE;
@@ -255,66 +143,24 @@ public class StorageEngine implements IService {
 
   private static void initTimePartition() {
     timePartitionInterval =
-        DateTimeUtils.convertMilliTimeWithPrecision(
+        convertMilliWithPrecision(
             IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000L);
   }
 
-  public static void transmitOperationSync(PhysicalPlan physicalPlan) {
-
-    OperationSyncPlanTypeUtils.OperationSyncPlanType planType =
-        OperationSyncPlanTypeUtils.getOperationSyncPlanType(physicalPlan);
-    if (planType == null) {
-      // Don't need OperationSync
-      return;
-    }
-
-    // serialize physical plan
-    ByteBuffer buffer;
-    try {
-      int size = physicalPlan.getSerializedSize();
-      ByteArrayOutputStream operationSyncByteStream = new ByteArrayOutputStream(size);
-      DataOutputStream operationSyncSerializeStream = new DataOutputStream(operationSyncByteStream);
-      physicalPlan.serialize(operationSyncSerializeStream);
-      buffer = ByteBuffer.wrap(operationSyncByteStream.toByteArray());
-    } catch (IOException e) {
-      logger.error("OperationSync can't serialize PhysicalPlan", e);
-      return;
-    }
-
-    switch (planType) {
-      case DDLPlan:
-        // Create OperationSyncWriteTask and wait
-        OperationSyncWriteTask ddlTask =
-            new OperationSyncWriteTask(
-                buffer,
-                operationSyncSessionPool,
-                operationSyncDDLProtector,
-                operationSyncDDLLogService);
-        ddlTask.run();
+  public static long convertMilliWithPrecision(long milliTime) {
+    long result = milliTime;
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        result = milliTime * 1000_000L;
         break;
-      case DMLPlan:
-        // Put into OperationSyncProducer
-        operationSyncProducer.put(new Pair<>(buffer, planType), getDeviceNameByPlan(physicalPlan));
+      case "us":
+        result = milliTime * 1000L;
+        break;
+      default:
+        break;
     }
-  }
-
-  public static String getDeviceNameByPlan(PhysicalPlan plan) {
-    if (plan instanceof InsertPlan) {
-      InsertPlan physicalPlan = (InsertPlan) plan;
-      if (physicalPlan.getDevicePath() == null) {
-        if (physicalPlan.getPaths() != null && physicalPlan.getPaths().size() > 0) {
-          return physicalPlan.getPaths().get(0).getDevice();
-        } else {
-          return null;
-        }
-      }
-      return physicalPlan.getDevicePath().getDevice();
-    }
-    return null;
-  }
-
-  public static AtomicBoolean isSecondaryAlive() {
-    return isSecondaryAlive;
+    return result;
   }
 
   public static long getTimePartitionInterval() {
@@ -327,9 +173,6 @@ public class StorageEngine implements IService {
   @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
     StorageEngine.timePartitionInterval = timePartitionInterval;
-    if (timePartitionInterval == -1) {
-      initTimePartition();
-    }
   }
 
   public static long getTimePartition(long time) {
@@ -440,31 +283,8 @@ public class StorageEngine implements IService {
     startTimedService();
   }
 
-  private void checkSecondaryIsLife() {
-    try {
-      isSecondaryAlive.set(operationSyncSessionPool.getSystemStatus() == SystemStatus.NORMAL);
-    } catch (IoTDBConnectionException e) {
-      isSecondaryAlive.set(false);
-    }
-  }
-
-  private void secondaryMetric() {
-    for (int i = 0; i < arrayListBlockQueue.size(); i++) {
-      MetricService.getInstance()
-          .getOrCreateGauge(
-              Metric.QUEUE.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              "OperationSyncProducerQueueSize" + i,
-              Tag.STATUS.toString(),
-              "running")
-          .set(arrayListBlockQueue.get(i).size());
-    }
-  }
-
   private void checkTTL() {
     try {
-      IoTDB.metaManager.checkTTLOnLastCache();
       for (StorageGroupManager processor : processorMap.values()) {
         processor.checkTTL();
       }
@@ -579,7 +399,6 @@ public class StorageEngine implements IService {
     shutdownTimedService(tsFileTimedCloseCheckThread, "TsFileTimedCloseCheckThread");
     recoveryThreadPool.shutdownNow();
     processorMap.clear();
-    archivingManager.close();
   }
 
   private void shutdownTimedService(ScheduledExecutorService pool, String poolName) {
@@ -649,24 +468,6 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * This method is for sync, delete tsfile or sth like them, just get storage group directly by
-   * virtualStorageGroupId
-   *
-   * @param path storage group path
-   * @param virtualStorageGroupId virtual storage group partition id
-   * @return storage group processor
-   */
-  public VirtualStorageGroupProcessor getProcessorDirectly(
-      PartialPath path, int virtualStorageGroupId) throws StorageEngineException {
-    try {
-      IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-      return getStorageGroupProcessorById(virtualStorageGroupId, storageGroupMNode);
-    } catch (StorageGroupProcessorException | MetadataException e) {
-      throw new StorageEngineException(e);
-    }
-  }
-
-  /**
    * This method is for insert and query or sth like them, this may get a virtual storage group
    *
    * @param path device path
@@ -728,32 +529,6 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * get storage group processor by virtualStorageGroupId
-   *
-   * @param virtualStorageGroupId virtual storage group partition id
-   * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid
-   *     modification in mtree
-   * @return found or new storage group processor
-   */
-  @SuppressWarnings("java:S2445")
-  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  private VirtualStorageGroupProcessor getStorageGroupProcessorById(
-      int virtualStorageGroupId, IStorageGroupMNode storageGroupMNode)
-      throws StorageGroupProcessorException, StorageEngineException {
-    StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
-    if (storageGroupManager == null) {
-      synchronized (this) {
-        storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
-        if (storageGroupManager == null) {
-          storageGroupManager = new StorageGroupManager();
-          processorMap.put(storageGroupMNode.getPartialPath(), storageGroupManager);
-        }
-      }
-    }
-    return storageGroupManager.getProcessor(virtualStorageGroupId, storageGroupMNode);
-  }
-
-  /**
    * build a new storage group processor
    *
    * @param virtualStorageGroupId virtual storage group id e.g. 1
@@ -775,7 +550,7 @@ public class StorageEngine implements IService {
             virtualStorageGroupId,
             fileFlushPolicy,
             storageGroupMNode.getFullPath());
-    processor.setDataTTLWithTimePrecisionCheck(storageGroupMNode.getDataTTL());
+    processor.setDataTTL(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
     return processor;
@@ -858,8 +633,17 @@ public class StorageEngine implements IService {
         throw new BatchProcessException(results);
       }
     }
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-        getProcessor(insertTabletPlan.getDevicePath());
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor;
+    try {
+      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDevicePath());
+    } catch (StorageEngineException e) {
+      throw new StorageEngineException(
+          String.format(
+              "Get StorageGroupProcessor of device %s " + "failed",
+              insertTabletPlan.getDevicePath()),
+          e);
+    }
+
     getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
   }
@@ -1049,14 +833,12 @@ public class StorageEngine implements IService {
   }
 
   /** delete all data of storage groups' timeseries. */
-  @TestOnly
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
-    processorMap.clear();
     return true;
   }
 
@@ -1092,7 +874,7 @@ public class StorageEngine implements IService {
       throws LoadFileException, StorageEngineException, MetadataException {
     Set<String> deviceSet = newTsFileResource.getDevices();
     if (deviceSet == null || deviceSet.isEmpty()) {
-      throw new StorageEngineException("The TsFile is empty, cannot be loaded.");
+      throw new StorageEngineException("Can not get the corresponding storage group.");
     }
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
@@ -1108,17 +890,13 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(
-            new PartialPath(getSgByEngineFile(deletedTsfile, true)),
-            getVirtualSgIdByEngineFile(deletedTsfile, true))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, true)))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(
-            new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)),
-            getVirtualSgIdByEngineFile(tsfileToBeUnloaded, true))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)))
         .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
@@ -1151,38 +929,6 @@ public class StorageEngine implements IService {
       throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
     } else {
       return file.getParentFile().getParentFile().getParentFile().getName();
-    }
-  }
-
-  /**
-   * The internal file means that the file is in the engine, which is different from those external
-   * files which are not loaded.
-   *
-   * @param file internal file
-   * @param needCheck check if the tsfile is an internal TsFile. If you make sure it is inside, no
-   *     need to check
-   * @return virtual storage group partition id
-   * @throws IllegalPathException throw if tsfile is not an internal TsFile
-   */
-  public int getVirtualSgIdByEngineFile(File file, boolean needCheck) throws IllegalPathException {
-    if (needCheck) {
-      File dataDir =
-          file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
-      if (dataDir.exists()) {
-        String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-        for (String dir : dataDirs) {
-          try {
-            if (Files.isSameFile(Paths.get(dir), dataDir.toPath())) {
-              return Integer.parseInt(file.getParentFile().getParentFile().getName());
-            }
-          } catch (IOException e) {
-            throw new IllegalPathException(file.getAbsolutePath(), e.getMessage());
-          }
-        }
-      }
-      throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
-    } else {
-      return Integer.parseInt(file.getParentFile().getParentFile().getName());
     }
   }
 
@@ -1313,27 +1059,6 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
-  }
-
-  /** push the archiving info to archivingManager */
-  public boolean setArchiving(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
-    return archivingManager.setArchiving(storageGroup, targetDir, ttl, startTime);
-  }
-
-  public boolean operateArchiving(
-      ArchivingOperate.ArchivingOperateType operateType, long taskId, PartialPath storageGroup) {
-    if (taskId >= 0) {
-      return archivingManager.operate(operateType, taskId);
-    } else if (storageGroup != null) {
-      return archivingManager.operate(operateType, storageGroup);
-    } else {
-      logger.error("{} archiving cannot recognize taskId or storage group", operateType.name());
-      return false;
-    }
-  }
-
-  public ArchivingManager getArchivingManager() {
-    return archivingManager;
   }
 
   static class InstanceHolder {

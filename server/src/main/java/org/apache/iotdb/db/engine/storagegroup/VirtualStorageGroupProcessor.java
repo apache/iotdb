@@ -23,13 +23,14 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.archiving.ArchivingTask;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -63,20 +64,22 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.service.metrics.MetricService;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -115,10 +118,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.db.qp.executor.PlanExecutor.operateClearCache;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
@@ -401,7 +405,16 @@ public class VirtualStorageGroupProcessor {
     // recover tsfiles
     recover();
 
-    MetricService.getInstance().addMetricSet(new VirtualStorageGroupProcessorMetrics(this));
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.MEM.toString(),
+              storageGroupInfo,
+              StorageGroupInfo::getMemCost,
+              Tag.NAME.toString(),
+              "storageGroup_" + getLogicalStorageGroupName());
+    }
 
     // start trim task at last
     walTrimScheduleTask =
@@ -416,10 +429,6 @@ public class VirtualStorageGroupProcessor {
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
         TimeUnit.MILLISECONDS);
-  }
-
-  public long getStorageGroupMemCost() {
-    return storageGroupInfo.getMemCost();
   }
 
   public String getLogicalStorageGroupName() {
@@ -485,7 +494,9 @@ public class VirtualStorageGroupProcessor {
   /** recover from file */
   private void recover() throws StorageGroupProcessorException {
     try {
-      recoverCompaction();
+      recoverInnerSpaceCompaction(true);
+      recoverInnerSpaceCompaction(false);
+      recoverCrossSpaceCompaction();
     } catch (Exception e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -542,18 +553,8 @@ public class VirtualStorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
-    // recover and start timed compaction thread
-    initCompaction();
-
-    logger.info(
-        "The virtual storage group {}[{}] is recovered successfully",
-        logicalStorageGroupName,
-        virtualStorageGroupId);
-  }
-
-  private void updateLastFlushTime(TsFileResource resource, boolean isSeq) {
-    //  only update flush time when it is a seq file
-    if (isSeq) {
+    List<TsFileResource> seqTsFileResources = tsFileManager.getTsFileList(true);
+    for (TsFileResource resource : seqTsFileResources) {
       long timePartitionId = resource.getTimePartition();
       Map<String, Long> endTimeMap = new HashMap<>();
       for (String deviceId : resource.getDevices()) {
@@ -564,14 +565,17 @@ public class VirtualStorageGroupProcessor {
       lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
+
+    // recover and start timed compaction thread
+    initCompaction();
+
+    logger.info(
+        "The virtual storage group {}[{}] is recovered successfully",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
   }
 
   private void initCompaction() {
-    if (!config.isEnableSeqSpaceCompaction()
-        && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()) {
-      return;
-    }
     timedCompactionScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.COMPACTION_SCHEDULE.getName()
@@ -586,12 +590,83 @@ public class VirtualStorageGroupProcessor {
         TimeUnit.MILLISECONDS);
   }
 
-  private void recoverCompaction() throws Exception {
-    CompactionRecoverManager compactionRecoverManager =
-        new CompactionRecoverManager(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
-    compactionRecoverManager.recoverInnerSpaceCompaction(true);
-    compactionRecoverManager.recoverInnerSpaceCompaction(false);
-    compactionRecoverManager.recoverCrossSpaceCompaction();
+  /** recover crossSpaceCompaction */
+  private void recoverCrossSpaceCompaction() throws Exception {
+    CompactionRecoverTask compactionRecoverTask =
+        new CompactionRecoverTask(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecoverTask.recoverCrossSpaceCompaction();
+  }
+
+  private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
+    // search compaction log for SizeTieredCompaction
+    List<String> dirs;
+    if (isSequence) {
+      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
+    } else {
+      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
+    }
+    for (String dir : dirs) {
+      File storageGroupDir =
+          new File(
+              dir
+                  + File.separator
+                  + logicalStorageGroupName
+                  + File.separator
+                  + virtualStorageGroupId);
+      if (!storageGroupDir.exists()) {
+        return;
+      }
+      File[] timePartitionDirs = storageGroupDir.listFiles();
+      if (timePartitionDirs == null) {
+        return;
+      }
+      for (File timePartitionDir : timePartitionDirs) {
+        if (!timePartitionDir.isDirectory()
+            || !Pattern.compile("[0-9]*").matcher(timePartitionDir.getName()).matches()) {
+          continue;
+        }
+        File[] compactionLogs =
+            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
+        for (File compactionLog : compactionLogs) {
+          IoTDBDescriptor.getInstance()
+              .getConfig()
+              .getInnerCompactionStrategy()
+              .getCompactionRecoverTask(
+                  tsFileManager.getStorageGroupName(),
+                  tsFileManager.getVirtualStorageGroup(),
+                  Long.parseLong(
+                      timePartitionDir
+                          .getPath()
+                          .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
+                  compactionLog,
+                  timePartitionDir.getPath(),
+                  isSequence,
+                  tsFileManager)
+              .call();
+        }
+      }
+    }
+
+    // search compaction log for old LevelCompaction
+    File logFile =
+        FSFactoryProducer.getFSFactory()
+            .getFile(
+                storageGroupSysDir.getAbsolutePath(),
+                logicalStorageGroupName + COMPACTION_LOG_NAME);
+    if (logFile.exists()) {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .getInnerCompactionStrategy()
+          .getCompactionRecoverTask(
+              tsFileManager.getStorageGroupName(),
+              tsFileManager.getVirtualStorageGroup(),
+              -1,
+              logFile,
+              logFile.getParent(),
+              isSequence,
+              tsFileManager)
+          .call();
+    }
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
@@ -700,8 +775,7 @@ public class VirtualStorageGroupProcessor {
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
-      ;
+      fileResource.setClosed(true);
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserializeFromOldFile();
       upgradeRet.add(fileResource);
@@ -770,9 +844,8 @@ public class VirtualStorageGroupProcessor {
           if (writer != null && writer.hasCrashed()) {
             tsFileManager.addForRecover(tsFileResource, isSeq);
           } else {
-            tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+            tsFileResource.setClosed(true);
             tsFileManager.add(tsFileResource, isSeq);
-            updateLastFlushTime(tsFileResource, isSeq);
             tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
           continue;
@@ -784,8 +857,6 @@ public class VirtualStorageGroupProcessor {
         if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
           // not the last file or cannot write, just close it
           tsFileResource.close();
-          tsFileManager.add(tsFileResource, isSeq);
-          updateLastFlushTime(tsFileResource, isSeq);
           tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
         } else if (writer.canWrite()) {
           // the last file is not closed, continue writing to in
@@ -840,12 +911,12 @@ public class VirtualStorageGroupProcessor {
             }
             tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
           }
-          tsFileManager.add(tsFileResource, isSeq);
-          updateLastFlushTime(tsFileResource, isSeq);
         }
-      } catch (Throwable e) {
+        tsFileManager.add(tsFileResource, isSeq);
+      } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
+        continue;
       } finally {
         if (writer != null) {
           writer.close();
@@ -877,7 +948,7 @@ public class VirtualStorageGroupProcessor {
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
     if (!isAlive(insertRowPlan.getTime())) {
-      throw new OutOfTTLException(insertRowPlan.getTime(), (DateTimeUtils.currentTime() - dataTTL));
+      throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
     writeLock("InsertRow");
     try {
@@ -1031,7 +1102,7 @@ public class VirtualStorageGroupProcessor {
 
   /** @return whether the given time falls in ttl */
   private boolean isAlive(long time) {
-    return dataTTL == Long.MAX_VALUE || (DateTimeUtils.currentTime() - time) <= dataTTL;
+    return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
 
   /**
@@ -1190,34 +1261,24 @@ public class VirtualStorageGroupProcessor {
 
   private TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence) {
     TsFileProcessor tsFileProcessor = null;
-    int retryCnt = 0;
-    do {
-      try {
-        if (sequence) {
-          tsFileProcessor =
-              getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, true);
-        } else {
-          tsFileProcessor =
-              getOrCreateTsFileProcessorIntern(timeRangeId, workUnsequenceTsFileProcessors, false);
-        }
-      } catch (DiskSpaceInsufficientException e) {
-        logger.error(
-            "disk space is insufficient when creating TsFile processor, change system mode to read-only",
-            e);
-        IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
-        break;
-      } catch (IOException e) {
-        if (retryCnt < 3) {
-          logger.warn("meet IOException when creating TsFileProcessor, retry it again", e);
-          retryCnt++;
-        } else {
-          logger.error(
-              "meet IOException when creating TsFileProcessor, change system mode to error", e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
-          break;
-        }
+    try {
+      if (sequence) {
+        tsFileProcessor =
+            getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, true);
+      } else {
+        tsFileProcessor =
+            getOrCreateTsFileProcessorIntern(timeRangeId, workUnsequenceTsFileProcessors, false);
       }
-    } while (tsFileProcessor == null);
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error(
+          "disk space is insufficient when creating TsFile processor, change system mode to read-only",
+          e);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+    } catch (IOException e) {
+      logger.error(
+          "meet IOException when creating TsFileProcessor, change system mode to read-only", e);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+    }
     return tsFileProcessor;
   }
 
@@ -1486,7 +1547,7 @@ public class VirtualStorageGroupProcessor {
           logicalStorageGroupName + "-" + virtualStorageGroupId);
       return;
     }
-    long ttlLowerBound = DateTimeUtils.currentTime() - dataTTL;
+    long ttlLowerBound = System.currentTimeMillis() - dataTTL;
     logger.debug(
         "{}: TTL removing files before {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId,
@@ -1510,7 +1571,7 @@ public class VirtualStorageGroupProcessor {
     }
 
     // prevent new merges and queries from choosing this file
-    resource.setStatus(TsFileResourceStatus.DELETED);
+    resource.setDeleted(true);
 
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {
@@ -1519,11 +1580,10 @@ public class VirtualStorageGroupProcessor {
         resource.remove();
         tsFileManager.remove(resource, isSeq);
         logger.info(
-            "Removed a file {} before {} by ttl ({} {})",
+            "Removed a file {} before {} by ttl ({}ms)",
             resource.getTsFilePath(),
             new Date(ttlLowerBound),
-            dataTTL,
-            config.getTimestampPrecision());
+            dataTTL);
       } finally {
         resource.writeUnlock();
       }
@@ -1546,82 +1606,6 @@ public class VirtualStorageGroupProcessor {
               logicalStorageGroupName,
               virtualStorageGroupId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
-        }
-      }
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  /** iterate over TsFiles and move to targetDir if out of ttl */
-  public void checkArchivingTask(ArchivingTask task) {
-    if (task.getTTL() == Long.MAX_VALUE) {
-      logger.debug(
-          "{}: Archiving ttl not set, ignore the check",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
-      return;
-    }
-
-    long ttlLowerBound =
-        DateTimeUtils.currentTime() - DateTimeUtils.convertMilliTimeWithPrecision(task.getTTL());
-    logger.debug(
-        "{}: Archiving files before {}",
-        logicalStorageGroupName + "-" + virtualStorageGroupId,
-        DateTimeUtils.convertMillsecondToZonedDateTime(ttlLowerBound));
-
-    // copy to avoid concurrent modification of deletion
-    List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
-    List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManager.getTsFileList(false));
-
-    for (TsFileResource tsFileResource : seqFiles) {
-      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
-        // task stopped running (eg. the task is paused), return
-        return;
-      }
-      checkArchivingTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, true);
-    }
-
-    for (TsFileResource tsFileResource : unseqFiles) {
-      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
-        // task stopped running, return
-        return;
-      }
-      checkArchivingTaskFile(task, tsFileResource, task.getTargetDir(), ttlLowerBound, false);
-    }
-  }
-
-  /** archive the file to targetDir */
-  public void checkArchivingTaskFile(
-      ArchivingTask task,
-      TsFileResource resource,
-      File targetDir,
-      long ttlLowerBound,
-      boolean isSeq) {
-    writeLock("checkArchivingLock");
-    try {
-      if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
-        return;
-      }
-
-      resource.setStatus(TsFileResourceStatus.ARCHIVED);
-
-      // ensure that the file is not used by any queries
-      if (resource.tryWriteLock()) {
-        try {
-          // try to archive physical data file
-          tsFileManager.remove(resource, isSeq);
-
-          // start archiving file
-          if (task.startFile(resource.getTsFile())) {
-            File archivedFile = resource.archive(targetDir);
-          } else {
-            // archive file couldn't start
-            logger.error("{} archiving logger error", resource.getTsFilePath());
-          }
-        } catch (IOException e) {
-          logger.error("{} archiving error", resource.getTsFilePath());
-        } finally {
-          resource.writeUnlock();
         }
       }
     } finally {
@@ -1868,7 +1852,7 @@ public class VirtualStorageGroupProcessor {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? DateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
 
     // for upgrade files and old files must be closed
@@ -1938,7 +1922,7 @@ public class VirtualStorageGroupProcessor {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
-    boolean hasReleasedLock = false;
+
     try {
       Set<PartialPath> devicePaths = IoTDB.metaManager.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
@@ -1951,18 +1935,20 @@ public class VirtualStorageGroupProcessor {
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
-      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
-      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      separateTsFile(sealedTsFileResource, unsealedTsFileResource);
-
       deleteDataInFiles(
-          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
-
-      writeUnlock();
-      hasReleasedLock = true;
-
+          tsFileManager.getTsFileList(true),
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          planIndex,
+          timePartitionFilter);
       deleteDataInFiles(
-          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+          tsFileManager.getTsFileList(false),
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          planIndex,
+          timePartitionFilter);
 
     } catch (Exception e) {
       // roll back
@@ -1973,35 +1959,8 @@ public class VirtualStorageGroupProcessor {
       }
       throw new IOException(e);
     } finally {
-      if (!hasReleasedLock) {
-        writeUnlock();
-      }
+      writeUnlock();
     }
-  }
-
-  /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
-  private void separateTsFile(
-      List<TsFileResource> sealedResource, List<TsFileResource> unsealedResource) {
-    tsFileManager
-        .getTsFileList(true)
-        .forEach(
-            tsFileResource -> {
-              if (tsFileResource.isClosed()) {
-                sealedResource.add(tsFileResource);
-              } else {
-                unsealedResource.add(tsFileResource);
-              }
-            });
-    tsFileManager
-        .getTsFileList(false)
-        .forEach(
-            tsFileResource -> {
-              if (tsFileResource.isClosed()) {
-                sealedResource.add(tsFileResource);
-              } else {
-                unsealedResource.add(tsFileResource);
-              }
-            });
   }
 
   private void logDeletion(
@@ -2042,26 +2001,16 @@ public class VirtualStorageGroupProcessor {
             logicalStorageGroupName, tsFileResource.getTimePartition())) {
       return true;
     }
-
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
-      if (!tsFileResource.mayContainsDevice(deviceId)) {
-        // resource does not contain this device
-        continue;
+      long endTime = tsFileResource.getEndTime(deviceId);
+      if (endTime == Long.MIN_VALUE) {
+        return false;
       }
 
-      long deviceEndTime = tsFileResource.getEndTime(deviceId);
-      if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
-        // unsealed seq file
-        if (deleteEnd >= tsFileResource.getStartTime(deviceId)) {
-          return false;
-        }
-      } else {
-        // sealed file or unsealed unseq file
-        if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= deviceEndTime) {
-          // time range of device has overlap with the deletion
-          return false;
-        }
+      if (tsFileResource.isDeviceIdExist(deviceId)
+          && (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
+        return false;
       }
     }
     return true;
@@ -2072,6 +2021,7 @@ public class VirtualStorageGroupProcessor {
       Deletion deletion,
       Set<PartialPath> devicePaths,
       List<ModificationFile> updatedModFiles,
+      long planIndex,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
@@ -2084,35 +2034,37 @@ public class VirtualStorageGroupProcessor {
         continue;
       }
 
-      if (tsFileResource.isClosed()) {
-        // delete data in sealed file
-        if (tsFileResource.isCompacting()) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          deletion.setFileOffset(Long.MAX_VALUE);
-          // write deletion into compaction modification file
-          tsFileResource.getCompactionModFile().write(deletion);
-          // write deletion into modification file to enable query during compaction
-          tsFileResource.getModFile().write(deletion);
-          // remember to close mod file
-          tsFileResource.getCompactionModFile().close();
-          tsFileResource.getModFile().close();
-        } else {
-          deletion.setFileOffset(tsFileResource.getTsFileSize());
-          // write deletion into modification file
-          tsFileResource.getModFile().write(deletion);
-          // remember to close mod file
-          tsFileResource.getModFile().close();
-        }
-        logger.info(
-            "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
-            deletion.getPath(),
-            deletion.getStartTime(),
-            deletion.getEndTime(),
-            tsFileResource.getModFile().getFilePath());
+      if (tsFileResource.isCompacting) {
+        // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+        // change after compaction
+        deletion.setFileOffset(Long.MAX_VALUE);
+        // write deletion into compaction modification file
+        tsFileResource.getCompactionModFile().write(deletion);
+        // write deletion into modification file to enable query during compaction
+        tsFileResource.getModFile().write(deletion);
+        // remember to close mod file
+        tsFileResource.getCompactionModFile().close();
+        tsFileResource.getModFile().close();
       } else {
-        // delete data in memory of unsealed file
-        tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
+        deletion.setFileOffset(tsFileResource.getTsFileSize());
+        // write deletion into modification file
+        tsFileResource.getModFile().write(deletion);
+        // remember to close mod file
+        tsFileResource.getModFile().close();
+      }
+      logger.info(
+          "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+          deletion.getPath(),
+          deletion.getStartTime(),
+          deletion.getEndTime(),
+          tsFileResource.getModFile().getFilePath());
+
+      tsFileResource.updatePlanIndexes(planIndex);
+
+      // delete data in memory of unsealed file
+      if (!tsFileResource.isClosed()) {
+        TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
+        tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 
       // add a record in case of rollback
@@ -2217,17 +2169,13 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void executeCompaction() {
-    try {
-      List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
-      // sort the time partition from largest to smallest
-      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
-      for (long timePartition : timePartitions) {
-        CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
-      }
-      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    } catch (Throwable e) {
-      logger.error("Meet error in compaction schedule.", e);
+    List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
+    // sort the time partition from largest to smallest
+    timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+    for (long timePartition : timePartitions) {
+      CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
     }
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
   }
 
   /**
@@ -2294,8 +2242,9 @@ public class VirtualStorageGroupProcessor {
             .recoverSettleFileMap
             .remove(oldTsFileResource.getTsFile().getAbsolutePath());
       }
-      // clear Cache , including chunk cache, timeseriesMetadata cache and bloom filter cache
-      operateClearCache();
+      // clear Cache , including chunk cache and timeseriesMetadata cache
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
 
       // if old tsfile is being deleted in the process due to its all data's being deleted.
       if (!oldTsFileResource.getTsFile().exists()) {
@@ -2391,6 +2340,7 @@ public class VirtualStorageGroupProcessor {
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } catch (IllegalPathException e) {
       logger.error(
@@ -2473,6 +2423,7 @@ public class VirtualStorageGroupProcessor {
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } catch (IllegalPathException e) {
       logger.error(
@@ -3003,13 +2954,6 @@ public class VirtualStorageGroupProcessor {
    */
   public Collection<TsFileProcessor> getWorkUnsequenceTsFileProcessors() {
     return workUnsequenceTsFileProcessors.values();
-  }
-
-  public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
-    if (dataTTL != Long.MAX_VALUE) {
-      dataTTL = DateTimeUtils.convertMilliTimeWithPrecision(dataTTL);
-    }
-    this.dataTTL = dataTTL;
   }
 
   public void setDataTTL(long dataTTL) {

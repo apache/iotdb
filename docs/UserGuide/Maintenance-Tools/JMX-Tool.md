@@ -48,12 +48,12 @@ Step 4: Use jvisualvm
 1. Make sure jdk 8 is installed. For versions later than jdk 8, you need to [download visualvm](https://visualvm.github.io/download.html) 
 2. Open jvisualvm
 3. Right-click at the left navigation area -> Add JMX connection
-<img style="width:100%; max-width:300px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/81464569-725e0200-91f5-11ea-9ff9-49745f4c9ef2.png">
+<img style="width:100%; max-width:300px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81464569-725e0200-91f5-11ea-9ff9-49745f4c9ef2.png">
 
 4. Fill in information and log in as below. Remember to check "Do not require SSL connection".
 An example is:
 Connection：192.168.130.15:31999
 Username：iotdb
 Password：passw!d
-<img style="width:100%; max-width:300px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/81464639-ed271d00-91f5-11ea-91a0-b4fe9cb8204e.png">
+<img style="width:100%; max-width:300px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81464639-ed271d00-91f5-11ea-91a0-b4fe9cb8204e.png">
 

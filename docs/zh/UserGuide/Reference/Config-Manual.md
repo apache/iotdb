@@ -18,8 +18,8 @@
     under the License.
 
 -->
-# 参考
-## 配置参数
+
+# 配置参数
 
 为方便 IoTDB Server 的配置与管理，IoTDB Server 为用户提供三种配置项，使得用户可以在启动服务或服务运行时对其进行配置。
 
@@ -34,7 +34,7 @@
   数据文件存储目录 (`overflow_data_dir`) 等。此外，用户可以在文件中配置 IoTDB 存储时 TsFile 文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小 (`group_size_in_byte`)
   ，内存中每个列打一次包的大小 (`page_size_in_byte`) 等。
 
-### 热修改配置项
+## 热修改配置项
 
 为方便用户使用，IoTDB Server 为用户提供了热修改功能，即在系统运行过程中修改`iotdb-engine.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后 生效方式为`触发生效`
 的均为支持热修改的配置参数。
@@ -42,7 +42,7 @@
 触发方式：客户端发送```load configuration```命令至 IoTDB
 Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://iotdb.apache.org/zh/UserGuide/Master/CLI/Command-Line-Interface.html)
 
-### 环境配置项
+## 环境配置项
 
 环境配置项主要用于对 IoTDB Server 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。IoTDB Server 启动时，此部分配置会被传给 JVM。用户可以通过查看 `iotdb-env.sh`
 （或`iotdb-env.bat`) 文件查看环境配置项内容。详细配置项说明如下：
@@ -83,12 +83,12 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值|取决于操作系统和机器配置。在 Linux 或 MacOS 系统下默认值为机器 CPU 核数乘以 100M 的值与 MAX\_HEAP\_SIZE 四分之一这二者的最小值。在 Windows 系统下，32 位系统的默认值是 512M，64 位系统默认值是 2G。|
 |改后生效方式|重启服务生效|
 
-### 系统配置项
+## 系统配置项
 
 系统配置项是 IoTDB Server 运行的核心配置，它主要用于设置 IoTDB Server 文件层和引擎层的参数，便于用户根据自身需求调整 Server
 的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过`iotdb-engine.properties`, 文件查看和修改两种配置项的内容。在 0.7.0 版本中字符串类型的配置项大小写敏感。
 
-#### RPC配置
+### RPC配置
 
 * rpc\_address
 
@@ -153,7 +153,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1024 |
 |改后生效方式|重启服务生效|
 
-#### InfluxDB 协议适配器配置
+### InfluxDB 协议适配器配置
 
 * enable_influxdb_rpc_service
 
@@ -172,7 +172,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |     类型     | INT32                        |
 |    默认值    | 8086                         |
 | 改后生效方式 | 重启服务生效                 |
-#### 写前日志配置
+### 写前日志配置
 
 * enable\_wal
 
@@ -210,7 +210,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 100 |
 |改后生效方式|触发生效|
 
-#### 目录配置
+### 目录配置
 
 * system\_dir
 
@@ -356,7 +356,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| your principal |
 |改后生效方式|重启服务生效|
 
-#### 存储引擎配置
+### 存储引擎配置
 
 * timestamp\_precision
 
@@ -514,11 +514,11 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 * avg\_series\_point\_number\_threshold
 
 |名字| avg\_series\_point\_number\_threshold |
-|:---:|:--------------------------------------|
-|描述| 内存中平均每个时间序列点数最大值，达到触发 flush           |
-|类型| Int32                                 |
-|默认值| 100000                                |
-|改后生效方式| 重启服务生效                                |
+|:---:|:---|
+|描述| 内存中平均每个时间序列点数最大值，达到触发 flush |
+|类型| Int32 |
+|默认值| 10000 |
+|改后生效方式|重启服务生效|
 
 * concurrent\_flush\_thread
 
@@ -535,7 +535,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:----------------------------------------------------------------------------|
 |描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 16。 |
 |类型| Int32                                                                       |
-|默认值| 0                                                                          |
+|默认值| 16                                                                          |
 |改后生效方式| 重启服务生效                                                                      |
 
 * concurrent\_sub\_rawQuery\_thread
@@ -544,7 +544,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:--| 
 |描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数。| 
 |类型| Int32 | 
-|默认值| 0 | 
+|默认值| 8 | 
 |改后生效方式|重启服务生效|
 
 * raw\_query\_blocking\_queue\_capacity
@@ -629,7 +629,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |改后生效方式|重启服务生效|
 
 
-#### 内存控制配置
+### 内存控制配置
 
 * enable\_mem\_control
 
@@ -748,16 +748,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 10 |
 |改后生效方式|重启服务生效|
 
-* schema\_query\_fetch\_size
-
-|名字| schema\_query\_fetch\_size |
-|:---:|:---|
-|描述| 默认的一次元数据查询返回的最大条目数，例如show timeseries。|
-|类型|Int32|
-|默认值| 10000000 |
-|改后生效方式|重启服务生效|
-
-#### 升级配置
+### 升级配置
 
 * update\_thread\_num
 
@@ -768,7 +759,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1 |
 |改后生效方式|重启服务生效|
 
-#### 查询配置
+### 查询配置
 
 * default\_fill\_interval
 
@@ -788,7 +779,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |    默认值    | 1.0                                |
 | 改后生效方式 | 重启服务生效                       |
 
-#### 合并配置
+### 合并配置
 
 * enable\_seq\_space\_compaction
 
@@ -841,7 +832,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 合并时的优先级，BALANCE 各种合并平等，INNER_CROSS 优先进行顺序文件和顺序文件或乱序文件和乱序文件的合并，CROSS_INNER 优先将乱序文件合并到顺序文件中 |
 |类型| String |
-|默认值| BALANCE |
+|默认值| balance |
 |改后生效方式|重启服务生效|
 
 * target\_compaction\_file\_size
@@ -889,22 +880,13 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 100 |
 |改后生效方式|重启服务生效|
 
-* max\_inner\_compaction\_candidate\_file\_num
+* max\_compaction\_candidate\_file\_num
 
-|名字| max\_inner\_compaction\_candidate\_file\_num |
+|名字| max\_compaction\_candidate\_file\_num |
 |:---:|:---|
 |描述| 空间内合并中一次合并最多参与的文件数 |
 |类型| Int32 |
 |默认值| 30|
-|改后生效方式|重启服务生效|
-
-* max\_cross\_compaction\_candidate\_file\_num
-
-|名字| max\_cross\_compaction\_candidate\_file\_num |
-|:---:|:---|
-|描述| 跨空间合并中一次合并最多参与的文件数 |
-|类型| Int32 |
-|默认值| 1000|
 |改后生效方式|重启服务生效|
 
 * cross\_compaction\_file\_selection\_time\_budget
@@ -958,11 +940,11 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |:---:|:---|
 |描述| 每秒可达到的写入吞吐量合并限制。|
 |类型| Int32 |
-|默认值| 16 |
+|默认值| 30 |
 |改后生效方式| 重启服务生效|
 
 
-#### 插入配置
+### 插入配置
 
 - insert_multi_tablet_enable_multithreading_column_threshold
 
@@ -982,7 +964,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 60000 |
 |改后生效方式| 重启服务生效|
 
-#### 元数据缓存配置
+### 元数据缓存配置
 
 * meta\_data\_cache\_enable
 
@@ -1011,7 +993,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 300000 |
 |改后生效方式|重启服务生效|
 
-#### 最新点缓存配置
+### 最新点缓存配置
 
 * enable\_last\_stat
 
@@ -1022,7 +1004,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| true |
 |改后生效方式|重启服务生效|
 
-#### 统计监控器配置
+### 统计监控器配置
 
 * enable\_stat\_monitor
 
@@ -1042,7 +1024,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| false |
 |改后生效方式|重启服务生效|
 
-#### WAL 直接缓冲池配置
+### WAL 直接缓冲池配置
 
 * wal\_pool\_trim\_interval\_ms
 
@@ -1062,7 +1044,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 6 |
 |改后生效方式|重启服务生效|
 
-#### 外部排序配置
+### 外部排序配置
 
 * enable\_external\_sort
 
@@ -1082,7 +1064,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1000 |
 |改后生效方式|重启服务生效|
 
-#### 同步服务器配置
+### 同步服务器配置
 
 * is\_sync\_enable
 
@@ -1111,7 +1093,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 0.0.0.0/0 |
 |改后生效方式|重启服务生效|
 
-#### 性能统计配置
+### 性能统计配置
 
 * enable\_performance\_stat
 
@@ -1131,7 +1113,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| data/tracing(Windows:data\\tracing) |
 |改后生效方式| 重启服务生效                    |
 
-#### 水印模块配置
+### 水印模块配置
 
 * watermark\_module\_opened
 
@@ -1169,7 +1151,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5) |
 |改后生效方式|重启服务生效|
 
-#### 数据类型自动推断
+### 数据类型自动推断
 
 * enable\_auto\_create\_schema
 
@@ -1288,7 +1270,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| PLAIN |
 |改后生效方式|重启服务生效|
 
-#### 文件层配置
+### 文件层配置
 
 * group\_size\_in\_byte
 
@@ -1389,7 +1371,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 5000 |
 |改后生效方式|触发生效|
 
-#### MQTT代理配置
+### MQTT代理配置
 
 * enable\_mqtt\_service
 
@@ -1445,7 +1427,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
-#### 授权配置
+### 授权配置
 
 * authorizer\_provider\_class
 
@@ -1466,7 +1448,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 无 |
 |改后生效方式|重启服务生效|
 
-#### UDF查询配置
+### UDF查询配置
 
 * udf\_initial\_byte\_array\_length\_for\_memory\_control
 
@@ -1504,7 +1486,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| ext/udf(Windows:ext\\udf) |
 |改后生效方式|重启服务生效|
 
-#### 索引配置
+### 索引配置
 
 * index\_root\_dir
 
@@ -1578,7 +1560,6 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-<!--
 * enable\_id\_table
 
 |名字| enable\_id\_table |
@@ -1605,8 +1586,6 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |类型| bool |
 |默认值| false |
 |改后生效方式|重启服务生效|
-
--->
 
 * concurrent\_writing\_time\_partition
 
@@ -1635,7 +1614,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| root |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
-#### SELECT-INTO配置
+### SELECT-INTO配置
 
 * select_into_insert_tablet_plan_row_limit
 
@@ -1646,7 +1625,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |    默认值    | 10000                                                        |
 | 改后生效方式 | 触发生效                                                     |
 
-#### 触发器配置
+### 触发器配置
 
 - concurrent_window_evaluation_thread
 
@@ -1666,7 +1645,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |    默认值    | 64                                  |
 | 改后生效方式 | 重启服务生效                        |
 
-#### 连续查询配置
+### 连续查询配置
 
 - continuous_query_execution_thread
 
@@ -1695,7 +1674,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |    默认值    | 1s                                  |
 | 改后生效方式 | 重启服务生效                        |
 
-### 开启 GC 日志
+## 开启 GC 日志
 
 GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。
 若要打开 GC 日志，则需要在启动 IoTDB Server 的时候加上"printgc"参数：

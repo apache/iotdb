@@ -198,6 +198,8 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (isSdtEncoding && isLastPoint) {
       pageWriter.write(time, value);
     }
+    //    if (pageWriter.getPointNumber() % 4000 == 0)
+    //      System.out.println("\t\t[write point] 4000 points written");
     checkPageSizeAndMayOpenANewPage();
   }
 
@@ -241,6 +243,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
+    System.out.println("\t\t[write batch] " + batchSize + " points written");
   }
 
   public void write(long[] timestamps, Binary[] values, int batchSize) {
@@ -253,6 +256,8 @@ public class ChunkWriterImpl implements IChunkWriter {
    * to pageBuffer
    */
   private void checkPageSizeAndMayOpenANewPage() {
+    //    System.out.println(
+    //        "\tcheckPageSize" + pageWriter.getPointNumber() + " <= " + maxNumberOfPointsInPage);
     if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
       logger.debug("current line count reaches the upper bound, write page {}", measurementSchema);
       writePageToPageBuffer();
@@ -297,7 +302,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
-      this.statistics.mergeStatistics(pageWriter.getStatistics());
+      this.statistics.mergeChunkMetadataStat(pageWriter.getStatistics());
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
@@ -314,7 +319,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     // reinit this chunk writer
     pageBuffer.reset();
     numOfPages = 0;
-    sizeWithoutStatistic = 0;
     firstPageStatistics = null;
     this.statistics = Statistics.getStatsByType(measurementSchema.getType());
   }
@@ -391,7 +395,7 @@ public class ChunkWriterImpl implements IChunkWriter {
           measurementSchema.getMeasurementId(),
           pageBuffer.size());
 
-      statistics.mergeStatistics(header.getStatistics());
+      statistics.mergeChunkMetadataStat(header.getStatistics());
 
     } catch (IOException e) {
       throw new PageException("IO Exception in writeDataPageHeader,ignore this page", e);

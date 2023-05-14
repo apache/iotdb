@@ -111,7 +111,7 @@ public class TsFileRecoverPerformer {
     }
 
     // remove corrupted part of the TsFile
-    RestorableTsFileIOWriter restorableTsFileIOWriter = null;
+    RestorableTsFileIOWriter restorableTsFileIOWriter;
     try {
       restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
     } catch (NotCompatibleTsFileException e) {
@@ -167,7 +167,7 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromFile() throws IOException {
     try {
       tsFileResource.deserialize();
-    } catch (Throwable e) {
+    } catch (IOException e) {
       logger.warn(
           "Cannot deserialize TsFileResource {}, construct it using " + "TsFileSequenceReader",
           tsFileResource.getTsFile(),
@@ -180,7 +180,7 @@ public class TsFileRecoverPerformer {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath(), true)) {
       for (Entry<String, List<TimeseriesMetadata>> entry :
-          reader.getAllTimeseriesMetadata(false).entrySet()) {
+          reader.getAllTimeseriesMetadata().entrySet()) {
         for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
           tsFileResource.updateStartTime(
               entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
@@ -289,18 +289,13 @@ public class TsFileRecoverPerformer {
             sequence);
     logReplayer.replayLogs(supplier, virtualStorageGroupProcessor);
     try {
-      if (!recoverMemTable.isEmpty() && recoverMemTable.getSeriesNumber() != 0) {
+      if (!recoverMemTable.isEmpty()) {
         // flush logs
-        String virtualStorageGroupId =
-            tsFileResource.getTsFile().getParentFile().getParentFile().getName();
-        String logicalStorageGroupName =
-            tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName();
-
         MemTableFlushTask tableFlushTask =
             new MemTableFlushTask(
                 recoverMemTable,
                 restorableTsFileIOWriter,
-                logicalStorageGroupName + File.separator + virtualStorageGroupId);
+                tsFileResource.getTsFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
         tsFileResource.updatePlanIndexes(recoverMemTable.getMinPlanIndex());
         tsFileResource.updatePlanIndexes(recoverMemTable.getMaxPlanIndex());

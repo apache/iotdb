@@ -20,8 +20,14 @@ package org.apache.iotdb.db.query.reader.universal;
 
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.impl.factory.Maps;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,6 +43,8 @@ public class PriorityMergeReader implements IPointReader {
   protected long currentReadStopTime;
 
   protected PriorityQueue<Element> heap;
+  public MutableMap<IPointReader, LongArrayList[]> pageData;
+  public MutableMap<IPointReader, Statistics> pageStat;
 
   public PriorityMergeReader() {
     heap =
@@ -46,6 +54,8 @@ public class PriorityMergeReader implements IPointReader {
                   Long.compare(o1.timeValuePair.getTimestamp(), o2.timeValuePair.getTimestamp());
               return timeCompare != 0 ? timeCompare : o2.priority.compareTo(o1.priority);
             });
+    pageData = Maps.mutable.empty();
+    pageStat = Maps.mutable.empty();
   }
 
   // only used in external sort, need to refactor later
@@ -78,7 +88,37 @@ public class PriorityMergeReader implements IPointReader {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
       currentReadStopTime = Math.max(currentReadStopTime, endTime);
+      // for tracing: try to calculate the number of overlapped pages
+      if (context.isEnableTracing()) {
+        addOverlappedPageNum(context.getQueryId());
+      }
+    } else {
+      reader.close();
+    }
+  }
 
+  public void addReader(
+      IPointReader reader,
+      Statistics stat,
+      MergeReaderPriority priority,
+      long endTime,
+      QueryContext context)
+      throws IOException {
+    if (reader.hasNextTimeValuePair()) {
+      TimeValuePair tmp = reader.nextTimeValuePair();
+      heap.add(new Element(reader, tmp, priority));
+      currentReadStopTime = Math.max(currentReadStopTime, endTime);
+
+      //      System.out.println(
+      //          "\t\t[PriMergeReader Debug]\t"
+      //              + "addReader ["
+      //              + tmp
+      //              + "]\tversion:"
+      //              + priority.version
+      //              + "\thashCode:"
+      //              + reader.hashCode());
+      pageData.put(reader, new LongArrayList[] {new LongArrayList(8000), new LongArrayList(8000)});
+      pageStat.put(reader, stat);
       // for tracing: try to calculate the number of overlapped pages
       if (context.isEnableTracing()) {
         addOverlappedPageNum(context.getQueryId());
@@ -101,10 +141,28 @@ public class PriorityMergeReader implements IPointReader {
     return !heap.isEmpty();
   }
 
+  private long dataToLong(TsPrimitiveType data) {
+    long result;
+    switch (data.getDataType()) {
+      case INT32:
+        return (int) data.getValue();
+      case FLOAT:
+        result = Float.floatToIntBits((float) data.getValue());
+        return (float) data.getValue() >= 0f ? result : result ^ Long.MAX_VALUE;
+      case INT64:
+        return (long) data.getValue();
+      case DOUBLE:
+        result = Double.doubleToLongBits((double) data.getValue());
+        return (double) data.getValue() >= 0d ? result : result ^ Long.MAX_VALUE;
+    }
+    return -233;
+  }
+
   @Override
   public TimeValuePair nextTimeValuePair() throws IOException {
     Element top = heap.poll();
     TimeValuePair ret = top.getTimeValuePair();
+    pageData.get(top.reader)[0].add(dataToLong(ret.getValue()));
     TimeValuePair topNext = null;
     if (top.hasNext()) {
       top.next();
@@ -134,14 +192,30 @@ public class PriorityMergeReader implements IPointReader {
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
       fillNullValue(ret, e.getTimeValuePair());
+      pageData.get(e.reader)[1].add(dataToLong(e.currPair().getValue()));
+      //      System.out.println(
+      //          "\t\t[PriMergeReader Debug]\t"
+      //              + "remove invalid data ["
+      //              + e.currPair()
+      //              + "]\telement_hashCode:"
+      //              + e.hashCode());
+
       if (!e.hasNext()) {
         e.reader.close();
         continue;
       }
+
       e.next();
       if (e.currTime() == topNextTime) {
         // if the next value of the peek will be overwritten by the next of the top, skip it
         fillNullValue(topNext, e.getTimeValuePair());
+        pageData.get(e.reader)[1].add(dataToLong(e.currPair().getValue()));
+        //        System.out.println(
+        //            "\t\t[PriMergeReader Debug]\t"
+        //                + "remove invalid data ["
+        //                + e.currPair()
+        //                + "]\telement_hashCode:"
+        //                + e.hashCode());
         if (e.hasNext()) {
           e.next();
           heap.add(e);

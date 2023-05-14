@@ -64,9 +64,6 @@ public class Template {
   private int measurementsCount;
   private Map<String, IMeasurementSchema> schemaMap;
 
-  // accelerate template query and check
-  private Set<PartialPath> relatedStorageGroup;
-
   public Template() {}
 
   /**
@@ -80,7 +77,6 @@ public class Template {
     name = plan.getName();
     isDirectAligned = false;
     directNodes = new HashMap<>();
-    relatedStorageGroup = new HashSet<>();
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
@@ -89,7 +85,7 @@ public class Template {
         isAlign = true;
       } else {
         // If sublist of measurements has only one item,
-        // but it shares prefix with other aligned sublist, it will be aligned too
+        // but it share prefix with other aligned sublist, it will be aligned too
         String[] thisMeasurement =
             MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
         String thisPrefix =
@@ -409,22 +405,6 @@ public class Template {
     return directNodes.values();
   }
 
-  public Set<PartialPath> getRelatedStorageGroup() {
-    return new HashSet<>(relatedStorageGroup);
-  }
-
-  public boolean markStorageGroup(IMNode setNode) {
-    return relatedStorageGroup.addAll(getSGPaths(setNode));
-  }
-
-  public boolean unmarkStorageGroup(IMNode unsetNode) {
-    return relatedStorageGroup.removeAll(getSGPaths(unsetNode));
-  }
-
-  public boolean unmarkStorageGroups(Collection<PartialPath> sgPaths) {
-    return relatedStorageGroup.removeAll(sgPaths);
-  }
-
   // endregion
 
   // region inner utils
@@ -485,29 +465,6 @@ public class Template {
       builder.append(pathNodes[i]);
     }
     return builder.toString();
-  }
-
-  private static Collection<PartialPath> getSGPaths(IMNode cur) {
-    // get all sg paths above or below to the cur
-    IMNode oriNode = cur;
-    while (cur != null && !cur.isStorageGroup()) {
-      cur = cur.getParent();
-    }
-    if (cur == null) {
-      Deque<IMNode> nodeQueue = new ArrayDeque<>();
-      Set<PartialPath> childSGPath = new HashSet<>();
-      nodeQueue.add(oriNode);
-      while (nodeQueue.size() != 0) {
-        IMNode node = nodeQueue.pop();
-        if (node.isStorageGroup()) {
-          childSGPath.add(node.getPartialPath());
-        } else {
-          nodeQueue.addAll(node.getChildren().values());
-        }
-      }
-      return childSGPath;
-    }
-    return Collections.singleton(cur.getPartialPath());
   }
   // endregion
 

@@ -60,6 +60,5 @@ public class TSFileConfigUtil {
     globalConfig.setTSFileStorageFs(config.getTSFileStorageFs());
     globalConfig.setUseKerberos(config.isUseKerberos());
     globalConfig.setValueEncoder(config.getValueEncoder());
-    globalConfig.setCustomizedProperties(config.getCustomizedProperties());
   }
 }

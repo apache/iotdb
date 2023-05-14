@@ -51,7 +51,6 @@ public class MemtableBenchmark {
       for (int j = 0; j < numOfMeasurement; j++) {
         memTable.write(
             DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
-            Collections.emptyList(),
             Collections.singletonList(
                 new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN)),
             System.nanoTime(),

@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
 
@@ -44,14 +43,10 @@ public class SystemInfo {
   private long totalStorageGroupMemCost = 0L;
   private volatile boolean rejected = false;
 
-  private static long memorySizeForWrite =
-      (long) (config.getAllocateMemoryForStorageEngine() * config.getWriteProportion());
-  private static long memorySizeForCompaction =
-      (long) (config.getAllocateMemoryForStorageEngine() * config.getCompactionProportion());
+  private static long memorySizeForWrite = config.getAllocateMemoryForWrite();
   private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
-  private AtomicLong compactionMemoryCost = new AtomicLong(0L);
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor("FlushTask-Submit-Pool");
@@ -129,8 +124,6 @@ public class SystemInfo {
       delta = reportedStorageGroupMemCostMap.get(storageGroupInfo) - storageGroupInfo.getMemCost();
       this.totalStorageGroupMemCost -= delta;
       storageGroupInfo.setLastReportedSize(storageGroupInfo.getMemCost());
-      // report after reset sg status, because slow write may not reach the report threshold
-      storageGroupInfo.setNeedToReportToSystem(true);
       reportedStorageGroupMemCostMap.put(storageGroupInfo, storageGroupInfo.getMemCost());
     }
 
@@ -275,29 +268,5 @@ public class SystemInfo {
 
   public int flushingMemTableNum() {
     return FlushManager.getInstance().getNumberOfWorkingTasks();
-  }
-
-  public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
-    if (!config.isEnableCompactionMemControl()) {
-      return;
-    }
-    long originSize = this.compactionMemoryCost.get();
-    while (originSize + memoryCost > memorySizeForCompaction
-        || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
-      Thread.sleep(100);
-      originSize = this.compactionMemoryCost.get();
-    }
-  }
-
-  public synchronized void resetCompactionMemoryCost(long compactionMemoryCost) {
-    this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
-  }
-
-  public long getMemorySizeForCompaction() {
-    return memorySizeForCompaction;
-  }
-
-  public void setMemorySizeForCompaction(long size) {
-    memorySizeForCompaction = size;
   }
 }

@@ -52,11 +52,7 @@ data_type_lst_ = [
 encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
 compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
 session.create_aligned_time_series(
-    "root.sg_test_01.d_02",
-    measurements_lst_,
-    data_type_lst_,
-    encoding_lst_,
-    compressor_lst_,
+    "root.sg_test_01.d_02", measurements_lst_, data_type_lst_, encoding_lst_, compressor_lst_
 )
 
 # setting more aligned time series once.
@@ -79,11 +75,7 @@ data_type_lst_ = [
 encoding_lst_ = [TSEncoding.PLAIN for _ in range(len(data_type_lst_))]
 compressor_lst_ = [Compressor.SNAPPY for _ in range(len(data_type_lst_))]
 session.create_aligned_time_series(
-    "root.sg_test_01.d_02",
-    measurements_lst_,
-    data_type_lst_,
-    encoding_lst_,
-    compressor_lst_,
+    "root.sg_test_01.d_02", measurements_lst_, data_type_lst_, encoding_lst_, compressor_lst_
 )
 
 # delete time series
@@ -116,9 +108,7 @@ data_types_ = [
     TSDataType.DOUBLE,
     TSDataType.TEXT,
 ]
-session.insert_aligned_record(
-    "root.sg_test_01.d_02", 1, measurements_, data_types_, values_
-)
+session.insert_aligned_record("root.sg_test_01.d_02", 1, measurements_, data_types_, values_)
 
 # insert multiple aligned records into database
 measurements_list_ = [

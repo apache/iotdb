@@ -23,12 +23,10 @@
 ## Show Child Paths
 
 ```
-SHOW CHILD PATHS pathPattern ? limitClause
+SHOW CHILD PATHS pathPattern
 ```
 
-Return all child paths of all the paths matching pathPattern. 
-
-The default size of result set is 10000000. To query more child paths, please use ```limit``` and ```offset```.
+Return all child paths of all the paths matching pathPattern.
 
 Example：
 
@@ -50,12 +48,10 @@ It costs 0.002s
 ## Show Child Nodes
 
 ```
-SHOW CHILD NODES pathPattern ? limitClause
+SHOW CHILD NODES pathPattern
 ```
 
 Return all child nodes of the pathPattern.
-
-The default size of result set is 10000000. To query more child paths, please use ```limit``` and ```offset```.
 
 Example：
 
@@ -136,8 +132,6 @@ It costs 0.002s
 ## Show Devices
 
 * SHOW DEVICES pathPattern? (WITH STORAGE GROUP)? limitClause? #showDevices
-
-The default size of result set is 10000000. To query more child paths, please use ```limit``` and ```offset```.
 
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 

@@ -74,4 +74,4 @@ pause
 
 ENDLOCAL
 
-EXIT /B %ret_code%
+EXIT %ret_code%

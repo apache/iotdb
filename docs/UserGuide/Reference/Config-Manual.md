@@ -383,12 +383,12 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 * avg\_series\_point\_number\_threshold
 
-|Name| avg\_series\_point\_number\_threshold                  |
-|:---:|:-------------------------------------------------------|
-|Description| max average number of point of each series in memtable |
-|Type| Int32                                                  |
-|Default| 100000                                                 |
-|Effective| After restarting system                                |
+|Name| avg\_series\_point\_number\_threshold |
+|:---:|:---|
+|Description| max average number of point of each series in memtable|
+|Type|Int32|
+|Default| 10000 |
+|Effective|After restarting system|
 
 * tsfile\_size\_threshold
 
@@ -422,7 +422,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| concurrent\_writing\_time\_partition |
 |:---:|:---|
-|Description| This config decides how many time partitions in a storage group can be inserted concurrently <br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
+|Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|Int32|
 |Default| 1 |
 |Effective|After restarting system|
@@ -526,15 +526,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 10000 |
 |Effective|After restarting system|
 
-* schema\_query\_fetch\_size
-
-|Name| schema\_query\_fetch\_size |
-|:---:|:---|
-|Description| The default max size amount of schema record returned in one schema query(e.g. show timeseries). |
-|Type|Int32|
-|Default| 10000000 |
-|Effective|After restarting system|
-
 * enable\_stat\_monitor
 
 |Name| enable\_stat\_monitor |
@@ -559,7 +550,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---------------------------------------------------------------------------------------------------------------------|
 |Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
 |Type| Int32                                                                                                                |
-|Default| 0                                                                                                                   |
+|Default| 16                                                                                                                   |
 |Effective| After restarting system                                                                                              |
 
 * concurrent\_sub\_rawQuery\_thread
@@ -568,7 +559,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:-------------------------------------------------------------------------------------------------------------------------|
 |Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
 |Type| Int32                                                                                                                    |
-|Default| 0                                                                                                                        |
+|Default| 8                                                                                                                        |
 |Effective| After restarting system                                                                                                  |
 
 * tsfile\_storage\_fs
@@ -800,9 +791,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| compaction\_priority |
 |:---:|:---|
-|Description| Priority of compaction task. When it is BALANCE, system executes all types of compaction equally; when it is INNER_CROSS, system takes precedence over executing inner space compaction task; when it is CROSS_INNER, system takes precedence over executing cross space compaction task |
+|Description| Priority of compaction task. When it is balance, system executes all types of compaction equally; when it is inner_cross, system takes precedence over executing inner space compaction task; when it is cross_inner, system takes precedence over executing cross space compaction task |
 |Type| String |
-|Default| BALANCE|
+|Default| balance|
 |Effective|After restart system|
 
 * target\_compaction\_file\_size
@@ -850,22 +841,13 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 100 |
 |Effective|After restart system|
 
-* max\_inner\_compaction\_candidate\_file\_num
+* max\_compaction\_candidate\_file\_num
 
-|Name| max\_inner\_compaction\_candidate\_file\_num |
+|Name| max\_compaction\_candidate\_file\_num |
 |:---:|:---|
-|Description| The max num of files encounter in inner space compaction |
+|Description| The max num of files encounter in compaction |
 |Type| Int32 |
 |Default| 30 |
-|Effective|After restart system|
-
-* max\_cross\_compaction\_file\_num
-
-|Name| max\_cross\_compaction\_candidate\_file\_num |
-|:---:|:---|
-|Description| The max num of files encounter in cross space compaction |
-|Type| Int32 |
-|Default| 1000 |
 |Effective|After restart system|
 
 * cross\_compaction\_file\_selection\_time\_budget
@@ -919,7 +901,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| The write rate of all compaction tasks in MB/s |
 |Type| Int32 |
-|Default| 16 |
+|Default| 30 |
 |Effective|After restart system|
 
 ### Insertion
@@ -1016,7 +998,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1 |
 |Effective|Only allowed to be modified in first start up|
 
-<!--
 * enable\_id\_table
 
 |Name| enable\_id\_table |
@@ -1043,8 +1024,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| bool |
 |Default| false |
 |Effective|After restarting system|
-
--->
 
 ### UDF
 

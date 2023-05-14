@@ -54,19 +54,7 @@ public enum BuiltinFunction {
   TOP_K("TOP_K", UDTFTopK.class),
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
   CAST("CAST", UDTFCast.class),
-  IN_RANGE("IN_RANGE", UDTFInRange.class),
-  ON_OFF("ON_OFF", UDTFOnOff.class),
-  ZERO_DURATION("ZERO_DURATION", UDTFZeroDuration.class),
-  NON_ZERO_DURATION("NON_ZERO_DURATION", UDTFNonZeroDuration.class),
-  ZERO_COUNT("ZERO_COUNT", UDTFZeroCount.class),
-  NON_ZERO_COUNT("NON_ZERO_COUNT", UDTFNonZeroCount.class),
-  EQUAL_SIZE_BUCKET_RANDOM_SAMPLE(
-      "EQUAL_SIZE_BUCKET_RANDOM_SAMPLE", UDTFEqualSizeBucketRandomSample.class),
-  EQUAL_SIZE_BUCKET_AGG_SAMPLE("EQUAL_SIZE_BUCKET_AGG_SAMPLE", UDTFEqualSizeBucketAggSample.class),
-  EQUAL_SIZE_BUCKET_M4_SAMPLE("EQUAL_SIZE_BUCKET_M4_SAMPLE", UDTFEqualSizeBucketM4Sample.class),
-  EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE(
-      "EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE", UDTFEqualSizeBucketOutlierSample.class),
-  M4("M4", UDTFM4.class);
+  ;
 
   private final String functionName;
   private final Class<?> functionClass;

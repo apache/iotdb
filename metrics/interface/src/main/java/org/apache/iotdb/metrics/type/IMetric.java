@@ -19,8 +19,4 @@
 
 package org.apache.iotdb.metrics.type;
 
-import java.util.Map;
-
-public interface IMetric {
-  void constructValueMap(Map<String, Object> result);
-}
+public interface IMetric {}

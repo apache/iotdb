@@ -35,7 +35,6 @@ import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
@@ -255,36 +254,6 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
-
-    assertFalse(manager.isPathExist(new PartialPath("root.template")));
-    assertFalse(manager.isPathExist(new PartialPath("root.template.d1")));
-
-    try {
-      manager.createTimeseries(
-          new PartialPath("root.template.d2"),
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    try {
-      manager.createSchemaTemplate(getCreateTemplatePlan());
-      manager.setSchemaTemplate(new SetTemplatePlan("template1", "root.template"));
-      manager.setUsingSchemaTemplate(new ActivateTemplatePlan(new PartialPath("root.template.d1")));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-
-    assertTrue(manager.isPathExist(new PartialPath("root.template.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.s11")));
-    assertFalse(manager.isPathExist(new PartialPath("root.template.d2.s11")));
-    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.vector")));
-    assertTrue(manager.isPathExist(new PartialPath("root.template.d1.vector.s0")));
   }
 
   /**
@@ -972,7 +941,7 @@ public class MManagerBasicTest {
     encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
@@ -1103,7 +1072,7 @@ public class MManagerBasicTest {
     encodingList.add(Arrays.asList(TSEncoding.RLE, TSEncoding.RLE));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(Collections.singletonList(CompressionType.SDT));
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
@@ -1278,7 +1247,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.tree.sg0.GPS] overlaps with [treeTemplate] on [GPS]", e.getMessage());
+          "Path [root.tree.sg0.GPS.s9] overlaps with [treeTemplate] on [GPS]", e.getMessage());
     }
 
     CreateTimeSeriesPlan createTimeSeriesPlan4 =
@@ -1919,13 +1888,13 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
-      assertEquals(6, manager.getTotalNormalSeriesNumber());
+      assertEquals(6, manager.getTotalSeriesNumber());
       EnvironmentUtils.restartDaemon();
-      assertEquals(6, manager.getTotalNormalSeriesNumber());
+      assertEquals(6, manager.getTotalSeriesNumber());
       manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
-      assertEquals(5, manager.getTotalNormalSeriesNumber());
+      assertEquals(5, manager.getTotalSeriesNumber());
       manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
-      assertEquals(0, manager.getTotalNormalSeriesNumber());
+      assertEquals(0, manager.getTotalSeriesNumber());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -2060,7 +2029,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "timeseries under this device are aligned, please use aligned interface (Path: root.laptop.d1.aligned_device)",
+          "Timeseries under path [root.laptop.d1.aligned_device] is aligned , please set InsertPlan.isAligned() = true",
           e.getMessage());
     }
   }
@@ -2166,7 +2135,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       Assert.assertEquals(
-          "timeseries under this device are not aligned, please use non-aligned interface (Path: root.laptop.d1.aligned_device)",
+          "Timeseries under path [root.laptop.d1.aligned_device] is not aligned , please set InsertPlan.isAligned() = false",
           e.getMessage());
     }
   }
@@ -2432,17 +2401,12 @@ public class MManagerBasicTest {
   @Test
   public void testTagIndexRecovery() throws Exception {
     MManager manager = IoTDB.metaManager;
-    String tagKey = "description";
-    String tagValue = "oldValue";
+    PartialPath path = new PartialPath("root.sg.d.s");
     Map<String, String> tags = new HashMap<>();
-    tags.put(tagKey, tagValue);
-
-    // SCENE 1:create TimeSeries and add tags
-    PartialPath path1 = new PartialPath("root.sg.d.s1");
-
+    tags.put("description", "oldValue");
     manager.createTimeseries(
         new CreateTimeSeriesPlan(
-            path1,
+            path,
             TSDataType.valueOf("INT32"),
             TSEncoding.valueOf("RLE"),
             compressionType,
@@ -2450,63 +2414,47 @@ public class MManagerBasicTest {
             tags,
             null,
             null));
-    testTagIndexRecovery(path1, tagKey, tagValue);
 
-    // SCENE 2:first create TimeSeries no tags ,after alter TimeSeries add tags
-    PartialPath path2 = new PartialPath("root.sg.d.s2");
-    manager.createTimeseries(
-        new CreateTimeSeriesPlan(
-            path2,
-            TSDataType.valueOf("INT32"),
-            TSEncoding.valueOf("RLE"),
-            compressionType,
-            null,
-            null,
-            null,
-            null));
-    // alter
-    manager.addTags(tags, path2);
-    testTagIndexRecovery(path2, tagKey, tagValue);
-  }
-
-  private void testTagIndexRecovery(PartialPath path, String tagKey, String tagValue)
-      throws Exception {
-    MManager manager = IoTDB.metaManager;
     ShowTimeSeriesPlan showTimeSeriesPlan =
-        new ShowTimeSeriesPlan(path, true, tagKey, tagValue, 0, 0, false);
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
     List<ShowTimeSeriesResult> results =
         manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     Map<String, String> resultTag = results.get(0).getTag();
-    assertEquals(tagValue, resultTag.get(tagKey));
+    assertEquals("oldValue", resultTag.get("description"));
 
-    String newValue = "newValue";
-    Map<String, String> tags = new HashMap<>();
-    tags.put(tagKey, newValue);
+    tags.put("description", "newValue");
     manager.upsertTagsAndAttributes(null, tags, null, path);
 
-    showTimeSeriesPlan = new ShowTimeSeriesPlan(path, true, tagKey, newValue, 0, 0, false);
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
     results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     resultTag = results.get(0).getTag();
-    assertEquals(newValue, resultTag.get(tagKey));
+    assertEquals("newValue", resultTag.get("description"));
 
     manager.clear();
     manager.init();
 
-    showTimeSeriesPlan = new ShowTimeSeriesPlan(path, true, tagKey, tagValue, 0, 0, false);
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "oldValue", 0, 0, false);
     results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(0, results.size());
 
-    showTimeSeriesPlan = new ShowTimeSeriesPlan(path, true, tagKey, newValue, 0, 0, false);
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
     results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     resultTag = results.get(0).getTag();
-    assertEquals(newValue, resultTag.get(tagKey));
+    assertEquals("newValue", resultTag.get("description"));
   }
 
   @Test
@@ -2540,128 +2488,5 @@ public class MManagerBasicTest {
     assertEquals("test", resultTag.get("type"));
 
     assertEquals(0, manager.getMeasurementMNode(path).getOffset());
-  }
-
-  @Test
-  public void testShowChildWithLimitAndOffset() throws Exception {
-    MManager manager = IoTDB.metaManager;
-
-    PartialPath path = new PartialPath("root.sg.d1.s");
-    CreateTimeSeriesPlan plan =
-        new CreateTimeSeriesPlan(
-            path,
-            TSDataType.valueOf("INT32"),
-            TSEncoding.valueOf("RLE"),
-            compressionType,
-            null,
-            null,
-            null,
-            null);
-    manager.createTimeseries(plan);
-
-    plan.setPath(new PartialPath("root.sg.d2.s"));
-    manager.createTimeseries(plan);
-
-    plan.setPath(new PartialPath("root.sg.d3.s"));
-    manager.createTimeseries(plan);
-
-    Set<String> result = manager.getChildNodePathInNextLevel(new PartialPath("root.**"), 1, 1);
-    Assert.assertEquals(1, result.size());
-    Assert.assertTrue(result.contains("root.sg.d2"));
-
-    result = manager.getChildNodePathInNextLevel(new PartialPath("root.**"), 3, 3);
-    Assert.assertEquals(3, result.size());
-    Assert.assertTrue(result.contains("root.sg.d1.s"));
-    Assert.assertTrue(result.contains("root.sg.d2.s"));
-    Assert.assertTrue(result.contains("root.sg.d3.s"));
-
-    result = manager.getChildNodePathInNextLevel(new PartialPath("root.sg"), 1, 1);
-    Assert.assertEquals(1, result.size());
-    Assert.assertTrue(result.contains("root.sg.d2"));
-
-    result = manager.getChildNodeNameInNextLevel(new PartialPath("root.sg"), 1, 0);
-    Assert.assertEquals(1, result.size());
-    Assert.assertTrue(result.contains("d1"));
-  }
-
-  @Test
-  public void testTimeseriesNumberStatistic() throws Exception {
-    MManager manager = IoTDB.metaManager;
-
-    try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d0"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s2.t1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s3"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d2.s1"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d2.s2"),
-          TSDataType.INT32,
-          TSEncoding.PLAIN,
-          CompressionType.GZIP,
-          null);
-
-      assertEquals(6, manager.getTotalNormalSeriesNumber());
-
-      manager.setStorageGroup(new PartialPath("root.sg"));
-
-      CreateTemplatePlan plan = getCreateTemplatePlan("s0");
-      manager.createSchemaTemplate(plan);
-      SetTemplatePlan setPlan = new SetTemplatePlan("template1", "root.sg.d1");
-      manager.setSchemaTemplate(setPlan);
-
-      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.sg.d1")));
-
-      assertEquals(6, manager.getTotalNormalSeriesNumber());
-      assertEquals(1, manager.getTotalTemplateSeriesNumber());
-
-      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
-      assertEquals(5, manager.getTotalNormalSeriesNumber());
-      assertEquals(1, manager.getTotalTemplateSeriesNumber());
-
-      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
-      assertEquals(0, manager.getTotalNormalSeriesNumber());
-      assertEquals(1, manager.getTotalTemplateSeriesNumber());
-
-      String failedName = manager.deleteTimeseries(new PartialPath("root.sg.d1.s0"));
-      assertTrue(failedName.contains("root.sg.d1.s0"));
-      assertEquals(1, manager.getTotalTemplateSeriesNumber());
-
-      DeactivateTemplatePlan deactivateTemplatePlan =
-          new DeactivateTemplatePlan("template1", "root.sg.d1");
-      deactivateTemplatePlan.setPaths(Collections.singletonList(new PartialPath("root.sg.d1")));
-      manager.deactivateSchemaTemplate(deactivateTemplatePlan);
-      assertEquals(0, manager.getTotalTemplateSeriesNumber());
-
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
   }
 }

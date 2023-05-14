@@ -30,7 +30,7 @@
 IoTDB 支持 MQTT v3.1（OASIS 标准）协议。
 IoTDB 服务器包括内置的 MQTT 服务，该服务允许远程设备将消息直接发送到 IoTDB 服务器。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357432-0c71cf80-75e4-11ea-98aa-c43a54d469ce.png">
 
 ### 内置 MQTT 服务
 内置的 MQTT 服务提供了通过 MQTT 直接连接到 IoTDB 的能力。 它侦听来自 MQTT 客户端的发布消息，然后立即将数据写入存储。
@@ -56,7 +56,7 @@ MQTT 主题与 IoTDB 时间序列相对应。
   }
 ```
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/6711230/78357469-1bf11880-75e4-11ea-978f-a53996667a0d.png">
 
 ### MQTT 配置
 默认情况下，IoTDB MQTT 服务从`${IOTDB_HOME}/${IOTDB_CONF}/iotdbengine.properties`加载配置。
@@ -72,7 +72,7 @@ MQTT 主题与 IoTDB 时间序列相对应。
 | mqtt_payload_formatter | mqtt 消息有效负载格式化程序 |    json |
 | mqtt_max_message_size | mqtt 消息最大长度（字节）|   1048576 |
 
-### 示例代码
+### 示例代码
 以下是 mqtt 客户端将消息发送到 IoTDB 服务器的示例。
 
  ```java

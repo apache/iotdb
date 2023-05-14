@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.function.Predicate;
 
 public class MinValueAggrResult extends AggregateResult {
 
@@ -52,14 +51,15 @@ public class MinValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
-    updateResultFromPageData(batchIterator, time -> false);
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
-    while (batchIterator.hasNext(boundPredicate)
-        && !boundPredicate.test(batchIterator.currentTime())) {
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
+    while (batchIterator.hasNext(minBound, maxBound)
+        && batchIterator.currentTime() < maxBound
+        && batchIterator.currentTime() >= minBound) {
       updateResult((Comparable<Object>) batchIterator.currentValue());
       batchIterator.next();
     }

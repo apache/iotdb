@@ -21,11 +21,10 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -132,11 +131,11 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
       }
     }
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricService.getInstance()
+      MetricsService.getInstance()
+          .getMetricManager()
           .count(
               1,
               Metric.CLUSTER_ELECT.toString(),
-              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               raftMember.getThisNode().internalIp,
               Tag.STATUS.toString(),

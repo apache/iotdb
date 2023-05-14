@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.flush;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -28,11 +27,10 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -40,9 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -100,41 +95,27 @@ public class MemTableFlushTask {
         "The memTable size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
         storageGroup,
         memTable.memSize(),
-        memTable.getSeriesNumber() == 0
-            ? 0
-            : memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
+        memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
         memTable.getSeriesNumber());
 
     long estimatedTemporaryMemSize = 0L;
     if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
       estimatedTemporaryMemSize =
-          memTable.getSeriesNumber() == 0
-              ? 0
-              : memTable.memSize()
-                  / memTable.getSeriesNumber()
-                  * config.getIoTaskQueueSizeForFlushing();
+          memTable.memSize() / memTable.getSeriesNumber() * config.getIoTaskQueueSizeForFlushing();
       SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
     }
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
-    List<IDeviceID> deviceIDList = new ArrayList<>(memTableMap.keySet());
-    // sort the IDeviceID in lexicographical order
-    deviceIDList.sort(Comparator.comparing(IDeviceID::toStringID));
-    for (IDeviceID deviceID : deviceIDList) {
-      final Map<String, IWritableMemChunk> value = memTableMap.get(deviceID).getMemChunkMap();
-      // skip the empty device/chunk group
-      if (memTableMap.get(deviceID).count() == 0 || value.isEmpty()) {
-        continue;
-      }
-      encodingTaskQueue.put(new StartFlushGroupIOTask(deviceID.toStringID()));
+    // for map do not use get(key) to iterate
+    for (Map.Entry<IDeviceID, IWritableMemChunkGroup> memTableEntry :
+        memTable.getMemTableMap().entrySet()) {
+      encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey().toStringID()));
+
+      final Map<String, IWritableMemChunk> value = memTableEntry.getValue().getMemChunkMap();
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
-        if (series.count() == 0) {
-          continue;
-        }
         /*
          * sort task (first task of flush pipeline)
          */
@@ -175,12 +156,12 @@ public class MemTableFlushTask {
     }
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricService.getInstance()
+      MetricsService.getInstance()
+          .getMetricManager()
           .timer(
               System.currentTimeMillis() - start,
               TimeUnit.MILLISECONDS,
               Metric.COST_TASK.toString(),
-              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               "flush");
     }
@@ -296,22 +277,6 @@ public class MemTableFlushTask {
             throw new FlushRunTimeException(e);
           }
           ioTime += System.currentTimeMillis() - starTime;
-        }
-        if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
-            && !storageGroup.startsWith(IoTDBConstant.SYSTEM_STORAGE_GROUP)) {
-          int lastIndex = storageGroup.lastIndexOf("/");
-          if (lastIndex == -1) {
-            lastIndex = storageGroup.length();
-          }
-          MetricService.getInstance()
-              .gaugeWithInternalReport(
-                  memTable.getTotalPointsNum(),
-                  Metric.POINTS.toString(),
-                  MetricLevel.CORE,
-                  Tag.SG.toString(),
-                  storageGroup.substring(0, lastIndex),
-                  Tag.TYPE.toString(),
-                  "flush");
         }
         LOGGER.debug(
             "flushing a memtable to file {} in storage group {}, io cost {}ms",

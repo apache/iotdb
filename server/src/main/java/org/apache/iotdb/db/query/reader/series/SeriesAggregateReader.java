@@ -28,6 +28,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,6 +40,12 @@ import java.util.Set;
 public class SeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
+
+  public SeriesReader getSeriesReader() {
+    return seriesReader;
+  }
+
+  //  public AggregateResult quantileAggrResult;
 
   public SeriesAggregateReader(
       PartialPath seriesPath,
@@ -96,6 +106,19 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentFileStatistics() throws IOException {
     Statistics fileStatistics = currentFileStatistics();
+    //    if (fileStatistics.getCount() > 10000) {
+    //      System.out.println(
+    //          "\t\t\t\t[SeriesAggrReader checkFileStat]\toverlap:"
+    //              + seriesReader.isFileOverlapped()
+    //              + "\t"
+    //              + fileStatistics.getStartTime()
+    //              + "..."
+    //              + fileStatistics.getEndTime()
+    //              + "containedByT:"
+    //              + containedByTimeFilter(fileStatistics)
+    //              + "\tmodified:"
+    //              + seriesReader.currentFileModified());
+    //    }
     return !seriesReader.isFileOverlapped()
         && containedByTimeFilter(fileStatistics)
         && !seriesReader.currentFileModified();
@@ -163,6 +186,14 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public BatchData nextPage() throws IOException {
     return seriesReader.nextPage().flip();
+  }
+  //  @Override
+  public MutableMap<IPointReader, Statistics> getPageStat() {
+    return seriesReader.mergeReader.pageStat;
+  }
+  //  @Override
+  public MutableMap<IPointReader, LongArrayList[]> getPageData() {
+    return seriesReader.mergeReader.pageData;
   }
 
   private boolean containedByTimeFilter(Statistics statistics) {

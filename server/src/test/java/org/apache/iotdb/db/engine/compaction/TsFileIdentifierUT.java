@@ -90,7 +90,7 @@ public class TsFileIdentifierUT {
 
   @Test
   public void testGetInfoFromInfoString() {
-    String[] firstInfoArray = new String[] {"sequence", "root.test.sg", "0", "0", "1-1-0-0.tsfile"};
+    String[] firstInfoArray = new String[] {"root.test.sg", "0", "0", "true", "1-1-0-0.tsfile"};
     String firstInfoString = String.join(INFO_SEPARATOR, firstInfoArray);
     TsFileIdentifier firstInfo = TsFileIdentifier.getFileIdentifierFromInfoString(firstInfoString);
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
@@ -100,7 +100,7 @@ public class TsFileIdentifierUT {
     Assert.assertTrue(firstInfo.isSequence());
 
     String[] secondInfoArray =
-        new String[] {"unsequence", "root.test.sg", "0", "425", "666-888-222-131.tsfile"};
+        new String[] {"root.test.sg", "0", "425", "false", "666-888-222-131.tsfile"};
     String secondInfoString = String.join(INFO_SEPARATOR, secondInfoArray);
     TsFileIdentifier secondInfo =
         TsFileIdentifier.getFileIdentifierFromInfoString(secondInfoString);
@@ -110,7 +110,7 @@ public class TsFileIdentifierUT {
     Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertFalse(secondInfo.isSequence());
 
-    String[] illegalInfoArray = new String[] {"unsequence", "0", "425", "666-888-222-131.tsfile"};
+    String[] illegalInfoArray = new String[] {"0", "425", "false", "666-888-222-131.tsfile"};
     String illegalInfoString = String.join(INFO_SEPARATOR, illegalInfoArray);
 
     try {

@@ -35,20 +35,6 @@ IoTDB 为用户提供了权限管理操作，从而为用户提供对于数据�
 
 数据库提供多种操作，并不是所有的用户都能执行所有操作。如果一个用户可以执行某项操作，则称该用户有执行该操作的权限。权限可分为数据管理权限（如对数据进行增删改查）以及权限管理权限（用户、角色的创建与删除，权限的赋予与撤销等）。数据管理权限往往需要一个路径来限定其生效范围，它的生效范围是以该路径对应的节点为根的一棵子树（具体请参考 IoTDB 的数据组织）。
 
-> 注意：在授予或移除权限时不允许使用路径通配符。
-
-以下示例是错误的用法：
-
-```
-GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
-```
-
-正确用法应该为：
-
-```
-GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
-```
-
 ### 角色
 
 角色是若干权限的集合，并且有一个唯一的角色名作为标识符。用户通常和一个现实身份相对应（例如交通调度员），而一个现实身份可能对应着多个用户。这些具有相同现实身份的用户往往具有相同的一些权限。角色就是为了能对这样的权限进行统一的管理的抽象。
@@ -105,7 +91,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
-Msg: 602: No permissions for this operation, please add privilege READ_TIMESERIES.
+Msg: 602: No permissions for this operation INSERT
 ```
 
 现在，我们分别赋予他们向对应存储组数据的写入权限，并再次尝试向对应的存储组进行数据写入。
@@ -145,7 +131,7 @@ Msg: The statement is executed successfully.
 REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
 Msg: The statement is executed successfully.
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-Msg: 602: No permissions for this operation, please add privilege READ_TIMESERIES.
+Msg: 602: No permissions for this operation INSERT
 ```
 
 ### SQL 语句
@@ -264,14 +250,14 @@ LIST USER PRIVILEGES <username> ;
 Eg: IoTDB > LIST USER PRIVILEGES tempuser;
 ```
 
-* 列出用户所有的角色
+* 列出用户角色
 
 ```
 LIST ALL ROLE OF USER <username> ;  
 Eg: IoTDB > LIST ALL ROLE OF USER tempuser;
 ```
 
-* 列出所有用户的角色
+* 列出角色用户
 
 ```
 LIST ALL USER OF ROLE <roleName>;
@@ -305,16 +291,14 @@ Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 |权限名称|说明|
 |:---|:---|
 |SET\_STORAGE\_GROUP|创建存储组。包含设置存储组的权限。路径相关|
-|DELETE\_STORAGE\_GROUP|删除存储组。路径相关|
 |CREATE\_TIMESERIES|创建时间序列。路径相关|
 |INSERT\_TIMESERIES|插入数据。路径相关|
 |READ\_TIMESERIES|查询数据。路径相关|
-|DELETE\_TIMESERIES|删除数据或时间序列，解除模板。路径相关|
-|DELETE\_STORAGE\_GROUP|删除存储组。路径相关|
+|DELETE\_TIMESERIES|删除数据或时间序列。路径相关|
 |CREATE\_USER|创建用户。路径无关|
 |DELETE\_USER|删除用户。路径无关|
 |MODIFY\_PASSWORD|修改所有用户的密码。路径无关。（没有该权限者仍然能够修改自己的密码。)|
-|LIST\_USER|列出所有用户，列出某用户权限，列出某用户具有的角色以及列出所有用户的角色四种操作的权限。路径无关|
+|LIST\_USER|列出所有用户，列出某用户权限，列出某用户具有的角色三种操作的权限。路径无关|
 |GRANT\_USER\_PRIVILEGE|赋予用户权限。路径无关|
 |REVOKE\_USER\_PRIVILEGE|撤销用户权限。路径无关|
 |GRANT\_USER\_ROLE|赋予用户角色。路径无关|
@@ -332,8 +316,6 @@ Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 |STOP_TRIGGER|停止触发器。路径相关|
 |CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|
 |DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|
-|UPDATE_TEMPLATE|创建、删除、修改模板。路径无关。|
-|APPLY_TEMPLATE|挂载、卸载、激活模板。路径相关。|
 
 ### 用户名限制
 

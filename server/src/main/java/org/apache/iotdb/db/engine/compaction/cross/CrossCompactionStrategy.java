@@ -20,10 +20,12 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import java.io.File;
 import java.util.List;
 
 public enum CrossCompactionStrategy {
@@ -42,8 +44,7 @@ public enum CrossCompactionStrategy {
       long timePartitionId,
       TsFileManager tsFileManager,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      long memoryCost) {
+      List<TsFileResource> selectedUnSeqTsFileResourceList) {
     switch (this) {
       case REWRITE_COMPACTION:
       default:
@@ -54,8 +55,26 @@ public enum CrossCompactionStrategy {
             tsFileManager,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
+            CompactionTaskManager.currentTaskNum);
+    }
+  }
+
+  public AbstractCrossSpaceCompactionTask getCompactionRecoverTask(
+      String logicalStorageGroupName,
+      String virtualStorageGroupName,
+      long timePartitionId,
+      File logFile,
+      TsFileManager tsFileManager) {
+    switch (this) {
+      case REWRITE_COMPACTION:
+      default:
+        return new RewriteCrossCompactionRecoverTask(
+            logicalStorageGroupName,
+            virtualStorageGroupName,
+            timePartitionId,
+            logFile,
             CompactionTaskManager.currentTaskNum,
-            memoryCost);
+            tsFileManager);
     }
   }
 

@@ -25,8 +25,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -47,7 +45,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,18 +91,8 @@ public class FillQueryExecutor {
 
     Filter timeFilter = initFillExecutorsAndContructTimeFilter(context);
 
-    List<PartialPath> groupedSeries = new ArrayList<>();
-    for (PartialPath series : selectedSeries) {
-      MeasurementPath measurementPath = (MeasurementPath) series;
-      if (measurementPath.isUnderAlignedEntity()) {
-        groupedSeries.add(new AlignedPath(measurementPath));
-      } else {
-        groupedSeries.add(measurementPath);
-      }
-    }
-
     Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(groupedSeries);
+        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(selectedSeries);
     List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
     Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
@@ -127,7 +114,7 @@ public class FillQueryExecutor {
 
       if (timeValuePairs.get(i) != null) {
         // No need to fill
-        addTimeValueToResult(record, timeValuePairs.get(i), dataType);
+        record.addField(timeValuePairs.get(i).getValue().getValue(), dataType);
         continue;
       }
 
@@ -156,23 +143,13 @@ public class FillQueryExecutor {
       if (timeValuePair == null || timeValuePair.getValue() == null) {
         record.addField(null);
       } else {
-        addTimeValueToResult(record, timeValuePair, dataType);
+        record.addField(timeValuePair.getValue().getValue(), dataType);
       }
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
-  }
-
-  private void addTimeValueToResult(
-      RowRecord record, TimeValuePair timeValuePair, TSDataType dataType) {
-    TsPrimitiveType value = timeValuePair.getValue();
-    if (value.getDataType() == TSDataType.VECTOR) {
-      record.addField(value.getVector()[0].getValue(), dataType);
-    } else {
-      record.addField(value.getValue(), dataType);
-    }
   }
 
   private Filter initFillExecutorsAndContructTimeFilter(QueryContext context)
@@ -271,18 +248,12 @@ public class FillQueryExecutor {
     Filter timeFilter = TimeFilter.eq(queryTime);
     List<ManagedSeriesReader> readers = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {
+      PartialPath path = selectedSeries.get(i);
       TSDataType dataType = dataTypes.get(i);
-      MeasurementPath measurementPath = (MeasurementPath) selectedSeries.get(i);
-      PartialPath path =
-          measurementPath.isUnderAlignedEntity()
-              ? new AlignedPath(measurementPath)
-              : measurementPath;
-
       QueryDataSource queryDataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(path, context, timeFilter, plan.isAscending());
       timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-
       ManagedSeriesReader reader =
           new SeriesRawDataBatchReader(
               path,

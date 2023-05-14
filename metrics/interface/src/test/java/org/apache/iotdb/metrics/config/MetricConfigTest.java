@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MonitorType;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,15 +30,14 @@ import org.yaml.snakeyaml.constructor.Constructor;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import java.util.List;
 
 public class MetricConfigTest {
 
   @Test
-  public void testYamlConfig() {
+  public void yamlConfigTest() {
     String url = this.getClass().getClassLoader().getResource("iotdb-metric.yml").getPath();
+    System.out.println(url);
 
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
     Constructor constructor = new Constructor(MetricConfig.class);
@@ -51,23 +50,11 @@ public class MetricConfigTest {
       }
     }
 
-    assertTrue(metricConfig.getEnableMetric());
-    assertTrue(metricConfig.getEnablePerformanceStat());
-    assertEquals(3, metricConfig.getMetricReporterList().size());
-    assertEquals(MonitorType.DROPWIZARD, metricConfig.getMonitorType());
-    assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
-    assertEquals(5, metricConfig.getPredefinedMetrics().size());
-    assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
-    assertEquals(9090, (int) metricConfig.getPrometheusExporterPort());
-    assertTrue(metricConfig.isStoreToLocal());
-
-    MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();
-    assertEquals("0.0.0.0", reporterConfig.getHost());
-    assertEquals(6669, (int) reporterConfig.getPort());
-    assertEquals("user", reporterConfig.getUsername());
-    assertEquals("password", reporterConfig.getPassword());
-    assertEquals(1, (int) reporterConfig.getMaxConnectionNumber());
-    assertEquals("metric", reporterConfig.getDatabase());
-    assertEquals(5, (int) reporterConfig.getPushPeriodInSecond());
+    List<ReporterType> lists = metricConfig.getMetricReporterList();
+    Assert.assertEquals(lists.size(), 2);
+    Assert.assertEquals(
+        metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort(), "9091");
+    List<PredefinedMetric> predefinedMetrics = metricConfig.getPredefinedMetrics();
+    Assert.assertEquals(predefinedMetrics.size(), 1);
   }
 }

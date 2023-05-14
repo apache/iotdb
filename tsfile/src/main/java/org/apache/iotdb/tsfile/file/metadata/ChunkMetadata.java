@@ -103,24 +103,6 @@ public class ChunkMetadata implements IChunkMetadata {
     this.statistics = statistics;
   }
 
-  // won't clone deleteIntervalList & modified
-  public ChunkMetadata(ChunkMetadata other) {
-    this.measurementUid = other.measurementUid;
-    this.offsetOfChunkHeader = other.offsetOfChunkHeader;
-    this.tsDataType = other.tsDataType;
-    this.version = other.version;
-    this.chunkLoader = other.chunkLoader;
-    this.statistics = other.statistics;
-    this.isFromOldTsFile = other.isFromOldTsFile;
-    this.ramSize = other.ramSize;
-    this.isSeq = other.isSeq;
-    this.isClosed = other.isClosed;
-    this.filePath = other.filePath;
-    this.mask = other.mask;
-    this.tsFilePrefixPath = other.tsFilePrefixPath;
-    this.compactionVersion = other.compactionVersion;
-  }
-
   @Override
   public String toString() {
     return String.format(
@@ -174,7 +156,7 @@ public class ChunkMetadata implements IChunkMetadata {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, outputStream);
     if (serializeStatistic) {
-      byteLen += statistics.serialize(outputStream);
+      byteLen += statistics.serialize(outputStream, true);
     }
     return byteLen;
   }
@@ -186,7 +168,7 @@ public class ChunkMetadata implements IChunkMetadata {
    * @return ChunkMetaData object
    */
   public static ChunkMetadata deserializeFrom(
-      ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) {
+      ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) throws IOException {
     ChunkMetadata chunkMetaData = new ChunkMetadata();
 
     chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
@@ -202,14 +184,6 @@ public class ChunkMetadata implements IChunkMetadata {
       chunkMetaData.statistics = timeseriesMetadata.getStatistics();
     }
     return chunkMetaData;
-  }
-
-  public static ChunkMetadata deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
-    ChunkMetadata chunkMetadata = new ChunkMetadata();
-    chunkMetadata.tsDataType = dataType;
-    chunkMetadata.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
-    chunkMetadata.statistics = Statistics.deserialize(buffer, dataType);
-    return chunkMetadata;
   }
 
   @Override
@@ -317,7 +291,7 @@ public class ChunkMetadata implements IChunkMetadata {
 
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
     Statistics<? extends Serializable> statistics = chunkMetadata.getStatistics();
-    this.statistics.mergeStatistics(statistics);
+    this.statistics.mergeChunkMetadataStat(statistics); // TODO
     this.ramSize = calculateRamSize();
   }
 

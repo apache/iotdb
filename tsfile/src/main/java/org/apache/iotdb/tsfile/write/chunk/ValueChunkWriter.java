@@ -43,13 +43,15 @@ public class ValueChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ValueChunkWriter.class);
 
-  private final String measurementId;
+  public final String measurementId;
 
-  private final TSEncoding encodingType;
+  public final TSEncoding encodingType;
 
-  private final TSDataType dataType;
+  public final TSDataType dataType;
 
-  private final CompressionType compressionType;
+  public final CompressionType compressionType;
+
+  public final Encoder valueEncoder;
 
   /** all pages of this chunk. */
   private final PublicBAOS pageBuffer;
@@ -88,6 +90,8 @@ public class ValueChunkWriter {
     this.encodingType = encodingType;
     this.dataType = dataType;
     this.compressionType = compressionType;
+    this.valueEncoder = valueEncoder;
+
     this.pageBuffer = new PublicBAOS();
     this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     this.maxNumberOfPointsInPage =
@@ -149,16 +153,7 @@ public class ValueChunkWriter {
     pageWriter.write(timestamps, values, batchSize);
   }
 
-  public void writeEmptyPageToPageBuffer() throws IOException {
-    if (numOfPages == 1 && firstPageStatistics != null) {
-      // if the first page is not an empty page
-      byte[] b = pageBuffer.toByteArray();
-      pageBuffer.reset();
-      pageBuffer.write(b, 0, this.sizeWithoutStatistic);
-      firstPageStatistics.serialize(pageBuffer);
-      pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
-      firstPageStatistics = null;
-    }
+  public void writeEmptyPageToPageBuffer() {
     pageWriter.writeEmptyPageIntoBuff(pageBuffer);
     numOfPages++;
   }
@@ -187,7 +182,7 @@ public class ValueChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
-      this.statistics.mergeStatistics(pageWriter.getStatistics());
+      this.statistics.mergeChunkMetadataStat(pageWriter.getStatistics());
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
@@ -216,17 +211,11 @@ public class ValueChunkWriter {
 
   public long getCurrentChunkSize() {
     /**
-     * It may happen if subsequent write operations are all out of order, then count of statistics
-     * in this chunk will be 0 and this chunk will not be flushed.
+     * It may happen if pageBuffer stores empty bits and subsequent write operations are all out of
+     * order, then count of statistics in this chunk will be 0 and this chunk will not be flushed.
      */
-    if (pageBuffer.size() == 0) {
+    if (pageBuffer.size() == 0 || statistics.getCount() == 0) {
       return 0;
-    }
-
-    // Empty chunk, it may happen if pageBuffer stores empty bits and only chunk header will be
-    // flushed.
-    if (statistics.getCount() == 0) {
-      return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size());
     }
 
     // return the serialized size of the chunk header + all pages

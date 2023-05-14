@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.function.Predicate;
 
 public class CountAggrResult extends AggregateResult {
 
@@ -47,6 +46,13 @@ public class CountAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    //    System.out.println(
+    //        "\t\t[DEBUG Count] update from statistics:"
+    //            + statistics.getCount()
+    //            + "\tT:"
+    //            + statistics.getStartTime()
+    //            + "..."
+    //            + statistics.getEndTime());
     setLongValue(getLongValue() + statistics.getCount());
   }
 
@@ -57,10 +63,12 @@ public class CountAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
     int cnt = 0;
-    while (batchIterator.hasNext(boundPredicate)
-        && !boundPredicate.test(batchIterator.currentTime())) {
+    while (batchIterator.hasNext(minBound, maxBound)) {
+      if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
+        break;
+      }
       cnt++;
       batchIterator.next();
     }
@@ -88,6 +96,7 @@ public class CountAggrResult extends AggregateResult {
       cnt++;
     }
     setLongValue(getLongValue() + cnt);
+    //    System.out.println("\t\t[COUNT][updateResultUsingValues]"+getResult());
   }
 
   @Override

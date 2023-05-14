@@ -36,20 +36,6 @@ The user is the legal user of the database. A user corresponds to a unique usern
 
 The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
 
-> Note: the path wildcard is not allowed in granting or revoking privileges .
-
-The following example is the wrong usage:
-
-```
-GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
-```
-
-The correct usage should be:
-
-```
-GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
-```
-
 ### Role
 
 A role is a set of privileges and has a unique role name as an identifier. A user usually corresponds to a real identity (such as a traffic dispatcher), while a real identity may correspond to multiple users. These users with the same real identity tend to have the same privileges. Roles are abstractions that can unify the management of such privileges.
@@ -99,7 +85,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 602: No permissions for this operation, please add privilege READ_TIMESERIES.
+Msg: 602: No permissions for this operation INSERT
 ```
 
 Now, we grant the two users write privileges to the corresponding storage groups, and try to write data again.
@@ -140,7 +126,7 @@ Msg: The statement is executed successfully.
 REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
 Msg: The statement is executed successfully.
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
-Msg: 602: No permissions for this operation, please add privilege READ_TIMESERIES.
+Msg: 602: No permissions for this operation INSERT
 ```
 
 ### SQL Statements
@@ -259,7 +245,7 @@ LIST USER PRIVILEGES <username> ;
 Eg: IoTDB > LIST USER PRIVILEGES tempuser;
 ```
 
-* List Roles of User
+* List Roles of Users
 
 ```
 LIST ALL ROLE OF USER <username> ;  
@@ -300,16 +286,14 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |privilege Name|Interpretation|
 |:---|:---|
 |SET\_STORAGE\_GROUP|set storage groups; path dependent|
-|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
 |CREATE\_TIMESERIES|create timeseries; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
-|DELETE\_TIMESERIES|delete data or timeseries, deactivate template; path dependent|
-|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
+|DELETE\_TIMESERIES|delete data or timeseries; path dependent|
 |CREATE\_USER|create users; path independent|
 |DELETE\_USER|delete users; path independent|
 |MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|
-|LIST\_USER|list all users; list a user's privileges; list a user's roles; list users of role with four kinds of operation privileges; path independent|
+|LIST\_USER|list all users; list a user's privileges; list a user's roles with three kinds of operation privileges; path independent|
 |GRANT\_USER\_PRIVILEGE|grant user privileges; path independent|
 |REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent|
 |GRANT\_USER\_ROLE|grant user roles; path independent|
@@ -327,8 +311,6 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |STOP_TRIGGER|stop triggers; path dependent|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|
-|UPDATE_TEMPLATE|create, drop, append and prune schema template; path independent|
-|APPLY_TEMPLATE|set, unset and activate schema template; path dependent|
 
 ### Username Restrictions
 

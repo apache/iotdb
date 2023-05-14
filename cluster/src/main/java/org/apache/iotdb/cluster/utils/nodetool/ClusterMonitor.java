@@ -42,11 +42,10 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
@@ -122,11 +121,11 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     List<Node> ring = getRing();
     for (Node node : ring) {
       Integer count = leaderCountMap.getOrDefault(node, 0);
-      MetricService.getInstance()
+      MetricsService.getInstance()
+          .getMetricManager()
           .gauge(
               count,
               Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
-              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               node.internalIp);
     }
@@ -150,11 +149,11 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           ClientUtils.putBackSyncClient(client);
         }
       }
-      MetricService.getInstance()
+      MetricsService.getInstance()
+          .getMetricManager()
           .gauge(
               isAlive ? 1 : 0,
               Metric.CLUSTER_NODE_STATUS.toString(),
-              MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
               node.internalIp);
     }

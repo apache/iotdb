@@ -37,7 +37,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Predicate;
 
 /**
  * <code>BatchData</code> is a self-defined data structure which is optimized for different type of
@@ -810,11 +809,6 @@ public class BatchData {
     }
 
     @Override
-    public boolean hasNext(Predicate<Long> boundPredicate) {
-      return hasNext();
-    }
-
-    @Override
     public void next() {
       BatchData.this.next();
     }
@@ -880,17 +874,6 @@ public class BatchData {
     public boolean hasNext(long minBound, long maxBound) {
       while (BatchData.this.hasCurrent() && currentValue() == null) {
         if (currentTime() < minBound || currentTime() >= maxBound) {
-          break;
-        }
-        super.next();
-      }
-      return BatchData.this.hasCurrent();
-    }
-
-    @Override
-    public boolean hasNext(Predicate<Long> boundPredicate) {
-      while (BatchData.this.hasCurrent() && currentValue() == null) {
-        if (boundPredicate.test(currentTime())) {
           break;
         }
         super.next();

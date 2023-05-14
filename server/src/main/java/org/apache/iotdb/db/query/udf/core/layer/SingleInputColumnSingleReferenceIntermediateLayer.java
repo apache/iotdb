@@ -33,15 +33,9 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 
 public class SingleInputColumnSingleReferenceIntermediateLayer extends IntermediateLayer {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SingleInputColumnSingleReferenceIntermediateLayer.class);
 
   private final LayerPointReader parentLayerPointReader;
   private final TSDataType dataType;
@@ -138,14 +132,6 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
         beginIndex += slidingStep;
         int endIndex = beginIndex + windowSize;
-        if (beginIndex < 0 || endIndex < 0) {
-          LOGGER.warn(
-              "SingleInputColumnSingleReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
-              beginIndex,
-              endIndex,
-              windowSize);
-          return false;
-        }
 
         int pointsToBeCollected = endIndex - tvList.size();
         if (0 < pointsToBeCollected) {
@@ -254,19 +240,13 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             break;
           }
         }
-
-        if ((nextIndexEnd == nextIndexBegin)
-            && nextWindowTimeEnd < tvList.getTime(tvList.size() - 1)) {
-          window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
-          return true;
-        }
         window.seek(
             nextIndexBegin,
             nextIndexEnd,
             nextWindowTimeBegin,
             nextWindowTimeBegin + timeInterval - 1);
 
-        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
+        hasCached = nextIndexBegin != nextIndexEnd;
         return hasCached;
       }
 

@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.function.Predicate;
 
 public class MaxValueAggrResult extends AggregateResult {
 
@@ -52,16 +51,17 @@ public class MaxValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
-    updateResultFromPageData(batchIterator, time -> false);
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
     Comparable<Object> maxVal = null;
 
-    while (batchIterator.hasNext(boundPredicate)
-        && !boundPredicate.test(batchIterator.currentTime())) {
+    while (batchIterator.hasNext(minBound, maxBound)
+        && batchIterator.currentTime() < maxBound
+        && batchIterator.currentTime() >= minBound) {
       if (maxVal == null || maxVal.compareTo(batchIterator.currentValue()) < 0) {
         maxVal = (Comparable<Object>) batchIterator.currentValue();
       }

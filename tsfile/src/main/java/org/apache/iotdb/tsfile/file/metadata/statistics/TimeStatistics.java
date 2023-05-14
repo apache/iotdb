@@ -46,20 +46,6 @@ public class TimeStatistics extends Statistics<Long> {
   }
 
   @Override
-  public void update(long time) {
-    super.update(time);
-    setEmpty(false);
-  }
-
-  @Override
-  public void update(long[] time, int batchSize) {
-    super.update(time, batchSize);
-    if (batchSize > 0) {
-      setEmpty(false);
-    }
-  }
-
-  @Override
   public Long getMinValue() {
     throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "min value"));
   }

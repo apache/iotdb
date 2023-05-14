@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -389,66 +388,6 @@ public class SeqTsFileRecoverTest {
     resource = new TsFileResource(tsF);
   }
 
-  /**
-   * Prepare WALNode that only contains InsertRowPlan/InsertTabletPlan with null values. This type
-   * of physical plan will be generated when inserting mismatched type data.
-   */
-  private void prepareNullInsertRowPlan() throws Exception {
-    if (!tsF.exists()) {
-      tsF.createNewFile();
-    }
-    node =
-        MultiFileLogNodeManager.getInstance()
-            .getNode(
-                logNodePrefix + tsF.getName(),
-                () -> {
-                  ByteBuffer[] buffers = new ByteBuffer[2];
-                  buffers[0] =
-                      ByteBuffer.allocateDirect(
-                          IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-                  buffers[1] =
-                      ByteBuffer.allocateDirect(
-                          IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-                  return buffers;
-                });
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.device1.sensor1"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    InsertRowPlan insertRowPlan =
-        new InsertRowPlan(
-            new PartialPath("root.sg.device1"),
-            50,
-            new String[] {"sensor1"},
-            new TSDataType[] {TSDataType.INT64},
-            new String[] {"1"});
-    insertRowPlan.markFailedMeasurementInsertion(0, new Exception());
-    node.write(insertRowPlan);
-
-    InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
-            new PartialPath("root.sg.device1"),
-            new String[] {"sensor1"},
-            Collections.singletonList(TSDataType.INT64.ordinal()));
-    long[] times = new long[1];
-    Object[] columns = new Object[1];
-    columns[0] = new long[1];
-    times[0] = 1;
-    columns[0] = 1;
-    insertTabletPlan.setTimes(times);
-    insertTabletPlan.setColumns(columns);
-    insertTabletPlan.setRowCount(times.length);
-    insertTabletPlan.setStart(0);
-    insertTabletPlan.setEnd(1);
-    insertTabletPlan.markFailedMeasurementInsertion(0, new Exception());
-    node.write(insertTabletPlan);
-
-    node.notifyStartFlush();
-    resource = new TsFileResource(tsF);
-  }
-
   @Test
   public void testNonLastRecovery()
       throws StorageGroupProcessorException, IOException, MetadataException, WriteProcessException {
@@ -622,31 +561,5 @@ public class SeqTsFileRecoverTest {
 
     assertEquals(Long.MAX_VALUE, resource.getStartTime("root.sg.device4"));
     assertEquals(Long.MIN_VALUE, resource.getEndTime("root.sg.device4"));
-  }
-
-  @Test
-  public void testRecoverNullInsertRowPlan() throws Exception {
-    prepareNullInsertRowPlan();
-    TsFileRecoverPerformer performer =
-        new TsFileRecoverPerformer(logNodePrefix, resource, false, true, null);
-    RestorableTsFileIOWriter writer =
-        performer.recover(
-            true,
-            () -> {
-              ByteBuffer[] buffers = new ByteBuffer[2];
-              buffers[0] =
-                  ByteBuffer.allocateDirect(
-                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-              buffers[1] =
-                  ByteBuffer.allocateDirect(
-                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-              return buffers;
-            },
-            (ByteBuffer[] array) -> {
-              for (ByteBuffer byteBuffer : array) {
-                MmapUtil.clean((MappedByteBuffer) byteBuffer);
-              }
-            });
-    Assert.assertEquals(0, resource.getDevices().size());
   }
 }

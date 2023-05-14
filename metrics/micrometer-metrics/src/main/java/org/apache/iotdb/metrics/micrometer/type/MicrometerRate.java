@@ -39,7 +39,7 @@ public class MicrometerRate implements Rate {
 
   public MicrometerRate(AtomicLong atomicLong) {
     this.atomicLong = atomicLong;
-    this.meter = new Meter();
+    meter = new Meter();
   }
 
   @Override

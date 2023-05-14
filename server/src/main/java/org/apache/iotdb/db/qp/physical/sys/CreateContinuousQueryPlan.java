@@ -23,11 +23,9 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
@@ -75,7 +73,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     this.firstExecutionTimeBoundary =
         firstExecutionTimeBoundary != null
             ? firstExecutionTimeBoundary
-            : DateTimeUtils.currentTime();
+            : DatetimeUtils.currentTime();
   }
 
   public String getQuerySql() {
@@ -140,21 +138,6 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     buffer.putLong(groupByTimeInterval);
     ReadWriteIOUtils.write(groupByTimeIntervalString, buffer);
     buffer.putLong(firstExecutionTimeBoundary);
-  }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    stream.write((byte) PhysicalPlanType.CREATE_CONTINUOUS_QUERY.ordinal());
-    ReadWriteIOUtils.write(continuousQueryName, stream);
-    ReadWriteIOUtils.write(querySql, stream);
-    ReadWriteIOUtils.write(querySqlBeforeGroupByClause, stream);
-    ReadWriteIOUtils.write(querySqlAfterGroupByClause, stream);
-    ReadWriteIOUtils.write(targetPath.getFullPath(), stream);
-    stream.writeLong(everyInterval);
-    stream.writeLong(forInterval);
-    stream.writeLong(groupByTimeInterval);
-    ReadWriteIOUtils.write(groupByTimeIntervalString, stream);
-    stream.writeLong(firstExecutionTimeBoundary);
   }
 
   @Override

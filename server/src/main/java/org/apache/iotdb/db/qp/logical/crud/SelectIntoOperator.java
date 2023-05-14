@@ -67,9 +67,6 @@ public class SelectIntoOperator extends Operator {
           "select into: target paths in into clause should be different.");
     }
 
-    checkWildcardsInPartialPaths(intoPaths);
-    checkWildcardsInPartialPaths(queryOperator.getFromComponent().getPrefixPaths());
-
     if (queryOperator.isAlignByDevice()) {
       throw new LogicalOperatorException("select into: align by device clauses are not supported.");
     }
@@ -99,18 +96,6 @@ public class SelectIntoOperator extends Operator {
       if (!specialClauseComponent.isAscending()) {
         throw new LogicalOperatorException(
             "select into: order by time desc clauses are not supported.");
-      }
-    }
-  }
-
-  private void checkWildcardsInPartialPaths(List<PartialPath> paths)
-      throws LogicalOperatorException {
-    for (PartialPath path : paths) {
-      for (String node : path.getNodes()) {
-        if ("*".equals(node) || "**".equals(node)) {
-          throw new LogicalOperatorException(
-              "select into: * and ** are not allowed in a target path.");
-        }
       }
     }
   }

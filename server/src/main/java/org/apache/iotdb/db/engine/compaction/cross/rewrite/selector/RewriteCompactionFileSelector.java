@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore.DeviceInfo;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.TsFileDeviceInfoStore.TsFileDeviceInfo;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.utils.MergeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -49,19 +43,14 @@ import java.util.Map;
  */
 public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
-  CrossSpaceCompactionResource resource;
+  CrossSpaceMergeResource resource;
 
   long totalCost;
-
-  private long totalUnseqFileSize;
-  private long totalSeqFileSize;
   private long memoryBudget;
   private long maxSeqFileCost;
-  private int maxCrossCompactionFileNum;
 
   // the number of timeseries being queried at the same time
   int concurrentMergeNum = 1;
@@ -76,26 +65,13 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
 
   private Collection<Integer> tmpSelectedSeqFiles;
   private long tempMaxSeqFileCost;
-  private long totalSize;
-  private final long maxCrossCompactionFileSize;
+
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
-  private AbstractCompactionEstimator compactionEstimator;
-
-  // Cache the DeviceInfos for used seqFiles to avoid loading DeviceTimeIndex more than 1 times from
-  // disk for each seqFile because each seqFile may be scanned more than 1 times in each selector
-  private final TsFileDeviceInfoStore deviceInfoStore;
-
-  public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
+  public RewriteCompactionFileSelector(CrossSpaceMergeResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
-    this.maxCrossCompactionFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
-    this.maxCrossCompactionFileSize =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
-    this.compactionEstimator = new RewriteCrossCompactionEstimator();
-    this.deviceInfoStore = new TsFileDeviceInfoStore();
   }
 
   /**
@@ -123,39 +99,32 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   @Override
   public List[] select() throws MergeException {
     long startTime = System.currentTimeMillis();
-    totalSize = 0;
     try {
-      logger.debug(
+      logger.info(
           "Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
-      selectFiles();
+      select(false);
+      if (selectedUnseqFiles.isEmpty()) {
+        select(true);
+      }
       resource.setSeqFiles(selectedSeqFiles);
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();
       if (selectedUnseqFiles.isEmpty()) {
-        logger.debug("No merge candidates are found");
+        logger.info("No merge candidates are found");
         return new List[0];
       }
     } catch (IOException e) {
       throw new MergeException(e);
-    } finally {
-      try {
-        compactionEstimator.close();
-      } catch (Exception e) {
-        throw new MergeException(e);
-      }
     }
     if (logger.isInfoEnabled()) {
       logger.info(
-          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {} MB, total file size is {} MB, total seq file size is {} MB, total unseq file size is {} MB, "
+          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
               + "time consumption {}ms",
           selectedSeqFiles.size(),
           selectedUnseqFiles.size(),
-          (float) totalCost / 1024 / 1024,
-          (float) (totalUnseqFileSize + totalSeqFileSize) / 1024 / 1024,
-          (float) totalSeqFileSize / 1024 / 1024,
-          (float) totalUnseqFileSize / 1024 / 1024,
+          totalCost,
           System.currentTimeMillis() - startTime);
     }
     return new List[] {selectedSeqFiles, selectedUnseqFiles};
@@ -169,9 +138,10 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
    * exceed the memory overhead preset by the system for the compaction thread, put them into the
    * selectedSeqFiles and selectedUnseqFiles.
    *
+   * @param useTightBound whether is tight estimate or loop estimate
    * @throws IOException
    */
-  void selectFiles() throws IOException {
+  void select(boolean useTightBound) throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
     seqSelected = new boolean[resource.getSeqFiles().size()];
     seqSelectedNum = 0;
@@ -197,33 +167,17 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
-      if (tmpSelectedSeqFiles.isEmpty() && !tryToSelectLatestSealedSeqFile(unseqFile)) {
-        break;
-      }
       boolean isSeqFilesValid = checkIsSeqFilesValid();
       if (!isSeqFilesValid) {
         tmpSelectedSeqFiles.clear();
         break;
       }
 
-      // Filter out the selected seq files
-      for (int i = 0; i < seqSelected.length; i++) {
-        if (seqSelected[i]) {
-          tmpSelectedSeqFiles.remove(i);
-        }
-      }
-
-      List<TsFileResource> tmpSelectedSeqFileResources = new ArrayList<>();
-      for (int seqIndex : tmpSelectedSeqFiles) {
-        TsFileResource tsFileResource = resource.getSeqFiles().get(seqIndex);
-        tmpSelectedSeqFileResources.add(tsFileResource);
-        totalSize += resource.getSeqFiles().get(seqIndex).getTsFileSize();
-      }
-      totalSize += unseqFile.getTsFileSize();
-
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost =
-          compactionEstimator.estimateCrossCompactionMemory(tmpSelectedSeqFileResources, unseqFile);
+          useTightBound
+              ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit)
+              : calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit);
       if (!updateSelectedFiles(newCost, unseqFile)) {
         // older unseq files must be merged before newer ones
         break;
@@ -236,38 +190,13 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     for (int i = 0; i < seqSelected.length; i++) {
       if (seqSelected[i]) {
         selectedSeqFiles.add(resource.getSeqFiles().get(i));
-        totalSeqFileSize += resource.getSeqFiles().get(i).getTsFileSize();
       }
     }
-  }
-
-  /**
-   * If the unseq file does not overlap with any seq files, then select the latest sealed seq file
-   * for it to compact with. Notice: If the data is deleted and then start an inner space
-   * compaction, it may cause unseqStartTime > seqEndTime or partial devices are in the unseq files
-   * but not in seq files, which will cause the unseq file not overlap with any seq files
-   */
-  private boolean tryToSelectLatestSealedSeqFile(TsFileResource unseqFile) {
-    logger.info("Unseq file {} does not overlap with seq files.", unseqFile);
-    List<TsFileResource> seqResources = resource.getSeqFiles();
-    for (int i = seqResources.size() - 1; i >= 0; i--) {
-      if (seqResources.get(i).isClosed()) {
-        logger.info("Select the latest closed seq file {} for it to compact.", seqResources.get(i));
-        tmpSelectedSeqFiles.add(i);
-        return true;
-      }
-    }
-    return false;
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
-    if (selectedUnseqFiles.size() == 0
-        || (seqSelectedNum + selectedUnseqFiles.size() + 1 + tmpSelectedSeqFiles.size()
-                <= maxCrossCompactionFileNum
-            && totalSize <= maxCrossCompactionFileSize
-            && totalCost + newCost < memoryBudget)) {
+    if (totalCost + newCost < memoryBudget) {
       selectedUnseqFiles.add(unseqFile);
-      totalUnseqFileSize += unseqFile.getTsFileSize();
       maxSeqFileCost = tempMaxSeqFileCost;
 
       for (Integer seqIdx : tmpSelectedSeqFiles) {
@@ -292,13 +221,14 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   /**
    * To avoid redundant data in seq files, cross space compaction should select all the seq files
    * which have overlap with unseq files whether they are compacting or not. Therefore, before
-   * adding task into the queue, cross space compaction task should check whether source seq files
-   * are being compacted or not to speed up compaction.
+   * adding task into the queue, cross space compaction task should be check whether source seq
+   * files are being compacted or not to speed up compaction.
    */
   private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (resource.getSeqFiles().get(seqIdx).getStatus() != TsFileResourceStatus.CLOSED
-          || !resource.getSeqFiles().get(seqIdx).getTsFile().exists()) {
+      if (resource.getSeqFiles().get(seqIdx).isCompactionCandidate()
+          || resource.getSeqFiles().get(seqIdx).isCompacting()
+          || !resource.getSeqFiles().get(seqIdx).isClosed()) {
         return false;
       }
     }
@@ -314,91 +244,158 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
    *
    * @param unseqFile the tsFileResource of unseqFile to be compacted
    */
-  private void selectOverlappedSeqFiles(TsFileResource unseqFile) throws IOException {
-    final int SELECT_WARN_THRESHOLD = 10;
-    // It is unnecessary to cache DeviceInfo for unseqFile into store because it is only be used
-    // once in every selector.
-    TsFileDeviceInfo unseqFileDeviceInfo = new TsFileDeviceInfo(unseqFile);
-    for (DeviceInfo deviceInfo : unseqFileDeviceInfo.getDevices()) {
-      String deviceId = deviceInfo.deviceId;
-      long unseqStartTime = deviceInfo.startTime;
-      long unseqEndTime = deviceInfo.endTime;
+  private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
+    int tmpSelectedNum = 0;
+    for (String deviceId : unseqFile.getDevices()) {
+      long unseqStartTime = unseqFile.getStartTime(deviceId);
+      long unseqEndTime = unseqFile.getEndTime(deviceId);
 
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        TsFileDeviceInfo seqFileDeviceInfo = deviceInfoStore.get(seqFile);
-        if (!seqFileDeviceInfo.containsDevice(deviceId)) {
+        if (!seqFile.mayContainsDevice(deviceId)) {
           continue;
         }
-        int crossSpaceCompactionTimes = 0;
-        try {
-          TsFileNameGenerator.TsFileName tsFileName =
-              TsFileNameGenerator.getTsFileName(seqFile.getTsFile().getName());
-          crossSpaceCompactionTimes = tsFileName.getCrossCompactionCnt();
-        } catch (IOException e) {
-          logger.warn("Meets IOException when selecting files for cross space compaction", e);
-        }
 
-        long seqEndTime = seqFileDeviceInfo.getDeviceInfoById(deviceId).endTime;
-        long seqStartTime = seqFileDeviceInfo.getDeviceInfoById(deviceId).startTime;
-        if (!seqFile.isClosed()) {
-          // for unclosed file, only select those that overlap with the unseq file
-          if (unseqEndTime >= seqStartTime) {
+        long seqEndTime = seqFile.getEndTime(deviceId);
+        long seqStartTime = seqFile.getStartTime(deviceId);
+        if (unseqEndTime < seqStartTime) {
+          // Suppose the time range in unseq file is 10-20, seq file is 30-40. If this unseq file
+          // has no overlapped seq files, then select this seq file. Otherwise, skip this seq file.
+          // There is no more overlap later.
+          if (tmpSelectedSeqFiles.size() == 0) {
             tmpSelectedSeqFiles.add(i);
-            if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
-              logger.warn(
-                  "{} is selected for cross space compaction, it is overlapped with {}. It's selected because its "
-                      + "start time {} is less than or equals to unseq file's endTime {} in device {}",
-                  seqFile.getTsFile().getAbsolutePath(),
-                  unseqFile.getTsFile().getAbsolutePath(),
-                  seqStartTime,
-                  unseqEndTime,
-                  deviceId);
-            }
           }
+          noMoreOverlap = true;
+        } else if (!seqFile.isClosed()) {
+          // we cannot make sure whether unclosed file has overlap or not, so we just add it.
+          tmpSelectedSeqFiles.add(i);
+          tmpSelectedNum++;
         } else if (unseqEndTime <= seqEndTime) {
-          // if time range in unseq file is 10-20, seq file is 30-40, or
-          // time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
+          // if time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
           // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
+          tmpSelectedNum++;
           noMoreOverlap = true;
-          if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
-            logger.warn(
-                "{} is selected for cross space compaction, it is overlapped with {}. It's selected because its "
-                    + "end time {} is greater than or equals to unseq file's endTime {} in device {}",
-                seqFile.getTsFile().getAbsolutePath(),
-                unseqFile.getTsFile().getAbsolutePath(),
-                seqEndTime,
-                unseqEndTime,
-                deviceId);
-          }
         } else if (unseqStartTime <= seqEndTime) {
           // if time range in unseq file is 10-20, seq file is 0-15, then select this seq file and
           // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
-          if (crossSpaceCompactionTimes >= SELECT_WARN_THRESHOLD) {
-            logger.warn(
-                "{} is selected for cross space compaction, it is overlapped with {}. It's selected because its "
-                    + "end time {} is greater than or equals to unseq file's startTime {} in device {}",
-                seqFile.getTsFile().getAbsolutePath(),
-                unseqFile.getTsFile().getAbsolutePath(),
-                seqEndTime,
-                unseqStartTime,
-                deviceId);
-          }
+          tmpSelectedNum++;
         }
       }
+      if (tmpSelectedNum + seqSelectedNum == resource.getSeqFiles().size()) {
+        break;
+      }
     }
+  }
+
+  private long calculateMemoryCost(
+      TsFileResource tmpSelectedUnseqFile,
+      Collection<Integer> tmpSelectedSeqFiles,
+      IFileQueryMemMeasurement unseqMeasurement,
+      IFileQueryMemMeasurement seqMeasurement,
+      long startTime,
+      long timeLimit)
+      throws IOException {
+    long cost = 0;
+    Long fileCost = unseqMeasurement.measure(tmpSelectedUnseqFile);
+    cost += fileCost;
+
+    for (Integer seqFileIdx : tmpSelectedSeqFiles) {
+      TsFileResource seqFile = resource.getSeqFiles().get(seqFileIdx);
+      fileCost = seqMeasurement.measure(seqFile);
+      if (fileCost > tempMaxSeqFileCost) {
+        // only one file will be read at the same time, so only the largest one is recorded here
+        cost -= tempMaxSeqFileCost;
+        cost += fileCost;
+        tempMaxSeqFileCost = fileCost;
+      }
+      // but writing data into a new file may generate the same amount of metadata in memory
+      cost += calculateMetadataSize(seqFile);
+      long timeConsumption = System.currentTimeMillis() - startTime;
+      if (timeConsumption > timeLimit) {
+        return Long.MAX_VALUE;
+      }
+    }
+    return cost;
+  }
+
+  private long calculateLooseMemoryCost(
+      TsFileResource tmpSelectedUnseqFile,
+      Collection<Integer> tmpSelectedSeqFiles,
+      long startTime,
+      long timeLimit)
+      throws IOException {
+    return calculateMemoryCost(
+        tmpSelectedUnseqFile,
+        tmpSelectedSeqFiles,
+        TsFileResource::getTsFileSize,
+        this::calculateMetadataSize,
+        startTime,
+        timeLimit);
+  }
+
+  private long calculateTightMemoryCost(
+      TsFileResource tmpSelectedUnseqFile,
+      Collection<Integer> tmpSelectedSeqFiles,
+      long startTime,
+      long timeLimit)
+      throws IOException {
+    return calculateMemoryCost(
+        tmpSelectedUnseqFile,
+        tmpSelectedSeqFiles,
+        this::calculateTightUnseqMemoryCost,
+        this::calculateTightSeqMemoryCost,
+        startTime,
+        timeLimit);
+  }
+
+  private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
+    Long cost = fileMetaSizeMap.get(seqFile);
+    if (cost == null) {
+      cost = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
+      fileMetaSizeMap.put(seqFile, cost);
+      logger.debug(LOG_FILE_COST, seqFile, cost);
+    }
+    return cost;
+  }
+
+  private long calculateTightFileMemoryCost(
+      TsFileResource seqFile, IFileQueryMemMeasurement measurement) throws IOException {
+    Long cost = maxSeriesQueryCostMap.get(seqFile);
+    if (cost == null) {
+      long[] chunkNums =
+          MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
+      long totalChunkNum = chunkNums[0];
+      long maxChunkNum = chunkNums[1];
+      cost = measurement.measure(seqFile) * maxChunkNum / totalChunkNum;
+      maxSeriesQueryCostMap.put(seqFile, cost);
+      logger.debug(LOG_FILE_COST, seqFile, cost);
+    }
+    return cost;
+  }
+
+  // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
+  // its proportion to all series to get a maximum estimation
+  private long calculateTightSeqMemoryCost(TsFileResource seqFile) throws IOException {
+    long singleSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
+    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
+    long maxCost = calculateMetadataSize(seqFile);
+    return Math.min(multiSeriesCost, maxCost);
+  }
+
+  // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
+  // its proportion among all series to get a maximum estimation
+  private long calculateTightUnseqMemoryCost(TsFileResource unseqFile) throws IOException {
+    long singleSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getTsFileSize);
+    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
+    long maxCost = unseqFile.getTsFileSize();
+    return Math.min(multiSeriesCost, maxCost);
   }
 
   @Override
   public int getConcurrentMergeNum() {
     return concurrentMergeNum;
-  }
-
-  @Override
-  public List<Long> getMemoryCost() {
-    return Collections.singletonList(totalCost);
   }
 }

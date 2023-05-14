@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -33,11 +32,12 @@ import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -102,24 +102,12 @@ public class MLogWriter implements AutoCloseable {
   }
 
   private void sync() {
-    int retryCnt = 0;
-    mlogBuffer.mark();
-    while (true) {
-      try {
-        logWriter.write(mlogBuffer);
-        break;
-      } catch (IOException e) {
-        if (retryCnt < 3) {
-          logger.warn("MLog {} sync failed, retry it again", logFile.getAbsoluteFile(), e);
-          mlogBuffer.reset();
-          retryCnt++;
-        } else {
-          logger.error(
-              "MLog {} sync failed, change system mode to error", logFile.getAbsoluteFile(), e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
-          break;
-        }
-      }
+    try {
+      logWriter.write(mlogBuffer);
+    } catch (IOException e) {
+      logger.error(
+          "MLog {} sync failed, change system mode to read-only", logFile.getAbsoluteFile(), e);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
     }
     mlogBuffer.clear();
   }
@@ -145,6 +133,16 @@ public class MLogWriter implements AutoCloseable {
 
   public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
     putLog(deleteTimeSeriesPlan);
+  }
+
+  public void createContinuousQuery(CreateContinuousQueryPlan createContinuousQueryPlan)
+      throws IOException {
+    putLog(createContinuousQueryPlan);
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan dropContinuousQueryPlan)
+      throws IOException {
+    putLog(dropContinuousQueryPlan);
   }
 
   public void setStorageGroup(PartialPath storageGroup) throws IOException {
@@ -236,10 +234,6 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
-  public void deactivateSchemaTemplate(DeactivateTemplatePlan plan) throws IOException {
-    putLog(plan);
-  }
-
   public synchronized void clear() throws IOException {
     sync();
     logWriter.close();
@@ -277,7 +271,7 @@ public class MLogWriter implements AutoCloseable {
                 words[1],
                 TSDataType.values()[Integer.parseInt(words[3])],
                 TSEncoding.values()[Integer.parseInt(words[4])],
-                CompressionType.deserialize((byte) Integer.parseInt(words[5]))));
+                CompressionType.values()[Integer.parseInt(words[5])]));
       case "1":
         return new StorageGroupMNodePlan(
             words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));

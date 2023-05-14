@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -112,19 +111,6 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public int getFailedMeasurementNumber() {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
-  }
-
-  public List<Integer> getFailedIndices() {
-    return failedIndices == null ? Collections.emptyList() : failedIndices;
-  }
-
-  public boolean hasValidMeasurements() {
-    for (Object o : measurements) {
-      if (o != null) {
-        return true;
-      }
-    }
-    return false;
   }
 
   public boolean isAligned() {

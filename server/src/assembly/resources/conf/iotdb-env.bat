@@ -59,14 +59,18 @@ del %temp%\tmp.vbs
 set system_memory_in_mb=%system_memory_in_mb:,=%
 
 set /a half_=%system_memory_in_mb%/2
+set /a half_=%system_memory_in_mb%/2
+set /a oneThird_=%system_memory_in_mb%/3
 set /a quarter_=%half_%/2
 
-if %half_% GTR 1024 set half_=1024
+@rem if %half_% GTR 2048 set half_=2048
 if %quarter_% GTR 65536 set quarter_=65536
 
 if %half_% GTR %quarter_% (
 	set max_heap_size_in_mb=%half_%
 ) else set max_heap_size_in_mb=%quarter_%
+
+set max_heap_size_in_mb=%half_%
 
 set MAX_HEAP_SIZE=%max_heap_size_in_mb%M
 set max_sensible_yg_per_core_in_mb=100
@@ -76,13 +80,6 @@ set /a desired_yg_in_mb=%max_heap_size_in_mb%/4
 if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
 	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
 ) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
-
-@REM if the heap size is larger than 16GB, we will forbid writing the heap dump file
-if %desired_yg_in_mb% GTR 16384 (
-	set IOTDB_ALLOW_HEAP_DUMP="false"
-) else set IOTDB_ALLOW_HEAP_DUMP="true"
-
-
 
 @REM Maximum heap size
 @REM set MAX_HEAP_SIZE="2G"

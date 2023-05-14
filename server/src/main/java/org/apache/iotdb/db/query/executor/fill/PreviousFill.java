@@ -21,10 +21,8 @@ package org.apache.iotdb.db.query.executor.fill;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -63,7 +61,7 @@ public class PreviousFill extends IFill {
   }
 
   public PreviousFill(String beforeStr, boolean untilLast) {
-    this.beforeRange = DateTimeUtils.convertDurationStrToLong(beforeStr);
+    this.beforeRange = DatetimeUtils.convertDurationStrToLong(beforeStr);
     this.untilLast = untilLast;
     if (beforeStr.toLowerCase().contains("mo")) {
       this.isBeforeByMonth = true;
@@ -123,24 +121,9 @@ public class PreviousFill extends IFill {
             .getQueryDataSource(seriesPath, context, timeFilter, false);
     // update filter by TTL
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
-
-    LastPointReader lastReader;
-    MeasurementPath measurementPath = (MeasurementPath) seriesPath;
-    if (measurementPath.isUnderAlignedEntity()) {
-      lastReader =
-          new AlignedLastPointReader(
-              new AlignedPath(measurementPath),
-              dataType,
-              allSensors,
-              context,
-              dataSource,
-              queryStartTime,
-              timeFilter);
-    } else {
-      lastReader =
-          new LastPointReader(
-              seriesPath, dataType, allSensors, context, dataSource, queryStartTime, timeFilter);
-    }
+    LastPointReader lastReader =
+        new LastPointReader(
+            seriesPath, dataType, allSensors, context, dataSource, queryStartTime, timeFilter);
 
     return lastReader.readLastPoint();
   }

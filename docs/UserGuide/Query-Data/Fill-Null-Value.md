@@ -39,6 +39,7 @@ IoTDB supports previous, linear, and value fill methods. Following table lists t
 | float     | previous, linear, value |
 | double    | previous, linear, value |
 | text      | previous                |
+| </center> |                         |
 
 > Note: Only one Fill method can be specified in a Fill statement. Null value fill is compatible with version 0.12 and previous syntax (fill((<data_type>[<fill_method>(, <before_range>, <after_range>)?])+)), but the old syntax could not specify multiple fill methods at the same time
 
@@ -62,6 +63,7 @@ Detailed descriptions of all parameters are given in following table:
 | path, prefixPath                  | query path; mandatory field                                  |
 | T                                 | query timestamp (only one can be specified); mandatory field |
 | before\_range                     | represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field |
+| </center>                         |                                                              |
 
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
 
@@ -111,6 +113,7 @@ Detailed descriptions of all parameters are given in following table:
 | path, prefixPath                  | query path; mandatory field                                  |
 | T                                 | query timestamp (only one can be specified); mandatory field |
 | before\_range, after\_range       | represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field |
+| </center>                         |                                                              |
 
 **Note** if the timeseries has a valid value at query timestamp T, this value will be used as the linear fill value.
 Otherwise, if there is no valid fill value in either range [T - before_range, T] or [T, T + after_range], linear fill method will return null.
@@ -150,6 +153,7 @@ Detailed descriptions of all parameters are given in following table:
 | path, prefixPath                  | query path; mandatory field                                  |
 | T                                 | query timestamp (only one can be specified); mandatory field |
 | constant                          | represents given fill value                                  |
+| </center>                         |                                                              |
 
 **Note** if the timeseries has a valid value at query timestamp T, this value will be used as the specific fill value.
 

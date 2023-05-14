@@ -21,10 +21,8 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,24 +47,11 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
       long timePartition,
       AtomicInteger currentTaskNum,
       boolean sequence,
-      List<TsFileResource> selectedTsFileResourceList,
-      TsFileManager tsFileManager) {
-    super(storageGroupName, timePartition, tsFileManager, currentTaskNum);
+      List<TsFileResource> selectedTsFileResourceList) {
+    super(storageGroupName, timePartition, currentTaskNum);
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     collectSelectedFilesInfo();
-  }
-
-  @Override
-  public void setSourceFilesToCompactionCandidate() {
-    this.selectedTsFileResourceList.forEach(
-        tsFileResource -> {
-          try {
-            tsFileResource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
-          } catch (Exception e) {
-            LOGGER.error("Exception occurs when setting compaction candidate", e);
-          }
-        });
   }
 
   private void collectSelectedFilesInfo() {
@@ -124,7 +109,7 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     }
 
     for (TsFileResource resource : selectedTsFileResourceList) {
-      resource.setStatus(TsFileResourceStatus.COMPACTING);
+      resource.setCompacting(true);
     }
     return true;
   }
@@ -146,6 +131,6 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedTsFileResourceList.forEach(x -> x.setCompactionCandidate(false));
   }
 }

@@ -209,7 +209,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return "TIME";
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType;
+    if (!ignoreTimestamp) {
+      columnType = columnTypeList.get(column - 2);
+    } else {
+      columnType = columnTypeList.get(column - 1);
+    }
     String typeString = columnType.toUpperCase();
     if ("BOOLEAN".equals(typeString)
         || "INT32".equals(typeString)
@@ -228,7 +233,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return 13;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType;
+    if (!ignoreTimestamp) {
+      columnType = columnTypeList.get(column - 2);
+    } else {
+      columnType = columnTypeList.get(column - 1);
+    }
     switch (columnType.toUpperCase()) {
       case "BOOLEAN":
         return 1;
@@ -254,7 +264,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return 0;
     }
-    String columnType = columnTypeList.get(column - 1);
+    String columnType;
+    if (!ignoreTimestamp) {
+      columnType = columnTypeList.get(column - 2);
+    } else {
+      columnType = columnTypeList.get(column - 1);
+    }
     switch (columnType.toUpperCase()) {
       case "BOOLEAN":
       case "INT32":
@@ -284,7 +299,13 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       return "TIME";
     }
     // Temporarily use column names as table names
-    return columnInfoList.get(column - 1);
+    String columName;
+    if (!ignoreTimestamp) {
+      columName = columnInfoList.get(column - 2);
+    } else {
+      columName = columnInfoList.get(column - 1);
+    }
+    return columName;
   }
 
   @Override

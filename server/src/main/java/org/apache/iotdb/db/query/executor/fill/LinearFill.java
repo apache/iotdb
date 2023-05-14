@@ -23,10 +23,8 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.utils.DateTimeUtils;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
@@ -42,7 +40,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -55,16 +52,14 @@ public class LinearFill extends IFill {
   // all measurements sharing the same device as "seriesPath"
   protected Set<String> deviceMeasurements;
 
-  protected boolean isAligned;
-
   public LinearFill(long beforeRange, long afterRange) {
     this.beforeRange = beforeRange;
     this.afterRange = afterRange;
   }
 
   public LinearFill(String beforeStr, String afterStr) {
-    this.beforeRange = DateTimeUtils.convertDurationStrToLong(beforeStr);
-    this.afterRange = DateTimeUtils.convertDurationStrToLong(afterStr);
+    this.beforeRange = DatetimeUtils.convertDurationStrToLong(beforeStr);
+    this.afterRange = DatetimeUtils.convertDurationStrToLong(afterStr);
     if (beforeStr.toLowerCase().contains("mo")) {
       this.isBeforeByMonth = true;
     }
@@ -129,7 +124,6 @@ public class LinearFill extends IFill {
     this.queryStartTime = queryTime;
     this.context = context;
     this.deviceMeasurements = sensors;
-    this.isAligned = ((MeasurementPath) seriesPath).isUnderAlignedEntity();
     constructFilter();
   }
 
@@ -163,25 +157,15 @@ public class LinearFill extends IFill {
     QueryDataSource dataSource =
         QueryResourceManager.getInstance()
             .getQueryDataSource(seriesPath, context, beforeFilter, false);
-
     LastPointReader lastReader =
-        isAligned
-            ? new AlignedLastPointReader(
-                new AlignedPath((MeasurementPath) seriesPath),
-                dataType,
-                deviceMeasurements,
-                context,
-                dataSource,
-                queryStartTime,
-                beforeFilter)
-            : new LastPointReader(
-                seriesPath,
-                dataType,
-                deviceMeasurements,
-                context,
-                dataSource,
-                queryStartTime,
-                beforeFilter);
+        new LastPointReader(
+            seriesPath,
+            dataType,
+            deviceMeasurements,
+            context,
+            dataSource,
+            queryStartTime,
+            beforeFilter);
 
     return lastReader.readLastPoint();
   }
@@ -194,30 +178,18 @@ public class LinearFill extends IFill {
     AggregateResult firstValueResult = new FirstValueAggrResult(dataType);
     aggregateResultList.add(minTimeResult);
     aggregateResultList.add(firstValueResult);
+    AggregationExecutor.aggregateOneSeries(
+        seriesPath,
+        deviceMeasurements,
+        context,
+        afterFilter,
+        dataType,
+        aggregateResultList,
+        null,
+        null,
+        true,
+        null);
 
-    if (isAligned) {
-      AggregationExecutor.aggregateOneAlignedSeries(
-          new AlignedPath((MeasurementPath) seriesPath),
-          deviceMeasurements,
-          context,
-          afterFilter,
-          dataType,
-          Collections.singletonList(aggregateResultList),
-          null,
-          null,
-          true);
-    } else {
-      AggregationExecutor.aggregateOneSeries(
-          seriesPath,
-          deviceMeasurements,
-          context,
-          afterFilter,
-          dataType,
-          aggregateResultList,
-          null,
-          null,
-          true);
-    }
     return convertToResult(minTimeResult, firstValueResult);
   }
 
@@ -240,14 +212,9 @@ public class LinearFill extends IFill {
       throws UnSupportedFillTypeException {
     double totalTimeLength = (double) afterPair.getTimestamp() - beforePair.getTimestamp();
     double beforeTimeLength = (double) (queryStartTime - beforePair.getTimestamp());
-
-    TsPrimitiveType beforeValue = beforePair.getValue();
-    boolean isAlignedValue = beforeValue.getDataType() == TSDataType.VECTOR;
-
     switch (dataType) {
       case INT32:
-        int startIntValue =
-            isAlignedValue ? beforeValue.getVector()[0].getInt() : beforeValue.getInt();
+        int startIntValue = beforePair.getValue().getInt();
         int endIntValue = afterPair.getValue().getInt();
         int fillIntValue =
             startIntValue
@@ -256,8 +223,7 @@ public class LinearFill extends IFill {
         beforePair.setValue(TsPrimitiveType.getByType(TSDataType.INT32, fillIntValue));
         break;
       case INT64:
-        long startLongValue =
-            isAlignedValue ? beforeValue.getVector()[0].getLong() : beforeValue.getLong();
+        long startLongValue = beforePair.getValue().getLong();
         long endLongValue = afterPair.getValue().getLong();
         long fillLongValue =
             startLongValue
@@ -266,8 +232,7 @@ public class LinearFill extends IFill {
         beforePair.setValue(TsPrimitiveType.getByType(TSDataType.INT64, fillLongValue));
         break;
       case FLOAT:
-        float startFloatValue =
-            isAlignedValue ? beforeValue.getVector()[0].getFloat() : beforeValue.getFloat();
+        float startFloatValue = beforePair.getValue().getFloat();
         float endFloatValue = afterPair.getValue().getFloat();
         float fillFloatValue =
             startFloatValue
@@ -275,8 +240,7 @@ public class LinearFill extends IFill {
         beforePair.setValue(TsPrimitiveType.getByType(TSDataType.FLOAT, fillFloatValue));
         break;
       case DOUBLE:
-        double startDoubleValue =
-            isAlignedValue ? beforeValue.getVector()[0].getDouble() : beforeValue.getDouble();
+        double startDoubleValue = beforePair.getValue().getDouble();
         double endDoubleValue = afterPair.getValue().getDouble();
         double fillDoubleValue =
             startDoubleValue

@@ -18,42 +18,23 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   private TsFileIOWriter fileWriter;
 
   private boolean isEmptyFile;
-  private TsFileResource resource;
-  private AtomicLong[] startTimeOfCurDevice;
-  private AtomicLong[] endTimeOfCurDevice;
+
+  private final TsFileResource targetTsFileResource;
 
   public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
-    long sizeForFileWriter =
-        (long)
-            (SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataMemorySizeProportion());
-    this.fileWriter = new TsFileIOWriter(targetFileResource.getTsFile(), true, sizeForFileWriter);
+    fileWriter = new RestorableTsFileIOWriter(targetFileResource.getTsFile());
     isEmptyFile = true;
-    resource = targetFileResource;
-    int concurrentThreadNum =
-        Math.max(1, IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum());
-    startTimeOfCurDevice = new AtomicLong[concurrentThreadNum];
-    endTimeOfCurDevice = new AtomicLong[concurrentThreadNum];
-    for (int i = 0; i < concurrentThreadNum; ++i) {
-      startTimeOfCurDevice[i] = new AtomicLong(Long.MAX_VALUE);
-      endTimeOfCurDevice[i] = new AtomicLong(Long.MIN_VALUE);
-    }
+    this.targetTsFileResource = targetFileResource;
   }
 
   @Override
@@ -65,29 +46,22 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void endChunkGroup() throws IOException {
-    for (int i = 0; i < startTimeOfCurDevice.length; ++i) {
-      resource.updateStartTime(
-          fileWriter.getCurrentChunkGroupDeviceId(), startTimeOfCurDevice[i].get());
-      resource.updateEndTime(
-          fileWriter.getCurrentChunkGroupDeviceId(), endTimeOfCurDevice[i].get());
-      startTimeOfCurDevice[i].set(Long.MAX_VALUE);
-      endTimeOfCurDevice[i].set(Long.MIN_VALUE);
-    }
     fileWriter.endChunkGroup();
   }
 
   @Override
-  public void endMeasurement(int subTaskId) throws IOException {
-    flushChunkToFileWriter(fileWriter, subTaskId);
+  public void endMeasurement() throws IOException {
+    writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
+    chunkWriter.writeToFileWriter(fileWriter);
+    chunkWriter = null;
   }
 
   @Override
-  public void write(long timestamp, Object value, int subTaskId) throws IOException {
-    writeDataPoint(timestamp, value, subTaskId);
-    checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+  public void write(long timestamp, Object value) throws IOException {
+    writeDataPoint(timestamp, value);
+    updateDeviceStartAndEndTime(targetTsFileResource, timestamp);
+    checkChunkSizeAndMayOpenANewChunk(fileWriter);
     isEmptyFile = false;
-    startTimeOfCurDevice[subTaskId].set(Math.min(startTimeOfCurDevice[subTaskId].get(), timestamp));
-    endTimeOfCurDevice[subTaskId].set(Math.max(endTimeOfCurDevice[subTaskId].get(), timestamp));
   }
 
   @Override
@@ -97,7 +71,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   public void endFile() throws IOException {
     fileWriter.endFile();
     if (isEmptyFile) {
-      resource.setStatus(TsFileResourceStatus.DELETED);
+      fileWriter.getFile().delete();
     }
   }
 
@@ -106,11 +80,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     if (fileWriter != null && fileWriter.canWrite()) {
       fileWriter.close();
     }
+    chunkWriter = null;
     fileWriter = null;
-  }
-
-  @Override
-  public List<TsFileIOWriter> getFileIOWriter() {
-    return Collections.singletonList(fileWriter);
   }
 }

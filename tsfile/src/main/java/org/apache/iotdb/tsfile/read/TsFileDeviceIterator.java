@@ -24,7 +24,9 @@ import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 
@@ -32,8 +34,6 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
   private final TsFileSequenceReader reader;
   private final Queue<Pair<String, Pair<Long, Long>>> queue;
   private Pair<String, Boolean> currentDevice = null;
-
-  private MetadataIndexNode measurementNode;
 
   public TsFileDeviceIterator(
       TsFileSequenceReader reader, Queue<Pair<String, Pair<Long, Long>>> queue) {
@@ -56,22 +56,18 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
       throw new NoSuchElementException();
     }
     Pair<String, Pair<Long, Long>> startEndPair = queue.remove();
+    List<Pair<String, Boolean>> devices = new ArrayList<>();
     try {
-      // get the first measurment node of this device, to know if the device is alignd
       MetadataIndexNode measurementNode =
           MetadataIndexNode.deserializeFrom(
               reader.readData(startEndPair.right.left, startEndPair.right.right));
-      boolean isAligned = reader.isAlignedDevice(measurementNode);
+      // if tryToGetFirstTimeseriesMetadata(node) returns null, the device is not aligned
+      boolean isAligned = reader.tryToGetFirstTimeseriesMetadata(measurementNode) != null;
       currentDevice = new Pair<>(startEndPair.left, isAligned);
-      this.measurementNode = measurementNode;
       return currentDevice;
     } catch (IOException e) {
       throw new TsFileRuntimeException(
           "Error occurred while reading a time series metadata block.");
     }
-  }
-
-  public MetadataIndexNode getFirstMeasurementNodeOfCurrentDevice() {
-    return measurementNode;
   }
 }

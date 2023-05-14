@@ -98,13 +98,11 @@ public class BinaryTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+    if (sortedTimestamps == null || sortedTimestamps.length < rowCount) {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedValues == null
-        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+    if (sortedValues == null || sortedValues.length < rowCount) {
       sortedValues =
           (Binary[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.TEXT, rowCount);
     }

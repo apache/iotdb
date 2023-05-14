@@ -331,12 +331,10 @@ public class ImportCsv extends AbstractCsvTool {
 
     Set<String> devices = deviceAndMeasurementNames.keySet();
     String devicesStr = StringUtils.join(devices, ",");
-    if (headerTypeMap.isEmpty()) {
-      try {
-        queryType(devicesStr, headerTypeMap, "Time");
-      } catch (IoTDBConnectionException e) {
-        e.printStackTrace();
-      }
+    try {
+      queryType(devicesStr, headerTypeMap, "Time");
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
     }
 
     List<String> deviceIds = new ArrayList<>();
@@ -503,9 +501,7 @@ public class ImportCsv extends AbstractCsvTool {
                 // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
-                    if (headerTypeMap.isEmpty()) {
-                      hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
-                    }
+                    hasResult = queryType(deviceName.get(), headerTypeMap, "Device");
                     typeQueriedDevice.add(deviceName.get());
                   } catch (IoTDBConnectionException e) {
                     e.printStackTrace();
@@ -611,11 +607,7 @@ public class ImportCsv extends AbstractCsvTool {
       List<List<String>> measurementsList,
       int retryTime) {
     try {
-      if (!aligned) {
-        session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } else {
-        session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      }
+      session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
       if (retryTime > 0) {
         try {
@@ -641,8 +633,8 @@ public class ImportCsv extends AbstractCsvTool {
    * read data from the CSV file
    *
    * @param path
-   * @return CSVParser csv parser
-   * @throws IOException when reading the csv file failed.
+   * @return
+   * @throws IOException
    */
   private static CSVParser readCsvFile(String path) throws IOException {
     return CSVFormat.Builder.create(CSVFormat.DEFAULT)
@@ -834,7 +826,7 @@ public class ImportCsv extends AbstractCsvTool {
           if (value.startsWith("\"") && value.endsWith("\"")) {
             return value.substring(1, value.length() - 1);
           }
-          return value;
+          return null;
         case BOOLEAN:
           if (!"true".equals(value) && !"false".equals(value)) {
             return null;

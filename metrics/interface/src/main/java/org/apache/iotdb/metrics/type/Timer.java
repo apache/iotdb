@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.type;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public interface Timer extends IMetric {
@@ -45,12 +44,10 @@ public interface Timer extends IMetric {
   /** take snapshot of timer */
   HistogramSnapshot takeSnapshot();
 
-  /** It's not safe to use the update interface of this rate */
+  /**
+   * It's not safe to use the update interface.
+   *
+   * @return the getOrCreatRate related with the getOrCreateTimer
+   */
   Rate getImmutableRate();
-
-  @Override
-  default void constructValueMap(Map<String, Object> result) {
-    takeSnapshot().constructValueMap(result);
-    getImmutableRate().constructValueMap(result);
-  }
 }

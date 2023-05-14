@@ -23,6 +23,9 @@ import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * This class defines any node in MTree as potential target node. On finding a path matching the
  * given pattern, if a level is specified and the path is longer than the specified level,
@@ -36,6 +39,8 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
   // level query option
   protected int targetLevel = -1;
+
+  private Set<IMNode> processedNodes = new HashSet<>();
 
   public MNodeCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
@@ -67,26 +72,16 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
         node = node.getParent();
         level--;
       }
-
-      processResult(node);
+      // record processed node so they will not be processed twice
+      if (!processedNodes.contains(node)) {
+        processedNodes.add(node);
+        transferToResult(node);
+      }
       return true;
     } else {
-      processResult(node);
-      return false;
+      transferToResult(node);
     }
-  }
-
-  private void processResult(IMNode node) {
-    if (hasLimit) {
-      curOffset += 1;
-      if (curOffset < offset) {
-        return;
-      }
-
-      count++;
-    }
-
-    transferToResult(node);
+    return false;
   }
 
   protected abstract void transferToResult(IMNode node);

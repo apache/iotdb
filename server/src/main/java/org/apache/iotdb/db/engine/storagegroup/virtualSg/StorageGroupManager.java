@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.archiving.ArchivingTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -120,21 +119,6 @@ public class StorageGroupManager {
     }
   }
 
-  /** push check archiving to all virtual storage group processors */
-  public void checkArchivingTask(ArchivingTask task) {
-    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
-        this.virtualStorageGroupProcessor) {
-      if (task.getStatus() != ArchivingTask.ArchivingTaskStatus.RUNNING) {
-        // task stopped running (eg. the task is paused), return
-        return;
-      }
-
-      if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.checkArchivingTask(task);
-      }
-    }
-  }
-
   /** push check sequence memtable flush interval down to all sg */
   public void timedFlushSeqMemTable() {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
@@ -172,6 +156,7 @@ public class StorageGroupManager {
    * @return virtual storage group processor
    */
   @SuppressWarnings("java:S2445")
+  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public VirtualStorageGroupProcessor getProcessor(
       PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
@@ -181,9 +166,7 @@ public class StorageGroupManager {
     if (processor == null) {
       // if finish recover
       if (isVsgReady[loc].get()) {
-        // it's unsafe to synchronize MNode here because
-        // concurrent deletions and creations will create a new MNode
-        synchronized (isVsgReady[loc]) {
+        synchronized (storageGroupMNode) {
           processor = virtualStorageGroupProcessor[loc];
           if (processor == null) {
             processor =
@@ -195,48 +178,6 @@ public class StorageGroupManager {
         }
       } else {
         // not finished recover, refuse the request
-        logger.warn(
-            "the sg {} may not ready now, please wait and retry later",
-            storageGroupMNode.getFullPath());
-        throw new StorageGroupNotReadyException(
-            storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
-      }
-    }
-
-    return processor;
-  }
-  /**
-   * get processor from virtualStorageGroupId
-   *
-   * @param virtualStorageGroupId virtual storage group id
-   * @return virtual storage group processor
-   */
-  @SuppressWarnings("java:S2445")
-  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  public VirtualStorageGroupProcessor getProcessor(
-      int virtualStorageGroupId, IStorageGroupMNode storageGroupMNode)
-      throws StorageGroupProcessorException, StorageEngineException {
-    VirtualStorageGroupProcessor processor = virtualStorageGroupProcessor[virtualStorageGroupId];
-    if (processor == null) {
-      // if finish recover
-      if (isVsgReady[virtualStorageGroupId].get()) {
-        synchronized (storageGroupMNode) {
-          processor = virtualStorageGroupProcessor[virtualStorageGroupId];
-          if (processor == null) {
-            processor =
-                StorageEngine.getInstance()
-                    .buildNewStorageGroupProcessor(
-                        storageGroupMNode.getPartialPath(),
-                        storageGroupMNode,
-                        String.valueOf(virtualStorageGroupId));
-            virtualStorageGroupProcessor[virtualStorageGroupId] = processor;
-          }
-        }
-      } else {
-        // not finished recover, refuse the request
-        logger.warn(
-            "the sg {} may not ready now, please wait and retry later",
-            storageGroupMNode.getFullPath());
         throw new StorageGroupNotReadyException(
             storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
@@ -456,7 +397,7 @@ public class StorageGroupManager {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.setDataTTLWithTimePrecisionCheck(dataTTL);
+        virtualStorageGroupProcessor.setDataTTL(dataTTL);
       }
     }
   }

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -41,7 +40,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
@@ -57,6 +55,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private int lastReadCurListIndex;
   private final boolean ascending;
 
+  private final QueryDataSource queryDataSource;
+
   public LocalGroupByExecutor(
       PartialPath path,
       Set<String> allSensors,
@@ -65,7 +65,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       TsFileFilter fileFilter,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    QueryDataSource queryDataSource =
+    queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter, ascending);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
@@ -125,7 +125,6 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return;
     }
 
-    Predicate<Long> boundPredicate = QueryUtils.getPredicate(curStartTime, curEndTime, ascending);
     for (AggregateResult result : results) {
       // current agg method has been calculated
       if (result.hasFinalResult()) {
@@ -146,7 +145,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       }
 
       if (batchIterator.hasNext()) {
-        result.updateResultFromPageData(batchIterator, boundPredicate);
+        result.updateResultFromPageData(batchIterator, curStartTime, curEndTime);
       }
     }
 
@@ -212,22 +211,21 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
     // read from file first
     while (reader.hasNextFile()) {
-      if (reader.canUseCurrentFileStatistics()) {
-        Statistics fileStatistics = reader.currentFileStatistics();
-        if (fileStatistics.getStartTime() >= curEndTime) {
-          if (ascending) {
-            return results;
-          } else {
-            reader.skipCurrentFile();
-            continue;
-          }
-        }
-        // calc from fileMetaData
-        if (timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
-          calcFromStatistics(fileStatistics);
+      Statistics fileStatistics = reader.currentFileStatistics();
+      if (fileStatistics.getStartTime() >= curEndTime) {
+        if (ascending) {
+          return results;
+        } else {
           reader.skipCurrentFile();
           continue;
         }
+      }
+      // calc from fileMetaData
+      if (reader.canUseCurrentFileStatistics()
+          && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+        calcFromStatistics(fileStatistics);
+        reader.skipCurrentFile();
+        continue;
       }
 
       // read chunk
@@ -282,24 +280,22 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private boolean readAndCalcFromChunk(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextChunk()) {
-      if (reader.canUseCurrentChunkStatistics()) {
-        Statistics chunkStatistics = reader.currentChunkStatistics();
-        if (chunkStatistics.getStartTime() >= curEndTime) {
-          if (ascending) {
-            return true;
-          } else {
-            reader.skipCurrentChunk();
-            continue;
-          }
-        }
-        // calc from chunkMetaData
-        if (timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-          calcFromStatistics(chunkStatistics);
+      Statistics chunkStatistics = reader.currentChunkStatistics();
+      if (chunkStatistics.getStartTime() >= curEndTime) {
+        if (ascending) {
+          return true;
+        } else {
           reader.skipCurrentChunk();
           continue;
         }
       }
-
+      // calc from chunkMetaData
+      if (reader.canUseCurrentChunkStatistics()
+          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+        calcFromStatistics(chunkStatistics);
+        reader.skipCurrentChunk();
+        continue;
+      }
       // read page
       if (readAndCalcFromPage(curStartTime, curEndTime)) {
         return true;
@@ -312,8 +308,9 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private boolean readAndCalcFromPage(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {
-      if (reader.canUseCurrentPageStatistics()) {
-        Statistics pageStatistics = reader.currentPageStatistics();
+      Statistics pageStatistics = reader.currentPageStatistics();
+      // must be non overlapped page
+      if (pageStatistics != null) {
         // current page max than time range
         if (pageStatistics.getStartTime() >= curEndTime) {
           if (ascending) {

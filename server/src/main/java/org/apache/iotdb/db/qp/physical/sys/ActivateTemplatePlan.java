@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 
 public class ActivateTemplatePlan extends PhysicalPlan {
@@ -46,11 +45,6 @@ public class ActivateTemplatePlan extends PhysicalPlan {
   public ActivateTemplatePlan(PartialPath prefixPath) {
     super(OperatorType.ACTIVATE_TEMPLATE);
     this.prefixPath = prefixPath;
-  }
-
-  @Override
-  public List<? extends PartialPath> getAuthPaths() {
-    return Collections.singletonList(prefixPath);
   }
 
   @Override

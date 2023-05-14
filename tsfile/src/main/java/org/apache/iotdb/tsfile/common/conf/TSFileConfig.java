@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
-import java.util.Properties;
 
 /** TSFileConfig is a configuration class. Every variable is public and has default value. */
 public class TSFileConfig implements Serializable {
@@ -74,8 +73,8 @@ public class TSFileConfig implements Serializable {
   private int groupSizeInByte = 128 * 1024 * 1024;
   /** The memory size for each series writer to pack page, default value is 64KB. */
   private int pageSizeInByte = 64 * 1024;
-  /** The maximum number of data points in a page, default value is 1024 * 1024. */
-  private int maxNumberOfPointsInPage = 1024 * 1024;
+  /** The maximum number of data points in a page, default value 4096. */
+  private int maxNumberOfPointsInPage = 4096;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */
@@ -146,10 +145,6 @@ public class TSFileConfig implements Serializable {
   private double bloomFilterErrorRate = 0.05;
   /** The amount of data iterate each time */
   private int batchSize = 1000;
-
-  private int patternMatchingThreshold = 1000000;
-  /** customizedProperties, this should be empty by default. */
-  private Properties customizedProperties = new Properties();
 
   public TSFileConfig() {}
 
@@ -417,19 +412,123 @@ public class TSFileConfig implements Serializable {
     this.batchSize = batchSize;
   }
 
-  public Properties getCustomizedProperties() {
-    return customizedProperties;
+  private boolean enableSynopsis = false;
+
+  public boolean isEnableSynopsis() {
+    return enableSynopsis;
   }
 
-  public void setCustomizedProperties(Properties customizedProperties) {
-    this.customizedProperties = customizedProperties;
+  public void setEnableSynopsis(boolean enableSynopsis) {
+    this.enableSynopsis = enableSynopsis;
   }
 
-  public int getPatternMatchingThreshold() {
-    return patternMatchingThreshold;
+  private boolean enableSSTSketch = false;
+
+  public boolean isEnableSSTSketch() {
+    return enableSSTSketch;
   }
 
-  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
-    this.patternMatchingThreshold = patternMatchingThreshold;
+  public void setEnableSSTSketch(boolean enableSSTSketch) {
+    this.enableSSTSketch = enableSSTSketch;
+  }
+
+  private boolean enableBloomFilter = false;
+
+  public boolean isEnableBloomFilter() {
+    return enableBloomFilter;
+  }
+
+  public void setEnableBloomFilter(boolean enableBloomFilter) {
+    this.enableBloomFilter = enableBloomFilter;
+  }
+
+  private int bloomFilterBitsPerKey = 8;
+
+  public int getBloomFilterBitsPerKey() {
+    return bloomFilterBitsPerKey;
+  }
+
+  public void setBloomFilterBitsPerKey(int bits) {
+    this.bloomFilterBitsPerKey = bits;
+  }
+
+  private int synopsisSizeInByte = 1024;
+
+  public int getSynopsisSizeInByte() {
+    return this.synopsisSizeInByte;
+  }
+
+  public void setSynopsisSizeInByte(int size) {
+    this.synopsisSizeInByte = size;
+  }
+
+  private int maxNumberOfPointsInChunk = 2000;
+
+  public int getMaxNumberOfPointsInChunk() {
+    return this.maxNumberOfPointsInChunk;
+  }
+
+  public void setMaxNumberOfPointsInChunk(int points) {
+    this.maxNumberOfPointsInChunk = points;
+  }
+
+  private int KLLBulkMergeB = 16;
+
+  public int getKLLBulkMergeB() {
+    return this.KLLBulkMergeB;
+  }
+
+  public void setKLLBulkMergeB(int b) {
+    this.KLLBulkMergeB = b;
+  }
+
+  private int summaryType = 0;
+
+  public int getSummaryType() {
+    return this.summaryType;
+  }
+
+  public void setSummaryType(int type) {
+    this.summaryType = type;
+  }
+
+  private double QUANTILE = 0;
+
+  public double getQUANTILE() {
+    return this.QUANTILE;
+  }
+
+  public void setQUANTILE(double QUANTILE) {
+    this.QUANTILE = QUANTILE;
+  }
+
+  private String quantileFile = "";
+
+  public String getQuantileFile() {
+    return this.quantileFile;
+  }
+
+  public void setQuantileFile(String file) {
+    this.quantileFile = file;
+  }
+
+  private boolean synopsisForWholeChunkWhenFlush = true;
+
+  public void setSynopsisForWholeChunkWhenFlush(boolean x) {
+    this.synopsisForWholeChunkWhenFlush = x;
+  }
+
+  public boolean getSynopsisForWholeChunkWhenFlush() {
+    return this.synopsisForWholeChunkWhenFlush;
+  }
+
+  private int sketchSizeRatio = 1;
+
+  public void setSketchSizeRatio(int x) {
+    this.sketchSizeRatio = x;
+  }
+
+  public int getSketchSizeRatio() {
+    return this.sketchSizeRatio;
   }
 }

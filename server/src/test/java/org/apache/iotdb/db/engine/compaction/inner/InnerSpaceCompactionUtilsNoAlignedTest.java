@@ -38,7 +38,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -55,7 +54,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 /**
@@ -191,10 +189,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       long[] points = new long[fileNum];
       for (int i = 1; i <= fileNum; i++) {
@@ -272,10 +279,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -355,10 +371,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -406,10 +431,6 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
     IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
     try {
       List<TsFileResource> sourceFiles = new ArrayList();
-      Set<String> fullPathSetWithDeleted = new HashSet<>(fullPathSet);
-      // we add a deleted timeseries to simulate timeseries is deleted before compaction.
-      String deletedPath = "root.compactionTest.device999.s999";
-      fullPathSetWithDeleted.add(deletedPath);
       int fileNum = 6;
       long pointStep = 300L;
       for (int i = 0; i < fileNum; ++i) {
@@ -421,18 +442,23 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
         sourceFiles.add(resource);
         CompactionFileGeneratorUtils.writeTsFile(
-            fullPathSetWithDeleted, chunkPagePointsNum, i * 2000L, resource);
-        Map<String, Pair<Long, Long>> deletionMap = new HashMap<>();
-        deletionMap.put(deletedPath, new Pair<>(i * 2000L, (i + 1) * 2000L));
-        CompactionFileGeneratorUtils.generateMods(deletionMap, resource, false);
+            fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
-
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -450,271 +476,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       if (curPointNum > 0) {
         chunkPointsArray.add(pointsArray);
       }
-      for (String path : fullPathSetWithDeleted) {
+      for (String path : fullPathSet) {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
-      chunkPagePointsNumMerged.put(deletedPath, null);
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
-      Map<PartialPath, List<TimeValuePair>> compactedData =
-          CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
-      CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-    } finally {
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
-    }
-  }
-
-  @Test
-  public void testMergeChunkWithDifferentEncoding() throws Exception {
-    long testTargetChunkPointNum = 1000L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10240);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
-    long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(1);
-    long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
-    try {
-      List<TsFileResource> sourceFiles = new ArrayList();
-      Set<String> fullPathSetWithDeleted = new HashSet<>(fullPathSet);
-      // we add a deleted timeseries to simulate timeseries is deleted before compaction.
-      String deletedPath = "root.compactionTest.device999.s999";
-      fullPathSetWithDeleted.add(deletedPath);
-      int fileNum = 6;
-      long pointStep = 300L;
-      for (int i = 0; i < fileNum; ++i) {
-        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-        List<Long> pagePointsNum = new ArrayList<>();
-        pagePointsNum.add((i + 1L) * pointStep);
-        chunkPagePointsNum.add(pagePointsNum);
-        TsFileResource resource =
-            new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
-        sourceFiles.add(resource);
-        CompactionFileGeneratorUtils.writeTsFile(
-            fullPathSetWithDeleted,
-            chunkPagePointsNum,
-            i * 2000L,
-            resource,
-            i % 2 == 0 ? TSEncoding.PLAIN : TSEncoding.RLE,
-            CompressionType.SNAPPY);
-        Map<String, Pair<Long, Long>> deletionMap = new HashMap<>();
-        deletionMap.put(deletedPath, new Pair<>(i * 2000L, (i + 1) * 2000L));
-        CompactionFileGeneratorUtils.generateMods(deletionMap, resource, false);
-      }
-      Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
-
-      Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
-      // outer list is a chunk, inner list is point num in each page
-      List<List<Long>> chunkPointsArray = new ArrayList<>();
-      List<Long> pointsArray = new ArrayList<>();
-      long curPointNum = 0L;
-      for (int i = 0; i < fileNum; ++i) {
-        curPointNum += (i + 1L) * pointStep;
-        pointsArray.add((i + 1L) * pointStep);
-        if (curPointNum > testTargetChunkPointNum) {
-          chunkPointsArray.add(pointsArray);
-          pointsArray = new ArrayList<>();
-          curPointNum = 0;
-        }
-      }
-      if (curPointNum > 0) {
-        chunkPointsArray.add(pointsArray);
-      }
-      for (String path : fullPathSetWithDeleted) {
-        chunkPagePointsNumMerged.put(path, chunkPointsArray);
-      }
-      chunkPagePointsNumMerged.put(deletedPath, null);
-      Map<PartialPath, List<TimeValuePair>> compactedData =
-          CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
-      CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-    } finally {
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
-    }
-  }
-
-  @Test
-  public void testMergeChunkWithDifferentCompression() throws Exception {
-    long testTargetChunkPointNum = 1000L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10240);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
-    long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(1);
-    long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
-    try {
-      List<TsFileResource> sourceFiles = new ArrayList();
-      Set<String> fullPathSetWithDeleted = new HashSet<>(fullPathSet);
-      // we add a deleted timeseries to simulate timeseries is deleted before compaction.
-      String deletedPath = "root.compactionTest.device999.s999";
-      fullPathSetWithDeleted.add(deletedPath);
-      int fileNum = 6;
-      long pointStep = 300L;
-      for (int i = 0; i < fileNum; ++i) {
-        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-        List<Long> pagePointsNum = new ArrayList<>();
-        pagePointsNum.add((i + 1L) * pointStep);
-        chunkPagePointsNum.add(pagePointsNum);
-        TsFileResource resource =
-            new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
-        sourceFiles.add(resource);
-        CompactionFileGeneratorUtils.writeTsFile(
-            fullPathSetWithDeleted,
-            chunkPagePointsNum,
-            i * 2000L,
-            resource,
-            TSEncoding.PLAIN,
-            i % 2 == 0 ? CompressionType.SNAPPY : CompressionType.GZIP);
-        Map<String, Pair<Long, Long>> deletionMap = new HashMap<>();
-        deletionMap.put(deletedPath, new Pair<>(i * 2000L, (i + 1) * 2000L));
-        CompactionFileGeneratorUtils.generateMods(deletionMap, resource, false);
-      }
-      Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
-
-      Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
-      // outer list is a chunk, inner list is point num in each page
-      List<List<Long>> chunkPointsArray = new ArrayList<>();
-      List<Long> pointsArray = new ArrayList<>();
-      long curPointNum = 0L;
-      for (int i = 0; i < fileNum; ++i) {
-        curPointNum += (i + 1L) * pointStep;
-        pointsArray.add((i + 1L) * pointStep);
-        if (curPointNum > testTargetChunkPointNum) {
-          chunkPointsArray.add(pointsArray);
-          pointsArray = new ArrayList<>();
-          curPointNum = 0;
-        }
-      }
-      if (curPointNum > 0) {
-        chunkPointsArray.add(pointsArray);
-      }
-      for (String path : fullPathSetWithDeleted) {
-        chunkPagePointsNumMerged.put(path, chunkPointsArray);
-      }
-      chunkPagePointsNumMerged.put(deletedPath, null);
-      Map<PartialPath, List<TimeValuePair>> compactedData =
-          CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
-      CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-    } finally {
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
-    }
-  }
-
-  @Test
-  public void testMergeChunkWithDifferentCompressionAndEncoding() throws Exception {
-    long testTargetChunkPointNum = 1000L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10240);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
-    long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(1);
-    long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1);
-    try {
-      List<TsFileResource> sourceFiles = new ArrayList();
-      Set<String> fullPathSetWithDeleted = new HashSet<>(fullPathSet);
-      // we add a deleted timeseries to simulate timeseries is deleted before compaction.
-      String deletedPath = "root.compactionTest.device999.s999";
-      fullPathSetWithDeleted.add(deletedPath);
-      int fileNum = 6;
-      long pointStep = 300L;
-      Random random = new Random();
-      for (int i = 0; i < fileNum; ++i) {
-        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-        List<Long> pagePointsNum = new ArrayList<>();
-        pagePointsNum.add((i + 1L) * pointStep);
-        chunkPagePointsNum.add(pagePointsNum);
-        TsFileResource resource =
-            new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
-        sourceFiles.add(resource);
-        CompactionFileGeneratorUtils.writeTsFile(
-            fullPathSetWithDeleted,
-            chunkPagePointsNum,
-            i * 2000L,
-            resource,
-            random.nextInt() % 2 == 0
-                ? (random.nextInt() % 5 < 2 ? TSEncoding.RLE : TSEncoding.GORILLA)
-                : TSEncoding.PLAIN,
-            random.nextInt() % 3 == 0
-                ? (random.nextInt() % 5 < 2 ? CompressionType.SNAPPY : CompressionType.LZ4)
-                : CompressionType.GZIP);
-        Map<String, Pair<Long, Long>> deletionMap = new HashMap<>();
-        deletionMap.put(deletedPath, new Pair<>(i * 2000L, (i + 1) * 2000L));
-        CompactionFileGeneratorUtils.generateMods(deletionMap, resource, false);
-      }
-      Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
-
-      Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
-      // outer list is a chunk, inner list is point num in each page
-      List<List<Long>> chunkPointsArray = new ArrayList<>();
-      List<Long> pointsArray = new ArrayList<>();
-      long curPointNum = 0L;
-      for (int i = 0; i < fileNum; ++i) {
-        curPointNum += (i + 1L) * pointStep;
-        pointsArray.add((i + 1L) * pointStep);
-        if (curPointNum > testTargetChunkPointNum) {
-          chunkPointsArray.add(pointsArray);
-          pointsArray = new ArrayList<>();
-          curPointNum = 0;
-        }
-      }
-      if (curPointNum > 0) {
-        chunkPointsArray.add(pointsArray);
-      }
-      for (String path : fullPathSetWithDeleted) {
-        chunkPagePointsNumMerged.put(path, chunkPointsArray);
-      }
-      chunkPagePointsNumMerged.put(deletedPath, null);
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
@@ -789,10 +554,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -859,10 +633,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -932,10 +715,19 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -961,7 +753,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
   }
 
   @Test
-  public void testMixCompact1() throws Exception {
+  public void testMixCompact() throws Exception {
     long testTargetChunkPointNum = 2000L;
     long testChunkSizeLowerBound = 1024L;
     long testChunkPointNumLowerBound = 100L;
@@ -999,87 +791,24 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
         CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2750);
         CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2950);
-        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2500);
-        CompactionCheckerUtils.putChunk(
-            chunkPagePointsNumMerged, path, new long[] {1000, 500, 500});
-      }
-      Map<PartialPath, List<TimeValuePair>> compactedData =
-          CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
-      CompactionCheckerUtils.validDataByValueList(originData, compactedData);
-      CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
-    } finally {
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
-      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
-    }
-  }
-
-  @Test
-  public void testMixCompact2() throws Exception {
-    long testTargetChunkPointNum = 2000L;
-    long testChunkSizeLowerBound = 1024L;
-    long testChunkPointNumLowerBound = 100L;
-    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-    long originTargetChunkPointNum =
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024 * 1024);
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
-    long originChunkSizeLowerBound =
-        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
-    long originChunkPointNumLowerBound =
-        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
-    try {
-      List<TsFileResource> sourceFiles = new ArrayList();
-      int fileNum = 12;
-      long pointStep = 10L;
-      long[] points = new long[] {1960, 50, 1960, 50, 2100, 50, 1960, 2300, 2500, 1000, 500, 500};
-      for (int i = 0; i < fileNum; ++i) {
-        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-        List<Long> pagePointsNum = new ArrayList<>();
-        pagePointsNum.add(points[i]);
-        chunkPagePointsNum.add(pagePointsNum);
-        TsFileResource resource =
-            new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
-        sourceFiles.add(resource);
-        CompactionFileGeneratorUtils.writeTsFile(
-            fullPathSet, chunkPagePointsNum, i * 2500L, resource);
-      }
-
-      Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
-      TsFileResource targetResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles);
-      InnerSpaceCompactionUtils.moveTargetFile(targetResource, "");
-      Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
-      // outer list is a chunk, inner list is point num in each page
-      for (String path : fullPathSet) {
-        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2010);
-        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2010);
-        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2100);
-        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2010);
-        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2300);
         CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, path, 2500);
         CompactionCheckerUtils.putChunk(
             chunkPagePointsNumMerged, path, new long[] {1000, 500, 500});

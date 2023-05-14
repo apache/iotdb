@@ -22,7 +22,6 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -94,7 +93,13 @@ public class Tablet {
 
     int indexInSchema = 0;
     for (MeasurementSchema schema : schemas) {
-      measurementIndex.put(schema.getMeasurementId(), indexInSchema);
+      if (schema.getType() == TSDataType.VECTOR) {
+        for (String measurementId : schema.getSubMeasurementsList()) {
+          measurementIndex.put(measurementId, indexInSchema);
+        }
+      } else {
+        measurementIndex.put(schema.getMeasurementId(), indexInSchema);
+      }
       indexInSchema++;
     }
 
@@ -111,83 +116,14 @@ public class Tablet {
     this.schemas = schemas;
   }
 
-  public void initBitMaps() {
-    this.bitMaps = new BitMap[schemas.size()];
-    for (int column = 0; column < schemas.size(); column++) {
-      this.bitMaps[column] = new BitMap(getMaxRowNumber());
-    }
-  }
-
   public void addTimestamp(int rowIndex, long timestamp) {
     timestamps[rowIndex] = timestamp;
-  }
-
-  public void addValues(int rowIndex, TsPrimitiveType[] values) {
-    for (int i = 0; i < schemas.size(); i++) {
-      MeasurementSchema measurementSchema = schemas.get(i);
-      addValueOfDataType(measurementSchema.getType(), rowIndex, i, values[i]);
-    }
   }
 
   public void addValue(String measurementId, int rowIndex, Object value) {
     int indexOfSchema = measurementIndex.get(measurementId);
     MeasurementSchema measurementSchema = schemas.get(indexOfSchema);
     addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
-  }
-
-  private void addValueOfDataType(
-      TSDataType dataType, int rowIndex, int indexOfSchema, TsPrimitiveType value) {
-    if (value == null) {
-      // init the bitMap to mark null value
-      if (bitMaps == null) {
-        bitMaps = new BitMap[values.length];
-      }
-      if (bitMaps[indexOfSchema] == null) {
-        bitMaps[indexOfSchema] = new BitMap(maxRowNumber);
-      }
-      // mark the null value position
-      bitMaps[indexOfSchema].mark(rowIndex);
-    }
-    switch (dataType) {
-      case TEXT:
-        {
-          Binary[] sensor = (Binary[]) values[indexOfSchema];
-          sensor[rowIndex] = value != null ? value.getBinary() : Binary.EMPTY_VALUE;
-          break;
-        }
-      case FLOAT:
-        {
-          float[] sensor = (float[]) values[indexOfSchema];
-          sensor[rowIndex] = value != null ? value.getFloat() : Float.MIN_VALUE;
-          break;
-        }
-      case INT32:
-        {
-          int[] sensor = (int[]) values[indexOfSchema];
-          sensor[rowIndex] = value != null ? value.getInt() : Integer.MIN_VALUE;
-          break;
-        }
-      case INT64:
-        {
-          long[] sensor = (long[]) values[indexOfSchema];
-          sensor[rowIndex] = value != null ? value.getLong() : Long.MIN_VALUE;
-          break;
-        }
-      case DOUBLE:
-        {
-          double[] sensor = (double[]) values[indexOfSchema];
-          sensor[rowIndex] = value != null ? value.getDouble() : Double.MIN_VALUE;
-          break;
-        }
-      case BOOLEAN:
-        {
-          boolean[] sensor = (boolean[]) values[indexOfSchema];
-          sensor[rowIndex] = value != null && value.getBoolean();
-          break;
-        }
-      default:
-        throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
-    }
   }
 
   private void addValueOfDataType(
@@ -208,11 +144,7 @@ public class Tablet {
       case TEXT:
         {
           Binary[] sensor = (Binary[]) values[indexOfSchema];
-          if (value instanceof Binary) {
-            sensor[rowIndex] = (Binary) value;
-          } else {
-            sensor[rowIndex] = value != null ? new Binary((String) value) : Binary.EMPTY_VALUE;
-          }
+          sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
           break;
         }
       case FLOAT:

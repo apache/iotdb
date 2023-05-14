@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -72,6 +73,9 @@ public class LogReplayer {
 
   // only unsequence file tolerates duplicated data
   private boolean sequence;
+
+  private Map<String, Long> tempStartTimeMap = new HashMap<>();
+  private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
   public LogReplayer(
       String logNodePrefix,
@@ -159,15 +163,14 @@ public class LogReplayer {
   private void replayInsert(
       InsertPlan plan, VirtualStorageGroupProcessor virtualStorageGroupProcessor)
       throws WriteProcessException, QueryProcessException {
-    if (!plan.hasValidMeasurements()) {
-      return;
-    }
     if (currentTsFileResource != null) {
-      long minTime;
+      long minTime, maxTime;
       if (plan instanceof InsertRowPlan) {
         minTime = ((InsertRowPlan) plan).getTime();
+        maxTime = ((InsertRowPlan) plan).getTime();
       } else {
-        minTime = plan.getMinTime();
+        minTime = ((InsertTabletPlan) plan).getMinTime();
+        maxTime = ((InsertTabletPlan) plan).getMaxTime();
       }
       String deviceId =
           plan.isAligned()
@@ -177,6 +180,14 @@ public class LogReplayer {
       long lastEndTime = currentTsFileResource.getEndTime(deviceId);
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
         return;
+      }
+      Long startTime = tempStartTimeMap.get(deviceId);
+      if (startTime == null || startTime > minTime) {
+        tempStartTimeMap.put(deviceId, minTime);
+      }
+      Long endTime = tempEndTimeMap.get(deviceId);
+      if (endTime == null || endTime < maxTime) {
+        tempEndTimeMap.put(deviceId, maxTime);
       }
     }
 

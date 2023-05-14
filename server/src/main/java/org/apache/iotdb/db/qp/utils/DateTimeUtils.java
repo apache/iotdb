@@ -36,9 +36,9 @@ import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
-public class DateTimeUtils {
+public class DatetimeUtils {
 
-  private DateTimeUtils() {
+  private DatetimeUtils() {
     // forbidding instantiation
   }
 
@@ -553,7 +553,7 @@ public class DateTimeUtils {
           unit += duration.charAt(i);
         }
         total +=
-            DateTimeUtils.convertDurationStrToLong(
+            DatetimeUtils.convertDurationStrToLong(
                 currentTime == -1 ? -1 : currentTime + total,
                 temp,
                 unit.toLowerCase(),
@@ -584,7 +584,7 @@ public class DateTimeUtils {
           res *= 30 * 86_400_000L;
         } else {
           Calendar calendar = Calendar.getInstance();
-          calendar.setTimeZone(SessionManager.getInstance().getSessionTimeZone());
+          calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
           calendar.setTimeInMillis(currentTime);
           calendar.add(Calendar.MONTH, (int) (value));
           res = calendar.getTimeInMillis() - currentTime;
@@ -665,22 +665,6 @@ public class DateTimeUtils {
 
   public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {
     return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millisecond), ZoneId.systemDefault());
-  }
-
-  public static long convertMilliTimeWithPrecision(long milliTime) {
-    long result = milliTime;
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
   }
 
   public enum DurationUnit {

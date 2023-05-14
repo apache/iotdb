@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
-import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -41,17 +40,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.audit.AuditLogOperation.DDL;
-
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
   private static final String NO_SUCH_USER_EXCEPTION = "No such user : %s";
-
-  private static final boolean enableAuditLog =
-      IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
 
   static {
     ADMIN_PRIVILEGES = new HashSet<>();
@@ -147,13 +141,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           String.format(
               "User %s already has %s on %s", username, PrivilegeType.values()[privilegeId], path));
     }
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format(
-              "grant privilege to user,username %s ,path: %s,privilegeId:%s",
-              username, path, privilegeId),
-          DDL);
-    }
   }
 
   @Override
@@ -172,13 +159,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
               "User %s does not have %s on %s",
               username, PrivilegeType.values()[privilegeId], path));
     }
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format(
-              "revoke privilege from user,username:%s,path:%s,privilegeId:%s",
-              username, path, privilegeId),
-          DDL);
-    }
   }
 
   @Override
@@ -194,9 +174,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (!success) {
       throw new AuthException(String.format("Role %s does not exist", roleName));
     } else {
-      if (enableAuditLog) {
-        AuditLogger.log(String.format("role %s is deleted", roleName), DDL);
-      }
       // proceed to revoke the role in all users
       List<String> users = userManager.listAllUsers();
       for (String user : users) {
@@ -225,10 +202,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           String.format(
               "Role %s already has %s on %s", roleName, PrivilegeType.values()[privilegeId], path));
     }
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format("role %s is granted,privilegeId: %s", roleName, privilegeId), DDL);
-    }
   }
 
   @Override
@@ -243,13 +216,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           String.format(
               "Role %s does not have %s on %s",
               roleName, PrivilegeType.values()[privilegeId], path));
-    }
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format(
-              "revoke privilege from role,role name:%s,path:%s,privilegeId:%s",
-              roleName, path, privilegeId),
-          DDL);
     }
   }
 
@@ -266,11 +232,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       if (role == null) {
         throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
       }
-      if (enableAuditLog) {
-        AuditLogger.log(
-            String.format("grant role to user,role name %s ,username: %s", roleName, username),
-            DDL);
-      }
     } else {
       throw new AuthException(String.format("User %s already has role %s", username, roleName));
     }
@@ -284,10 +245,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     if (!userManager.revokeRoleFromUser(roleName, username)) {
       throw new AuthException(String.format("User %s does not have role %s", username, roleName));
-    }
-    if (enableAuditLog) {
-      AuditLogger.log(
-          String.format("revoke role from user,role name:%s,username:%s", roleName, username), DDL);
     }
   }
 

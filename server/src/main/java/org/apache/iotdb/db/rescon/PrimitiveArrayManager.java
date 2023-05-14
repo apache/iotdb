@@ -48,7 +48,7 @@ public class PrimitiveArrayManager {
 
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-      CONFIG.getAllocateMemoryForStorageEngine()
+      CONFIG.getAllocateMemoryForWrite()
           * CONFIG.getBufferedArraysMemoryProportion()
           / AMPLIFICATION_FACTOR;
 
@@ -278,7 +278,7 @@ public class PrimitiveArrayManager {
    * @return an array of primitive data arrays
    */
   public static Object createDataListsByType(TSDataType dataType, int size) {
-    int arrayNumber = getArrayRowCount(size);
+    int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
     switch (dataType) {
       case BOOLEAN:
         boolean[][] booleans = new boolean[arrayNumber][];
@@ -319,9 +319,5 @@ public class PrimitiveArrayManager {
       default:
         throw new UnSupportedDataTypeException(dataType.name());
     }
-  }
-
-  public static int getArrayRowCount(int size) {
-    return size / ARRAY_SIZE + (size % ARRAY_SIZE == 0 ? 0 : 1);
   }
 }

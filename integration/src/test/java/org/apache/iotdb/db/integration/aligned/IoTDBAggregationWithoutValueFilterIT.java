@@ -453,48 +453,4 @@ public class IoTDBAggregationWithoutValueFilterIT {
       fail(e.getMessage());
     }
   }
-
-  @Test
-  public void sumAlignedWithDuplicateTimeTest() throws ClassNotFoundException {
-    double[][] retArray = {{33.0, 33.0}};
-    String[] columnNames = {"sum(root.sg5.d1.success)", "sum(root.sg5.d1.fail)"};
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg5.d1(timestamp,success,fail) aligned values(1,10,10);");
-      statement.execute("insert into root.sg5.d1(timestamp,success,fail) aligned values(1,11,11);");
-      statement.execute("insert into root.sg5.d1(timestamp,success,fail) aligned values(2,11,11);");
-      statement.execute("insert into root.sg5.d1(timestamp,success,fail) aligned values(3,11,11);");
-      boolean hasResultSet = statement.execute("select sum(success), sum(fail) from root.sg5.d1");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        Map<String, Integer> map = new HashMap<>();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          map.put(resultSetMetaData.getColumnName(i), i);
-        }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
-        int cnt = 0;
-        while (resultSet.next()) {
-          double[] ans = new double[columnNames.length];
-          StringBuilder builder = new StringBuilder();
-          // No need to add time column for aggregation query
-          for (int i = 0; i < columnNames.length; i++) {
-            String columnName = columnNames[i];
-            int index = map.get(columnName);
-            ans[i] = Double.parseDouble(resultSet.getString(index));
-          }
-          assertArrayEquals(retArray[cnt], ans, DELTA);
-          cnt++;
-        }
-        assertEquals(1, cnt);
-      }
-
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
 }

@@ -21,24 +21,15 @@
 
 IOTDB_CONF="`dirname "$0"`/../conf"
 rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${IOTDB_CONF}/iotdb-engine.properties`
-
-echo "check whether the rpc_port is used..., port is" $rpc_port
-
-if  type lsof > /dev/null 2>&1 ; then
-  PID=$(lsof -t -i:${rpc_port} -sTCP:LISTEN)
-elif type netstat > /dev/null 2>&1 ; then
-  PID=$(netstat -anp 2>/dev/null | grep ":${rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
+if type lsof > /dev/null; then
+  PID=$(lsof -t -i:${rpc_port})
 else
-  echo ""
-  echo " Error: No necessary tool."
-  echo " Please install 'lsof' or 'netstat'."
-  exit 1
+  PID=$(ps ax | grep -i 'IoTDB' | grep java | grep -v grep | awk '{print $1}')
 fi
-
 if [ -z "$PID" ]; then
   echo "No IoTDB server to stop"
   exit 1
 else
   kill -s TERM $PID
-  echo "close IoTDB, PID:" $PID
+  echo "close IoTDB"
 fi

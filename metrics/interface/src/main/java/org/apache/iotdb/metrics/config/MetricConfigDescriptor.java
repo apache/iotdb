@@ -32,48 +32,73 @@ import java.io.InputStream;
 /** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
-  /** the metric config of metric service */
-  private final MetricConfig metricConfig;
+  private MetricConfig metricConfig;
+
+  public MetricConfig getMetricConfig() {
+    return metricConfig;
+  }
 
   private MetricConfigDescriptor() {
-    metricConfig = loadProps();
+    loadProps();
+  }
+
+  public static MetricConfigDescriptor getInstance() {
+    return MetricConfigDescriptorHolder.INSTANCE;
   }
 
   /**
-   * load property file into metric config. Use default values if not find.
+   * find the config file path.
    *
-   * @return metric config
+   * @return the file path
    */
-  public MetricConfig loadProps() {
-    MetricConfig metricConfig;
+  private String getPropsUrl() {
+    String url = System.getProperty(MetricConstant.IOTDB_CONF, null);
+    if (url == null) {
+      logger.warn(
+          "Cannot find IOTDB_CONF environment variable when loading "
+              + "config file {}, use default configuration",
+          MetricConstant.CONFIG_NAME);
+      return null;
+    } else {
+      url += (File.separatorChar + MetricConstant.CONFIG_NAME);
+    }
+    return url;
+  }
+
+  /** Load a property file and set MetricConfig variables. If not found file, use default value. */
+  public void loadProps() {
     String url = getPropsUrl();
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
     if (url != null) {
-      try (InputStream inputStream = new FileInputStream(url)) {
+      try (InputStream inputStream = new FileInputStream(new File(url))) {
         logger.info("Start to read config file {}", url);
         metricConfig = (MetricConfig) yaml.load(inputStream);
+        return;
       } catch (IOException e) {
-        logger.warn(
-            "Fail to find config file : {} because of {}, use default config.",
-            url,
-            e.getMessage());
-        metricConfig = new MetricConfig();
+        logger.warn("Fail to find config file : {}, use default config.", url, e);
       }
     } else {
-      logger.warn("Fail to find config file, use default config.");
-      metricConfig = new MetricConfig();
+      logger.warn("Fail to find config file, use default");
     }
-    return metricConfig;
+    metricConfig = new MetricConfig();
   }
 
-  /**
-   * load property file into metric config, use default values if not find.
-   *
-   * @return reload level of metric service
-   */
-  public ReloadLevel loadHotProps() {
-    MetricConfig newMetricConfig = loadProps();
+  public ReloadLevel loadHotProperties() {
+    String url = getPropsUrl();
+    Constructor constructor = new Constructor(MetricConfig.class);
+    Yaml yaml = new Yaml(constructor);
+    MetricConfig newMetricConfig = null;
+    if (url != null) {
+      try (InputStream inputStream = new FileInputStream(new File(url))) {
+        logger.info("Start to read config file {}", url);
+        newMetricConfig = (MetricConfig) yaml.load(inputStream);
+      } catch (IOException e) {
+        logger.warn("Fail to find config file : {}, use default", url, e);
+      }
+    } else {
+      logger.warn("Fail to find config file, use default");
+    }
     ReloadLevel reloadLevel = ReloadLevel.NOTHING;
     if (newMetricConfig != null && !metricConfig.equals(newMetricConfig)) {
       if (!metricConfig.getEnableMetric().equals(newMetricConfig.getEnableMetric())) {
@@ -85,11 +110,9 @@ public class MetricConfigDescriptor {
       } else if (metricConfig.getEnableMetric()) {
         // restart reporters or restart service
         if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
-            || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
-            || !metricConfig.getPredefinedMetrics().equals(newMetricConfig.getPredefinedMetrics())
             || !metricConfig
-                .getAsyncCollectPeriodInSecond()
-                .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
+                .getPredefinedMetrics()
+                .equals(newMetricConfig.getPredefinedMetrics())) {
           reloadLevel = ReloadLevel.RESTART_METRIC;
         } else {
           reloadLevel = ReloadLevel.RESTART_REPORTER;
@@ -100,40 +123,7 @@ public class MetricConfigDescriptor {
     return reloadLevel;
   }
 
-  /** get the path of metric config file. */
-  private String getPropsUrl() {
-    // try to get conf folder of standalone iotdb or datanode
-    String url = System.getProperty(MetricConstant.IOTDB_CONF, null);
-    if (url == null) {
-      // try to get conf folder from IOTDB_HOME
-      url = System.getProperty(MetricConstant.IOTDB_HOME, null);
-      if (url != null) {
-        url += File.separator + "conf";
-      }
-    }
-    // return null when not find
-    if (url == null) {
-      logger.warn(
-          "Cannot find IOTDB_CONF environment variable when loading "
-              + "config file {}, use default configuration",
-          MetricConstant.CONFIG_NAME);
-      return null;
-    } else {
-      url += (File.separatorChar + MetricConstant.CONFIG_NAME);
-    }
-
-    return url;
-  }
-
   private static class MetricConfigDescriptorHolder {
     private static final MetricConfigDescriptor INSTANCE = new MetricConfigDescriptor();
-  }
-
-  public static MetricConfigDescriptor getInstance() {
-    return MetricConfigDescriptorHolder.INSTANCE;
-  }
-
-  public MetricConfig getMetricConfig() {
-    return metricConfig;
   }
 }

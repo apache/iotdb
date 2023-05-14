@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -36,11 +35,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.Constant.DEVICE_1;
-import static org.apache.iotdb.tsfile.Constant.DEVICE_2;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_1;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_2;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
+import static org.apache.iotdb.tsfile.Constant.*;
 
 public class TsFileWriteAlignedWithTablet {
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriteAlignedWithTablet.class);
@@ -53,9 +48,9 @@ public class TsFileWriteAlignedWithTablet {
 
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new MeasurementSchema(SENSOR_1, TSDataType.TEXT, TSEncoding.PLAIN));
-      measurementSchemas.add(new MeasurementSchema(SENSOR_2, TSDataType.TEXT, TSEncoding.PLAIN));
-      measurementSchemas.add(new MeasurementSchema(SENSOR_3, TSDataType.TEXT, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema(SENSOR_1, TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema(SENSOR_2, TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema(SENSOR_3, TSDataType.INT64, TSEncoding.PLAIN));
 
       // register align timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(DEVICE_1), measurementSchemas);
@@ -65,9 +60,9 @@ public class TsFileWriteAlignedWithTablet {
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
       writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAlignedWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 200000, 0, 0);
+      writeAlignedWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 20000, 0, 0);
 
-      writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
+      //      writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {
       logger.error("write Tablet failed", e);
     }
@@ -90,8 +85,8 @@ public class TsFileWriteAlignedWithTablet {
       int row = tablet.rowSize++;
       timestamps[row] = startTime++;
       for (int i = 0; i < sensorNum; i++) {
-        Binary[] textSensor = (Binary[]) values[i];
-        textSensor[row] = new Binary("testString.........");
+        long[] textSensor = (long[]) values[i];
+        textSensor[row] = startValue;
       }
       // write
       if (tablet.rowSize == tablet.getMaxRowNumber()) {

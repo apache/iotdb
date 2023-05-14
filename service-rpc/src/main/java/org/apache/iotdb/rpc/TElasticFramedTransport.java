@@ -160,8 +160,4 @@ public class TElasticFramedTransport extends TTransport {
   public void write(byte[] buf, int off, int len) {
     writeBuffer.write(buf, off, len);
   }
-
-  public TTransport getSocket() {
-    return underlying;
-  }
 }

@@ -28,13 +28,11 @@ public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
   public EntityCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    shouldTraverseTemplate = true;
   }
 
   public EntityCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
-    shouldTraverseTemplate = true;
   }
 
   @Override

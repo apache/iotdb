@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 
 public class UnsetTemplatePlan extends PhysicalPlan {
@@ -73,15 +72,6 @@ public class UnsetTemplatePlan extends PhysicalPlan {
 
   public void setTemplateName(String templateName) {
     this.templateName = templateName;
-  }
-
-  @Override
-  public List<? extends PartialPath> getAuthPaths() {
-    try {
-      return Collections.singletonList(new PartialPath(prefixPath));
-    } catch (IllegalPathException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   @Override

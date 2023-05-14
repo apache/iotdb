@@ -106,7 +106,8 @@ public class LastPointReader {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     for (int index = seqFileResource.size() - 1; index >= 0; index--) {
       TsFileResource resource = seqFileResource.get(index);
-      ITimeSeriesMetadata timeseriesMetadata =
+      ITimeSeriesMetadata timeseriesMetadata;
+      timeseriesMetadata =
           loadTimeSeriesMetadata(resource, seriesPath, context, timeFilter, measurements);
       if (timeseriesMetadata != null) {
         if (!timeseriesMetadata.isModified()

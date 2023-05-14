@@ -67,6 +67,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -100,7 +101,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected long fileMetadataPos;
   protected int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
-  protected volatile TsFileMetadata tsFileMetaData;
+  protected TsFileMetadata tsFileMetaData;
   // device -> measurement -> TimeseriesMetadata
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata =
       new ConcurrentHashMap<>();
@@ -269,14 +270,10 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileMetadata readFileMetadata() throws IOException {
     try {
       if (tsFileMetaData == null) {
-        synchronized (this) {
-          if (tsFileMetaData == null) {
-            tsFileMetaData =
-                TsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
-          }
-        }
+        tsFileMetaData =
+            TsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
       }
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error("Something error happened while reading file metadata of file {}", file);
       throw e;
     }
@@ -357,7 +354,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
       try {
         metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
-      } catch (Exception e) {
+      } catch (BufferOverflowException e) {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
@@ -372,7 +369,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     while (buffer.hasRemaining()) {
       try {
         timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
-      } catch (Exception e) {
+      } catch (BufferOverflowException e) {
         logger.error(
             "Something error happened while deserializing TimeseriesMetadata of file {}", file);
         throw e;
@@ -403,7 +400,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       // next layer MeasurementNode of the specific DeviceNode
       metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
       throw e;
     }
@@ -419,7 +416,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     while (buffer.hasRemaining()) {
       try {
         timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
-      } catch (Exception e) {
+      } catch (BufferOverflowException e) {
         logger.error(
             "Something error happened while deserializing TimeseriesMetadata of file {}", file);
         throw e;
@@ -455,7 +452,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       TimeseriesMetadata timeseriesMetadata;
       try {
         timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer, true);
-      } catch (Exception e) {
+      } catch (BufferOverflowException e) {
         logger.error(
             "Something error happened while deserializing TimeseriesMetadata of file {}", file);
         throw e;
@@ -481,7 +478,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
       try {
         metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
-      } catch (Exception e) {
+      } catch (BufferOverflowException e) {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
@@ -513,7 +510,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     MetadataIndexNode measurementMetadataIndexNode;
     try {
       measurementMetadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
       throw e;
     }
@@ -540,7 +537,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       while (buffer.hasRemaining()) {
         try {
           timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
-        } catch (Exception e) {
+        } catch (BufferOverflowException e) {
           logger.error(
               "Something error happened while deserializing TimeseriesMetadata of file {}", file);
           throw e;
@@ -657,7 +654,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         ByteBuffer nextBuffer = readData(startOffset, endOffset);
         getAllDevicesWithIsAligned(MetadataIndexNode.deserializeFrom(nextBuffer), queue);
       }
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error("Something error happened while getting all devices of file {}", file);
       throw e;
     }
@@ -787,19 +784,10 @@ public class TsFileSequenceReader implements AutoCloseable {
             metadataIndexNode.getNodeType(),
             queue);
       }
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error("Something error happened while getting all paths of file {}", file);
       throw e;
     }
-  }
-
-  /**
-   * Check whether the deivce is aligned or not.
-   *
-   * @param measurementNode the next measurement layer node of specific device node
-   */
-  public boolean isAlignedDevice(MetadataIndexNode measurementNode) {
-    return "".equals(measurementNode.getChildren().get(0).getName());
   }
 
   TimeseriesMetadata tryToGetFirstTimeseriesMetadata(MetadataIndexNode measurementNode)
@@ -832,45 +820,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       return tryToGetFirstTimeseriesMetadata(metadataIndexNode);
     }
     return null;
-  }
-
-  /**
-   * @param measurementNode next layer measurement node of specific device leaf node
-   * @param excludedMeasurementIds skip timeseries whose measurementId is in the set
-   */
-  public void getDeviceTimeseriesMetadata(
-      List<TimeseriesMetadata> timeseriesMetadataList,
-      MetadataIndexNode measurementNode,
-      Set<String> excludedMeasurementIds,
-      boolean needChunkMetadata)
-      throws IOException {
-    int metadataIndexListSize = measurementNode.getChildren().size();
-    for (int i = 0; i < metadataIndexListSize; i++) {
-      long endOffset = measurementNode.getEndOffset();
-      if (i != metadataIndexListSize - 1) {
-        endOffset = measurementNode.getChildren().get(i + 1).getOffset();
-      }
-      ByteBuffer nextBuffer = readData(measurementNode.getChildren().get(i).getOffset(), endOffset);
-      if (measurementNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
-        // leaf measurement node
-        while (nextBuffer.hasRemaining()) {
-          TimeseriesMetadata timeseriesMetadata =
-              TimeseriesMetadata.deserializeFrom(
-                  nextBuffer, excludedMeasurementIds, needChunkMetadata);
-          if (timeseriesMetadata != null) {
-            timeseriesMetadataList.add(timeseriesMetadata);
-          }
-        }
-      } else {
-        // internal measurement node
-        MetadataIndexNode nextLayerMeasurementNode = MetadataIndexNode.deserializeFrom(nextBuffer);
-        getDeviceTimeseriesMetadata(
-            timeseriesMetadataList,
-            nextLayerMeasurementNode,
-            excludedMeasurementIds,
-            needChunkMetadata);
-      }
-    }
   }
 
   /**
@@ -922,15 +871,14 @@ public class TsFileSequenceReader implements AutoCloseable {
               needChunkMetadata);
         }
       }
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error("Something error happened while generating MetadataIndex of file {}", file);
       throw e;
     }
   }
 
   /* TimeseriesMetadata don't need deserialize chunk metadata list */
-  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata(boolean needChunkMetadata)
-      throws IOException {
+  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
@@ -950,7 +898,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           null,
           metadataIndexNode.getNodeType(),
           timeseriesMetadataMap,
-          needChunkMetadata);
+          false);
     }
     return timeseriesMetadataMap;
   }
@@ -1032,7 +980,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         return getMetadataAndEndOffset(
             MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, exactSearch);
       }
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
       throw e;
     }
@@ -1085,12 +1033,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @throws IOException io error
    */
   public ChunkHeader readChunkHeader(byte chunkType) throws IOException {
-    try {
-      return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), chunkType);
-    } catch (Throwable t) {
-      logger.warn("Exception {} happened while reading chunk header of {}", t.getMessage(), file);
-      throw t;
-    }
+    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), chunkType);
   }
 
   /**
@@ -1100,12 +1043,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param chunkHeaderSize the size of chunk's header
    */
   private ChunkHeader readChunkHeader(long position, int chunkHeaderSize) throws IOException {
-    try {
-      return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
-    } catch (Throwable t) {
-      logger.warn("Exception {} happened while reading chunk header of {}", t.getMessage(), file);
-      throw t;
-    }
+    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
   }
 
   /**
@@ -1116,12 +1054,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the pages of this chunk
    */
   private ByteBuffer readChunk(long position, int dataSize) throws IOException {
-    try {
-      return readData(position, dataSize);
-    } catch (Throwable t) {
-      logger.warn("Exception {} happened while reading chunk of {}", t.getMessage(), file);
-      throw t;
-    }
+    return readData(position, dataSize);
   }
 
   /**
@@ -1131,32 +1064,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return -chunk
    */
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
-    try {
-      int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
-      ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize);
-      ByteBuffer buffer =
-          readChunk(
-              metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
-      return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
-    } catch (Throwable t) {
-      logger.warn("Exception {} happened while reading chunk of {}", t.getMessage(), file);
-      throw t;
-    }
-  }
-
-  public MeasurementSchema getMeasurementSchema(List<IChunkMetadata> chunkMetadataList)
-      throws IOException {
-    if (chunkMetadataList.isEmpty()) {
-      return null;
-    }
-    IChunkMetadata lastChunkMetadata = chunkMetadataList.get(chunkMetadataList.size() - 1);
-    int chunkHeadSize = ChunkHeader.getSerializedSize(lastChunkMetadata.getMeasurementUid());
-    ChunkHeader header = readChunkHeader(lastChunkMetadata.getOffsetOfChunkHeader(), chunkHeadSize);
-    return new MeasurementSchema(
-        lastChunkMetadata.getMeasurementUid(),
-        header.getDataType(),
-        header.getEncodingType(),
-        header.getCompressionType());
+    int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
+    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize);
+    ByteBuffer buffer =
+        readChunk(
+            metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
+    return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
   }
 
   /**
@@ -1182,12 +1095,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param type given tsfile data type
    */
   public PageHeader readPageHeader(TSDataType type, boolean hasStatistic) throws IOException {
-    try {
-      return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, hasStatistic);
-    } catch (Throwable t) {
-      logger.warn("Exception {} happened while reading page header of {}", t.getMessage(), file);
-      throw t;
-    }
+    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, hasStatistic);
   }
 
   public long position() throws IOException {
@@ -1300,12 +1208,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return data that been read.
    */
   protected ByteBuffer readData(long start, long end) throws IOException {
-    try {
-      return readData(start, (int) (end - start));
-    } catch (Throwable t) {
-      logger.warn("Exception {} happened while reading data of {}", t.getMessage(), file);
-      throw t;
-    }
+    return readData(start, (int) (end - start));
   }
 
   /** notice, the target bytebuffer are not flipped. */
@@ -1354,16 +1257,15 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
 
     tsFileInput.position(headerLength);
-    boolean isComplete = isComplete();
     if (fileSize == headerLength) {
       return headerLength;
-    } else if (isComplete) {
+    } else if (isComplete()) {
       loadMetadataSize();
       if (fastFinish) {
         return TsFileCheckStatus.COMPLETE_FILE;
       }
     }
-    // if not a complete file, we will recover it...
+    // not a complete file, we will recover it...
     long truncatedSize = headerLength;
     byte marker;
     List<long[]> timeBatch = new ArrayList<>();
@@ -1407,10 +1309,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                 while (dataSize > 0) {
                   // a new Page
                   PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
-                  if (pageHeader.getUncompressedSize() != 0) {
-                    // not empty page
-                    chunkStatistics.mergeStatistics(pageHeader.getStatistics());
-                  }
+                  chunkStatistics.mergeChunkMetadataStat(pageHeader.getStatistics());
                   this.skipPageData(pageHeader);
                   dataSize -= pageHeader.getSerializedPageSize();
                   chunkHeader.increasePageNums(1);
@@ -1577,13 +1476,9 @@ public class TsFileSequenceReader implements AutoCloseable {
         // last chunk group Metadata
         chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
       }
-      if (isComplete) {
-        truncatedSize = TsFileCheckStatus.COMPLETE_FILE;
-      } else {
-        truncatedSize = this.position() - 1;
-      }
+      truncatedSize = this.position() - 1;
     } catch (Exception e) {
-      logger.warn(
+      logger.info(
           "TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
           file,
           this.position(),
@@ -1675,7 +1570,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       while (dataSize > 0) {
         // a new Page
         PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
-        chunkStatistics.mergeStatistics(pageHeader.getStatistics());
+        chunkStatistics.mergeChunkMetadataStat(pageHeader.getStatistics());
         this.skipPageData(pageHeader);
         dataSize -= pageHeader.getSerializedPageSize();
         chunkHeader.increasePageNums(1);
@@ -1779,7 +1674,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       // next layer MeasurementNode of the specific DeviceNode
       metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
       throw e;
     }
@@ -2054,7 +1949,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
         collectEachLeafMeasurementNodeOffsetRange(readData(startOffset, endOffset), queue);
       }
-    } catch (Exception e) {
+    } catch (BufferOverflowException e) {
       logger.error(
           "Error occurred while collecting offset ranges of measurement nodes of file {}", file);
       throw e;

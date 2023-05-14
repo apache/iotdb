@@ -105,9 +105,8 @@ public class BasicFunctionOperator extends FunctionOperator {
           ret =
               funcToken.getUnaryExpression(
                   singlePath,
-                  value.length() != 1
-                          && ((value.startsWith("'") && value.endsWith("'"))
-                              || (value.startsWith("\"") && value.endsWith("\"")))
+                  (value.startsWith("'") && value.endsWith("'"))
+                          || (value.startsWith("\"") && value.endsWith("\""))
                       ? new Binary(value.substring(1, value.length() - 1))
                       : new Binary(value));
         } else {

@@ -47,10 +47,6 @@
             <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
-            <outputDirectory>grafana-metrics-example</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
-        </fileSet>
-        <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>

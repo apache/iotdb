@@ -235,11 +235,11 @@ When the target aligned timeseries are not existed, the system will automaticall
 ### Other Restrictions
 
 * The number of source series in the `select` clause and the number of target series in the `into` clause must be the same.
-* The `select *` and `select **` clause are not supported.
-* The target series in the `into` clause do not need to be created in advance. When the target series in the `into` clause already exist, you need to ensure that the source series in the `select` clause and the target series in the `into` clause have the same data types.
+* The `select *` clause is not supported.
+* The target series in the `into` clause do not need to be created in advance.
+* When the target series in the `into` clause already exist, you need to ensure that the source series in the `select` clause and the target series in the `into` clause have the same data types.
 * The target series in the `into` clause must be different from each other.
 * Only one prefix path of a series is allowed in the `from` clause.
-* `*` and `**` are not allowed in the `from` clause.
 * Aligned Timeseries has not been supported in Time series generating function query（including UDF query）/ Arithmetic query / Nested query yet. An error message is expected if you use these types of query with Aligned Timeseries selected in the `select` clause.
 
 

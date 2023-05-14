@@ -32,7 +32,6 @@ public interface IWritableMemChunkGroup {
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
-      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       int start,
       int end);
@@ -43,11 +42,7 @@ public interface IWritableMemChunkGroup {
 
   boolean contains(String measurement);
 
-  void write(
-      long insertTime,
-      Object[] objectValue,
-      List<Integer> failedIndices,
-      List<IMeasurementSchema> schemaList);
+  void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   Map<String, IWritableMemChunk> getMemChunkMap();
 

@@ -74,7 +74,7 @@ public class MetadataIndexNode {
     this.children.add(metadataIndexEntry);
   }
 
-  public boolean isFull() {
+  boolean isFull() {
     return children.size() >= config.getMaxDegreeOfIndexNode();
   }
 

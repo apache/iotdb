@@ -106,7 +106,10 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDF
     }
     RowRecord[] rowRecords = new RowRecord[cachedTimeCnt];
     for (int i = 0; i < cachedTimeCnt; i++) {
-      rowRecords[i] = new RowRecord(cachedTimeArray[i], columnNum);
+      rowRecords[i] = new RowRecord(cachedTimeArray[i]);
+      for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
+        rowRecords[i].addField(null);
+      }
     }
 
     boolean[] hasField = new boolean[cachedTimeCnt];
@@ -185,11 +188,11 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDF
 
   private boolean cacheRowInObjects() throws IOException {
     int cachedTimeCnt = 0;
-    int timeArraySize = rowLimit > 0 ? Math.min(fetchSize, rowLimit + rowOffset) : fetchSize;
-    long[] cachedTimeArray = new long[timeArraySize];
+    long[] cachedTimeArray = new long[fetchSize];
 
+    // TODO: LIMIT constraint
     // 1. fill time array from time Generator
-    while (timeGenerator.hasNext() && cachedTimeCnt < timeArraySize) {
+    while (timeGenerator.hasNext() && cachedTimeCnt < fetchSize) {
       cachedTimeArray[cachedTimeCnt++] = timeGenerator.next();
     }
     if (cachedTimeCnt == 0) {

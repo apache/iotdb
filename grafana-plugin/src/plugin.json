@@ -2,11 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
   "type": "datasource",
   "name": "Apache IoTDB",
-  "id": "apache-iotdb-datasource",
+  "id": "iotdb",
   "metrics": true,
-  "backend": true,
-  "alerting": true,
-  "executable": "apache-iotdb-datasource",
   "info": {
     "description": "Apache IoTDB",
     "author": {

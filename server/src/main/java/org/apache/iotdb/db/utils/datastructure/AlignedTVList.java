@@ -298,16 +298,8 @@ public class AlignedTVList extends TVList {
           break;
       }
       BitMap bitMap = new BitMap(ARRAY_SIZE);
-      // The following code is for these 2 kinds of scenarios.
-
-      // Eg1: If rowCount=5 and ARRAY_SIZE=2, we need to supply 3 bitmaps for the extending column.
-      // The first 2 bitmaps should mark all bits to represent 4 nulls and the 3rd bitmap should
-      // mark
-      // the 1st bit to represent 1 null value.
-
-      // Eg2: If rowCount=4 and ARRAY_SIZE=2, we need to supply 2 bitmaps for the extending column.
-      // These 2 bitmaps should mark all bits to represent 4 nulls.
-      if (i == timestamps.size() - 1 && rowCount % ARRAY_SIZE != 0) {
+      // last bitmap should be marked to the tslist size's position
+      if (i == timestamps.size() - 1) {
         for (int j = 0; j < rowCount % ARRAY_SIZE; j++) {
           bitMap.mark(j);
         }
@@ -565,13 +557,11 @@ public class AlignedTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+    if (sortedTimestamps == null || sortedTimestamps.length < rowCount) {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedIndices == null
-        || sortedIndices.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
+    if (sortedIndices == null || sortedIndices.length < rowCount) {
       sortedIndices =
           (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
     }

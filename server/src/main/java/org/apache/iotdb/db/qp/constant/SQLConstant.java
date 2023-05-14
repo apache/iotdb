@@ -30,9 +30,8 @@ import java.util.Set;
 @SuppressWarnings("unused") // some fields are for future features
 public class SQLConstant {
 
-  public SQLConstant() throws InstantiationException {
+  private SQLConstant() {
     // forbidding instantiation
-    throw new InstantiationException();
   }
 
   private static final String[] SINGLE_ROOT_ARRAY = {"root", "**"};
@@ -71,6 +70,72 @@ public class SQLConstant {
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
+  public static final String EXACT_MEDIAN = "exact_median";
+  public static final String EXACT_MEDIAN_OPT = "exact_median_opt";
+  public static final String EXACT_MEDIAN_OPT_2 = "exact_median_opt_2";
+  public static final String EXACT_MEDIAN_OPT_3 = "exact_median_opt_3";
+  public static final String EXACT_MEDIAN_OPT_4 = "exact_median_opt_4";
+  public static final String EXACT_MEDIAN_OPT_5 = "exact_median_opt_5";
+  public static final String EXACT_MEDIAN_AMORTIZED = "exact_median_amortized";
+  public static final String EXACT_MEDIAN_KLL_FLOATS = "exact_median_kll_floats";
+  public static final String EXACT_MEDIAN_AGGRESSIVE = "exact_median_aggressive";
+  public static final String EXACT_MEDIAN_BITS_BUCKET_STAT = "exact_median_bits_bucket_stat";
+  public static final String EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER =
+      "exact_median_bits_bucket_stat_filter";
+  public static final String EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE =
+      "exact_median_bits_bucket_stat_filter_aggressive";
+  public static final String EXACT_MEDIAN_KLL_STAT = "exact_median_kll_stat";
+  public static final String EXACT_MEDIAN_KLL_STAT_SINGLE = "exact_median_kll_stat_single";
+  public static final String EXACT_MEDIAN_KLL_FLOATS_SINGLE = "exact_median_kll_floats_single";
+  public static final String EXACT_MEDIAN_KLL_STAT_SINGLE_READ =
+      "exact_median_kll_stat_single_read";
+  public static final String EXACT_MEDIAN_KLL_DEBUG = "exact_median_kll_debug";
+  public static final String EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING =
+      "exact_median_kll_stat_debug_full_reading";
+  public static final String EXACT_MEDIAN_KLL_DEBUG_FULL_READING =
+      "exact_median_kll_debug_full_reading";
+  public static final String EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE =
+      "exact_median_kll_stat_debug_page_demand_rate";
+  public static final String EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE =
+      "exact_median_kll_stat_overlap_single";
+  public static final String TDIGEST_STAT_SINGLE = "tdigest_quantile";
+  public static final String SAMPLING_STAT_SINGLE = "sampling_quantile";
+  public static final String STRICT_KLL_STAT_SINGLE = "kll_quantile";
+  public static final String DDSKETCH_SINGLE = "ddsketch_quantile";
+  public static final String CHUNK_STAT_AVAIL = "chunk_stat_available";
+  public static final String EXACT_QUANTILE_BASELINE_KLL = "exact_quantile_baseline_kll";
+  public static final String EXACT_QUANTILE_PR_KLL_NO_OPT = "exact_quantile_pr_kll_no_opt";
+  public static final String EXACT_QUANTILE_DDSKETCH = "exact_quantile_ddsketch";
+  public static final String EXACT_QUANTILE_PR_KLL_OPT_STAT = "exact_quantile_pr_kll_opt_stat";
+  public static final String EXACT_QUANTILE_PR_KLL_OPT_FILTER = "exact_quantile_pr_kll_opt_filter";
+  public static final String EXACT_QUANTILE_PR_KLL_OPT_SUMMARY =
+      "exact_quantile_pr_kll_opt_summary";
+  public static final String FULL_READ_ONCE = "full_read_once";
+  public static final String EXACT_QUANTILE_QUICK_SELECT = "exact_quantile_quick_select";
+  public static final String EXACT_MULTI_QUANTILES_QUICK_SELECT =
+      "exact_multi_quantiles_quick_select";
+  public static final String EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY =
+      "exact_multi_quantiles_pr_kll_opt_summary";
+  public static final String EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR =
+      "exact_quantile_pr_kll_priori_fix_pr";
+  public static final String EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR =
+      "exact_quantile_pr_kll_priori_best_pr";
+  public static final String EXACT_QUANTILE_PR_KLL_POST_BEST_PR =
+      "exact_quantile_pr_kll_post_best_pr";
+  public static final String EXACT_QUANTILE_MRL = "exact_quantile_mrl";
+  public static final String EXACT_QUANTILE_TDIGEST = "exact_quantile_tdigest";
+  public static final String EXACT_QUANTILE_DDSKETCH_POSITIVE = "exact_quantile_ddsketch_positive";
+  public static final String EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR =
+      "exact_multi_quantiles_pr_kll_post_best_pr";
+  public static final String EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR =
+      "exact_multi_quantiles_pr_kll_fix_pr";
+  public static final String EXACT_MULTI_QUANTILES_MRL = "exact_multi_quantiles_mrl";
+  public static final String EXACT_MULTI_QUANTILES_TDIGEST = "exact_multi_quantiles_tdigest";
+  public static final String EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE =
+      "exact_multi_quantiles_ddsketch_positive";
+  public static final String MAD_DD = "mad_dd";
+  public static final String MAD_QS = "mad_qs";
+  public static final String MAD_CORE = "mad_core";
 
   public static final String ALL = "all";
 
@@ -86,7 +151,57 @@ public class SQLConstant {
               LAST_VALUE,
               COUNT,
               SUM,
-              AVG));
+              AVG,
+              EXACT_MEDIAN,
+              EXACT_MEDIAN_OPT,
+              EXACT_MEDIAN_OPT_2,
+              EXACT_MEDIAN_OPT_3,
+              EXACT_MEDIAN_OPT_4,
+              EXACT_MEDIAN_OPT_5,
+              EXACT_MEDIAN_AMORTIZED,
+              EXACT_MEDIAN_KLL_FLOATS,
+              EXACT_MEDIAN_AGGRESSIVE,
+              EXACT_MEDIAN_BITS_BUCKET_STAT,
+              EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER,
+              EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE,
+              EXACT_MEDIAN_KLL_STAT,
+              EXACT_MEDIAN_KLL_STAT_SINGLE,
+              EXACT_MEDIAN_KLL_FLOATS_SINGLE,
+              EXACT_MEDIAN_KLL_STAT_SINGLE_READ,
+              EXACT_MEDIAN_KLL_DEBUG,
+              EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING,
+              EXACT_MEDIAN_KLL_DEBUG_FULL_READING,
+              EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE,
+              EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE,
+              TDIGEST_STAT_SINGLE,
+              SAMPLING_STAT_SINGLE,
+              STRICT_KLL_STAT_SINGLE,
+              DDSKETCH_SINGLE,
+              CHUNK_STAT_AVAIL,
+              EXACT_QUANTILE_BASELINE_KLL,
+              EXACT_QUANTILE_PR_KLL_NO_OPT,
+              EXACT_QUANTILE_DDSKETCH,
+              EXACT_QUANTILE_PR_KLL_OPT_STAT,
+              EXACT_QUANTILE_PR_KLL_OPT_FILTER,
+              EXACT_QUANTILE_PR_KLL_OPT_SUMMARY,
+              FULL_READ_ONCE,
+              EXACT_QUANTILE_QUICK_SELECT,
+              EXACT_MULTI_QUANTILES_QUICK_SELECT,
+              EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY,
+              EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR,
+              EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR,
+              EXACT_QUANTILE_PR_KLL_POST_BEST_PR,
+              EXACT_QUANTILE_MRL,
+              EXACT_QUANTILE_TDIGEST,
+              EXACT_QUANTILE_DDSKETCH_POSITIVE,
+              EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR,
+              EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR,
+              EXACT_MULTI_QUANTILES_MRL,
+              EXACT_MULTI_QUANTILES_TDIGEST,
+              EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE,
+              MAD_DD,
+              MAD_QS,
+              MAD_CORE));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;
@@ -197,9 +312,8 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_SHOW_NODES = 120;
   public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET = 121;
   public static final int TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING = 122;
+
   public static final int TOK_SHOW_QUERY_RESOURCE = 123;
-  public static final int TOK_SCHEMA_TEMPLATE_DEACTIVATE = 124;
-  public static final int TOK_EXPORT_SCHEMA = 125;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
@@ -285,7 +399,6 @@ public class SQLConstant {
     tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_NODES, "TOK_SCHEMA_TEMPLATE_SHOW_NODES");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_SET");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING, "TOK_SCHEMA_TEMPLATE_SHOW_PATHS_USING");
-    tokenNames.put(TOK_SCHEMA_TEMPLATE_DEACTIVATE, "TOK_SCHEMA_TEMPLATE_DEACTIVATE");
 
     tokenNames.put(TOK_SHOW_QUERY_RESOURCE, "TOK_SHOW_QUERY_RESOURCE");
   }

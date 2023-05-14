@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -32,7 +31,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -89,7 +87,6 @@ public class CompactionSchedulerTest {
 
   @Before
   public void setUp() throws MetadataException, IOException {
-    IoTDB.activated = true;
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     IoTDB.metaManager.init();
@@ -113,7 +110,6 @@ public class CompactionSchedulerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    IoTDB.activated = false;
     new CompactionConfigRestorer().restoreCompactionConfig();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
@@ -151,8 +147,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
@@ -264,7 +260,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -286,16 +282,11 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
-    long originSize = SystemInfo.getInstance().getMemorySizeForCompaction();
-    SystemInfo.getInstance()
-        .setMemorySizeForCompaction(
-            2
-                * 1024L
-                * 1024L
-                * 1024L
-                * IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCrossCompactionMemoryBudget(2 * 1024 * 1024L * 1024L);
     String sgName = COMPACTION_TEST_SG + "test2";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -395,8 +386,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
-      SystemInfo.getInstance().setMemorySizeForCompaction(originSize);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -417,8 +407,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test3";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -504,7 +494,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -525,8 +515,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
@@ -602,7 +592,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -623,8 +613,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test5";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -728,7 +718,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -750,8 +740,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test6";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -847,7 +837,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -867,8 +857,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test7";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -960,7 +950,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -980,8 +970,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(100);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
     String sgName = COMPACTION_TEST_SG + "test8";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -1059,7 +1049,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -1079,8 +1069,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test9";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -1171,7 +1161,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -1194,8 +1184,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test10";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -1290,7 +1280,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setEnableCrossSpaceCompaction(prevEnableCrossCompaction);
@@ -1313,8 +1303,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test11";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -1408,7 +1398,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -1429,8 +1419,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test12";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -1527,7 +1517,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 
@@ -1548,8 +1538,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test13";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -1649,7 +1639,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -1669,8 +1659,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test14";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -1778,7 +1768,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
   /**
@@ -1798,8 +1788,8 @@ public class CompactionSchedulerTest {
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     int prevMaxCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     String sgName = COMPACTION_TEST_SG + "test16";
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(sgName));
@@ -1895,7 +1885,7 @@ public class CompactionSchedulerTest {
           .setConcurrentCompactionThread(prevCompactionConcurrentThread);
       IoTDBDescriptor.getInstance()
           .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
 

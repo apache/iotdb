@@ -93,7 +93,7 @@ public class AuthorityChecker {
     return false;
   }
 
-  public static int translateToPermissionId(Operator.OperatorType type) {
+  private static int translateToPermissionId(Operator.OperatorType type) {
     switch (type) {
       case GRANT_ROLE_PRIVILEGE:
         return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
@@ -119,17 +119,12 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
-      case DELETE_STORAGE_GROUP:
-        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
       case CREATE_TIMESERIES:
-      case CREATE_ALIGNED_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
-      case DEACTIVATE_TEMPLATE:
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
-      case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
       case QUERY_INDEX:
@@ -145,9 +140,6 @@ public class AuthorityChecker {
       case LOAD_DATA:
       case CREATE_INDEX:
       case BATCH_INSERT:
-      case BATCH_INSERT_ONE_DEVICE:
-      case BATCH_INSERT_ROWS:
-      case MULTI_BATCH_INSERT:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:
@@ -173,15 +165,6 @@ public class AuthorityChecker {
         return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
       case DROP_CONTINUOUS_QUERY:
         return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
-      case CREATE_TEMPLATE:
-      case APPEND_TEMPLATE:
-      case DROP_TEMPLATE:
-      case PRUNE_TEMPLATE:
-        return PrivilegeType.UPDATE_TEMPLATE.ordinal();
-      case ACTIVATE_TEMPLATE:
-      case SET_TEMPLATE:
-      case UNSET_TEMPLATE:
-        return PrivilegeType.APPLY_TEMPLATE.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

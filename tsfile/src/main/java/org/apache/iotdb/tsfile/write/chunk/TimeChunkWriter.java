@@ -42,11 +42,13 @@ public class TimeChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeChunkWriter.class);
 
-  private final String measurementId;
+  public final String measurementId;
 
-  private final TSEncoding encodingType;
+  public final TSEncoding encodingType;
 
-  private final CompressionType compressionType;
+  public final CompressionType compressionType;
+
+  public final Encoder timeEncoder;
 
   /** all pages of this chunk. */
   private final PublicBAOS pageBuffer;
@@ -83,6 +85,7 @@ public class TimeChunkWriter {
     this.measurementId = measurementId;
     this.encodingType = encodingType;
     this.compressionType = compressionType;
+    this.timeEncoder = timeEncoder;
     this.pageBuffer = new PublicBAOS();
 
     this.pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
@@ -155,7 +158,7 @@ public class TimeChunkWriter {
 
       // update statistics of this chunk
       numOfPages++;
-      this.statistics.mergeStatistics(pageWriter.getStatistics());
+      this.statistics.mergeChunkMetadataStat(pageWriter.getStatistics());
     } catch (IOException e) {
       logger.error("meet error in pageWriter.writePageHeaderAndDataIntoBuff,ignore this page:", e);
     } finally {
@@ -256,5 +259,9 @@ public class TimeChunkWriter {
 
   public TimePageWriter getPageWriter() {
     return pageWriter;
+  }
+
+  public Statistics getStatistics() {
+    return statistics;
   }
 }

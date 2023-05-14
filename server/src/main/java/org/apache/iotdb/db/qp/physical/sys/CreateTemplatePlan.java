@@ -51,13 +51,8 @@ public class CreateTemplatePlan extends PhysicalPlan {
   TSDataType[][] dataTypes;
   TSEncoding[][] encodings;
   CompressionType[][] compressors;
-
-  // Flags for compatible issues, located at where to put size of schemaNames
-  // NEW_PLAN means no schemaNames, but not directly aligned
+  // constant to help resolve serialized sequence
   private static final int NEW_PLAN = -1;
-  // directly-alignment-flag to indicate directly aligned, with no schemaNames as well
-  // NECESSARY for occasions where only ONE measurement inside a template
-  private static final int DIR_ALI_FLG = -2;
 
   public CreateTemplatePlan() {
     super(OperatorType.CREATE_TEMPLATE);
@@ -226,8 +221,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
       String measurementName = ReadWriteIOUtils.readString(buffer);
       TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readByte(buffer)];
       TSEncoding encoding = TSEncoding.values()[ReadWriteIOUtils.readByte(buffer)];
-      CompressionType compressionType =
-          CompressionType.deserialize(ReadWriteIOUtils.readByte(buffer));
+      CompressionType compressionType = CompressionType.values()[ReadWriteIOUtils.readByte(buffer)];
 
       if (alignedPrefix.containsKey(prefix) && !isAlign) {
         throw new MetadataException("Align designation incorrect at: " + prefix);
@@ -292,13 +286,9 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, buffer);
 
-    if (alignedDeviceId != null && alignedDeviceId.contains("")) {
-      // indicate template is directly aligned, no schemaNames of course
-      ReadWriteIOUtils.write(DIR_ALI_FLG, buffer);
-    } else {
-      // indicate that there is no schemaNames and a nested list for compressors
-      ReadWriteIOUtils.write(NEW_PLAN, buffer);
-    }
+    // write NEW_PLAN as flag to note that there is no schemaNames and new nested list for
+    // compressors
+    ReadWriteIOUtils.write(NEW_PLAN, buffer);
 
     // measurements
     ReadWriteIOUtils.write(measurements.length, buffer);
@@ -342,16 +332,14 @@ public class CreateTemplatePlan extends PhysicalPlan {
   @Override
   @SuppressWarnings("Duplicates")
   public void deserialize(ByteBuffer buffer) {
-    boolean isFormerSerialized = false;
+    boolean isFormerSerialized;
     name = ReadWriteIOUtils.readString(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    if (size == DIR_ALI_FLG) {
-      // no action for NEW_PLAN
-      alignedDeviceId = new HashSet<>();
-      alignedDeviceId.add("");
-    } else if (size > 0) {
+    if (size == NEW_PLAN) {
+      isFormerSerialized = false;
+    } else {
       // deserialize schemaNames
       isFormerSerialized = true;
       schemaNames = new String[size];
@@ -402,7 +390,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
         int listSize = ReadWriteIOUtils.readInt(buffer);
         compressors[i] = new CompressionType[listSize];
         for (int j = 0; j < listSize; j++) {
-          compressors[i][j] = CompressionType.deserialize((byte) ReadWriteIOUtils.readInt(buffer));
+          compressors[i][j] = CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
         }
       }
     } else {
@@ -412,7 +400,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
         int listSize = measurements[i].length;
         compressors[i] = new CompressionType[listSize];
         CompressionType alignedCompressionType =
-            CompressionType.deserialize((byte) ReadWriteIOUtils.readInt(buffer));
+            CompressionType.values()[ReadWriteIOUtils.readInt(buffer)];
         for (int j = 0; j < listSize; j++) {
           compressors[i][j] = alignedCompressionType;
         }
@@ -428,13 +416,9 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
     ReadWriteIOUtils.write(name, stream);
 
-    if (alignedDeviceId != null && alignedDeviceId.contains("")) {
-      // indicate template is directly aligned, no schemaNames of course
-      ReadWriteIOUtils.write(DIR_ALI_FLG, stream);
-    } else {
-      // indicate that there is no schemaNames and a nested list for compressors
-      ReadWriteIOUtils.write(NEW_PLAN, stream);
-    }
+    // write NEW_PLAN as flag to note that there is no schemaNames and new nested list for
+    // compressors
+    ReadWriteIOUtils.write(NEW_PLAN, stream);
 
     // measurements
     ReadWriteIOUtils.write(measurements.length, stream);

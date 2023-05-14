@@ -30,9 +30,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -41,7 +39,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -250,43 +247,6 @@ public class InsertRowPlanTest {
       RowRecord record = dataSet.next();
       Assert.assertEquals(6, record.getFields().size());
     }
-
-    executor.processNonQuery(new DeactivateTemplatePlan("template1", "root.isp.d1"));
-
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(0, dataSet.getPaths().size());
-
-    executor.insert(rowPlan);
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-    // verify data has been deleted
-    int rCnt = 0;
-    while (dataSet.hasNext()) {
-      rCnt++;
-      dataSet.next();
-    }
-    Assert.assertEquals(1, rCnt);
-
-    executor.processNonQuery(new DeactivateTemplatePlan("template1", "root.isp.d1"));
-    executor.processNonQuery(new UnsetTemplatePlan("root.isp.d1", "template1"));
-
-    rowPlan.getDataTypes()[0] = TSDataType.TEXT;
-    rowPlan.getValues()[0] = Binary.valueOf("aaa");
-
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
-    executor.insert(rowPlan);
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-    // verify template has been removed
-    rCnt = 0;
-    while (dataSet.hasNext()) {
-      rCnt++;
-      dataSet.next();
-    }
-    Assert.assertEquals(1, rCnt);
   }
 
   @Test

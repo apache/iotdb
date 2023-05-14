@@ -615,7 +615,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
 						]
 					},
 					{
@@ -677,7 +677,6 @@ var config = {
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
 							['Data-Concept/Schema-Template','Schema Template'],
 							['Data-Concept/Data-Type','Data Type'],
-							['Data-Concept/Deadband-Process','Deadband Process'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
 							['Data-Concept/Time-Partition','Time Partition'],
@@ -747,6 +746,7 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','UDF (User Defined Function)'],
+							['Process-Data/UDF-Library', 'UDF Library'],
 							['Process-Data/Select-Into','Query Write-back (SELECT INTO)'],
 							['Process-Data/Continuous-Query','CQ (Continuous Query)'],
 							['Process-Data/Triggers','Triggers'],
@@ -763,10 +763,9 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Log-Tool','Log Tool'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
-							['Maintenance-Tools/MLogLoad-Tool','MLogLoad Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
 							['Maintenance-Tools/Watermark-Tool','Watermark Tool'],
 							['Maintenance-Tools/Metric-Tool','Metric Tool'],
@@ -786,8 +785,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
-							['Ecosystem Integration/NiFi IoTDB Bundle','NiFi-IoTDB-Bundle'],
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
 						]
 					},
 					{
@@ -796,21 +794,6 @@ var config = {
 							['Cluster/Cluster-Setup','Cluster Setup'],
 							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
-					},
-					{
-					    title: 'UDF Library',
-					    sidebarDepth: 1,
-					    children: [
-					        ['UDF-Library/Quick-Start', 'Quick Start'],
-					        ['UDF-Library/Data-Profiling', 'Data Profiling'],
-					        ['UDF-Library/Anomaly-Detection', 'Anomaly Detection'],
-					        ['UDF-Library/Data-Matching', 'Data Matching'],
-					        ['UDF-Library/Frequency-Domain', 'Frequency Domain Analysis'],
-					        ['UDF-Library/Data-Quality', 'Data Quality'],
-					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
-					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
-                  ['UDF-Library/String-Processing', 'String Processing']
-					    ]
 					},
 					{
 						title: 'Reference',
@@ -939,7 +922,7 @@ var config = {
 						title: 'Maintenance Tools',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','Maintenance Command'],
-							['Maintenance-Tools/Log-Tool','Log Tool'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','Monitor and Log Tools'],
 							['Maintenance-Tools/JMX-Tool','JMX Tool'],
 							['Maintenance-Tools/MLogParser-Tool','MLogParser Tool'],
 							['Maintenance-Tools/NodeTool','Node Tool'],
@@ -962,8 +945,7 @@ var config = {
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink IoTDB'],
 							['Ecosystem Integration/Flink TsFile','Flink TsFile'],
-							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS'],
-							['Ecosystem Integration/NiFi IoTDB Bundle','NiFi-IoTDB-Bundle'],
+							['Ecosystem Integration/Writing Data on HDFS','Writing Data on HDFS']
 						]
 					},
 					{
@@ -985,7 +967,8 @@ var config = {
 					        ['UDF-Library/Data-Quality', 'Data Quality'],
 					        ['UDF-Library/Data-Repairing', 'Data Repairing'],
 					        ['UDF-Library/Series-Discovery', 'Series Discovery'],
-                  ['UDF-Library/String-Processing', 'String Processing']
+                            ['UDF-Library/String-Processing', 'String Processing'],
+                            ['UDF-Library/M4', 'M4']
 					    ]
 					},
 					{
@@ -1540,7 +1523,6 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
-							['Ecosystem Integration/NiFi IoTDB Bundle','NiFi-IoTDB-Bundle'],
 						]
 					},
 					{
@@ -1596,7 +1578,6 @@ var config = {
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
 							['Data-Concept/Schema-Template','元数据模板'],
 							['Data-Concept/Data-Type','数据类型'],
-							['Data-Concept/Deadband-Process','死区处理'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
 							['Data-Concept/Time-Partition','时间分区'],
@@ -1666,6 +1647,7 @@ var config = {
 						sidebarDepth: 1,
 						children: [
 							['Process-Data/UDF-User-Defined-Function','用户定义函数(UDF)'],
+							['Process-Data/UDF-Library', 'UDF 函数库'],
 							['Process-Data/Select-Into','查询写回(SELECT INTO)'],
 							['Process-Data/Continuous-Query','连续查询(CQ)'],
 							['Process-Data/Triggers','触发器'],
@@ -1682,10 +1664,9 @@ var config = {
 						title: '运维工具',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','运维命令'],
-							['Maintenance-Tools/Log-Tool','日志工具'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
-							['Maintenance-Tools/MLogParser-Tool','MLog 解析工具'],
-							['Maintenance-Tools/MLogLoad-Tool','MLog 加载工具'],
+							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
 							['Maintenance-Tools/Watermark-Tool','水印工具'],
 							['Maintenance-Tools/Metric-Tool','监控工具'],
@@ -1707,7 +1688,6 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
-							['Ecosystem Integration/NiFi IoTDB Bundle','NiFi-IoTDB-Bundle'],
 						]
 					},
 					{
@@ -1717,21 +1697,6 @@ var config = {
 							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
-					{
-                        title: 'UDF 资料库',
-                        sidebarDepth: 1,
-                        children: [
-                            ['UDF-Library/Quick-Start', '快速开始'],
-                            ['UDF-Library/Data-Profiling', '数据画像'],
-                            ['UDF-Library/Anomaly-Detection', '异常检测'],
-                            ['UDF-Library/Data-Matching', '数据匹配'],
-                            ['UDF-Library/Frequency-Domain', '频域分析'],
-                            ['UDF-Library/Data-Quality', '数据质量'],
-                            ['UDF-Library/Data-Repairing', '数据修复'],
-                            ['UDF-Library/Series-Discovery', '序列发现'],
-                            ['UDF-Library/String-Processing', '字符串处理']
-                        ]
-                    },
 					{
 						title: '参考',
 						children: [
@@ -1860,7 +1825,7 @@ var config = {
 						title: '运维工具',
 						children: [
 							['Maintenance-Tools/Maintenance-Command','运维命令'],
-							['Maintenance-Tools/Log-Tool','日志工具'],
+							['Maintenance-Tools/Monitor-and-Log-Tools','监控工具和系统日志'],
 							['Maintenance-Tools/JMX-Tool','JMX 工具'],
 							['Maintenance-Tools/MLogParser-Tool','Mlog解析工具'],
 							['Maintenance-Tools/NodeTool','节点工具'],
@@ -1884,7 +1849,6 @@ var config = {
 							['Ecosystem Integration/Flink TsFile','Flink-TsFile'],
 							['Ecosystem Integration/Flink IoTDB','Flink-IoTDB'],
 							['Ecosystem Integration/Writing Data on HDFS','HDFS集成'],
-							['Ecosystem Integration/NiFi IoTDB Bundle','NiFi-IoTDB-Bundle'],
 						]
 					},
 					{
@@ -1906,7 +1870,8 @@ var config = {
                             ['UDF-Library/Data-Quality', '数据质量'],
                             ['UDF-Library/Data-Repairing', '数据修复'],
                             ['UDF-Library/Series-Discovery', '序列发现'],
-                            ['UDF-Library/String-Processing', '字符串处理']
+                            ['UDF-Library/String-Processing', '字符串处理'],
+                            ['UDF-Library/M4', 'M4']
                         ]
                     },
 					{

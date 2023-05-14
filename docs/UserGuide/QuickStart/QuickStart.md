@@ -36,7 +36,7 @@ IoTDB provides you three installation methods, you can refer to the following su
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
-* Using Docker：The path to the dockerfile is [github](https://github.com/apache/iotdb/blob/master/docker/src/main)
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/src/main
 
 
 ## Download
@@ -64,39 +64,23 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> nohup sbin/start-server.sh -b
-```
-or 
-```shell
 > nohup sbin/start-server.sh >/dev/null 2>&1 &
-```
+or
+> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
 
-parameters:
-- by default, iotdb will run in the background
-- "-v": show iotdb version
-- "-f": run iotdb on the foreground and print logs on the console (by default before v0.14)
-- "-b": run iotdb in the background which does not print logs on the console
-- "-p \<pidfile\>": save the pid into target pidfile
-- "-h": help
-- "printgc"(must be at the end of the command): print the GC log (deprecated from v0.14 on)
-- "-g": print the GC log
-- "-c \<config folder\>": set IOTDB_CONF parameter
-- "-D <a=b>": set system variables to IoTDB program.
-- "-H \<filePath\> save heap dump file to \<filePath\> (only works when iotdb memory <16GB)"
-- "-E <\filePath\> save error file of JVM to \<filePath\>"
-- "-X \<command\> equal to -XX:\<command\>"
-
-```
 # Windows
-> sbin\start-server.bat -c <conf_path>
+> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
 ```
 
-Notice that Windows OS only support -v, -c, -f and -b.
+- "-c" and "-rpc_port" are optional.
+- option "-c" specifies the system configuration file directory.
+- option "-rpc_port" specifies the rpc port.
+- if both option specified, the *rpc_port* will overrides the rpc_port in *conf_path*.
 
-if you want to use JMX to connect IOTDB, you may need to add/modify 
+if you want to use JMX to connect IOTDB, you may need to add 
 
 ```
--Dcom.sun.management.jmxremote.rmi.port=<PORT> -Djava.rmi.server.hostname=<IP> 
+-Dcom.sun.management.jmxremote.rmi.port=PORT -Djava.rmi.server.hostname=IP 
 ```
 to $IOTDB_JMX_OPTS in iotdb-env.sh. or iotdb-env.bat
 
@@ -245,17 +229,6 @@ The server can be stopped with ctrl-C or the following script:
 > sbin\stop-server.bat
 ```
 
-### Administration management
-
-There is a default user in IoTDB after the initial installation: root, and the default password is root. This user is an administrator user, who cannot be deleted and has all the privileges. Neither can new privileges be granted to the root user nor can privileges owned by the root user be deleted.
-
-You can alter the password of root using the following command：
-```
-ALTER USER <username> SET PASSWORD <password>;
-Example: IoTDB > ALTER USER root SET PASSWORD 'newpwd';
-```
-
-More about administration management：[Administration Management](https://iotdb.apache.org/UserGuide/V0.13.x/Administration-Management/Administration.html)
 
 ## Basic configuration
 

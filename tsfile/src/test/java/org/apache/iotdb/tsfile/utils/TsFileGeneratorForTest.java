@@ -287,22 +287,19 @@ public class TsFileGeneratorForTest {
       // register align timeseries
       List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       alignedMeasurementSchemas.add(
-          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.LZ4));
+          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(
-          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY));
+          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(
-          new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.GZIP));
+          new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerAlignedTimeseries(new Path("d1"), alignedMeasurementSchemas);
 
       // register nonAlign timeseries
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(
-          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.LZ4));
-      measurementSchemas.add(
-          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY));
-      measurementSchemas.add(
-          new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY));
+      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
       tsFileWriter.registerTimeseries(new Path("d2"), measurementSchemas);
 
       TsFileGeneratorUtils.writeWithTsRecord(
