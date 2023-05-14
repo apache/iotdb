@@ -302,22 +302,22 @@ public class SeriesScanUtil {
   protected void filterFirstChunkMetadata() throws IOException {
     long startTime = System.nanoTime();
     try {
-    if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
-      Statistics statistics = firstChunkMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
-        long rowCount = statistics.getCount();
-        if (paginationController.hasCurOffset(rowCount)) {
+      if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
+        Filter queryFilter = scanOptions.getQueryFilter();
+        Statistics statistics = firstChunkMetadata.getStatistics();
+        if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+          long rowCount = statistics.getCount();
+          if (paginationController.hasCurOffset(rowCount)) {
+            skipCurrentChunk();
+            paginationController.consumeOffset(rowCount);
+          }
+        } else if (!queryFilter.satisfy(statistics)) {
           skipCurrentChunk();
-          paginationController.consumeOffset(rowCount);
         }
-      } else if (!queryFilter.satisfy(statistics)) {
-        skipCurrentChunk();
       }
-    }
     } finally {
-        QueryStatistics.getInstance()
-                .addCost(QueryStatistics.FILTER_FIRST_CHUNK_METADATA, System.nanoTime() - startTime);
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.FILTER_FIRST_CHUNK_METADATA, System.nanoTime() - startTime);
     }
   }
 
@@ -1084,24 +1084,24 @@ public class SeriesScanUtil {
   protected void filterFirstTimeSeriesMetadata() throws IOException {
     long startTime = System.nanoTime();
     try {
-    if (firstTimeSeriesMetadata != null
-        && !isFileOverlapped()
-        && !firstTimeSeriesMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
-      Statistics statistics = firstTimeSeriesMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
-        long rowCount = statistics.getCount();
-        if (paginationController.hasCurOffset(rowCount)) {
+      if (firstTimeSeriesMetadata != null
+          && !isFileOverlapped()
+          && !firstTimeSeriesMetadata.isModified()) {
+        Filter queryFilter = scanOptions.getQueryFilter();
+        Statistics statistics = firstTimeSeriesMetadata.getStatistics();
+        if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+          long rowCount = statistics.getCount();
+          if (paginationController.hasCurOffset(rowCount)) {
+            skipCurrentFile();
+            paginationController.consumeOffset(rowCount);
+          }
+        } else if (!queryFilter.satisfy(statistics)) {
           skipCurrentFile();
-          paginationController.consumeOffset(rowCount);
         }
-      } else if (!queryFilter.satisfy(statistics)) {
-        skipCurrentFile();
       }
-    }
     } finally {
       QueryStatistics.getInstance()
-              .addCost(QueryStatistics.FILTER_FIRST_TIMESERIES_METADATA, System.nanoTime() - startTime);
+          .addCost(QueryStatistics.FILTER_FIRST_TIMESERIES_METADATA, System.nanoTime() - startTime);
     }
   }
 

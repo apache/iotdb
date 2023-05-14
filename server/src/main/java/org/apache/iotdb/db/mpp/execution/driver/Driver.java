@@ -52,7 +52,6 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.mpp.execution.operator.Operator.NOT_BLOCKED;
 import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
-import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.DRIVER_CLOSE;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SEND_TSBLOCK;
 import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SET_NO_MORE_TSBLOCK;
 
