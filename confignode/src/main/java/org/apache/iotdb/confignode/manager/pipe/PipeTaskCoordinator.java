@@ -26,6 +26,8 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -78,7 +80,7 @@ public class PipeTaskCoordinator {
     try {
       return ((PipeTableResp)
               configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-          .convertToThriftResponse();
+          .convertToTGetAllPipeInfoResp();
     } catch (IOException e) {
       LOGGER.error("Fail to get AllPipeInfo", e);
       return new TGetAllPipeInfoResp(
@@ -86,6 +88,13 @@ public class PipeTaskCoordinator {
               .setMessage(e.getMessage()),
           Collections.emptyList());
     }
+  }
+
+  public TShowPipeResp showPipes(TShowPipeReq req) {
+    return ((PipeTableResp)
+            configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+        .filter(req.whereClause, req.pipeName)
+        .convertToTShowPipeResp();
   }
 
   public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {

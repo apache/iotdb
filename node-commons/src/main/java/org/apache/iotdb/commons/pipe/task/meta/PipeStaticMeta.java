@@ -48,7 +48,7 @@ public class PipeStaticMeta {
       Map<String, String> collectorAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes) {
-    this.pipeName = pipeName.toUpperCase();
+    this.pipeName = pipeName;
     this.creationTime = creationTime;
     collectorParameters = new PipeParameters(collectorAttributes);
     processorParameters = new PipeParameters(processorAttributes);
