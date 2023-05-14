@@ -19,13 +19,24 @@
 package org.apache.iotdb.confignode.manager.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
+import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Collections;
 
 public class PipeTaskCoordinator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinator.class);
 
   private final ConfigManager configManager;
   private final PipeTaskInfo pipeTaskInfo;
@@ -64,7 +75,17 @@ public class PipeTaskCoordinator {
   }
 
   public TGetAllPipeInfoResp showPipes() {
-    throw new UnsupportedOperationException("Not implemented yet");
+    try {
+      return ((PipeTableResp)
+              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+          .convertToThriftResponse();
+    } catch (IOException e) {
+      LOGGER.error("Fail to get AllPipeInfo", e);
+      return new TGetAllPipeInfoResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    }
   }
 
   public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {

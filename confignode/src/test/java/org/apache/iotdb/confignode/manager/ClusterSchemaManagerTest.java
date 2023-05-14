@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+
 import org.junit.Assert;
 import org.junit.Test;
 

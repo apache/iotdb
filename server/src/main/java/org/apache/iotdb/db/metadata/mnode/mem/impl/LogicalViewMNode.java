@@ -23,11 +23,12 @@ import org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.basic.BasicMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.container.MemMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 
 public class LogicalViewMNode extends AbstractMeasurementMNode<IMemMNode, BasicMNode>
     implements IMemMNode {

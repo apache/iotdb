@@ -1021,6 +1021,9 @@ public class IoTDBConfig {
   /** Memory allocated for LastCache */
   private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
 
+  /** Policy of DataNodeSchemaCache eviction */
+  private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -1082,6 +1085,12 @@ public class IoTDBConfig {
 
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
+
+  /** This configuration parameter sets the level at which the time series limit is applied.* */
+  private String clusterSchemaLimitLevel = "timeseries";
+
+  /** This configuration parameter sets the maximum number of schema allowed in the cluster.* */
+  private long clusterSchemaLimitThreshold = -1;
 
   /** Output location of audit logs * */
   private List<AuditLogStorage> auditLogStorage =
@@ -3360,6 +3369,14 @@ public class IoTDBConfig {
     this.allocateMemoryForLastCache = allocateMemoryForLastCache;
   }
 
+  public String getDataNodeSchemaCacheEvictionPolicy() {
+    return dataNodeSchemaCacheEvictionPolicy;
+  }
+
+  public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
+    this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
+  }
+
   public String getReadConsistencyLevel() {
     return readConsistencyLevel;
   }
@@ -3873,5 +3890,21 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public String getClusterSchemaLimitLevel() {
+    return clusterSchemaLimitLevel;
+  }
+
+  public void setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    this.clusterSchemaLimitLevel = clusterSchemaLimitLevel;
+  }
+
+  public long getClusterSchemaLimitThreshold() {
+    return clusterSchemaLimitThreshold;
+  }
+
+  public void setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    this.clusterSchemaLimitThreshold = clusterSchemaLimitThreshold;
   }
 }

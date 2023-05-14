@@ -180,6 +180,11 @@ public class MeasurementSchema
   }
 
   @Override
+  public MeasurementSchemaType getSchemaType() {
+    return MeasurementSchemaType.MEASUREMENT_SCHEMA;
+  }
+
+  @Override
   public String getMeasurementId() {
     return measurementId;
   }
@@ -347,6 +352,11 @@ public class MeasurementSchema
     byteLen += ReadWriteIOUtils.write(compressor, outputStream);
 
     return byteLen;
+  }
+
+  @Override
+  public boolean isLogicalView() {
+    return false;
   }
 
   @Override

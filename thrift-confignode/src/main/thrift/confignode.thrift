@@ -619,7 +619,7 @@ struct TShowPipeInfo {
 
 struct TGetAllPipeInfoResp{
   1: required common.TSStatus status
-  2: optional list<binary> allPipeInfo
+  2: required list<binary> allPipeInfo
 }
 
 struct TCreatePipeReq {

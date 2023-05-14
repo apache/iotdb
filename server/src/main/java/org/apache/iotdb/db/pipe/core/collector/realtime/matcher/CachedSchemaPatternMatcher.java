@@ -85,13 +85,13 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   // TODO: maximum the efficiency of matching when pattern is root
   // TODO: memory control
   @Override
-  public void match(PipeRealtimeCollectEvent event) {
+  public Set<PipeRealtimeDataRegionCollector> match(PipeRealtimeCollectEvent event) {
     final Set<PipeRealtimeDataRegionCollector> matchedCollectors = new HashSet<>();
 
     lock.readLock().lock();
     try {
       if (collectors.isEmpty()) {
-        return;
+        return matchedCollectors;
       }
 
       for (final Map.Entry<String, String[]> entry : event.getSchemaInfo().entrySet()) {
@@ -163,7 +163,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
       lock.readLock().unlock();
     }
 
-    matchedCollectors.forEach(collector -> collector.collect(event));
+    return matchedCollectors;
   }
 
   private Set<PipeRealtimeDataRegionCollector> filterCollectorsByDevice(String device) {
