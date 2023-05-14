@@ -1028,7 +1028,6 @@ public class IoTDBConfig {
   private long schemaRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
   private int dataRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
-  private int schemaRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
 
   private long dataRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
@@ -3542,16 +3541,6 @@ public class IoTDBConfig {
   public void setSchemaRatisConsensusGrpcFlowControlWindow(
       long schemaRatisConsensusGrpcFlowControlWindow) {
     this.schemaRatisConsensusGrpcFlowControlWindow = schemaRatisConsensusGrpcFlowControlWindow;
-  }
-
-  public long getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax() {
-    return schemaRatisConsensusGrpcLeaderOutstandingAppendsMax;
-  }
-
-  public void setSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax(
-      int schemaRatisConsensusGrpcLeaderOutstandingAppendsMax) {
-    this.schemaRatisConsensusGrpcLeaderOutstandingAppendsMax =
-        schemaRatisConsensusGrpcLeaderOutstandingAppendsMax;
   }
 
   public long getSchemaRatisConsensusLeaderElectionTimeoutMinMs() {

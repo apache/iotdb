@@ -1524,6 +1524,46 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 5                             |
 | 改后生效方式 | 热加载                  |
 
+#### IoT 共识协议配置
+
+当Region配置了IoTConsensus共识协议之后，下述的配置项才会生效
+
+* max_log_entries_num_per_batch
+
+|     名字     | max_log_entries_num_per_batch     |
+| :----------: | :-------------------------------- |
+|     描述     | IoTConsensus batch 的最大日志条数 |
+|     类型     | int32                             |
+|    默认值    | 1024                              |
+| 改后生效方式 | 重启生效                          |
+
+* max_size_per_batch
+
+|     名字     | max_size_per_batch            |
+| :----------: | :---------------------------- |
+|     描述     | IoTConsensus batch 的最大大小 |
+|     类型     | int32                         |
+|    默认值    | 16MB                          |
+| 改后生效方式 | 重启生效                      |
+
+* max_pending_batches_num
+
+|     名字     | max_pending_batches_num             |
+| :----------: | :---------------------------------- |
+|     描述     | IoTConsensus batch 的流水线并发阈值 |
+|     类型     | int32                               |
+|    默认值    | 12                                  |
+| 改后生效方式 | 重启生效                            |
+
+* max_memory_ratio_for_queue
+
+|     名字     | max_memory_ratio_for_queue    |
+| :----------: | :---------------------------- |
+|     描述     | IoTConsensus 队列内存分配比例 |
+|     类型     | double                        |
+|    默认值    | 0.6                           |
+| 改后生效方式 | 重启生效                      |
+
 #### Ratis 共识协议配置
 当Region配置了RatisConsensus共识协议之后，下述的配置项才会生效
 
@@ -1662,6 +1702,24 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |   类型   | int32                                      |
 |  默认值   | 4MB                                        |
 | 改后生效方式 | 重启生效                                       |
+
+* data_region_ratis_grpc_leader_outstanding_appends_max
+
+|     名字     | data_region_ratis_grpc_leader_outstanding_appends_max |
+| :----------: | :---------------------------------------------------- |
+|     描述     | data region grpc 流水线并发阈值                       |
+|     类型     | int32                                                 |
+|    默认值    | 128                                                   |
+| 改后生效方式 | 重启生效                                              |
+
+* data_region_ratis_log_force_sync_num
+
+|     名字     | data_region_ratis_log_force_sync_num |
+| :----------: | :----------------------------------- |
+|     描述     | data region fsync 阈值               |
+|     类型     | int32                                |
+|    默认值    | 128                                  |
+| 改后生效方式 | 重启生效                             |
 
 * config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
 
