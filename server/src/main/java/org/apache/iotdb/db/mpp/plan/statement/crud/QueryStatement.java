@@ -274,7 +274,7 @@ public class QueryStatement extends Statement {
   }
 
   public boolean isAggregationQuery() {
-    return selectComponent.isHasBuiltInAggregationFunction();
+    return selectComponent.hasBuiltInAggregationFunction();
   }
 
   public boolean isGroupByLevel() {
@@ -407,8 +407,7 @@ public class QueryStatement extends Statement {
     List<SortItem> sortItems = getSortItemList();
     List<SortItem> newSortItems = new ArrayList<>();
     int expressionIndex = 0;
-    for (int i = 0; i < sortItems.size(); i++) {
-      SortItem sortItem = sortItems.get(i);
+    for (SortItem sortItem : sortItems) {
       SortItem newSortItem =
           new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
       if (sortItem.isExpression()) {
@@ -448,7 +447,39 @@ public class QueryStatement extends Statement {
     return rowOffset > 0;
   }
 
+  public boolean isModelInferenceQuery() {
+    return selectComponent.hasModelInferenceFunction();
+  }
+
   public void semanticCheck() {
+    if (isModelInferenceQuery()) {
+      if (selectComponent.getResultColumns().size() > 1) {
+        throw new SemanticException("");
+      }
+
+      Expression modelInferenceExpression =
+          selectComponent.getResultColumns().get(0).getExpression();
+      if (!(modelInferenceExpression instanceof FunctionExpression
+          && ((FunctionExpression) modelInferenceExpression).isModelInferenceFunction())) {
+        throw new SemanticException("");
+      }
+      if (ExpressionAnalyzer.searchAggregationExpressions(modelInferenceExpression).size() > 0) {
+        throw new SemanticException("");
+      }
+
+      if (hasHaving()
+          || isGroupBy()
+          || isGroupByLevel()
+          || isGroupByTag()
+          || isAlignByDevice()
+          || isLastQuery()
+          || seriesLimit > 0
+          || seriesOffset > 0
+          || isSelectInto()) {
+        throw new SemanticException("");
+      }
+    }
+
     if (isAggregationQuery()) {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");

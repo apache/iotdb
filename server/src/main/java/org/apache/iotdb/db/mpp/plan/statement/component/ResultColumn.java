@@ -121,6 +121,7 @@ public class ResultColumn extends StatementNode {
   public enum ColumnType {
     RAW,
     AGGREGATION,
-    CONSTANT
+    CONSTANT,
+    MODEL_INFERENCE
   }
 }
