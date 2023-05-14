@@ -1097,25 +1097,28 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties
                 .getProperty(
-                    "max_log_entries_num_per_batch",
+                    "data_region_iot_max_log_entries_num_per_batch",
                     String.valueOf(conf.getMaxLogEntriesNumPerBatch()))
                 .trim()));
     conf.setMaxSizePerBatch(
         Integer.parseInt(
             properties
-                .getProperty("max_size_per_batch", String.valueOf(conf.getMaxSizePerBatch()))
+                .getProperty(
+                    "data_region_iot_max_size_per_batch", String.valueOf(conf.getMaxSizePerBatch()))
                 .trim()));
     conf.setMaxPendingBatchesNum(
         Integer.parseInt(
             properties
                 .getProperty(
-                    "max_pending_batches_num", String.valueOf(conf.getMaxPendingBatchesNum()))
+                    "data_region_iot_max_pending_batches_num",
+                    String.valueOf(conf.getMaxPendingBatchesNum()))
                 .trim()));
     conf.setMaxMemoryRatioForQueue(
         Double.parseDouble(
             properties
                 .getProperty(
-                    "max_memory_ratio_for_queue", String.valueOf(conf.getMaxMemoryRatioForQueue()))
+                    "data_region_iot_max_memory_ratio_for_queue",
+                    String.valueOf(conf.getMaxMemoryRatioForQueue()))
                 .trim()));
   }
 
