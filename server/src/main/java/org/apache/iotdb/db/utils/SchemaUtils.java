@@ -239,6 +239,9 @@ public class SchemaUtils {
       case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
       case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
       case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+      case SQLConstant.MAD_DD:
+      case SQLConstant.MAD_CORE:
+      case SQLConstant.MAD_QS:
         return TSDataType.DOUBLE;
       case SQLConstant.LAST_VALUE:
       case SQLConstant.FIRST_VALUE:

@@ -262,6 +262,8 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int concurrentQueryThread = 16;
 
+  private int MADQueryThread = 32;
+
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
@@ -1199,6 +1201,14 @@ public class IoTDBConfig {
 
   public void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getMADQueryThread() {
+    return MADQueryThread;
+  }
+
+  public void setMADQueryThread(int t) {
+    this.MADQueryThread = t;
   }
 
   public int getConcurrentSubRawQueryThread() {

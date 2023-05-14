@@ -42,6 +42,7 @@ public class QueryTaskManager extends AbstractPoolManager {
         Math.min(
             Runtime.getRuntime().availableProcessors(),
             IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
+    threadCnt = IoTDBDescriptor.getInstance().getConfig().getMADQueryThread();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
   }
 

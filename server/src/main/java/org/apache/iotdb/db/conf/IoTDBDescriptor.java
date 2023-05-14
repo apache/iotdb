@@ -461,6 +461,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "concurrent_query_thread", Integer.toString(conf.getConcurrentQueryThread()))));
 
+      conf.setMADQueryThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "mad_query_thread", Integer.toString(conf.getMADQueryThread()))));
+
       if (conf.getConcurrentQueryThread() <= 0) {
         conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
       }
