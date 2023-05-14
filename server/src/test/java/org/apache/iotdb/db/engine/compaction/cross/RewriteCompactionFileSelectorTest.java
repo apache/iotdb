@@ -1065,13 +1065,15 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testFirstUnseqFileIsLarge() {
+  public void testFirstZeroLevelUnseqFileIsLarge() {
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(1);
-    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1024);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(unseqResources.get(5).getTsFileSize());
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<CrossCompactionTaskResource> selected =
-        selector.selectCrossSpaceTask(seqResources, unseqResources);
+        selector.selectCrossSpaceTask(seqResources, unseqResources.subList(5, 6));
     Assert.assertEquals(1, selected.size());
   }
 }
