@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.collect.ImmutableList;
@@ -51,6 +52,8 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.mpp.execution.operator.Operator.NOT_BLOCKED;
 import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.DRIVER_INTERNAL_PROCESS;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SEND_TSBLOCK;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SET_NO_MORE_TSBLOCK;
 
 public abstract class Driver implements IDriver {
 
@@ -223,7 +226,11 @@ public abstract class Driver implements IDriver {
       if (root.hasNextWithTimer()) {
         TsBlock tsBlock = root.nextWithTimer();
         if (tsBlock != null && !tsBlock.isEmpty()) {
+          long startTime = System.nanoTime();
           sink.send(tsBlock);
+          driverContext
+              .getFragmentInstanceContext()
+              .addOperationTime(SEND_TSBLOCK, System.nanoTime() - startTime);
         }
       }
       return NOT_BLOCKED;
@@ -244,8 +251,11 @@ public abstract class Driver implements IDriver {
       driverContext.failed(newException);
       throw newException;
     } finally {
-      QUERY_METRICS.recordExecutionCost(
-          DRIVER_INTERNAL_PROCESS, System.nanoTime() - startTimeNanos);
+      long costTime = System.nanoTime() - startTimeNanos;
+      QUERY_METRICS.recordExecutionCost(DRIVER_INTERNAL_PROCESS, costTime);
+      driverContext
+          .getFragmentInstanceContext()
+          .addOperationTime(QueryStatistics.DRIVER_INTERNAL_PROCESS, costTime);
     }
   }
 
@@ -374,6 +384,7 @@ public abstract class Driver implements IDriver {
     Throwable inFlightException = null;
 
     try {
+      long startTime = System.nanoTime();
       root.close();
 
       if (driverContext.mayHaveTmpFile()) {
@@ -381,6 +392,9 @@ public abstract class Driver implements IDriver {
       }
 
       sink.setNoMoreTsBlocks();
+      driverContext
+          .getFragmentInstanceContext()
+          .addOperationTime(SET_NO_MORE_TSBLOCK, System.nanoTime() - startTime);
 
       // record operator execution statistics to metrics
       List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();

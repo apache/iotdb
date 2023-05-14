@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.MemAlignedPageReader;
 import org.apache.iotdb.db.query.reader.chunk.MemPageReader;
@@ -66,6 +67,7 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLO
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.PAGE_READER;
 
 public class SeriesScanUtil {
 
@@ -174,42 +176,48 @@ public class SeriesScanUtil {
   }
 
   public boolean hasNextFile() throws IOException {
-    if (!paginationController.hasCurLimit()) {
-      return false;
-    }
+    long startTime = System.nanoTime();
+    try {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
 
-    if (!unSeqPageReaders.isEmpty()
-        || firstPageReader != null
-        || mergeReader.hasNextTimeValuePair()) {
-      throw new IOException(
-          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
-              + unSeqPageReaders.isEmpty()
-              + " firstPageReader != null is "
-              + (firstPageReader != null)
-              + " mergeReader.hasNextTimeValuePair() = "
-              + mergeReader.hasNextTimeValuePair());
-    }
+      if (!unSeqPageReaders.isEmpty()
+          || firstPageReader != null
+          || mergeReader.hasNextTimeValuePair()) {
+        throw new IOException(
+            "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
+                + unSeqPageReaders.isEmpty()
+                + " firstPageReader != null is "
+                + (firstPageReader != null)
+                + " mergeReader.hasNextTimeValuePair() = "
+                + mergeReader.hasNextTimeValuePair());
+      }
 
-    if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
-      throw new IOException("all cached chunks should be consumed first");
-    }
+      if (firstChunkMetadata != null || !cachedChunkMetadata.isEmpty()) {
+        throw new IOException("all cached chunks should be consumed first");
+      }
 
-    if (firstTimeSeriesMetadata != null) {
-      return true;
-    }
+      if (firstTimeSeriesMetadata != null) {
+        return true;
+      }
 
-    while (firstTimeSeriesMetadata == null
-        && (orderUtils.hasNextSeqResource()
-            || orderUtils.hasNextUnseqResource()
-            || !seqTimeSeriesMetadata.isEmpty()
-            || !unSeqTimeSeriesMetadata.isEmpty())) {
-      // init first time series metadata whose startTime is minimum
-      tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
-      // filter file based on push-down conditions
-      filterFirstTimeSeriesMetadata();
-    }
+      while (firstTimeSeriesMetadata == null
+          && (orderUtils.hasNextSeqResource()
+              || orderUtils.hasNextUnseqResource()
+              || !seqTimeSeriesMetadata.isEmpty()
+              || !unSeqTimeSeriesMetadata.isEmpty())) {
+        // init first time series metadata whose startTime is minimum
+        tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
+        // filter file based on push-down conditions
+        filterFirstTimeSeriesMetadata();
+      }
 
-    return firstTimeSeriesMetadata != null;
+      return firstTimeSeriesMetadata != null;
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.HAS_NEXT_FILE, System.nanoTime() - startTime);
+    }
   }
 
   boolean isFileOverlapped() throws IOException {
@@ -254,50 +262,62 @@ public class SeriesScanUtil {
    * overlapped chunks are consumed
    */
   public boolean hasNextChunk() throws IOException {
-    if (!paginationController.hasCurLimit()) {
-      return false;
-    }
+    long startTime = System.nanoTime();
+    try {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
 
-    if (!unSeqPageReaders.isEmpty()
-        || firstPageReader != null
-        || mergeReader.hasNextTimeValuePair()) {
-      throw new IOException(
-          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
-              + unSeqPageReaders.isEmpty()
-              + " firstPageReader != null is "
-              + (firstPageReader != null)
-              + " mergeReader.hasNextTimeValuePair() = "
-              + mergeReader.hasNextTimeValuePair());
-    }
+      if (!unSeqPageReaders.isEmpty()
+          || firstPageReader != null
+          || mergeReader.hasNextTimeValuePair()) {
+        throw new IOException(
+            "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
+                + unSeqPageReaders.isEmpty()
+                + " firstPageReader != null is "
+                + (firstPageReader != null)
+                + " mergeReader.hasNextTimeValuePair() = "
+                + mergeReader.hasNextTimeValuePair());
+      }
 
-    if (firstChunkMetadata != null) {
-      return true;
-      // hasNextFile() has not been invoked
-    } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
-      return false;
-    }
+      if (firstChunkMetadata != null) {
+        return true;
+        // hasNextFile() has not been invoked
+      } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
+        return false;
+      }
 
-    while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
-      initFirstChunkMetadata();
-      // filter chunk based on push-down conditions
-      filterFirstChunkMetadata();
+      while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
+        initFirstChunkMetadata();
+        // filter chunk based on push-down conditions
+        filterFirstChunkMetadata();
+      }
+      return firstChunkMetadata != null;
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.HAS_NEXT_CHUNK, System.nanoTime() - startTime);
     }
-    return firstChunkMetadata != null;
   }
 
   protected void filterFirstChunkMetadata() throws IOException {
-    if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
-      Statistics statistics = firstChunkMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
-        long rowCount = statistics.getCount();
-        if (paginationController.hasCurOffset(rowCount)) {
+    long startTime = System.nanoTime();
+    try {
+      if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
+        Filter queryFilter = scanOptions.getQueryFilter();
+        Statistics statistics = firstChunkMetadata.getStatistics();
+        if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+          long rowCount = statistics.getCount();
+          if (paginationController.hasCurOffset(rowCount)) {
+            skipCurrentChunk();
+            paginationController.consumeOffset(rowCount);
+          }
+        } else if (!queryFilter.satisfy(statistics)) {
           skipCurrentChunk();
-          paginationController.consumeOffset(rowCount);
         }
-      } else if (!queryFilter.satisfy(statistics)) {
-        skipCurrentChunk();
       }
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.FILTER_FIRST_CHUNK_METADATA, System.nanoTime() - startTime);
     }
   }
 
@@ -401,60 +421,67 @@ public class SeriesScanUtil {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   public boolean hasNextPage() throws IOException {
-    if (!paginationController.hasCurLimit()) {
-      return false;
-    }
+    long startTime = System.nanoTime();
+    try {
+      if (!paginationController.hasCurLimit()) {
+        return false;
+      }
 
-    /*
-     * has overlapped data before
-     */
-    if (hasCachedNextOverlappedPage) {
-      return true;
-    } else if (mergeReader.hasNextTimeValuePair() || firstPageOverlapped()) {
-      if (hasNextOverlappedPage()) {
-        cachedTsBlock = nextOverlappedPage();
-        if (cachedTsBlock != null && !cachedTsBlock.isEmpty()) {
-          hasCachedNextOverlappedPage = true;
-          return true;
+      /*
+       * has overlapped data before
+       */
+      if (hasCachedNextOverlappedPage) {
+        return true;
+      } else if (mergeReader.hasNextTimeValuePair() || firstPageOverlapped()) {
+        if (hasNextOverlappedPage()) {
+          cachedTsBlock = nextOverlappedPage();
+          if (cachedTsBlock != null && !cachedTsBlock.isEmpty()) {
+            hasCachedNextOverlappedPage = true;
+            return true;
+          }
         }
       }
-    }
 
-    if (firstPageReader != null) {
-      return true;
-    }
+      if (firstPageReader != null) {
+        return true;
+      }
 
-    /*
-     * construct first page reader
-     */
-    if (firstChunkMetadata != null) {
       /*
-       * try to unpack all overlapped ChunkMetadata to cachedPageReaders
+       * construct first page reader
        */
-      unpackAllOverlappedChunkMetadataToPageReaders(
-          orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), true);
-    } else {
-      /*
-       * first chunk metadata is already unpacked, consume cached pages
-       */
-      initFirstPageReader();
-    }
-
-    if (isExistOverlappedPage()) {
-      return true;
-    }
-
-    // make sure firstPageReader won't be null while the unSeqPageReaders has more cached page
-    // readers
-    while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
-
-      initFirstPageReader();
+      if (firstChunkMetadata != null) {
+        /*
+         * try to unpack all overlapped ChunkMetadata to cachedPageReaders
+         */
+        unpackAllOverlappedChunkMetadataToPageReaders(
+            orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), true);
+      } else {
+        /*
+         * first chunk metadata is already unpacked, consume cached pages
+         */
+        initFirstPageReader();
+      }
 
       if (isExistOverlappedPage()) {
         return true;
       }
+
+      // make sure firstPageReader won't be null while the unSeqPageReaders has more cached page
+      // readers
+      while (firstPageReader == null
+          && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
+
+        initFirstPageReader();
+
+        if (isExistOverlappedPage()) {
+          return true;
+        }
+      }
+      return firstPageReader != null;
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.HAS_NEXT_PAGE, System.nanoTime() - startTime);
     }
-    return firstPageReader != null;
   }
 
   private boolean isExistOverlappedPage() throws IOException {
@@ -765,66 +792,73 @@ public class SeriesScanUtil {
              */
             timeValuePair = mergeReader.nextTimeValuePair();
 
-            Object valueForFilter = timeValuePair.getValue().getValue();
+            long st = System.nanoTime();
+            try {
+              Object valueForFilter = timeValuePair.getValue().getValue();
 
-            // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will
-            // only accept AlignedPath with only one sub sensor
-            if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
-              for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
-                if (tsPrimitiveType != null) {
-                  valueForFilter = tsPrimitiveType.getValue();
-                  break;
+              // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it
+              // will
+              // only accept AlignedPath with only one sub sensor
+              if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
+                for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
+                  if (tsPrimitiveType != null) {
+                    valueForFilter = tsPrimitiveType.getValue();
+                    break;
+                  }
                 }
               }
-            }
 
-            Filter queryFilter = scanOptions.getQueryFilter();
-            if (queryFilter != null
-                && !queryFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
-              continue;
-            }
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-              continue;
-            }
-            if (paginationController.hasCurLimit()) {
-              timeBuilder.writeLong(timeValuePair.getTimestamp());
-              switch (dataType) {
-                case BOOLEAN:
-                  builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
-                  break;
-                case INT32:
-                  builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
-                  break;
-                case INT64:
-                  builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
-                  break;
-                case FLOAT:
-                  builder.getColumnBuilder(0).writeFloat(timeValuePair.getValue().getFloat());
-                  break;
-                case DOUBLE:
-                  builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
-                  break;
-                case TEXT:
-                  builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
-                  break;
-                case VECTOR:
-                  TsPrimitiveType[] values = timeValuePair.getValue().getVector();
-                  for (int i = 0; i < values.length; i++) {
-                    if (values[i] == null) {
-                      builder.getColumnBuilder(i).appendNull();
-                    } else {
-                      builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
-                    }
-                  }
-                  break;
-                default:
-                  throw new UnSupportedDataTypeException(String.valueOf(dataType));
+              Filter queryFilter = scanOptions.getQueryFilter();
+              if (queryFilter != null
+                  && !queryFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
+                continue;
               }
-              builder.declarePosition();
-              paginationController.consumeLimit();
-            } else {
-              break;
+              if (paginationController.hasCurOffset()) {
+                paginationController.consumeOffset();
+                continue;
+              }
+              if (paginationController.hasCurLimit()) {
+                timeBuilder.writeLong(timeValuePair.getTimestamp());
+                switch (dataType) {
+                  case BOOLEAN:
+                    builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
+                    break;
+                  case INT32:
+                    builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
+                    break;
+                  case INT64:
+                    builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
+                    break;
+                  case FLOAT:
+                    builder.getColumnBuilder(0).writeFloat(timeValuePair.getValue().getFloat());
+                    break;
+                  case DOUBLE:
+                    builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
+                    break;
+                  case TEXT:
+                    builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
+                    break;
+                  case VECTOR:
+                    TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+                    for (int i = 0; i < values.length; i++) {
+                      if (values[i] == null) {
+                        builder.getColumnBuilder(i).appendNull();
+                      } else {
+                        builder.getColumnBuilder(i).writeTsPrimitiveType(values[i]);
+                      }
+                    }
+                    break;
+                  default:
+                    throw new UnSupportedDataTypeException(String.valueOf(dataType));
+                }
+                builder.declarePosition();
+                paginationController.consumeLimit();
+              } else {
+                break;
+              }
+            } finally {
+              QueryStatistics.getInstance()
+                  .addCost(QueryStatistics.MERGE_READER_BUILD_RES, System.nanoTime() - st);
             }
           }
           hasCachedNextOverlappedPage = !builder.isEmpty();
@@ -843,11 +877,13 @@ public class SeriesScanUtil {
         }
       }
     } finally {
+      long costTime = System.nanoTime() - startTime;
       QUERY_METRICS.recordSeriesScanCost(
           isAligned
               ? BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED
               : BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED,
-          System.nanoTime() - startTime);
+          costTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.HAS_NEXT_OVERLAPPED_PAGE, costTime);
     }
   }
 
@@ -992,18 +1028,23 @@ public class SeriesScanUtil {
      * find end time of the first TimeSeriesMetadata
      */
     long endTime = -1L;
-    if (!seqTimeSeriesMetadata.isEmpty() && unSeqTimeSeriesMetadata.isEmpty()) {
-      // only has seq
-      endTime = orderUtils.getOverlapCheckTime(seqTimeSeriesMetadata.get(0).getStatistics());
-    } else if (seqTimeSeriesMetadata.isEmpty() && !unSeqTimeSeriesMetadata.isEmpty()) {
-      // only has unseq
-      endTime = orderUtils.getOverlapCheckTime(unSeqTimeSeriesMetadata.peek().getStatistics());
-    } else if (!seqTimeSeriesMetadata.isEmpty()) {
-      // has seq and unseq
-      endTime =
-          orderUtils.getCurrentEndPoint(
-              seqTimeSeriesMetadata.get(0).getStatistics(),
-              unSeqTimeSeriesMetadata.peek().getStatistics());
+    long t1 = System.nanoTime();
+    try {
+      if (!seqTimeSeriesMetadata.isEmpty() && unSeqTimeSeriesMetadata.isEmpty()) {
+        // only has seq
+        endTime = orderUtils.getOverlapCheckTime(seqTimeSeriesMetadata.get(0).getStatistics());
+      } else if (seqTimeSeriesMetadata.isEmpty() && !unSeqTimeSeriesMetadata.isEmpty()) {
+        // only has unseq
+        endTime = orderUtils.getOverlapCheckTime(unSeqTimeSeriesMetadata.peek().getStatistics());
+      } else if (!seqTimeSeriesMetadata.isEmpty()) {
+        // has seq and unseq
+        endTime =
+            orderUtils.getCurrentEndPoint(
+                seqTimeSeriesMetadata.get(0).getStatistics(),
+                unSeqTimeSeriesMetadata.peek().getStatistics());
+      }
+    } finally {
+      QueryStatistics.getInstance().addCost(QueryStatistics.FIND_END_TIME, System.nanoTime() - t1);
     }
 
     /*
@@ -1016,39 +1057,51 @@ public class SeriesScanUtil {
     /*
      * update the first TimeSeriesMetadata
      */
-    if (!seqTimeSeriesMetadata.isEmpty() && unSeqTimeSeriesMetadata.isEmpty()) {
-      // only has seq
-      firstTimeSeriesMetadata = seqTimeSeriesMetadata.remove(0);
-    } else if (seqTimeSeriesMetadata.isEmpty() && !unSeqTimeSeriesMetadata.isEmpty()) {
-      // only has unseq
-      firstTimeSeriesMetadata = unSeqTimeSeriesMetadata.poll();
-    } else if (!seqTimeSeriesMetadata.isEmpty()) {
-      // has seq and unseq
-      if (orderUtils.isTakeSeqAsFirst(
-          seqTimeSeriesMetadata.get(0).getStatistics(),
-          unSeqTimeSeriesMetadata.peek().getStatistics())) {
+    t1 = System.nanoTime();
+    try {
+      if (!seqTimeSeriesMetadata.isEmpty() && unSeqTimeSeriesMetadata.isEmpty()) {
+        // only has seq
         firstTimeSeriesMetadata = seqTimeSeriesMetadata.remove(0);
-      } else {
+      } else if (seqTimeSeriesMetadata.isEmpty() && !unSeqTimeSeriesMetadata.isEmpty()) {
+        // only has unseq
         firstTimeSeriesMetadata = unSeqTimeSeriesMetadata.poll();
+      } else if (!seqTimeSeriesMetadata.isEmpty()) {
+        // has seq and unseq
+        if (orderUtils.isTakeSeqAsFirst(
+            seqTimeSeriesMetadata.get(0).getStatistics(),
+            unSeqTimeSeriesMetadata.peek().getStatistics())) {
+          firstTimeSeriesMetadata = seqTimeSeriesMetadata.remove(0);
+        } else {
+          firstTimeSeriesMetadata = unSeqTimeSeriesMetadata.poll();
+        }
       }
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.PICK_FIRST_TIMESERIES_METADATA, System.nanoTime() - t1);
     }
   }
 
   protected void filterFirstTimeSeriesMetadata() throws IOException {
-    if (firstTimeSeriesMetadata != null
-        && !isFileOverlapped()
-        && !firstTimeSeriesMetadata.isModified()) {
-      Filter queryFilter = scanOptions.getQueryFilter();
-      Statistics statistics = firstTimeSeriesMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
-        long rowCount = statistics.getCount();
-        if (paginationController.hasCurOffset(rowCount)) {
+    long startTime = System.nanoTime();
+    try {
+      if (firstTimeSeriesMetadata != null
+          && !isFileOverlapped()
+          && !firstTimeSeriesMetadata.isModified()) {
+        Filter queryFilter = scanOptions.getQueryFilter();
+        Statistics statistics = firstTimeSeriesMetadata.getStatistics();
+        if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+          long rowCount = statistics.getCount();
+          if (paginationController.hasCurOffset(rowCount)) {
+            skipCurrentFile();
+            paginationController.consumeOffset(rowCount);
+          }
+        } else if (!queryFilter.satisfy(statistics)) {
           skipCurrentFile();
-          paginationController.consumeOffset(rowCount);
         }
-      } else if (!queryFilter.satisfy(statistics)) {
-        skipCurrentFile();
       }
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.FILTER_FIRST_TIMESERIES_METADATA, System.nanoTime() - startTime);
     }
   }
 
@@ -1116,7 +1169,7 @@ public class SeriesScanUtil {
     return scanOptions.getGlobalTimeFilter();
   }
 
-  protected static class VersionPageReader {
+  protected class VersionPageReader {
 
     private final PriorityMergeReader.MergeReaderPriority version;
     private final IPageReader data;
@@ -1160,6 +1213,7 @@ public class SeriesScanUtil {
         }
         return tsBlock;
       } finally {
+        long costTime = System.nanoTime() - startTime;
         QUERY_METRICS.recordSeriesScanCost(
             isAligned
                 ? (isMem
@@ -1168,7 +1222,8 @@ public class SeriesScanUtil {
                 : (isMem
                     ? BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM
                     : BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK),
-            System.nanoTime() - startTime);
+            costTime);
+        QueryStatistics.getInstance().addCost(PAGE_READER, costTime);
       }
     }
 

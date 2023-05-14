@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.PipelineDriverFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import io.airlift.stats.CounterStat;
@@ -52,6 +53,8 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
 import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.LOCAL_EXECUTION_PLANNER;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CREATE_FI_CONTEXT;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CREATE_FI_EXEC;
 
 public class FragmentInstanceManager {
 
@@ -76,6 +79,7 @@ public class FragmentInstanceManager {
   private final ExecutorService intoOperationExecutor;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
@@ -118,6 +122,7 @@ public class FragmentInstanceManager {
                 FragmentInstanceStateMachine stateMachine =
                     new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
+                long start = System.nanoTime();
                 FragmentInstanceContext context =
                     instanceContext.computeIfAbsent(
                         instanceId,
@@ -128,6 +133,7 @@ public class FragmentInstanceManager {
                                 instance.getSessionInfo(),
                                 dataRegion,
                                 instance.getTimeFilter()));
+                QUERY_STATISTICS.addCost(CREATE_FI_CONTEXT, System.nanoTime() - start);
 
                 try {
                   List<PipelineDriverFactory> driverFactories =
@@ -141,6 +147,7 @@ public class FragmentInstanceManager {
                   // get the sink of last driver
                   ISink sink = drivers.get(drivers.size() - 1).getSink();
 
+                  start = System.nanoTime();
                   return createFragmentInstanceExecution(
                       scheduler,
                       instanceId,
@@ -154,6 +161,8 @@ public class FragmentInstanceManager {
                   logger.warn("error when create FragmentInstanceExecution.", t);
                   stateMachine.failed(t);
                   return null;
+                } finally {
+                  QUERY_STATISTICS.addCost(CREATE_FI_EXEC, System.nanoTime() - start);
                 }
               });
 
@@ -171,7 +180,9 @@ public class FragmentInstanceManager {
         return createFailedInstanceInfo(instanceId);
       }
     } finally {
-      QUERY_METRICS.recordExecutionCost(LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
+      long endTime = System.nanoTime() - startTime;
+      QUERY_METRICS.recordExecutionCost(LOCAL_EXECUTION_PLANNER, endTime);
+      QUERY_STATISTICS.addCost(QueryStatistics.LOCAL_EXECUTION_PLANNER, endTime);
     }
   }
 

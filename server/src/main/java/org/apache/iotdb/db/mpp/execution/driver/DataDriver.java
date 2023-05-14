@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -30,6 +31,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.INIT_SOURCE_OP;
 
 /**
  * One dataDriver is responsible for one FragmentInstance which is for data query, which may
@@ -81,6 +83,7 @@ public class DataDriver extends Driver {
           // And it's safe for us to throw this exception here in such case.
           throw new IllegalStateException("QueryDataSource should never be null!");
         }
+        long start = System.nanoTime();
         sourceOperators.forEach(
             sourceOperator -> {
               // construct QueryDataSource for source operator
@@ -91,11 +94,18 @@ public class DataDriver extends Driver {
 
               sourceOperator.initQueryDataSource(queryDataSource);
             });
+        driverContext
+            .getFragmentInstanceContext()
+            .addOperationTime(INIT_SOURCE_OP, System.nanoTime() - start);
       }
 
       this.init = true;
     } finally {
-      QUERY_METRICS.recordExecutionCost(QUERY_RESOURCE_INIT, System.nanoTime() - startTime);
+      long costTime = System.nanoTime() - startTime;
+      QUERY_METRICS.recordExecutionCost(QUERY_RESOURCE_INIT, costTime);
+      driverContext
+          .getFragmentInstanceContext()
+          .addOperationTime(QueryStatistics.QUERY_RESOURCE_INIT, costTime);
     }
   }
 

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -72,7 +73,9 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
       long t2 = System.nanoTime();
       IChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, timeFilter);
-      QUERY_METRICS.recordSeriesScanCost(INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
+      long costTime = System.nanoTime() - t2;
+      QUERY_METRICS.recordSeriesScanCost(INIT_CHUNK_READER_ALIGNED_DISK, costTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.INIT_PAGE_READERS, costTime);
 
       return chunkReader;
     } finally {

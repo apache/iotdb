@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange.sink;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.mpp.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -35,8 +36,13 @@ import java.util.Optional;
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.CHECK_AND_INVOKE_ON_FINISHED;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SINK_HANDLE_END_LISTENER;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.SINK_HANDLE_FINISH_LISTENER;
 
 public class LocalSinkChannel implements ISinkChannel {
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalSinkChannel.class);
 
@@ -109,8 +115,10 @@ public class LocalSinkChannel implements ISinkChannel {
       if (isFinished()) {
         synchronized (this) {
           if (!invokedOnFinished) {
+            long start = System.nanoTime();
             sinkListener.onFinish(this);
             invokedOnFinished = true;
+            QUERY_STATISTICS.addCost(SINK_HANDLE_FINISH_LISTENER, System.nanoTime() - start);
           }
         }
       }
@@ -156,10 +164,15 @@ public class LocalSinkChannel implements ISinkChannel {
           return;
         }
         queue.setNoMoreTsBlocks(true);
+        long startTime = System.nanoTime();
         sinkListener.onEndOfBlocks(this);
+        QUERY_STATISTICS.addCost(SINK_HANDLE_END_LISTENER, System.nanoTime() - startTime);
       }
     }
+
+    long startTime = System.nanoTime();
     checkAndInvokeOnFinished();
+    QUERY_STATISTICS.addCost(CHECK_AND_INVOKE_ON_FINISHED, System.nanoTime() - startTime);
     LOGGER.debug("[EndSetNoMoreTsBlocksOnLocal]");
   }
 

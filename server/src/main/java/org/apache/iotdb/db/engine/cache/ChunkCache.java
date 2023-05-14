@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.metric.ChunkCacheMetrics;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -136,7 +137,9 @@ public class ChunkCache {
           chunkMetaData.getDeleteIntervalList(),
           chunkMetaData.getStatistics());
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(READ_CHUNK_ALL, System.nanoTime() - startTime);
+      long costTime = System.nanoTime() - startTime;
+      QUERY_METRICS.recordSeriesScanCost(READ_CHUNK_ALL, costTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.LOAD_CHUNK, costTime);
     }
   }
 

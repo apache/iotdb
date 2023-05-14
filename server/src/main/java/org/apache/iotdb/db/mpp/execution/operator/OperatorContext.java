@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 
 import io.airlift.units.Duration;
 
@@ -45,6 +46,8 @@ public class OperatorContext {
   private long totalExecutionTimeInNanos = 0L;
   private long nextCalledCount = 0L;
 
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
+
   public OperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType, DriverContext driverContext) {
     this.operatorId = operatorId;
@@ -63,6 +66,10 @@ public class OperatorContext {
     this.planNodeId = planNodeId;
     this.operatorType = operatorType;
     this.driverContext = new DriverContext(fragmentInstanceContext, 0);
+  }
+
+  public void addOperatorTime(String key, long costTimeInNanos) {
+    QUERY_STATISTICS.addCost(key, costTimeInNanos);
   }
 
   public int getOperatorId() {

@@ -134,6 +134,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
@@ -247,8 +248,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree, context);
       }
-      QueryMetricsManager.getInstance()
-          .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+      long endTime = System.nanoTime() - startTime;
+      QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, endTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.SCHEMA_FETCHER, endTime);
+
       logger.debug("[EndFetchSchema]");
 
       // If there is no leaf node in the schema tree, the query should be completed immediately
@@ -1549,8 +1552,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       }
     } finally {
-      QueryMetricsManager.getInstance()
-          .recordPlanCost(PARTITION_FETCHER, System.nanoTime() - startTime);
+      long costTime = System.nanoTime() - startTime;
+      QueryMetricsManager.getInstance().recordPlanCost(PARTITION_FETCHER, costTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.PARTITION_FETCHER, costTime);
     }
   }
 
