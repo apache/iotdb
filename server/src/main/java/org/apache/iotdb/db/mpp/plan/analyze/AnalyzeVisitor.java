@@ -231,12 +231,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try {
       // check for semantic errors
       queryStatement.semanticCheck();
+      analysis.setStatement(queryStatement);
+
+      if (queryStatement.isModelInferenceQuery()) {
+        analyzeModelInference(analysis, queryStatement);
+      }
 
       // concat path and construct path pattern tree
       PathPatternTree patternTree = new PathPatternTree();
       queryStatement =
           (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
-      analysis.setStatement(queryStatement);
 
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
@@ -356,6 +360,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     return analysis;
   }
+
+  private void analyzeModelInference(Analysis analysis, QueryStatement queryStatement) {}
 
   private Analysis finishQuery(QueryStatement queryStatement, Analysis analysis) {
     if (queryStatement.isSelectInto()) {
