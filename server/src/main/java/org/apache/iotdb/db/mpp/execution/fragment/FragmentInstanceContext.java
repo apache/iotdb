@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -44,6 +45,9 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.ADD_REFERENCE;
+import static org.apache.iotdb.db.mpp.statistics.QueryStatistics.QUERY_RESOURCE_LIST;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -82,6 +86,8 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endNanos = new AtomicLong();
   //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
+
+  private static final QueryStatistics QUERY_STATISTICS = QueryStatistics.getInstance();
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
@@ -279,6 +285,7 @@ public class FragmentInstanceContext extends QueryContext {
         selectedDeviceIdSet.add(translatedPath.getDevice());
       }
 
+      long startTime = System.nanoTime();
       this.sharedQueryDataSource =
           dataRegion.query(
               pathList,
@@ -287,13 +294,16 @@ public class FragmentInstanceContext extends QueryContext {
               selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
               this,
               timeFilter != null ? timeFilter.copy() : null);
+      addOperationTime(QUERY_RESOURCE_LIST, System.nanoTime() - startTime);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
       if (sharedQueryDataSource != null) {
         closedFilePaths = new HashSet<>();
         unClosedFilePaths = new HashSet<>();
+        startTime = System.nanoTime();
         addUsedFilesForQuery(sharedQueryDataSource);
+        addOperationTime(ADD_REFERENCE, System.nanoTime() - startTime);
       }
     } finally {
       dataRegion.readUnlock();
@@ -374,5 +384,9 @@ public class FragmentInstanceContext extends QueryContext {
     timeFilter = null;
     sourcePaths = null;
     sharedQueryDataSource = null;
+  }
+
+  public void addOperationTime(String key, long costTimeInNanos) {
+    QUERY_STATISTICS.addCost(key, costTimeInNanos);
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -35,7 +36,13 @@ public class AlignedPriorityMergeReader extends PriorityMergeReader {
    */
   @Override
   protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
-    fillNullValueInAligned(v, c);
+    long startTime = System.nanoTime();
+    try {
+      fillNullValueInAligned(v, c);
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.MERGE_READER_FILL_NULL_VALUE, System.nanoTime() - startTime);
+    }
   }
 
   static void fillNullValueInAligned(TimeValuePair v, TimeValuePair c) {

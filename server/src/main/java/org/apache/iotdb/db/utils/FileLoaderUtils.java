@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.statistics.QueryStatistics;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
@@ -175,11 +176,12 @@ public class FileLoaderUtils {
       }
       return timeSeriesMetadata;
     } finally {
+      long costTime = System.nanoTime() - t1;
       QUERY_METRICS.recordSeriesScanCost(
           loadFromMem
               ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
               : LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
-          System.nanoTime() - t1);
+          costTime);
     }
   }
 
@@ -286,11 +288,13 @@ public class FileLoaderUtils {
       }
       return alignedTimeSeriesMetadata;
     } finally {
+      long costTime = System.nanoTime() - t1;
       QUERY_METRICS.recordSeriesScanCost(
           loadFromMem
               ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
               : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
-          System.nanoTime() - t1);
+          costTime);
+      QueryStatistics.getInstance().addCost(QueryStatistics.LOAD_TIME_SERIES_METADATA, costTime);
     }
   }
 
@@ -301,7 +305,11 @@ public class FileLoaderUtils {
    */
   public static List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata)
       throws IOException {
-    return timeSeriesMetadata.loadChunkMetadataList();
+    long startTime = System.nanoTime();
+    List<IChunkMetadata> chunkMetadataList = timeSeriesMetadata.loadChunkMetadataList();
+    QueryStatistics.getInstance()
+        .addCost(QueryStatistics.LOAD_CHUNK_METADATA_LIST, System.nanoTime() - startTime);
+    return chunkMetadataList;
   }
 
   /**
@@ -312,11 +320,17 @@ public class FileLoaderUtils {
    */
   public static List<IPageReader> loadPageReaderList(
       IChunkMetadata chunkMetaData, Filter timeFilter) throws IOException {
-    if (chunkMetaData == null) {
-      throw new IOException("Can't init null chunkMeta");
+    long startTime = System.nanoTime();
+    try {
+      if (chunkMetaData == null) {
+        throw new IOException("Can't init null chunkMeta");
+      }
+      IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+      IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, timeFilter);
+      return chunkReader.loadPageReaderList();
+    } finally {
+      QueryStatistics.getInstance()
+          .addCost(QueryStatistics.LOAD_PAGE_READER_LIST, System.nanoTime() - startTime);
     }
-    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-    IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, timeFilter);
-    return chunkReader.loadPageReaderList();
   }
 }
