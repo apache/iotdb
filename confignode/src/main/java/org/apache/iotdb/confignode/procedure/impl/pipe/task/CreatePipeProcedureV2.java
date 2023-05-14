@@ -180,26 +180,26 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(createPipeRequest.getPipeName(), stream);
-    stream.writeInt(createPipeRequest.getCollectorAttributesSize());
+    ReadWriteIOUtils.write(createPipeRequest.getCollectorAttributesSize(), stream);
     for (Map.Entry<String, String> entry : createPipeRequest.getCollectorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    stream.writeInt(createPipeRequest.getProcessorAttributesSize());
+    ReadWriteIOUtils.write(createPipeRequest.getProcessorAttributesSize(), stream);
     for (Map.Entry<String, String> entry : createPipeRequest.getProcessorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    stream.writeInt(createPipeRequest.getConnectorAttributesSize());
+    ReadWriteIOUtils.write(createPipeRequest.getConnectorAttributesSize(), stream);
     for (Map.Entry<String, String> entry : createPipeRequest.getConnectorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
     if (pipeStaticMeta != null) {
-      stream.writeBoolean(true);
+      ReadWriteIOUtils.write(true, stream);
       pipeStaticMeta.serialize(stream);
     } else {
-      stream.writeBoolean(false);
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 
@@ -212,19 +212,19 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .setCollectorAttributes(new HashMap<>())
             .setProcessorAttributes(new HashMap<>())
             .setConnectorAttributes(new HashMap<>());
-    int size = byteBuffer.getInt();
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       createPipeRequest
           .getCollectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
-    size = byteBuffer.getInt();
+    size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       createPipeRequest
           .getProcessorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
-    size = byteBuffer.getInt();
+    size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       createPipeRequest
           .getConnectorAttributes()

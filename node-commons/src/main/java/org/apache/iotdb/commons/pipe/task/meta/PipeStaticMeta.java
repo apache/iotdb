@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -85,17 +86,38 @@ public class PipeStaticMeta {
     ReadWriteIOUtils.write(pipeName, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
-    outputStream.writeInt(collectorParameters.getAttribute().size());
+    ReadWriteIOUtils.write(collectorParameters.getAttribute().size(), outputStream);
     for (Map.Entry<String, String> entry : collectorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
-    outputStream.writeInt(processorParameters.getAttribute().size());
+    ReadWriteIOUtils.write(processorParameters.getAttribute().size(), outputStream);
     for (Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
-    outputStream.writeInt(connectorParameters.getAttribute().size());
+    ReadWriteIOUtils.write(connectorParameters.getAttribute().size(), outputStream);
+    for (Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
+  }
+
+  public void serialize(FileOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(pipeName, outputStream);
+    ReadWriteIOUtils.write(creationTime, outputStream);
+
+    ReadWriteIOUtils.write(collectorParameters.getAttribute().size(), outputStream);
+    for (Map.Entry<String, String> entry : collectorParameters.getAttribute().entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
+    ReadWriteIOUtils.write(processorParameters.getAttribute().size(), outputStream);
+    for (Map.Entry<String, String> entry : processorParameters.getAttribute().entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
+    ReadWriteIOUtils.write(connectorParameters.getAttribute().size(), outputStream);
     for (Map.Entry<String, String> entry : connectorParameters.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
@@ -117,26 +139,23 @@ public class PipeStaticMeta {
     pipeStaticMeta.processorParameters = new PipeParameters(new HashMap<>());
     pipeStaticMeta.connectorParameters = new PipeParameters(new HashMap<>());
 
-    int size = byteBuffer.getInt();
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      pipeStaticMeta
-          .collectorParameters
-          .getAttribute()
-          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      final String key = ReadWriteIOUtils.readString(byteBuffer);
+      final String value = ReadWriteIOUtils.readString(byteBuffer);
+      pipeStaticMeta.collectorParameters.getAttribute().put(key, value);
     }
-    size = byteBuffer.getInt();
+    size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      pipeStaticMeta
-          .processorParameters
-          .getAttribute()
-          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      final String key = ReadWriteIOUtils.readString(byteBuffer);
+      final String value = ReadWriteIOUtils.readString(byteBuffer);
+      pipeStaticMeta.processorParameters.getAttribute().put(key, value);
     }
-    size = byteBuffer.getInt();
+    size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      pipeStaticMeta
-          .connectorParameters
-          .getAttribute()
-          .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      final String key = ReadWriteIOUtils.readString(byteBuffer);
+      final String value = ReadWriteIOUtils.readString(byteBuffer);
+      pipeStaticMeta.connectorParameters.getAttribute().put(key, value);
     }
 
     return pipeStaticMeta;

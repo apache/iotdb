@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -64,6 +65,17 @@ public class PipeRuntimeMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(status.get().getType(), outputStream);
+
+    ReadWriteIOUtils.write(consensusGroupIdToTaskMetaMap.size(), outputStream);
+    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
+        consensusGroupIdToTaskMetaMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
+      entry.getValue().serialize(outputStream);
+    }
+  }
+
+  public void serialize(FileOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
     ReadWriteIOUtils.write(consensusGroupIdToTaskMetaMap.size(), outputStream);

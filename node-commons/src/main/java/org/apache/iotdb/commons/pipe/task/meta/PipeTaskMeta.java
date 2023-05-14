@@ -25,6 +25,7 @@ import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -83,6 +84,17 @@ public class PipeTaskMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(progressIndex.get(), outputStream);
+    ReadWriteIOUtils.write(regionLeader.get(), outputStream);
+    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
+    for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
+      ReadWriteIOUtils.write(
+          exceptionMessage instanceof PipeRuntimeCriticalException, outputStream);
+      ReadWriteIOUtils.write(exceptionMessage.getMessage(), outputStream);
+    }
+  }
+
+  public void serialize(FileOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(progressIndex.get(), outputStream);
     ReadWriteIOUtils.write(regionLeader.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);

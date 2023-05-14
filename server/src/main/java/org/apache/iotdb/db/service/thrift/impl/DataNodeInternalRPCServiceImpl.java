@@ -804,8 +804,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus pushPipeMeta(TPushPipeMetaReq req) {
-    List<PipeMeta> pipeMetas = new ArrayList<>();
-    req.getPipeMetas().forEach(byteBuffer -> pipeMetas.add(PipeMeta.deserialize(byteBuffer)));
+    final List<PipeMeta> pipeMetas = new ArrayList<>();
+    for (ByteBuffer byteBuffer : req.getPipeMetas()) {
+      pipeMetas.add(PipeMeta.deserialize(byteBuffer));
+    }
     PipeAgent.task().handlePipeMetaChanges(pipeMetas);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
