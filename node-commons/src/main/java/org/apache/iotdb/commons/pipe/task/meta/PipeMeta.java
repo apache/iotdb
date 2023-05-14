@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
@@ -55,13 +54,13 @@ public class PipeMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(staticMeta.serialize(), outputStream);
-    ReadWriteIOUtils.write(runtimeMeta.serialize(), outputStream);
+    staticMeta.serialize(outputStream);
+    runtimeMeta.serialize(outputStream);
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(staticMeta.serialize(), outputStream);
-    ReadWriteIOUtils.write(runtimeMeta.serialize(), outputStream);
+    staticMeta.serialize(outputStream);
+    runtimeMeta.serialize(outputStream);
   }
 
   public static PipeMeta deserialize(FileInputStream fileInputStream) throws IOException {

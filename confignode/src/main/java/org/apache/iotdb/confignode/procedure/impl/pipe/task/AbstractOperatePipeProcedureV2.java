@@ -208,7 +208,7 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    stream.writeBoolean(isRollbackFromOperateOnDataNodesSuccessful);
+    ReadWriteIOUtils.write(isRollbackFromOperateOnDataNodesSuccessful, stream);
   }
 
   @Override

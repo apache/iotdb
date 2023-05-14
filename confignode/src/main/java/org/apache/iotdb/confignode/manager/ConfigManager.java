@@ -1612,14 +1612,9 @@ public class ConfigManager implements IManager {
   @Override
   public TShowPipeResp showPipe(TShowPipeReq req) {
     TSStatus status = confirmLeader();
-    LOGGER.info("showPipe: {}", req);
-    TShowPipeResp resp = new TShowPipeResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // TODO: Implement PipeManager
-      return resp.setStatus(status);
-    } else {
-      return resp.setStatus(status);
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().showPipes(req)
+        : new TShowPipeResp().setStatus(status);
   }
 
   @Override

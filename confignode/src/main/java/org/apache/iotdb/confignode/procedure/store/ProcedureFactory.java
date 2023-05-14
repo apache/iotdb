@@ -200,6 +200,16 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_MODEL_PROCEDURE;
     } else if (procedure instanceof DropModelProcedure) {
       return ProcedureType.DROP_MODEL_PROCEDURE;
+    } else if (procedure instanceof CreatePipeProcedureV2) {
+      return ProcedureType.CREATE_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof StartPipeProcedureV2) {
+      return ProcedureType.START_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof StopPipeProcedureV2) {
+      return ProcedureType.STOP_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof DropPipeProcedureV2) {
+      return ProcedureType.DROP_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof PipeHandleLeaderChangeProcedure) {
+      return ProcedureType.PIPE_HANDLE_LEADER_CHANGE_PROCEDURE;
     }
     return null;
   }

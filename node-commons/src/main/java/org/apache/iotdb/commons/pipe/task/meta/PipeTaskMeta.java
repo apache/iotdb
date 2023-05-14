@@ -25,6 +25,7 @@ import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -93,6 +94,17 @@ public class PipeTaskMeta {
     }
   }
 
+  public void serialize(FileOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(progressIndex.get(), outputStream);
+    ReadWriteIOUtils.write(regionLeader.get(), outputStream);
+    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
+    for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
+      ReadWriteIOUtils.write(
+          exceptionMessage instanceof PipeRuntimeCriticalException, outputStream);
+      ReadWriteIOUtils.write(exceptionMessage.getMessage(), outputStream);
+    }
+  }
+
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
     final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
     PipeTaskMeta.progressIndex.set(ReadWriteIOUtils.readLong(byteBuffer));
@@ -110,8 +122,19 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
-    return deserialize(
-        ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream)));
+    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
+    PipeTaskMeta.progressIndex.set(ReadWriteIOUtils.readLong(inputStream));
+    PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(inputStream));
+    final int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      final boolean critical = ReadWriteIOUtils.readBool(inputStream);
+      final String message = ReadWriteIOUtils.readString(inputStream);
+      PipeTaskMeta.exceptionMessages.add(
+          critical
+              ? new PipeRuntimeCriticalException(message)
+              : new PipeRuntimeNonCriticalException(message));
+    }
+    return PipeTaskMeta;
   }
 
   @Override

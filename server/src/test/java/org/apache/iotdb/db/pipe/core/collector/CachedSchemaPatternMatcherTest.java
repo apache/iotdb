@@ -69,7 +69,7 @@ public class CachedSchemaPatternMatcherTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeCollectorConstant.PATTERN_PATTERN_KEY, "root");
+                put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root");
                 put(PipeCollectorConstant.DATA_REGION_KEY, "1");
               }
             }),
@@ -85,7 +85,7 @@ public class CachedSchemaPatternMatcherTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, "root." + finalI1);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root." + finalI1);
                   put(PipeCollectorConstant.DATA_REGION_KEY, "1");
                 }
               }),
@@ -99,7 +99,9 @@ public class CachedSchemaPatternMatcherTest {
             new PipeParameters(
                 new HashMap<String, String>() {
                   {
-                    put(PipeCollectorConstant.PATTERN_PATTERN_KEY, "root." + finalI + "." + finalJ);
+                    put(
+                        PipeCollectorConstant.COLLECTOR_PATTERN_KEY,
+                        "root." + finalI + "." + finalJ);
                     put(PipeCollectorConstant.DATA_REGION_KEY, "1");
                   }
                 }),
