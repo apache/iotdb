@@ -232,7 +232,7 @@ public class ConfigNodeConfig {
   private long configNodeSimpleConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
-  private long dataRegionRatisGrpcFlowControlWindow = 16 * 1024 * 1024L;
+  private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
   private int dataRegionRatisGrpcLeaderOutstandingAppendsMax = 128;
 
