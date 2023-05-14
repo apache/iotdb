@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.page.LazyPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.v2.file.header.PageHeaderV2;
 import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
@@ -60,6 +61,8 @@ public class ChunkReader implements IChunkReader {
   /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
 
+  //  Statistics chunkStatistic;
+
   /**
    * constructor of ChunkReader.
    *
@@ -72,6 +75,9 @@ public class ChunkReader implements IChunkReader {
     this.deleteIntervalList = chunk.getDeleteIntervalList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
+
+    //    chunkStatistic = chunk.getChunkStatistic();
+
     if (chunk.isFromOldFile()) {
       initAllPageReadersV2();
     } else {
@@ -79,8 +85,23 @@ public class ChunkReader implements IChunkReader {
     }
   }
 
-  private void initAllPageReaders(Statistics chunkStatistic) throws IOException {
+  public ChunkReader(Chunk chunk, Filter filter, boolean lazy) throws IOException {
+    assert lazy;
+    assert !chunk.isFromOldFile();
+    this.filter = filter;
+    this.chunkDataBuffer = chunk.getData();
+    this.deleteIntervalList = chunk.getDeleteIntervalList();
+    chunkHeader = chunk.getHeader();
+    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
+
+    //    chunkStatistic = chunk.getChunkStatistic();
+
+    initAllLazyPageReaders(chunk.getChunkStatistic());
+  }
+
+  private void initAllLazyPageReaders(Statistics chunkStatistic) throws IOException {
     // construct next satisfied page header
+    int pageID = 0;
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader pageHeader;
@@ -91,10 +112,54 @@ public class ChunkReader implements IChunkReader {
       }
       // if the current page satisfies
       if (pageSatisfied(pageHeader)) {
-        pageReaderList.add(constructPageReaderForNextPage(pageHeader));
+        //        System.out.println(
+        //            "[ChunkReader initAllPageReaders]:\tuncompressing page body.\t time:"
+        //                + pageHeader.getStartTime()
+        //                + "..."
+        //                + pageHeader.getEndTime());
+        pageHeader.getStatistics().setPageStatFromChunkMetaDataStat(chunkStatistic, pageID);
+        pageReaderList.add(constructLazyPageReaderForNextPage(pageHeader));
       } else {
+        //        System.out.println(
+        //            "[ChunkReader initAllPageReaders]:\tskipping page body.\t time:"
+        //                + pageHeader.getStartTime()
+        //                + "..."
+        //                + pageHeader.getEndTime());
         skipBytesInStreamByLength(pageHeader.getCompressedSize());
       }
+      pageID++;
+    }
+  }
+
+  private void initAllPageReaders(Statistics chunkStatistic) throws IOException {
+    // construct next satisfied page header
+    int pageID = 0;
+    while (chunkDataBuffer.remaining() > 0) {
+      // deserialize a PageHeader from chunkDataBuffer
+      PageHeader pageHeader;
+      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkStatistic);
+      } else {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      }
+      // if the current page satisfies
+      if (pageSatisfied(pageHeader)) {
+        //        System.out.println(
+        //            "[ChunkReader initAllPageReaders]:\tuncompressing page body.\t time:"
+        //                + pageHeader.getStartTime()
+        //                + "..."
+        //                + pageHeader.getEndTime());
+        pageHeader.getStatistics().setPageStatFromChunkMetaDataStat(chunkStatistic, pageID);
+        pageReaderList.add(constructPageReaderForNextPage(pageHeader));
+      } else {
+        //        System.out.println(
+        //            "[ChunkReader initAllPageReaders]:\tskipping page body.\t time:"
+        //                + pageHeader.getStartTime()
+        //                + "..."
+        //                + pageHeader.getEndTime());
+        skipBytesInStreamByLength(pageHeader.getCompressedSize());
+      }
+      pageID++;
     }
   }
 
@@ -175,6 +240,35 @@ public class ChunkReader implements IChunkReader {
     return reader;
   }
 
+  private LazyPageReader constructLazyPageReaderForNextPage(PageHeader pageHeader)
+      throws IOException {
+    int compressedPageBodyLength = pageHeader.getCompressedSize();
+    // doesn't has a complete page body
+    if (compressedPageBodyLength > chunkDataBuffer.remaining()) {
+      throw new IOException(
+          "do not has a complete page body. Expected:"
+              + compressedPageBodyLength
+              + ". Actual:"
+              + chunkDataBuffer.remaining());
+    }
+    Decoder valueDecoder =
+        Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+    //    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
+    //      unCompressor.uncompress(
+    //          compressedPageBody, 0, compressedPageBodyLength, uncompressedPageData, 0);
+    LazyPageReader reader =
+        new LazyPageReader(
+            pageHeader,
+            chunkDataBuffer,
+            chunkHeader.getDataType(),
+            unCompressor,
+            valueDecoder,
+            timeDecoder,
+            filter);
+    reader.setDeleteIntervalList(deleteIntervalList);
+    return reader;
+  }
+
   @Override
   public void close() {}
 
@@ -183,7 +277,7 @@ public class ChunkReader implements IChunkReader {
   }
 
   @Override
-  public List<IPageReader> loadPageReaderList() {
+  public List<IPageReader> loadPageReaderList() throws IOException {
     return pageReaderList;
   }
 

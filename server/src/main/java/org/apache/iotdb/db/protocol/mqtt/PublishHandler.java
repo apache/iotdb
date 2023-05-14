@@ -18,12 +18,10 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.query.control.clientsession.MqttClientSession;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -40,16 +38,13 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** PublishHandler handle the messages from MQTT clients. */
 public class PublishHandler extends AbstractInterceptHandler {
 
   private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
-  private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
-      new ConcurrentHashMap<>();
-  private static final boolean isEnableOperationSync =
-      IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
+  private long sessionId;
+
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
 
   private final PayloadFormatter payloadFormat;
@@ -64,43 +59,32 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public String getID() {
-    return "iotdb-mqtt-broker-listener";
+    return "iotdb-mqtt-broker-listener-" + sessionId;
   }
 
   @Override
   public void onConnect(InterceptConnectMessage msg) {
-    if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
-      try {
-        MqttClientSession session = new MqttClientSession(msg.getClientID());
-        // TODO should we put this session into a ThreadLocal in SessionManager?
-        serviceProvider.login(
-            session,
-            msg.getUsername(),
-            new String(msg.getPassword()),
-            ZoneId.systemDefault().toString(),
-            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-        clientIdToSessionMap.put(msg.getClientID(), session);
-      } catch (TException e) {
-        throw new RuntimeException(e);
-      }
+    try {
+      BasicOpenSessionResp basicOpenSessionResp =
+          serviceProvider.openSession(
+              msg.getUsername(),
+              new String(msg.getPassword()),
+              ZoneId.systemDefault().toString(),
+              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+      sessionId = basicOpenSessionResp.getSessionId();
+    } catch (TException e) {
+      throw new RuntimeException(e);
     }
   }
 
   @Override
   public void onDisconnect(InterceptDisconnectMessage msg) {
-    MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
-    if (null != session) {
-      serviceProvider.closeSession(session);
-    }
+    serviceProvider.closeSession(sessionId);
   }
 
   @Override
   public void onPublish(InterceptPublishMessage msg) {
     String clientId = msg.getClientID();
-    if (!clientIdToSessionMap.containsKey(clientId)) {
-      return;
-    }
-    MqttClientSession session = clientIdToSessionMap.get(clientId);
     ByteBuf payload = msg.getPayload();
     String topic = msg.getTopicName();
     String username = msg.getUsername();
@@ -135,15 +119,10 @@ public class PublishHandler extends AbstractInterceptHandler {
                 event.getTimestamp(),
                 event.getMeasurements().toArray(new String[0]),
                 event.getValues().toArray(new String[0]));
-        plan.setNativeInsertApi(true);
-        TSStatus tsStatus = serviceProvider.checkAuthority(plan, session);
+        TSStatus tsStatus = serviceProvider.checkAuthority(plan, sessionId);
         if (tsStatus != null) {
           LOG.warn(tsStatus.message);
         } else {
-          if (isEnableOperationSync) {
-            // OperationSync should transmit before execute
-            StorageEngine.transmitOperationSync(plan);
-          }
           status = serviceProvider.executeNonQuery(plan);
         }
       } catch (Exception e) {

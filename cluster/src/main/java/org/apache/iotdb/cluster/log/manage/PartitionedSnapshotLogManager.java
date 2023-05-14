@@ -31,11 +31,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.metrics.MetricService;
-import org.apache.iotdb.db.service.metrics.enums.Metric;
-import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
@@ -84,11 +83,10 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     this.dataGroupMember = dataGroupMember;
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      // No need to move into IMetricSet because old cluster is removed in 0.14.0+
-      MetricService.getInstance()
+      MetricsService.getInstance()
+          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CLUSTER_UNCOMMITTED_LOG.toString(),
-              MetricLevel.IMPORTANT,
               getUnCommittedEntryManager().getAllEntries(),
               List::size,
               Tag.NAME.toString(),

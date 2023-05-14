@@ -48,7 +48,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
@@ -113,8 +112,6 @@ public abstract class PhysicalPlan {
    * DML use prefixMatch.
    */
   private boolean isPrefixMatch = false;
-
-  protected boolean isNativeInsertApi = false;
 
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
@@ -460,9 +457,6 @@ public abstract class PhysicalPlan {
         case ACTIVATE_TEMPLATE:
           plan = new ActivateTemplatePlan();
           break;
-        case DEACTIVATE_TEMPLATE:
-          plan = new DeactivateTemplatePlan();
-          break;
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
           break;
@@ -563,9 +557,7 @@ public abstract class PhysicalPlan {
     UNSET_TEMPLATE,
     APPEND_TEMPLATE,
     PRUNE_TEMPLATE,
-    DROP_TEMPLATE,
-    DEACTIVATE_TEMPLATE,
-    ARCHIVING
+    DROP_TEMPLATE
   }
 
   public long getIndex() {
@@ -590,13 +582,5 @@ public abstract class PhysicalPlan {
 
   public void setPrefixMatch(boolean prefixMatch) {
     isPrefixMatch = prefixMatch;
-  }
-
-  public boolean isNativeInsertApi() {
-    return isNativeInsertApi;
-  }
-
-  public void setNativeInsertApi(boolean nativeInsertApi) {
-    this.isNativeInsertApi = nativeInsertApi;
   }
 }

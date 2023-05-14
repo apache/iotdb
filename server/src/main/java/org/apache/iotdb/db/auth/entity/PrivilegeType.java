@@ -20,13 +20,13 @@ package org.apache.iotdb.db.auth.entity;
 
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
-  SET_STORAGE_GROUP(true),
-  INSERT_TIMESERIES(true),
+  SET_STORAGE_GROUP,
+  INSERT_TIMESERIES,
   @Deprecated
-  UPDATE_TIMESERIES(true),
-  READ_TIMESERIES(true),
-  CREATE_TIMESERIES(true),
-  DELETE_TIMESERIES(true),
+  UPDATE_TIMESERIES,
+  READ_TIMESERIES,
+  CREATE_TIMESERIES,
+  DELETE_TIMESERIES,
   CREATE_USER,
   DELETE_USER,
   MODIFY_PASSWORD,
@@ -42,28 +42,13 @@ public enum PrivilegeType {
   REVOKE_ROLE_PRIVILEGE,
   CREATE_FUNCTION,
   DROP_FUNCTION,
-  CREATE_TRIGGER(true),
-  DROP_TRIGGER(true),
-  START_TRIGGER(true),
-  STOP_TRIGGER(true),
+  CREATE_TRIGGER,
+  DROP_TRIGGER,
+  START_TRIGGER,
+  STOP_TRIGGER,
   CREATE_CONTINUOUS_QUERY,
   DROP_CONTINUOUS_QUERY,
-  ALL,
-  DELETE_STORAGE_GROUP(true),
-  UPDATE_TEMPLATE,
-  APPLY_TEMPLATE(true);
-
-  private static final int PRIVILEGE_COUNT = values().length;
-
-  private final boolean isPathRelevant;
-
-  PrivilegeType() {
-    this.isPathRelevant = false;
-  }
-
-  PrivilegeType(boolean isPathRelevant) {
-    this.isPathRelevant = isPathRelevant;
-  }
+  ALL;
 
   /**
    * Some privileges need a seriesPath as parameter, while others do not. This method returns which
@@ -73,6 +58,7 @@ public enum PrivilegeType {
    * @return Whether this privilege need a seriesPath or not.
    */
   public static boolean isPathRelevant(int type) {
-    return 0 <= type && type < PRIVILEGE_COUNT && values()[type].isPathRelevant;
+    return type <= DELETE_TIMESERIES.ordinal()
+        || (CREATE_TRIGGER.ordinal() <= type && type <= STOP_TRIGGER.ordinal());
   }
 }

@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,22 +75,42 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
-    this(file, true);
-  }
-
-  /**
-   * @param file a given tsfile path you want to (continue to) write
-   * @throws IOException if write failed, or the file is broken but autoRepair==false.
-   */
-  public RestorableTsFileIOWriter(File file, long maxMetadataSize) throws IOException {
-    this(file, true);
-    this.maxMetadataSize = maxMetadataSize;
-    this.enableMemoryControl = true;
-    this.chunkMetadataTempFile = new File(file.getAbsolutePath() + CHUNK_METADATA_TEMP_FILE_SUFFIX);
-    if (chunkMetadataTempFile.exists()) {
-      FileUtils.delete(chunkMetadataTempFile);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} is opened.", file.getName());
     }
-    this.checkMetadataSizeAndMayFlush();
+    this.file = file;
+    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
+
+    // file doesn't exist
+    if (file.length() == 0) {
+      startFile();
+      crashed = true;
+      canWrite = true;
+      return;
+    }
+
+    if (file.exists()) {
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+
+        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
+        minPlanIndex = reader.getMinPlanIndex();
+        maxPlanIndex = reader.getMaxPlanIndex();
+        if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
+          crashed = false;
+          canWrite = false;
+          out.close();
+        } else if (truncatedSize == TsFileCheckStatus.INCOMPATIBLE_FILE) {
+          out.close();
+          throw new NotCompatibleTsFileException(
+              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+        } else {
+          crashed = true;
+          canWrite = true;
+          // remove broken data
+          out.truncate(truncatedSize);
+        }
+      }
+    }
   }
 
   public RestorableTsFileIOWriter(File file, boolean truncate) throws IOException {

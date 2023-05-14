@@ -27,7 +27,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -219,25 +218,6 @@ public class IoTDBTtlIT {
       assertTrue(
           result.equals("root.group1,null\n" + "root.group2.sgroup1,10000\n")
               || result.equals("root.group2.sgroup1 10000\n" + "root.group1,null\n"));
-    }
-  }
-
-  @Test
-  public void testTTLOnLastCache() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
-      statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
-
-      long now = System.currentTimeMillis();
-      statement.execute(
-          String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 110, 1));
-
-      statement.execute("SET TTL TO root.TTL_SG1 100");
-
-      try (ResultSet resultSet = statement.executeQuery("SELECT last s1 FROM root.TTL_SG1")) {
-        Assert.assertFalse(resultSet.next());
-      }
     }
   }
 }

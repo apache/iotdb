@@ -19,7 +19,7 @@
 
 parser grammar IoTDBSqlParser;
 
-options { tokenVocab=SqlLexer; }
+options { tokenVocab=IoTDBSqlLexer; }
 
 
 /**
@@ -36,7 +36,7 @@ statement
 
 ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
-    | createSchemaTemplate | createTimeseriesOfSchemaTemplate | deactivateSchemaTemplate
+    | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery | createSnapshot
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
@@ -46,7 +46,6 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
-    | setArchiving | cancelArchiving | pauseArchiving | resumeArchiving | showArchiving
     ;
 
 dmlStatement
@@ -63,7 +62,7 @@ utilityStatement
     : merge | fullMerge | flush | clearCache | settle
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
-    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile | exportSchema;
+    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 
 /**
@@ -103,11 +102,6 @@ templateMeasurementClause
 // Create Timeseries Of Schema Template
 createTimeseriesOfSchemaTemplate
     : CREATE TIMESERIES OF SCHEMA? TEMPLATE ON prefixPath
-    ;
-
-// Inverse procedure of Create Timeseries Of Schema Template
-deactivateSchemaTemplate
-    : DEACTIVATE SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 // Create Function
@@ -258,12 +252,12 @@ showWhereClause
 
 // Show Child Paths
 showChildPaths
-    : SHOW CHILD PATHS prefixPath? limitClause?
+    : SHOW CHILD PATHS prefixPath?
     ;
 
 // Show Child Nodes
 showChildNodes
-    : SHOW CHILD NODES prefixPath? limitClause?
+    : SHOW CHILD NODES prefixPath?
     ;
 
 // Show Functions
@@ -329,39 +323,6 @@ countTimeseries
 // Count Nodes
 countNodes
     : COUNT NODES prefixPath LEVEL OPERATOR_EQ INTEGER_LITERAL
-    ;
-
-// Set Archiving
-setArchiving
-    : SET ARCHIVING TO storageGroup=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
-    | SET ARCHIVING TO setArchivingClause*
-    ;
-
-setArchivingClause
-    : STORAGE_GROUP     OPERATOR_EQ storageGroup=prefixPath
-    | START_TIME        OPERATOR_EQ startTime=DATETIME_LITERAL
-    | TTL               OPERATOR_EQ ttl=INTEGER_LITERAL
-    | TARGET_DIR        OPERATOR_EQ targetDir=STRING_LITERAL
-    ;
-
-// Cancel Archiving
-cancelArchiving
-    : CANCEL ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
-    ;
-
-// Pause Archiving
-pauseArchiving
-    : PAUSE ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
-    ;
-
-// Unpause/Resume Archiving
-resumeArchiving
-    : RESUME ARCHIVING (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
-    ;
-
-// Show Archiving
-showArchiving
-    : SHOW ALL? ARCHIVING (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 
@@ -437,7 +398,7 @@ fillClause
     ;
 
 withoutNullClause
-    : WITHOUT NULL_LITERAL (ALL | ANY) (LR_BRACKET expression (COMMA expression)* RR_BRACKET)?
+    : WITHOUT NULL_LITERAL (ALL | ANY)
     ;
 
 oldTypeClause
@@ -720,11 +681,6 @@ unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
     ;
 
-// Export Schema
-exportSchema
-    : EXPORT SCHEMA dstDir=STRING_LITERAL
-    ;
-
 
 /**
  * 6. Common Clauses
@@ -750,7 +706,6 @@ nodeName
     | wildcard? INTEGER_LITERAL wildcard?
     | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
-    | DURATION_LITERAL
     ;
 
 nodeNameWithoutWildcard
@@ -758,7 +713,6 @@ nodeNameWithoutWildcard
     | INTEGER_LITERAL
     | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
-    | DURATION_LITERAL
     ;
 
 suffixPathCanInExpr
@@ -770,7 +724,6 @@ nodeNameCanInExpr
     | wildcard? ID wildcard?
     | QUTOED_ID
     | QUTOED_ID_IN_NODE_NAME
-    | DURATION_LITERAL
     ;
 
 wildcard
@@ -786,7 +739,6 @@ identifier
     | QUTOED_ID
     | QUTOED_ID_IN_NODE_NAME
     | INTEGER_LITERAL
-    | DURATION_LITERAL
     ;
 
 

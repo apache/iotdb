@@ -256,7 +256,6 @@ public class IoTDBConfigCheck {
               properties.setProperty(k, v);
             }
           });
-      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
@@ -285,7 +284,7 @@ public class IoTDBConfigCheck {
               properties.setProperty(k, v);
             }
           });
-      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
+
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // upgrade finished, delete old system.properties file
       if (propertiesFile.exists()) {

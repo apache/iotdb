@@ -28,7 +28,7 @@ public class MeasurementCounter extends CounterTraverser {
 
   public MeasurementCounter(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    shouldTraverseTemplate = true;
+    isMeasurementTraverser = true;
   }
 
   @Override

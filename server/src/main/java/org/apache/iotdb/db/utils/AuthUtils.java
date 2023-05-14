@@ -134,7 +134,6 @@ public class AuthUtils {
       switch (type) {
         case READ_TIMESERIES:
         case SET_STORAGE_GROUP:
-        case DELETE_STORAGE_GROUP:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
@@ -142,7 +141,6 @@ public class AuthUtils {
         case DROP_TRIGGER:
         case START_TRIGGER:
         case STOP_TRIGGER:
-        case APPLY_TEMPLATE:
           return;
         default:
           throw new AuthException(
@@ -152,7 +150,6 @@ public class AuthUtils {
       switch (type) {
         case READ_TIMESERIES:
         case SET_STORAGE_GROUP:
-        case DELETE_STORAGE_GROUP:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:

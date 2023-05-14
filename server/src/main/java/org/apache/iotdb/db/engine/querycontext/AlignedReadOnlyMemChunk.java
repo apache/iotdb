@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
@@ -96,57 +95,24 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         new ChunkMetadata(measurementUid, TSDataType.VECTOR, 0, timeStatistics);
     List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
     // update time chunk
-    boolean[] timeDuplicateInfo = null;
     for (int row = 0; row < alignedChunkData.rowCount(); row++) {
-      if (row == alignedChunkData.rowCount() - 1
-          || alignedChunkData.getTime(row) != alignedChunkData.getTime(row + 1)) {
-        timeStatistics.update(alignedChunkData.getTime(row));
-      } else {
-        if (timeDuplicateInfo == null) {
-          timeDuplicateInfo = new boolean[alignedChunkData.rowCount()];
-        }
-        timeDuplicateInfo[row] = true;
-      }
+      timeStatistics.update(alignedChunkData.getTime(row));
     }
     timeStatistics.setEmpty(false);
     // update value chunk
     for (int column = 0; column < measurementList.size(); column++) {
-      // Pair of Time and Index
-      Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
-      if (timeDuplicateInfo != null) {
-        lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
-      }
       Statistics valueStatistics = Statistics.getStatsByType(dataTypeList.get(column));
+      IChunkMetadata valueChunkMetadata =
+          new ChunkMetadata(
+              measurementList.get(column), dataTypeList.get(column), 0, valueStatistics);
+      valueChunkMetadataList.add(valueChunkMetadata);
       if (alignedChunkData.getValues().get(column) == null) {
-        valueChunkMetadataList.add(null);
+        valueStatistics.setEmpty(true);
         continue;
       }
       for (int row = 0; row < alignedChunkData.rowCount(); row++) {
         long time = alignedChunkData.getTime(row);
-        // skip time duplicated rows
-        if (timeDuplicateInfo != null) {
-          if (!alignedChunkData.isValueMarked(alignedChunkData.getValueIndex(row), column)) {
-            lastValidPointIndexForTimeDupCheck.left = time;
-            lastValidPointIndexForTimeDupCheck.right = alignedChunkData.getValueIndex(row);
-          }
-          if (timeDuplicateInfo[row]) {
-            continue;
-          }
-        }
-        // The part of code solves the following problem:
-        // Time: 1,2,2,3
-        // Value: 1,2,null,null
-        // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
-        // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
-        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
-        // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2, write(T:3,V:null)
-        int originRowIndex;
-        if (lastValidPointIndexForTimeDupCheck != null
-            && (alignedChunkData.getTime(row) == lastValidPointIndexForTimeDupCheck.left)) {
-          originRowIndex = lastValidPointIndexForTimeDupCheck.right;
-        } else {
-          originRowIndex = alignedChunkData.getValueIndex(row);
-        }
+        int originRowIndex = alignedChunkData.getValueIndex(row);
         boolean isNull = alignedChunkData.isValueMarked(originRowIndex, column);
         if (isNull) {
           continue;
@@ -179,15 +145,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
           default:
             throw new QueryProcessException("Unsupported data type:" + dataType);
         }
-      }
-      if (valueStatistics.getCount() > 0) {
-        IChunkMetadata valueChunkMetadata =
-            new ChunkMetadata(
-                measurementList.get(column), dataTypeList.get(column), 0, valueStatistics);
-        valueChunkMetadataList.add(valueChunkMetadata);
-        valueStatistics.setEmpty(false);
-      } else {
-        valueChunkMetadataList.add(null);
       }
       valueStatistics.setEmpty(false);
     }

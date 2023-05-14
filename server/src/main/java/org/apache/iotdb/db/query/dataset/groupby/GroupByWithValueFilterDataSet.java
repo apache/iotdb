@@ -51,28 +51,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private static final Logger logger = LoggerFactory.getLogger(GroupByWithValueFilterDataSet.class);
 
-  private Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap;
+  private Map<List<IReaderByTimestamp>, List<List<Integer>>> readersToAggrIndexes;
 
   protected GroupByTimePlan groupByTimePlan;
-  private TimeGenerator timestampGenerator;
+  /** timestampGenerators for each iteration when aggregation needs */
+  private List<TimeGenerator> timestampGenerators;
   /** cached timestamp for next group by partition. */
   private LinkedList<Long> cachedTimestamps = new LinkedList<>();
   /** group by batch calculation size. */
   protected int timeStampFetchSize;
 
   private long lastTimestamp;
+  private int maxIteration;
 
   protected GroupByWithValueFilterDataSet() {}
 
@@ -85,15 +82,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   @TestOnly
   public GroupByWithValueFilterDataSet(long queryId, GroupByTimePlan groupByTimePlan) {
     super(new QueryContext(queryId), groupByTimePlan);
-    this.readerToAggrIndexesMap = new HashMap<>();
+    this.readersToAggrIndexes = new HashMap<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
   /** init reader and aggregate function. This method should be called once after initializing */
   public void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
-    this.timestampGenerator = getTimeGenerator(context, groupByTimePlan);
-    this.readerToAggrIndexesMap = new HashMap<>();
+    this.readersToAggrIndexes = new HashMap<>();
     this.groupByTimePlan = groupByTimePlan;
 
     Filter timeFilter =
@@ -134,22 +130,32 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
+    maxIteration = 0;
+    for (int i = 0; i < selectedSeries.size(); i++)
+      maxIteration = Math.max(maxIteration, getMaxIterationFromAggrIndex(i));
+    this.timestampGenerators = new ArrayList<>();
+    for (int iteration = 0; iteration < maxIteration; iteration++) {
+      this.timestampGenerators.add(getTimeGenerator(context, groupByTimePlan));
+    }
+
     // init non-aligned series reader
     for (PartialPath path : pathToAggrIndexesMap.keySet()) {
-      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, groupByTimePlan, context);
-      readerToAggrIndexesMap.put(
-          seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
+      List<Integer> aggrIndexes = pathToAggrIndexesMap.get(path);
+      int maxIterationInPath = getMaxIterationFromAggrIndexes(aggrIndexes);
+      List<IReaderByTimestamp> seriesReadersByTimestamp =
+          getReaderListByTime(maxIterationInPath, path, groupByTimePlan, context);
+      readersToAggrIndexes.put(seriesReadersByTimestamp, Collections.singletonList(aggrIndexes));
+    }
+    // init aligned series reader
+    for (AlignedPath alignedPath : alignedPathToAggrIndexesMap.keySet()) {
+      List<List<Integer>> aggrIndexes = alignedPathToAggrIndexesMap.get(alignedPath);
+      int maxIterationInDevice = getMaxIterationInDevice(aggrIndexes);
+      List<IReaderByTimestamp> seriesReadersByTimestamp =
+          getReaderListByTime(maxIterationInDevice, alignedPath, groupByTimePlan, context);
+      readersToAggrIndexes.put(seriesReadersByTimestamp, aggrIndexes);
     }
     // assign null to be friendly for GC
     pathToAggrIndexesMap = null;
-    // init aligned series reader
-    for (PartialPath alignedPath : alignedPathToAggrIndexesMap.keySet()) {
-      IReaderByTimestamp seriesReaderByTimestamp =
-          getReaderByTime(alignedPath, groupByTimePlan, context);
-      readerToAggrIndexesMap.put(
-          seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(alignedPath));
-    }
-    // assign null to be friendly for GC
     alignedPathToAggrIndexesMap = null;
   }
 
@@ -172,9 +178,42 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         ascending);
   }
 
+  private int getMaxIterationFromAggrIndexes(List<Integer> aggrIndexes) {
+    int maxIteration = 0;
+    for (int aggrIndex : aggrIndexes)
+      maxIteration = Math.max(maxIteration, getMaxIterationFromAggrIndex(aggrIndex));
+    return maxIteration;
+  }
+
+  private int getMaxIterationInDevice(List<List<Integer>> aggrIndexes) {
+    int maxIteration = 0;
+    for (List<Integer> aggrIndexList : aggrIndexes)
+      maxIteration = Math.max(maxIteration, getMaxIterationFromAggrIndexes(aggrIndexList));
+    return maxIteration;
+  }
+
+  private int getMaxIterationFromAggrIndex(int aggrIndex) {
+    return AggregateResultFactory.getAggrResultByName(
+            groupByTimePlan.getDeduplicatedAggregations().get(aggrIndex),
+            groupByTimePlan.getDeduplicatedDataTypes().get(aggrIndex),
+            ascending)
+        .maxIteration();
+  }
+
+  private List<IReaderByTimestamp> getReaderListByTime(
+      int maxIteration, PartialPath path, RawDataQueryPlan queryPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
+    List<IReaderByTimestamp> readerList = new ArrayList<>();
+    for (int i = 0; i < maxIteration; i++)
+      readerList.add(getReaderByTime(path, queryPlan, context));
+    return readerList;
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
+    //    System.out.println("[DEBUG][nextWithoutConstraint]" + "
+    // cachedTimestamps:"+cachedTimestamps.toString()+"  ");
     if (!hasCachedTimeInterval) {
       throw new IOException(
           "need to call hasNext() before calling next()" + " in GroupByWithValueFilterDataSet.");
@@ -190,50 +229,74 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
-    int timeArrayLength = 0;
 
     if (!cachedTimestamps.isEmpty()) {
-      long timestamp = cachedTimestamps.remove();
-      if (timestamp < curEndTime) {
-        if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
-          cachedTimestamps.addFirst(timestamp);
-          return constructRowRecord(curAggregateResults);
-        }
-        if (timestamp >= curStartTime) {
-          timestampArray[timeArrayLength++] = timestamp;
-        }
-      } else {
-        cachedTimestamps.addFirst(timestamp);
+      long nextTimestamp = cachedTimestamps.peek();
+      // nextTimestamp not in current interval
+      if ((groupByTimePlan.isAscending() && nextTimestamp >= curEndTime)
+          || (!groupByTimePlan.isAscending() && nextTimestamp < curStartTime))
         return constructRowRecord(curAggregateResults);
-      }
     }
 
-    while (!cachedTimestamps.isEmpty() || timestampGenerator.hasNext()) {
+    LinkedList<Long> currentCachedTimestamps = new LinkedList<>(cachedTimestamps);
+    for (int iteration = 0; iteration < maxIteration; iteration++) {
+
+      Set<Integer> remainingAggrIndexes = new HashSet<>();
+      for (int i = 0; i < paths.size(); i++)
+        if (!curAggregateResults[i].hasFinalResult()
+            && curAggregateResults[i].maxIteration() > iteration) remainingAggrIndexes.add(i);
+      if (remainingAggrIndexes.isEmpty()) break;
+
+      for (Integer aggrIndex : remainingAggrIndexes)
+        curAggregateResults[aggrIndex].startIteration();
+      if (iteration > 0) currentCachedTimestamps = new LinkedList<>(cachedTimestamps);
+      iterateCurrentInterval(
+          iteration, currentCachedTimestamps, timestampArray, remainingAggrIndexes);
+      for (Integer aggrIndex : remainingAggrIndexes)
+        curAggregateResults[aggrIndex].finishIteration();
+    }
+    //    System.out.println("\t[DEBUG] \tcurrentCachedTimestamps:"+currentCachedTimestamps);
+    cachedTimestamps = new LinkedList<>(currentCachedTimestamps);
+
+    return constructRowRecord(curAggregateResults);
+  }
+
+  protected void iterateCurrentInterval(
+      int iteration,
+      LinkedList<Long> cachedTimestamps,
+      long[] timestampArray,
+      Set<Integer> remainingAggrIndexes)
+      throws IOException {
+    int timeArrayLength = 0;
+    while (!cachedTimestamps.isEmpty() || timestampGenerators.get(iteration).hasNext()) {
       // construct timestamp array
-      timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
+      timeArrayLength = constructTimeArrayForOneCal(iteration, cachedTimestamps, timestampArray);
+      //      System.out.println("\t\t[DEBUG] "+"timestampArray:"+
+      //          Arrays.toString(Arrays.copyOf(timestampArray,timeArrayLength)));
+      //      System.out.println("\t\t[DEBUG] "+"cachedTimestamps:"+cachedTimestamps);
 
-      // cal result using timestamp array
-      calcUsingTimestampArray(timestampArray, timeArrayLength);
+      calcUsingTimestampArray(iteration, timestampArray, timeArrayLength, remainingAggrIndexes);
 
-      timeArrayLength = 0;
-      // judge if it's end
       if ((groupByTimePlan.isAscending() && lastTimestamp >= curEndTime)
           || (!groupByTimePlan.isAscending() && lastTimestamp < curStartTime)) {
         break;
       }
     }
-
-    if (timeArrayLength > 0) {
-      // cal result using timestamp array
-      calcUsingTimestampArray(timestampArray, timeArrayLength);
-    }
-    return constructRowRecord(curAggregateResults);
   }
 
-  private void calcUsingTimestampArray(long[] timestampArray, int timeArrayLength)
+  private void calcUsingTimestampArray(
+      int iteration, long[] timestampArray, int timeArrayLength, Set<Integer> remainingAggrIndexes)
       throws IOException {
-    for (Entry<IReaderByTimestamp, List<List<Integer>>> entry : readerToAggrIndexesMap.entrySet()) {
-      IReaderByTimestamp reader = entry.getKey();
+    for (Entry<List<IReaderByTimestamp>, List<List<Integer>>> entry :
+        readersToAggrIndexes.entrySet()) {
+      List<IReaderByTimestamp> readers = entry.getKey();
+      // maxIteration in device too small
+      if (readers.size() <= iteration) continue;
+      Set<Integer> remainingAggrIndexesInDevice =
+          findRemainingAggrIndexesInDevice(remainingAggrIndexes, entry.getValue());
+      // all aggregations in device have final result
+      if (remainingAggrIndexesInDevice.isEmpty()) continue;
+      IReaderByTimestamp reader = readers.get(iteration);
       List<List<Integer>> subIndexes = entry.getValue();
       int subSensorSize = subIndexes.size();
 
@@ -241,8 +304,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       ValueIterator valueIterator = QueryUtils.generateValueIterator(values);
       if (valueIterator != null) {
         for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
+          Set<Integer> remainingIndexes =
+              findRemainingAggrIndexesInSeries(
+                  remainingAggrIndexesInDevice, subIndexes.get(curIndex));
+          if (remainingIndexes.isEmpty()) continue;
           valueIterator.setSubMeasurementIndex(curIndex);
-          for (Integer index : subIndexes.get(curIndex)) {
+          for (Integer index : remainingIndexes) {
             curAggregateResults[index].updateResultUsingValues(
                 timestampArray, timeArrayLength, valueIterator);
             valueIterator.reset();
@@ -251,17 +318,38 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       }
     }
   }
+  // TODO: change. calc .
+  private Set<Integer> findRemainingAggrIndexesInDevice(
+      Set<Integer> remainingAggrIndexes, List<List<Integer>> subIndexes) {
+    Set<Integer> remainingAggrIndexesInDevice = new HashSet<>();
+    for (List<Integer> aggrIndexesInSeries : subIndexes)
+      for (Integer aggrIndex : aggrIndexesInSeries)
+        if (remainingAggrIndexes.contains(aggrIndex)) remainingAggrIndexesInDevice.add(aggrIndex);
+    return remainingAggrIndexesInDevice;
+  }
+
+  private Set<Integer> findRemainingAggrIndexesInSeries(
+      Set<Integer> remainingAggrIndexesInDevice, List<Integer> aggrIndexes) {
+    Set<Integer> remainingAggrIndexesInSeries = new HashSet<>();
+    for (Integer aggrIndex : aggrIndexes)
+      if (remainingAggrIndexesInDevice.contains(aggrIndex))
+        remainingAggrIndexesInSeries.add(aggrIndex);
+    return remainingAggrIndexesInSeries;
+  }
 
   /**
    * construct an array of timestamps for one batch of a group by partition calculating.
    *
    * @param timestampArray timestamp array
-   * @param timeArrayLength the current size of timestamp array
    * @return time array size
    */
   @SuppressWarnings("squid:S3776")
-  private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
-      throws IOException {
+  private int constructTimeArrayForOneCal(
+      int iteration, LinkedList<Long> cachedTimestamps, long[] timestampArray) throws IOException {
+    int timeArrayLength = 0;
+    boolean fromCached = true;
+    TimeGenerator timestampGenerator = timestampGenerators.get(iteration);
+
     for (int cnt = 1;
         cnt < timeStampFetchSize - 1
             && (!cachedTimestamps.isEmpty() || timestampGenerator.hasNext());
@@ -270,14 +358,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         lastTimestamp = cachedTimestamps.remove();
       } else {
         lastTimestamp = timestampGenerator.next();
+        fromCached = false;
       }
-      if (groupByTimePlan.isAscending() && lastTimestamp < curEndTime) {
-        timestampArray[timeArrayLength++] = lastTimestamp;
-      } else if (!groupByTimePlan.isAscending() && lastTimestamp >= curStartTime) {
+      if ((groupByTimePlan.isAscending() && lastTimestamp < curEndTime)
+          || (!groupByTimePlan.isAscending() && lastTimestamp >= curStartTime)) {
         timestampArray[timeArrayLength++] = lastTimestamp;
       } else {
         // may lastTimestamp get from cache
-        if (!cachedTimestamps.isEmpty() && lastTimestamp <= cachedTimestamps.peek()) {
+        if (fromCached) {
           cachedTimestamps.addFirst(lastTimestamp);
         } else {
           cachedTimestamps.add(lastTimestamp);
@@ -302,3 +390,4 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     return record;
   }
 }
+// group by with VF

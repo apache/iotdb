@@ -157,27 +157,4 @@ public class IoTDBDeleteStorageGroupIT {
       assertEquals(0, result.size());
     }
   }
-
-  @Test
-  public void testDeleteStorageGroupAndThenQuery() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg1.d1(time,s1) values(1,1);");
-      statement.execute("flush");
-      statement.execute("select count(*) from root.**;");
-      statement.execute("delete storage group root.sg1");
-      statement.execute("insert into root.sg1.sdhkajhd(time,s1) values(1,1);");
-      statement.execute("flush");
-      boolean hasResult = statement.execute("select count(*) from root.**");
-      assertTrue(hasResult);
-      int count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          count++;
-          assertEquals(1, resultSet.getLong("count(root.sg1.sdhkajhd.s1)"));
-        }
-      }
-      assertEquals(1, count);
-    }
-  }
 }

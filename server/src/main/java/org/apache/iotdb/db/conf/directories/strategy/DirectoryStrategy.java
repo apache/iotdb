@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.utils.CommonUtils;
 
@@ -55,8 +54,7 @@ public abstract class DirectoryStrategy {
       }
     }
     if (!hasSpace) {
-      logger.error("Disk space is insufficient, change system mode to read-only");
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new DiskSpaceInsufficientException(folders);
     }
 

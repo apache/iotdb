@@ -291,4 +291,48 @@ public class AggregateResultTest {
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
     Assert.assertEquals(2d, (double) result.getResult(), 0.01);
   }
+
+  @Test
+  public void MedianAggrResultTest() throws QueryProcessException, IOException {
+    System.out.println("MedianAggrResultTest START");
+    AggregateResult medianAggrResult1 =
+        AggregateResultFactory.getAggrResultByName(
+            SQLConstant.EXACT_MEDIAN, TSDataType.DOUBLE, true);
+    //    AggregateResult medianAggrResult2 =
+    //            AggregateResultFactory.getAggrResultByName(SQLConstant.MEDIAN, TSDataType.DOUBLE,
+    // true);
+
+    Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    Statistics statistics3 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    Statistics statistics4 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    Statistics statistics5 = Statistics.getStatsByType(TSDataType.DOUBLE);
+    statistics1.update(1L, 17.85d);
+    statistics2.update(2L, 17.72d);
+    statistics3.update(3L, 16.85d);
+    statistics4.update(4L, 16.89d);
+    statistics5.update(5L, 17.0d);
+
+    Assert.assertFalse(medianAggrResult1.hasFinalResult());
+
+    while (!medianAggrResult1.hasCandidateResult()) {
+      //            System.out.println("  iteration++");
+      medianAggrResult1.startIteration();
+      medianAggrResult1.updateResultFromStatistics(statistics1);
+      medianAggrResult1.updateResultFromStatistics(statistics2);
+      medianAggrResult1.updateResultFromStatistics(statistics3);
+      medianAggrResult1.updateResultFromStatistics(statistics4);
+      medianAggrResult1.updateResultFromStatistics(statistics5);
+      medianAggrResult1.finishIteration();
+    }
+
+    Assert.assertEquals(17.0d, (double) medianAggrResult1.getResult(), 0.01);
+    Assert.assertTrue(medianAggrResult1.hasCandidateResult());
+
+    //    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    //    avgAggrResult1.serializeTo(outputStream);
+    //    ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
+    //    AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
+    //    Assert.assertEquals(1.333d, (double) result.getResult(), 0.01);
+  }
 }

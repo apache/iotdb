@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -46,18 +45,15 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   protected Pattern pattern;
 
-  protected boolean not;
-
   private Like() {}
 
   /**
    * The main idea of this part comes from
    * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
    */
-  public Like(String value, FilterType filterType, boolean not) {
+  public Like(String value, FilterType filterType) {
     this.value = value;
     this.filterType = filterType;
-    this.not = not;
     try {
       String unescapeValue = unescapeString(value);
       String specialRegexStr = ".^$*+?{}[]|()";
@@ -98,7 +94,7 @@ public class Like<T extends Comparable<T>> implements Filter {
     if (filterType != FilterType.VALUE_FILTER) {
       return false;
     }
-    return pattern.matcher(value.toString()).find() != not;
+    return pattern.matcher(value.toString()).find();
   }
 
   @Override
@@ -113,7 +109,7 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   @Override
   public Filter copy() {
-    return new Like(value, filterType, not);
+    return new Like(value, filterType);
   }
 
   @Override
@@ -122,7 +118,6 @@ public class Like<T extends Comparable<T>> implements Filter {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.writeObject(value, outputStream);
-      ReadWriteIOUtils.write(not, outputStream);
     } catch (IOException ex) {
       throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
     }
@@ -132,20 +127,11 @@ public class Like<T extends Comparable<T>> implements Filter {
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     value = ReadWriteIOUtils.readString(buffer);
-    not = ReadWriteIOUtils.readBool(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    return o instanceof Like
-        && Objects.equals(((Like<?>) o).value, value)
-        && ((Like<?>) o).filterType == filterType
-        && ((Like<?>) o).not == not;
   }
 
   @Override
   public String toString() {
-    return filterType + (not ? " not like " : " like ") + value;
+    return filterType + " is " + value;
   }
 
   @Override

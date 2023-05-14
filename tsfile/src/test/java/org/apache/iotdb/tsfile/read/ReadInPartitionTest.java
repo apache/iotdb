@@ -45,6 +45,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+// import static
+// org.apache.iotdb.tsfile.common.constant.TsFileConstant.STATISTICS_SERIALIZE_BYTE_CHUNK;
+
 /*
  This test is designed for the TsFileExecutor's execute(queryExpression, params) function.
 
@@ -85,7 +88,9 @@ public class ReadInPartitionTest {
               + chunkMetaData.getMeasurementUid().getBytes().length
               + Long.BYTES
               + Short.BYTES
-              + chunkMetaData.getStatistics().getSerializedSize();
+              + chunkMetaData.getStatistics().getSerializedSize()
+      /*+ STATISTICS_SERIALIZE_BYTE_CHUNK*/ ;
+      // Size for Bits Bucket in chunk statistics
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
 

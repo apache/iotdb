@@ -127,7 +127,7 @@ public class FunctionExpression extends Expression {
     return getPaths().size() == 1
         && (paths.get(0).getTailNode().equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
             || paths.get(0).getTailNode().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))
-        && functionName.equalsIgnoreCase(IoTDBConstant.COLUMN_COUNT);
+        && functionName.equals(IoTDBConstant.COLUMN_COUNT);
   }
 
   public void addAttribute(String key, String value) {
@@ -213,8 +213,8 @@ public class FunctionExpression extends Expression {
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     for (Expression expression : expressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
+      memoryAssigner.increaseExpressionReference(this);
     }
-    memoryAssigner.increaseExpressionReference(this);
   }
 
   @Override

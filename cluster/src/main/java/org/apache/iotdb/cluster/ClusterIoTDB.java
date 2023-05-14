@@ -298,13 +298,13 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     if (clusterConfig.getReplicationNum() > 1) {
       clusterConfig.setMaxMemorySizeForRaftLog(
           (long)
-              (config.getAllocateMemoryForStorageEngine()
+              (config.getAllocateMemoryForWrite()
                   * clusterConfig.getRaftLogMemoryProportion()
                   / clusterConfig.getReplicationNum()));
       // calculate remaining memory allocated for write process
-      config.setAllocateMemoryForStorageEngine(
+      config.setAllocateMemoryForWrite(
           (long)
-              (config.getAllocateMemoryForStorageEngine()
+              (config.getAllocateMemoryForWrite()
                   * (1 - clusterConfig.getRaftLogMemoryProportion())));
     }
     return true;

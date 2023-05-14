@@ -20,7 +20,7 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.cli.utils.JlineUtils;
-import org.apache.iotdb.db.qp.sql.SqlLexer;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlLexer;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -43,7 +43,7 @@ public class IoTDBSyntaxHighlighter implements Highlighter {
   @Override
   public AttributedString highlight(LineReader reader, String buffer) {
     CharStream stream = CharStreams.fromString(buffer);
-    SqlLexer tokenSource = new SqlLexer(stream);
+    IoTDBSqlLexer tokenSource = new IoTDBSqlLexer(stream);
     tokenSource.removeErrorListeners();
     AttributedStringBuilder builder = new AttributedStringBuilder();
     while (true) {

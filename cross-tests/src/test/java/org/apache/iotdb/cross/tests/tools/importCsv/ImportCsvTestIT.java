@@ -191,37 +191,6 @@ public class ImportCsvTestIT extends AbstractScript {
   }
 
   /**
-   * test the situation that the schema has been created and CSV file has no problem
-   *
-   * @throws IOException
-   */
-  @Test
-  public void testAligned() throws IOException, ClassNotFoundException {
-    assertTrue(generateTestCSV(false, false, false, false, false));
-    String[] params = {"-f", CSV_FILE, "-aligned", "true"};
-    testMethod(params, null);
-    File file = new File(CSV_FILE);
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      if (statement.execute("show devices")) {
-        ResultSet resultSet = statement.getResultSet();
-        while (resultSet.next()) {
-          assertTrue("true".equals(resultSet.getString(2)));
-        }
-        resultSet.close();
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    if (file.exists()) {
-      file.delete();
-    }
-  }
-
-  /**
    * test the situation that the schema has not been created and CSV file has no problem
    *
    * @throws IOException

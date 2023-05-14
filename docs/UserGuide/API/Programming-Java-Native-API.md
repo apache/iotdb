@@ -229,9 +229,9 @@ After measurement template created, you can edit the template with belowed APIs.
 
 **1. templates had been set could not be pruned**
 
-**2. templates will be activated on one node by data points insertion of measurements within the template, or interface `createTimeseriesOfSchemaTemplate`**
+**2. templates will be activated until data points insert into correspoding measurements**
 
-**3. templates will not be shown by showtimeseries before activated**
+**3. templates will not be shown by showtimeseries before activating**
 
 ```java
 // Add aligned measurements to a template
@@ -286,18 +286,16 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-To implement schema template, you can set the template named `templateName` at path `prefixPath`.
-
-**Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
+To implement schema template, you can  set the measurement template named 'templateName' at path 'prefixPath'.
 
 ``` java
-void setSchemaTemplate(String templateName, String prefixPath);
+void setSchemaTemplate(String templateName, String prefixPath)
 ```
 
-Before setting template, you should first create the template using
+Before setting template, you should firstly create the template using
 
 ```java
-void createSchemaTemplate(Template template);
+void createSchemaTemplate(Template template)
 ```
 
 After setting template to a certain path, you can query for info about template using belowed interface in session:
@@ -320,17 +318,9 @@ void unsetSchemaTemplate(String prefixPath, String templateName);
 public void dropSchemaTemplate(String templateName);
 ```
 
-Unset the measurement template named `templateName` from path `prefixPath`. When you issue this interface, you should assure that there is such a template set at the path.
+Unset the measurement template named 'templateName' from path 'prefixPath'. When you issue this interface, you should assure that there is a template named 'templateName' set at the path 'prefixPath'.
 
-If the template had been activated on one node, you should deactivate from it using the interface:
-
-```java
-public void deactivateTemplateOn(String templateName, String prefixPath);
-```
-
-The passing in `prefixPath` is a literal path without wildcard(`*`or`**`), or a PathPattern to denote paths match the pattern.
-
-The deactivation of the template will delete the data of the timeseries which is under the path of concatenation of path of the node and the measurements inside the activatede template.
+Attention: Unsetting the template named 'templateName' from node at path 'prefixPath' or descendant nodes which have already inserted records using template is **not supported**.
 
 
 ### Data Manipulation Interface (DML Interface)
@@ -373,17 +363,6 @@ void insertTablets(Map<String, Tablet> tablet)
 ```
 
 * Insert a Record, which contains multiple measurement value of a device at a timestamp. This method is equivalent to providing a common interface for multiple data types of values. Later, the value can be cast to the original type through TSDataType.
-
-  The correspondence between the Object type and the TSDataType type is shown in the following table.
-
-  | TSDataType | Object         |
-  | ---------- | -------------- |
-  | BOOLEAN    | Boolean        |
-  | INT32      | Integer        |
-  | INT64      | Long           |
-  | FLOAT      | Float          |
-  | DOUBLE     | Double         |
-  | TEXT       | String, Binary |
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
@@ -533,7 +512,6 @@ If you can not get a session connection in 60 seconds, there is a warning log bu
 If a session has finished an operation, it will be put back to the pool automatically.
 If a session connection is broken, the session will be removed automatically and the pool will try 
 to create a new session and redo the operation.
-You can also specify an url list of multiple reachable nodes when creating a SessionPool, just as you would when creating a Session. To ensure high availability of clients in distributed cluster.
 
 For query operations:
 

@@ -102,6 +102,34 @@ public class GroupByTimeDataSetTest {
   }
 
   @Test
+  public void testGroupByQueryWithMultiIteration() throws Exception {
+    //    QueryPlan queryPlan =
+    //            (QueryPlan)
+    //                    processor.parseSQLToPhysicalPlan(
+    //                            "select exact_median(s0) from root.test.d0 group by
+    // ([0,10),8ms)");
+    QueryPlan queryPlan;
+    QueryDataSet dataSet;
+
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan(
+                "select exact_median_amortized(s0), count(s0) from root.test.d0 where time < 19 and s0>106 group by ([0,20), 5ms)");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext()); // System.out.println(dataSet.next().toString());
+    assertEquals("0\tnull\t0", dataSet.next().toString());
+    assertTrue(dataSet.hasNext()); // System.out.println(dataSet.next().toString());
+    assertEquals("5\t132.0\t2", dataSet.next().toString());
+    assertTrue(dataSet.hasNext()); // System.out.println(dataSet.next().toString());
+    assertEquals("10\t107.0\t1", dataSet.next().toString());
+    assertTrue(dataSet.hasNext()); // System.out.println(dataSet.next().toString());
+    assertEquals("15\t126.0\t1", dataSet.next().toString());
+    //    assertTrue(dataSet.hasNext());
+    //    assertEquals("8\t127.0", dataSet.next().toString());
+  }
+
+  @Test
   public void testGroupByTimeAndLevel() throws Exception {
     // with time interval
     QueryPlan queryPlan =

@@ -19,10 +19,6 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -36,8 +32,6 @@ import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,8 +51,6 @@ public class AlignedSeriesCompactionExecutor {
   private final AlignedChunkWriterImpl chunkWriter;
   private final List<IMeasurementSchema> schemaList;
   private long remainingPointInChunkWriter = 0L;
-  private final RateLimiter rateLimiter =
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
 
   private final long chunkSizeThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -111,7 +103,6 @@ public class AlignedSeriesCompactionExecutor {
   }
 
   public void execute() throws IOException {
-    writer.startChunkGroup(device);
     while (readerAndChunkMetadataList.size() > 0) {
       Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
@@ -120,24 +111,14 @@ public class AlignedSeriesCompactionExecutor {
       TsFileAlignedSeriesReaderIterator readerIterator =
           new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadataList, schemaList);
       while (readerIterator.hasNext()) {
-        Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
-        CompactionMetricsManager.recordReadInfo(chunkReaderAndChunkSize.right);
-        compactOneAlignedChunk(chunkReaderAndChunkSize.left);
+        AlignedChunkReader chunkReader = readerIterator.nextReader();
+        compactOneAlignedChunk(chunkReader);
       }
     }
 
     if (remainingPointInChunkWriter != 0L) {
-      CompactionTaskManager.mergeRateLimiterAcquire(
-          rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetricsManager.recordWriteInfo(
-          CompactionType.INNER_SEQ_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          true,
-          chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(writer);
     }
-    writer.endChunkGroup();
-    writer.checkMetadataSizeAndMayFlush();
   }
 
   private void compactOneAlignedChunk(AlignedChunkReader chunkReader) throws IOException {
@@ -167,13 +148,6 @@ public class AlignedSeriesCompactionExecutor {
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (remainingPointInChunkWriter >= chunkPointNumThreshold
         || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
-      CompactionTaskManager.mergeRateLimiterAcquire(
-          rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetricsManager.recordWriteInfo(
-          CompactionType.INNER_SEQ_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          true,
-          chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(writer);
       remainingPointInChunkWriter = 0L;
     }

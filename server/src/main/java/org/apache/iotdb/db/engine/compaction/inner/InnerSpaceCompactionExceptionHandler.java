@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -92,6 +93,7 @@ public class InnerSpaceCompactionExceptionHandler {
             "{} [Compaction][ExceptionHandler] target file {} does not exist either, do nothing. Set system to read-only",
             fullStorageGroupName,
             targetTsFile);
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         handleSuccess = false;
       } else {
         handleSuccess =
@@ -259,6 +261,7 @@ public class InnerSpaceCompactionExceptionHandler {
             fullStorageGroupName,
             targetTsFile,
             lostSourceFiles);
+        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         handleSuccess = false;
       }
     } catch (Throwable e) {

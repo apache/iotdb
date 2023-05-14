@@ -21,14 +21,11 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
-import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -37,12 +34,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
@@ -51,25 +44,18 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-import static org.junit.Assert.fail;
 
 public class AbstractCompactionTest {
   protected int seqFileNum = 5;
   protected int unseqFileNum = 0;
   protected List<TsFileResource> seqResources = new ArrayList<>();
   protected List<TsFileResource> unseqResources = new ArrayList<>();
-
-  protected TsFileManager tsFileManager =
-      new TsFileManager(TsFileGeneratorUtils.testStorageGroup, "0", STORAGE_GROUP_DIR.getPath());
   private int chunkGroupSize = 0;
   private int pageSize = 0;
   protected String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
-  private TSDataType dataType;
 
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -77,9 +63,6 @@ public class AbstractCompactionTest {
       TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
   private static final int oldPagePointSize =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-
-  private static final int oldMaxCrossCompactionFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -123,7 +106,7 @@ public class AbstractCompactionTest {
     if (!UNSEQ_DIRS.exists()) {
       Assert.assertTrue(UNSEQ_DIRS.mkdirs());
     }
-    dataType = TSDataType.INT64;
+
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
   }
@@ -199,96 +182,6 @@ public class AbstractCompactionTest {
           startTime + pointNum * i + timeInterval * i + pointNum - 1,
           isAlign,
           isSeq);
-      // sleep a moment to avoid generating files with same timestamp
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
-      }
-    }
-  }
-
-  /**
-   * @param fileNum the number of file
-   * @param deviceIndexes device index in each file
-   * @param measurementIndexes measurement index in each device of each file
-   * @param pointNum data point number of each timeseries in each file
-   * @param startTime start time of each timeseries
-   * @param timeInterval time interval of each timeseries between files
-   * @param isAlign when it is true, it will create mix tsfile which contains aligned and nonAligned
-   *     timeseries
-   * @param isSeq
-   */
-  protected void createFilesWithTextValue(
-      int fileNum,
-      List<Integer> deviceIndexes,
-      List<Integer> measurementIndexes,
-      int pointNum,
-      int startTime,
-      int timeInterval,
-      boolean isAlign,
-      boolean isSeq)
-      throws IOException, WriteProcessException {
-
-    for (int i = 0; i < fileNum; i++) {
-      String fileName =
-          System.currentTimeMillis()
-              + FilePathUtils.FILE_NAME_SEPARATOR
-              + fileVersion++
-              + "-0-0.tsfile";
-      String filePath;
-      if (isSeq) {
-        filePath = SEQ_DIRS.getPath() + File.separator + fileName;
-      } else {
-        filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
-      }
-      File file;
-      if (isAlign) {
-        file =
-            TsFileGeneratorUtils.generateAlignedTsFileWithTextValues(
-                filePath,
-                deviceIndexes,
-                measurementIndexes,
-                pointNum,
-                startTime + pointNum * i + timeInterval * i,
-                chunkGroupSize,
-                pageSize);
-      } else {
-        file =
-            TsFileGeneratorUtils.generateNonAlignedTsFileWithTextValues(
-                filePath,
-                deviceIndexes,
-                measurementIndexes,
-                pointNum,
-                startTime + pointNum * i + timeInterval * i,
-                chunkGroupSize,
-                pageSize);
-      }
-      // add resource
-      TsFileResource resource = new TsFileResource(file);
-      int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
-      for (int j = 0; j < deviceIndexes.size(); j++) {
-        resource.updateStartTime(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (deviceIndexes.get(j) + deviceStartindex),
-            startTime + pointNum * i + timeInterval * i);
-        resource.updateEndTime(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (deviceIndexes.get(j) + deviceStartindex),
-            startTime + pointNum * i + timeInterval * i + pointNum - 1);
-      }
-      resource.updatePlanIndexes(fileVersion);
-      resource.setStatus(TsFileResourceStatus.CLOSED);
-      resource.serialize();
-      if (isSeq) {
-        seqResources.add(resource);
-      } else {
-        unseqResources.add(resource);
-      }
-    }
-    // sleep a few milliseconds to avoid generating files with same timestamps
-    try {
-      Thread.sleep(10);
-    } catch (Exception e) {
-
     }
   }
 
@@ -296,15 +189,21 @@ public class AbstractCompactionTest {
       File file, int deviceNum, long startTime, long endTime, boolean isAlign, boolean isSeq)
       throws IOException {
     TsFileResource resource = new TsFileResource(file);
-    int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
-
-    for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
-      resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
-      resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+    int deviceStartindex = 0;
+    if (isAlign) {
+      deviceStartindex = TsFileGeneratorUtils.getAlignDeviceOffset();
+      for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+      }
+    } else {
+      for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+      }
     }
-
     resource.updatePlanIndexes(fileVersion);
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.setClosed(true);
     // resource.setTimeIndexType((byte) 0);
     resource.serialize();
     if (isSeq) {
@@ -324,12 +223,12 @@ public class AbstractCompactionTest {
         List<CompressionType> compressionTypes = new ArrayList<>();
         for (int j = 0; j < measurementNum; j++) {
           measurements.add("s" + j);
-          dataTypes.add(dataType);
+          dataTypes.add(TSDataType.INT64);
           encodings.add(TSEncoding.PLAIN);
           compressionTypes.add(CompressionType.UNCOMPRESSED);
           IoTDB.metaManager.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
-              dataType,
+              TSDataType.INT64,
               TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap());
@@ -344,82 +243,12 @@ public class AbstractCompactionTest {
         for (int j = 0; j < measurementNum; j++) {
           IoTDB.metaManager.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
-              dataType,
+              TSDataType.INT64,
               TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap());
         }
       }
-    }
-  }
-
-  protected Map<PartialPath, List<TimeValuePair>> readSourceFiles(
-      List<PartialPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
-    Map<PartialPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
-    for (PartialPath path : timeseriesPaths) {
-      List<TimeValuePair> dataList = new ArrayList<>();
-      sourceData.put(path, dataList);
-      IBatchReader tsFilesReader =
-          new SeriesRawDataBatchReader(
-              path,
-              path.getSeriesType(),
-              EnvironmentUtils.TEST_QUERY_CONTEXT,
-              tsFileManager.getTsFileList(true),
-              tsFileManager.getTsFileList(false),
-              null,
-              null,
-              true);
-      while (tsFilesReader.hasNextBatch()) {
-        BatchData batchData = tsFilesReader.nextBatch();
-        while (batchData.hasCurrent()) {
-          dataList.add(
-              new TimeValuePair(
-                  batchData.currentTime(),
-                  TsPrimitiveType.getByType(path.getSeriesType(), batchData.currentValue())));
-          batchData.next();
-        }
-      }
-    }
-    return sourceData;
-  }
-
-  protected void validateTargetDatas(
-      Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
-      throws IOException {
-    for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
-      IBatchReader tsFilesReader =
-          new SeriesRawDataBatchReader(
-              entry.getKey(),
-              entry.getKey().getSeriesType(),
-              EnvironmentUtils.TEST_QUERY_CONTEXT,
-              tsFileManager.getTsFileList(true),
-              tsFileManager.getTsFileList(false),
-              null,
-              null,
-              true);
-      List<TimeValuePair> timeseriesData = entry.getValue();
-      while (tsFilesReader.hasNextBatch()) {
-        BatchData batchData = tsFilesReader.nextBatch();
-        while (batchData.hasCurrent()) {
-          TimeValuePair data = timeseriesData.remove(0);
-          Assert.assertEquals(data.getTimestamp(), batchData.currentTime());
-          Assert.assertEquals(
-              data.getValue(),
-              TsPrimitiveType.getByType(entry.getKey().getSeriesType(), batchData.currentValue()));
-          batchData.next();
-        }
-      }
-      if (timeseriesData.size() > 0) {
-        // there are still data points left, which are not in the target file. Lost the data after
-        // compaction.
-        fail();
-      }
-    }
-  }
-
-  protected void deleteTimeseriesInMManager(List<String> timeseries) throws MetadataException {
-    for (String path : timeseries) {
-      IoTDB.metaManager.deleteTimeseries(new PartialPath(path));
     }
   }
 
@@ -430,9 +259,6 @@ public class AbstractCompactionTest {
     unseqResources.clear();
     IoTDB.metaManager.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionFileNum);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
     EnvironmentUtils.cleanEnv();
@@ -465,9 +291,5 @@ public class AbstractCompactionTest {
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
     }
-  }
-
-  protected void setDataType(TSDataType dataType) {
-    this.dataType = dataType;
   }
 }

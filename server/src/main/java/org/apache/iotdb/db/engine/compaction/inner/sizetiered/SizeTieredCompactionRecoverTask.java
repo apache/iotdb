@@ -20,16 +20,14 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.commons.io.FileUtils;
@@ -39,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -101,15 +98,11 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
             logicalStorageGroupName,
             virtualStorageGroup,
             compactionLogFile);
-        CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
-        if (isOldLog()) {
-          // log from previous version (<0.13)
-          logAnalyzer.analyzeOldInnerCompactionLog();
-        } else {
-          logAnalyzer.analyze();
-        }
+        SizeTieredCompactionLogAnalyzer logAnalyzer =
+            new SizeTieredCompactionLogAnalyzer(compactionLogFile);
+        logAnalyzer.analyze();
         List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
-        TsFileIdentifier targetFileIdentifier = logAnalyzer.getTargetFileInfos().get(0);
+        TsFileIdentifier targetFileIdentifier = logAnalyzer.getTargetFileInfo();
 
         // compaction log file is incomplete
         if (targetFileIdentifier == null || sourceFileIdentifiers.isEmpty()) {
@@ -130,38 +123,26 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           }
         }
 
-        TsFileResource targetResource = null;
-        // xxx.target
-        File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
-        // xxx.tsfile
-        File targetFile =
-            getFileFromDataDirs(
-                targetFileIdentifier
-                    .getFilePath()
-                    .replace(
-                        IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
-                        TsFileConstant.TSFILE_SUFFIX));
-        if (tmpTargetFile != null) {
-          targetResource = new TsFileResource(tmpTargetFile);
-        } else if (targetFile != null) {
-          targetResource = new TsFileResource(targetFile);
-        }
-
         if (isAllSourcesFileExisted) {
+          // xxx.target
+          File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
+          // xxx.tsfile
+          File targetFile =
+              getFileFromDataDirs(
+                  targetFileIdentifier
+                      .getFilePath()
+                      .replace(
+                          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                          TsFileConstant.TSFILE_SUFFIX));
+          TsFileResource targetResource;
+          if (tmpTargetFile != null) {
+            targetResource = new TsFileResource(tmpTargetFile);
+          } else {
+            targetResource = new TsFileResource(targetFile);
+          }
           List<TsFileResource> sourceResources = new ArrayList<>();
           for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
             sourceResources.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
-          }
-          if (targetResource == null) {
-            // target file may not exist
-            LOGGER.info(
-                "{}-{} [Compaction][Recover] Target file {} does not exist.",
-                logicalStorageGroupName,
-                virtualStorageGroup,
-                targetFileIdentifier.getFilePath());
-            // delete compaction mods files
-            CompactionUtils.deleteCompactionModsFile(sourceResources, Collections.emptyList());
-            return;
           }
           handleSuccess =
               InnerSpaceCompactionExceptionHandler.handleWhenAllSourceFilesExist(
@@ -229,22 +210,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
     for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
       File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
       if (sourceFile != null) {
-        TsFileResource resource = new TsFileResource(sourceFile);
-        resource.setStatus(TsFileResourceStatus.CLOSED);
-        remainSourceTsFileResources.add(resource);
-      } else {
-        // if source file does not exist, its resource file may still exist, so delete it.
-        File resourceFile =
-            getFileFromDataDirs(
-                sourceFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
-        if (resourceFile != null && !resourceFile.delete()) {
-          LOGGER.error(
-              "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-              logicalStorageGroupName,
-              virtualStorageGroup,
-              resourceFile);
-          handleSuccess = false;
-        }
+        remainSourceTsFileResources.add(new TsFileResource(sourceFile));
       }
       // delete .compaction.mods file and .mods file of all source files
       File compactionModFile =
@@ -269,7 +235,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         handleSuccess = false;
       }
     }
-    // delete remaining source files and resource files
+    // delete remaining source files
     if (!InnerSpaceCompactionUtils.deleteTsFilesInDisk(
         remainSourceTsFileResources, fullStorageGroupName)) {
       LOGGER.error(
@@ -294,10 +260,5 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
       }
     }
     return null;
-  }
-
-  /** Return whether compaction log file is from previous version (<0.13). */
-  private boolean isOldLog() {
-    return compactionLogFile.getName().startsWith(tsFileManager.getStorageGroupName());
   }
 }

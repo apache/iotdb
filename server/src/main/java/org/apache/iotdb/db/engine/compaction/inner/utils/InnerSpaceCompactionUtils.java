@@ -22,27 +22,24 @@ package org.apache.iotdb.db.engine.compaction.inner.utils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -65,40 +63,33 @@ public class InnerSpaceCompactionUtils {
   public static void compact(TsFileResource targetResource, List<TsFileResource> tsFileResources)
       throws IOException, MetadataException, InterruptedException {
 
-    // size for file writer is 5% of per compaction task memory budget
-    long sizeForFileWriter =
-        (long)
-            (((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                    / (double)
-                        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread())
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataMemorySizeProportion());
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
-        TsFileIOWriter writer =
-            new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {
+        TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
       while (deviceIterator.hasNextDevice()) {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
 
+        writer.startChunkGroup(device);
         if (aligned) {
           compactAlignedSeries(device, targetResource, writer, deviceIterator);
         } else {
-          writer.startChunkGroup(device);
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
-          writer.endChunkGroup();
         }
+        writer.endChunkGroup();
       }
 
       for (TsFileResource tsFileResource : tsFileResources) {
         targetResource.updatePlanIndexes(tsFileResource);
       }
       writer.endFile();
+      targetResource.close();
     }
   }
 
   private static void checkThreadInterrupted(TsFileResource tsFileResource)
       throws InterruptedException {
-    if (Thread.interrupted() || !IoTDB.activated) {
+    if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
@@ -116,18 +107,14 @@ public class InnerSpaceCompactionUtils {
     while (seriesIterator.hasNextSeries()) {
       checkThreadInterrupted(targetResource);
       // TODO: we can provide a configuration item to enable concurrent between each series
-      PartialPath p = new PartialPath(device, seriesIterator.nextSeries());
-      IMeasurementSchema measurementSchema;
-      // TODO: seriesIterator needs to be refactor.
-      // This statement must be called before next hasNextSeries() called, or it may be trapped in a
-      // dead-loop.
+      String currentSeries = seriesIterator.nextSeries();
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-          new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
+          new SingleSeriesCompactionExecutor(
+              device, currentSeries, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
-    writer.checkMetadataSizeAndMayFlush();
   }
 
   private static void compactAlignedSeries(
@@ -139,26 +126,10 @@ public class InnerSpaceCompactionUtils {
     checkThreadInterrupted(targetResource);
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
-    if (!checkAlignedSeriesValid(readerAndChunkMetadataList)) {
-      return;
-    }
     AlignedSeriesCompactionExecutor compactionExecutor =
         new AlignedSeriesCompactionExecutor(
             device, targetResource, readerAndChunkMetadataList, writer);
     compactionExecutor.execute();
-  }
-
-  /** Ensure that there is at least one chunk that is not empty. */
-  private static boolean checkAlignedSeriesValid(
-      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
-          readerAndChunkMetadataList) {
-    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerMetadataPair :
-        readerAndChunkMetadataList) {
-      if (!readerMetadataPair.right.isEmpty()) {
-        return true;
-      }
-    }
-    return false;
   }
 
   public static boolean deleteTsFilesInDisk(
@@ -194,6 +165,34 @@ public class InnerSpaceCompactionUtils {
   }
 
   /**
+   * This method is called to recover modifications while an exception occurs during compaction. It
+   * append new modifications of each selected tsfile to its corresponding old mods file and delete
+   * the compaction mods file.
+   *
+   * @param selectedTsFileResources
+   * @throws IOException
+   */
+  public static void appendNewModificationsToOldModsFile(
+      List<TsFileResource> selectedTsFileResources) throws IOException {
+    for (TsFileResource sourceFile : selectedTsFileResources) {
+      // if there are modifications to this seqFile during compaction
+      if (sourceFile.getCompactionModFile().exists()) {
+        ModificationFile compactionModificationFile =
+            ModificationFile.getCompactionMods(sourceFile);
+        Collection<Modification> newModification = compactionModificationFile.getModifications();
+        compactionModificationFile.close();
+        // write the new modifications to its old modification file
+        try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
+          for (Modification modification : newModification) {
+            oldModificationFile.write(modification);
+          }
+        }
+        FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
+      }
+    }
+  }
+
+  /**
    * Collect all the compaction modification files of source files, and combines them as the
    * modification file of target file.
    */
@@ -221,7 +220,7 @@ public class InnerSpaceCompactionUtils {
   public static boolean deleteTsFile(TsFileResource seqFile) {
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.setStatus(TsFileResourceStatus.DELETED);
+      seqFile.setDeleted(true);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
@@ -231,7 +230,7 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
-      long budget, CrossSpaceCompactionResource resource) {
+      long budget, CrossSpaceMergeResource resource) {
     CrossCompactionStrategy strategy =
         IoTDBDescriptor.getInstance().getConfig().getCrossCompactionStrategy();
     switch (strategy) {
@@ -242,6 +241,23 @@ public class InnerSpaceCompactionUtils {
     }
   }
 
+  public static File[] findInnerSpaceCompactionLogs(String directory) {
+    File timePartitionDir = new File(directory);
+    if (timePartitionDir.exists()) {
+      return timePartitionDir.listFiles(
+          (dir, name) -> name.endsWith(SizeTieredCompactionLogger.COMPACTION_LOG_NAME));
+    } else {
+      return new File[0];
+    }
+  }
+
+  public static class TsFileNameComparator implements Comparator<TsFileSequenceReader> {
+
+    @Override
+    public int compare(TsFileSequenceReader o1, TsFileSequenceReader o2) {
+      return TsFileManager.compareFileName(new File(o1.getFileName()), new File(o2.getFileName()));
+    }
+  }
   /**
    * Update the targetResource. Move xxx.target to xxx.tsfile and serialize xxx.tsfile.resource .
    *
@@ -249,13 +265,6 @@ public class InnerSpaceCompactionUtils {
    */
   public static void moveTargetFile(TsFileResource targetResource, String fullStorageGroupName)
       throws IOException {
-    if (!targetResource.getTsFile().exists()) {
-      logger.info(
-          "{} [Compaction] Tmp target tsfile {} may be deleted after compaction.",
-          fullStorageGroupName,
-          targetResource.getTsFilePath());
-      return;
-    }
     if (!targetResource.getTsFilePath().endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)) {
       logger.warn(
           "{} [Compaction] Tmp target tsfile {} should be end with {}",
@@ -277,6 +286,6 @@ public class InnerSpaceCompactionUtils {
     // serialize xxx.tsfile.resource
     targetResource.setFile(newFile);
     targetResource.serialize();
-    targetResource.closeWithoutSettingStatus();
+    targetResource.close();
   }
 }

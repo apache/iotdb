@@ -20,7 +20,6 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -119,7 +118,7 @@ public class UpgradeUtils {
       if (fsFactory.getFile(partitionDir, newModsFile.getName()).exists()) {
         upgradedResource.getModFile();
       }
-      upgradedResource.setStatus(TsFileResourceStatus.CLOSED);
+      upgradedResource.setClosed(true);
       upgradedResource.serialize();
       // delete generated temp resource file
       Files.delete(tempResourceFile.toPath());

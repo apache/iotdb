@@ -78,28 +78,11 @@ public class HeartbeatHandlerTest {
     response.setLastLogTerm(-2);
     response.setFollower(
         new Node("192.168.0.6", 9003, 6, 40010, Constants.RPC_PORT, "192.168.0.6"));
-    response.setInstallingSnapshot(false);
     catchUpFlag = false;
     for (int i = 0; i < looseInconsistentNum; i++) {
       handler.onComplete(response);
     }
     assertTrue(catchUpFlag);
-  }
-
-  @Test
-  public void testSnapshotRequestOmitted() {
-    HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
-    HeartBeatResponse response = new HeartBeatResponse();
-    response.setTerm(Response.RESPONSE_AGREE);
-    response.setLastLogTerm(-2);
-    response.setFollower(
-        new Node("192.168.0.6", 9003, 6, 40010, Constants.RPC_PORT, "192.168.0.6"));
-    response.setInstallingSnapshot(true);
-    catchUpFlag = false;
-    for (int i = 0; i < looseInconsistentNum; i++) {
-      handler.onComplete(response);
-    }
-    assertFalse(catchUpFlag);
   }
 
   @Test

@@ -19,7 +19,6 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.SessionTimeoutException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -115,16 +114,6 @@ public class UtilsTest {
   public void testVerifySuccess() {
     try {
       RpcUtils.verifySuccess(RpcUtils.SUCCESS_STATUS);
-    } catch (Exception e) {
-      fail();
-    }
-
-    try {
-      TSStatus errorStatus = new TSStatus(TSStatusCode.SESSION_TIMEOUT.getStatusCode());
-      RpcUtils.verifySuccess(errorStatus);
-      fail();
-    } catch (SessionTimeoutException e) {
-      assertTrue(true);
     } catch (Exception e) {
       fail();
     }

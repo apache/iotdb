@@ -61,19 +61,7 @@ public class LastCacheManager {
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
-    TimeValuePair result = lastCacheContainer.getCachedLast();
-    long ttl = getTTL(node);
-    return result == null || ttl == -1 || result.getTimestamp() < System.currentTimeMillis() - ttl
-        ? null
-        : result;
-  }
-
-  private static long getTTL(IMeasurementMNode node) {
-    IMNode ancestor = node;
-    while (ancestor != null && !ancestor.isStorageGroup()) {
-      ancestor = ancestor.getParent();
-    }
-    return ancestor == null ? -1 : ancestor.getAsStorageGroupMNode().getDataTTL();
+    return lastCacheContainer.getCachedLast();
   }
 
   /**
@@ -236,12 +224,12 @@ public class LastCacheManager {
         // because LastPointReader will do itself sort logic instead of depending on fillOrderIndex.
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(node.getMeasurementPath(), queryContext, null, false);
+                .getQueryDataSource(node.getPartialPath(), queryContext, null, false);
         Set<String> measurementSet = new HashSet<>();
-        measurementSet.add(node.getName());
+        measurementSet.add(node.getPartialPath().getFullPath());
         LastPointReader lastReader =
             new LastPointReader(
-                node.getMeasurementPath(),
+                node.getPartialPath(),
                 node.getSchema().getType(),
                 measurementSet,
                 queryContext,
@@ -260,29 +248,6 @@ public class LastCacheManager {
             e);
         return Long.MIN_VALUE;
       }
-    }
-  }
-
-  public static void checkTTLOnLastCache(IMNode node, long dataTTL) {
-    if (node.isMeasurement()) {
-      processTTLOnLastCacheContainer(node.getAsMeasurementMNode().getLastCacheContainer(), dataTTL);
-      return;
-    }
-
-    if (node.isEntity()) {
-      Map<String, ILastCacheContainer> containerMap =
-          node.getAsEntityMNode().getTemplateLastCaches();
-      for (ILastCacheContainer container : containerMap.values()) {
-        processTTLOnLastCacheContainer(container, dataTTL);
-      }
-    }
-  }
-
-  private static void processTTLOnLastCacheContainer(ILastCacheContainer container, long dataTTL) {
-    TimeValuePair timeValuePair = container.getCachedLast();
-    if (timeValuePair != null
-        && timeValuePair.getTimestamp() < System.currentTimeMillis() - dataTTL) {
-      container.resetLastCache();
     }
   }
 }

@@ -151,7 +151,7 @@ public class MTreeTest {
           Collections.emptyMap(),
           null);
     } catch (MetadataException e) {
-      Assert.assertEquals(String.format("%s is not a legal path", "aa.bb"), e.getMessage());
+      Assert.assertEquals(String.format("%s is not a legal path", "aa.bb.cc"), e.getMessage());
     }
   }
 
@@ -443,15 +443,15 @@ public class MTreeTest {
           null);
 
       // getChildNodeByPath
-      Set<String> result1 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d0"), 0, 0);
-      Set<String> result2 = root.getChildNodeNameInNextLevel(new PartialPath("root.a"), 0, 0);
-      Set<String> result3 = root.getChildNodeNameInNextLevel(new PartialPath("root"), 0, 0);
+      Set<String> result1 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d0"));
+      Set<String> result2 = root.getChildNodeNameInNextLevel(new PartialPath("root.a"));
+      Set<String> result3 = root.getChildNodeNameInNextLevel(new PartialPath("root"));
       assertEquals(new HashSet<>(Arrays.asList("s0", "s1")), result1);
       assertEquals(new HashSet<>(Arrays.asList("d0", "d5")), result2);
       assertEquals(new HashSet<>(Collections.singletonList("a")), result3);
 
       // if child node is nll   will return  null HashSet
-      Set<String> result5 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d5"), 0, 0);
+      Set<String> result5 = root.getChildNodeNameInNextLevel(new PartialPath("root.a.d5"));
       assertEquals(result5, new HashSet<>(Arrays.asList()));
     } catch (MetadataException e1) {
       e1.printStackTrace();

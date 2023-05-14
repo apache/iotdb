@@ -82,7 +82,7 @@ public class MetaFormatUtils {
   private static void checkNameFormat(String name) throws MetadataException {
     if (!((name.startsWith("'") && name.endsWith("'"))
             || (name.startsWith("\"") && name.endsWith("\"")))
-        && (name.contains(".") || name.contains("*"))) {
+        && name.contains(".")) {
       throw new MetadataException(String.format("%s is an illegal name.", name));
     }
   }

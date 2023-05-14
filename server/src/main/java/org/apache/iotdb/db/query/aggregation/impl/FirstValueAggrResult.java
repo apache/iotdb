@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.function.Predicate;
 
 public class FirstValueAggrResult extends AggregateResult {
 
@@ -67,17 +66,18 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
-    updateResultFromPageData(batchIterator, time -> false);
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
     if (hasFinalResult()) {
       return;
     }
-    if (batchIterator.hasNext(boundPredicate)
-        && !boundPredicate.test(batchIterator.currentTime())) {
+    if (batchIterator.hasNext(minBound, maxBound)
+        && batchIterator.currentTime() < maxBound
+        && batchIterator.currentTime() >= minBound) {
       setValue(batchIterator.currentValue());
       timestamp = batchIterator.currentTime();
       batchIterator.next();

@@ -37,7 +37,6 @@ public enum ThreadName {
   FLUSH_SERVICE("Flush"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
   COMPACTION_SERVICE("Compaction"),
-  COMPACTION_SUB_SERVICE("Sub-Compaction"),
   COMPACTION_SCHEDULE("Compaction_Schedule"),
   WAL_DAEMON("WAL-Sync"),
   WAL_FORCE_DAEMON("WAL-Force"),
@@ -71,8 +70,6 @@ public enum ThreadName {
   CLUSTER_DATA_HEARTBEAT_RPC_SERVICE("ClusterDataHeartbeatRPC"),
   CLUSTER_DATA_HEARTBEAT_RPC_CLIENT("ClusterDataHeartbeatRPC-Client"),
   Cluster_Monitor("ClusterMonitor"),
-  ARCHIVING_CHECK("Archiving-Check"),
-  ARCHIVING_TASK("Archiving-Task"),
   ;
 
   private final String name;

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.AbstractMetricManager;
+import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
-import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import com.codahale.metrics.jmx.JmxReporter;
@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 public class DropwizardJmxReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardJmxReporter.class);
 
-  private AbstractMetricManager dropwizardMetricManager = null;
+  private MetricManager dropwizardMetricManager = null;
   private JmxReporter jmxReporter = null;
 
   @Override
@@ -56,20 +56,22 @@ public class DropwizardJmxReporter implements Reporter {
 
   @Override
   public boolean stop() {
-    if (jmxReporter != null) {
-      jmxReporter.stop();
-      jmxReporter = null;
+    if (jmxReporter == null) {
+      LOGGER.warn("Dropwizard JmxReporter already stop!");
+      return false;
     }
+    jmxReporter.stop();
+    jmxReporter = null;
     return true;
   }
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.JMX;
+    return ReporterType.jmx;
   }
 
   @Override
-  public void setMetricManager(AbstractMetricManager metricManager) {
+  public void setMetricManager(MetricManager metricManager) {
     this.dropwizardMetricManager = metricManager;
   }
 }

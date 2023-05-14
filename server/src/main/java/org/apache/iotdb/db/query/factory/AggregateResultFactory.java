@@ -67,6 +67,106 @@ public class AggregateResultFactory {
         return !ascending
             ? new LastValueDescAggrResult(dataType)
             : new LastValueAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN:
+        return new MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT:
+        return new OptimizedMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_2:
+        return new Optimized_2_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_3:
+        return new Optimized_3_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_4:
+        return new Optimized_4_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_5:
+        return new Optimized_5_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_AMORTIZED:
+        return new AmortizedMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS:
+        return new KLLFloatsMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
+        return new AggressiveMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+        //        return new BitsBucketStatMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT:
+        return new KLLStatMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
+        return new KLLStatSingleAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+        return new KLLFloatsSingleAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+        return new KLLStatSingleReadAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG:
+        return new KLLDebugResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+        return new KLLStatDebugFullReadingAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+        return new KLLDebugFullReadingAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+        return new KLLStatDebugPageDemandRateAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+        return new KLLStatOverlapSingleAggrResult(dataType);
+      case SQLConstant.TDIGEST_STAT_SINGLE:
+        return new TDigestStatSingleAggrResult(dataType);
+      case SQLConstant.SAMPLING_STAT_SINGLE:
+        return new SamplingStatSingleAggrResult(dataType);
+      case SQLConstant.STRICT_KLL_STAT_SINGLE:
+        return new StrictKLLStatSingleAggrResult(dataType);
+      case SQLConstant.DDSKETCH_SINGLE:
+        return new DDSketchSingleAggrResult(dataType);
+      case SQLConstant.CHUNK_STAT_AVAIL:
+        return new KLLStatChunkAvailAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_BASELINE_KLL:
+        return new ExactQuantileBaselineKLLAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_NO_OPT:
+        return new ExactQuantilePrKLLNoOptAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH:
+        return new ExactQuantileDDSketchAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_STAT:
+        return new ExactQuantilePrKLLOptStatAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_FILTER:
+        return new ExactQuantilePrKLLOptFilterAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_SUMMARY:
+        return new ExactQuantilePrKLLOptSummaryAggrResult(dataType);
+      case SQLConstant.FULL_READ_ONCE:
+        return new FullReadOnceAggrResult();
+      case SQLConstant.EXACT_QUANTILE_QUICK_SELECT:
+        return new ExactQuantileQuickSelectAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_QUICK_SELECT:
+        return new ExactMultiQuantilesQuickSelectAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY:
+        return new ExactMultiQuantilesPrKLLOptSummaryAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR:
+        return new ExactQuantilePrKLLPrioriFixPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR:
+        return new ExactQuantilePrKLLPrioriBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
+        return new ExactQuantilePrKLLPostBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_MRL:
+        return new ExactQuantileMRLAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_TDIGEST:
+        return new ExactQuantileTDigestAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH_POSITIVE:
+        return new ExactQuantileDDSketchPositiveAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
+        return new ExactMultiQuantilesPrKLLPostBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
+        return new ExactMultiQuantilesPrKLLFixPrAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
+        return new ExactMultiQuantilesMRLAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
+        return new ExactMultiQuantilesTDigestAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+        return new ExactMultiQuantilesDDSketchAggrResult(dataType);
+      case SQLConstant.MAD_DD:
+        return new MADDDAggrResult(dataType);
+      case SQLConstant.MAD_CORE:
+        return new MADCoreAggrResult(dataType);
+      case SQLConstant.MAD_QS:
+        return new MADQSAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -98,6 +198,106 @@ public class AggregateResultFactory {
         return new SumAggrResult(dataType);
       case SQLConstant.LAST_VALUE:
         return new LastValueDescAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN:
+        return new MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT:
+        return new OptimizedMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_2:
+        return new Optimized_2_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_3:
+        return new Optimized_3_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_4:
+        return new Optimized_4_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_OPT_5:
+        return new Optimized_5_MedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_AMORTIZED:
+        return new AmortizedMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS:
+        return new KLLFloatsMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_AGGRESSIVE:
+        return new AggressiveMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT:
+        //        return new BitsBucketStatMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
+        //      case SQLConstant.EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT:
+        return new KLLStatMedianAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE:
+        return new KLLStatSingleAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+        return new KLLFloatsSingleAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+        return new KLLStatSingleReadAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG:
+        return new KLLDebugResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+        return new KLLStatDebugFullReadingAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+        return new KLLDebugFullReadingAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+        return new KLLStatDebugPageDemandRateAggrResult(dataType);
+      case SQLConstant.EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+        return new KLLStatOverlapSingleAggrResult(dataType);
+      case SQLConstant.TDIGEST_STAT_SINGLE:
+        return new TDigestStatSingleAggrResult(dataType);
+      case SQLConstant.SAMPLING_STAT_SINGLE:
+        return new SamplingStatSingleAggrResult(dataType);
+      case SQLConstant.STRICT_KLL_STAT_SINGLE:
+        return new StrictKLLStatSingleAggrResult(dataType);
+      case SQLConstant.DDSKETCH_SINGLE:
+        return new DDSketchSingleAggrResult(dataType);
+      case SQLConstant.CHUNK_STAT_AVAIL:
+        return new KLLStatChunkAvailAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_BASELINE_KLL:
+        return new ExactQuantileBaselineKLLAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_NO_OPT:
+        return new ExactQuantilePrKLLNoOptAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH:
+        return new ExactQuantileDDSketchAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_STAT:
+        return new ExactQuantilePrKLLOptStatAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_FILTER:
+        return new ExactQuantilePrKLLOptFilterAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_OPT_SUMMARY:
+        return new ExactQuantilePrKLLOptSummaryAggrResult(dataType);
+      case SQLConstant.FULL_READ_ONCE:
+        return new FullReadOnceAggrResult();
+      case SQLConstant.EXACT_QUANTILE_QUICK_SELECT:
+        return new ExactQuantileQuickSelectAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_QUICK_SELECT:
+        return new ExactMultiQuantilesQuickSelectAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY:
+        return new ExactMultiQuantilesPrKLLOptSummaryAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR:
+        return new ExactQuantilePrKLLPrioriFixPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR:
+        return new ExactQuantilePrKLLPrioriBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
+        return new ExactQuantilePrKLLPostBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_MRL:
+        return new ExactQuantileMRLAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_TDIGEST:
+        return new ExactQuantileTDigestAggrResult(dataType);
+      case SQLConstant.EXACT_QUANTILE_DDSKETCH_POSITIVE:
+        return new ExactQuantileDDSketchPositiveAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
+        return new ExactMultiQuantilesPrKLLPostBestPrAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
+        return new ExactMultiQuantilesPrKLLFixPrAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
+        return new ExactMultiQuantilesMRLAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
+        return new ExactMultiQuantilesTDigestAggrResult(dataType);
+      case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+        return new ExactMultiQuantilesDDSketchAggrResult(dataType);
+      case SQLConstant.MAD_DD:
+        return new MADDDAggrResult(dataType);
+      case SQLConstant.MAD_CORE:
+        return new MADCoreAggrResult(dataType);
+      case SQLConstant.MAD_QS:
+        return new MADQSAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -130,6 +330,106 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case EXTREME:
         return new ExtremeAggrResult(dataType);
+      case EXACT_MEDIAN:
+        return new MedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT:
+        return new OptimizedMedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT_2:
+        return new Optimized_2_MedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT_3:
+        return new Optimized_3_MedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT_4:
+        return new Optimized_4_MedianAggrResult(dataType);
+      case EXACT_MEDIAN_OPT_5:
+        return new Optimized_5_MedianAggrResult(dataType);
+      case EXACT_MEDIAN_AMORTIZED:
+        return new AmortizedMedianAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_FLOATS:
+        return new KLLFloatsMedianAggrResult(dataType);
+      case EXACT_MEDIAN_AGGRESSIVE:
+        return new AggressiveMedianAggrResult(dataType);
+        //      case EXACT_MEDIAN_BITS_BUCKET_STAT:
+        //        return new BitsBucketStatMedianAggrResult(dataType);
+        //      case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER:
+        //        return new BitsBucketStatFilterMedianAggrResult(dataType);
+        //      case EXACT_MEDIAN_BITS_BUCKET_STAT_FILTER_AGGRESSIVE:
+        //        return new BitsBucketStatFilterAggressiveMedianAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT:
+        return new KLLStatMedianAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_SINGLE:
+        return new KLLStatSingleAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_FLOATS_SINGLE:
+        return new KLLFloatsSingleAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_SINGLE_READ:
+        return new KLLStatSingleReadAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_DEBUG:
+        return new KLLDebugResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_DEBUG_FULL_READING:
+        return new KLLStatDebugFullReadingAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_DEBUG_FULL_READING:
+        return new KLLDebugFullReadingAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_DEBUG_PAGE_DEMAND_RATE:
+        return new KLLStatDebugPageDemandRateAggrResult(dataType);
+      case EXACT_MEDIAN_KLL_STAT_OVERLAP_SINGLE:
+        return new KLLStatOverlapSingleAggrResult(dataType);
+      case TDIGEST_STAT_SINGLE:
+        return new TDigestStatSingleAggrResult(dataType);
+      case SAMPLING_STAT_SINGLE:
+        return new SamplingStatSingleAggrResult(dataType);
+      case STRICT_KLL_STAT_SINGLE:
+        return new StrictKLLStatSingleAggrResult(dataType);
+      case DDSKETCH_SINGLE:
+        return new DDSketchSingleAggrResult(dataType);
+      case CHUNK_STAT_AVAIL:
+        return new KLLStatChunkAvailAggrResult(dataType);
+      case EXACT_QUANTILE_BASELINE_KLL:
+        return new ExactQuantileBaselineKLLAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_NO_OPT:
+        return new ExactQuantilePrKLLNoOptAggrResult(dataType);
+      case EXACT_QUANTILE_DDSKETCH:
+        return new ExactQuantileDDSketchAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_OPT_STAT:
+        return new ExactQuantilePrKLLOptStatAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_OPT_FILTER:
+        return new ExactQuantilePrKLLOptFilterAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_OPT_SUMMARY:
+        return new ExactQuantilePrKLLOptSummaryAggrResult(dataType);
+      case FULL_READ_ONCE:
+        return new FullReadOnceAggrResult();
+      case EXACT_QUANTILE_QUICK_SELECT:
+        return new ExactQuantileQuickSelectAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_QUICK_SELECT:
+        return new ExactMultiQuantilesQuickSelectAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_PR_KLL_OPT_SUMMARY:
+        return new ExactMultiQuantilesPrKLLOptSummaryAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_PRIORI_FIX_PR:
+        return new ExactQuantilePrKLLPrioriFixPrAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_PRIORI_BEST_PR:
+        return new ExactQuantilePrKLLPrioriBestPrAggrResult(dataType);
+      case EXACT_QUANTILE_PR_KLL_POST_BEST_PR:
+        return new ExactQuantilePrKLLPostBestPrAggrResult(dataType);
+      case EXACT_QUANTILE_MRL:
+        return new ExactQuantileMRLAggrResult(dataType);
+      case EXACT_QUANTILE_TDIGEST:
+        return new ExactQuantileTDigestAggrResult(dataType);
+      case EXACT_QUANTILE_DDSKETCH_POSITIVE:
+        return new ExactQuantileDDSketchPositiveAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_PR_KLL_POST_BEST_PR:
+        return new ExactMultiQuantilesPrKLLPostBestPrAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR:
+        return new ExactMultiQuantilesPrKLLFixPrAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_MRL:
+        return new ExactMultiQuantilesMRLAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_TDIGEST:
+        return new ExactMultiQuantilesTDigestAggrResult(dataType);
+      case EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+        return new ExactMultiQuantilesDDSketchAggrResult(dataType);
+      case MAD_DD:
+        return new MADDDAggrResult(dataType);
+      case MAD_CORE:
+        return new MADCoreAggrResult(dataType);
+      case MAD_QS:
+        return new MADQSAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

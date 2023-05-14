@@ -57,7 +57,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
 
     List<IChunkMetadata> chunkMetadataList =
-        ((TimeseriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
+        ((TimeseriesMetadata) timeSeriesMetadata).getChunkMetadataList();
 
     List<Modification> pathModifications =
         context.getPathModifications(resource.getModFile(), seriesPath);

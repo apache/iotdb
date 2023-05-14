@@ -308,7 +308,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   private boolean checkIsTimeseriesExist(TSRecord record, boolean isAligned)
-      throws WriteProcessException, IOException {
+      throws WriteProcessException {
     // initial ChunkGroupWriter of this device in the TSRecord
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(record.deviceId, isAligned);
 
@@ -348,7 +348,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   private void checkIsTimeseriesExist(Tablet tablet, boolean isAligned)
-      throws WriteProcessException, IOException {
+      throws WriteProcessException {
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.deviceId, isAligned);
 
     Path devicePath = new Path(tablet.deviceId);
@@ -506,6 +506,7 @@ public class TsFileWriter implements AutoCloseable {
    * @throws WriteProcessException exception in write process
    */
   public boolean write(Tablet tablet) throws IOException, WriteProcessException {
+    //    System.out.println("\t\t[TsFileWriter write_tablet]:N=" + tablet.rowSize);
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeseriesExist(tablet, false);
     // get corresponding ChunkGroupWriter and write this Tablet
@@ -635,5 +636,9 @@ public class TsFileWriter implements AutoCloseable {
    */
   public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
+  }
+
+  public void setIsUnseq(boolean unseq) {
+    this.isUnseq = unseq;
   }
 }

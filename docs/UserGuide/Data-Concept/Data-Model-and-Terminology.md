@@ -25,7 +25,7 @@ A wind power IoT scenario is taken as an example to illustrate how to creat a co
 
 According to the enterprise organization structure and equipment entity hierarchy, it is expressed as an attribute hierarchy structure, as shown below. The hierarchical from top to bottom is: power group layer - power plant layer - entity layer - measurement layer. ROOT is the root node, and each node of measurement layer is a leaf node. In the process of using IoTDB, the attributes on the path from ROOT node is directly connected to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 2.1 can generate a timeseries named `root.ln.wf01.wt01.status`.
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/122668849-b1c69280-d1ec-11eb-83cb-3b73c40bdf72.png"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122668849-b1c69280-d1ec-11eb-83cb-3b73c40bdf72.png"></center>
 
 Here are the basic concepts of the model involved in IoTDB. 
 
@@ -51,7 +51,7 @@ Once a prefix path is set as a storage group, the storage group settings cannot 
 
 After a storage group is set, the ancestral layers, children and descendant layers of the corresponding prefix path are not allowed to be set up again (for example, after `root.ln` is set as the storage group, the root layer and `root.ln.wf01` are not allowed to be set as storage groups).
 
-The Layer Name of storage group can only consist of characters, numbers and underscores, like `root.storagegroup_1`.
+The Layer Name of storage group can only consist of characters, numbers, underscores and hyphen, like `root.storagegroup_1-sg1`.
 
 ### Path
 
@@ -82,7 +82,7 @@ The following are the constraints on the layer (`layer_name`):
 * Except for the beginning layer (`root`) of the time series, the characters supported in other layers are as follows:
 
   * Chinese characters:  `"\u2E80"` to `"\u9FFF"`
-  * `_` `:` `@` `#` `$` `{` `}`
+  * `"_"，"@"，"#"，"$"`
   * `"A"` to `"Z"`, `"a"` to `"z"`, `"0"` to `"9"`
 
 * In addition to the beginning layer (`root`) of the time series and the storage group layer, other layers also support the use of special strings referenced by \` or `" ` as its name. It should be noted that the quoted string cannot contain `.` characters. Here are some legal examples:
@@ -100,7 +100,7 @@ In order to make it easier and faster to express multiple timeseries paths, IoTD
 
 `*` represents one layer. For example, `root.vehicle.*.sensor1` represents a 4-layer path which is prefixed with `root.vehicle` and suffixed with `sensor1`.
 
-`**` represents (`*`)+, which is one or more layers of `*`. For example, `root.vehicle.device1.**` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.**.sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 4 layers.
+`**` represents (`*`)+, which is one or more layers of `*`. For example, `root.vehicle.device1.*` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.**.sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 4 layers.
 
 > Note1: Wildcard `*` and `**` cannot be placed at the beginning of the path.
 
@@ -139,7 +139,7 @@ When querying, you can query each timeseries separately.
 
 When inserting data, it is allowed to insert null value in the aligned timeseries.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
 
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to aligned timeseries will be introduced one by one.
 

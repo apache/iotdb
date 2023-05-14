@@ -20,44 +20,27 @@
 # whether enable the module
 enableMetric: true
 
-# Is stat performance of operation latency
-enablePerformanceStat: true
-
-# Multiple reporter, options: [JMX, PROMETHEUS, IOTDB], IOTDB is off by default
+# can be multiple reporter, e.g., jmx,prometheus,iotdb.
+# iotdb is off by default
 metricReporterList:
-  - JMX
-  - PROMETHEUS
-  - IOTDB
+  - jmx
+  - prometheus
 
-# Type of monitor frame, options: [MICROMETER, DROPWIZARD]
-monitorType: DROPWIZARD
+  # the following configure should be matched
+  # MicrometerMetricManager MicrometerMetricReporter
+monitorType: dropwizard
 
-# Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
-metricLevel: ALL
+pushPeriodInSecond: 5
 
-# Predefined metric, options: [JVM, LOGBACK, FILE, PROCESS, SYSTEM]
-predefinedMetrics:
-  - JVM
-  - LOGBACK
-  - FILE
-  - PROCESS
-  - SYSTEM
 
-# The period of the collection of some metrics in asynchronous way, such as tsfile size.
-asyncCollectPeriodInSecond: 10
-
-# The http server's port for prometheus exporter to get metric data.
-prometheusExporterPort: 9090
-
-# whether store predefined metrics locally
-isStoreToLocal: true
-
-# The config of iotdb reporter
-ioTDBReporterConfig:
-  host: 0.0.0.0
-  port: 6669
-  username: user
-  password: password
-  maxConnectionNumber: 1
-  database: metric
-  pushPeriodInSecond: 5
+########################################################
+#                                                      #
+# if the reporter is prometheus,                       #
+# then the following must be set.                      #
+# if you use dropwizard, all below                     #
+# should be the config of pushgateway                  #
+#                                                      #
+########################################################
+prometheusReporterConfig:
+  prometheusExporterUrl: http://localhost
+  prometheusExporterPort: 9091

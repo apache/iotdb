@@ -35,13 +35,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
- * extension. This class could be extended to implement concrete tasks. <br>
- * Currently, the tasks are classified into two type:
- *
- * <ol>
- *   <li>counter: to count the node num or measurement num that matches the path pattern
- *   <li>collector: to collect customized results of the matched node or measurement
- * </ol>
+ * extension. This class could be extended to implement concrete tasks. Currently, the tasks are
+ * classified into two type: 1. counter: to count the node num or measurement num that matches the
+ * path pattern 2. collector: to collect customized results of the matched node or measurement
  */
 public abstract class Traverser {
 
@@ -51,19 +47,12 @@ public abstract class Traverser {
   // to construct full path or find mounted node on MTree when traverse into template
   protected Deque<IMNode> traverseContext;
 
-  // if true, measurement in template should be processed
-  protected boolean shouldTraverseTemplate = false;
+  // if isMeasurementTraverser, measurement in template should be processed
+  protected boolean isMeasurementTraverser = false;
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
-  /**
-   * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
-   *
-   * @param startNode denote which tree to traverse by passing its root
-   * @param path use wildcard to specify which part to traverse
-   * @throws MetadataException
-   */
   public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
@@ -159,10 +148,6 @@ public abstract class Traverser {
     }
     traverseContext.pop();
 
-    if (!shouldTraverseTemplate) {
-      return;
-    }
-
     if (!node.isUseTemplate()) {
       return;
     }
@@ -201,10 +186,6 @@ public abstract class Traverser {
         traverse(child, idx, level + 1);
       }
       traverseContext.pop();
-    }
-
-    if (!shouldTraverseTemplate) {
-      return;
     }
 
     if (!node.isUseTemplate()) {
@@ -249,10 +230,6 @@ public abstract class Traverser {
       traverseContext.pop();
     }
 
-    if (!shouldTraverseTemplate) {
-      return;
-    }
-
     if (!node.isUseTemplate()) {
       return;
     }
@@ -279,25 +256,16 @@ public abstract class Traverser {
     this.isPrefixMatch = isPrefixMatch;
   }
 
-  public void setShouldTraverseTemplate(boolean shouldTraverseTemplate) {
-    this.shouldTraverseTemplate = shouldTraverseTemplate;
-  }
-
   /**
    * @param currentNode the node need to get the full path of
    * @return full path from traverse start node to the current node
    */
   protected PartialPath getCurrentPartialPath(IMNode currentNode) throws IllegalPathException {
     Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    StringBuilder builder =
-        nodes.hasNext() ? new StringBuilder(nodes.next().getName()) : new StringBuilder();
+    StringBuilder builder = new StringBuilder(nodes.next().getName());
     while (nodes.hasNext()) {
-      IMNode node = nodes.next();
-      if (node == currentNode) {
-        break;
-      }
       builder.append(TsFileConstant.PATH_SEPARATOR);
-      builder.append(node.getName());
+      builder.append(nodes.next().getName());
     }
     if (builder.length() != 0) {
       builder.append(TsFileConstant.PATH_SEPARATOR);

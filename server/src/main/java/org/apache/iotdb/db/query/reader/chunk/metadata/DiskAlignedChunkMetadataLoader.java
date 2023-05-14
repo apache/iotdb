@@ -58,7 +58,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
     List<AlignedChunkMetadata> alignedChunkMetadataList =
-        ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
+        ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getChunkMetadataList();
 
     // get all sub sensors' modifications
     List<List<Modification>> pathModifications =

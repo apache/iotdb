@@ -67,8 +67,6 @@ public class QueryOperator extends Operator {
 
   protected boolean enableTracing;
 
-  Set<String> aliasSet;
-
   public QueryOperator() {
     super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
@@ -83,14 +81,6 @@ public class QueryOperator extends Operator {
     this.props = queryOperator.getProps();
     this.indexType = queryOperator.getIndexType();
     this.enableTracing = queryOperator.isEnableTracing();
-  }
-
-  public void setAliasSet(Set<String> aliasSet) {
-    this.aliasSet = aliasSet;
-  }
-
-  public Set<String> getAliasSet() {
-    return aliasSet;
   }
 
   public SelectComponent getSelectComponent() {
@@ -224,7 +214,7 @@ public class QueryOperator extends Operator {
       throw new QueryProcessException(e);
     }
 
-    rawDataQueryPlan.convertSpecialClauseValues(specialClauseComponent);
+    convertSpecialClauseValues(rawDataQueryPlan);
 
     // transform filter operator to expression
     IExpression expression = transformFilterOperatorToExpression();
@@ -347,9 +337,6 @@ public class QueryOperator extends Operator {
     alignByDevicePlan.setEnableTracing(enableTracing);
 
     alignByDevicePlan.deduplicate(generator);
-    if (specialClauseComponent != null) {
-      alignByDevicePlan.calcWithoutNullColumnIndex(specialClauseComponent.withoutNullColumns);
-    }
 
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
@@ -369,10 +356,20 @@ public class QueryOperator extends Operator {
     }
   }
 
+  protected void convertSpecialClauseValues(QueryPlan queryPlan) {
+    if (specialClauseComponent != null) {
+      queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
+      queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
+      queryPlan.setRowLimit(specialClauseComponent.getRowLimit());
+      queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
+      queryPlan.setAscending(specialClauseComponent.isAscending());
+      queryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
+    }
+  }
+
   private List<String> convertSpecialClauseValues(QueryPlan queryPlan, List<String> measurements)
       throws QueryProcessException {
-    queryPlan.convertSpecialClauseValues(specialClauseComponent);
-
+    convertSpecialClauseValues(queryPlan);
     // sLimit trim on the measurementColumnList
     if (specialClauseComponent.hasSlimit()) {
       int seriesSLimit = specialClauseComponent.getSeriesLimit();

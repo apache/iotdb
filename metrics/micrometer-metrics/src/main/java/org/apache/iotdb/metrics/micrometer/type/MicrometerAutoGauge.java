@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.type;
 
-import org.apache.iotdb.metrics.type.AutoGauge;
+import org.apache.iotdb.metrics.type.Gauge;
 
 import io.micrometer.core.instrument.Tags;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.ref.WeakReference;
 import java.util.function.ToLongFunction;
 
-public class MicrometerAutoGauge<T> implements AutoGauge {
+public class MicrometerAutoGauge<T> implements Gauge {
   private final WeakReference<T> refObject;
   private final ToLongFunction<T> mapper;
 

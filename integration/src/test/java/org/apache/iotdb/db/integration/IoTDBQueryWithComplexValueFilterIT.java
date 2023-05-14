@@ -18,53 +18,55 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBQueryWithComplexValueFilterIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
+    EnvironmentUtils.envSetUp();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void testRawQuery1() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+  public void testRawQuery1() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select s1 from root.sg1.d1 where (time > 400 and s1 <= 600) or (s2 > 300 and time <= 500)");
       Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(300, cnt);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+
+      while (resultSet.next()) {
+        cnt++;
       }
+
+      Assert.assertEquals(300, cnt);
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -72,21 +74,25 @@ public class IoTDBQueryWithComplexValueFilterIT {
   }
 
   @Test
-  public void testRawQuery2() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+  public void testRawQuery2() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select s1 from root.sg1.d1 where (time > 400 and s1 <= 600) and (s2 > 300 and time <= 500)");
       Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(100, cnt);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+
+      while (resultSet.next()) {
+        cnt++;
       }
+
+      Assert.assertEquals(100, cnt);
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -94,51 +100,20 @@ public class IoTDBQueryWithComplexValueFilterIT {
     }
   }
 
-  @Test
-  public void testRawQuery3() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg1.d1(time,s3) values(1,'\"')");
-      boolean hasResultSet = statement.execute("select * from root.sg1.d1 where s3=\"\\\"\"");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-
-      hasResultSet = statement.execute("select * from root.sg1.d1 where s3=\'\\\"\'");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private static void prepareData() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+  private static void prepareData() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("create storage group root.sg1");
       statement.execute("create timeseries root.sg1.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("create timeseries root.sg1.d1.s2 with datatype=DOUBLE,encoding=PLAIN");
       for (int i = 0; i < 1000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(
                 "insert into root.sg1.d1(time,s1,s2) values(%d,%d,%f)", i, i, (double) i));
       }
-      statement.executeBatch();
     } catch (Exception e) {
       e.printStackTrace();
     }

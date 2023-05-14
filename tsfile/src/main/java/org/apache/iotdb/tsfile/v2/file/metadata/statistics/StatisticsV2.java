@@ -69,7 +69,7 @@ public class StatisticsV2 {
   }
 
   public static Statistics<? extends Serializable> deserialize(
-      ByteBuffer buffer, TSDataType dataType) {
+      ByteBuffer buffer, TSDataType dataType) throws IOException {
     Statistics<? extends Serializable> statistics = Statistics.getStatsByType(dataType);
     statistics.setCount((int) ReadWriteIOUtils.readLong(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));

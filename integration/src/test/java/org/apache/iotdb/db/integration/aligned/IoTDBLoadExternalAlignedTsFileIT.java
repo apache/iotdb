@@ -930,7 +930,9 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         statement.execute(String.format("load '%s'", vehicleTmpDir));
       } catch (Exception e) {
         hasError = true;
-        assertTrue(e.getMessage().contains("Fail to load TsFile"));
+        assertTrue(
+            e.getMessage()
+                .contains("is aligned in the loading TsFile but is not aligned in IoTDB."));
       }
       assertTrue(hasError);
 
@@ -948,7 +950,10 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         statement.execute(String.format("load '%s'", testTmpDir));
       } catch (Exception e) {
         hasError = true;
-        assertTrue(e.getMessage().contains("Fail to load TsFile"));
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "because root.test.d0.s0 is INT32 in the loading TsFile but is FLOAT in IoTDB."));
       }
       assertTrue(hasError);
 

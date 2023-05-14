@@ -28,9 +28,10 @@ import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** this class maintains information from select clause. */
-public class SelectComponent {
+public final class SelectComponent {
 
   private final ZoneId zoneId;
 
@@ -38,7 +39,7 @@ public class SelectComponent {
   private boolean hasTimeSeriesGeneratingFunction = false;
   private boolean hasUserDefinedAggregationFunction = false;
 
-  protected List<ResultColumn> resultColumns = new ArrayList<>();
+  private List<ResultColumn> resultColumns = new ArrayList<>();
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;
@@ -137,5 +138,17 @@ public class SelectComponent {
       }
     }
     return aggregationFunctionsCache;
+  }
+
+  public List<Map<String, String>> getAggrAttrs() {
+    List<Map<String, String>> a = new ArrayList<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      Expression expression = resultColumn.getExpression();
+      a.add(
+          expression instanceof FunctionExpression
+              ? ((FunctionExpression) resultColumn.getExpression()).getFunctionAttributes()
+              : null);
+    }
+    return a;
   }
 }

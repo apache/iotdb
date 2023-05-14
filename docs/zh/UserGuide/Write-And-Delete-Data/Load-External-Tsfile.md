@@ -19,15 +19,15 @@
 
 -->
 
-## 加载 TsFile
+# 加载 TsFile
 
-### 介绍
+## 介绍
 加载外部 tsfile 文件工具允许用户向正在运行中的 Apache IoTDB 中加载、删除或移出 tsfile 文件。
 
-### 使用方式
+## 使用方式
 用户通过 Cli 工具或 JDBC 向 Apache IoTDB 系统发送指定命令实现文件加载的功能。
 
-#### 加载 tsfile 文件
+### 加载 tsfile 文件
 
 加载 tsfile 文件的指令为：`load '<path/dir>' [autoregister=true/false][,sglevel=int][,verify=true/false]`
 
@@ -69,19 +69,6 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 * `load '/Users/Desktop/data' autoregister=true`
 * `load '/Users/Desktop/data' autoregister=true,sglevel=1`
 * `load '/Users/Desktop/data' autoregister=false,sglevel=1,verify=true`
-
-#### 远程加载
-
-通常情况下，文件路径必须是 IoTDB 实例所在机器的本地文件路径，在 IoTDB 0.13.5 及之后的版本中，文件路径新增支持 HTTP 风格的 URI，可以通过 HTTP 协议远程加载单个文件。格式为 `load 'http://host:port/filePath'`。
-
-例如，如果您的 IoTDB 实例在 IP 地址为 168.121.0.1 的机器 A 上运行，您希望将 IP 地址为 168.121.0.2 机器 B 上的文件`/root/data/1-1-0-0.tsfile`加载进 IoTDB 实例，您需要按照以下步骤操作
-
-1. 在机器 B 上启动 HTTP 服务，例如您可以使用 python 命令 `python -m http.server `来启动一个简单的 HTTP 服务。
-2. 使用 Cli 工具连接到机器 A 上的 IoTDB 实例
-3. 输入 SQL 指令 `load 'http://168.121.0.2:8000/root/data/1-1-0-0.tsfile'`
-4. 等待加载完成
-
-**请注意**：采用远程加载的情况下，仅支持加载单个文件，即路径参数必须为单个 TsFile 文件路径。同时如果您的 TsFile 经历过删除操作（即，TsFile 文件有附带的 .mods 文件），也不推荐您使用远程加载，这将导致本该被删除的数据在加载之后仍然没有被删除。
 
 ### 删除 tsfile 文件
 

@@ -67,10 +67,7 @@ public class StartClientScriptIT extends AbstractScript {
             "-u",
             "root",
             "-pw",
-            "root",
-            "&",
-            "exit",
-            "%^errorlevel%");
+            "root");
     testOutput(builder, output, 1);
 
     final String[] output2 = {"Msg: The statement is executed successfully."};
@@ -82,10 +79,7 @@ public class StartClientScriptIT extends AbstractScript {
             "-maxPRC",
             "0",
             "-e",
-            "\"flush\"",
-            "&",
-            "exit",
-            "%^errorlevel%");
+            "\"flush\"");
     testOutput(builder2, output2, 0);
 
     final String[] output3 = {
@@ -97,10 +91,7 @@ public class StartClientScriptIT extends AbstractScript {
             "/c",
             dir + File.separator + "sbin" + File.separator + "start-cli.bat",
             "-maxPRC",
-            "-1111111111111111111111111111",
-            "&",
-            "exit",
-            "%^errorlevel%");
+            "-1111111111111111111111111111");
     testOutput(builder3, output3, 1);
   }
 

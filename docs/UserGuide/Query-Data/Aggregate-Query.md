@@ -179,7 +179,7 @@ The GROUP BY statement provides users with three types of specified parameters:
 The actual meanings of the three types of parameters are shown in Figure below. 
 Among them, the parameter 3 is optional. 
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
     </center>
 
 There are three typical examples of frequency reduction aggregation: 

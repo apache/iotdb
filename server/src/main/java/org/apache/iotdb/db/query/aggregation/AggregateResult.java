@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.query.aggregation;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.ValueIterator;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -30,10 +33,9 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.function.Predicate;
+import java.util.Map;
 
 public abstract class AggregateResult {
 
@@ -45,10 +47,12 @@ public abstract class AggregateResult {
   private int intValue;
   private long longValue;
   private float floatValue;
-  private double doubleValue;
+  protected double doubleValue;
   private Binary binaryValue;
 
   protected boolean hasCandidateResult;
+  protected int maxMemoryByte;
+  protected double QUANTILE;
 
   /**
    * construct.
@@ -59,6 +63,22 @@ public abstract class AggregateResult {
     this.aggregationType = aggregationType;
     this.resultDataType = resultDataType;
     this.hasCandidateResult = false;
+    maxMemoryByte = IoTDBDescriptor.getInstance().getConfig().getAggregatorMemoryInKB() * 1024;
+    QUANTILE = TSFileDescriptor.getInstance().getConfig().getQUANTILE();
+    String quantileFile = TSFileDescriptor.getInstance().getConfig().getQuantileFile();
+    if (quantileFile.length() > 0) {
+      try {
+        File qf = new File(quantileFile);
+        BufferedReader reader = new BufferedReader(new FileReader(qf));
+        String str;
+        if ((str = reader.readLine()) != null) {
+          QUANTILE = Double.parseDouble(str);
+        }
+      } catch (IOException e) {
+        // no-op;
+      }
+    }
+    //    KLLBulkMergeB = TSFileDescriptor.getInstance().getConfig().getKLLBulkMergeB() * 1024;
   }
 
   public abstract Object getResult();
@@ -85,14 +105,14 @@ public abstract class AggregateResult {
    * This method is used in GROUP BY aggregation query.
    *
    * @param batchIterator the data in Page
-   * @param boundPredicate used to judge whether the current timestamp is out of time range, returns
-   *     true if it is.
+   * @param minBound calculate points whose time >= bound
+   * @param maxBound calculate points whose time < bound
    */
   public abstract void updateResultFromPageData(
-      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) throws IOException;
+      IBatchDataIterator batchIterator, long minBound, long maxBound) throws IOException;
 
   /**
-   * This method calculates the aggregation using common timestamps of the cross series filter.
+   * This method updates the aggregation using common timestamps of the cross series filter.
    *
    * @throws IOException TsFile data read error
    */
@@ -104,6 +124,22 @@ public abstract class AggregateResult {
       long[] timestamps, int length, ValueIterator valueIterator);
 
   /**
+   * This method calculates the aggregation using common timestamps of the cross series filter.
+   * construct result based on timestamps in param
+   *
+   * @throws IOException TsFile data read error
+   */
+  public void constructResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    updateResultUsingTimestamps(timestamps, length, dataReader);
+  }
+
+  public void constructResultUsingValues(
+      long[] timestamps, int length, ValueIterator valueIterator) {
+    updateResultUsingValues(timestamps, length, valueIterator);
+  }
+
+  /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
    * does not need to compute the remaining data, it returns true.
    *
@@ -111,8 +147,17 @@ public abstract class AggregateResult {
    */
   public abstract boolean hasFinalResult();
 
+  // to drop
   /** Merge another aggregateResult into this */
   public abstract void merge(AggregateResult another);
+
+  /**
+   * communication between 2 aggregateResults no-op if the aggregated result does not need to
+   * communicate (can merge easily)
+   */
+  public void communicate(AggregateResult another) {
+    // no-op
+  }
 
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
@@ -316,11 +361,79 @@ public abstract class AggregateResult {
     return aggregationType;
   }
 
-  /**
-   * Whether the AggregationResult accepts data in time ascending order, if it returns false, the
-   * data should be passed in time descending order.
-   */
   public boolean isAscending() {
     return true;
+  }
+
+  public boolean canUpdateFromStatistics(Statistics statistics) {
+    return true;
+  }
+
+  public boolean useStatisticsIfPossible() {
+    return true;
+  }
+
+  public boolean needMultiIterations() {
+    return false;
+  }
+
+  public int maxIteration() {
+    return 1;
+  }
+
+  public void startIteration() {
+    // no-op
+  }
+
+  public void finishIteration() {
+    // no-op
+  }
+
+  public boolean useOverlapStat() {
+    return false;
+  }
+
+  public void updateResultFromOverlap(IAggregateReader reader) {
+    // no-op
+  }
+
+  /**
+   * When group by level, QUANTILE needs to merge before aggregation, while aggregations like
+   * LAST_VALUE need to merge after aggregation
+   */
+  public boolean groupByLevelBeforeAggregation() {
+    return false;
+  }
+
+  public void setAttributes(Map<String, String> attrs) {
+    // no-op
+  }
+
+  public double getCntL() {
+    return -Double.MAX_VALUE;
+  }
+
+  public double getCntR() {
+    return Double.MAX_VALUE;
+  }
+
+  public int getLastLtCountFromPageData() {
+    return -233;
+  }
+
+  public boolean canUpdateFromLtCount() {
+    return false;
+  }
+
+  public void updateFromLtCount(int ltCount) {
+    // no-op
+  }
+
+  public boolean ignoreUpdateInThisPass() {
+    return false;
+  }
+
+  public void informUnSeq() {
+    // no-op
   }
 }

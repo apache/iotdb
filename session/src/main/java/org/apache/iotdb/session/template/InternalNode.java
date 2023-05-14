@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.session.template;
 
-import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import java.util.HashMap;

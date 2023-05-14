@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -121,7 +120,7 @@ abstract class MergeTest {
       File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i));
       mkdirs(file);
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
       tsFileResource.setVersion(i);
@@ -132,7 +131,7 @@ abstract class MergeTest {
       File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i + seqFileNum));
       mkdirs(file);
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
       tsFileResource.setVersion(i + seqFileNum);
@@ -144,7 +143,7 @@ abstract class MergeTest {
         new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, seqFileNum + unseqFileNum));
     mkdirs(file);
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource.setClosed(true);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setVersion(seqFileNum + unseqFileNum);

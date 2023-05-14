@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb;
 
-import org.apache.iotdb.isession.IDataIterator;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,12 +32,12 @@ import java.util.concurrent.Executors;
 
 public class SessionPoolExample {
 
-  private static SessionPool sessionPool;
+  private static SessionPool pool;
   private static ExecutorService service;
 
-  /** Build a custom SessionPool for this example */
-  private static void constructCustomSessionPool() {
-    sessionPool =
+  public static void main(String[] args)
+      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
+    pool =
         new SessionPool.Builder()
             .host("127.0.0.1")
             .port(6667)
@@ -45,33 +45,13 @@ public class SessionPoolExample {
             .password("root")
             .maxSize(3)
             .build();
-  }
-
-  /** Build a redirect-able SessionPool for this example */
-  private static void constructRedirectSessionPool() {
-    List<String> nodeUrls = new ArrayList<>();
-    nodeUrls.add("127.0.0.1:6667");
-    nodeUrls.add("127.0.0.1:6668");
-    sessionPool =
-        new SessionPool.Builder()
-            .nodeUrls(nodeUrls)
-            .user("root")
-            .password("root")
-            .maxSize(3)
-            .build();
-  }
-
-  public static void main(String[] args)
-      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
-    // Choose the SessionPool you going to use
-    constructRedirectSessionPool();
-
     service = Executors.newFixedThreadPool(10);
+
     insertRecord();
     queryByRowRecord();
     Thread.sleep(1000);
     queryByIterator();
-    sessionPool.close();
+    pool.close();
     service.shutdown();
   }
 
@@ -92,7 +72,7 @@ public class SessionPoolExample {
       values.add(1L);
       values.add(2L);
       values.add(3L);
-      sessionPool.insertRecord(deviceId, time, measurements, types, values);
+      pool.insertRecord(deviceId, time, measurements, types, values);
     }
   }
 
@@ -102,7 +82,7 @@ public class SessionPoolExample {
           () -> {
             SessionDataSetWrapper wrapper = null;
             try {
-              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
+              wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
               System.out.println(wrapper.getColumnNames());
               System.out.println(wrapper.getColumnTypes());
               while (wrapper.hasNext()) {
@@ -112,7 +92,7 @@ public class SessionPoolExample {
               e.printStackTrace();
             } finally {
               // remember to close data set finally!
-              sessionPool.closeResultSet(wrapper);
+              pool.closeResultSet(wrapper);
             }
           });
     }
@@ -124,9 +104,9 @@ public class SessionPoolExample {
           () -> {
             SessionDataSetWrapper wrapper = null;
             try {
-              wrapper = sessionPool.executeQueryStatement("select * from root.sg1.d1");
+              wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
               // get DataIterator like JDBC
-              IDataIterator dataIterator = wrapper.iterator();
+              DataIterator dataIterator = wrapper.iterator();
               System.out.println(wrapper.getColumnNames());
               System.out.println(wrapper.getColumnTypes());
               while (dataIterator.next()) {
@@ -140,7 +120,7 @@ public class SessionPoolExample {
               e.printStackTrace();
             } finally {
               // remember to close data set finally!
-              sessionPool.closeResultSet(wrapper);
+              pool.closeResultSet(wrapper);
             }
           });
     }

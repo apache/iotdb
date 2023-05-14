@@ -160,12 +160,7 @@ public class BloomFilter {
     }
 
     public int hash(String value) {
-      int res = Murmur128Hash.hash(value, seed);
-      if (res == Integer.MIN_VALUE) {
-        res = 0;
-      }
-
-      return Math.abs(res) % cap;
+      return Math.abs(Murmur128Hash.hash(value, seed)) % cap;
     }
 
     @Override

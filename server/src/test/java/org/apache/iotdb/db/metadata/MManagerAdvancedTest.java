@@ -37,7 +37,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
@@ -225,39 +224,5 @@ public class MManagerAdvancedTest {
     Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());
     LastCacheManager.updateLastCache(node, tv3, true, Long.MIN_VALUE);
     Assert.assertEquals(tv2.getTimestamp(), mmanager.getLastCache(node).getTimestamp());
-  }
-
-  @Test
-  public void testLastCacheWithTTL() throws MetadataException, IOException {
-    mmanager.createTimeseries(
-        new PartialPath("root.sg1.d2.s0"),
-        TSDataType.DOUBLE,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-    mmanager.createTimeseries(
-        new PartialPath("root.sg2.d2.s0"),
-        TSDataType.DOUBLE,
-        TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
-
-    long timestamp = System.currentTimeMillis() - 1500;
-    TimeValuePair tv =
-        new TimeValuePair(timestamp, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));
-    IMeasurementMNode node1 = mmanager.getMeasurementMNode(new PartialPath("root.sg1.d2.s0"));
-    LastCacheManager.updateLastCache(node1, tv, true, Long.MIN_VALUE);
-    IMeasurementMNode node2 = mmanager.getMeasurementMNode(new PartialPath("root.sg2.d2.s0"));
-    LastCacheManager.updateLastCache(node2, tv, true, Long.MIN_VALUE);
-    mmanager.setTTL(new PartialPath("root.sg1"), 2000);
-    mmanager.setTTL(new PartialPath("root.sg2"), 500);
-
-    mmanager.checkTTLOnLastCache();
-    Assert.assertNotNull(mmanager.getLastCache(node1));
-    Assert.assertNull(mmanager.getLastCache(node2));
-
-    mmanager.setTTL(new PartialPath("root.sg1"), 1000);
-    mmanager.checkTTLOnLastCache();
-    Assert.assertNull(mmanager.getLastCache(node1));
   }
 }

@@ -31,11 +31,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
-
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
@@ -321,89 +316,6 @@ public class IoTDBSchemaTemplateIT {
     Assert.assertFalse(resultSet.next());
   }
 
-  @Test
-  public void testDeactivateSchemaTemplate() throws SQLException {
-    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.v1");
-    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1");
-    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.dd1");
-    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.dd2");
-    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.x1.dd2");
-
-    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
-    String[] expectedResult =
-        new String[] {"root.sg1.v1", "root.sg1.v1.dd1", "root.sg1.v1.dd2", "root.sg1.v1.x1.dd2"};
-    Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
-      }
-    }
-    Assert.assertEquals(0, expectedResultSet.size());
-
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.dd1");
-    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
-    expectedResult = new String[] {"root.sg1.v1", "root.sg1.v1.dd2", "root.sg1.v1.x1.dd2"};
-    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
-      }
-    }
-    Assert.assertEquals(0, expectedResultSet.size());
-
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.*");
-    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
-    expectedResult = new String[] {"root.sg1.v1", "root.sg1.v1.x1.dd2"};
-    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
-      }
-    }
-    Assert.assertEquals(0, expectedResultSet.size());
-
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.**");
-    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
-    expectedResult = new String[] {"root.sg1.v1"};
-    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
-      }
-    }
-    Assert.assertEquals(0, expectedResultSet.size());
-
-    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1");
-    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
-    expectedResult = new String[] {};
-    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
-      }
-    }
-    Assert.assertEquals(0, expectedResultSet.size());
-
-    statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.v1");
-    statement.execute("DROP SCHEMA TEMPLATE t1");
-    statement.execute("SHOW SCHEMA TEMPLATES");
-
-    expectedResult = new String[] {"t2"};
-    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
-    try (ResultSet resultSet = statement.getResultSet()) {
-      while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
-        expectedResultSet.remove(resultSet.getString("template name"));
-      }
-    }
-    Assert.assertEquals(0, expectedResultSet.size());
-  }
-
   private void prepareTemplate() throws SQLException {
     // create storage group
     statement.execute("CREATE STORAGE GROUP root.sg1");
@@ -413,43 +325,5 @@ public class IoTDBSchemaTemplateIT {
     // create schema template
     statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
     statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
-  }
-
-  @Test
-  public void testLastCacheWithTemplate() throws SQLException {
-    statement.execute("set storage group to root.clsu1");
-    statement.execute("set schema template t1 to root.clsu1");
-    statement.execute("insert into root.clsu1.device1(time, s1) values(220, 200)");
-    statement.execute("insert into root.clsu1.device2(time, s1) values(320, 200)");
-
-    String[] lastQuerySqlArray =
-        new String[] {
-          "select last s1 from root.clsu1.device1",
-          "select last s1 from root.clsu1.device2",
-          "select last s1 from root.clsu1.device2",
-        };
-
-    String[] retArray =
-        new String[] {
-          "root.clsu1.device1.s1,220,200,INT64",
-          "root.clsu1.device2.s1,320,200,INT64",
-          "root.clsu1.device2.s1,320,200,INT64",
-        };
-
-    for (int i = 0; i < retArray.length; i++) {
-      statement.execute(lastQuerySqlArray[i]);
-      ResultSet resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(TIMESEIRES_STR)
-                + ","
-                + resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(VALUE_STR)
-                + ","
-                + resultSet.getString(DATA_TYPE_STR);
-        Assert.assertEquals(retArray[i], ans);
-      }
-    }
   }
 }

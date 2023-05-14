@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -167,7 +166,7 @@ public class ChunkCacheTest {
         Assert.assertTrue(file.getParentFile().mkdirs());
       }
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
@@ -178,7 +177,7 @@ public class ChunkCacheTest {
         Assert.assertTrue(file.getParentFile().mkdirs());
       }
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);

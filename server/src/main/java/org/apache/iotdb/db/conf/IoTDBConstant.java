@@ -39,7 +39,6 @@ public class IoTDBConstant {
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
   public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
   public static final String COMPACTION_LOGGER_NAME = "COMPACTION";
-  public static final String DOUBLE_LIVE_LOGGER_NAME = "DOUBLE_LIVE";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
@@ -52,7 +51,6 @@ public class IoTDBConstant {
   public static final long KB = 1024L;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
-  public static final String IOTDB_DATA_HOME = "IOTDB_DATA_HOME";
 
   public static final String SEQFILE_LOG_NODE_SUFFIX = "-seq";
   public static final String UNSEQFILE_LOG_NODE_SUFFIX = "-unseq";
@@ -64,9 +62,6 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
-
-  public static final String IOTDB_FOREGROUND = "iotdb-foreground";
-  public static final String IOTDB_PIDFILE = "iotdb-pidfile";
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
@@ -84,8 +79,6 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
-  public static final String COLUMN_DEADBAND = "deadband";
-  public static final String COLUMN_DEADBAND_PARAMETERS = "deadband parameters";
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
@@ -96,14 +89,7 @@ public class IoTDBConstant {
 
   public static final String COLUMN_STORAGE_GROUP = "storage group";
   public static final String COLUMN_LOCK_INFO = "lock holder";
-  public static final String COLUMN_TTL = "ttl(ms)";
-
-  public static final String COLUMN_TASK_ID = "task id";
-  public static final String COLUMN_SUBMIT_TIME = "submit time";
-  public static final String COLUMN_ARCHIVING_START_TIME = "start time";
-  public static final String COLUMN_ARCHIVING_STATUS = "status";
-  public static final String COLUMN_ARCHIVING_TARGET_DIRECTORY = "target directory";
-  public static final String COLUMN_EXPIRE_TIME = "expire time(ms)";
+  public static final String COLUMN_TTL = "ttl";
 
   public static final String COLUMN_TASK_NAME = "task name";
   public static final String COLUMN_CREATED_TIME = "created time";
@@ -150,8 +136,6 @@ public class IoTDBConstant {
   public static final String SDT_COMP_DEV = "compdev";
   public static final String SDT_COMP_MIN_TIME = "compmintime";
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
-  public static final String[] SDT_PARAMETERS =
-      new String[] {SDT_COMP_DEV, SDT_COMP_MIN_TIME, SDT_COMP_MAX_TIME};
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
@@ -169,11 +153,6 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
-  public static final String ARCHIVING_FOLDER_NAME = "archiving";
-  public static final String ARCHIVING_LOG_FOLDER_NAME = "archiving_task";
-
-  // Operation Sync folder name
-  public static final String OPERATION_SYNC_FOLDER_NAME = "operationsync";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -207,12 +186,6 @@ public class IoTDBConstant {
 
   // compaction mods of previous version (<0.13)
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
-
-  public static final String SYSTEM_STORAGE_GROUP = "root.__system";
-
-  public static final String CONSTANT_VERSION = "version";
-
-  public static final String AUTH_ENABLE_AUDIT = "enableAudit";
 
   // client version number
   public enum ClientVersion {

@@ -88,18 +88,13 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public int write(Tablet tablet) throws WriteProcessException {
+    System.out.println("\t\t[NonAlignedCGWriter] write tablet:N=" + tablet.rowSize);
     int pointCount = 0;
     List<MeasurementSchema> timeseries = tablet.getSchemas();
     for (int row = 0; row < tablet.rowSize; row++) {
       long time = tablet.timestamps[row];
       boolean hasOneColumnWritten = false;
       for (int column = 0; column < timeseries.size(); column++) {
-        // check isNull in tablet
-        if (tablet.bitMaps != null
-            && tablet.bitMaps[column] != null
-            && tablet.bitMaps[column].isMarked(row)) {
-          continue;
-        }
         String measurementId = timeseries.get(column).getMeasurementId();
         checkIsHistoryData(measurementId, time);
         hasOneColumnWritten = true;

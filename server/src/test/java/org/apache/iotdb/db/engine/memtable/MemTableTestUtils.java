@@ -64,7 +64,6 @@ public class MemTableTestUtils {
     for (long l = startTime; l <= endTime; l++) {
       iMemTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
-          Collections.emptyList(),
           Collections.singletonList(
               new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN)),
           l,

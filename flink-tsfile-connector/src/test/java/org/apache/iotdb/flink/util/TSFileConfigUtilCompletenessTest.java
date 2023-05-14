@@ -25,8 +25,6 @@ import org.junit.Test;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,8 +38,7 @@ public class TSFileConfigUtilCompletenessTest {
 
   @Test
   public void testTSFileConfigUtilCompleteness() {
-
-    String[] setters = {
+    String[] addedSetters = {
       "setBatchSize",
       "setBloomFilterErrorRate",
       "setCompressor",
@@ -73,18 +70,13 @@ public class TSFileConfigUtilCompletenessTest {
       "setTimeSeriesDataType",
       "setTSFileStorageFs",
       "setUseKerberos",
-      "setValueEncoder",
-      "setCustomizedProperties",
-      "setPatternMatchingThreshold"
+      "setValueEncoder"
     };
-    Set<String> addedSetters = new HashSet<>();
-    Collections.addAll(addedSetters, setters);
-
     Set<String> newSetters =
         Arrays.stream(TSFileConfig.class.getMethods())
             .map(Method::getName)
             .filter(s -> s.startsWith("set"))
-            .filter(s -> !addedSetters.contains(s))
+            .filter(s -> !Arrays.asList(addedSetters).contains(s))
             .collect(Collectors.toSet());
     assertTrue(
         String.format(

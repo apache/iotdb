@@ -140,18 +140,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     }
   }
 
-  public void closeNode(String identifier) throws IOException {
-    WriteLogNode node = nodeMap.remove(identifier);
-    if (node != null) {
-      try {
-        node.close();
-      } catch (IOException e) {
-        logger.error("failed to close {}", node, e);
-      }
-      node.release();
-    }
-  }
-
   @Override
   public void close() {
     logger.info("{} nodes to be closed", nodeMap.size());

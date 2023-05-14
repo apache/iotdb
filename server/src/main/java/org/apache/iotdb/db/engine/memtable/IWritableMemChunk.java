@@ -61,10 +61,7 @@ public interface IWritableMemChunk {
   void write(long insertTime, Object objectValue);
 
   void writeAlignedValue(
-      long insertTime,
-      Object[] objectValue,
-      List<Integer> failedIndices,
-      List<IMeasurementSchema> schemaList);
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the
@@ -77,7 +74,6 @@ public interface IWritableMemChunk {
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
-      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       int start,
       int end);
@@ -98,8 +94,6 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
-   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
-   *
    * @return sorted tv list
    */
   TVList getSortedTvListForQuery();
@@ -109,8 +103,6 @@ public interface IWritableMemChunk {
    *
    * <p>the mechanism is just like copy on write
    *
-   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
-   *
    * @return sorted tv list
    */
   TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList);
@@ -118,8 +110,6 @@ public interface IWritableMemChunk {
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
    * reference count
-   *
-   * <p>This interface should be synchronized for concurrent with getSortedTvListForQuery
    */
   void sortTvListForFlush();
 

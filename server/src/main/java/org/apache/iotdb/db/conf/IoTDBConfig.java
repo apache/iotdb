@@ -18,10 +18,8 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.audit.AuditLogOperation;
-import org.apache.iotdb.db.audit.AuditLogStorage;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
@@ -41,9 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -110,7 +105,7 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /** Memory allocated for the write process */
-  private long allocateMemoryForStorageEngine = Runtime.getRuntime().maxMemory() * 4 / 10;
+  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
 
   /** Memory allocated for the read process */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
@@ -129,14 +124,6 @@ public class IoTDBConfig {
   /** Memory allocated proportion for timeIndex */
   private double timeIndexMemoryProportion = 0.2;
 
-  /** The proportion of write memory for write process */
-  private double writeProportion = 0.8;
-
-  private double chunkMetadataSizeProportionInWrite = 0.1;
-
-  /** The proportion of write memory for compaction */
-  private double compactionProportion = 0.2;
-
   /** Flush proportion for system */
   private double flushProportion = 0.4;
 
@@ -154,11 +141,7 @@ public class IoTDBConfig {
   /** Is the write ahead log enable. */
   private boolean enableWal = true;
 
-  /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
-  private boolean allowReadOnlyWhenErrorsOccur = true;
-
-  /** Status of current system. */
-  private volatile SystemStatus status = SystemStatus.NORMAL;
+  private volatile boolean readOnly = false;
 
   private boolean enableDiscardOutOfOrderData = false;
 
@@ -166,7 +149,7 @@ public class IoTDBConfig {
    * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
    * possible to lose at most flush_wal_threshold operations.
    */
-  private int flushWalThreshold = 10000;
+  private int flushWalThreshold = 8192;
 
   /** this variable set timestamp precision as millisecond, microsecond or nanosecond */
   private String timestampPrecision = "ms";
@@ -225,8 +208,6 @@ public class IoTDBConfig {
   /** System directory, including version file for each storage group and metadata */
   private String systemDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
-  private final String loadTempDirName = "load";
-
   /** Schema directory, including storage set of values. */
   private String schemaDir =
       DEFAULT_BASE_DIR
@@ -279,12 +260,14 @@ public class IoTDBConfig {
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = 0;
+  private int concurrentQueryThread = 16;
+
+  private int MADQueryThread = 32;
 
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
-  private int concurrentSubRawQueryThread = 0;
+  private int concurrentSubRawQueryThread = 8;
 
   /** Blocking queue size for read task in raw data query. */
   private int rawQueryBlockingQueueCapacity = 5;
@@ -310,11 +293,11 @@ public class IoTDBConfig {
   /**
    * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
    * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index} share a total common buffer size. With the
-   * memory-control mechanism, the occupied memory of all raw data and index structures will be
-   * counted. If the memory buffer size reaches this threshold, the indexes will be flushed to the
-   * disk file. As a result, data in one series may be divided into more than one part and indexed
-   * separately. Unit: byte
+   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
+   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
+   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
+   * will be flushed to the disk file. As a result, data in one series may be divided into more than
+   * one part and indexed separately. Unit: byte
    */
   private long indexBufferSize = 128 * 1024 * 1024L;
 
@@ -373,7 +356,7 @@ public class IoTDBConfig {
   private long closeTsFileCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 100000;
+  private int avgSeriesPointNumberThreshold = 10000;
 
   /** Enable inner space copaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
@@ -406,15 +389,6 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.BALANCE;
 
-  /**
-   * Enable compaction memory control or not. If true and estimated memory size of one compaction
-   * task exceeds the threshold, system will block the compaction. It only works for cross space
-   * compaction currently.
-   */
-  private boolean enableCompactionMemControl = true;
-
-  private double chunkMetadataMemorySizeProportion = 0.1;
-
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
 
@@ -442,26 +416,14 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in inner space compaction */
-  private int maxInnerCompactionCandidateFileNum = 30;
-
-  /** The max candidate file num in cross space compaction */
-  private int maxCrossCompactionCandidateFileNum = 1000;
-
-  /** The max total size of candidate files in cross space compaction */
-  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
+  /** The max candidate file num in compaction */
+  private int maxCompactionCandidateFileNum = 30;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
   private long compactionSubmissionIntervalInMs = 60_000L;
-
-  /**
-   * The number of sub compaction threads to be set up to perform compaction. Currently only works
-   * for nonAligned data in cross space compaction and unseq inner space compaction.
-   */
-  private int subCompactionTaskNum = 4;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -526,6 +488,9 @@ public class IoTDBConfig {
 
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
+
+  /** Is stat performance of sub-module enable. */
+  private boolean enablePerformanceStat = false;
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
@@ -610,7 +575,7 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /** The limit of compaction merge can reach per second */
-  private int compactionWriteThroughputMbPerSec = 16;
+  private int compactionWriteThroughputMbPerSec = 30;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -635,13 +600,6 @@ public class IoTDBConfig {
    * The every interval of continuous query instances should not be lower than this limit.
    */
   private long continuousQueryMinimumEveryInterval = 1000;
-
-  /**
-   * The size of log buffer for every CQ management operation plan. If the size of a CQ management
-   * operation plan is larger than this parameter, the CQ management operation plan will be rejected
-   * by CQManager. Unit: byte
-   */
-  private int cqlogBufferSize = 1024 * 1024;
 
   /**
    * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
@@ -805,8 +763,6 @@ public class IoTDBConfig {
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 5000;
 
-  private int patternMatchingThreshold = 1000000;
-
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
    * iotdb-engine.properties
@@ -849,59 +805,6 @@ public class IoTDBConfig {
 
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
-
-  // Operation Sync Config
-  private boolean enableOperationSync = false;
-
-  // Secondary IoTDB
-  private String secondaryAddress = "127.0.0.1";
-  private int secondaryPort = 6668;
-  private String secondaryUser = "root";
-  private String secondaryPassword = "root";
-
-  private int secondarySessionPoolMaxSize = 10;
-
-  // The transmitting concurrency size of operation sync SessionPool
-  private int operationSyncSessionConcurrencySize = 8;
-
-  // OperationSyncLog dir
-  private String operationSyncLogDir =
-      DEFAULT_BASE_DIR + File.separator + IoTDBConstant.OPERATION_SYNC_FOLDER_NAME;
-  // The validity of each OperationSyncLog
-  private int operationSyncLogValidity = 30;
-  // The maximum id of OperationSyncLog
-  private int operationSyncLogNum = 32767;
-  // The max size of all the OperationSyncLog. Default is 100GB
-  private long operationSyncMaxLogSize = 107374182400L;
-
-  // OperationSyncProducer DML cache size
-  private int operationSyncProducerCacheSize = 1024;
-
-  // OperationSyncProducer DML cache number
-  private int operationSyncProducerCacheNum = 8;
-
-  // The max record num returned in one schema query.
-  private int schemaQueryFetchSize = 10000000;
-
-  /** number of threads given to archiving tasks */
-  private int archivingThreadNum = 2;
-
-  /** whether to enable the audit log * */
-  private boolean enableAuditLog = false;
-
-  /** Output location of audit logs * */
-  private List<AuditLogStorage> auditLogStorage =
-      Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
-
-  /** Indicates the category collection of audit logs * */
-  private List<AuditLogOperation> auditLogOperation =
-      Arrays.asList(AuditLogOperation.DML, AuditLogOperation.DDL, AuditLogOperation.QUERY);
-
-  /** whether the local write api records audit logs * */
-  private boolean enableAuditLogForNativeInsertApi = true;
-
-  // customizedProperties, this should be empty by default.
-  private Properties customizedProperties = new Properties();
 
   public IoTDBConfig() {
     // empty constructor
@@ -1025,19 +928,17 @@ public class IoTDBConfig {
     confirmMultiDirStrategy();
   }
 
-  /** if the folders are relative paths, add IOTDB_DATA_HOME as the path prefix */
+  /** if the folders are relative paths, add IOTDB_HOME as the path prefix */
   private void formulateFolders() {
-
-    systemDir = addDataHomeDir(systemDir);
-    schemaDir = addDataHomeDir(schemaDir);
-    syncDir = addDataHomeDir(syncDir);
-    tracingDir = addDataHomeDir(tracingDir);
-    walDir = addDataHomeDir(walDir);
-    indexRootFolder = addDataHomeDir(indexRootFolder);
-    extDir = addDataHomeDir(extDir);
-    udfDir = addDataHomeDir(udfDir);
-    triggerDir = addDataHomeDir(triggerDir);
-    operationSyncLogDir = addDataHomeDir(operationSyncLogDir);
+    systemDir = addHomeDir(systemDir);
+    schemaDir = addHomeDir(schemaDir);
+    syncDir = addHomeDir(syncDir);
+    tracingDir = addHomeDir(tracingDir);
+    walDir = addHomeDir(walDir);
+    indexRootFolder = addHomeDir(indexRootFolder);
+    extDir = addHomeDir(extDir);
+    udfDir = addHomeDir(udfDir);
+    triggerDir = addHomeDir(triggerDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1046,9 +947,9 @@ public class IoTDBConfig {
         dataDirs[i] = hdfsDir + File.separatorChar + dataDirs[i];
       }
     } else {
-      queryDir = addDataHomeDir(queryDir);
+      queryDir = addHomeDir(queryDir);
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addDataHomeDir(dataDirs[i]);
+        dataDirs[i] = addHomeDir(dataDirs[i]);
       }
     }
   }
@@ -1061,7 +962,7 @@ public class IoTDBConfig {
       }
     } else {
       for (int i = 0; i < dataDirs.length; i++) {
-        dataDirs[i] = addDataHomeDir(dataDirs[i]);
+        dataDirs[i] = addHomeDir(dataDirs[i]);
       }
     }
     this.dataDirs = dataDirs;
@@ -1069,25 +970,12 @@ public class IoTDBConfig {
   }
 
   private String addHomeDir(String dir) {
-    return addDirPrefix(System.getProperty(IoTDBConstant.IOTDB_HOME, null), dir);
-  }
-
-  // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
-  // In this way, we can keep consistent with v0.13.0~2.
-  private String addDataHomeDir(String dir) {
-    String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
-    if (dataHomeDir == null) {
-      dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-    }
-    return addDirPrefix(dataHomeDir, dir);
-  }
-
-  private String addDirPrefix(String prefix, String dir) {
-    if (!new File(dir).isAbsolute() && prefix != null && prefix.length() > 0) {
-      if (!prefix.endsWith(File.separator)) {
-        dir = prefix + File.separatorChar + dir;
+    String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
       } else {
-        dir = prefix + dir;
+        dir = homeDir + dir;
       }
     }
     return dir;
@@ -1211,10 +1099,6 @@ public class IoTDBConfig {
     this.systemDir = systemDir;
   }
 
-  public String getLoadTempDir() {
-    return getSystemDir() + File.separator + loadTempDirName;
-  }
-
   public String getSchemaDir() {
     return schemaDir;
   }
@@ -1317,6 +1201,14 @@ public class IoTDBConfig {
 
   public void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getMADQueryThread() {
+    return MADQueryThread;
+  }
+
+  public void setMADQueryThread(int t) {
+    this.MADQueryThread = t;
   }
 
   public int getConcurrentSubRawQueryThread() {
@@ -1461,44 +1353,12 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  boolean isAllowReadOnlyWhenErrorsOccur() {
-    return allowReadOnlyWhenErrorsOccur;
-  }
-
-  void setAllowReadOnlyWhenErrorsOccur(boolean allowReadOnlyWhenErrorsOccur) {
-    this.allowReadOnlyWhenErrorsOccur = allowReadOnlyWhenErrorsOccur;
-  }
-
   public boolean isReadOnly() {
-    return status == SystemStatus.READ_ONLY
-        || (status == SystemStatus.ERROR && allowReadOnlyWhenErrorsOccur);
+    return readOnly;
   }
 
-  public SystemStatus getSystemStatus() {
-    return status;
-  }
-
-  public void setSystemStatus(SystemStatus newStatus) {
-    if (newStatus == SystemStatus.READ_ONLY) {
-      logger.error(
-          "Change system mode to read-only! Only query statements are permitted!",
-          new RuntimeException("System mode is set to READ_ONLY"));
-    } else if (newStatus == SystemStatus.ERROR) {
-      if (allowReadOnlyWhenErrorsOccur) {
-        logger.error(
-            "Unrecoverable error occurs! Make system read-only when allow_read_only_when_errors_occur is true.",
-            new RuntimeException("System mode is set to READ_ONLY"));
-        newStatus = SystemStatus.READ_ONLY;
-      } else {
-        logger.error(
-            "Unrecoverable error occurs! Shutdown system directly when allow_read_only_when_errors_occur is false.",
-            new RuntimeException("System mode is set to ERROR"));
-        System.exit(-1);
-      }
-    } else if (status != newStatus) {
-      logger.warn("Set system mode from {} to {}.", status, newStatus);
-    }
-    this.status = newStatus;
+  public void setReadOnly(boolean readOnly) {
+    this.readOnly = readOnly;
   }
 
   public String getRpcImplClassName() {
@@ -1569,6 +1429,14 @@ public class IoTDBConfig {
     this.chunkBufferPoolEnable = chunkBufferPoolEnable;
   }
 
+  public long getCrossCompactionMemoryBudget() {
+    return crossCompactionMemoryBudget;
+  }
+
+  public void setCrossCompactionMemoryBudget(long crossCompactionMemoryBudget) {
+    this.crossCompactionMemoryBudget = crossCompactionMemoryBudget;
+  }
+
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
@@ -1617,12 +1485,12 @@ public class IoTDBConfig {
     this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
-  public long getAllocateMemoryForStorageEngine() {
-    return allocateMemoryForStorageEngine;
+  public long getAllocateMemoryForWrite() {
+    return allocateMemoryForWrite;
   }
 
-  public void setAllocateMemoryForStorageEngine(long allocateMemoryForStorageEngine) {
-    this.allocateMemoryForStorageEngine = allocateMemoryForStorageEngine;
+  public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
+    this.allocateMemoryForWrite = allocateMemoryForWrite;
   }
 
   public long getAllocateMemoryForSchema() {
@@ -1665,6 +1533,14 @@ public class IoTDBConfig {
     this.externalSortThreshold = externalSortThreshold;
   }
 
+  public boolean isEnablePerformanceStat() {
+    return enablePerformanceStat;
+  }
+
+  public void setEnablePerformanceStat(boolean enablePerformanceStat) {
+    this.enablePerformanceStat = enablePerformanceStat;
+  }
+
   public boolean isEnablePartialInsert() {
     return enablePartialInsert;
   }
@@ -1703,14 +1579,6 @@ public class IoTDBConfig {
 
   public void setContinuousQueryMinimumEveryInterval(long minimumEveryInterval) {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
-  }
-
-  public int getCqlogBufferSize() {
-    return cqlogBufferSize;
-  }
-
-  public void setCqlogBufferSize(int cqlogBufferSize) {
-    this.cqlogBufferSize = cqlogBufferSize;
   }
 
   public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
@@ -2612,28 +2480,12 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public int getMaxInnerCompactionCandidateFileNum() {
-    return maxInnerCompactionCandidateFileNum;
+  public int getMaxCompactionCandidateFileNum() {
+    return maxCompactionCandidateFileNum;
   }
 
-  public void setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
-    this.maxInnerCompactionCandidateFileNum = maxInnerCompactionCandidateFileNum;
-  }
-
-  public int getMaxCrossCompactionCandidateFileNum() {
-    return maxCrossCompactionCandidateFileNum;
-  }
-
-  public void setMaxCrossCompactionCandidateFileNum(int maxCrossCompactionCandidateFileNum) {
-    this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
-  }
-
-  public long getMaxCrossCompactionCandidateFileSize() {
-    return maxCrossCompactionCandidateFileSize;
-  }
-
-  public void setMaxCrossCompactionCandidateFileSize(long maxCrossCompactionCandidateFileSize) {
-    this.maxCrossCompactionCandidateFileSize = maxCrossCompactionCandidateFileSize;
+  public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
+    this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
   }
 
   public long getCompactionSubmissionIntervalInMs() {
@@ -2642,14 +2494,6 @@ public class IoTDBConfig {
 
   public void setCompactionSubmissionIntervalInMs(long interval) {
     compactionSubmissionIntervalInMs = interval;
-  }
-
-  public int getSubCompactionTaskNum() {
-    return subCompactionTaskNum;
-  }
-
-  public void setSubCompactionTaskNum(int subCompactionTaskNum) {
-    this.subCompactionTaskNum = subCompactionTaskNum;
   }
 
   public String getDeviceIDTransformationMethod() {
@@ -2692,203 +2536,43 @@ public class IoTDBConfig {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 
-  public boolean isEnableOperationSync() {
-    return enableOperationSync;
+  private int aggregatorMemoryInKB = 128;
+
+  public void setAggregatorMemoryInKB(int kb) {
+    this.aggregatorMemoryInKB = kb;
   }
 
-  public void setEnableOperationSync(boolean enableOperationSync) {
-    this.enableOperationSync = enableOperationSync;
+  public int getAggregatorMemoryInKB() {
+    return aggregatorMemoryInKB;
   }
 
-  public String getSecondaryAddress() {
-    return secondaryAddress;
+  private int aggregationStrategy = 0;
+
+  public void setAggregationStrategy(int s) {
+    this.aggregationStrategy = s;
   }
 
-  public void setSecondaryAddress(String secondaryAddress) {
-    this.secondaryAddress = secondaryAddress;
+  public int getAggregationStrategy() {
+    return aggregationStrategy;
   }
 
-  public int getSecondaryPort() {
-    return secondaryPort;
+  private boolean noUpdate = true;
+
+  public void setNoUpdate(boolean no) {
+    this.noUpdate = no;
   }
 
-  public void setSecondaryPort(int secondaryPort) {
-    this.secondaryPort = secondaryPort;
+  public boolean getNoUpdate() {
+    return this.noUpdate;
   }
 
-  public String getSecondaryUser() {
-    return secondaryUser;
+  private boolean onlyUsePageSynopsis = true;
+
+  public void setOnlyUsePageSynopsis(boolean only) {
+    this.onlyUsePageSynopsis = only;
   }
 
-  public void setSecondaryUser(String secondaryUser) {
-    this.secondaryUser = secondaryUser;
-  }
-
-  public String getSecondaryPassword() {
-    return secondaryPassword;
-  }
-
-  public void setSecondaryPassword(String secondaryPassword) {
-    this.secondaryPassword = secondaryPassword;
-  }
-
-  public int getSecondarySessionPoolMaxSize() {
-    return secondarySessionPoolMaxSize;
-  }
-
-  public void setSecondarySessionPoolMaxSize(int secondarySessionPoolMaxSize) {
-    this.secondarySessionPoolMaxSize = secondarySessionPoolMaxSize;
-  }
-
-  public int getOperationSyncSessionConcurrencySize() {
-    return operationSyncSessionConcurrencySize;
-  }
-
-  public void setOperationSyncSessionConcurrencySize(int operationSyncSessionConcurrencySize) {
-    this.operationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
-  }
-
-  public String getOperationSyncLogDir() {
-    return operationSyncLogDir;
-  }
-
-  public void setOperationSyncLogDir(String operationSyncLogDir) {
-    this.operationSyncLogDir = operationSyncLogDir;
-  }
-
-  public int getOperationSyncLogValidity() {
-    return operationSyncLogValidity;
-  }
-
-  public void setOperationSyncLogValidity(int operationSyncLogValidity) {
-    this.operationSyncLogValidity = operationSyncLogValidity;
-  }
-
-  public int getOperationSyncLogNum() {
-    return operationSyncLogNum;
-  }
-
-  public void setOperationSyncLogNum(int operationSyncLogNum) {
-    this.operationSyncLogNum = operationSyncLogNum;
-  }
-
-  public long getOperationSyncMaxLogSize() {
-    return operationSyncMaxLogSize;
-  }
-
-  public void setOperationSyncMaxLogSize(long operationSyncMaxLogSize) {
-    this.operationSyncMaxLogSize = operationSyncMaxLogSize;
-  }
-
-  public int getOperationSyncProducerCacheSize() {
-    return operationSyncProducerCacheSize;
-  }
-
-  public void setOperationSyncProducerCacheSize(int operationSyncProducerCacheSize) {
-    this.operationSyncProducerCacheSize = operationSyncProducerCacheSize;
-  }
-
-  public int getOperationSyncProducerCacheNum() {
-    return operationSyncProducerCacheNum;
-  }
-
-  public void setOperationSyncProducerCacheNum(int operationSyncProducerCacheNum) {
-    this.operationSyncProducerCacheNum = operationSyncProducerCacheNum;
-  }
-
-  public int getSchemaQueryFetchSize() {
-    return schemaQueryFetchSize;
-  }
-
-  public void setSchemaQueryFetchSize(int schemaQueryFetchSize) {
-    this.schemaQueryFetchSize = schemaQueryFetchSize;
-  }
-
-  public int getArchivingThreadNum() {
-    return archivingThreadNum;
-  }
-
-  public void setArchivingThreadNum(int archivingThreadNum) {
-    this.archivingThreadNum = archivingThreadNum;
-  }
-
-  public double getWriteProportion() {
-    return writeProportion;
-  }
-
-  public void setWriteProportion(double writeProportion) {
-    this.writeProportion = writeProportion;
-  }
-
-  public double getCompactionProportion() {
-    return compactionProportion;
-  }
-
-  public void setCompactionProportion(double compactionProportion) {
-    this.compactionProportion = compactionProportion;
-  }
-
-  public Properties getCustomizedProperties() {
-    return customizedProperties;
-  }
-
-  public void setCustomizedProperties(Properties customizedProperties) {
-    this.customizedProperties = customizedProperties;
-  }
-
-  public boolean isEnableCompactionMemControl() {
-    return enableCompactionMemControl;
-  }
-
-  public void setEnableCompactionMemControl(boolean enableCompactionMemControl) {
-    this.enableCompactionMemControl = enableCompactionMemControl;
-  }
-
-  public double getChunkMetadataMemorySizeProportion() {
-    return chunkMetadataMemorySizeProportion;
-  }
-
-  public void setChunkMetadataMemorySizeProportion(double chunkMetadataMemorySizeProportion) {
-    this.chunkMetadataMemorySizeProportion = chunkMetadataMemorySizeProportion;
-  }
-
-  public int getPatternMatchingThreshold() {
-    return patternMatchingThreshold;
-  }
-
-  public void setPatternMatchingThreshold(int patternMatchingThreshold) {
-    this.patternMatchingThreshold = patternMatchingThreshold;
-  }
-
-  public boolean isEnableAuditLog() {
-    return enableAuditLog;
-  }
-
-  public void setEnableAuditLog(boolean enableAuditLog) {
-    this.enableAuditLog = enableAuditLog;
-  }
-
-  public List<AuditLogStorage> getAuditLogStorage() {
-    return auditLogStorage;
-  }
-
-  public void setAuditLogStorage(List<AuditLogStorage> auditLogStorage) {
-    this.auditLogStorage = auditLogStorage;
-  }
-
-  public List<AuditLogOperation> getAuditLogOperation() {
-    return auditLogOperation;
-  }
-
-  public void setAuditLogOperation(List<AuditLogOperation> auditLogOperation) {
-    this.auditLogOperation = auditLogOperation;
-  }
-
-  public boolean isEnableAuditLogForNativeInsertApi() {
-    return enableAuditLogForNativeInsertApi;
-  }
-
-  public void setEnableAuditLogForNativeInsertApi(boolean enableAuditLogForNativeInsertApi) {
-    this.enableAuditLogForNativeInsertApi = enableAuditLogForNativeInsertApi;
+  public boolean getOnlyUsePageSynopsis() {
+    return this.onlyUsePageSynopsis;
   }
 }

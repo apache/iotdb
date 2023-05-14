@@ -57,8 +57,6 @@ IoTDB> set schema template t1 to root.sg1.d1
 
 After setting the schema template, you can insert data into the timeseries. For example, suppose there's a storage group root.sg1 and t1 has been set to root.sg1.d1, then timeseries like root.sg1.d1.temperature and root.sg1.d1.status are available and data points can be inserted.
 
-**Please notice that, we strongly recommend NOT setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
-
 **Attention**: Before inserting data, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries before inserting data:
 
 ```shell
@@ -79,14 +77,14 @@ show timeseries root.sg1.**
 ````
 
 ```shell
-+-----------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
-|             timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|deadband|deadband parameters|
-+-----------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
-|root.sg1.d1.temperature| null|     root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|    null|               null|
-|     root.sg1.d1.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|    null|               null|
-|        root.sg1.d2.lon| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|    null|               null|
-|        root.sg1.d2.lat| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|    null|               null|
-+-----------------------+-----+-------------+--------+--------+-----------+----+----------+--------+-------------------+
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
+|             timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.sg1.d1.temperature| null|     root.sg1|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.sg1.d1.status| null|     root.sg1| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|        root.sg1.d2.lon| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
+|        root.sg1.d2.lat| null|     root.sg1|   FLOAT| GORILLA|     SNAPPY|null|      null|
++-----------------------+-----+-------------+--------+--------+-----------+----+----------+
 ```
 
 Show the devices:
@@ -171,23 +169,15 @@ The execution result is as follows:
 +-----------+
 ```
 
-## Deactivate SchemaTemplate
-
-If any data points had been inserted into the timeseries concatenated by the path of the node and measurements inside activated template, or `create timeseries of schema template` had been issued, you should deactivate template on nodes before unset tempalte upon them.
-
-```shell
-IoTDB> deactivate schema template t1 from root.sg1.d1
-```
-
-This statement will detele corresponding data points as well.
-
-## Unset Schema Template
+## Uset Schema Template
 
 The SQL Statement for unsetting schema template is as follow:
 
 ```shell
 IoTDB> unset schema template t1 from root.sg1.d1
 ```
+
+**Attention**: Unsetting the template from entities, which have already inserted records using the template, is not supported.
 
 ## Drop Schema Template
 

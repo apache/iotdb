@@ -55,9 +55,6 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
 
   @Override
   public Row getRow(int rowIndex) {
-    if (this.size == 0) {
-      throw new IndexOutOfBoundsException("Size is 0");
-    }
     return row.seek(beginIndex + rowIndex);
   }
 
@@ -68,9 +65,6 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
 
   @Override
   public RowIterator getRowIterator() {
-    if (this.size == 0) {
-      return new EmptyRowIterator();
-    }
     if (rowIterator == null) {
       rowIterator =
           new ElasticSerializableTVListBackedSingleColumnWindowIterator(
@@ -79,12 +73,6 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
 
     rowIterator.reset();
     return rowIterator;
-  }
-
-  public void setEmptyWindow(long startTime, long endTime) {
-    this.startTime = startTime;
-    this.endTime = endTime;
-    this.size = 0;
   }
 
   @Override

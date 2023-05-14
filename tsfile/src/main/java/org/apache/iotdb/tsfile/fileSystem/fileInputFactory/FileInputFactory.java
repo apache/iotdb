@@ -21,9 +21,7 @@ package org.apache.iotdb.tsfile.fileSystem.fileInputFactory;
 
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
-import java.io.IOException;
-
 public interface FileInputFactory {
 
-  TsFileInput getTsFileInput(String filePath) throws IOException;
+  TsFileInput getTsFileInput(String filePath);
 }

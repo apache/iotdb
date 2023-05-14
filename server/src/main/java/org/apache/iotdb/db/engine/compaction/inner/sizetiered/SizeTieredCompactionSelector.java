@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -113,7 +112,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * @return return whether to continue the search to higher levels
    * @throws IOException
    */
-  public boolean selectLevelTask(
+  private boolean selectLevelTask(
       int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
       throws IOException {
     boolean shouldContinueToSearch = true;
@@ -124,8 +123,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
-      if (currentName.getInnerCompactionCnt() != level
-          || currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
+      if (currentName.getInnerCompactionCnt() != level || currentFile.isCompactionCandidate()) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -140,7 +138,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
           selectedFileSize);
       // if the file size or file num reach threshold
       if (selectedFileSize >= targetCompactionFileSize
-          || selectedFileList.size() >= config.getMaxInnerCompactionCandidateFileNum()) {
+          || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
         // submit the task
         if (selectedFileList.size() > 1) {
           taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
@@ -169,6 +167,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
 
   private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
       throws InterruptedException {
+    selectedFileList.forEach(x -> x.setCompactionCandidate(true));
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,
@@ -180,7 +179,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     return CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
   }
 
-  public static class SizeTieredCompactionTaskComparator
+  private class SizeTieredCompactionTaskComparator
       implements Comparator<Pair<List<TsFileResource>, Long>> {
 
     @Override

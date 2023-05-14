@@ -104,7 +104,7 @@ struct TSOpenSessionResp {
 struct TSOpenSessionReq {
   1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: required string zoneId
-  3: required string username
+  3: optional string username
   4: optional string password
   5: optional map<string, string> configuration
 }
@@ -198,11 +198,6 @@ struct TSFetchMetadataReq{
   1: required i64 sessionId
   2: required string type
   3: optional string columnPath
-}
-
-struct TSGetSystemStatusResp {
-  1: required TSStatus status
-  2: required string systemStatus
 }
 
 struct TSGetTimeZoneResp {
@@ -416,43 +411,9 @@ struct TSUnsetSchemaTemplateReq {
   3: required string templateName
 }
 
-struct TSSetUsingTemplateReq {
-  1: required i64 sessionId
-  2: required string dstPath
-}
-
 struct TSDropSchemaTemplateReq {
   1: required i64 sessionId
   2: required string templateName
-}
-
-struct TSOperationSyncWriteReq {
-  1: required i64 sessionId
-  2: required byte operationSyncType
-  3: required binary physicalPlan
-}
-
-struct TSBackupConfigurationResp {
-  1: required TSStatus status
-  2: optional bool enableOperationSync
-  3: optional string secondaryAddress
-  4: optional i32 secondaryPort
-}
-
-enum TSConnectionType {
-  THRIFT_BASED
-  MQTT_BASED
-}
-
-struct TSConnectionInfo {
-  1: required string userName
-  2: required i64 logInTime
-  3: required string connectionId // ip:port for thrift-based service and clientId for mqtt-based service
-  4: required TSConnectionType type
-}
-
-struct TSConnectionInfoResp {
-  1: required list<TSConnectionInfo> connectionInfoList
 }
 
 service TSIService {
@@ -475,8 +436,6 @@ service TSIService {
   TSStatus cancelOperation(1:TSCancelOperationReq req);
 
   TSStatus closeOperation(1:TSCloseOperationReq req);
-
-  TSGetSystemStatusResp getSystemStatus(1:i64 sessionId);
 
   TSGetTimeZoneResp getTimeZone(1:i64 sessionId);
 
@@ -546,15 +505,5 @@ service TSIService {
 
   TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 
-  TSStatus setUsingTemplate(1:TSSetUsingTemplateReq req);
-
-  TSStatus unsetUsingTemplate(1:i64 sessionId, 2:string templateName, 3:string prefixPath);
-
   TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
-
-  TSStatus executeOperationSync(1:TSOperationSyncWriteReq req);
-
-  TSBackupConfigurationResp getBackupConfiguration();
-
-  TSConnectionInfoResp fetchAllConnectionsInfo();
 }

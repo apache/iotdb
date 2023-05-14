@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 
 import java.io.IOException;
-import java.util.function.Predicate;
 
 public class LastValueDescAggrResult extends LastValueAggrResult {
 
@@ -45,14 +44,15 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
+      IBatchDataIterator batchIterator, long minBound, long maxBound) {
     if (hasFinalResult()) {
       return;
     }
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    if (batchIterator.hasNext(boundPredicate)
-        && !boundPredicate.test(batchIterator.currentTime())) {
+    if (batchIterator.hasNext(minBound, maxBound)
+        && batchIterator.currentTime() < maxBound
+        && batchIterator.currentTime() >= minBound) {
       time = batchIterator.currentTime();
       lastVal = batchIterator.currentValue();
       batchIterator.next();

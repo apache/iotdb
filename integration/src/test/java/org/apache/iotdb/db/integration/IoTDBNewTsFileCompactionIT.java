@@ -64,9 +64,9 @@ public class IoTDBNewTsFileCompactionIT {
     storageGroupPath = new PartialPath("root.newTsFileCompaction");
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(1);
     originCompactionFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     originSeqTsFileSize = IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     IoTDBDescriptor.getInstance().getConfig().setSeqTsFileSize(1);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -85,7 +85,7 @@ public class IoTDBNewTsFileCompactionIT {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setMaxInnerCompactionCandidateFileNum(originCompactionFileNum);
+        .setMaxCompactionCandidateFileNum(originCompactionFileNum);
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxNumberOfPointsInPage(preMaxNumberOfPointsInPage);
