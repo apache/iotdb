@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.metrics.metricsets.cpu;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager {
   private final Logger log = LoggerFactory.getLogger(LinuxCpuUsageMetricsManager.class);
@@ -38,11 +38,12 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
   private final File taskFolder = new File(String.format("/proc/%s/task", currentPid));
   private final File systemCpuStatFile = new File("/proc/stat");
   private final String taskCpuStatFile = "/proc/%d/stat";
-  private final Map<Long, Long> threadUserTimeMap = new HashMap<>();
-  private final Map<Long, Long> threadSystemTimeMap = new HashMap<>();
+  private final Map<Long, Long> threadCpuTimeMap = new HashMap<>();
   private final Map<String, Long> moduleCpuTimeMap = new HashMap<>();
   private final Map<String, Double> moduleCpuTimePercentageMap = new HashMap<>();
-  private final Map<String, Long> incrementCpuTimeMap = new HashMap<>();
+  private final Map<String, Long> moduleIncrementCpuTimeMap = new HashMap<>();
+  private long jvmCpuTime = 0L;
+  private long prevTotalCpuTime = 0L;
   private long systemCpuTime = 0L;
   private long incrementSystemCpuTime = 0L;
   private final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
@@ -69,7 +70,7 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
   }
 
   private void update() {
-    updateSystemCpuUsage();
+    //    updateSystemCpuUsage();
     updateIoTDBCpuUsage();
   }
 
@@ -84,7 +85,7 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
       log.error("Meet error when read system cpu stat file", e);
       return;
     }
-    String[] split = allLines.get(0).split(" ");
+    String[] split = allLines.get(0).split("\\s+");
     long newCpuTime = 0L;
     for (int i = 1; i < split.length; i++) {
       newCpuTime += Long.parseLong(split[i]);
@@ -95,52 +96,42 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
 
   private void updateIoTDBCpuUsage() {
     // update
-    if (!taskFolder.exists()) {
-      return;
+    long[] taskIds = threadMXBean.getAllThreadIds();
+    ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(taskIds);
+    long totalCpuTime = prevTotalCpuTime;
+    Map<String, Long> newModuleCpuTimeMap = new HashMap<>();
+    for (ThreadInfo threadInfo : threadInfos) {
+      long id = threadInfo.getThreadId();
+      String module =
+          threadIdToModuleCache.computeIfAbsent(
+              id, k -> threadNameToModule.apply(threadInfo.getThreadName()));
+      if (module.equals("CLIENT_SERVICE")) {
+        ThreadInfo info = threadMXBean.getThreadInfo(id);
+        StackTraceElement[] stackTraceElements = info.getStackTrace();
+        module = "QUERY";
+        for (StackTraceElement stackTraceElement : stackTraceElements) {
+          if (stackTraceElement.toString().contains("insert")) {
+            module = "WRITE";
+            break;
+          }
+        }
+      }
+      long cpuTime = threadMXBean.getThreadCpuTime(id);
+      long prevCpuTime = threadCpuTimeMap.getOrDefault(id, 0L);
+      totalCpuTime += cpuTime - prevCpuTime;
+      newModuleCpuTimeMap.compute(
+          module, (k, v) -> v == null ? cpuTime - prevCpuTime : v + cpuTime - prevCpuTime);
     }
-    File[] taskFiles = taskFolder.listFiles();
-    if (taskFiles == null || taskFiles.length == 0) {
-      return;
-    }
-
-    Map<String, Long> currentModuleCpuTimeMap = new HashMap<>();
-    for (File taskFile : taskFiles) {
-      long taskPid = Long.parseLong(taskFile.getName());
-      File file = new File(String.format(taskCpuStatFile, taskPid));
-      if (!file.exists()) {
-        continue;
-      }
-      List<String> allLines = null;
-      try {
-        allLines = Files.readAllLines(file.toPath());
-      } catch (IOException e) {
-        log.error("Meet error when read task cpu stat file", e);
-      }
-      if (allLines == null || allLines.isEmpty()) {
-        continue;
-      }
-      String[] split = allLines.get(0).split(" ");
-      long userTime = Long.parseLong(split[13]);
-      long systemTime = Long.parseLong(split[14]);
-      threadUserTimeMap.put(taskPid, userTime);
-      threadSystemTimeMap.put(taskPid, systemTime);
-      String module = threadIdToModuleCache.getOrDefault(taskPid, null);
-      if (module == null) {
-        String threadName = threadMXBean.getThreadInfo(taskPid).getThreadName();
-        module = threadNameToModule.apply(threadName);
-        threadIdToModuleCache.put(taskPid, module);
-      }
-      currentModuleCpuTimeMap.compute(
-          module, (k, v) -> v == null ? userTime + systemTime : userTime + systemTime + v);
-    }
-
-    for (Map.Entry<String, Long> entry : currentModuleCpuTimeMap.entrySet()) {
+    long incrementJvmCpuTime = totalCpuTime - jvmCpuTime;
+    jvmCpuTime = totalCpuTime;
+    for (Map.Entry<String, Long> entry : newModuleCpuTimeMap.entrySet()) {
       String module = entry.getKey();
-      long oldVal = moduleCpuTimeMap.getOrDefault(module, 0L);
-      long newVal = entry.getValue();
-      incrementCpuTimeMap.put(module, newVal - oldVal);
-      moduleCpuTimeMap.put(module, newVal);
-      moduleCpuTimePercentageMap.put(module, (double) (newVal - oldVal) / incrementSystemCpuTime);
+      long cpuTime = entry.getValue();
+      long oldCpuTime = moduleCpuTimeMap.getOrDefault(module, 0L);
+      moduleCpuTimeMap.put(module, cpuTime);
+      moduleIncrementCpuTimeMap.put(module, cpuTime - oldCpuTime);
+      moduleCpuTimePercentageMap.put(
+          module, (double) (cpuTime - oldCpuTime) / (double) incrementJvmCpuTime);
     }
   }
 }

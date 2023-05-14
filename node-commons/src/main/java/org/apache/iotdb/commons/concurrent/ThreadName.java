@@ -21,6 +21,9 @@ package org.apache.iotdb.commons.concurrent;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public enum ThreadName {
   // -------------------------- QueryThread --------------------------
@@ -79,12 +82,12 @@ public enum ThreadName {
   ASYNC_DATANODE_CLIENT_POOL("AsyncDataNodeInternalServiceClientPool"),
   ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeIoTConsensusServiceClientPool"),
   LOG_DISPATCHER("LogDispatcher"),
-  // -------------------------- Ratis(In regex form) --------------------------
+  // -------------------------- Ratis --------------------------
   // NOTICE: The thread name of ratis cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
-  RAFT_SERVER_PROXY_EXECUTOR_THREAD_NAME_PATTERN("\\d+-impl"),
-  RAFT_SERVER_EXECUTOR_THREAD_NAME_PATTERN("\\d+-server"),
-  RAFT_SERVER_CLIENT_EXECUTOR_THREAD_NAME_PATTERN("\\d+-client"),
+  RAFT_SERVER_PROXY_EXECUTOR_THREAD_NAME_PATTERN("\\d+-impl-thread"),
+  RAFT_SERVER_EXECUTOR_THREAD_NAME_PATTERN("\\d+-server-thread"),
+  RAFT_SERVER_CLIENT_EXECUTOR_THREAD_NAME_PATTERN("\\d+-client-thread"),
   SEGMENT_RAFT_WORKER_THREAD_NAME_PATTERN("SegmentedRaftLogWorker"),
   STATE_MACHINE_UPDATER_THREAD_NAME_PATTERN("StateMachineUpdater"),
   FOLLOWER_STATE_THREAD_NAME_PATTERN("FollowerState"),
@@ -95,7 +98,8 @@ public enum ThreadName {
   RATIS_BG_DISK_GUARDIAN_THREAD_NAME("ratis-bg-disk-guardian"),
   GRPC_DEFAULT_BOSS_ELG("grpc-default-boss-ELG"),
   GRPC_DEFAULT_EXECUTOR("grpc-default-executor"),
-  GROUP_MANAGMENT("group-management"),
+  GPRC_DEFAULT_WORKER_ELG("grpc-default-worker-ELG"),
+  GROUP_MANAGEMENT("groupManagement"),
 
   // -------------------------- Compute --------------------------
   PIPE_ASSIGNER_EXECUTOR_POOL("Pipe-Assigner-Executor-Pool"),
@@ -119,6 +123,7 @@ public enum ThreadName {
   FINALIZER("Finalizer"),
   SIGNAL_DISPATCHER("Signal Dispatcher"),
   DESTROY_JVM("DestroyJavaVM"),
+  COMMON_CLEANER("Common-Cleaner"),
   // -------------------------- LogThread --------------------------
   LOG_BACK("logback"),
   // -------------------------- Other --------------------------
@@ -131,6 +136,7 @@ public enum ThreadName {
   ;
 
   private final String name;
+  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
   private static Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -151,7 +157,7 @@ public enum ThreadName {
       new HashSet<>(Arrays.asList(COMPACTION_WORKER, COMPACTION_SUB_TASK, COMPACTION_SCHEDULE));
 
   private static Set<ThreadName> walThreadNames =
-      new HashSet<>(Arrays.asList(WAL_DELETE, WAL_SYNC, WAL_DELETE, WAL_RECOVER));
+      new HashSet<>(Arrays.asList(WAL_DELETE, WAL_SERIALIZE, WAL_SYNC, WAL_DELETE, WAL_RECOVER));
 
   private static Set<ThreadName> flushThreadNames =
       new HashSet<>(
@@ -197,8 +203,9 @@ public enum ThreadName {
               EVENT_PROCESSOR_THREAD_NAME,
               RATIS_BG_DISK_GUARDIAN_THREAD_NAME,
               GRPC_DEFAULT_BOSS_ELG,
+              GPRC_DEFAULT_WORKER_ELG,
               GRPC_DEFAULT_EXECUTOR,
-              GROUP_MANAGMENT));
+              GROUP_MANAGEMENT));
   private static Set<ThreadName> computeThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -221,7 +228,8 @@ public enum ThreadName {
               REFERENCE_HANDLER,
               FINALIZER,
               SIGNAL_DISPATCHER,
-              DESTROY_JVM));
+              DESTROY_JVM,
+              COMMON_CLEANER));
   private static Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -283,7 +291,11 @@ public enum ThreadName {
       }
     }
     for (ThreadName threadName : ratisThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
+      if (threadName.getName().contains("\\d")) {
+        if (Pattern.compile(threadName.getName()).matcher(givenThreadName).find()) {
+          return DataNodeThreadModule.RATIS_CONSENSUS;
+        }
+      } else if (givenThreadName.contains(threadName.getName())) {
         return DataNodeThreadModule.RATIS_CONSENSUS;
       }
     }
@@ -310,6 +322,7 @@ public enum ThreadName {
         return DataNodeThreadModule.OTHER;
       }
     }
+    log.error("Unknown thread name {}", givenThreadName);
     return DataNodeThreadModule.UNKNOWN;
   }
 }
