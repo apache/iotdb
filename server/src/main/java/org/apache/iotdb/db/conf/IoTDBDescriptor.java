@@ -1086,8 +1086,8 @@ public class IoTDBDescriptor {
     conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
 
     conf.setDataNodeSchemaCacheEvictionPolicy(
-            properties.getProperty(
-                    "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
+        properties.getProperty(
+            "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
   }
