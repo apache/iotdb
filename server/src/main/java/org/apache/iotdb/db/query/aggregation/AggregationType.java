@@ -82,7 +82,10 @@ public enum AggregationType {
   EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR,
   EXACT_MULTI_QUANTILES_MRL,
   EXACT_MULTI_QUANTILES_TDIGEST,
-  EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE;
+  EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE,
+  MAD_DD,
+  MAD_QS,
+  MAD_CORE;
 
   /**
    * give an integer to return a data type.
@@ -206,6 +209,12 @@ public enum AggregationType {
         return EXACT_MULTI_QUANTILES_TDIGEST;
       case 56:
         return EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE;
+      case 57:
+        return MAD_DD;
+      case 58:
+        return MAD_CORE;
+      case 59:
+        return MAD_QS;
 
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
@@ -385,6 +394,15 @@ public enum AggregationType {
         break;
       case EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
         i = 56;
+        break;
+      case MAD_DD:
+        i = 57;
+        break;
+      case MAD_CORE:
+        i = 58;
+        break;
+      case MAD_QS:
+        i = 59;
         break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());

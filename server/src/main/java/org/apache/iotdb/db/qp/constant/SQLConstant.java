@@ -133,6 +133,9 @@ public class SQLConstant {
   public static final String EXACT_MULTI_QUANTILES_TDIGEST = "exact_multi_quantiles_tdigest";
   public static final String EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE =
       "exact_multi_quantiles_ddsketch_positive";
+  public static final String MAD_DD = "mad_dd";
+  public static final String MAD_QS = "mad_qs";
+  public static final String MAD_CORE = "mad_core";
 
   public static final String ALL = "all";
 
@@ -195,7 +198,10 @@ public class SQLConstant {
               EXACT_MULTI_QUANTILES_PR_KLL_FIX_PR,
               EXACT_MULTI_QUANTILES_MRL,
               EXACT_MULTI_QUANTILES_TDIGEST,
-              EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE));
+              EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE,
+              MAD_DD,
+              MAD_QS,
+              MAD_CORE));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;

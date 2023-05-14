@@ -178,6 +178,9 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
       case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
       case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+      case SQLConstant.MAD_DD:
+      case SQLConstant.MAD_CORE:
+      case SQLConstant.MAD_QS:
         return dataType.isNumeric();
       case SQLConstant.COUNT:
       case SQLConstant.MIN_TIME:
@@ -250,6 +253,9 @@ public class AggregationQueryOperator extends QueryOperator {
       case SQLConstant.EXACT_MULTI_QUANTILES_MRL:
       case SQLConstant.EXACT_MULTI_QUANTILES_TDIGEST:
       case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
+      case SQLConstant.MAD_DD:
+      case SQLConstant.MAD_CORE:
+      case SQLConstant.MAD_QS:
         return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
       default:
         return true;

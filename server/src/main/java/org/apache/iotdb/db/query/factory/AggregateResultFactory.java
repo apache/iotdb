@@ -161,6 +161,12 @@ public class AggregateResultFactory {
         return new ExactMultiQuantilesTDigestAggrResult(dataType);
       case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
         return new ExactMultiQuantilesDDSketchAggrResult(dataType);
+      case SQLConstant.MAD_DD:
+        return new MADDDAggrResult(dataType);
+      case SQLConstant.MAD_CORE:
+        return new MADCoreAggrResult(dataType);
+      case SQLConstant.MAD_QS:
+        return new MADQSAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -286,6 +292,12 @@ public class AggregateResultFactory {
         return new ExactMultiQuantilesTDigestAggrResult(dataType);
       case SQLConstant.EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
         return new ExactMultiQuantilesDDSketchAggrResult(dataType);
+      case SQLConstant.MAD_DD:
+        return new MADDDAggrResult(dataType);
+      case SQLConstant.MAD_CORE:
+        return new MADCoreAggrResult(dataType);
+      case SQLConstant.MAD_QS:
+        return new MADQSAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
@@ -412,6 +424,12 @@ public class AggregateResultFactory {
         return new ExactMultiQuantilesTDigestAggrResult(dataType);
       case EXACT_MULTI_QUANTILES_DDSKETCH_POSITIVE:
         return new ExactMultiQuantilesDDSketchAggrResult(dataType);
+      case MAD_DD:
+        return new MADDDAggrResult(dataType);
+      case MAD_CORE:
+        return new MADCoreAggrResult(dataType);
+      case MAD_QS:
+        return new MADQSAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

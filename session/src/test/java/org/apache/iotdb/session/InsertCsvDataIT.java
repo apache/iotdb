@@ -197,17 +197,15 @@ public class InsertCsvDataIT {
 
   private static void insertDataFromTXT()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    final int TEST_CASE = 10;
+    final int TEST_CASE = 1;
     String[] fileList = new String[10], sgName = new String[10];
-    String sketch_size = "256Byte";
-    fileList[0] = "1_bitcoin.csv";
+    String sketch_size = "";
+    fileList[0] = "bitcoin-s.csv";
     sgName[0] = "root.bitcoin" + sketch_size;
-    fileList[1] = "2_SpacecraftThruster.txt";
-    sgName[1] = "root.thruster" + sketch_size;
-    fileList[2] = "3_taxipredition8M.txt";
-    sgName[2] = "root.taxi" + sketch_size;
-    fileList[3] = "4_wh.csv";
-    sgName[3] = "root.wh" + sketch_size;
+    fileList[1] = "gas-s.csv";
+    sgName[1] = "root.gas" + sketch_size;
+    fileList[2] = "power-s.csv";
+    sgName[2] = "root.power" + sketch_size;
     //    fileList[1] = "tmp_3_55.txt";
     //    fileList[2] = "tmp_0_55.txt";
     //    fileList[3] = "tmp_2_55.txt";
@@ -220,7 +218,7 @@ public class InsertCsvDataIT {
       System.out.print("\t\t\t");
 
       String filename = fileList[fileID];
-      String folder = "D:\\Study\\Lab\\iotdb\\add_quantile_to_aggregation\\test_project_2";
+      String folder = "E:\\MAD-data";
       String filepath = folder + "\\" + filename;
       DoubleArrayList vv = new DoubleArrayList();
 
@@ -340,8 +338,8 @@ public class InsertCsvDataIT {
   @Test
   public void insertDATA() {
     try {
-      for (int i = 0; i < 10; i++) prepareTimeSeriesData();
-      //      insertDataFromTXT();
+      //      for (int i = 0; i < 10; i++) prepareTimeSeriesData();
+      insertDataFromTXT();
       //      append(5);
       //      insertDataFromTXT();
       //      insertDataFromTXT(3, 3, 0);
