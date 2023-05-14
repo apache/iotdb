@@ -240,76 +240,76 @@ public enum ThreadName {
     return name;
   }
 
-  public static ThreadModule getModuleTheThreadBelongs(String givenThreadName) {
+  public static DataNodeThreadModule getModuleTheThreadBelongs(String givenThreadName) {
     for (ThreadName threadName : queryThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.QUERY;
+        return DataNodeThreadModule.QUERY;
       }
     }
     if (givenThreadName.contains(MPP_COORDINATOR_SCHEDULED_EXECUTOR_POOL_NAME.getName())) {
-      return ThreadModule.MPP_SCHEDULE;
+      return DataNodeThreadModule.MPP_SCHEDULE;
     }
     for (ThreadName threadName : compactionThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.COMPACTION;
+        return DataNodeThreadModule.COMPACTION;
       }
     }
     for (ThreadName threadName : walThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.WAL;
+        return DataNodeThreadModule.WAL;
       }
     }
     if (givenThreadName.contains(MPP_COORDINATOR_WRITE_EXECUTOR_POOL_NAME.getName())) {
-      return ThreadModule.MPP_WRITE;
+      return DataNodeThreadModule.MPP_WRITE;
     }
     for (ThreadName threadName : flushThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.FLUSH;
+        return DataNodeThreadModule.FLUSH;
       }
     }
     for (ThreadName threadName : schemaEngineThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.SCHEMA_ENGINE;
+        return DataNodeThreadModule.SCHEMA_ENGINE;
       }
     }
     for (ThreadName threadName : clientServiceThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.CLIENT_SERVICE;
+        return DataNodeThreadModule.CLIENT_SERVICE;
       }
     }
     for (ThreadName threadName : iotConsensusThrreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.IOT_CONSENSUS;
+        return DataNodeThreadModule.IOT_CONSENSUS;
       }
     }
     for (ThreadName threadName : ratisThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.RATIS_CONSENSUS;
+        return DataNodeThreadModule.RATIS_CONSENSUS;
       }
     }
     for (ThreadName threadName : computeThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.COMPUTE;
+        return DataNodeThreadModule.COMPUTE;
       }
     }
     for (ThreadName threadName : syncThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.SYNC;
+        return DataNodeThreadModule.SYNC;
       }
     }
     for (ThreadName threadName : jvmThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.JVM;
+        return DataNodeThreadModule.JVM;
       }
     }
     if (givenThreadName.contains(LOG_BACK.getName())) {
-      return ThreadModule.LOG_BACK;
+      return DataNodeThreadModule.LOG_BACK;
     }
     for (ThreadName threadName : otherThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
-        return ThreadModule.OTHER;
+        return DataNodeThreadModule.OTHER;
       }
     }
-    return ThreadModule.UNKNOWN;
+    return DataNodeThreadModule.UNKNOWN;
   }
 }

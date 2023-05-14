@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import org.apache.iotdb.commons.concurrent.DataNodeThreadModule;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
@@ -29,10 +31,15 @@ import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.metrics.metricsets.cpu.CpuUsageMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode. */
@@ -46,6 +53,12 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(new WritingMetrics());
+    List<String> threadModules = new ArrayList<>();
+    Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
+    MetricService.getInstance()
+        .addMetricSet(
+            new CpuUsageMetrics(
+                threadModules, x -> ThreadName.getModuleTheThreadBelongs(x).toString()));
 
     // bind query related metrics
     MetricService.getInstance().addMetricSet(new QueryPlanCostMetricSet());

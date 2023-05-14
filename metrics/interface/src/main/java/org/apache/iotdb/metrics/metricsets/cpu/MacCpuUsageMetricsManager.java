@@ -17,23 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.concurrent;
+package org.apache.iotdb.metrics.metricsets.cpu;
 
-public enum ThreadModule {
-  QUERY,
-  MPP_SCHEDULE,
-  MPP_WRITE,
-  COMPACTION,
-  WAL,
-  FLUSH,
-  SCHEMA_ENGINE,
-  CLIENT_SERVICE,
-  IOT_CONSENSUS,
-  RATIS_CONSENSUS,
-  COMPUTE,
-  SYNC,
-  JVM,
-  LOG_BACK,
-  OTHER,
-  UNKNOWN
+import java.util.function.UnaryOperator;
+
+public class MacCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager {
+  public MacCpuUsageMetricsManager(UnaryOperator<String> threadNameToModule) {
+    super(threadNameToModule);
+  }
 }
