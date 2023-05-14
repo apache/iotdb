@@ -1528,36 +1528,36 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 当Region配置了IoTConsensus共识协议之后，下述的配置项才会生效
 
-* max_log_entries_num_per_batch
+* data_region_iot_max_log_entries_num_per_batch
 
-|     名字     | max_log_entries_num_per_batch     |
+|     名字     | data_region_iot_max_log_entries_num_per_batch     |
 | :----------: | :-------------------------------- |
 |     描述     | IoTConsensus batch 的最大日志条数 |
 |     类型     | int32                             |
 |    默认值    | 1024                              |
 | 改后生效方式 | 重启生效                          |
 
-* max_size_per_batch
+* data_region_iot_max_size_per_batch
 
-|     名字     | max_size_per_batch            |
+|     名字     | data_region_iot_max_size_per_batch            |
 | :----------: | :---------------------------- |
 |     描述     | IoTConsensus batch 的最大大小 |
 |     类型     | int32                         |
 |    默认值    | 16MB                          |
 | 改后生效方式 | 重启生效                      |
 
-* max_pending_batches_num
+* data_region_iot_max_pending_batches_num
 
-|     名字     | max_pending_batches_num             |
+|     名字     | data_region_iot_max_pending_batches_num             |
 | :----------: | :---------------------------------- |
 |     描述     | IoTConsensus batch 的流水线并发阈值 |
 |     类型     | int32                               |
 |    默认值    | 12                                  |
 | 改后生效方式 | 重启生效                            |
 
-* max_memory_ratio_for_queue
+* data_region_iot_max_memory_ratio_for_queue
 
-|     名字     | max_memory_ratio_for_queue    |
+|     名字     | data_region_iot_max_memory_ratio_for_queue    |
 | :----------: | :---------------------------- |
 |     描述     | IoTConsensus 队列内存分配比例 |
 |     类型     | double                        |

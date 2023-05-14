@@ -1489,36 +1489,36 @@ Different configuration parameters take effect in the following three ways:
 
 ### IOTConsensus Configuration
 
-* max_log_entries_num_per_batch
+* data_region_iot_max_log_entries_num_per_batch
 
-|    Name     | max_log_entries_num_per_batch                     |
+|    Name     | data_region_iot_max_log_entries_num_per_batch                     |
 | :---------: | :------------------------------------------------ |
 | Description | The maximum log entries num in IoTConsensus Batch |
 |    Type     | int32                                             |
 |   Default   | 1024                                              |
 |  Effective  | After restarting system                           |
 
-* max_size_per_batch
+* data_region_iot_max_size_per_batch
 
-|    Name     | max_size_per_batch                     |
+|    Name     | data_region_iot_max_size_per_batch                     |
 | :---------: | :------------------------------------- |
 | Description | The maximum size in IoTConsensus Batch |
 |    Type     | int32                                  |
 |   Default   | 16MB                                   |
 |  Effective  | After restarting system                |
 
-* max_pending_batches_num
+* data_region_iot_max_pending_batches_num
 
-|    Name     | max_pending_batches_num                         |
+|    Name     | data_region_iot_max_pending_batches_num                         |
 | :---------: | :---------------------------------------------- |
 | Description | The maximum pending batches num in IoTConsensus |
 |    Type     | int32                                           |
 |   Default   | 12                                              |
 |  Effective  | After restarting system                         |
 
-* max_memory_ratio_for_queue
+* data_region_iot_max_memory_ratio_for_queue
 
-|    Name     | max_memory_ratio_for_queue                         |
+|    Name     | data_region_iot_max_memory_ratio_for_queue                         |
 | :---------: | :------------------------------------------------- |
 | Description | The maximum memory ratio for queue in IoTConsensus |
 |    Type     | double                                             |
