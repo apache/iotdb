@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -67,20 +68,29 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
 
     try {
-      if (event instanceof TabletInsertionEvent) {
-        outputPipeConnector.transfer((TabletInsertionEvent) event);
-      } else if (event instanceof TsFileInsertionEvent) {
-        outputPipeConnector.transfer((TsFileInsertionEvent) event);
-      } else if (event instanceof DeletionEvent) {
-        outputPipeConnector.transfer((DeletionEvent) event);
-      } else {
-        throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
+      switch (event.getType()) {
+        case TABLET_INSERTION:
+          outputPipeConnector.transfer((TabletInsertionEvent) event);
+          break;
+        case TSFILE_INSERTION:
+          outputPipeConnector.transfer((TsFileInsertionEvent) event);
+          break;
+        case DELETION:
+          outputPipeConnector.transfer((DeletionEvent) event);
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              "Unsupported event type: " + event.getClass().getName());
       }
     } catch (Exception e) {
       e.printStackTrace();
       throw new PipeException(
           "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
           e);
+    } finally {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).decreaseReferenceCount(PipeConnectorSubtask.class.getName());
+      }
     }
   }
 

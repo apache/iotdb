@@ -128,12 +128,12 @@ public class CachedSchemaPatternMatcherTest {
             new PipeRealtimeCollectEvent(
                 null, null, Collections.singletonMap("root." + i, measurements));
         long startTime = System.currentTimeMillis();
-        matcher.match(event);
+        matcher.match(event).forEach(collector -> collector.collect(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
       PipeRealtimeCollectEvent event = new PipeRealtimeCollectEvent(null, null, deviceMap);
       long startTime = System.currentTimeMillis();
-      matcher.match(event);
+      matcher.match(event).forEach(collector -> collector.collect(event));
       totalTime += (System.currentTimeMillis() - startTime);
     }
     System.out.println("matcher.getRegisterCount() = " + matcher.getRegisterCount());

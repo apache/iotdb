@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 
 import java.io.File;
@@ -32,7 +31,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PipeTsFileResourceManager {
+public class PipeFileResourceManager {
 
   private final Map<String, Integer> hardlinkOrCopiedFileToReferenceMap = new HashMap<>();
 
@@ -181,7 +180,6 @@ public class PipeTsFileResourceManager {
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @return the reference count of the file
    */
-  @TestOnly
   public synchronized int getFileReferenceCount(File hardlinkOrCopiedFile) {
     return hardlinkOrCopiedFileToReferenceMap.getOrDefault(hardlinkOrCopiedFile.getPath(), 0);
   }
