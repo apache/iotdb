@@ -435,6 +435,11 @@ public class TsFileResource {
     }
   }
 
+  /** Only used for compaction to validate tsfile. */
+  public ITimeIndex getTimeIndex() {
+    return timeIndex;
+  }
+
   /**
    * Whether this TsFileResource contains this device, if false, it must not contain this device, if
    * true, it may or may not contain this device
