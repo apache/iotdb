@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
 
+import java.io.File;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -129,7 +132,7 @@ public abstract class Driver implements IDriver {
         tryWithLock(
             100,
             TimeUnit.MILLISECONDS,
-            true,
+            false,
             () -> {
               // only keep doing query processing if driver state is still alive
               if (state.get() == State.ALIVE) {
@@ -384,11 +387,11 @@ public abstract class Driver implements IDriver {
     try {
       long startTime = System.nanoTime();
       root.close();
-      long endTime = System.nanoTime();
-      driverContext
-          .getFragmentInstanceContext()
-          .addOperationTime(DRIVER_CLOSE, endTime - startTime);
-      startTime = endTime;
+
+      if (driverContext.mayHaveTmpFile()) {
+        cleanTmpFile();
+      }
+
       sink.setNoMoreTsBlocks();
       driverContext
           .getFragmentInstanceContext()
@@ -422,6 +425,19 @@ public abstract class Driver implements IDriver {
       }
     }
     return inFlightException;
+  }
+
+  private void cleanTmpFile() {
+    String pipeLineSortDir =
+        IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+            + File.separator
+            + driverContext.getFragmentInstanceContext().getId().getFullId()
+            + File.separator
+            + driverContext.getPipelineId()
+            + File.separator;
+    File tmpPipeLineDir = new File(pipeLineSortDir);
+    if (!tmpPipeLineDir.exists()) return;
+    FileUtils.deleteDirectory(tmpPipeLineDir);
   }
 
   private static Throwable addSuppressedException(

@@ -36,7 +36,6 @@ import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
-import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
@@ -67,6 +66,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
@@ -717,6 +717,27 @@ public class MTreeBelowSGCachedImpl {
       unPinPath(cur);
     }
   }
+
+  /**
+   * Check if the device node exists
+   *
+   * @param deviceId full path of device
+   * @return true if the device node exists
+   */
+  public boolean checkDeviceNodeExists(PartialPath deviceId) {
+    ICachedMNode deviceMNode = null;
+    try {
+      deviceMNode = getNodeByPath(deviceId);
+      return deviceMNode.isDevice();
+    } catch (MetadataException e) {
+      return false;
+    } finally {
+      if (deviceMNode != null) {
+        unPinMNode(deviceMNode);
+      }
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
@@ -821,13 +842,6 @@ public class MTreeBelowSGCachedImpl {
         cur = child;
       }
       synchronized (this) {
-        for (String measurement : template.getSchemaMap().keySet()) {
-          if (store.hasChild(cur, measurement)) {
-            throw new TemplateImcompatibeException(
-                activatePath.concatNode(measurement).getFullPath(), template.getName());
-          }
-        }
-
         if (cur.isDevice()) {
           entityMNode = cur.getAsDeviceMNode();
         } else {
@@ -890,6 +904,7 @@ public class MTreeBelowSGCachedImpl {
       entityMNode.setSchemaTemplateId(templateId);
 
       store.updateMNode(entityMNode.getAsMNode());
+      regionStatistics.activateTemplate(templateId);
     } finally {
       unPinPath(cur);
     }
@@ -1065,8 +1080,8 @@ public class MTreeBelowSGCachedImpl {
                 return node.getAlias();
               }
 
-              public MeasurementSchema getSchema() {
-                return (MeasurementSchema) node.getSchema();
+              public IMeasurementSchema getSchema() {
+                return node.getSchema();
               }
 
               public Map<String, String> getTags() {
@@ -1085,6 +1100,11 @@ public class MTreeBelowSGCachedImpl {
 
               public boolean isUnderAlignedDevice() {
                 return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
+              }
+
+              @Override
+              public boolean isLogicalView() {
+                return node.isLogicalView();
               }
 
               public String getFullPath() {

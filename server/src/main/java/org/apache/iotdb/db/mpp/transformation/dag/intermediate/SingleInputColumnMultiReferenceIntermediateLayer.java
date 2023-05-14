@@ -60,7 +60,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
   public SingleInputColumnMultiReferenceIntermediateLayer(
       Expression expression,
-      long queryId,
+      String queryId,
       float memoryBudgetInMB,
       LayerPointReader parentLayerPointReader) {
     super(expression, queryId, memoryBudgetInMB);

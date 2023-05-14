@@ -847,6 +847,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 1                               |
 | 改后生效方式 | 重启服务生效                          |
 
+* device\_path\_cache\_size
+
+|     名字     | device\_path\_cache\_size                             |
+| :----------: |:------------------------------------------------------|
+|     描述     | Device Path 缓存的最大数量，这个缓存可以避免写入过程中重复的 Device Path 对象创建 |
+|     类型     | Int32                                                 |
+|    默认值    | 500000                                                |
+| 改后生效方式 | 重启服务生效                                                |
+
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
 |     名字     | insert\_multi\_tablet\_enable\_multithreading\_column\_threshold |
@@ -1112,14 +1121,23 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | 0                            |
 | 改后生效方式 | 重启服务生效                       |
 
-* fsync\_wal\_delay\_in\_ms
+* wal\_async\_mode\_fsync\_delay\_in\_ms
 
-|   名字   | fsync\_wal\_delay\_in\_ms |
-|:------:|:--------------------------|
-|   描述   | 写前日志调用 fsync 前的等待时间       |
-|   类型   | int32                     |
-|  默认值   | 3                         |
-| 改后生效方式 | 热加载                       |
+|   名字   | wal\_async\_mode\_fsync\_delay\_in\_ms |
+|:------:|:---------------------------------------|
+|   描述   | async 模式下写前日志调用 fsync 前的等待时间           |
+|   类型   | int32                                  |
+|  默认值   | 1000                                   |
+| 改后生效方式 | 热加载                                    |
+
+* wal\_sync\_mode\_fsync\_delay\_in\_ms
+
+|   名字   | wal\_sync\_mode\_fsync\_delay\_in\_ms |
+|:------:|:--------------------------------------|
+|   描述   | sync 模式下写前日志调用 fsync 前的等待时间           |
+|   类型   | int32                                 |
+|  默认值   | 3                                     |
+| 改后生效方式 | 热加载                                   |
 
 * wal\_buffer\_size\_in\_byte
 
@@ -1127,7 +1145,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |:------:|:----------------------------|
 |   描述   | 写前日志的 buffer 大小             |
 |   类型   | int32                       |
-|  默认值   | 16777216                    |
+|  默认值   | 33554432                    |
 | 改后生效方式 | 重启服务生效                      |
 
 * wal\_buffer\_queue\_capacity
@@ -1136,7 +1154,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |:------:|:-----------------------------|
 |   描述   | 写前日志阻塞队列大小上限                 |
 |   类型   | int32                        |
-|  默认值   | 50                           |
+|  默认值   | 500                          |
 | 改后生效方式 | 重启服务生效                       |
 
 * wal\_file\_size\_threshold\_in\_byte
@@ -1145,7 +1163,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |:------:|:-------------------------------------|
 |   描述   | 写前日志文件封口阈值                           |
 |   类型   | int32                                |
-|  默认值   | 10485760                             |
+|  默认值   | 31457280                             |
 | 改后生效方式 | 热加载                                  |
 
 * wal\_min\_effective\_info\_ratio

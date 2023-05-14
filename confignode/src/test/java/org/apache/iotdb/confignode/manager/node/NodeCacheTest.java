@@ -19,8 +19,8 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.junit.Assert;
@@ -30,7 +30,7 @@ public class NodeCacheTest {
 
   @Test
   public void forceUpdateTest() {
-    DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache();
+    DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache(1);
 
     // Test default
     Assert.assertEquals(NodeStatus.Unknown, dataNodeHeartbeatCache.getNodeStatus());
@@ -55,7 +55,7 @@ public class NodeCacheTest {
 
   @Test
   public void periodicUpdateTest() {
-    DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache();
+    DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache(1);
     long currentTime = System.currentTimeMillis();
     dataNodeHeartbeatCache.cacheHeartbeatSample(
         new NodeHeartbeatSample(

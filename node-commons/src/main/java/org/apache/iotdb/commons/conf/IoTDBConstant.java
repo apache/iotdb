@@ -104,9 +104,11 @@ public class IoTDBConstant {
   public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
   public static final String JMX_TYPE = "type";
 
-  public static final long GB = 1024 * 1024 * 1024L;
-  public static final long MB = 1024 * 1024L;
-  public static final long KB = 1024L;
+  public static final long PB = 1L << 50;
+  public static final long TB = 1L << 40;
+  public static final long GB = 1L << 30;
+  public static final long MB = 1L << 20;
+  public static final long KB = 1L << 10;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
 
@@ -290,6 +292,30 @@ public class IoTDBConstant {
   public static final String REQUEST_TYPE_READ = "read";
   public static final String REQUEST_TYPE_WRITE = "write";
   public static final String REQ_UNIT = "req";
+  public static final String REQ_SPLIT_UNIT = "req/";
+  public static final int UNLIMITED_VALUE = -1;
+  public static final int DEFAULT_VALUE = 0;
+  public static final float B_FLOAT = 1024.0F;
+
+  // SizeUnit
+  public static final String B_UNIT = "B";
+  public static final String KB_UNIT = "K";
+  public static final String MB_UNIT = "M";
+  public static final String GB_UNIT = "G";
+  public static final String TB_UNIT = "T";
+  public static final String PB_UNIT = "P";
+
+  // Time
+  public static final int SEC = 1000;
+  public static final int MIN = 60 * 1000;
+  public static final int HOUR = 60 * 60 * 1000;
+  public static final int DAY = 24 * 60 * 60 * 1000;
+
+  // TimeUnit
+  public static final String SEC_UNIT = "sec";
+  public static final String MIN_UNIT = "min";
+  public static final String HOUR_UNIT = "hour";
+  public static final String DAY_UNIT = "day";
 
   // client version number
   public enum ClientVersion {

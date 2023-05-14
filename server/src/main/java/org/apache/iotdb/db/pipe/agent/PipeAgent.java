@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.pipe.agent;
 
-import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeTaskAgent;
 
-/** PipeAgent is the entry point of the pipe module in DatNode. */
+/** PipeAgent is the entry point of the pipe module in DataNode. */
 public class PipeAgent {
 
   private final PipePluginAgent pipePluginAgent;
@@ -33,11 +32,9 @@ public class PipeAgent {
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeAgent() {
-    final DataNodePipePluginMetaKeeper pipePluginMetaKeeper = new DataNodePipePluginMetaKeeper();
-
-    pipePluginAgent = PipePluginAgent.setupAndGetInstance(pipePluginMetaKeeper);
-    pipeTaskAgent = PipeTaskAgent.setupAndGetInstance();
-    pipeRuntimeAgent = PipeRuntimeAgent.setupAndGetInstance();
+    pipePluginAgent = new PipePluginAgent();
+    pipeTaskAgent = new PipeTaskAgent();
+    pipeRuntimeAgent = new PipeRuntimeAgent();
   }
 
   /** The singleton holder of PipeAgent. */

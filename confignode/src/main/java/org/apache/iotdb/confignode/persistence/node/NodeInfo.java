@@ -221,18 +221,6 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** Return the number of registered ConfigNodes */
-  public int getRegisteredConfigNodeCount() {
-    int result;
-    configNodeInfoReadWriteLock.readLock().lock();
-    try {
-      result = registeredConfigNodes.size();
-    } finally {
-      configNodeInfoReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
-
   /** Return the number of total cpu cores in online DataNodes */
   public int getTotalCpuCoreCount() {
     int result = 0;
@@ -267,6 +255,23 @@ public class NodeInfo implements SnapshotProcessor {
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
+  }
+
+  /** @return The specified registered DataNodes */
+  public List<TDataNodeConfiguration> getRegisteredDataNodes(List<Integer> dataNodeIds) {
+    List<TDataNodeConfiguration> result = new ArrayList<>();
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      dataNodeIds.forEach(
+          dataNodeId -> {
+            if (registeredDataNodes.containsKey(dataNodeId)) {
+              result.add(registeredDataNodes.get(dataNodeId).deepCopy());
+            }
+          });
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
   }
 
   /**
@@ -336,11 +341,29 @@ public class NodeInfo implements SnapshotProcessor {
     return status;
   }
 
+  /** @return All registered ConfigNodes */
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {
       result = new ArrayList<>(registeredConfigNodes.values());
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /** @return The specified registered ConfigNode */
+  public List<TConfigNodeLocation> getRegisteredConfigNodes(List<Integer> configNodeIds) {
+    List<TConfigNodeLocation> result = new ArrayList<>();
+    configNodeInfoReadWriteLock.readLock().lock();
+    try {
+      configNodeIds.forEach(
+          configNodeId -> {
+            if (registeredConfigNodes.containsKey(configNodeId)) {
+              result.add(registeredConfigNodes.get(configNodeId).deepCopy());
+            }
+          });
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
     }

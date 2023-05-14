@@ -254,14 +254,18 @@ public class FragmentInstanceManager {
   }
 
   /** Cancels a FragmentInstance. */
-  public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
+  public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId, boolean hasThrowable) {
     logger.debug("[CancelFI]");
     requireNonNull(instanceId, "taskId is null");
 
     FragmentInstanceContext context = instanceContext.remove(instanceId);
     if (context != null) {
       instanceExecution.remove(instanceId);
-      context.cancel();
+      if (hasThrowable) {
+        context.cancel();
+      } else {
+        context.finished();
+      }
       return context.getInstanceInfo();
     }
     return null;

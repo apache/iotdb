@@ -53,6 +53,18 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             Metric.IOT_CONSENSUS.toString(),
             MetricLevel.IMPORTANT,
             logDispatcherThread,
+            x -> x.getSyncStatus().getPendingBatches().size(),
+            Tag.NAME.toString(),
+            formatName(),
+            Tag.REGION.toString(),
+            logDispatcherThread.getPeer().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "pipelineNum");
+    MetricService.getInstance()
+        .createAutoGauge(
+            Metric.IOT_CONSENSUS.toString(),
+            MetricLevel.IMPORTANT,
+            logDispatcherThread,
             x -> x.getPendingEntriesSize() + x.getBufferRequestSize(),
             Tag.NAME.toString(),
             formatName(),
@@ -74,6 +86,16 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
             logDispatcherThread.getPeer().getGroupId().toString(),
             Tag.TYPE.toString(),
             "currentSyncIndex");
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.IOT_CONSENSUS.toString(),
+            Tag.NAME.toString(),
+            formatName(),
+            Tag.REGION.toString(),
+            logDispatcherThread.getPeer().getGroupId().toString(),
+            Tag.TYPE.toString(),
+            "pipelineNum");
     MetricService.getInstance()
         .remove(
             MetricType.AUTO_GAUGE,

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -96,16 +97,20 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public void doCompaction() {
+  public boolean doCompaction() {
     try {
-      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost);
+      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
     } catch (InterruptedException e) {
       LOGGER.error("Interrupted when allocating memory for compaction", e);
-      return;
+      return false;
+    } catch (CompactionMemoryNotEnoughException e) {
+      LOGGER.error("No enough memory for current compaction task {}", this, e);
+      return false;
     }
+    boolean isSuccess = true;
     try {
       if (!tsFileManager.isAllowCompaction()) {
-        return;
+        return true;
       }
       long startTime = System.currentTimeMillis();
       targetTsfileResourceList =
@@ -118,7 +123,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             "{}-{} [Compaction] Cross space compaction file list is empty, end it",
             storageGroupName,
             dataRegionId);
-        return;
+        return true;
       }
 
       for (TsFileResource resource : selectedSequenceFiles) {
@@ -246,6 +251,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
+      isSuccess = false;
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
@@ -273,6 +279,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     } finally {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       releaseAllLock();
+      return isSuccess;
     }
   }
 

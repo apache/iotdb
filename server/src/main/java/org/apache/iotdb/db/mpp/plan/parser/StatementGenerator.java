@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
@@ -120,6 +121,9 @@ public class StatementGenerator {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
+  private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
+      DataNodeDevicePathCache.getInstance();
+
   public static Statement createStatement(String sql, ZoneId zoneId) {
     return invokeParser(sql, zoneId);
   }
@@ -134,7 +138,12 @@ public class StatementGenerator {
 
     // iterate the path list and add it to from operator
     for (String pathStr : rawDataQueryReq.getPaths()) {
-      PartialPath path = new PartialPath(pathStr);
+      PartialPath path;
+      if (rawDataQueryReq.isLegalPathNodes()) {
+        path = new PartialPath(pathStr.split("\\."));
+      } else {
+        path = new PartialPath(pathStr);
+      }
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
@@ -172,7 +181,12 @@ public class StatementGenerator {
 
     // iterate the path list and add it to from operator
     for (String pathStr : lastDataQueryReq.getPaths()) {
-      PartialPath path = new PartialPath(pathStr);
+      PartialPath path;
+      if (lastDataQueryReq.isLegalPathNodes()) {
+        path = new PartialPath(pathStr.split("\\."));
+      } else {
+        path = new PartialPath(pathStr);
+      }
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
@@ -208,7 +222,11 @@ public class StatementGenerator {
     SelectComponent selectComponent = new SelectComponent(zoneId);
     List<PartialPath> selectPaths = new ArrayList<>();
     for (String pathStr : req.getPaths()) {
-      selectPaths.add(new PartialPath(pathStr));
+      if (req.isLegalPathNodes()) {
+        selectPaths.add(new PartialPath(pathStr.split("\\.")));
+      } else {
+        selectPaths.add(new PartialPath(pathStr));
+      }
     }
     List<TAggregationType> aggregations = req.getAggregations();
     for (int i = 0; i < aggregations.size(); i++) {
@@ -256,7 +274,8 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowStatement insertStatement = new InsertRowStatement();
-    insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
+    insertStatement.setDevicePath(
+        DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
     insertStatement.setTime(insertRecordReq.getTimestamp());
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
@@ -270,7 +289,8 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowStatement insertStatement = new InsertRowStatement();
-    insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
+    insertStatement.setDevicePath(
+        DEVICE_PATH_CACHE.getPartialPath(insertRecordReq.getPrefixPath()));
     insertStatement.setTime(insertRecordReq.getTimestamp());
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setDataTypes(new TSDataType[insertStatement.getMeasurements().length]);
@@ -286,7 +306,8 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertTabletStatement insertStatement = new InsertTabletStatement();
-    insertStatement.setDevicePath(new PartialPath(insertTabletReq.getPrefixPath()));
+    insertStatement.setDevicePath(
+        DEVICE_PATH_CACHE.getPartialPath(insertTabletReq.getPrefixPath()));
     insertStatement.setMeasurements(insertTabletReq.getMeasurements().toArray(new String[0]));
     insertStatement.setTimes(
         QueryDataSetUtils.readTimesFromBuffer(insertTabletReq.timestamps, insertTabletReq.size));
@@ -318,7 +339,7 @@ public class StatementGenerator {
     List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletStatement insertTabletStatement = new InsertTabletStatement();
-      insertTabletStatement.setDevicePath(new PartialPath(req.prefixPaths.get(i)));
+      insertTabletStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPaths.get(i)));
       insertTabletStatement.setMeasurements(req.measurementsList.get(i).toArray(new String[0]));
       insertTabletStatement.setTimes(
           QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
@@ -357,7 +378,7 @@ public class StatementGenerator {
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
-      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.getPrefixPaths().get(i)));
       statement.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
       statement.setTime(req.getTimestamps().get(i));
       statement.fillValues(req.valuesList.get(i));
@@ -381,7 +402,7 @@ public class StatementGenerator {
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
-      statement.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
+      statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.getPrefixPaths().get(i)));
       addMeasurementAndValue(
           statement, req.getMeasurementsList().get(i), req.getValuesList().get(i));
       statement.setDataTypes(new TSDataType[statement.getMeasurements().length]);
@@ -404,7 +425,7 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
-    insertStatement.setDevicePath(new PartialPath(req.prefixPath));
+    insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.timestamps.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
@@ -429,7 +450,7 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsOfOneDeviceStatement insertStatement = new InsertRowsOfOneDeviceStatement();
-    insertStatement.setDevicePath(new PartialPath(req.prefixPath));
+    insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     for (int i = 0; i < req.timestamps.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
@@ -820,7 +841,7 @@ public class StatementGenerator {
             + TsFileConstant.PATH_SEPARATOR
             + recordModelMetricsReq.getTrialId();
     InsertRowStatement insertRowStatement = new InsertRowStatement();
-    insertRowStatement.setDevicePath(new PartialPath(path));
+    insertRowStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(path));
     insertRowStatement.setTime(recordModelMetricsReq.getTimestamp());
     insertRowStatement.setMeasurements(recordModelMetricsReq.getMetrics().toArray(new String[0]));
     insertRowStatement.setAligned(true);

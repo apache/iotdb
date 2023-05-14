@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
+import org.apache.iotdb.db.mpp.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.collections4.comparators.ComparatorChain;
@@ -33,190 +33,65 @@ import java.util.List;
 
 public class MergeSortComparator {
 
-  public static final Comparator<MergeSortKey> ASC_TIME_ASC_DEVICE =
-      (MergeSortKey o1, MergeSortKey o2) -> {
-        int timeComparing =
-            Long.compare(
-                o1.tsBlock.getTimeByIndex(o1.rowIndex), o2.tsBlock.getTimeByIndex(o2.rowIndex));
-        return timeComparing == 0
-            ? o1.tsBlock
-                .getColumn(0)
-                .getBinary(o1.rowIndex)
-                .compareTo(o2.tsBlock.getColumn(0).getBinary(o2.rowIndex))
-            : timeComparing;
-      };
-  public static final Comparator<MergeSortKey> ASC_TIME_DESC_DEVICE =
-      (MergeSortKey o1, MergeSortKey o2) -> {
-        int timeComparing =
-            Long.compare(
-                o1.tsBlock.getTimeByIndex(o1.rowIndex), o2.tsBlock.getTimeByIndex(o2.rowIndex));
-        return timeComparing == 0
-            ? o2.tsBlock
-                .getColumn(0)
-                .getBinary(o2.rowIndex)
-                .compareTo(o1.tsBlock.getColumn(0).getBinary(o1.rowIndex))
-            : timeComparing;
-      };
-  public static final Comparator<MergeSortKey> DESC_TIME_ASC_DEVICE =
-      (MergeSortKey o1, MergeSortKey o2) -> {
-        int timeComparing =
-            Long.compare(
-                o2.tsBlock.getTimeByIndex(o2.rowIndex), o1.tsBlock.getTimeByIndex(o1.rowIndex));
-        return timeComparing == 0
-            ? o1.tsBlock
-                .getColumn(0)
-                .getBinary(o1.rowIndex)
-                .compareTo(o2.tsBlock.getColumn(0).getBinary(o2.rowIndex))
-            : timeComparing;
-      };
-  public static final Comparator<MergeSortKey> DESC_TIME_DESC_DEVICE =
-      (MergeSortKey o1, MergeSortKey o2) -> {
-        int timeComparing =
-            Long.compare(
-                o2.tsBlock.getTimeByIndex(o2.rowIndex), o1.tsBlock.getTimeByIndex(o1.rowIndex));
-        return timeComparing == 0
-            ? o2.tsBlock
-                .getColumn(0)
-                .getBinary(o2.rowIndex)
-                .compareTo(o1.tsBlock.getColumn(0).getBinary(o1.rowIndex))
-            : timeComparing;
-      };
+  private static final Comparator<SortKey> TIME_ASC_COMPARATOR =
+      Comparator.comparingLong(
+          (SortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
 
-  public static final Comparator<MergeSortKey> ASC_DEVICE_ASC_TIME =
-      (MergeSortKey o1, MergeSortKey o2) -> {
-        int deviceComparing =
-            o1.tsBlock
-                .getColumn(0)
-                .getBinary(o1.rowIndex)
-                .compareTo(o2.tsBlock.getColumn(0).getBinary(o2.rowIndex));
-        return deviceComparing == 0
-            ? Long.compare(
-                o1.tsBlock.getTimeByIndex(o1.rowIndex), o2.tsBlock.getTimeByIndex(o2.rowIndex))
-            : deviceComparing;
-      };
-  public static final Comparator<MergeSortKey> ASC_DEVICE_DESC_TIME =
-      (MergeSortKey o1, MergeSortKey o2) -> {
-        int deviceComparing =
-            o1.tsBlock
-                .getColumn(0)
-                .getBinary(o1.rowIndex)
-                .compareTo(o2.tsBlock.getColumn(0).getBinary(o2.rowIndex));
-        return deviceComparing == 0
-            ? Long.compare(
-                o2.tsBlock.getTimeByIndex(o2.rowIndex), o1.tsBlock.getTimeByIndex(o1.rowIndex))
-            : deviceComparing;
-      };
-  public static final Comparator<MergeSortKey> DESC_DEVICE_ASC_TIME =
-      (MergeSortKey o1, MergeSortKey o2) -> {
-        int deviceComparing =
-            o2.tsBlock
-                .getColumn(0)
-                .getBinary(o2.rowIndex)
-                .compareTo(o1.tsBlock.getColumn(0).getBinary(o1.rowIndex));
-        return deviceComparing == 0
-            ? Long.compare(
-                o1.tsBlock.getTimeByIndex(o1.rowIndex), o2.tsBlock.getTimeByIndex(o2.rowIndex))
-            : deviceComparing;
-      };
-  public static final Comparator<MergeSortKey> DESC_DEVICE_DESC_TIME =
-      (MergeSortKey o1, MergeSortKey o2) -> {
-        int deviceComparing =
-            o2.tsBlock
-                .getColumn(0)
-                .getBinary(o2.rowIndex)
-                .compareTo(o1.tsBlock.getColumn(0).getBinary(o1.rowIndex));
-        return deviceComparing == 0
-            ? Long.compare(
-                o2.tsBlock.getTimeByIndex(o2.rowIndex), o1.tsBlock.getTimeByIndex(o1.rowIndex))
-            : deviceComparing;
-      };
-
-  public static Comparator<MergeSortKey> getComparator(
-      List<SortItem> sortItemList, List<Integer> indexList, List<TSDataType> dataTypeList) {
-    // specified for order by time, device or order by device, time
-    if (sortItemList.size() == 2
-        && ((sortItemList.get(0).getSortKey() == SortKey.TIME
-                && sortItemList.get(1).getSortKey() == SortKey.DEVICE)
-            || (sortItemList.get(0).getSortKey() == SortKey.DEVICE
-                && sortItemList.get(1).getSortKey() == SortKey.TIME))) {
-      if (sortItemList.get(0).getOrdering() == Ordering.ASC) {
-        if (sortItemList.get(1).getOrdering() == Ordering.ASC) {
-          if (sortItemList.get(0).getSortKey() == SortKey.TIME) return ASC_TIME_ASC_DEVICE;
-          else return ASC_DEVICE_ASC_TIME;
-        } else {
-          if (sortItemList.get(0).getSortKey() == SortKey.TIME) return ASC_TIME_DESC_DEVICE;
-          else return ASC_DEVICE_DESC_TIME;
-        }
-      } else {
-        if (sortItemList.get(1).getOrdering() == Ordering.ASC) {
-          if (sortItemList.get(0).getSortKey() == SortKey.TIME) return DESC_TIME_ASC_DEVICE;
-          else return DESC_DEVICE_ASC_TIME;
-        } else {
-          if (sortItemList.get(0).getSortKey() == SortKey.TIME) return DESC_TIME_DESC_DEVICE;
-          else return DESC_DEVICE_DESC_TIME;
-        }
-      }
-    } else { // generally order by
-      // use code-gen compile this comparator
-
-      // currently only show queries use merge sort and will only contain TIME, QUERYID, DATANODEID,
-      // ELAPSEDTIME, STATEMENT
-      return genComparatorChain(sortItemList, indexList, dataTypeList);
-    }
-  }
+  private static final Comparator<SortKey> TIME_DESC_COMPARATOR =
+      Comparator.comparingLong(
+              (SortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex))
+          .reversed();
 
   /** @param indexList -1 for time column */
-  private static ComparatorChain<MergeSortKey> genComparatorChain(
+  public static Comparator<SortKey> getComparator(
       List<SortItem> sortItemList, List<Integer> indexList, List<TSDataType> dataTypeList) {
-    List<Comparator<MergeSortKey>> list = new ArrayList<>(indexList.size());
+
+    // use code-gen compile this comparator
+    List<Comparator<SortKey>> list = new ArrayList<>(indexList.size());
     for (int i = 0; i < indexList.size(); i++) {
       int index = indexList.get(i);
+      if (index == -2) continue;
       TSDataType dataType = dataTypeList.get(i);
       boolean asc = sortItemList.get(i).getOrdering() == Ordering.ASC;
-      list.add(genSingleComparator(asc, index, dataType));
+      boolean nullFirst = sortItemList.get(i).getNullOrdering() == NullOrdering.FIRST;
+      list.add(genSingleComparator(asc, index, dataType, nullFirst));
     }
-    return new ComparatorChain<>(list);
+
+    return list.size() == 1 ? list.get(0) : new ComparatorChain<>(list);
   }
 
-  private static Comparator<MergeSortKey> genSingleComparator(
-      boolean asc, int index, TSDataType dataType) {
-    Comparator<MergeSortKey> comparator;
+  public static Comparator<SortKey> getComparator(TSDataType dataType, int index, boolean asc) {
+    Comparator<SortKey> comparator;
     switch (dataType) {
       case INT32:
         comparator =
             Comparator.comparingInt(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
         break;
       case INT64:
-        if (index == -1) {
-          comparator =
-              Comparator.comparingLong(
-                  (MergeSortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex));
-        } else {
-          comparator =
-              Comparator.comparingLong(
-                  (MergeSortKey sortKey) ->
-                      sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
-        }
+        comparator =
+            Comparator.comparingLong(
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
         break;
       case FLOAT:
         comparator =
             Comparator.comparingDouble(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getFloat(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getFloat(sortKey.rowIndex));
         break;
       case DOUBLE:
         comparator =
             Comparator.comparingDouble(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getDouble(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getDouble(sortKey.rowIndex));
         break;
       case TEXT:
         comparator =
             Comparator.comparing(
-                (MergeSortKey sortKey) ->
-                    sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));
+        break;
+      case BOOLEAN:
+        comparator =
+            Comparator.comparing(
+                (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBoolean(sortKey.rowIndex));
         break;
       default:
         throw new IllegalArgumentException("Data type: " + dataType + " cannot be ordered");
@@ -224,6 +99,16 @@ public class MergeSortComparator {
     if (!asc) {
       comparator = comparator.reversed();
     }
+
     return comparator;
+  }
+
+  private static Comparator<SortKey> genSingleComparator(
+      boolean asc, int index, TSDataType dataType, boolean nullFirst) {
+
+    if (index == -1) {
+      return asc ? TIME_ASC_COMPARATOR : TIME_DESC_COMPARATOR;
+    }
+    return new SortKeyComparator(index, nullFirst, getComparator(dataType, index, asc));
   }
 }

@@ -118,7 +118,7 @@ An example of the configuration items are as follows:
 dn_system_dir = $IOTDB_HOME/data/datanode/system
 dn_data_dirs = /data1/datanode/data, /data2/datanode/data, /data3/datanode/data 
 dn_multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
-dn_wal_dir= $IOTDB_HOME/data/datanode/wal
+dn_wal_dirs= $IOTDB_HOME/data/datanode/wal
 ```
 After setting the configuration, the system will:
 

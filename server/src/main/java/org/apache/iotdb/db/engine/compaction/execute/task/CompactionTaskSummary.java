@@ -32,6 +32,8 @@ public class CompactionTaskSummary {
   protected int deserializePageCount = 0;
   protected int mergedChunkNum = 0;
   protected long processPointNum = 0;
+  protected long temporalFileSize = 0;
+  protected int temporalFileNum = 0;
 
   public CompactionTaskSummary() {}
 
@@ -132,6 +134,22 @@ public class CompactionTaskSummary {
     SUCCESS,
     FAILED,
     CANCELED
+  }
+
+  public void setTemporalFileSize(long temporalFileSize) {
+    this.temporalFileSize = temporalFileSize;
+  }
+
+  public long getTemporalFileSize() {
+    return temporalFileSize;
+  }
+
+  public void setTemporalFileNum(int temporalFileNum) {
+    this.temporalFileNum = temporalFileNum;
+  }
+
+  public int getTemporalFileNum() {
+    return temporalFileNum;
   }
 
   @Override

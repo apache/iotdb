@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,26 +44,28 @@ import java.util.List;
  */
 public class GetTimeSlotListStatement extends Statement implements IConfigStatement {
 
-  private final String storageGroup;
+  private String database;
 
-  private final TSeriesPartitionSlot seriesSlotId;
+  private String device;
+
+  private long regionId = -1;
 
   private long startTime = -1;
 
   private long endTime = -1;
 
-  public GetTimeSlotListStatement(String storageGroup, TSeriesPartitionSlot seriesSlotId) {
+  private static final Logger LOGGER = LoggerFactory.getLogger(GetTimeSlotListStatement.class);
+
+  public GetTimeSlotListStatement() {
     super();
-    this.storageGroup = storageGroup;
-    this.seriesSlotId = seriesSlotId;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public void setDatabase(String database) {
+    this.database = database;
   }
 
-  public TSeriesPartitionSlot getSeriesSlotId() {
-    return seriesSlotId;
+  public String getDatabase() {
+    return database;
   }
 
   public long getStartTime() {
@@ -80,6 +84,22 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
     this.endTime = endTime;
   }
 
+  public void setDevice(String device) {
+    this.device = device;
+  }
+
+  public String getDevice() {
+    return this.device;
+  }
+
+  public void setRegionId(long regionId) {
+    this.regionId = regionId;
+  }
+
+  public long getRegionId() {
+    return this.regionId;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitGetTimeSlotList(this, context);
@@ -92,9 +112,13 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   @Override
   public List<PartialPath> getPaths() {
+    if (database == null) {
+      return new ArrayList<>();
+    }
     try {
-      return Collections.singletonList(new PartialPath(storageGroup));
+      return Collections.singletonList(new PartialPath(database));
     } catch (IllegalPathException e) {
+      LOGGER.warn("illegal path: {}", database);
       return new ArrayList<>();
     }
   }

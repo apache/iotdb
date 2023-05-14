@@ -66,6 +66,8 @@ public class FragmentInstanceContext extends QueryContext {
   private Set<TsFileResource> closedFilePaths;
   /** unClosed tsfile used in this fragment instance */
   private Set<TsFileResource> unClosedFilePaths;
+  /** check if there is tmp file to be deleted */
+  private boolean mayHaveTmpFile = false;
 
   private final long createNanos = System.nanoTime();
 
@@ -384,6 +386,14 @@ public class FragmentInstanceContext extends QueryContext {
     timeFilter = null;
     sourcePaths = null;
     sharedQueryDataSource = null;
+  }
+
+  public void setMayHaveTmpFile(boolean mayHaveTmpFile) {
+    this.mayHaveTmpFile = mayHaveTmpFile;
+  }
+
+  public boolean mayHaveTmpFile() {
+    return mayHaveTmpFile;
   }
 
   public void addOperationTime(String key, long costTimeInNanos) {

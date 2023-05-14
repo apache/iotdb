@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
+
 public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
   private final PartialPath pathPattern;
@@ -96,14 +98,32 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     builder.writeNullableText(0, series.getFullPath());
     builder.writeNullableText(1, series.getAlias());
     builder.writeNullableText(2, database);
-    builder.writeNullableText(3, series.getSchema().getType().toString());
-    builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
-    builder.writeNullableText(5, series.getSchema().getCompressor().toString());
+    if (series.isLogicalView()) {
+      builder.writeNullableText(3, "");
+      builder.writeNullableText(4, "null");
+      builder.writeNullableText(5, "null");
+      builder.writeNullableText(10, "logical");
+    } else {
+      builder.writeNullableText(3, series.getSchema().getType().toString());
+      builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
+      builder.writeNullableText(5, series.getSchema().getCompressor().toString());
+      builder.writeNullableText(10, "");
+    }
     builder.writeNullableText(6, mapToString(series.getTags()));
     builder.writeNullableText(7, mapToString(series.getAttributes()));
     builder.writeNullableText(8, deadbandInfo.left);
     builder.writeNullableText(9, deadbandInfo.right);
     builder.declarePosition();
+  }
+
+  @Override
+  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
+    return pathPattern.equals(ALL_MATCH_PATTERN) && key == null;
+  }
+
+  @Override
+  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
   }
 
   private String mapToString(Map<String, String> map) {

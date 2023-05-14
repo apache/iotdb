@@ -98,6 +98,7 @@ public class ColumnHeaderConstant {
 
   // column names for show pipe plugins statement
   public static final String PLUGIN_NAME = "PluginName";
+  public static final String PLUGIN_TYPE = "PluginType";
   public static final String PLUGIN_JAR = "PluginJar";
 
   // show cluster status
@@ -124,7 +125,9 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID = "DataNodeId";
   public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String SERIES_SLOT_ID = "SeriesSlotId";
-  public static final String TIME_SLOT_ID = "TimeSlotId";
+  public static final String TIME_PARTITION = "TimePartition";
+  public static final String COUNT_TIME_PARTITION = "count(timePartition)";
+  public static final String START_TIME = "StartTime";
   public static final String ROLE = "Role";
   public static final String CREATE_TIME = "CreateTime";
 
@@ -179,6 +182,9 @@ public class ColumnHeaderConstant {
   public static final String HYPERPARAMETER = "Hyperparameter";
   public static final String MODEL_PATH = "ModelPath";
 
+  // column names for views (eg. logical view)
+  public static final String VIEW_TYPE = "ViewType";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -196,7 +202,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TAGS, TSDataType.TEXT),
           new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
           new ColumnHeader(DEADBAND, TSDataType.TEXT),
-          new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT));
+          new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT),
+          new ColumnHeader(VIEW_TYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
       ImmutableList.of(
@@ -354,6 +361,7 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showPipePluginsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(PLUGIN_NAME, TSDataType.TEXT),
+          new ColumnHeader(PLUGIN_TYPE, TSDataType.TEXT),
           new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
           new ColumnHeader(PLUGIN_JAR, TSDataType.TEXT));
 
@@ -396,7 +404,12 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64));
+      ImmutableList.of(
+          new ColumnHeader(TIME_PARTITION, TSDataType.INT64),
+          new ColumnHeader(START_TIME, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> countTimeSlotListColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COUNT_TIME_PARTITION, TSDataType.INT64));
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
       ImmutableList.of(new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32));

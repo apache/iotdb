@@ -55,13 +55,21 @@ public class PipePluginCoordinator {
     return pipePluginInfo;
   }
 
+  public void lock() {
+    pipePluginInfo.acquirePipePluginInfoLock();
+  }
+
+  public void unlock() {
+    pipePluginInfo.releasePipePluginInfoLock();
+  }
+
   public TSStatus createPipePlugin(TCreatePipePluginReq req) {
     final String pluginName = req.getPluginName().toUpperCase();
     final String className = req.getClassName();
     final String jarName = req.getJarName();
     final String jarMD5 = req.getJarMD5();
     final PipePluginMeta pipePluginMeta =
-        new PipePluginMeta(pluginName, className, jarName, jarMD5);
+        new PipePluginMeta(pluginName, className, false, jarName, jarMD5);
 
     return configManager.getProcedureManager().createPipePlugin(pipePluginMeta, req.getJarFile());
   }

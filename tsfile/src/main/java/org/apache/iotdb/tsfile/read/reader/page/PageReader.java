@@ -163,16 +163,18 @@ public class PageReader implements IPageReader {
   }
 
   private boolean pageSatisfy() {
-    if (filter != null) {
-      return filter.satisfy(getStatistics());
-    } else {
-      long rowCount = getStatistics().getCount();
+    Statistics statistics = getStatistics();
+    if (filter == null || filter.allSatisfy(statistics)) {
+      long rowCount = statistics.getCount();
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return false;
+      } else {
+        return true;
       }
+    } else {
+      return filter.satisfy(statistics);
     }
-    return true;
   }
 
   @Override

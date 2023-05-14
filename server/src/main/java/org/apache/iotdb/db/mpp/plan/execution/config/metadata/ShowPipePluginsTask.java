@@ -42,6 +42,11 @@ import java.util.stream.Collectors;
 
 public class ShowPipePluginsTask implements IConfigTask {
 
+  private static final Binary PIPE_PLUGIN_TYPE_BUILTIN = Binary.valueOf("Builtin");
+  private static final Binary PIPE_PLUGIN_TYPE_EXTERNAL = Binary.valueOf("External");
+
+  private static final Binary PIPE_JAR_NAME_EMPTY_FIELD = Binary.valueOf("");
+
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
@@ -66,8 +71,17 @@ public class ShowPipePluginsTask implements IConfigTask {
     for (final PipePluginMeta pipePluginMeta : pipePluginMetaList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.getColumnBuilder(0).writeBinary(Binary.valueOf(pipePluginMeta.getPluginName()));
-      builder.getColumnBuilder(1).writeBinary(Binary.valueOf(pipePluginMeta.getClassName()));
-      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginMeta.getJarName()));
+      builder
+          .getColumnBuilder(1)
+          .writeBinary(
+              pipePluginMeta.isBuiltin() ? PIPE_PLUGIN_TYPE_BUILTIN : PIPE_PLUGIN_TYPE_EXTERNAL);
+      builder.getColumnBuilder(2).writeBinary(Binary.valueOf(pipePluginMeta.getClassName()));
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(
+              pipePluginMeta.getJarName() == null
+                  ? PIPE_JAR_NAME_EMPTY_FIELD
+                  : Binary.valueOf(pipePluginMeta.getJarName()));
       builder.declarePosition();
     }
 

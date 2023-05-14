@@ -23,10 +23,12 @@ import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -106,8 +108,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     lastCheckIndex = 0;
     lastTime[subTaskId] = Long.MIN_VALUE;
     if (isAlign) {
-      chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
-      measurementId[subTaskId] = "";
+      // the first is time schema and the rest is value schema list
+      chunkWriters[subTaskId] =
+          new AlignedChunkWriterImpl(measurementSchemaList.remove(0), measurementSchemaList);
+      measurementId[subTaskId] = TsFileConstant.TIME_COLUMN_ID;
     } else {
       chunkWriters[subTaskId] = new ChunkWriterImpl(measurementSchemaList.get(0), true);
       measurementId[subTaskId] = measurementSchemaList.get(0).getMeasurementId();
@@ -224,7 +228,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
               valueChunkWriter.getCompressionType(),
               valueChunkWriter.getDataType(),
               valueChunkWriter.getEncodingType(),
-              valueChunkWriter.getStatistics());
+              Statistics.getStatsByType(valueChunkWriter.getDataType()));
           continue;
         }
         CompactionTaskManager.mergeRateLimiterAcquire(
