@@ -911,12 +911,12 @@ Different configuration parameters take effect in the following three ways:
 
 * target\_compaction\_file\_size
 
-|    Name     | target\_compaction\_file\_size               |
-| :---------: | :------------------------------------------- |
-| Description | The target file is in inner space compaction |
-|    Type     | Int64                                        |
-|   Default   | 1073741824                                   |
-|  Effective  | After restart system                         |
+|    Name     | target\_compaction\_file\_size                 |
+| :---------: |:-----------------------------------------------|
+| Description | The target file size in compaction |
+|    Type     | Int64                                          |
+|   Default   | 2147483648                                     |
+|  Effective  | After restart system                           |
 
 * target\_chunk\_size
 
