@@ -107,6 +107,14 @@ public interface Row {
   String getString(int columnIndex) throws IOException;
 
   /**
+   * Returns the Object value at the specified column in this row.
+   *
+   * @param columnIndex index of the specified column
+   * @return the Object value at the specified column in this row
+   */
+  Object getObject(int columnIndex) throws IOException;
+
+  /**
    * Returns the actual data type of the value at the specified column in this row.
    *
    * @param columnIndex index of the specified column

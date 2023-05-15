@@ -30,31 +30,50 @@ import java.util.List;
 
 public class PipeRowIterator implements RowIterator {
 
+  private final List<PipeRow> rowRecordList;
+  private final int beginIndex;
+  private final int size;
+  private PipeRow row;
+
+  private int rowIndex;
+
+  public PipeRowIterator(List<PipeRow> rowRecordList, int beginIndex, int endIndex) {
+    this.rowRecordList = rowRecordList;
+    this.beginIndex = beginIndex;
+    this.size = endIndex - beginIndex;
+
+    row = rowRecordList.get(beginIndex);
+    rowIndex = -1;
+  }
+
   @Override
   public boolean hasNextRow() {
-    return false;
+    return rowIndex < size - 1;
   }
 
   @Override
   public Row next() throws IOException {
-    return null;
+    row = rowRecordList.get(++rowIndex + beginIndex);
+    return row;
   }
 
   @Override
-  public void reset() {}
+  public void reset() {
+    rowIndex = -1;
+  }
 
   @Override
   public int getColumnIndex(Path columnName) throws PipeParameterNotValidException {
-    return 0;
+    return row.getColumnIndex(columnName);
   }
 
   @Override
   public List<Path> getColumnNames() {
-    return null;
+    return row.getColumnNames();
   }
 
   @Override
   public List<Type> getColumnTypes() {
-    return null;
+    return row.getColumnTypes();
   }
 }

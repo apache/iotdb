@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.core.event.realtime;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 
 import org.slf4j.Logger;
@@ -61,7 +61,7 @@ public class TsFileEpochManager {
   }
 
   public PipeRealtimeCollectEvent bindPipeTabletInsertionEvent(
-      PipeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
+      PipeInsertNodeInsertionEvent event, InsertNode node, TsFileResource resource) {
     return new PipeRealtimeCollectEvent(
         event,
         filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new),

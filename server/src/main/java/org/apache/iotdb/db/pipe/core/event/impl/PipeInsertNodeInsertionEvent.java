@@ -19,23 +19,26 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent implements TabletInsertionEvent {
+public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
 
-  private final List<Tablet> tabletList;
+  private final InsertNode insertNode;
 
-  public PipeTabletInsertionEvent(Tablet tablet) {
-    this.tabletList = new ArrayList<>();
-    this.tabletList.add(tablet);
+  private final AtomicInteger referenceCount;
+
+  public PipeInsertNodeInsertionEvent(InsertNode insertNode) {
+    this.insertNode = insertNode;
+    this.referenceCount = new AtomicInteger(0);
   }
 
   @Override
@@ -53,7 +56,28 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
     throw new UnsupportedOperationException("Not implemented yet");
   }
 
-  public void addTablet(Tablet tablet) {
-    this.tabletList.add(tablet);
+  @Override
+  public boolean increaseReferenceCount(String holderMessage) {
+    // TODO: use WALPipeHandler pinMemtable
+    referenceCount.incrementAndGet();
+    return true;
+  }
+
+  @Override
+  public boolean decreaseReferenceCount(String holderMessage) {
+    // TODO: use WALPipeHandler unpinMemetable
+    referenceCount.decrementAndGet();
+    return true;
+  }
+
+  @Override
+  public int getReferenceCount() {
+    // TODO: use WALPipeHandler unpinMemetable
+    return referenceCount.get();
+  }
+
+  @Override
+  public String toString() {
+    return "PipeTabletInsertionEvent{" + "insertNode=" + insertNode + '}';
   }
 }
