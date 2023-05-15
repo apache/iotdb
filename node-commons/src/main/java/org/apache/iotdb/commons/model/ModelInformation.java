@@ -186,6 +186,15 @@ public class ModelInformation {
     }
   }
 
+  public String getModelPath() {
+    if (bestTrailId != null) {
+      TrailInformation bestTrail = trailMap.get(bestTrailId);
+      return bestTrail.getModelPath();
+    } else {
+      return "UNKNOWN";
+    }
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(modelTask.ordinal(), stream);

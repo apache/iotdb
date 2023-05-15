@@ -482,7 +482,15 @@ public class QueryStatement extends Statement {
           || isLastQuery()
           || seriesLimit > 0
           || seriesOffset > 0
-          || isSelectInto()) {
+          || isSelectInto()
+          || isOrderByDevice()
+          || isOrderByTimeseries()) {
+        throw new SemanticException("");
+      }
+
+      if (orderByComponent != null
+          && (!orderByComponent.isOrderByTime()
+              || orderByComponent.getTimeOrder() != Ordering.ASC)) {
         throw new SemanticException("");
       }
     }

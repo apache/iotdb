@@ -90,6 +90,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -375,7 +376,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     ModelInformation modelInformation = partitionFetcher.getModelInformation(modelId);
     if (modelInformation == null) {
-      // throw new SemanticException("");
+      throw new SemanticException("");
     }
 
     ModelInferenceFunction functionType =
@@ -383,7 +384,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     switch (functionType) {
       case FORECAST:
         ModelInferenceDescriptor modelInferenceDescriptor =
-            new ForecastModelInferenceDescriptor(functionType, modelId, modelInformation);
+            new ForecastModelInferenceDescriptor(functionType, modelInformation);
         analysis.setModelInferenceDescriptor(modelInferenceDescriptor);
 
         List<ResultColumn> newResultColumns = new ArrayList<>();
@@ -391,9 +392,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           newResultColumns.add(new ResultColumn(inputExpression, ResultColumn.ColumnType.RAW));
         }
         queryStatement.getSelectComponent().setResultColumns(newResultColumns);
+
+        OrderByComponent descTimeOrder = new OrderByComponent();
+        descTimeOrder.addSortItem(new SortItem("TIME", Ordering.DESC));
+        queryStatement.setOrderByComponent(descTimeOrder);
         break;
       default:
-        throw new SemanticException("");
+        throw new IllegalArgumentException("");
     }
   }
 
