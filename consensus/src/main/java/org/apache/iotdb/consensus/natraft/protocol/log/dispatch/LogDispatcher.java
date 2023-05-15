@@ -184,4 +184,10 @@ public class LogDispatcher {
   public void stop() {
     dispatcherGroupMap.forEach((p, g) -> g.close());
   }
+
+  public void wakeUp() {
+    for (DispatcherGroup value : dispatcherGroupMap.values()) {
+      value.wakeUp();
+    }
+  }
 }

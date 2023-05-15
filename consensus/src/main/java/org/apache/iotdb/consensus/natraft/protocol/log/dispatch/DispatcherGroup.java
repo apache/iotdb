@@ -116,4 +116,14 @@ public class DispatcherGroup {
   public DynamicThreadGroup getDynamicThreadGroup() {
     return dynamicThreadGroup;
   }
+
+  public LogDispatcher getLogDispatcher() {
+    return logDispatcher;
+  }
+
+  public void wakeUp() {
+    synchronized (entryQueue) {
+      entryQueue.notifyAll();
+    }
+  }
 }

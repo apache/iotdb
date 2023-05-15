@@ -94,7 +94,11 @@ class DispatcherThread extends DynamicThread {
             currBatch.add(poll);
             logBlockingDeque.drainTo(currBatch, logDispatcher.maxBatchSize - 1);
           } else {
-            logBlockingDeque.wait(10);
+            if (group.getLogDispatcher().getMember().isLeader()) {
+              logBlockingDeque.wait(1000);
+            } else {
+              logBlockingDeque.wait(0);
+            }
             continue;
           }
         }

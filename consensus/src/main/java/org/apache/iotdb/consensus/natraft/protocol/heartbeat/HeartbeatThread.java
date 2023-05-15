@@ -316,6 +316,7 @@ public class HeartbeatThread implements Runnable {
       logger.info("{}: Election {} accepted", memberName, nextTerm);
       localMember.getStatus().setRole(RaftRole.LEADER);
       localMember.getStatus().getLeader().set(localMember.getThisNode());
+      localMember.getLogDispatcher().wakeUp();
     }
   }
 

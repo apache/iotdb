@@ -68,7 +68,9 @@ public class FlowBalancer {
   }
 
   public void start() {
-    scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    scheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor(
+            r -> new Thread(r, member.getName() + "-FlowBalancer"));
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         scheduledExecutorService,
         this::rebalance,
