@@ -61,7 +61,9 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
         .getStringOrDefault(
             PipeCollectorConstant.COLLECTOR_KEY,
             BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName())
-        .equals(BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName())) {
+        .equals(
+            BuiltinPipePlugin.DEFAULT_COLLECTOR
+                .getPipePluginName())) { // TODO: reflect construct collector
       collectorPendingQueue = new ListenableUnblockingPendingQueue<>();
       this.pipeCollector = new IoTDBDataRegionCollector(collectorPendingQueue);
     } else {

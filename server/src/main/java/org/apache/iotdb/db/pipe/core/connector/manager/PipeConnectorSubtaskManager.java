@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.pipe.core.connector.manager;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.PipeIoTDBThriftConnector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
@@ -48,7 +51,14 @@ public class PipeConnectorSubtaskManager {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       // 1. construct, validate and customize PipeConnector
       final PipeConnector pipeConnector =
-          PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
+          pipeConnectorParameters
+                  .getStringOrDefault(
+                      PipeConnectorConstant.CONNECTOR_KEY,
+                      BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+                  .equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+              ? new PipeIoTDBThriftConnector()
+              : PipeAgent.plugin()
+                  .reflectConnector(pipeConnectorParameters); // TODO: reflect construct connector
       try {
         pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
         final PipeConnectorRuntimeConfiguration runtimeConfiguration =

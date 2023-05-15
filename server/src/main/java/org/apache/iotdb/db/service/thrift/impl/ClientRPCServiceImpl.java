@@ -2218,5 +2218,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       closeSession(req);
     }
     SyncService.getInstance().handleClientExit();
+    PipeAgent.receive().handleClientExit();
   }
 }

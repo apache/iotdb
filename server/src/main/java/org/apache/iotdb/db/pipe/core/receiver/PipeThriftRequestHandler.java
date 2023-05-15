@@ -35,4 +35,6 @@ public interface PipeThriftRequestHandler {
 
   TPipeTransferResp handleTransferReq(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
+
+  void handleExit();
 }

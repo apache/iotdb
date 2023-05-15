@@ -81,4 +81,12 @@ public class PipeReceiverAgent {
         .get()
         .handleTransferReq(req, partitionFetcher, schemaFetcher);
   }
+
+  public void handleClientExit() {
+    PipeThriftRequestHandler handler = pipeThriftRequestHandler.get();
+    if (handler != null) {
+      handler.handleExit();
+      pipeThriftRequestHandler.remove();
+    }
+  }
 }

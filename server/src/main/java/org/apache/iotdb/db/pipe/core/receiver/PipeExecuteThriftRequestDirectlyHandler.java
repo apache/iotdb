@@ -106,6 +106,20 @@ public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftReques
     }
   }
 
+  @Override
+  public void handleExit() {
+    try {
+      if (writer != null) {
+        writer.close();
+      }
+      if (writingFile != null) {
+        writingFile.deleteOnExit();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Clean up Pipe writing file error when closing handler.", e);
+    }
+  }
+
   private TPipeTransferResp handleTransferInsertNode(
       PipeTransferInsertNodeReq req,
       IPartitionFetcher partitionFetcher,
