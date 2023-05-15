@@ -422,9 +422,9 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.ln1.** where tag1 = v1",
-            "COUNT TIMESERIES where tag1 = v1",
-            "COUNT TIMESERIES where tag3 = v3"
+            "COUNT TIMESERIES root.ln1.** where TAGS(tag1) = v1",
+            "COUNT TIMESERIES where TAGS(tag1) = v1",
+            "COUNT TIMESERIES where TAGS(tag3) = v3"
           };
       String[] standards = new String[] {"1,\n", "2,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
@@ -559,10 +559,10 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.** where tag1 = v1 group by level=1",
-            "COUNT TIMESERIES root.** where tag2 = v2 group by level=3",
-            "COUNT TIMESERIES root.**.status where tag1 = v1 group by level=2",
-            "COUNT TIMESERIES root.** where tag3 = v3 group by level=2"
+            "COUNT TIMESERIES root.** where TAGS(tag1) = v1 group by level=1",
+            "COUNT TIMESERIES root.** where TAGS(tag2) = v2 group by level=3",
+            "COUNT TIMESERIES root.**.status where TAGS(tag1) = v1 group by level=2",
+            "COUNT TIMESERIES root.** where TAGS(tag3) = v3 group by level=2"
           };
       Set<String>[] standards =
           new Set[] {

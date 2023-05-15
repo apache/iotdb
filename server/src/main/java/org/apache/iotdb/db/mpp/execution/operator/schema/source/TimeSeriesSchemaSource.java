@@ -115,7 +115,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
     return pathPattern.equals(ALL_MATCH_PATTERN)
-        && !SchemaFilterType.TAGS.equals(schemaFilter.getSchemaFilterType());
+        && (schemaFilter == null
+            || !SchemaFilterType.TAGS.equals(schemaFilter.getSchemaFilterType()));
   }
 
   @Override
