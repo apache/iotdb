@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -31,6 +32,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -75,6 +77,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -182,6 +186,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction.FORECAST;
+import static org.apache.iotdb.db.constant.SqlConstant.MODEL_ID;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
@@ -361,7 +367,35 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
-  private void analyzeModelInference(Analysis analysis, QueryStatement queryStatement) {}
+  private void analyzeModelInference(Analysis analysis, QueryStatement queryStatement) {
+    FunctionExpression modelInferenceExpression =
+        (FunctionExpression)
+            queryStatement.getSelectComponent().getResultColumns().get(0).getExpression();
+    String modelId = modelInferenceExpression.getFunctionAttributes().get(MODEL_ID);
+
+    ModelInformation modelInformation = partitionFetcher.getModelInformation(modelId);
+    if (modelInformation == null) {
+      // throw new SemanticException("");
+    }
+
+    ModelInferenceFunction functionType =
+        ModelInferenceFunction.valueOf(modelInferenceExpression.getFunctionName().toUpperCase());
+    switch (functionType) {
+      case FORECAST:
+        ModelInferenceDescriptor modelInferenceDescriptor =
+            new ForecastModelInferenceDescriptor(functionType, modelId, modelInformation);
+        analysis.setModelInferenceDescriptor(modelInferenceDescriptor);
+
+        List<ResultColumn> newResultColumns = new ArrayList<>();
+        for (Expression inputExpression : modelInferenceExpression.getExpressions()) {
+          newResultColumns.add(new ResultColumn(inputExpression, ResultColumn.ColumnType.RAW));
+        }
+        queryStatement.getSelectComponent().setResultColumns(newResultColumns);
+        break;
+      default:
+        throw new SemanticException("");
+    }
+  }
 
   private Analysis finishQuery(QueryStatement queryStatement, Analysis analysis) {
     if (queryStatement.isSelectInto()) {
@@ -1212,6 +1246,53 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (queryStatement.isSelectInto()) {
       analysis.setRespDatasetHeader(
           DatasetHeaderFactory.getSelectIntoHeader(queryStatement.isAlignByDevice()));
+      return;
+    }
+
+    if (queryStatement.isModelInferenceQuery()) {
+      List<ColumnHeader> columnHeaders = new ArrayList<>();
+      boolean isIgnoreTimestamp;
+
+      ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
+      switch (modelInferenceDescriptor.getFunctionType()) {
+        case FORECAST:
+          isIgnoreTimestamp = false;
+          ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
+              (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
+
+          List<TSDataType> inputTypeList = forecastModelInferenceDescriptor.getInputTypeList();
+          if (outputExpressions.size() != inputTypeList.size()) {
+            throw new SemanticException("");
+          }
+          for (int i = 0; i < inputTypeList.size(); i++) {
+            Expression inputExpression = outputExpressions.get(i).left;
+            if (analysis.getType(inputExpression) != inputTypeList.get(i)) {
+              throw new SemanticException("");
+            }
+          }
+
+          List<FunctionExpression> modelInferenceOutputExpressions = new ArrayList<>();
+          for (int predictIndex : forecastModelInferenceDescriptor.getPredictIndexList()) {
+            Expression inputExpression = outputExpressions.get(predictIndex).left;
+            FunctionExpression modelInferenceOutputExpression =
+                new FunctionExpression(
+                    FORECAST.getFunctionName(),
+                    forecastModelInferenceDescriptor.getOutputAttributes(),
+                    Collections.singletonList(inputExpression));
+            analyzeExpression(analysis, modelInferenceOutputExpression);
+            modelInferenceOutputExpressions.add(modelInferenceOutputExpression);
+            columnHeaders.add(
+                new ColumnHeader(
+                    modelInferenceOutputExpression.toString(),
+                    analysis.getType(modelInferenceOutputExpression)));
+          }
+          forecastModelInferenceDescriptor.setModelInferenceOutputExpressions(
+              modelInferenceOutputExpressions);
+          break;
+        default:
+          throw new SemanticException("");
+      }
+      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, isIgnoreTimestamp));
       return;
     }
 

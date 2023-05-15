@@ -265,6 +265,8 @@ public class ExpressionTypeAnalyzer {
             functionExpression,
             TypeInferenceUtils.getBuiltInScalarFunctionDataType(
                 functionExpression, expressionTypes.get(NodeRef.of(inputExpressions.get(0)))));
+      } else if (functionExpression.isModelInferenceFunction()) {
+        return setExpressionType(functionExpression, TSDataType.DOUBLE);
       } else {
         return setExpressionType(
             functionExpression,

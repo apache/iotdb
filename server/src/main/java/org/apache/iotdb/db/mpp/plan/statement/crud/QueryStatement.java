@@ -51,6 +51,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.constant.SqlConstant.MODEL_ID;
+
 /**
  * Base class of SELECT statement.
  *
@@ -461,6 +463,11 @@ public class QueryStatement extends Statement {
           selectComponent.getResultColumns().get(0).getExpression();
       if (!(modelInferenceExpression instanceof FunctionExpression
           && ((FunctionExpression) modelInferenceExpression).isModelInferenceFunction())) {
+        throw new SemanticException("");
+      }
+      if (!((FunctionExpression) modelInferenceExpression)
+          .getFunctionAttributes()
+          .containsKey(MODEL_ID)) {
         throw new SemanticException("");
       }
       if (ExpressionAnalyzer.searchAggregationExpressions(modelInferenceExpression).size() > 0) {
