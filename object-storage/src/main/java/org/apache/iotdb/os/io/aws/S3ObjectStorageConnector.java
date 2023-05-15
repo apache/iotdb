@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -120,6 +121,18 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
               .build();
       DeleteObjectResponse resp = s3Client.deleteObject(deleteReq);
       return resp.deleteMarker();
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
+  public OSURI[] list(OSURI osUri) throws ObjectStorageException {
+    try {
+      ListObjectsRequest req =
+          ListObjectsRequest.builder().bucket(osUri.getBucket()).prefix(osUri.getKey()).build();
+      return s3Client.listObjects(req).contents().stream()
+          .map(obj -> new OSURI(osUri.getBucket(), obj.key()))
+          .toArray(OSURI[]::new);
     } catch (S3Exception e) {
       throw new ObjectStorageException(e);
     }

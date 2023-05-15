@@ -40,6 +40,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 import static org.apache.iotdb.os.utils.ObjectStorageConstant.FILE_SEPARATOR;
 
@@ -70,17 +71,25 @@ public class OSFile extends File {
 
   public OSFile(String parent, String child) {
     super(parent, child);
-    this.osUri = new OSURI(parent + FILE_SEPARATOR + child);
+    this.osUri = new OSURI(concatPath(parent, child));
   }
 
   public OSFile(File parent, String child) {
     super(parent, child);
-    this.osUri = new OSURI(parent.toURI() + FILE_SEPARATOR + child);
+    this.osUri = new OSURI(concatPath(parent.toString(), child));
   }
 
   public OSFile(URI uri) {
     super(uri);
     this.osUri = new OSURI(uri);
+  }
+
+  private String concatPath(String parent, String child) {
+    if (parent.endsWith(FILE_SEPARATOR)) {
+      return parent + child;
+    } else {
+      return parent + FILE_SEPARATOR + child;
+    }
   }
 
   public OSFile(OSURI osUri) {
@@ -390,10 +399,28 @@ public class OSFile extends File {
   }
 
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
-    return null;
+    try {
+      OSURI[] osUris = connector.list(new OSURI(fileFolder));
+      return Arrays.stream(osUris)
+          .filter(uri -> uri.toString().endsWith(suffix))
+          .map(OSFile::new)
+          .toArray(OSFile[]::new);
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to list objects under the object {} by suffix {}.", osUri, suffix, e);
+      return null;
+    }
   }
 
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
-    return null;
+    try {
+      OSURI[] osUris = connector.list(new OSURI(fileFolder));
+      return Arrays.stream(osUris)
+          .filter(uri -> uri.toString().startsWith(concatPath(fileFolder, prefix)))
+          .map(OSFile::new)
+          .toArray(OSFile[]::new);
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to list objects under the object {} by prefix {}.", osUri, prefix, e);
+      return null;
+    }
   }
 }

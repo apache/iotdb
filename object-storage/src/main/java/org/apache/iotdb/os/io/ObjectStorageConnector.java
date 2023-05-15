@@ -38,5 +38,7 @@ public interface ObjectStorageConnector {
 
   InputStream getInputStream(OSURI osUri) throws ObjectStorageException;
 
+  OSURI[] list(OSURI osUri) throws ObjectStorageException;
+
   void putLocalFile(OSURI osUri, File lcoalFile) throws ObjectStorageException;
 }

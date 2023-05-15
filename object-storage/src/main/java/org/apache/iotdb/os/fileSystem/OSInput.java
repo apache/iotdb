@@ -100,7 +100,7 @@ public class OSInput implements TsFileInput {
     return null;
   }
 
-  public InputStream getNextInputStream(long position) throws IOException{
+  public InputStream getNextInputStream(long position) throws IOException {
     return cache.getAsInputSteam(osFileName, position);
   }
 }
