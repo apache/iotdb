@@ -126,6 +126,7 @@ public abstract class ViewExpression {
     switch (type) {
       case -4:
         expression = new ConstantViewOperand(byteBuffer);
+        break;
       case -3:
         expression = new TimestampViewOperand(byteBuffer);
         break;
