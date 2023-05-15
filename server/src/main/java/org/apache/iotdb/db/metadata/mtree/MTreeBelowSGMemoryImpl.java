@@ -76,6 +76,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -951,12 +953,7 @@ public class MTreeBelowSGMemoryImpl {
             if (containStr == null) {
               return true;
             }
-            for (String pathNode : fullPaths) {
-              if (pathNode.contains(containStr)) {
-                return true;
-              }
-            }
-            return false;
+            return StringUtils.join(fullPaths, IoTDBConstant.PATH_SEPARATOR).contains(containStr);
           }
         };
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
