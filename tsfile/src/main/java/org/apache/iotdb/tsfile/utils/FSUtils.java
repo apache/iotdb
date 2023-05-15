@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSPath;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
@@ -31,7 +29,6 @@ import java.io.IOException;
 
 public class FSUtils {
   private static final Logger logger = LoggerFactory.getLogger(FSUtils.class);
-  private static final TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
   private static final FSType[] fsTypes = {FSType.OBJECT_STORAGE, FSType.HDFS};
   public static final String[] fsPrefix = {"os://", "hdfs://"};
   private static final String[] fsFileClassName = {
@@ -98,18 +95,19 @@ public class FSUtils {
     return new FSPath(type, path);
   }
 
-  public static FSPath parseLocalTsFile2OSFile(File lcoalFile) throws IOException {
+  public static FSPath parseLocalTsFile2OSFile(File lcoalFile, String bucket, String dataNodeId)
+      throws IOException {
     String canonicalPath = lcoalFile.getCanonicalPath();
-    int startIdx = canonicalPath.lastIndexOf("sequence");
+    int startIdx = canonicalPath.lastIndexOf("unsequence");
     if (startIdx < 0) {
-      startIdx = canonicalPath.lastIndexOf("unsequence");
+      startIdx = canonicalPath.lastIndexOf("sequence");
     }
     if (startIdx < 0) {
       throw new IllegalArgumentException(canonicalPath + "isn't a TsFile path.");
     }
     return new FSPath(
         FSType.OBJECT_STORAGE,
-        fsPrefix[0] + conf.getOSBucket() + "/" + canonicalPath.substring(startIdx));
+        fsPrefix[0] + bucket + "/" + dataNodeId + "/" + canonicalPath.substring(startIdx));
   }
 
   public static boolean isLocal(String fsPath) {
