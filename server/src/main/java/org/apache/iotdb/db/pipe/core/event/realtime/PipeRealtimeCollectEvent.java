@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.EventType;
 
 import java.util.Map;
 
-public class PipeRealtimeCollectEvent implements Event {
+public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
 
   private final Event event;
   private final TsFileEpoch tsFileEpoch;
@@ -57,6 +58,23 @@ public class PipeRealtimeCollectEvent implements Event {
   @Override
   public EventType getType() {
     return event.getType();
+  }
+
+  @Override
+  public boolean increaseReferenceCount(String holderMessage) {
+    return !(event instanceof EnrichedEvent)
+        || ((EnrichedEvent) event).increaseReferenceCount(holderMessage);
+  }
+
+  @Override
+  public boolean decreaseReferenceCount(String holderMessage) {
+    return !(event instanceof EnrichedEvent)
+        || ((EnrichedEvent) event).decreaseReferenceCount(holderMessage);
+  }
+
+  @Override
+  public int getReferenceCount() {
+    return event instanceof EnrichedEvent ? ((EnrichedEvent) event).getReferenceCount() : 0;
   }
 
   @Override

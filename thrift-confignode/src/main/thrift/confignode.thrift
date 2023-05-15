@@ -79,6 +79,9 @@ struct TRatisConfig {
 
   27: required i64 schemaRegionRatisLogMax
   28: required i64 dataRegionRatisLogMax
+
+  29: required i32 dataRegionGrpcLeaderOutstandingAppendsMax
+  30: required i32 dataRegionLogForceSyncNum
 }
 
 struct TCQConfig {
@@ -615,7 +618,7 @@ struct TShowPipeInfo {
 
 struct TGetAllPipeInfoResp{
   1: required common.TSStatus status
-  2: optional list<binary> allPipeInfo
+  2: required list<binary> allPipeInfo
 }
 
 struct TCreatePipeReq {

@@ -20,20 +20,25 @@
 package org.apache.iotdb.db.pipe.core.event.impl;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent implements TabletInsertionEvent {
+public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
 
   private final InsertNode insertNode;
 
+  private final AtomicInteger referenceCount;
+
   public PipeTabletInsertionEvent(InsertNode insertNode) {
     this.insertNode = insertNode;
+    this.referenceCount = new AtomicInteger(0);
   }
 
   public InsertNode getInsertNode() {
@@ -53,6 +58,26 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   @Override
   public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     throw new UnsupportedOperationException("Not implemented yet");
+  }
+
+  @Override
+  public boolean increaseReferenceCount(String holderMessage) {
+    // TODO: use WALPipeHandler pinMemtable
+    referenceCount.incrementAndGet();
+    return true;
+  }
+
+  @Override
+  public boolean decreaseReferenceCount(String holderMessage) {
+    // TODO: use WALPipeHandler unpinMemetable
+    referenceCount.decrementAndGet();
+    return true;
+  }
+
+  @Override
+  public int getReferenceCount() {
+    // TODO: use WALPipeHandler unpinMemetable
+    return referenceCount.get();
   }
 
   @Override

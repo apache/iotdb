@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
-import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -58,26 +58,30 @@ public class PipeProcessorSubtask extends PipeSubtask {
       return;
     }
 
-    if (event instanceof PipeRealtimeCollectEvent) {
-      // dispatch the event
-      event = ((PipeRealtimeCollectEvent) event).getEvent();
-    }
-
     try {
-      if (event instanceof TabletInsertionEvent) {
-        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof TsFileInsertionEvent) {
-        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof DeletionEvent) {
-        pipeProcessor.process((DeletionEvent) event, outputEventCollector);
-      } else {
-        throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
+      switch (event.getType()) {
+        case TABLET_INSERTION:
+          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+          break;
+        case TSFILE_INSERTION:
+          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+          break;
+        case DELETION:
+          pipeProcessor.process((DeletionEvent) event, outputEventCollector);
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              "Unsupported event type: " + event.getClass().getName());
       }
     } catch (Exception e) {
       e.printStackTrace();
       throw new PipeException(
           "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
+    } finally {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).decreaseReferenceCount(PipeProcessorSubtask.class.getName());
+      }
     }
   }
 
