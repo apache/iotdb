@@ -24,9 +24,12 @@ import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,13 +41,27 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      PipeConnectorSubtaskExecutor executor, PipeParameters connectorAttributes) {
+      PipeConnectorSubtaskExecutor executor, PipeParameters pipeConnectorParameters) {
     final String attributeSortedString =
-        new TreeMap<>(connectorAttributes.getAttribute()).toString();
+        new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      final PipeConnector pipeConnector = PipeAgent.plugin().reflectConnector(connectorAttributes);
+      // 1. construct, validate and customize PipeConnector
+      final PipeConnector pipeConnector =
+          PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
+      try {
+        pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
+        final PipeConnectorRuntimeConfiguration runtimeConfiguration =
+            new PipeConnectorRuntimeConfiguration();
+        pipeConnector.customize(pipeConnectorParameters, runtimeConfiguration);
+        // TODO: use runtimeConfiguration to configure PipeConnector
+      } catch (Exception e) {
+        throw new PipeManagementException(
+            "Failed to construct PipeConnector, because of " + e.getMessage(), e);
+      }
+
       // TODO: make pendingQueue size configurable
+      // 2. construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
       final ListenableBlockingPendingQueue<Event> pendingQueue =
           new ListenableBlockingPendingQueue<>(65535);
       final PipeConnectorSubtask pipeConnectorSubtask =

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.collector;
 
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
@@ -62,6 +64,10 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private synchronized void collect(Event event) {
+    if (event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event).increaseReferenceCount(PipeConnectorSubtask.class.getName());
+    }
+
     while (!bufferQueue.isEmpty()) {
       final Event bufferedEvent = bufferQueue.peek();
       if (pendingQueue.offer(bufferedEvent)) {
