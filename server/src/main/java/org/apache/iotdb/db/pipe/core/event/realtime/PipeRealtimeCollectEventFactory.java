@@ -30,13 +30,11 @@ public class PipeRealtimeCollectEventFactory {
 
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
-  // TODO: resource control here?
   public static PipeRealtimeCollectEvent createCollectEvent(File tsFile, TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
         new PipeTsFileInsertionEvent(tsFile), resource);
   }
 
-  // TODO: resource control here?
   public static PipeRealtimeCollectEvent createCollectEvent(
       InsertNode node, TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTabletInsertionEvent(

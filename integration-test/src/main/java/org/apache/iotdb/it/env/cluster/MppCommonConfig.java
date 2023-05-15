@@ -358,4 +358,16 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty("max_tsblock_size_in_bytes", String.valueOf(maxTsBlockSizeInByte));
     return this;
   }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    setProperty("cluster_schema_limit_level", clusterSchemaLimitLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    setProperty("cluster_schema_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
+    return this;
+  }
 }

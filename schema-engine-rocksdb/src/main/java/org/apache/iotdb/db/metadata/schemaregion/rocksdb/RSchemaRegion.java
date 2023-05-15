@@ -534,6 +534,11 @@ public class RSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum) {
+    throw new UnsupportedOperationException();
+  }
+
   private void createEntityRecursively(String[] nodes, int start, int end, boolean aligned)
       throws RocksDBException, MetadataException, InterruptedException {
     if (start <= end) {
@@ -1538,16 +1543,6 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public long countDeviceNumBySchemaRegion() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public long countTimeSeriesNumBySchemaRegion() throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

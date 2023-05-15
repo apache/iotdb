@@ -85,7 +85,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
@@ -1645,8 +1644,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showPipeStatement.getWhereClause()) {
         tShowPipeReq.setWhereClause(true);
       }
-      TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
-      List<TShowPipeInfo> tShowPipeInfoList = new ArrayList<>();
+      List<TShowPipeInfo> tShowPipeInfoList =
+          configNodeClient.showPipe(tShowPipeReq).getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
     } catch (Exception e) {
       future.setException(e);

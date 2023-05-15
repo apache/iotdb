@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -27,13 +28,13 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  * measurement name, alias and MeasurementSchema, which are necessary to construct schemaTree for
  * Query and Insertion.
  */
-public class MeasurementSchemaInfo {
+public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
 
   private final String name;
   private final String alias;
-  private final MeasurementSchema schema;
+  private final IMeasurementSchema schema;
 
-  public MeasurementSchemaInfo(String name, MeasurementSchema schema, String alias) {
+  public MeasurementSchemaInfo(String name, IMeasurementSchema schema, String alias) {
     this.name = name;
     this.schema = schema;
     this.alias = alias;
@@ -43,11 +44,24 @@ public class MeasurementSchemaInfo {
     return name;
   }
 
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
+  }
+
+  public MeasurementSchema getSchemaAsMeasurementSchema() {
+    if (this.isLogicalView()) {
+      return null;
+    } else {
+      return (MeasurementSchema) this.schema;
+    }
   }
 
   public String getAlias() {
     return alias;
+  }
+
+  @Override
+  public boolean isLogicalView() {
+    return this.schema.isLogicalView();
   }
 }

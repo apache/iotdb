@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,5 +35,9 @@ public class PipeRuntimeAgent {
         "Failed to execute task {} after many retries, last failed cause by {}",
         subtask.getTaskID(),
         subtask.getLastFailedCause());
+  }
+
+  public void report(PipeRuntimeException pipeRuntimeException) {
+    // TODO: complete this method
   }
 }

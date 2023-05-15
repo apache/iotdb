@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime.assigner;
 
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
+import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
@@ -39,16 +40,25 @@ public class PipeDataRegionAssigner {
     this.disruptor =
         new DisruptorQueue.Builder<PipeRealtimeCollectEvent>()
             .setProducerType(ProducerType.SINGLE)
-            .addEventHandler(
-                (event, sequence, endOfBatch) -> {
-                  matcher.match(event);
-                  event.gcSchemaInfo();
-                })
+            .addEventHandler(this::assignToCollector)
             .build();
   }
 
   public void publishToAssign(PipeRealtimeCollectEvent event) {
+    event.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
     disruptor.publish(event);
+  }
+
+  public void assignToCollector(PipeRealtimeCollectEvent event, long sequence, boolean endOfBatch) {
+    matcher
+        .match(event)
+        .forEach(
+            collector -> {
+              event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
+              collector.collect(event);
+            });
+    event.gcSchemaInfo();
+    event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName());
   }
 
   public void startAssignTo(PipeRealtimeDataRegionCollector collector) {
