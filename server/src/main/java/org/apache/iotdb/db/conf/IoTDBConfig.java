@@ -1044,11 +1044,15 @@ public class IoTDBConfig {
   private boolean dataRatisConsensusLogUnsafeFlushEnable = false;
   private boolean schemaRatisConsensusLogUnsafeFlushEnable = false;
 
+  private int dataRatisConsensusLogForceSyncNum = 128;
+
   private long dataRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   private long dataRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
   private long schemaRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  private int dataRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
 
   private long dataRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
@@ -1081,6 +1085,12 @@ public class IoTDBConfig {
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
 
+  /** This configuration parameter sets the level at which the time series limit is applied.* */
+  private String clusterSchemaLimitLevel = "timeseries";
+
+  /** This configuration parameter sets the maximum number of schema allowed in the cluster.* */
+  private long clusterSchemaLimitThreshold = -1;
+
   /** Output location of audit logs * */
   private List<AuditLogStorage> auditLogStorage =
       Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
@@ -1094,6 +1104,12 @@ public class IoTDBConfig {
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
+
+  // IoTConsensus Config
+  private int maxLogEntriesNumPerBatch = 1024;
+  private int maxSizePerBatch = 16 * 1024 * 1024;
+  private int maxPendingBatchesNum = 12;
+  private double maxMemoryRatioForQueue = 0.6;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
@@ -1109,6 +1125,38 @@ public class IoTDBConfig {
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
   IoTDBConfig() {}
+
+  public int getMaxLogEntriesNumPerBatch() {
+    return maxLogEntriesNumPerBatch;
+  }
+
+  public int getMaxSizePerBatch() {
+    return maxSizePerBatch;
+  }
+
+  public int getMaxPendingBatchesNum() {
+    return maxPendingBatchesNum;
+  }
+
+  public double getMaxMemoryRatioForQueue() {
+    return maxMemoryRatioForQueue;
+  }
+
+  public void setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
+    this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
+  }
+
+  public void setMaxSizePerBatch(int maxSizePerBatch) {
+    this.maxSizePerBatch = maxSizePerBatch;
+  }
+
+  public void setMaxPendingBatchesNum(int maxPendingBatchesNum) {
+    this.maxPendingBatchesNum = maxPendingBatchesNum;
+  }
+
+  public void setMaxMemoryRatioForQueue(double maxMemoryRatioForQueue) {
+    this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
+  }
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -3475,6 +3523,14 @@ public class IoTDBConfig {
     this.dataRatisConsensusLogUnsafeFlushEnable = dataRatisConsensusLogUnsafeFlushEnable;
   }
 
+  public int getDataRatisConsensusLogForceSyncNum() {
+    return dataRatisConsensusLogForceSyncNum;
+  }
+
+  public void setDataRatisConsensusLogForceSyncNum(int dataRatisConsensusLogForceSyncNum) {
+    this.dataRatisConsensusLogForceSyncNum = dataRatisConsensusLogForceSyncNum;
+  }
+
   public long getDataRatisConsensusLogSegmentSizeMax() {
     return dataRatisConsensusLogSegmentSizeMax;
   }
@@ -3490,6 +3546,16 @@ public class IoTDBConfig {
   public void setDataRatisConsensusGrpcFlowControlWindow(
       long dataRatisConsensusGrpcFlowControlWindow) {
     this.dataRatisConsensusGrpcFlowControlWindow = dataRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public int getDataRatisConsensusGrpcLeaderOutstandingAppendsMax() {
+    return dataRatisConsensusGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setDataRatisConsensusGrpcLeaderOutstandingAppendsMax(
+      int dataRatisConsensusGrpcLeaderOutstandingAppendsMax) {
+    this.dataRatisConsensusGrpcLeaderOutstandingAppendsMax =
+        dataRatisConsensusGrpcLeaderOutstandingAppendsMax;
   }
 
   public long getDataRatisConsensusLeaderElectionTimeoutMinMs() {
@@ -3813,5 +3879,21 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public String getClusterSchemaLimitLevel() {
+    return clusterSchemaLimitLevel;
+  }
+
+  public void setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    this.clusterSchemaLimitLevel = clusterSchemaLimitLevel;
+  }
+
+  public long getClusterSchemaLimitThreshold() {
+    return clusterSchemaLimitThreshold;
+  }
+
+  public void setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    this.clusterSchemaLimitThreshold = clusterSchemaLimitThreshold;
   }
 }

@@ -465,6 +465,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
       for (Expression expression : resultExpressions) {
+        // TODO: CRTODO If this expression is a logical view, replace the original expression with
+        // the parsed View Expression.
+        // And the view expression should be converted into expression.
+
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
           continue;

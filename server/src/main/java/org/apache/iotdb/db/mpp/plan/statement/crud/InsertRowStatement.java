@@ -299,7 +299,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-      measurementSchemas[index] = measurementSchemaInfo.getSchema();
+      measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
     }
     if (isNeedInferType) {
       return;
