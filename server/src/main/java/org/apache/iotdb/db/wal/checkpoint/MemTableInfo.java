@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
- * MemTableInfo records brief info of one memtable, including memTable id, tsFile path, and .wal
+ * MemTableInfo records brief info of one memTable, including memTable id, tsFile path, and .wal
  * file version id of its first {@link WALEntry}.
  */
 public class MemTableInfo implements SerializedSize {
@@ -38,6 +38,10 @@ public class MemTableInfo implements SerializedSize {
 
   /** memTable */
   private IMemTable memTable;
+  /** memTable pin count */
+  private int pinCount;
+  /** memTable is flushed or not */
+  private boolean flushed;
   /** memTable id */
   private long memTableId;
   /** path of the tsFile which this memTable will be flushed to */
@@ -92,6 +96,28 @@ public class MemTableInfo implements SerializedSize {
 
   public IMemTable getMemTable() {
     return memTable;
+  }
+
+  public void pin() {
+    this.pinCount++;
+  }
+
+  public void unpin() {
+    this.pinCount--;
+  }
+
+  public boolean isPinned() {
+    return pinCount > 0;
+  }
+
+  public boolean isFlushed() {
+    return flushed;
+  }
+
+  public void setFlushed() {
+    // avoid memory leak;
+    this.memTable = null;
+    this.flushed = true;
   }
 
   public long getMemTableId() {

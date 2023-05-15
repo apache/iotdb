@@ -552,6 +552,10 @@ public class IoTDBConfig {
 
   /** Memory allocated proportion for time partition info */
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
+
+  /** Memory allocated proportion for wal pipe cache */
+  private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
+
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
    * it if its estimated memory exceeds current free memory
@@ -1918,10 +1922,6 @@ public class IoTDBConfig {
     return allocateMemoryForSchema;
   }
 
-  public long getAllocateMemoryForConsensus() {
-    return allocateMemoryForConsensus;
-  }
-
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
 
@@ -1930,8 +1930,13 @@ public class IoTDBConfig {
     this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
   }
 
+  public long getAllocateMemoryForConsensus() {
+    return allocateMemoryForConsensus;
+  }
+
   public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
     this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+    this.allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
   }
 
   public long getAllocateMemoryForRead() {
@@ -2196,6 +2201,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
     this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
+  }
+
+  public long getAllocateMemoryForWALPipeCache() {
+    return allocateMemoryForWALPipeCache;
+  }
+
+  public void setAllocateMemoryForWALPipeCache(long allocateMemoryForWALPipeCache) {
+    this.allocateMemoryForWALPipeCache = allocateMemoryForWALPipeCache;
   }
 
   public boolean isEnableQueryMemoryEstimation() {
