@@ -56,7 +56,7 @@ public class TimeSeriesSchemaScanNodeSerdeTest {
             0,
             false,
             false,
-            null);
+            Collections.emptyMap());
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),
