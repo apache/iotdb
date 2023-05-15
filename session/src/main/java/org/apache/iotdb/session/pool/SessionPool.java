@@ -643,6 +643,7 @@ public class SessionPool implements ISessionPool {
     startCheckNodeUrlSchedule();
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
   private void startFirstSyncExecutor() {
     if (!complementaryNodeUrl()) {
       firstSyncExecutorService = Executors.newSingleThreadExecutor();
@@ -659,6 +660,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
   private void startCheckNodeUrlSchedule() {
     checkPrimaryClusterExecutorService = Executors.newScheduledThreadPool(1);
     checkPrimaryClusterExecutorService.scheduleAtFixedRate(

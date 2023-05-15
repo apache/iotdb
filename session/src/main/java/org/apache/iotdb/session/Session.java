@@ -416,6 +416,7 @@ public class Session implements ISession {
     startCheckNodeUrlSchedule();
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
   private void startFirstSyncExecutor() {
     if (!complementaryNodeUrl()) {
       firstSyncExecutorService = Executors.newSingleThreadExecutor();
@@ -433,6 +434,7 @@ public class Session implements ISession {
     }
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
   private void startCheckNodeUrlSchedule() {
     checkPrimaryClusterExecutorService = Executors.newScheduledThreadPool(1);
     if (!poolNoticeSyncNodeUrlStatus || !checkPrimaryClusterExecutorService.isShutdown()) {
