@@ -23,6 +23,7 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 
 import java.util.Map;
 import java.util.Objects;
@@ -32,47 +33,23 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
 
   private final Map<Integer, Template> relatedTemplate;
 
-  private final boolean isContains;
-  private final String key;
-  private final String value;
-  private final String pathContains;
+  private final SchemaFilter schemaFilter;
 
   ShowTimeSeriesPlanImpl(
       PartialPath path,
       Map<Integer, Template> relatedTemplate,
-      boolean isContains,
-      String key,
-      String value,
       long limit,
       long offset,
       boolean isPrefixMatch,
-      String pathContains) {
+      SchemaFilter schemaFilter) {
     super(path, limit, offset, isPrefixMatch);
     this.relatedTemplate = relatedTemplate;
-    this.isContains = isContains;
-    this.key = key;
-    this.value = value;
-    this.pathContains = pathContains;
+    this.schemaFilter = schemaFilter;
   }
 
   @Override
-  public boolean isContains() {
-    return isContains;
-  }
-
-  @Override
-  public String getKey() {
-    return key;
-  }
-
-  @Override
-  public String getValue() {
-    return value;
-  }
-
-  @Override
-  public String getPathContains() {
-    return pathContains;
+  public SchemaFilter getSchemaFilter() {
+    return schemaFilter;
   }
 
   @Override
@@ -86,14 +63,12 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     ShowTimeSeriesPlanImpl that = (ShowTimeSeriesPlanImpl) o;
-    return isContains == that.isContains
-        && Objects.equals(relatedTemplate, that.relatedTemplate)
-        && Objects.equals(key, that.key)
-        && Objects.equals(value, that.value);
+    return Objects.equals(relatedTemplate, that.relatedTemplate)
+        && Objects.equals(schemaFilter, that.schemaFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), relatedTemplate, isContains, key, value);
+    return Objects.hash(super.hashCode(), relatedTemplate, schemaFilter);
   }
 }

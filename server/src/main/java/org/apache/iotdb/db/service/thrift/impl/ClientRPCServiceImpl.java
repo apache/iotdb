@@ -110,7 +110,6 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSQuerySchemaReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
@@ -1794,11 +1793,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
-  }
-
-  @Override
-  public TSExecuteStatementResp querySchemaContainString(TSQuerySchemaReq req) throws TException {
-    return null;
   }
 
   private TSQueryTemplateResp executeTemplateQueryStatement(

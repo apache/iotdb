@@ -68,6 +68,9 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TimeseriesContainsFilter;
 import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
@@ -584,7 +587,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               new PartialPath(SqlConstant.getSingleRootArray()), orderByHeat);
     }
     if (ctx.timeseriesWhereClause() != null) {
-      parseTimeseriesWhereClause(ctx.timeseriesWhereClause(), showTimeSeriesStatement);
+      SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
+      showTimeSeriesStatement.setSchemaFilter(schemaFilter);
     }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
@@ -598,43 +602,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return showTimeSeriesStatement;
   }
 
-  private void parseTimeseriesWhereClause(
-      IoTDBSqlParser.TimeseriesWhereClauseContext ctx, Statement statement) {
-    IoTDBSqlParser.AttributeValueContext attributeValueContext;
+  private SchemaFilter parseTimeseriesWhereClause(IoTDBSqlParser.TimeseriesWhereClauseContext ctx) {
     if (ctx.timeseriesContainsExpression() != null) {
       // path contains filter
-      String value = parseStringLiteral(ctx.timeseriesContainsExpression().value.getText());
-
-      if (statement instanceof ShowTimeSeriesStatement) {
-        ((ShowTimeSeriesStatement) statement).setPathContains(value);
-      } // TODO: more show statement
+      return new TimeseriesContainsFilter(
+          parseStringLiteral(ctx.timeseriesContainsExpression().value.getText()));
     } else {
       // tag filter
-      String key;
-      String value;
-      boolean isContains;
       if (ctx.tagContainsExpression() != null) {
-        isContains = true;
-        key = parseAttributeKey(ctx.tagContainsExpression().attributeKey());
-        value = parseStringLiteral(ctx.timeseriesContainsExpression().value.getText());
+        return new TagFilter(
+            parseAttributeKey(ctx.tagContainsExpression().attributeKey()),
+            parseStringLiteral(ctx.timeseriesContainsExpression().value.getText()),
+            true);
       } else {
-        isContains = false;
-        attributeValueContext = ctx.tagEqualsExpression().attributeValue();
-        key = parseAttributeKey(ctx.tagEqualsExpression().attributeKey());
-        value = parseAttributeValue(attributeValueContext);
-      }
-      if (statement instanceof ShowTimeSeriesStatement) {
-        ((ShowTimeSeriesStatement) statement).setContains(isContains);
-        ((ShowTimeSeriesStatement) statement).setKey(key);
-        ((ShowTimeSeriesStatement) statement).setValue(value);
-      } else if (statement instanceof CountTimeSeriesStatement) {
-        ((CountTimeSeriesStatement) statement).setContains(isContains);
-        ((CountTimeSeriesStatement) statement).setKey(key);
-        ((CountTimeSeriesStatement) statement).setValue(value);
-      } else if (statement instanceof CountLevelTimeSeriesStatement) {
-        ((CountLevelTimeSeriesStatement) statement).setContains(isContains);
-        ((CountLevelTimeSeriesStatement) statement).setKey(key);
-        ((CountLevelTimeSeriesStatement) statement).setValue(value);
+        return new TagFilter(
+            parseAttributeKey(ctx.tagEqualsExpression().attributeKey()),
+            parseAttributeValue(ctx.tagEqualsExpression().attributeValue()),
+            false);
       }
     }
   }
@@ -715,7 +699,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       statement = new CountTimeSeriesStatement(path);
     }
     if (ctx.timeseriesWhereClause() != null) {
-      parseTimeseriesWhereClause(ctx.timeseriesWhereClause(), statement);
+      SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
+      if (statement instanceof CountTimeSeriesStatement) {
+        ((CountTimeSeriesStatement) statement).setSchemaFilter(schemaFilter);
+      } else if (statement instanceof CountLevelTimeSeriesStatement) {
+        ((CountLevelTimeSeriesStatement) statement).setSchemaFilter(schemaFilter);
+      }
     }
     return statement;
   }

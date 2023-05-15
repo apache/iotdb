@@ -15,19 +15,31 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.db.mpp.plan.schemafilter;
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.read;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
+public abstract class SchemaFilter {
 
-import java.util.Map;
+  public static void serialize(SchemaFilter expression, ByteBuffer byteBuffer) {
+    // TODO
+  }
 
-public interface IShowTimeSeriesPlan extends IShowSchemaPlan {
+  public static void serialize(SchemaFilter expression, DataOutputStream byteBuffer) {
+    // TODO
+  }
 
-  SchemaFilter getSchemaFilter();
+  public static SchemaFilter deserialize(ByteBuffer byteBuffer) {
+    // TODO
+    return null;
+  }
 
-  Map<Integer, Template> getRelatedTemplate();
+  public abstract SchemaFilterType getType();
+
+  protected abstract void serialize(ByteBuffer byteBuffer);
+
+  protected abstract void serialize(DataOutputStream stream) throws IOException;
 }

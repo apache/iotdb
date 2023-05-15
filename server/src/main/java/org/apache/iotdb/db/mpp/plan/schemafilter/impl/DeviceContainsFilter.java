@@ -15,19 +15,7 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.db.mpp.plan.schemafilter.impl;
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.read;
-
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
-
-import java.util.Map;
-
-public interface IShowTimeSeriesPlan extends IShowSchemaPlan {
-
-  SchemaFilter getSchemaFilter();
-
-  Map<Integer, Template> getRelatedTemplate();
-}
+public class DeviceContainsFilter {}

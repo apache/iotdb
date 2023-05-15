@@ -554,10 +554,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isPrefixPath(),
             node.getLimit(),
             node.getOffset(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
-            node.getPathContains(),
+            node.getSchemaFilter(),
             node.getTemplateMap()));
   }
 
@@ -647,12 +644,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPlanNodeId(),
         operatorContext,
         SchemaSourceFactory.getTimeSeriesSchemaSource(
-            node.getPath(),
-            node.isPrefixPath(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
-            node.getTemplateMap()));
+            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), node.getTemplateMap()));
   }
 
   @Override
@@ -671,12 +663,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         node.getLevel(),
         SchemaSourceFactory.getTimeSeriesSchemaSource(
-            node.getPath(),
-            node.isPrefixPath(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
-            null));
+            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), null));
   }
 
   @Override

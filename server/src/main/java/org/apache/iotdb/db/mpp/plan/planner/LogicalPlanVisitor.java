@@ -502,14 +502,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         planBuilder
             .planTimeSeriesSchemaSource(
                 showTimeSeriesStatement.getPathPattern(),
-                showTimeSeriesStatement.getKey(),
-                showTimeSeriesStatement.getValue(),
+                showTimeSeriesStatement.getSchemaFilter(),
                 limit,
                 offset,
                 showTimeSeriesStatement.isOrderByHeat(),
-                showTimeSeriesStatement.isContains(),
                 showTimeSeriesStatement.isPrefixPath(),
-                showTimeSeriesStatement.getPathContains(),
                 analysis.getRelatedTemplateInfo())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
     // show latest timeseries
@@ -592,9 +589,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planTimeSeriesCountSource(
             countTimeSeriesStatement.getPathPattern(),
             countTimeSeriesStatement.isPrefixPath(),
-            countTimeSeriesStatement.getKey(),
-            countTimeSeriesStatement.getValue(),
-            countTimeSeriesStatement.isContains(),
+            countTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo())
         .planCountMerge()
         .getRoot();
@@ -609,9 +604,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countLevelTimeSeriesStatement.getPathPattern(),
             countLevelTimeSeriesStatement.isPrefixPath(),
             countLevelTimeSeriesStatement.getLevel(),
-            countLevelTimeSeriesStatement.getKey(),
-            countLevelTimeSeriesStatement.getValue(),
-            countLevelTimeSeriesStatement.isContains())
+            countLevelTimeSeriesStatement.getSchemaFilter())
         .planCountMerge()
         .getRoot();
   }

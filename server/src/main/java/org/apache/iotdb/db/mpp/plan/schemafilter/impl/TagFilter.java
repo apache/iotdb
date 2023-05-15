@@ -16,40 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.plan.schemafilter.impl;
 
-package org.apache.iotdb.db.mpp.plan.statement.metadata;
-
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterType;
 
-public class CountLevelTimeSeriesStatement extends CountStatement {
-  private int level;
-  private SchemaFilter schemaFilter;
+public class TagFilter extends SchemaFilter {
 
-  public CountLevelTimeSeriesStatement(PartialPath partialPath, int level) {
-    super(partialPath);
-    this.level = level;
-  }
+  private final String key;
+  private final String value;
+  private final boolean isContains;
 
-  public int getLevel() {
-    return level;
-  }
-
-  public void setLevel(int level) {
-    this.level = level;
-  }
-
-  public SchemaFilter getSchemaFilter() {
-    return schemaFilter;
-  }
-
-  public void setSchemaFilter(SchemaFilter schemaFilter) {
-    this.schemaFilter = schemaFilter;
+  public TagFilter(String key, String value, boolean isContains) {
+    this.key = key;
+    this.value = value;
+    this.isContains = isContains;
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCountLevelTimeSeries(this, context);
+  public SchemaFilterType getType() {
+    return SchemaFilterType.TAGS;
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -46,10 +47,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final long limit;
   private final long offset;
 
-  private final String key;
-  private final String value;
-  private final boolean isContains;
-  private final String pathContains;
+  private final SchemaFilter schemaFilter;
 
   private final Map<Integer, Template> templateMap;
 
@@ -58,10 +56,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       boolean isPrefixMatch,
       long limit,
       long offset,
-      String key,
-      String value,
-      boolean isContains,
-      String pathContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
@@ -69,10 +64,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.limit = limit;
     this.offset = offset;
 
-    this.key = key;
-    this.value = value;
-    this.isContains = isContains;
-    this.pathContains = pathContains;
+    this.schemaFilter = schemaFilter;
 
     this.templateMap = templateMap;
   }
@@ -82,15 +74,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     try {
       return schemaRegion.getTimeSeriesReader(
           SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-              pathPattern,
-              templateMap,
-              isContains,
-              key,
-              value,
-              limit,
-              offset,
-              isPrefixMatch,
-              pathContains));
+              pathPattern, templateMap, limit, offset, isPrefixMatch, schemaFilter));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }

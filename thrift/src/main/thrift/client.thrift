@@ -422,18 +422,6 @@ struct TSQueryTemplateResp {
   5: optional list<string> measurements
 }
 
-struct TSQuerySchemaReq {
-  1: required i64 sessionId
-  2: required string pathPattern
-  3: required string containStr
-  4: required TSSChemaType schemaType
-}
-
-enum TSSChemaType {
-  DEVICE,
-  TIMESERIES
-}
-
 struct TSUnsetSchemaTemplateReq {
   1: required i64 sessionId
   2: required string prefixPath
@@ -592,8 +580,6 @@ service IClientRPCService {
   common.TSStatus pruneSchemaTemplate(1:TSPruneSchemaTemplateReq req);
 
   TSQueryTemplateResp querySchemaTemplate(1:TSQueryTemplateReq req);
-
-  TSExecuteStatementResp querySchemaContainString(1: TSQuerySchemaReq req);
 
   common.TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 

@@ -52,12 +52,11 @@ public class TimeSeriesSchemaScanNodeSerdeTest {
             new PlanNodeId("timeSeriesSchemaScan"),
             new PartialPath("root.sg.device0.sensor"),
             null,
-            null,
             10,
             0,
             false,
             false,
-            false);
+            null);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),

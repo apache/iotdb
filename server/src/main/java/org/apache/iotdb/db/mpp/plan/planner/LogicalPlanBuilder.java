@@ -87,6 +87,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -981,27 +982,21 @@ public class LogicalPlanBuilder {
   /** Meta Query* */
   public LogicalPlanBuilder planTimeSeriesSchemaSource(
       PartialPath pathPattern,
-      String key,
-      String value,
+      SchemaFilter schemaFilter,
       long limit,
       long offset,
       boolean orderByHeat,
-      boolean contains,
       boolean prefixPath,
-      String pathContains,
       Map<Integer, Template> templateMap) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
             pathPattern,
-            key,
-            value,
+            schemaFilter,
             limit,
             offset,
             orderByHeat,
-            contains,
             prefixPath,
-            pathContains,
             templateMap);
     return this;
   }
@@ -1084,38 +1079,23 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planTimeSeriesCountSource(
       PartialPath partialPath,
       boolean prefixPath,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     this.root =
         new TimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
             partialPath,
             prefixPath,
-            key,
-            value,
-            isContains,
+            schemaFilter,
             templateMap);
     return this;
   }
 
   public LogicalPlanBuilder planLevelTimeSeriesCountSource(
-      PartialPath partialPath,
-      boolean prefixPath,
-      int level,
-      String key,
-      String value,
-      boolean isContains) {
+      PartialPath partialPath, boolean prefixPath, int level, SchemaFilter schemaFilter) {
     this.root =
         new LevelTimeSeriesCountNode(
-            context.getQueryId().genPlanNodeId(),
-            partialPath,
-            prefixPath,
-            level,
-            key,
-            value,
-            isContains);
+            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level, schemaFilter);
     return this;
   }
 

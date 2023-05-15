@@ -15,19 +15,21 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.db.mpp.plan.schemafilter;
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.read;
+public enum SchemaFilterType {
+  TAGS((short) 1),
+  TIMESERIES_CONTAINS((short) 2),
+  DEVICE_CONTAINS((short) 3);
 
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
+  private final short type;
 
-import java.util.Map;
+  SchemaFilterType(short type) {
+    this.type = type;
+  }
 
-public interface IShowTimeSeriesPlan extends IShowSchemaPlan {
-
-  SchemaFilter getSchemaFilter();
-
-  Map<Integer, Template> getRelatedTemplate();
+  public short getType() {
+    return type;
+  }
 }

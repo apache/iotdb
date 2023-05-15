@@ -3306,16 +3306,6 @@ public class Session implements ISession {
   }
 
   @Override
-  public SessionDataSet showDevicesContain(String pathPattern, String containStr) {
-    return null;
-  }
-
-  @Override
-  public SessionDataSet showTimeseriesContain(String pathPattern, String containStr) {
-    return null;
-  }
-
-  @Override
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
     TSUnsetSchemaTemplateReq request = getTSUnsetSchemaTemplateReq(prefixPath, templateName);

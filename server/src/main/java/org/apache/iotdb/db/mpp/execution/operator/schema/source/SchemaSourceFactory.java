@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 
 import java.util.List;
 import java.util.Map;
@@ -34,18 +35,15 @@ public class SchemaSourceFactory {
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
       PartialPath pathPattern) {
-    return new TimeSeriesSchemaSource(pathPattern, false, 0, 0, null, null, false, null, null);
+    return new TimeSeriesSchemaSource(pathPattern, false, 0, 0, null, null);
   }
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
       PartialPath pathPattern,
       boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
-    return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, 0, 0, key, value, isContains, null, templateMap);
+    return new TimeSeriesSchemaSource(pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap);
   }
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
@@ -53,21 +51,10 @@ public class SchemaSourceFactory {
       boolean isPrefixMatch,
       long limit,
       long offset,
-      String key,
-      String value,
-      boolean isContains,
-      String pathContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     return new TimeSeriesSchemaSource(
-        pathPattern,
-        isPrefixMatch,
-        limit,
-        offset,
-        key,
-        value,
-        isContains,
-        pathContains,
-        templateMap);
+        pathPattern, isPrefixMatch, limit, offset, schemaFilter, templateMap);
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getDeviceSchemaSource(

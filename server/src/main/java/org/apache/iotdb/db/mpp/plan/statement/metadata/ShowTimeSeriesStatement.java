@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.Collections;
@@ -37,12 +38,7 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   private final PartialPath pathPattern;
 
-  private boolean isContains;
-
-  private String key;
-  private String value;
-
-  private String pathContains;
+  private SchemaFilter schemaFilter;
 
   // if is true, the result will be sorted according to the inserting frequency of the time series
   private final boolean orderByHeat;
@@ -57,36 +53,12 @@ public class ShowTimeSeriesStatement extends ShowStatement {
     return pathPattern;
   }
 
-  public boolean isContains() {
-    return isContains;
+  public SchemaFilter getSchemaFilter() {
+    return schemaFilter;
   }
 
-  public void setContains(boolean contains) {
-    isContains = contains;
-  }
-
-  public String getPathContains() {
-    return pathContains;
-  }
-
-  public void setPathContains(String pathContains) {
-    this.pathContains = pathContains;
-  }
-
-  public String getKey() {
-    return key;
-  }
-
-  public void setKey(String key) {
-    this.key = key;
-  }
-
-  public String getValue() {
-    return value;
-  }
-
-  public void setValue(String value) {
-    this.value = value;
+  public void setSchemaFilter(SchemaFilter schemaFilter) {
+    this.schemaFilter = schemaFilter;
   }
 
   public boolean isOrderByHeat() {
