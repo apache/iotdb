@@ -29,9 +29,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-
-public class RemoteFileCacheLoader implements CacheLoader<OSFileCacheKey, File> {
+public class RemoteFileCacheLoader implements CacheLoader<OSFileCacheKey, OSFileCacheValue> {
   private static final Logger logger = LoggerFactory.getLogger(RemoteFileCacheLoader.class);
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
@@ -48,7 +46,7 @@ public class RemoteFileCacheLoader implements CacheLoader<OSFileCacheKey, File> 
   }
 
   @Override
-  public @Nullable File load(@NonNull OSFileCacheKey key) throws Exception {
+  public @Nullable OSFileCacheValue load(@NonNull OSFileCacheKey key) throws Exception {
     return null;
   }
 }

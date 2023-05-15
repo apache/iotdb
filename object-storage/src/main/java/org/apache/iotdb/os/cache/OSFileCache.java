@@ -28,7 +28,6 @@ import com.github.benmanes.caffeine.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
@@ -39,14 +38,15 @@ public class OSFileCache {
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
 
-  private LoadingCache<OSFileCacheKey, File> remotePos2LocalCacheFile;
+  private LoadingCache<OSFileCacheKey, OSFileCacheValue> remotePos2LocalCacheFile;
 
   private OSFileCache() {
     remotePos2LocalCacheFile =
         Caffeine.newBuilder()
             .maximumWeight(config.getCacheMaxDiskUsage())
             .weigher(
-                (Weigher<OSFileCacheKey, File>) (key, value) -> Math.toIntExact(value.length()))
+                (Weigher<OSFileCacheKey, OSFileCacheValue>)
+                    (key, value) -> Math.toIntExact(value.getOccupiedLength()))
             .build(new RemoteFileCacheLoader());
   }
 
