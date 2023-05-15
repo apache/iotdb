@@ -16,6 +16,5 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.schemafilter.impl;
-
-public class DeviceContainsFilter {}
+package org.apache.iotdb.db.mpp.plan.schemafilter;public class SchemaFilterVisitor {
+}

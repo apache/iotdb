@@ -20,6 +20,12 @@ package org.apache.iotdb.db.mpp.plan.schemafilter.impl;
 
 import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterType;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterVisitor;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class TimeseriesContainsFilter extends SchemaFilter {
   private final String pathContains;
@@ -28,8 +34,32 @@ public class TimeseriesContainsFilter extends SchemaFilter {
     this.pathContains = pathContains;
   }
 
+  public TimeseriesContainsFilter(ByteBuffer byteBuffer) {
+    this.pathContains = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  public String getPathContains() {
+    return pathContains;
+  }
+
+
   @Override
-  public SchemaFilterType getType() {
+  public <R, C> R accept(SchemaFilterVisitor<R, C> visitor, C context) {
+    return visitor.visitTimeseriesContainsFilter(this, context);
+  }
+
+  @Override
+  public SchemaFilterType getSchemaFilterType() {
     return null;
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(pathContains, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(pathContains, stream);
   }
 }
