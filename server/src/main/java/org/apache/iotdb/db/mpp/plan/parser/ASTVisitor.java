@@ -113,6 +113,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
@@ -958,6 +959,91 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowContinuousQueries(IoTDBSqlParser.ShowContinuousQueriesContext ctx) {
     return new ShowContinuousQueriesStatement();
+  }
+
+  // Create Logical View
+  @Override
+  public Statement visitCreateLogicalView(IoTDBSqlParser.CreateLogicalViewContext ctx) {
+    CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
+    // parse target
+    parseViewTargetPaths(ctx.viewTargetPaths(), createLogicalViewStatement);
+    // parse source
+    parseViewSourcePaths(ctx.viewSourcePaths(), createLogicalViewStatement);
+
+    return createLogicalViewStatement;
+  }
+
+  // parse suffix paths in logical view
+  private PartialPath parseViewSuffixPath(IoTDBSqlParser.ViewSuffixPathsContext ctx) {
+    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+        ctx.nodeNameWithoutWildcard();
+    String[] nodeList = new String[nodeNamesWithoutStar.size()];
+    for (int i = 0; i < nodeNamesWithoutStar.size(); i++) {
+      nodeList[i] = parseNodeNameWithoutWildCard(nodeNamesWithoutStar.get(i));
+    }
+    return new PartialPath(nodeList);
+  }
+
+  // parse target paths in CreateLogicalView statement
+  private void parseViewTargetPaths(
+      IoTDBSqlParser.ViewTargetPathsContext ctx,
+      CreateLogicalViewStatement createLogicalViewStatement) {
+    // full paths
+    if (ctx.fullPath() != null && ctx.fullPath().size() > 0) {
+      List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
+      List<PartialPath> pathList = new ArrayList<>();
+      for (IoTDBSqlParser.FullPathContext pathContext : fullPathContextList) {
+        pathList.add(parseFullPath(pathContext));
+      }
+      createLogicalViewStatement.setTargetFullPaths(pathList);
+    }
+    // prefix path and suffix paths
+    if (ctx.prefixPath() != null
+        && ctx.viewSuffixPaths() != null
+        && ctx.viewSuffixPaths().size() > 0) {
+      IoTDBSqlParser.PrefixPathContext prefixPathContext = ctx.prefixPath();
+      PartialPath prefixPath = parsePrefixPath(prefixPathContext);
+      List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList = ctx.viewSuffixPaths();
+      List<PartialPath> suffixPathList = new ArrayList<>();
+      for (IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
+        suffixPathList.add(parseViewSuffixPath(suffixPathContext));
+      }
+      createLogicalViewStatement.setTargetPathsGroup(prefixPath, suffixPathList);
+    }
+  }
+
+  // parse source paths in CreateLogicalView statement
+  private void parseViewSourcePaths(
+      IoTDBSqlParser.ViewSourcePathsContext ctx,
+      CreateLogicalViewStatement createLogicalViewStatement) {
+    // full paths
+    if (ctx.fullPath() != null && ctx.fullPath().size() > 0) {
+      List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
+      List<PartialPath> pathList = new ArrayList<>();
+      for (IoTDBSqlParser.FullPathContext pathContext : fullPathContextList) {
+        pathList.add(parseFullPath(pathContext));
+      }
+      createLogicalViewStatement.setSourceFullPaths(pathList);
+    }
+    // prefix path and suffix paths
+    if (ctx.prefixPath() != null
+        && ctx.viewSuffixPaths() != null
+        && ctx.viewSuffixPaths().size() > 0) {
+      IoTDBSqlParser.PrefixPathContext prefixPathContext = ctx.prefixPath();
+      PartialPath prefixPath = parsePrefixPath(prefixPathContext);
+      List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList = ctx.viewSuffixPaths();
+      List<PartialPath> suffixPathList = new ArrayList<>();
+      for (IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
+        suffixPathList.add(parseViewSuffixPath(suffixPathContext));
+      }
+      createLogicalViewStatement.setSourcePathsGroup(prefixPath, suffixPathList);
+    }
+    if (ctx.selectClause() != null && ctx.fromClause() != null) {
+      QueryStatement queryStatement = new QueryStatement();
+      queryStatement.setSelectComponent(parseSelectClause(ctx.selectClause(), queryStatement));
+      queryStatement.setFromComponent(parseFromClause(ctx.fromClause()));
+      createLogicalViewStatement.setSourceQueryStatement(queryStatement);
+    }
   }
 
   // Create Model =====================================================================
@@ -3298,7 +3384,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> collectorMap = new HashMap<>();
     for (IoTDBSqlParser.CollectorAttributeClauseContext singleCtx :
         ctx.collectorAttributeClause()) {
-      collectorMap.put(singleCtx.collectorKey.getText(), singleCtx.collectorValue.getText());
+      collectorMap.put(
+          parseStringLiteral(singleCtx.collectorKey.getText()),
+          parseStringLiteral(singleCtx.collectorValue.getText()));
     }
     return collectorMap;
   }
@@ -3308,7 +3396,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> processorMap = new HashMap<>();
     for (IoTDBSqlParser.ProcessorAttributeClauseContext singleCtx :
         ctx.processorAttributeClause()) {
-      processorMap.put(singleCtx.processorKey.getText(), singleCtx.processorValue.getText());
+      processorMap.put(
+          parseStringLiteral(singleCtx.processorKey.getText()),
+          parseStringLiteral(singleCtx.processorValue.getText()));
     }
     return processorMap;
   }
@@ -3318,7 +3408,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> connectorMap = new HashMap<>();
     for (IoTDBSqlParser.ConnectorAttributeClauseContext singleCtx :
         ctx.connectorAttributeClause()) {
-      connectorMap.put(singleCtx.connectorKey.getText(), singleCtx.connectorValue.getText());
+      connectorMap.put(
+          parseStringLiteral(singleCtx.connectorKey.getText()),
+          parseStringLiteral(singleCtx.connectorValue.getText()));
     }
     return connectorMap;
   }

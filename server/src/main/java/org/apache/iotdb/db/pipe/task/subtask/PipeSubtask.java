@@ -38,17 +38,17 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
-  private final String taskID;
+  protected final String taskID;
 
   private ListeningExecutorService subtaskWorkerThreadPoolExecutor;
   private ExecutorService subtaskCallbackListeningExecutor;
 
   private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
 
-  private static final int MAX_RETRY_TIMES = 5;
+  protected static final int MAX_RETRY_TIMES = 5;
   private final AtomicInteger retryCount = new AtomicInteger(0);
 
-  private Throwable lastFailedCause;
+  protected Throwable lastFailedCause;
 
   private final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
 

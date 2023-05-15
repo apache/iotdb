@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode.schemafile.factory;
 
+import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -80,5 +81,11 @@ public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
   @Override
   public ICachedMNode createInternalMNode(ICachedMNode parent, String name) {
     return new CachedBasicInternalMNode(parent, name);
+  }
+
+  @Override
+  public IMeasurementMNode<ICachedMNode> createLogicalViewMNode(
+      IDeviceMNode<ICachedMNode> parent, String name, IMeasurementInfo measurementInfo) {
+    throw new UnsupportedOperationException();
   }
 }

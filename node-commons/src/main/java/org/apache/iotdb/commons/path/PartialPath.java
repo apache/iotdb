@@ -663,8 +663,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return true;
   }
 
-  public boolean startWith(String otherNode) {
-    return nodes[0].equals(otherNode);
+  public boolean startsWith(String prefix) {
+    return getFullPath().startsWith(prefix);
   }
 
   public boolean containNode(String otherNode) {

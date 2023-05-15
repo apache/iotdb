@@ -51,12 +51,13 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  PipeTaskOperation getOperation() {
+  protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.STOP_PIPE;
   }
 
   @Override
-  boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
     LOGGER.info("StopPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
     return env.getConfigManager()
@@ -67,13 +68,14 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
     LOGGER.info("StopPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
     LOGGER.info("StopPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
@@ -87,7 +89,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeManagementException, IOException {
     LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 

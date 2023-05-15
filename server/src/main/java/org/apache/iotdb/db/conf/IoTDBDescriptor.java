@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.compaction.selector.constant.CrossCompactionSe
 import org.apache.iotdb.db.engine.compaction.selector.constant.InnerSequenceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -199,7 +200,17 @@ public class IoTDBDescriptor {
   }
 
   public void loadProperties(Properties properties) {
-
+    conf.setClusterSchemaLimitLevel(
+        properties
+            .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
+            .trim());
+    conf.setClusterSchemaLimitThreshold(
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "cluster_schema_limit_threshold",
+                    Long.toString(conf.getClusterSchemaLimitThreshold()))
+                .trim()));
     conf.setClusterName(
         properties.getProperty(IoTDBConstant.CLUSTER_NAME, conf.getClusterName()).trim());
 
@@ -1104,6 +1115,42 @@ public class IoTDBDescriptor {
     conf.setSortTmpDir(properties.getProperty("sort_tmp_dir", conf.getSortTmpDir()));
 
     conf.setRateLimiterType(properties.getProperty("rate_limiter_type", conf.getRateLimiterType()));
+
+    conf.setDataNodeSchemaCacheEvictionPolicy(
+        properties.getProperty(
+            "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
+
+    loadIoTConsensusProps(properties);
+  }
+
+  private void loadIoTConsensusProps(Properties properties) {
+    conf.setMaxLogEntriesNumPerBatch(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_iot_max_log_entries_num_per_batch",
+                    String.valueOf(conf.getMaxLogEntriesNumPerBatch()))
+                .trim()));
+    conf.setMaxSizePerBatch(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_iot_max_size_per_batch", String.valueOf(conf.getMaxSizePerBatch()))
+                .trim()));
+    conf.setMaxPendingBatchesNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_iot_max_pending_batches_num",
+                    String.valueOf(conf.getMaxPendingBatchesNum()))
+                .trim()));
+    conf.setMaxMemoryRatioForQueue(
+        Double.parseDouble(
+            properties
+                .getProperty(
+                    "data_region_iot_max_memory_ratio_for_queue",
+                    String.valueOf(conf.getMaxMemoryRatioForQueue()))
+                .trim()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1137,14 +1184,6 @@ public class IoTDBDescriptor {
       conf.setWalBufferSize(walBufferSize);
     }
 
-    int walBufferEntrySize =
-        Integer.parseInt(
-            properties.getProperty(
-                "wal_buffer_entry_size_in_byte", Integer.toString(conf.getWalBufferEntrySize())));
-    if (walBufferEntrySize > 0) {
-      conf.setWalBufferEntrySize(walBufferEntrySize);
-    }
-
     int walBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
@@ -1157,12 +1196,22 @@ public class IoTDBDescriptor {
   }
 
   private void loadWALHotModifiedProps(Properties properties) {
-    long fsyncWalDelayInMs =
+    long walAsyncModeFsyncDelayInMs =
         Long.parseLong(
             properties.getProperty(
-                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
-    if (fsyncWalDelayInMs > 0) {
-      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
+                "wal_async_mode_fsync_delay_in_ms",
+                Long.toString(conf.getWalAsyncModeFsyncDelayInMs())));
+    if (walAsyncModeFsyncDelayInMs > 0) {
+      conf.setWalAsyncModeFsyncDelayInMs(walAsyncModeFsyncDelayInMs);
+    }
+
+    long walSyncModeFsyncDelayInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "wal_sync_mode_fsync_delay_in_ms",
+                Long.toString(conf.getWalSyncModeFsyncDelayInMs())));
+    if (walSyncModeFsyncDelayInMs > 0) {
+      conf.setWalSyncModeFsyncDelayInMs(walSyncModeFsyncDelayInMs);
     }
 
     long walFileSizeThreshold =
@@ -1574,6 +1623,20 @@ public class IoTDBDescriptor {
       if (prevDeleteWalFilesPeriodInMs != conf.getDeleteWalFilesPeriodInMs()) {
         WALManager.getInstance().rebootWALDeleteThread();
       }
+
+      // update schema quota configuration
+      conf.setClusterSchemaLimitLevel(
+          properties
+              .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())
+              .trim());
+      conf.setClusterSchemaLimitThreshold(
+          Long.parseLong(
+              properties
+                  .getProperty(
+                      "cluster_schema_limit_threshold",
+                      Long.toString(conf.getClusterSchemaLimitThreshold()))
+                  .trim()));
+      DataNodeSchemaQuotaManager.getInstance().updateConfiguration();
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -2029,12 +2092,15 @@ public class IoTDBDescriptor {
 
     conf.setDataRatisConsensusLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
     conf.setSchemaRatisConsensusLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
+    conf.setDataRatisConsensusLogForceSyncNum(ratisConfig.getDataRegionLogForceSyncNum());
 
     conf.setDataRatisConsensusLogSegmentSizeMax(ratisConfig.getDataLogSegmentSizeMax());
     conf.setSchemaRatisConsensusLogSegmentSizeMax(ratisConfig.getSchemaLogSegmentSizeMax());
 
     conf.setDataRatisConsensusGrpcFlowControlWindow(ratisConfig.getDataGrpcFlowControlWindow());
     conf.setSchemaRatisConsensusGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
+    conf.setDataRatisConsensusGrpcLeaderOutstandingAppendsMax(
+        ratisConfig.getDataRegionGrpcLeaderOutstandingAppendsMax());
 
     conf.setDataRatisConsensusLeaderElectionTimeoutMinMs(
         ratisConfig.getDataLeaderElectionTimeoutMin());

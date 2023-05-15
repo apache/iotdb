@@ -106,6 +106,11 @@ public class DataRegionConsensusImpl {
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
                                       .setAllocateMemoryForConsensus(
                                           conf.getAllocateMemoryForConsensus())
+                                      .setMaxLogEntriesNumPerBatch(
+                                          conf.getMaxLogEntriesNumPerBatch())
+                                      .setMaxSizePerBatch(conf.getMaxSizePerBatch())
+                                      .setMaxPendingBatchesNum(conf.getMaxPendingBatchesNum())
+                                      .setMaxMemoryRatioForQueue(conf.getMaxMemoryRatioForQueue())
                                       .build())
                               .build())
                       .setRatisConfig(
@@ -123,6 +128,7 @@ public class DataRegionConsensusImpl {
                                   Log.newBuilder()
                                       .setUnsafeFlushEnabled(
                                           conf.isDataRatisConsensusLogUnsafeFlushEnable())
+                                      .setForceSyncNum(conf.getDataRatisConsensusLogForceSyncNum())
                                       .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusLogSegmentSizeMax()))
@@ -134,6 +140,9 @@ public class DataRegionConsensusImpl {
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusGrpcFlowControlWindow()))
+                                      .setLeaderOutstandingAppendsMax(
+                                          conf
+                                              .getDataRatisConsensusGrpcLeaderOutstandingAppendsMax())
                                       .build())
                               .setRpc(
                                   Rpc.newBuilder()

@@ -55,7 +55,8 @@ public class TimeSeriesSchemaCache {
         new DualKeyCacheBuilder<>();
     dualKeyCache =
         dualKeyCacheBuilder
-            .cacheEvictionPolicy(DualKeyCachePolicy.LRU)
+            .cacheEvictionPolicy(
+                DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
             .memoryCapacity(config.getAllocateMemoryForSchemaCache())
             .firstKeySizeComputer(PartialPath::estimateSize)
             .secondKeySizeComputer(s -> 32 + 2 * s.length())
@@ -99,7 +100,7 @@ public class TimeSeriesSchemaCache {
             if (value != null) {
               schemaTree.appendSingleMeasurement(
                   devicePath.concatNode(value.getSchemaEntryId()),
-                  value.getMeasurementSchema(),
+                  value.getIMeasurementSchema(),
                   value.getTagMap(),
                   null,
                   value.isAligned());
@@ -118,7 +119,7 @@ public class TimeSeriesSchemaCache {
     if (schemaCacheEntry != null) {
       schemaTree.appendSingleMeasurement(
           fullPath,
-          schemaCacheEntry.getMeasurementSchema(),
+          schemaCacheEntry.getIMeasurementSchema(),
           schemaCacheEntry.getTagMap(),
           null,
           schemaCacheEntry.isAligned());
@@ -168,7 +169,7 @@ public class TimeSeriesSchemaCache {
     SchemaCacheEntry schemaCacheEntry =
         new SchemaCacheEntry(
             storageGroup,
-            (MeasurementSchema) measurementPath.getMeasurementSchema(),
+            measurementPath.getMeasurementSchema(),
             measurementPath.getTagMap(),
             measurementPath.isUnderAlignedEntity());
     dualKeyCache.put(

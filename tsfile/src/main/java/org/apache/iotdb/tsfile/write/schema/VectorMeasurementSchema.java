@@ -110,6 +110,11 @@ public class VectorMeasurementSchema
   }
 
   @Override
+  public MeasurementSchemaType getSchemaType() {
+    return MeasurementSchemaType.VECTOR_MEASUREMENT_SCHEMA;
+  }
+
+  @Override
   public String getMeasurementId() {
     return deviceId;
   }
@@ -296,6 +301,11 @@ public class VectorMeasurementSchema
   public int partialSerializeTo(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write((byte) 1, outputStream);
     return 1 + serializeTo(outputStream);
+  }
+
+  @Override
+  public boolean isLogicalView() {
+    return false;
   }
 
   @Override

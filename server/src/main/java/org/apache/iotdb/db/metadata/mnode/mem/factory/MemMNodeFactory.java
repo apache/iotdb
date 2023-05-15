@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode.mem.factory;
 
+import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -28,7 +29,9 @@ import org.apache.iotdb.db.metadata.mnode.mem.impl.BasicInternalMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.impl.DatabaseDeviceMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.impl.DatabaseMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.impl.DeviceMNode;
+import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.impl.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
@@ -80,5 +83,16 @@ public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
   @Override
   public IMemMNode createInternalMNode(IMemMNode parent, String name) {
     return new BasicInternalMNode(parent, name);
+  }
+
+  @Override
+  public IMeasurementMNode<IMemMNode> createLogicalViewMNode(
+      IDeviceMNode<IMemMNode> parent, String name, IMeasurementInfo measurementInfo) {
+    if (measurementInfo instanceof LogicalViewInfo) {
+      return new LogicalViewMNode(
+          parent, name, ((LogicalViewInfo) measurementInfo).getExpression());
+    }
+    throw new UnsupportedOperationException(
+        "createLogicalViewMNode should accept LogicalViewInfo, but got an instance that is not of this type.");
   }
 }

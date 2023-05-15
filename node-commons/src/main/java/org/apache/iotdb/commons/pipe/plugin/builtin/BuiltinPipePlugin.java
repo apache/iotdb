@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.collector.DefaultCollector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 
 public enum BuiltinPipePlugin {
+
+  // collectors
+  DEFAULT_COLLECTOR("default_collector", DefaultCollector.class),
 
   // processors
   DO_NOTHING_PROCESSOR("do_nothing_processor", DoNothingProcessor.class),
@@ -35,8 +39,8 @@ public enum BuiltinPipePlugin {
   private final Class<?> pipePluginClass;
   private final String className;
 
-  BuiltinPipePlugin(String functionName, Class<?> pipePluginClass) {
-    this.pipePluginName = functionName;
+  BuiltinPipePlugin(String pipePluginName, Class<?> pipePluginClass) {
+    this.pipePluginName = pipePluginName;
     this.pipePluginClass = pipePluginClass;
     this.className = pipePluginClass.getName();
   }
