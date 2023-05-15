@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceLogicalViewVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
@@ -440,40 +441,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   /**
-   * This function will check the expression you put in, find the TimeSeriesOperand which has
-   * LogicalViewSchema. These TimeSeriesOperand will be replaced with logical view expression, and
-   * this function will record paths that appeared in view expression. The logical view you replaced
-   * have INCOMPLETE path information, and use PartialPath in TimeSeriesOperand. This may cause
-   * ERROR, therefore you should call completeMeasurementPathCausedByView() later, make sure the
-   * path info is complete and using MeasurementPath with full MeasurementSchema.
-   *
-   * @param expression the expression you want to check.
-   * @param pathList record paths that appeared in view expression.
-   * @return pair of replaced expression and whether replacement was happened. 'True' means the
-   *     expression you put in contains logical view, and has been replaced. 'False' means there is
-   *     no need to modify the expression you put in.
-   */
-  private Pair<Expression, Boolean> replaceLogicalViewAndCollectPaths(
-      Expression expression, List<PartialPath> pathList) {
-    ReplaceLogicalViewVisitor replaceLogicalViewVisitor = new ReplaceLogicalViewVisitor();
-    // step 1. check whether this expression contains logical view, that means finding
-    // TimeSeriesOperand which has
-    // the LogicalViewSchema.
-    // step 2. replace that TimeSeriesOperand with expression recorded in LogicalViewSchema (view
-    // expression).
-    // step 3. record paths that appeared in view expression. They should be fetched, then you can
-    // use fetched schema
-    // to complete new added TimeSeriesOperand.
-    int oldSize = pathList.size();
-    Expression result = replaceLogicalViewVisitor.process(expression, pathList);
-    int newSize = pathList.size();
-    if (oldSize != newSize) {
-      return new Pair<>(result, true);
-    }
-    return new Pair<>(expression, false);
-  }
-
-  /**
    * After replace a TimeSeriesOperand which is a logical view, there may appear new
    * TimeSeriesOperand without full path. This function can help you handle this situation. This
    * function will complete those new added TimeSeriesOperand by completing its MeasurementPath.
@@ -502,18 +469,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private ISchemaTree fetchAllPathsInLogicalViewFromResultColumnsForAlignedByTime(
       List<ResultColumn> resultColumnList, ISchemaTree originSchemaTree) {
     // record paths that need to re-fetch. It's useful if expression contains logical view.
-    List<PartialPath> pathsNeedToReFetch = new ArrayList<>();
+    ReplaceLogicalViewVisitor replaceLogicalViewVisitor = new ReplaceLogicalViewVisitor();
     for (ResultColumn resultColumn : resultColumnList) {
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(
               resultColumn.getExpression(), originSchemaTree);
       for (Expression expression : resultExpressions) {
-        replaceLogicalViewAndCollectPaths(expression, pathsNeedToReFetch);
+        replaceLogicalViewVisitor.replaceViewInThisExpression(expression);
       }
     }
-    if (!pathsNeedToReFetch.isEmpty()) {
+    if (!replaceLogicalViewVisitor.getNewAddedPathList().isEmpty()) {
       PathPatternTree reFetchPathPatternTree = new PathPatternTree();
-      for (PartialPath path : pathsNeedToReFetch) {
+      for (PartialPath path : replaceLogicalViewVisitor.getNewAddedPathList()) {
         reFetchPathPatternTree.appendFullPath(path);
       }
       // This schemaTree only contains paths in view expression!
@@ -528,7 +495,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ISchemaTree originSchemaTree,
       Set<PartialPath> deviceSet) {
     // record paths that need to re-fetch. It's useful if expression contains logical view.
-    List<PartialPath> pathsNeedToReFetch = new ArrayList<>();
+    ReplaceLogicalViewVisitor replaceLogicalViewVisitor = new ReplaceLogicalViewVisitor();
     for (ResultColumn resultColumn : resultColumnList) {
       Expression selectExpression = resultColumn.getExpression();
       for (PartialPath device : deviceSet) {
@@ -536,13 +503,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             ExpressionAnalyzer.concatDeviceAndRemoveWildcard(
                 selectExpression, device, originSchemaTree);
         for (Expression expression : selectExpressionsOfOneDevice) {
-          replaceLogicalViewAndCollectPaths(expression, pathsNeedToReFetch);
+          replaceLogicalViewVisitor.replaceViewInThisExpression(expression);
         }
       }
     }
-    if (!pathsNeedToReFetch.isEmpty()) {
+    if (!replaceLogicalViewVisitor.getNewAddedPathList().isEmpty()) {
       PathPatternTree reFetchPathPatternTree = new PathPatternTree();
-      for (PartialPath path : pathsNeedToReFetch) {
+      for (PartialPath path : replaceLogicalViewVisitor.getNewAddedPathList()) {
         reFetchPathPatternTree.appendFullPath(path);
       }
       // This schemaTree only contains paths in view expression!
@@ -571,7 +538,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ISchemaTree viewSchemaTree =
         this.fetchAllPathsInLogicalViewFromResultColumnsForAlignedByTime(
             queryStatement.getSelectComponent().getResultColumns(), schemaTree);
-    List<PartialPath> pathsNeedToReFetch = new ArrayList<>();
+    ReplaceLogicalViewVisitor replaceLogicalViewVisitor = new ReplaceLogicalViewVisitor();
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
@@ -579,18 +546,41 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
           ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
-      for (Expression expression : resultExpressions) {
-
+      for (int i = 0; i < resultExpressions.size(); i++) {
+        Expression expression = resultExpressions.get(i);
         // If this expression is a logical view, replace the view with it's parsed view expression.
         String oldExpressionAlias = null;
         if (viewSchemaTree != null) {
           Pair<Expression, Boolean> replaceResult =
-              replaceLogicalViewAndCollectPaths(expression, pathsNeedToReFetch);
+              replaceLogicalViewVisitor.replaceViewInThisExpression(expression);
           if (replaceResult.right) {
-            // some part of the expression is replaced by view expression
+            // some part of the expression is replaced by view expression. Record is name as alias.
             oldExpressionAlias = expression.getExpressionString();
+
+            List<Expression> expressionWithoutWildcard =
+                ExpressionAnalyzer.removeWildcardInExpression(replaceResult.left, viewSchemaTree);
+            CollectAggregationExpressionsVisitor collectAggExpVisitor =
+                new CollectAggregationExpressionsVisitor();
+            for (Expression thisExpWithoutWildcard : expressionWithoutWildcard) {
+              List<Expression> checkResult =
+                  collectAggExpVisitor.process(thisExpWithoutWildcard, null);
+              if (checkResult.size() > 0) {
+                // the expression you got after replacing has as least one aggregation function!
+                queryStatement.getSelectComponent().setHasBuiltInAggregationFunction(true);
+                break;
+              }
+            }
+            if (expressionWithoutWildcard.size() > 1) {
+              // append processed list to raw list and remove old expression with wildcard.
+              resultExpressions.remove(i);
+              i--;
+              resultExpressions.addAll(expressionWithoutWildcard);
+              continue;
+            }
             // complete the replaced expression, use MeasurementPath to replace normal PartialPath.
-            expression = completeMeasurementPathCausedByView(replaceResult.left, viewSchemaTree);
+            expression =
+                completeMeasurementPathCausedByView(
+                    expressionWithoutWildcard.get(0), viewSchemaTree);
           }
         }
 

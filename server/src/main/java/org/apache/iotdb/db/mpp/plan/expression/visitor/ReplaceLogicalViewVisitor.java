@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
@@ -50,9 +51,51 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
 
   private GetSourcePathsVisitor getSourcePathsVisitor = null;
 
+  private boolean hadProcessedAggregationFunction = false;
+
+  /** The paths that are new added, which should be re-fetched. */
+  private List<PartialPath> newAddedPathList = null;
+
   public ReplaceLogicalViewVisitor() {
     this.transformToExpressionVisitor = new TransformToExpressionVisitor();
     this.getSourcePathsVisitor = new GetSourcePathsVisitor();
+    this.resetHadProcessedAggregationFunction();
+    this.newAddedPathList = new ArrayList<>();
+  }
+
+  /**
+   * This function will check the expression you put in, find the TimeSeriesOperand which has
+   * LogicalViewSchema. These TimeSeriesOperand will be replaced with logical view expression, and
+   * this function will record paths that appeared in view expression. The logical view you replaced
+   * have INCOMPLETE path information, and use PartialPath in TimeSeriesOperand. This may cause
+   * ERROR, therefore you should call completeMeasurementPathCausedByView() later, make sure the
+   * path info is complete and using MeasurementPath with full MeasurementSchema.
+   *
+   * @param expression the expression you want to check.
+   * @return pair of replaced expression and whether replacement was happened. 'True' means the
+   *     expression you put in contains logical view, and has been replaced. 'False' means there is
+   *     no need to modify the expression you put in.
+   */
+  public Pair<Expression, Boolean> replaceViewInThisExpression(Expression expression) {
+    // step 1. check whether this expression contains logical view, that means finding
+    // TimeSeriesOperand which has
+    // the LogicalViewSchema.
+    // step 2. replace that TimeSeriesOperand with expression recorded in LogicalViewSchema (view
+    // expression).
+    // step 3. record paths that appeared in view expression. They should be fetched, then you can
+    // use fetched schema
+    // to complete new added TimeSeriesOperand.
+    int oldSize = this.newAddedPathList.size();
+    Expression result = this.process(expression, this.newAddedPathList);
+    int newSize = this.newAddedPathList.size();
+    if (oldSize != newSize) {
+      return new Pair<>(result, true);
+    }
+    return new Pair<>(expression, false);
+  }
+
+  public List<PartialPath> getNewAddedPathList() {
+    return this.newAddedPathList;
   }
 
   private Expression transform(ViewExpression viewExpression) {
@@ -61,6 +104,14 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
 
   private List<PartialPath> collectSourcePaths(ViewExpression viewExpression) {
     return this.getSourcePathsVisitor.process(viewExpression, null);
+  }
+
+  public boolean getHadProcessedAggregationFunction() {
+    return this.hadProcessedAggregationFunction;
+  }
+
+  public void resetHadProcessedAggregationFunction() {
+    this.hadProcessedAggregationFunction = false;
   }
 
   @Override
@@ -110,6 +161,9 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
       replacedChildren.add(this.process(child, context));
     }
     functionExpression.setExpressions(replacedChildren);
+    if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+      this.hadProcessedAggregationFunction = true;
+    }
     return functionExpression;
   }
 
