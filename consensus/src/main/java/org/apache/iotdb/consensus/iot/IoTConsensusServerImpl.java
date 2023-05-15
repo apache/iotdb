@@ -219,7 +219,7 @@ public class IoTConsensusServerImpl {
           .update(writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
-      if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
+      if (indexedConsensusRequest.getSearchIndex() % 10000 == 0) {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
             thisNode.getGroupId(),

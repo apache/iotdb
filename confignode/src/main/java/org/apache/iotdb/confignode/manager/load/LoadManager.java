@@ -88,6 +88,8 @@ public class LoadManager {
         new StatisticsService(configManager, routeBalancer, loadCache, loadPublisher);
 
     loadPublisher.register(statisticsService);
+    // TODO: enable
+    // loadPublisher.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
   }
 
   /**

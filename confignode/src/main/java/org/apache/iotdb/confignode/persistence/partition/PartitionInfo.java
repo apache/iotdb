@@ -747,6 +747,19 @@ public class PartitionInfo implements SnapshotProcessor {
     return databasePartitionTables.get(storageGroup).getRegionGroupSlotsCounter(type);
   }
 
+  /**
+   * Only leader use this interface.
+   *
+   * @return Integer set of all schema region id
+   */
+  public Set<Integer> getAllSchemaPartition() {
+    Set<Integer> schemaPartitionSet = new HashSet<>();
+    databasePartitionTables
+        .values()
+        .forEach(i -> schemaPartitionSet.addAll(i.getSchemaRegionIds()));
+    return schemaPartitionSet;
+  }
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 

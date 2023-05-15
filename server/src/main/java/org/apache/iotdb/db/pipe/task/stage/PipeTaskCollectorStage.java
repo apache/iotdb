@@ -26,7 +26,9 @@ import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
+import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -47,17 +49,14 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
    */
   private ListenableUnblockingPendingQueue<Event> collectorPendingQueue;
 
-  private PipeCollector pipeCollector;
+  private final PipeCollector pipeCollector;
 
   public PipeTaskCollectorStage(String dataRegionId, PipeParameters collectorParameters) {
     this.collectorParameters = collectorParameters;
     // set data region id to collector parameters, so that collector can get data region id inside
     // collector
     collectorParameters.getAttribute().put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
-  }
 
-  @Override
-  public void createSubtask() throws PipeException {
     if (collectorParameters
         .getStringOrDefault(
             PipeCollectorConstant.COLLECTOR_KEY,
@@ -67,6 +66,22 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       this.pipeCollector = new IoTDBDataRegionCollector(collectorPendingQueue);
     } else {
       this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
+    }
+  }
+
+  @Override
+  public void createSubtask() throws PipeException {
+    try {
+      // 1. validate collector parameters
+      pipeCollector.validate(new PipeParameterValidator(collectorParameters));
+
+      // 2. customize collector
+      final PipeCollectorRuntimeConfiguration runtimeConfiguration =
+          new PipeCollectorRuntimeConfiguration();
+      pipeCollector.customize(collectorParameters, runtimeConfiguration);
+      // TODO: use runtimeConfiguration to configure collector
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
     }
   }
 
@@ -94,7 +109,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
   }
 
   public EventSupplier getEventSupplier() {
-    return () -> pipeCollector.supply();
+    return pipeCollector::supply;
   }
 
   public ListenableUnblockingPendingQueue<Event> getCollectorPendingQueue() {
