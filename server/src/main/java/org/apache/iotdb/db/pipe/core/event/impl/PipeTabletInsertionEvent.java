@@ -25,6 +25,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -34,8 +35,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   private final List<Tablet> tabletList;
 
   public PipeTabletInsertionEvent(Tablet tablet) {
-    this.tabletList = new ArrayList<>();
-    this.tabletList.add(tablet);
+    this.tabletList = new ArrayList<>(Collections.singletonList(tablet));
   }
 
   @Override
