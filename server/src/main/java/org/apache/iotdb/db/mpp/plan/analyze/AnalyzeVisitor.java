@@ -375,7 +375,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     String modelId = modelInferenceExpression.getFunctionAttributes().get(MODEL_ID);
 
     ModelInformation modelInformation = partitionFetcher.getModelInformation(modelId);
-    if (modelInformation == null) {
+    if (modelInformation == null || !modelInformation.available()) {
       throw new SemanticException("");
     }
 

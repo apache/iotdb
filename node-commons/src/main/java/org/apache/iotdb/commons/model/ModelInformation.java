@@ -152,6 +152,10 @@ public class ModelInformation {
     return queryFilter;
   }
 
+  public boolean available() {
+    return trainingState == TrainingState.FINISHED;
+  }
+
   public TrailInformation getTrailInformationById(String trailId) {
     if (trailMap.containsKey(trailId)) {
       return trailMap.get(trailId);
