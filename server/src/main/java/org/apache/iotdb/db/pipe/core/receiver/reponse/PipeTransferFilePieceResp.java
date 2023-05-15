@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receive.request;
+package org.apache.iotdb.db.pipe.core.receiver.reponse;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -27,46 +28,36 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PipeTransferFilePieceReq extends TPipeTransferReq {
-  private final String fileName;
-  private final long startOffset;
+public class PipeTransferFilePieceResp extends TPipeTransferResp {
+  public static final long ERROR_END_OFFSET = -1;
+  private final long endOffset;
 
-  public PipeTransferFilePieceReq(
-      String pipeVersion, ByteBuffer body, String fileName, long startOffset) {
-    this.pipeVersion = pipeVersion;
-    this.body = body;
-    this.fileName = fileName;
-    this.startOffset = startOffset;
+  public PipeTransferFilePieceResp(TSStatus status, long endOffset) {
+    this.status = status;
+    this.endOffset = endOffset;
   }
 
-  public String getFileName() {
-    return fileName;
+  public long getEndOffset() {
+    return endOffset;
   }
 
-  public long getStartOffset() {
-    return startOffset;
-  }
-
-  @Override
-  public short getType() {
-    return PipeTransferReqType.FILE_PIECE.getNodeType();
-  }
-
-  public TPipeTransferReq toTPipeTransferReq() throws IOException {
+  public TPipeTransferResp toTPipeTransferResp() {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      this.type = getType();
-      ReadWriteIOUtils.write(fileName, outputStream);
-      ReadWriteIOUtils.write(startOffset, outputStream);
-      this.transferInfo =
+      ReadWriteIOUtils.write(endOffset, outputStream);
+      this.transferResponse =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      return this;
+    } catch (IOException e) {
       return this;
     }
   }
 
-  public static PipeTransferFilePieceReq fromTPipeTransferReq(TPipeTransferReq req) {
-    String fileName = ReadWriteIOUtils.readString(req.transferInfo);
-    long offset = ReadWriteIOUtils.read(req.transferInfo);
-    return new PipeTransferFilePieceReq(req.pipeVersion, req.body, fileName, offset);
+  public static PipeTransferFilePieceResp fromTPipeTransferResp(TPipeTransferResp resp) {
+    long endOffset = ERROR_END_OFFSET;
+    if (resp.isSetTransferResponse()) {
+      endOffset = ReadWriteIOUtils.readLong(resp.transferResponse);
+    }
+    return new PipeTransferFilePieceResp(resp.status, endOffset);
   }
 }

@@ -17,49 +17,48 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receive.request;
+package org.apache.iotdb.db.pipe.core.receiver.request;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PipeTransferFileSealReq extends TPipeTransferReq {
-  private final String fileName;
-  private final long fileLength;
+public class PipeValidateHandshakeReq extends TPipeHandshakeReq {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeValidateHandshakeReq.class);
+  private final String timestampPrecision;
 
-  public PipeTransferFileSealReq(String pipeVersion, String fileName, long fileLength) {
+  public PipeValidateHandshakeReq(
+      String pipeVersion, String IoTDBVersion, String timestampPrecision) {
     this.pipeVersion = pipeVersion;
-    this.fileName = fileName;
-    this.fileLength = fileLength;
+    this.IoTDBVersion = IoTDBVersion;
+    this.timestampPrecision = timestampPrecision;
   }
 
-  public String getFileName() {
-    return fileName;
+  public String getTimestampPrecision() {
+    return timestampPrecision;
   }
 
-  public long getFileLength() {
-    return fileLength;
-  }
-
-  public TPipeTransferReq toTPipeTransferReq() throws IOException {
+  public TPipeHandshakeReq toTPipeHandshakeReq() throws IOException {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      this.type = getType();
-      ReadWriteIOUtils.write(fileName, outputStream);
-      ReadWriteIOUtils.write(fileLength, outputStream);
-      this.transferInfo =
+      ReadWriteIOUtils.write(timestampPrecision, outputStream);
+      this.handshakeInfo =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       return this;
     }
   }
 
-  public static PipeTransferFileSealReq fromTPipeTransferReq(TPipeTransferReq req) {
-    String fileName = ReadWriteIOUtils.readString(req.transferInfo);
-    long fileLength = ReadWriteIOUtils.readLong(req.transferInfo);
-    return new PipeTransferFileSealReq(req.pipeVersion, fileName, fileLength);
+  public static PipeValidateHandshakeReq fromTPipeHandshakeReq(TPipeHandshakeReq req) {
+    return new PipeValidateHandshakeReq(
+        req.getPipeVersion(),
+        req.getIoTDBVersion(),
+        ReadWriteIOUtils.readString(req.handshakeInfo));
   }
 }

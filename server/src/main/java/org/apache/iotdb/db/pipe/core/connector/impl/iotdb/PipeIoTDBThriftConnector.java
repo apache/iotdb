@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.connector.impl;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb;
 
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -27,11 +27,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.receive.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.receive.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.receive.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.receive.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.receive.request.PipeValidateHandshakeReq;
+import org.apache.iotdb.db.pipe.core.receiver.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.core.receiver.request.PipeValidateHandshakeReq;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;

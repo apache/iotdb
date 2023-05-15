@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receive;
+package org.apache.iotdb.db.pipe.core.receiver;
 
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
@@ -28,7 +28,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-public interface PipeThriftReqHandler {
+public interface PipeThriftRequestHandler {
   TPipeHandshakeResp handleHandshakeReq(TPipeHandshakeReq req);
 
   TPipeHeartbeatResp handleHeartbeatReq(TPipeHeartbeatReq req);
