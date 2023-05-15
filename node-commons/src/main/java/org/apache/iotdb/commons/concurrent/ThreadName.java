@@ -133,6 +133,10 @@ public enum ThreadName {
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_SERVICE("StorageEngine"),
   MLNODE_RPC_SERVICE("MLNodeRpc-Service"),
+  SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
+  IOTDB_SHUTDOWN_HOOK("IoTDB-Shutdown-Hook"),
+  RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
+  STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   ;
 
   private final String name;

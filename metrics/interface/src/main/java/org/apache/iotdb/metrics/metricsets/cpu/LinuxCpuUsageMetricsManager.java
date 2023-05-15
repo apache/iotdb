@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.metrics.metricsets.cpu;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -29,8 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager {
   private final Logger log = LoggerFactory.getLogger(LinuxCpuUsageMetricsManager.class);

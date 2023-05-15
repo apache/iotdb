@@ -233,7 +233,8 @@ public class StorageEngine implements IService {
               checkResults(futures, "StorageEngine failed to recover.");
               setAllSgReady(true);
               ttlMapForRecover.clear();
-            });
+            },
+            ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
   }
 
