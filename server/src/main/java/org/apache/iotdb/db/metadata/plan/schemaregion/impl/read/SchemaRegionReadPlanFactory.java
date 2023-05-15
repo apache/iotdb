@@ -35,22 +35,24 @@ public class SchemaRegionReadPlanFactory {
 
   private SchemaRegionReadPlanFactory() {}
 
+  @TestOnly
   public static IShowDevicesPlan getShowDevicesPlan(PartialPath path) {
-    return new ShowDevicesPlanImpl(path, 0, 0, false, -1);
+    return new ShowDevicesPlanImpl(path, 0, 0, false, -1, null);
   }
 
+  @TestOnly
   public static IShowDevicesPlan getShowDevicesPlan(PartialPath path, boolean isPrefixMatch) {
-    return new ShowDevicesPlanImpl(path, 0, 0, isPrefixMatch, -1);
+    return new ShowDevicesPlanImpl(path, 0, 0, isPrefixMatch, -1, null);
   }
 
   public static IShowDevicesPlan getShowDevicesPlan(
-      PartialPath path, long limit, long offset, boolean isPrefixMatch) {
-    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, -1);
+      PartialPath path, long limit, long offset, boolean isPrefixMatch, SchemaFilter schemaFilter) {
+    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, -1, schemaFilter);
   }
 
   public static IShowDevicesPlan getShowDevicesPlan(
       PartialPath path, int limit, int offset, boolean isPrefixMatch, int templateId) {
-    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, templateId);
+    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, templateId, null);
   }
 
   @TestOnly

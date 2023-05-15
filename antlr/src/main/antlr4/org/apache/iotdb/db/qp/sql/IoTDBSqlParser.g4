@@ -180,7 +180,7 @@ aliasClause
 
 // ---- Show Devices
 showDevices
-    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? rowPaginationClause?
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? rowPaginationClause?
     ;
 
 // ---- Show Timeseries
@@ -211,6 +211,15 @@ countTimeseries
 // ---- Count Nodes
 countNodes
     : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
+    ;
+
+// ---- Timeseries Where Clause
+devicesWhereClause
+    : WHERE deviceContainsExpression
+    ;
+
+deviceContainsExpression
+    : DEVICE OPERATOR_CONTAINS value=STRING_LITERAL
     ;
 
 // ---- Timeseries Where Clause

@@ -867,6 +867,7 @@ public class MTreeBelowSGMemoryImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
+    collector.setSchemaFilter(showDevicesPlan.getSchemaFilter());
     TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, IMemMNode> traverser =
         new TraverserWithLimitOffsetWrapper<>(
             collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());

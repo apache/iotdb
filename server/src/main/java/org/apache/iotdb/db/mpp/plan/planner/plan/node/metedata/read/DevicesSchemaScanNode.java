@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 public class DevicesSchemaScanNode extends SchemaQueryScanNode {
 
   private final boolean hasSgCol;
+  private final SchemaFilter schemaFilter;
 
   public DevicesSchemaScanNode(
       PlanNodeId id,
@@ -44,18 +46,25 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
       long limit,
       long offset,
       boolean isPrefixPath,
-      boolean hasSgCol) {
+      boolean hasSgCol,
+      SchemaFilter schemaFilter) {
     super(id, path, limit, offset, isPrefixPath);
     this.hasSgCol = hasSgCol;
+    this.schemaFilter = schemaFilter;
   }
 
   public boolean isHasSgCol() {
     return hasSgCol;
   }
 
+  public SchemaFilter getSchemaFilter() {
+    return schemaFilter;
+  }
+
   @Override
   public PlanNode clone() {
-    return new DevicesSchemaScanNode(getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol);
+    return new DevicesSchemaScanNode(
+        getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol, schemaFilter);
   }
 
   @Override
@@ -78,6 +87,7 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(hasSgCol, byteBuffer);
+    SchemaFilter.serialize(schemaFilter, byteBuffer);
   }
 
   @Override
@@ -88,6 +98,7 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(offset, stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
     ReadWriteIOUtils.write(hasSgCol, stream);
+    SchemaFilter.serialize(schemaFilter, stream);
   }
 
   public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
@@ -103,7 +114,9 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
     boolean hasSgCol = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DevicesSchemaScanNode(planNodeId, path, limit, offset, isPrefixPath, hasSgCol);
+    SchemaFilter schemaFilter = SchemaFilter.deserialize(byteBuffer);
+    return new DevicesSchemaScanNode(
+        planNodeId, path, limit, offset, isPrefixPath, hasSgCol, schemaFilter);
   }
 
   @Override
@@ -118,12 +131,12 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
       return false;
     }
     DevicesSchemaScanNode that = (DevicesSchemaScanNode) o;
-    return hasSgCol == that.hasSgCol;
+    return hasSgCol == that.hasSgCol && Objects.equals(schemaFilter, that.schemaFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), hasSgCol);
+    return Objects.hash(super.hashCode(), hasSgCol, schemaFilter);
   }
 
   @Override

@@ -1028,6 +1028,7 @@ public class MTreeBelowSGCachedImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
+    collector.setSchemaFilter(showDevicesPlan.getSchemaFilter());
     TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, ICachedMNode> traverser =
         new TraverserWithLimitOffsetWrapper<>(
             collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());

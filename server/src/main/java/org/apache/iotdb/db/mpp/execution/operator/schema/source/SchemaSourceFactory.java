@@ -59,12 +59,17 @@ public class SchemaSourceFactory {
 
   public static ISchemaSource<IDeviceSchemaInfo> getDeviceSchemaSource(
       PartialPath pathPattern, boolean isPrefixPath) {
-    return new DeviceSchemaSource(pathPattern, isPrefixPath, 0, 0, false);
+    return new DeviceSchemaSource(pathPattern, isPrefixPath, 0, 0, false, null);
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getDeviceSchemaSource(
-      PartialPath pathPattern, boolean isPrefixPath, long limit, long offset, boolean hasSgCol) {
-    return new DeviceSchemaSource(pathPattern, isPrefixPath, limit, offset, hasSgCol);
+      PartialPath pathPattern,
+      boolean isPrefixPath,
+      long limit,
+      long offset,
+      boolean hasSgCol,
+      SchemaFilter schemaFilter) {
+    return new DeviceSchemaSource(pathPattern, isPrefixPath, limit, offset, hasSgCol, schemaFilter);
   }
 
   public static ISchemaSource<INodeSchemaInfo> getNodeSchemaSource(

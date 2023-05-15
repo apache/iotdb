@@ -1002,10 +1002,21 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeviceSchemaSource(
-      PartialPath pathPattern, long limit, long offset, boolean prefixPath, boolean hasSgCol) {
+      PartialPath pathPattern,
+      long limit,
+      long offset,
+      boolean prefixPath,
+      boolean hasSgCol,
+      SchemaFilter schemaFilter) {
     this.root =
         new DevicesSchemaScanNode(
-            context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
+            context.getQueryId().genPlanNodeId(),
+            pathPattern,
+            limit,
+            offset,
+            prefixPath,
+            hasSgCol,
+            schemaFilter);
     return this;
   }
 

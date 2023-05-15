@@ -654,6 +654,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showDevicesStatement =
           new ShowDevicesStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
+    if (ctx.devicesWhereClause() != null) {
+      showDevicesStatement.setSchemaFilter(parseDevicesWhereClause(ctx.devicesWhereClause()));
+    }
+
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
         showDevicesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
@@ -667,6 +671,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showDevicesStatement.setSgCol(true);
     }
     return showDevicesStatement;
+  }
+
+  private SchemaFilter parseDevicesWhereClause(IoTDBSqlParser.DevicesWhereClauseContext ctx) {
+    // path contains filter
+    return new PathContainsFilter(
+        parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
   }
 
   // Count Devices ========================================================================

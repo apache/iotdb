@@ -558,7 +558,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 limit,
                 offset,
                 showDevicesStatement.isPrefixPath(),
-                showDevicesStatement.hasSgCol())
+                showDevicesStatement.hasSgCol(),
+                showDevicesStatement.getSchemaFilter())
             .planSchemaQueryMerge(false);
 
     if (!canPushDownOffsetLimit) {

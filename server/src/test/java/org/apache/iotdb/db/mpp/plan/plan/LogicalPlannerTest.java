@@ -574,6 +574,8 @@ public class LogicalPlannerTest {
     }
   }
 
+  // TODO: add UT
+
   @Test
   public void testCountNodes() {
     String sql = "COUNT NODES root.ln LEVEL=1";

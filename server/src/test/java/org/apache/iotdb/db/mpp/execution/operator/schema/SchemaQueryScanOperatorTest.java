@@ -90,7 +90,7 @@ public class SchemaQueryScanOperatorTest {
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
-          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true);
+          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true, null);
       SchemaOperatorTestUtil.mockGetSchemaReader(
           deviceSchemaSource,
           Collections.singletonList(deviceSchemaInfo).iterator(),
