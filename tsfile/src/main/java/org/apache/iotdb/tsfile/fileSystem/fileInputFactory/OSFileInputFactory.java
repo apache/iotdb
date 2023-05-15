@@ -29,7 +29,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class OSFileInputFactory implements FileInputFactory {
   private static final Logger logger = LoggerFactory.getLogger(OSFileInputFactory.class);
-  private static final String OS_INPUT_CLASS_NAME = "org.apache.iotdb.os.fileSystem.OSInput";
+  private static final String OS_INPUT_CLASS_NAME = "org.apache.iotdb.os.fileSystem.OSTsFileInput";
   private static Constructor constructor;
 
   static {

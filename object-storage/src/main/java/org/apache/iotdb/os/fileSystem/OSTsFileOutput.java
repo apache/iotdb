@@ -27,8 +27,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class OSOutput implements TsFileOutput {
-  private static final Logger logger = LoggerFactory.getLogger(OSOutput.class);
+public class OSTsFileOutput implements TsFileOutput {
+  private static final Logger logger = LoggerFactory.getLogger(OSTsFileOutput.class);
 
   @Override
   public void write(byte[] b) throws IOException {

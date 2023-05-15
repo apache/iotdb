@@ -21,7 +21,6 @@ package org.apache.iotdb.os.cache;
 import org.apache.iotdb.os.fileSystem.OSFile;
 
 public class OSFileCacheKey {
-  private String fileName;
+  private OSFile file;
   private long position;
-  private int size;
 }

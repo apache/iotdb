@@ -64,6 +64,8 @@ public class OSFile extends File {
 
   private final OSURI osUri;
 
+  private long length = 0L;
+
   public OSFile(String pathname) {
     super(pathname);
     this.osUri = new OSURI(pathname);
@@ -204,12 +206,15 @@ public class OSFile extends File {
 
   @Override
   public long length() {
-    try {
-      return connector.getMetaData(osUri).length();
-    } catch (ObjectStorageException e) {
-      logger.error("Fail to get length of the object {}.", osUri, e);
-      return 0;
+    if (length == 0) {
+      try {
+        length = connector.getMetaData(osUri).length();
+      } catch (ObjectStorageException e) {
+        logger.error("Fail to get length of the object {}.", osUri, e);
+        return 0;
+      }
     }
+    return length;
   }
 
   @Override

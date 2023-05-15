@@ -19,7 +19,6 @@
 package org.apache.iotdb.os.fileSystem;
 
 import org.apache.iotdb.os.cache.OSFileCache;
-import org.apache.iotdb.os.cache.OSFileCacheImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import org.slf4j.Logger;
@@ -27,14 +26,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-public class OSInput implements TsFileInput {
-  private static final Logger logger = LoggerFactory.getLogger(OSInput.class);
+public class OSTsFileInput implements TsFileInput {
+  private static final Logger logger = LoggerFactory.getLogger(OSTsFileInput.class);
 
   private String osFileName;
-  private OSFileCache cache = OSFileCacheImpl.getInstance();
+  private OSFileCache cache = OSFileCache.getInstance();
 
   @Override
   public long size() throws IOException {
@@ -74,7 +74,7 @@ public class OSInput implements TsFileInput {
 
   @Override
   public FileChannel wrapAsFileChannel() throws IOException {
-    return null;
+    throw new UnsupportedEncodingException();
   }
 
   @Override

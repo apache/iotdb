@@ -18,16 +18,4 @@
  */
 package org.apache.iotdb.os.cache;
 
-public class PersistentCache {
-  private final String cacheDir;
-
-  public PersistentCache(String cacheDir) {
-    this.cacheDir = cacheDir;
-  }
-
-  public byte[] get(OSFileCacheKey OSFileCacheKey) {
-    return null;
-  }
-
-  private void serialize(OSFileCacheKey OSFileCacheKey, byte[] cacheVal) {}
-}
+public class CacheFileChannel {}

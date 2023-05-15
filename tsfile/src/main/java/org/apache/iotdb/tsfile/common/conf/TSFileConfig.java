@@ -159,6 +159,8 @@ public class TSFileConfig implements Serializable {
 
   private int patternMatchingThreshold = 1000000;
 
+  private String osBucket = "iotdb";
+
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
 
@@ -478,5 +480,9 @@ public class TSFileConfig implements Serializable {
 
   public String getSprintzPredictScheme() {
     return "fire";
+  }
+
+  public String getOSBucket() {
+    return osBucket;
   }
 }

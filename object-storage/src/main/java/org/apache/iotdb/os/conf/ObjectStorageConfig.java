@@ -24,33 +24,33 @@ import org.apache.iotdb.os.utils.ObjectStorageType;
 import java.io.File;
 
 public class ObjectStorageConfig {
-  private static ObjectStorageType osType = ObjectStorageType.AWS_S3;
+  private ObjectStorageType osType = ObjectStorageType.AWS_S3;
 
-  private static AWSS3Config awss3Config = new AWSS3Config();
+  private AWSS3Config awss3Config = new AWSS3Config();
 
-  private static String[] cacheDirs = {
+  private String[] cacheDirs = {
     "data" + File.separator + "datanode" + File.separator + "data" + File.separator + "cache"
   };
 
-  private static long cacheSizeThreshold = 10 * 1024 * 1024 * 1024;
+  private long cacheMaxDiskUsage = 20 * 1024 * 1024 * 1024L;
 
-  private static long pageSize = 32 * 1024;
+  private int cachePageSize = 10 * 1024 * 1024;
 
   ObjectStorageConfig() {}
 
-  public static ObjectStorageType getOsType() {
+  public ObjectStorageType getOsType() {
     return osType;
   }
 
-  public static String[] getCacheDirs() {
+  public String[] getCacheDirs() {
     return cacheDirs;
   }
 
-  public static long getCacheSizeThreshold() {
-    return cacheSizeThreshold;
+  public long getCacheMaxDiskUsage() {
+    return cacheMaxDiskUsage;
   }
 
-  public static long getPageSize() {
-    return pageSize;
+  public int getCachePageSize() {
+    return cachePageSize;
   }
 }

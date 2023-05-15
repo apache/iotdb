@@ -18,29 +18,26 @@
  */
 package org.apache.iotdb.os.cache;
 
-import org.apache.iotdb.os.conf.ObjectStorageConfig;
-import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
+import org.apache.iotdb.os.fileSystem.OSTsFileInput;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.io.InputStream;
 
-public class CacheManger {
-  private final ObjectStorageConfig config = ObjectStorageDescriptor.getInstance().getConfig();
-  private final List<PersistentCache> caches = new ArrayList<>();
+public class CacheInputStream extends InputStream {
+  private OSTsFileInput osTsFileInput;
+  private long position; // 15
+  private long size; // 100
+  private InputStream currentInputStream; // 第二个文件，从 5 开始
 
-  private CacheManger() {
-    for (String cacheDir : config.getCacheDirs()) {
-      caches.add(new PersistentCache(cacheDir));
-    }
+  public CacheInputStream(OSTsFileInput osTsFileInput, long position, long size) {
+    this.osTsFileInput = osTsFileInput;
+    this.position = position;
+    this.size = size;
   }
 
-  public static CacheManger getInstance() {
-    return InstanceHolder.INSTANCE;
-  }
+  @Override
+  public int read() throws IOException {
 
-  private static class InstanceHolder {
-    private InstanceHolder() {}
-
-    private static final CacheManger INSTANCE = new CacheManger();
+    return 0;
   }
 }

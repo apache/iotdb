@@ -20,9 +20,39 @@ package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
 
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 public class OSFileOutputFactory implements FileOutputFactory {
+  private static final Logger logger = LoggerFactory.getLogger(OSFileOutputFactory.class);
+  private static final String OS_OUTPUT_CLASS_NAME =
+      "org.apache.iotdb.os.fileSystem.OSTsFileOutput";
+  private static Constructor constructor;
+
+  static {
+    try {
+      Class<?> clazz = Class.forName(OS_OUTPUT_CLASS_NAME);
+      constructor = clazz.getConstructor(String.class, boolean.class);
+    } catch (ClassNotFoundException | NoSuchMethodException e) {
+      logger.error(
+          "Failed to get OSInput in object storage. Please check your dependency of object storage module.",
+          e);
+    }
+  }
+
   @Override
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
-    throw new UnsupportedOperationException("Cannot directly write to object storage.");
+    try {
+      return (TsFileOutput) constructor.newInstance(filePath, !append);
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to get TsFile output of file: {}. Please check your dependency of object storage module.",
+          filePath,
+          e);
+      return null;
+    }
   }
 }

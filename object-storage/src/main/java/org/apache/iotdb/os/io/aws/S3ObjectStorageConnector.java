@@ -160,6 +160,14 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
     }
   }
 
+  @Override
+  public byte[] getRemoteFile(OSURI osUri, long position, int size) throws ObjectStorageException {
+    GetObjectRequest req =
+        GetObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
+    s3Client.getObject(req);
+    return new byte[0];
+  }
+
   public void close() {
     s3Client.close();
   }
