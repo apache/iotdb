@@ -69,8 +69,8 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
 import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
-import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TimeseriesContainsFilter;
 import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
@@ -605,7 +605,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private SchemaFilter parseTimeseriesWhereClause(IoTDBSqlParser.TimeseriesWhereClauseContext ctx) {
     if (ctx.timeseriesContainsExpression() != null) {
       // path contains filter
-      return new TimeseriesContainsFilter(
+      return new PathContainsFilter(
           parseStringLiteral(ctx.timeseriesContainsExpression().value.getText()));
     } else {
       // tag filter

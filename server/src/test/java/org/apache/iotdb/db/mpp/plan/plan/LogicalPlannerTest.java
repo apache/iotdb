@@ -54,6 +54,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggreg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -490,7 +491,7 @@ public class LogicalPlannerTest {
   @Test
   public void testShowTimeSeries() {
     String sql =
-        "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE 'tagK' = 'tagV' limit 20 offset 10";
+        "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE TAGS(tagK) = 'tagV' limit 20 offset 10";
 
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
@@ -507,9 +508,10 @@ public class LogicalPlannerTest {
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
       Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
-      Assert.assertFalse(showTimeSeriesNode.isContains());
-      Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
-      Assert.assertEquals("tagV", showTimeSeriesNode.getValue());
+      Assert.assertTrue(showTimeSeriesNode.getSchemaFilter() instanceof TagFilter);
+      Assert.assertFalse(((TagFilter) showTimeSeriesNode.getSchemaFilter()).isContains());
+      Assert.assertEquals("tagK", ((TagFilter) showTimeSeriesNode.getSchemaFilter()).getKey());
+      Assert.assertEquals("tagV", ((TagFilter) showTimeSeriesNode.getSchemaFilter()).getValue());
       Assert.assertEquals(0, showTimeSeriesNode.getLimit());
       Assert.assertEquals(0, showTimeSeriesNode.getOffset());
       Assert.assertFalse(showTimeSeriesNode.isHasLimit());
@@ -525,9 +527,11 @@ public class LogicalPlannerTest {
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
       Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
-      Assert.assertFalse(showTimeSeriesNode2.isContains());
-      Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
-      Assert.assertEquals("tagV", showTimeSeriesNode2.getValue());
+
+      Assert.assertTrue(showTimeSeriesNode2.getSchemaFilter() instanceof TagFilter);
+      Assert.assertFalse(((TagFilter) showTimeSeriesNode2.getSchemaFilter()).isContains());
+      Assert.assertEquals("tagK", ((TagFilter) showTimeSeriesNode2.getSchemaFilter()).getKey());
+      Assert.assertEquals("tagV", ((TagFilter) showTimeSeriesNode2.getSchemaFilter()).getValue());
       Assert.assertEquals(0, showTimeSeriesNode2.getLimit());
       Assert.assertEquals(0, showTimeSeriesNode2.getOffset());
       Assert.assertFalse(showTimeSeriesNode2.isHasLimit());

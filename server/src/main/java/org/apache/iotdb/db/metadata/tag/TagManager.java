@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -161,23 +162,23 @@ public class TagManager {
     }
   }
 
-  private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(IShowTimeSeriesPlan plan) {
-    if (!tagIndex.containsKey(plan.getKey())) {
+  private List<IMeasurementMNode<?>> getMatchedTimeseriesInIndex(TagFilter tagFilter) {
+    if (!tagIndex.containsKey(tagFilter.getKey())) {
       return Collections.emptyList();
     }
-    Map<String, Set<IMeasurementMNode<?>>> value2Node = tagIndex.get(plan.getKey());
+    Map<String, Set<IMeasurementMNode<?>>> value2Node = tagIndex.get(tagFilter.getKey());
     if (value2Node.isEmpty()) {
       return Collections.emptyList();
     }
 
     List<IMeasurementMNode<?>> allMatchedNodes = new ArrayList<>();
-    if (plan.isContains()) {
+    if (tagFilter.isContains()) {
       for (Map.Entry<String, Set<IMeasurementMNode<?>>> entry : value2Node.entrySet()) {
         if (entry.getKey() == null || entry.getValue() == null) {
           continue;
         }
         String tagValue = entry.getKey();
-        if (tagValue.contains(plan.getValue())) {
+        if (tagValue.contains(tagFilter.getValue())) {
           allMatchedNodes.addAll(entry.getValue());
         }
       }
@@ -187,7 +188,7 @@ public class TagManager {
           continue;
         }
         String tagValue = entry.getKey();
-        if (plan.getValue().equals(tagValue)) {
+        if (tagFilter.getValue().equals(tagValue)) {
           allMatchedNodes.addAll(entry.getValue());
         }
       }
@@ -203,7 +204,8 @@ public class TagManager {
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReaderWithIndex(
       IShowTimeSeriesPlan plan) {
-    Iterator<IMeasurementMNode<?>> allMatchedNodes = getMatchedTimeseriesInIndex(plan).iterator();
+    Iterator<IMeasurementMNode<?>> allMatchedNodes =
+        getMatchedTimeseriesInIndex((TagFilter) plan.getSchemaFilter()).iterator();
     PartialPath pathPattern = plan.getPath();
     int curOffset = 0;
     int count = 0;

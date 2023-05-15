@@ -18,13 +18,21 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterVisitor;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
+
+import org.apache.commons.lang.StringUtils;
 
 public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
+
+  private final MeasurementFilterVisitor filterVisitor = new MeasurementFilterVisitor();
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -43,12 +51,12 @@ public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Trave
 
   @Override
   protected boolean mayTargetNodeType(N node) {
-    return node.isMeasurement();
+    return node.isMeasurement() && filterVisitor.process(schemaFilter, node);
   }
 
   @Override
   protected boolean acceptFullMatchedNode(N node) {
-    return node.isMeasurement();
+    return node.isMeasurement() && filterVisitor.process(schemaFilter, node);
   }
 
   @Override
@@ -64,5 +72,22 @@ public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Trave
   @Override
   protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     return !node.isMeasurement();
+  }
+
+  class MeasurementFilterVisitor extends SchemaFilterVisitor<Boolean, N> {
+    @Override
+    public Boolean visitNode(SchemaFilter filter, N node) {
+      return true;
+    }
+
+    @Override
+    public Boolean visitPathContainsFilter(PathContainsFilter pathContainsFilter, N node) {
+      if (pathContainsFilter.getPathContains() == null) {
+        return true;
+      }
+      return StringUtils.join(
+              getFullPathFromRootToNode(node.getAsMNode()), IoTDBConstant.PATH_SEPARATOR)
+          .contains(pathContainsFilter.getPathContains());
+    }
   }
 }

@@ -223,11 +223,11 @@ timeseriesContainsExpression
     ;
 
 tagEqualsExpression
-    : TAG LR_BRACKET key=attributeKey RR_BRACKET operator_eq value=attributeValue
+    : TAGS LR_BRACKET key=attributeKey RR_BRACKET operator_eq value=attributeValue
     ;
 
 tagContainsExpression
-    : TAG LR_BRACKET name=attributeKey RR_BRACKET OPERATOR_CONTAINS value=STRING_LITERAL
+    : TAGS LR_BRACKET name=attributeKey RR_BRACKET OPERATOR_CONTAINS value=STRING_LITERAL
     ;
 
 

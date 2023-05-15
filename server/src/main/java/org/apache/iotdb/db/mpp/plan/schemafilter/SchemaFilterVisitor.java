@@ -16,5 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.schemafilter;public class SchemaFilterVisitor {
+package org.apache.iotdb.db.mpp.plan.schemafilter;
+
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
+
+/**
+ * This class provides a visitor of {@link SchemaFilter}, which can be extended to create a visitor
+ * which only needs to handle a subset of the available methods.
+ *
+ * @param <R> The return type of the visit operation.
+ */
+public abstract class SchemaFilterVisitor<R, C> {
+
+  public R process(SchemaFilter filter, C context) {
+    if (filter == null) {
+      return visitNode(null, context);
+    } else {
+      return filter.accept(this, context);
+    }
+  }
+
+  /** Top Level Description */
+  protected abstract R visitNode(SchemaFilter filter, C context);
+
+  public R visitFilter(SchemaFilter filter, C context) {
+    return visitNode(filter, context);
+  }
+
+  public R visitTagFilter(TagFilter tagFilter, C context) {
+    return visitFilter(tagFilter, context);
+  }
+
+  public R visitPathContainsFilter(PathContainsFilter pathContainsFilter, C context) {
+    return visitFilter(pathContainsFilter, context);
+  }
 }

@@ -18,26 +18,53 @@
  */
 package org.apache.iotdb.db.mpp.plan.schemafilter;
 
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public abstract class SchemaFilter {
 
-  public static void serialize(SchemaFilter expression, ByteBuffer byteBuffer) {
-    // TODO
+  public static void serialize(SchemaFilter schemaFilter, ByteBuffer byteBuffer) {
+    if (schemaFilter == null) {
+      ReadWriteIOUtils.write(SchemaFilterType.EMPTY.getCode(), byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(schemaFilter.getSchemaFilterType().getCode(), byteBuffer);
+      schemaFilter.serialize(byteBuffer);
+    }
   }
 
-  public static void serialize(SchemaFilter expression, DataOutputStream byteBuffer) {
-    // TODO
+  public static void serialize(SchemaFilter schemaFilter, DataOutputStream outputStream)
+      throws IOException {
+    if (schemaFilter == null) {
+      ReadWriteIOUtils.write(SchemaFilterType.EMPTY.getCode(), outputStream);
+    } else {
+      ReadWriteIOUtils.write(schemaFilter.getSchemaFilterType().getCode(), outputStream);
+      schemaFilter.serialize(outputStream);
+    }
   }
 
   public static SchemaFilter deserialize(ByteBuffer byteBuffer) {
-    // TODO
-    return null;
+    SchemaFilterType type =
+        SchemaFilterType.getSchemaFilterType(ReadWriteIOUtils.readShort(byteBuffer));
+    switch (type) {
+      case EMPTY:
+        return null;
+      case TAGS:
+        return new TagFilter(byteBuffer);
+      case PATH_CONTAINS:
+        return new PathContainsFilter(byteBuffer);
+      default:
+        throw new IllegalArgumentException("Unsupported schema filter type: " + type);
+    }
   }
 
-  public abstract SchemaFilterType getType();
+  public abstract <R, C> R accept(SchemaFilterVisitor<R, C> visitor, C node);
+
+  public abstract SchemaFilterType getSchemaFilterType();
 
   protected abstract void serialize(ByteBuffer byteBuffer);
 

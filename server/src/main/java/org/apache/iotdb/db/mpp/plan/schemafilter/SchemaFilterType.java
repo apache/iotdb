@@ -19,17 +19,30 @@
 package org.apache.iotdb.db.mpp.plan.schemafilter;
 
 public enum SchemaFilterType {
+  EMPTY((short) 0),
   TAGS((short) 1),
-  TIMESERIES_CONTAINS((short) 2),
-  DEVICE_CONTAINS((short) 3);
+  PATH_CONTAINS((short) 2);
 
-  private final short type;
+  private final short code;
 
-  SchemaFilterType(short type) {
-    this.type = type;
+  SchemaFilterType(short code) {
+    this.code = code;
   }
 
-  public short getType() {
-    return type;
+  public short getCode() {
+    return code;
+  }
+
+  public static SchemaFilterType getSchemaFilterType(short code) {
+    switch (code) {
+      case 0:
+        return EMPTY;
+      case 1:
+        return TAGS;
+      case 2:
+        return PATH_CONTAINS;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + code);
+    }
   }
 }

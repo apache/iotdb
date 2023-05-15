@@ -20,6 +20,12 @@ package org.apache.iotdb.db.mpp.plan.schemafilter.impl;
 
 import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterType;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterVisitor;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class TagFilter extends SchemaFilter {
 
@@ -33,8 +39,45 @@ public class TagFilter extends SchemaFilter {
     this.isContains = isContains;
   }
 
+  public TagFilter(ByteBuffer byteBuffer) {
+    this.key = ReadWriteIOUtils.readString(byteBuffer);
+    this.value = ReadWriteIOUtils.readString(byteBuffer);
+    this.isContains = ReadWriteIOUtils.readBool(byteBuffer);
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public boolean isContains() {
+    return isContains;
+  }
+
   @Override
-  public SchemaFilterType getType() {
+  public <R, C> R accept(SchemaFilterVisitor<R, C> visitor, C node) {
+    return visitor.visitTagFilter(this, node);
+  }
+
+  @Override
+  public SchemaFilterType getSchemaFilterType() {
     return SchemaFilterType.TAGS;
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(key, byteBuffer);
+    ReadWriteIOUtils.write(value, byteBuffer);
+    ReadWriteIOUtils.write(isContains, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(key, stream);
+    ReadWriteIOUtils.write(value, stream);
+    ReadWriteIOUtils.write(isContains, stream);
   }
 }

@@ -678,10 +678,6 @@ SYSTEM
     : S Y S T E M
     ;
 
-TAG
-    : T A G
-    ;
-
 TAGS
     : T A G S
     ;

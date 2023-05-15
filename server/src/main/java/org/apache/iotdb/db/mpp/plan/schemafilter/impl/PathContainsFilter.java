@@ -27,14 +27,14 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class TimeseriesContainsFilter extends SchemaFilter {
+public class PathContainsFilter extends SchemaFilter {
   private final String pathContains;
 
-  public TimeseriesContainsFilter(String pathContains) {
+  public PathContainsFilter(String pathContains) {
     this.pathContains = pathContains;
   }
 
-  public TimeseriesContainsFilter(ByteBuffer byteBuffer) {
+  public PathContainsFilter(ByteBuffer byteBuffer) {
     this.pathContains = ReadWriteIOUtils.readString(byteBuffer);
   }
 
@@ -42,10 +42,9 @@ public class TimeseriesContainsFilter extends SchemaFilter {
     return pathContains;
   }
 
-
   @Override
   public <R, C> R accept(SchemaFilterVisitor<R, C> visitor, C context) {
-    return visitor.visitTimeseriesContainsFilter(this, context);
+    return visitor.visitPathContainsFilter(this, context);
   }
 
   @Override

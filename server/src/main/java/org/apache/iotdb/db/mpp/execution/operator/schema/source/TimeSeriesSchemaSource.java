@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -113,7 +114,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN) && key == null;
+    return pathPattern.equals(ALL_MATCH_PATTERN)
+        && !SchemaFilterType.TAGS.equals(schemaFilter.getSchemaFilterType());
   }
 
   @Override

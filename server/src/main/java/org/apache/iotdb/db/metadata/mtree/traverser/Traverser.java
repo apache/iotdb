@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.utils.MNodeUtils;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +71,8 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
+
+  protected SchemaFilter schemaFilter;
 
   protected Traverser() {}
 
@@ -176,6 +179,10 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   public void setTemplateMap(Map<Integer, Template> templateMap, IMNodeFactory<N> nodeFactory) {
     this.templateMap = templateMap;
     this.nodeFactory = nodeFactory;
+  }
+
+  public void setSchemaFilter(SchemaFilter schemaFilter) {
+    this.schemaFilter = schemaFilter;
   }
 
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {

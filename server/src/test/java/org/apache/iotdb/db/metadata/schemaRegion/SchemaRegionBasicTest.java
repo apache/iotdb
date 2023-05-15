@@ -33,6 +33,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowNodesResult;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -774,13 +775,10 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                 new PartialPath("root.**"),
                 Collections.emptyMap(),
-                false,
-                null,
-                null,
                 0,
                 0,
                 false,
-                "s"));
+                new PathContainsFilter("s")));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -804,13 +802,10 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                 new PartialPath("root.**"),
                 Collections.emptyMap(),
-                false,
-                null,
-                null,
                 0,
                 0,
                 false,
-                "1"));
+                new PathContainsFilter("1")));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(

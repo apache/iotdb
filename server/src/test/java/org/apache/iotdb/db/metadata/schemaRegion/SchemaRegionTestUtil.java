@@ -162,7 +162,7 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, templateMap, false, null, null, 0, 0, isPrefixMatch, null)); ) {
+                pathPattern, templateMap, 0, 0, isPrefixMatch, null)); ) {
       long count = 0;
       while (timeSeriesReader.hasNext()) {
         timeSeriesReader.next();
@@ -195,7 +195,7 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, null, false, null, null, 0, 0, isPrefixMatch, null)); ) {
+                pathPattern, null, 0, 0, isPrefixMatch, null)); ) {
       Map<PartialPath, Long> countMap = new HashMap<>();
       while (timeSeriesReader.hasNext()) {
         ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();

@@ -77,6 +77,7 @@ import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterType;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1191,7 +1192,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
-    if (showTimeSeriesPlan.getKey() != null && showTimeSeriesPlan.getValue() != null) {
+    if (showTimeSeriesPlan.getSchemaFilter() != null
+        && SchemaFilterType.TAGS.equals(
+            showTimeSeriesPlan.getSchemaFilter().getSchemaFilterType())) {
       return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
     } else {
       return mtree.getTimeSeriesReader(

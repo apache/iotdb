@@ -52,7 +52,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -75,8 +74,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -630,7 +627,7 @@ public class MTreeBelowSGMemoryImpl {
    * @return true if the device node exists
    */
   public boolean checkDeviceNodeExists(PartialPath deviceId) {
-    IMemMNode deviceMNode = null;
+    IMemMNode deviceMNode;
     try {
       deviceMNode = getNodeByPath(deviceId);
       return deviceMNode.isDevice();
@@ -706,13 +703,6 @@ public class MTreeBelowSGMemoryImpl {
     } else {
       throw new MNodeTypeMismatchException(
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
-    }
-  }
-
-  public long countAllMeasurement() throws MetadataException {
-    try (MeasurementCounter<IMemMNode> measurementCounter =
-        new MeasurementCounter<>(rootNode, MetadataConstant.ALL_MATCH_PATTERN, store, false)) {
-      return measurementCounter.count();
     }
   }
 
@@ -825,7 +815,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
+      PartialPath activatePath, int templateId, boolean isAligned) {
     String[] nodes = activatePath.getNodes();
     IMemMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
@@ -957,22 +947,9 @@ public class MTreeBelowSGMemoryImpl {
               }
             };
           }
-
-          @Override
-          protected boolean acceptFullMatchedNode(IMemMNode node) {
-            return super.acceptFullMatchedNode(node)
-                && pathContains(
-                    getFullPathFromRootToNode(node.getAsMNode()),
-                    showTimeSeriesPlan.getPathContains());
-          }
-
-          private boolean pathContains(String[] fullPaths, String containStr) {
-            if (containStr == null) {
-              return true;
-            }
-            return StringUtils.join(fullPaths, IoTDBConstant.PATH_SEPARATOR).contains(containStr);
-          }
         };
+
+    collector.setSchemaFilter(showTimeSeriesPlan.getSchemaFilter());
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     Traverser<ITimeSeriesSchemaInfo, IMemMNode> traverser;
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
