@@ -33,6 +33,8 @@ import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
+import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -55,6 +57,7 @@ import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.INTERNAL_MNODE_TYPE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.LOGICAL_VIEW_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_MNODE_TYPE;
@@ -240,6 +243,11 @@ public class MemMTreeSnapshotUtil {
         node = deserializer.deserializeMeasurementMNode(inputStream);
         measurementProcess.accept(node.getAsMeasurementMNode());
         break;
+      case LOGICAL_VIEW_MNODE_TYPE:
+        childrenNum = 0;
+        node = deserializer.deserializeLogicalViewMNode(inputStream);
+        measurementProcess.accept(node.getAsMeasurementMNode());
+        break;
       default:
         throw new IOException("Unrecognized MNode type " + type);
     }
@@ -327,14 +335,24 @@ public class MemMTreeSnapshotUtil {
     public Boolean visitMeasurementMNode(
         AbstractMeasurementMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
       try {
-        ReadWriteIOUtils.write(MEASUREMENT_MNODE_TYPE, outputStream);
-        ReadWriteIOUtils.write(node.getName(), outputStream);
-        node.getSchema().serializeTo(outputStream);
-        ReadWriteIOUtils.write(node.getAlias(), outputStream);
-        ReadWriteIOUtils.write(node.getOffset(), outputStream);
-        ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
-        return true;
-      } catch (IOException e) {
+        if (node.isMeasurement()) {
+          if (node.isLogicalView()) {
+            ReadWriteIOUtils.write(LOGICAL_VIEW_MNODE_TYPE, outputStream);
+            ReadWriteIOUtils.write(node.getName(), outputStream);
+            node.getSchema().serializeTo(outputStream);
+          } else {
+            ReadWriteIOUtils.write(MEASUREMENT_MNODE_TYPE, outputStream);
+            ReadWriteIOUtils.write(node.getName(), outputStream);
+            node.getSchema().serializeTo(outputStream);
+            ReadWriteIOUtils.write(node.getAlias(), outputStream);
+            ReadWriteIOUtils.write(node.getOffset(), outputStream);
+            ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
+          }
+          return true;
+        }
+        throw new IllegalArgumentException(
+            "visitMeasurementMNode got unknown node type" + node.getMNodeType(false).toString());
+      } catch (Exception e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
         return false;
       }
@@ -392,6 +410,14 @@ public class MemMTreeSnapshotUtil {
           nodeFactory.createMeasurementMNode(null, name, schema, alias);
       node.setOffset(tagOffset);
       node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
+      return node.getAsMNode();
+    }
+
+    public IMemMNode deserializeLogicalViewMNode(InputStream inputStream) throws IOException {
+      String name = ReadWriteIOUtils.readString(inputStream);
+      LogicalViewSchema logicalViewSchema = LogicalViewSchema.deserializeFrom(inputStream);
+      IMeasurementMNode<IMemMNode> node =
+          nodeFactory.createLogicalViewMNode(null, name, new LogicalViewInfo(logicalViewSchema));
       return node.getAsMNode();
     }
   }

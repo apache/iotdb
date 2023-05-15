@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,9 +95,10 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
     return templateUsage.entrySet().stream()
         .mapToLong(
-            i ->
-                (long) clusterTemplateManager.getTemplate(i.getKey()).getMeasurementNumber()
-                    * i.getValue())
+            i -> {
+              Template t = clusterTemplateManager.getTemplate(i.getKey());
+              return t == null ? 0 : (long) t.getMeasurementNumber() * i.getValue();
+            })
         .sum();
   }
 

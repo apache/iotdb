@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNo
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -336,6 +338,28 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         result.put(pattern, templateIdList);
       }
       return result;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitCreateLogicalView(
+        ICreateLogicalViewPlan createLogicalViewPlan, ByteBuffer buffer) {
+
+      int viewSize = buffer.getInt();
+      Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
+      for (int i = 0; i < viewSize; i++) {
+        int byteSizeOfPath = buffer.getInt();
+        byte[] bytesOfPath = new byte[byteSizeOfPath];
+        buffer.get(bytesOfPath);
+        try {
+          PartialPath thisPath = new PartialPath(new String(bytesOfPath));
+          ViewExpression thisExp = ViewExpression.deserialize(buffer);
+          viewPathToSourceMap.put(thisPath, thisExp);
+        } catch (IllegalPathException e) {
+          LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
+        }
+      }
+      createLogicalViewPlan.setViewPathToSourceExpressionMap(viewPathToSourceMap);
+      return createLogicalViewPlan;
     }
   }
 }

@@ -17,21 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.db.metadata.view.viewExpression.leaf;
 
-public class PipeAssignerSubtask extends PipeSubtask {
+import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 
-  public PipeAssignerSubtask(String taskID) {
-    super(taskID);
+import java.util.ArrayList;
+import java.util.List;
+
+public abstract class LeafViewOperand extends ViewExpression {
+
+  @Override
+  protected final boolean isLeafOperandInternal() {
+    return true;
   }
 
   @Override
-  protected void executeForAWhile() {
-    // do nothing
-  }
-
-  @Override
-  public void close() {
-    // TODO
+  public final List<ViewExpression> getChildViewExpressions() {
+    // leaf node has no child nodes.
+    return new ArrayList<>();
   }
 }

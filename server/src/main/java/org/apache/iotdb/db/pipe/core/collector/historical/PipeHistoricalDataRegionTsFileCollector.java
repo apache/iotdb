@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
@@ -30,48 +31,36 @@ import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import org.apache.commons.lang.NotImplementedException;
-
 import java.util.ArrayDeque;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-public class PipeHistoricalTsFileCollector implements PipeCollector {
-  private final AtomicBoolean hasBeenStarted;
-  private final String dataRegionId;
-  private Queue<PipeTsFileInsertionEvent> pendingQueue;
+public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
 
-  public PipeHistoricalTsFileCollector(String dataRegionId) {
-    this.hasBeenStarted = new AtomicBoolean(false);
-    this.dataRegionId = dataRegionId;
-  }
+  private int dataRegionId;
+
+  private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    throw new NotImplementedException("Not implement for validate.");
+    validator.validateRequiredAttribute(PipeCollectorConstant.DATA_REGION_KEY);
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
-      throws Exception {
-    throw new NotImplementedException("Not implement for customize.");
+  public void customize(
+      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+    dataRegionId = parameters.getInt(PipeCollectorConstant.DATA_REGION_KEY);
   }
 
   @Override
-  public void start() {
-    if (hasBeenStarted.get()) {
-      return;
-    }
-    hasBeenStarted.set(true);
-
-    DataRegion dataRegion =
+  public synchronized void start() {
+    final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     dataRegion.writeLock("Pipe: collect historical TsFile");
     try {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
-      TsFileManager tsFileManager = dataRegion.getTsFileManager();
 
+      final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
       try {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
@@ -98,6 +87,10 @@ public class PipeHistoricalTsFileCollector implements PipeCollector {
     }
 
     return pendingQueue.poll();
+  }
+
+  public synchronized boolean hasConsumedAll() {
+    return pendingQueue != null && pendingQueue.isEmpty();
   }
 
   @Override

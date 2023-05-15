@@ -17,24 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.pipe.api.exception;
 
-import org.apache.iotdb.db.pipe.task.subtask.PipeAssignerSubtask;
+public class PipeConnectionException extends PipeException {
 
-import org.junit.Before;
-import org.mockito.Mockito;
+  public PipeConnectionException(String message) {
+    super(message);
+  }
 
-public class PipeAssignerSubtaskExecutorTest extends PipeSubtaskExecutorTest {
-
-  @Before
-  public void setUp() throws Exception {
-    executor = new PipeAssignerSubtaskExecutor();
-
-    subtask =
-        Mockito.spy(
-            new PipeAssignerSubtask("PipeAssignerSubtaskExecutorTest") {
-              @Override
-              public void executeForAWhile() {}
-            });
+  public PipeConnectionException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

@@ -66,6 +66,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
@@ -1058,8 +1059,8 @@ public class MTreeBelowSGCachedImpl {
                 return node.getAlias();
               }
 
-              public MeasurementSchema getSchema() {
-                return (MeasurementSchema) node.getSchema();
+              public IMeasurementSchema getSchema() {
+                return node.getSchema();
               }
 
               public Map<String, String> getTags() {
@@ -1078,6 +1079,11 @@ public class MTreeBelowSGCachedImpl {
 
               public boolean isUnderAlignedDevice() {
                 return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
+              }
+
+              @Override
+              public boolean isLogicalView() {
+                return node.isLogicalView();
               }
 
               public String getFullPath() {

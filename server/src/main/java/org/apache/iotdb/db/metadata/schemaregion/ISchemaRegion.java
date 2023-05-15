@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
@@ -160,6 +161,10 @@ public interface ISchemaRegion {
    * @throws MetadataException
    */
   void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException;
+  // endregion
+
+  // region Interfaces for Logical View
+  void createLogicalView(ICreateLogicalViewPlan createLogicalViewPlan) throws MetadataException;
   // endregion
 
   // region Interfaces for metadata info Query

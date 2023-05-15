@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.plan.schemaregion.result;
 
+import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Map;
 import java.util.Objects;
@@ -31,7 +32,7 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
 
   private String alias;
 
-  private MeasurementSchema measurementSchema;
+  private IMeasurementSchema measurementSchema;
 
   private Map<String, String> tags;
   private Map<String, String> attributes;
@@ -41,7 +42,7 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   public ShowTimeSeriesResult(
       String name,
       String alias,
-      MeasurementSchema measurementSchema,
+      IMeasurementSchema measurementSchema,
       Map<String, String> tags,
       Map<String, String> attributes,
       boolean isUnderAlignedDevice) {
@@ -62,7 +63,7 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   }
 
   @Override
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return measurementSchema;
   }
 
@@ -79,6 +80,11 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   @Override
   public boolean isUnderAlignedDevice() {
     return isUnderAlignedDevice;
+  }
+
+  @Override
+  public boolean isLogicalView() {
+    return this.measurementSchema instanceof LogicalViewSchema;
   }
 
   public TSDataType getDataType() {
