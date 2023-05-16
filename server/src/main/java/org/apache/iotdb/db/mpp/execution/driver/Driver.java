@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -36,7 +37,9 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -381,15 +384,17 @@ public abstract class Driver implements IDriver {
 
       sink.setNoMoreTsBlocks();
 
+      Map<String, Long> operatorType2TotalCost = new HashMap<>();
       // record operator execution statistics to metrics
-      //      List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
-      //      for (OperatorContext operatorContext : operatorContexts) {
-      //        String operatorType = operatorContext.getOperatorType();
-      //        QUERY_METRICS.recordOperatorExecutionCost(
-      //            operatorType, operatorContext.getTotalExecutionTimeInNanos());
-      //        QUERY_METRICS.recordOperatorExecutionCount(
-      //            operatorType, operatorContext.getNextCalledCount());
-      //      }
+      List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
+      for (OperatorContext operatorContext : operatorContexts) {
+        String operatorType = operatorContext.getOperatorType();
+        operatorType2TotalCost.merge(
+            operatorType, operatorContext.getTotalExecutionTimeInNanos(), Long::sum);
+      }
+      for (Map.Entry<String, Long> entry : operatorType2TotalCost.entrySet()) {
+        QUERY_METRICS.recordOperatorExecutionCost(entry.getKey(), entry.getValue());
+      }
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;
