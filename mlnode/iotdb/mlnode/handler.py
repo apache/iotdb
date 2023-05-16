@@ -18,7 +18,7 @@
 
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_forecast_dataset
-from iotdb.mlnode.parser import parse_training_request
+from iotdb.mlnode.parser import parse_training_request, parse_forecast_request
 from iotdb.mlnode.process.manager import TaskManager
 from iotdb.mlnode.storage import model_storage
 from iotdb.mlnode.util import get_status
@@ -27,6 +27,7 @@ from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
                                         TForecastResp)
+from iotdb.mlnode.serde import convert_to_binary
 
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
@@ -62,6 +63,22 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
-        status = get_status(TSStatusCode.SUCCESS_STATUS)
-        forecast_result = b'forecast result'
-        return TForecastResp(status, forecast_result)
+        model_path, model_id, data, pred_length = parse_forecast_request(req)
+        model, model_configs = model_storage.load_model(model_id, model_path)
+        task = None
+        task_configs = {'pred_len': pred_length}
+        try:
+            task = self.__task_manager.create_forecast_task(
+                task_configs,
+                model_configs,
+                data,
+                model
+            )
+        except Exception as e:
+            return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
+        finally:
+            # submit task stage & check resource and decide pending/start
+            forecast_result = self.__task_manager.submit_forecast_task(task)
+            binary_result = convert_to_binary(forecast_result)
+            resp = TForecastResp(get_status(TSStatusCode.SUCCESS_STATUS), binary_result)
+            return resp

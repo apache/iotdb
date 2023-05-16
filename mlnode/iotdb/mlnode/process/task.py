@@ -15,8 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import multiprocessing
+
 import os
+import pandas as pd
+import numpy as np
+
 from abc import abstractmethod
 from typing import Dict, Tuple
 
@@ -31,6 +34,7 @@ from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.client import client_manager, ConfigNodeClient
 from iotdb.mlnode.config import descriptor
 from iotdb.thrift.common.ttypes import TrainingState
+from iotdb.mlnode.data_access.utils import timefeatures
 
 
 class ForestingTrainingObjective:
@@ -126,17 +130,19 @@ class _BasicInferenceTask(_BasicTask):
             model_configs: Dict,
             pid_info: Dict,
             data: Tuple,
+            model: nn.Module
     ):
         super().__init__(task_configs, model_configs, pid_info)
         self.data = data
-        self.model, self.model_configs = create_forecast_model(**self.model_configs)
+        self.model = model
+        self.input_len = self.model_configs['input_len']
 
     @abstractmethod
-    def __call__(self):
+    def __call__(self, pipe: Pipe = None):
         raise NotImplementedError
 
     @abstractmethod
-    def data_align(self):
+    def data_align(self, *args):
         raise NotImplementedError
 
 
@@ -220,15 +226,96 @@ class ForecastingInferenceTask(_BasicInferenceTask):
             model_configs: Dict,
             pid_info: Dict,
             data: Tuple,
-            pipe: Pipe,
+            model: nn.Module
     ):
-        super().__init__(task_configs, model_configs, pid_info, data)
+        super().__init__(task_configs, model_configs, pid_info, data, model)
+        self.pred_len = self.task_configs['pred_len']
+        self.model_pred_len = self.model_configs['pred_len']
 
-    def __call__(self):
-        pass
+    def __call__(self, pipe: Pipe = None):
+        data, data_stamp = self.data
+        data, data_stamp = self.data_align(data, data_stamp)
+        full_data, full_data_stamp = data, data_stamp
+        current_pred_len = 0
+        while current_pred_len < self.pred_len:
+            current_data = full_data[:, -self.input_len:, :]
+            current_data_stamp = timefeatures.time_features(full_data_stamp.iloc[-self.input_len:, :])[None, :] # batch
+            output_data = self.model(current_data, current_data_stamp)
+            full_data = np.concatenate([full_data, output_data], axis=1)
+            full_data_stamp = pd.concat([full_data_stamp, self.generate_future_mark(full_data_stamp, self.pred_len)])
+            current_pred_len += self.model_pred_len
+        full_data_stamp = full_data_stamp.values
+        ret_data = np.concatenate([full_data_stamp[0], full_data[0]], axis=1)
+        ret_data = pd.DataFrame(ret_data)
+        pipe.send(ret_data)
 
-    def data_align(self):
-        pass
 
-    def generate_future_mark(self):
-        pass
+    def data_align(self, data: pd.DataFrame, data_stamp: pd.DataFrame) -> Tuple[np.ndarray, pd.DatetimeIndex]:
+        """
+        data: L x C, DataFrame, suppose no batch dim
+        time_stamp: L x 1, DataFrame
+        """
+        assert len(data.shape) == 2, 'expect inference data to have two dimensions'
+        assert len(data_stamp.shape) == 2 and data_stamp.shape[1] == 1, \
+            'expect inference timestamps to be shaped as [L, 1]'
+        time_deltas = data_stamp.diff().dropna()
+        mean_timedelta = time_deltas.mean()[0]
+        if data.shape[0] < self.input_len:
+            extra_len = self.input_len - data.shape[0]
+            data = np.concatenate([np.mean(data, axis=0, keepdims=True).repeat(extra_len, axis=0), data], axis=0)
+            extrapolated_timestamp = pd.date_range(data_stamp[0][0] - extra_len * mean_timedelta, periods=extra_len,
+                                                   freq=mean_timedelta)
+            data_stamp = np.concatenate([extrapolated_timestamp.to_frame(), data_stamp])
+        else:
+            data = data[-self.input_len:, :]
+            data_stamp = data_stamp[-self.input_len:]
+
+        data = data[None, :]  # add batch dim
+        return data, data_stamp
+
+    def generate_future_mark(self, data_stamp:pd.DataFrame, future_len: int) -> pd.DatetimeIndex:
+        time_deltas = data_stamp.diff().dropna()
+        mean_timedelta = time_deltas.mean()[0]
+        extrapolated_timestamp = pd.date_range(data_stamp[0][0], periods=future_len,
+                                               freq=mean_timedelta)
+        return extrapolated_timestamp
+
+if __name__ == '__main__':
+    pass
+    # def data_align(data: np.ndarray, data_stamp: pd.DataFrame, input_len):
+    #     """
+    #     data: L x C, ndarray
+    #     time_stamp: L,
+    #     """
+    #     assert len(data.shape) == 2, 'expect inference data to have two dimensions'
+    #     assert len(data_stamp.shape) == 2 and data_stamp.shape[1] == 1, \
+    #         'expect inference timestamps to be shaped as [L, 1]'
+    #     time_deltas = data_stamp.diff().dropna()
+    #     mean_timedelta = time_deltas.mean()[0]
+    #     if data.shape[0] < input_len:
+    #         extra_len = input_len - data.shape[0]
+    #         data = np.concatenate([np.mean(data, axis=0, keepdims=True).repeat(extra_len, axis=0), data], axis=0)
+    #         extrapolated_timestamp = pd.date_range(data_stamp[0][0] - extra_len * mean_timedelta, periods=extra_len,
+    #                                                freq=mean_timedelta)
+    #         data_stamp = np.concatenate([extrapolated_timestamp.to_frame(), data_stamp])
+    #     else:
+    #         data = data[-input_len:, :]
+    #         data_stamp = data_stamp[-input_len:]
+    #
+    #     data = data[None, :]  # add batch dim
+    #     data_stamp = data_stamp[None, :]
+    #     return data, data_stamp
+    #
+    # data = pd.DataFrame([1,2,3,4,5,1,2,3,4,5,1,2,3,4,5])
+    # data_stamp = pd.DataFrame(pd.to_datetime([
+    # '2023-01-01 00:00:00', '2023-01-01 01:00:00',
+    # '2023-01-01 02:00:00', '2023-01-01 03:00:00',
+    # '2023-01-01 04:00:00', '2023-01-01 05:00:00',
+    # '2023-01-01 06:00:00', '2023-01-01 07:00:00',
+    # '2023-01-01 08:00:00', '2023-01-01 09:00:00',
+    # '2023-01-01 10:00:00', '2023-01-01 11:00:00',
+    # '2023-01-01 12:00:00', '2023-01-01 13:00:00',
+    # '2023-01-01 14:00:00'
+    # ]))
+    # a, b = data_align(data.values, data_stamp, 20)
+    # print(a.shape, b.shape)

@@ -65,13 +65,13 @@ class ModelStorage(object):
         self.lock.release()
         return os.path.abspath(model_file_path)
 
-    def load_model(self, model_id: str, trial_id: str) -> Tuple[torch.jit.ScriptModule, Dict]:
+    def load_model(self, model_id: str, file_path: str) -> Tuple[torch.jit.ScriptModule, Dict]:
         """
         Returns:
             jit_model: a ScriptModule contains model architecture and parameters, which can be deployed cross-platform
             model_config: a dict contains model attributes
         """
-        file_path = os.path.join(self.__model_dir, f'{model_id}', f'{trial_id}.pt')
+        file_path = os.path.join(self.__model_dir, file_path)
         if model_id in self.__model_cache:
             return self.__model_cache[file_path]
         else:
