@@ -72,24 +72,43 @@
     </dependencies>
     <build>
         <plugins>
+            <!--            <plugin>-->
+            <!--                <groupId>net.alchim31.maven</groupId>-->
+            <!--                <artifactId>scala-maven-plugin</artifactId>-->
+            <!--                <version>4.4.0</version>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <id>compile-scala</id>-->
+            <!--                        <phase>compile</phase>-->
+            <!--                        <goals>-->
+            <!--                            <goal>add-source</goal>-->
+            <!--                            <goal>compile</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                    <execution>-->
+            <!--                        <id>test-compile-scala</id>-->
+            <!--                        <phase>test-compile</phase>-->
+            <!--                        <goals>-->
+            <!--                            <goal>add-source</goal>-->
+            <!--                            <goal>testCompile</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--                <configuration>-->
+            <!--                    <args>-->
+            <!--                        <arg>-nobootcp</arg>-->
+            <!--                    </args>-->
+            <!--                    <scalaVersion>2.11.12</scalaVersion>-->
+            <!--                </configuration>-->
+            <!--            </plugin>-->
             <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-                <version>4.4.0</version>
+                <groupId>org.scala-tools</groupId>
+                <artifactId>maven-scala-plugin</artifactId>
+                <version>2.15.2</version>
                 <executions>
                     <execution>
-                        <id>compile-scala</id>
-                        <phase>compile</phase>
                         <goals>
-                            <goal>add-source</goal>
                             <goal>compile</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>test-compile-scala</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>add-source</goal>
                             <goal>testCompile</goal>
                         </goals>
                     </execution>
@@ -100,29 +119,4 @@
             </plugin>
         </plugins>
     </build>
-    <profiles>
-        <profile>
-            <id>java-11-and-above</id>
-            <activation>
-                <!-- This needs to be updated as soon as Java 20 is shipped -->
-                <jdk>[11,20)</jdk>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>net.alchim31.maven</groupId>
-                        <artifactId>scala-maven-plugin</artifactId>
-                        <version>4.4.0</version>
-                        <!-- Added to avoid problems with Java 11 and above -->
-                        <configuration>
-                            <args>
-                                <arg>-nobootcp</arg>
-                            </args>
-                            <scalaVersion>2.11.12</scalaVersion>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>
