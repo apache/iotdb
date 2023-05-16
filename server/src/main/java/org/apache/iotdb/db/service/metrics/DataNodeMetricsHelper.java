@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.commons.concurrent.DataNodeThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -39,6 +36,10 @@ import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode. */

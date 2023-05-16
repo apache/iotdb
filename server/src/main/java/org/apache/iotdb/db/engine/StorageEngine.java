@@ -212,8 +212,7 @@ public class StorageEngine implements IService {
   public void recover() {
     setAllSgReady(false);
     cachedThreadPool =
-        IoTDBThreadPoolFactory.newCachedThreadPool(
-            ThreadName.STORAGE_ENGINE_CACHED_SERVICE.getName());
+        IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
 
     List<Future<Void>> futures = new LinkedList<>();
     asyncRecover(futures);
@@ -317,8 +316,7 @@ public class StorageEngine implements IService {
     recover();
 
     ttlCheckThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.TTL_CHECK_SERVICE.getName());
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         ttlCheckThread,
         this::checkTTL,
@@ -398,7 +396,7 @@ public class StorageEngine implements IService {
       }
     }
     syncCloseAllProcessor();
-    ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK_SERVICE);
+    ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK);
     ThreadUtils.stopThreadPool(
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(

@@ -115,7 +115,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
       int index = i;
-      String threadName = ThreadName.QUERY_WORKER_THREAD_NAME.getName() + "-" + i;
+      String threadName = ThreadName.QUERY_WORKER.getName() + "-" + i;
       ThreadProducer producer =
           new ThreadProducer() {
             @Override
@@ -136,7 +136,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       t.start();
     }
 
-    String threadName = ThreadName.QUERY_SENTINEL_THREAD_NAME.getName();
+    String threadName = ThreadName.QUERY_SENTINEL.getName();
     ThreadProducer producer =
         new ThreadProducer() {
           @Override

@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.metrics.metricsets.cpu;
 
-import java.util.List;
-import java.util.function.UnaryOperator;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+
+import java.util.List;
+import java.util.function.UnaryOperator;
 
 public class CpuUsageMetrics implements IMetricSet {
 

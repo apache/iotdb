@@ -18,21 +18,22 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public enum ThreadName {
   // -------------------------- QueryThread --------------------------
-  QUERY_WORKER_THREAD_NAME("Query-Worker-Thread"),
-  QUERY_SENTINEL_THREAD_NAME("Query-Sentinel-Thread"),
-  TIMED_QUERY_SQL_COUNT_THREAD_POOL_NAME("Timed-Query-SQL-Count"),
-  MPP_DATA_EXCHANGE_TASK_EXECUTOR_POOL("MPP-Data-Exchange-Task-Executors"),
-  FRAGMENT_INSTANCE_MANAGEMENT_THREAD("Fragment-Instance-Management"),
-  FRAGMENT_INSTANCE_NOTIFICATION_THREAD("Fragment-Instance-Notification"),
+  QUERY_WORKER("Query-Worker-Thread"),
+  QUERY_SENTINEL("Query-Sentinel-Thread"),
+  TIMED_QUERY_SQL_COUNT("Timed-Query-SQL-Count"),
+  MPP_DATA_EXCHANGE_TASK_EXECUTOR("MPP-Data-Exchange-Task-Executors"),
+  FRAGMENT_INSTANCE_MANAGEMENT("Fragment-Instance-Management"),
+  FRAGMENT_INSTANCE_NOTIFICATION("Fragment-Instance-Notification"),
   DATANODE_INTERNAL_RPC_SERVICE("DataNodeInternalRPC-Service"),
   DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
   MPP_DATA_EXCHANGE_RPC_SERVICE("MPPDataExchangeRPC-Service"),
@@ -42,7 +43,7 @@ public enum ThreadName {
 
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
   // -------------------------- MPPSchedule --------------------------
-  MPP_COORDINATOR_SCHEDULED_EXECUTOR_POOL_NAME("MPP-Coordinator-Scheduled-Executor"),
+  MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),
   // -------------------------- Compaction --------------------------
   COMPACTION_WORKER("Compaction-Worker"),
   COMPACTION_SUB_TASK("Compaction-Sub-Task"),
@@ -53,10 +54,10 @@ public enum ThreadName {
   WAL_DELETE("WAL-Delete"),
   WAL_RECOVER("WAL-Recover"),
   // -------------------------- Write --------------------------
-  MPP_COORDINATOR_WRITE_EXECUTOR_POOL_NAME("MPP-Coordinator-Write-Executor"),
+  MPP_COORDINATOR_WRITE_EXECUTOR("MPP-Coordinator-Write-Executor"),
   // -------------------------- Flush --------------------------
-  FLUSH_SERVICE("Flush"),
-  FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
+  FLUSH("Flush"),
+  FLUSH_SUB_TASK("Flush-SubTask"),
   FLUSH_TASK_SUBMIT("FlushTask-Submit-Pool"),
   TIMED_FLUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
   TIMED_FLUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
@@ -85,17 +86,17 @@ public enum ThreadName {
   // -------------------------- Ratis --------------------------
   // NOTICE: The thread name of ratis cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
-  RAFT_SERVER_PROXY_EXECUTOR_THREAD_NAME_PATTERN("\\d+-impl-thread"),
-  RAFT_SERVER_EXECUTOR_THREAD_NAME_PATTERN("\\d+-server-thread"),
-  RAFT_SERVER_CLIENT_EXECUTOR_THREAD_NAME_PATTERN("\\d+-client-thread"),
-  SEGMENT_RAFT_WORKER_THREAD_NAME_PATTERN("SegmentedRaftLogWorker"),
-  STATE_MACHINE_UPDATER_THREAD_NAME_PATTERN("StateMachineUpdater"),
-  FOLLOWER_STATE_THREAD_NAME_PATTERN("FollowerState"),
-  LEADER_STATE_IMPL_PROCESSOR_THREAD_NAME("LeaderStateImpl"),
-  LEADER_ELECTION_THREAD_NAME("LeaderElection"),
-  LOG_APPENDER_THREAD_NAME("GrpcLogAppender"),
-  EVENT_PROCESSOR_THREAD_NAME("EventProcessor"),
-  RATIS_BG_DISK_GUARDIAN_THREAD_NAME("ratis-bg-disk-guardian"),
+  RAFT_SERVER_PROXY_EXECUTOR("\\d+-impl-thread"),
+  RAFT_SERVER_EXECUTOR("\\d+-server-thread"),
+  RAFT_SERVER_CLIENT_EXECUTOR("\\d+-client-thread"),
+  SEGMENT_RAFT_WORKER("SegmentedRaftLogWorker"),
+  STATE_MACHINE_UPDATER("StateMachineUpdater"),
+  FOLLOWER_STATE("FollowerState"),
+  LEADER_STATE_IMPL_PROCESSOR("LeaderStateImpl"),
+  LEADER_ELECTION("LeaderElection"),
+  LOG_APPENDER("GrpcLogAppender"),
+  EVENT_PROCESSOR("EventProcessor"),
+  RATIS_BG_DISK_GUARDIAN("ratis-bg-disk-guardian"),
   GRPC_DEFAULT_BOSS_ELG("grpc-default-boss-ELG"),
   GRPC_DEFAULT_EXECUTOR("grpc-default-executor"),
   GPRC_DEFAULT_WORKER_ELG("grpc-default-worker-ELG"),
@@ -114,9 +115,9 @@ public enum ThreadName {
   // -------------------------- JVM --------------------------
   // NOTICE: The thread name of jvm cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
-  JVM_PAUSE_MONITOR_THREAD_NAME("JvmPauseMonitor"),
-  GC_THREAD_NAME("GC task thread"),
-  COMPILE_THREAD_NAME("CompilerThread"),
+  JVM_PAUSE_MONITOR("JvmPauseMonitor"),
+  GC("GC task thread"),
+  COMPILE("CompilerThread"),
   VM_PERIODIC_TASK("VM Periodic Task Thread"),
   VM_THREAD("VM Thread"),
   REFERENCE_HANDLER("Reference Handler"),
@@ -132,11 +133,11 @@ public enum ThreadName {
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
   // -------------------------- Other --------------------------
-  TTL_CHECK_SERVICE("TTL-CHECK"),
-  SETTLE_SERVICE("Settle"),
+  TTL_CHECK("TTL-CHECK"),
+  SETTLE("Settle"),
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
-  STORAGE_ENGINE_CACHED_SERVICE("StorageEngine"),
+  STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
   MLNODE_RPC_SERVICE("MLNodeRpc-Service"),
   IOTDB_SHUTDOWN_HOOK("IoTDB-Shutdown-Hook"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
@@ -147,12 +148,12 @@ public enum ThreadName {
   private static Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
-              QUERY_WORKER_THREAD_NAME,
-              QUERY_SENTINEL_THREAD_NAME,
-              TIMED_QUERY_SQL_COUNT_THREAD_POOL_NAME,
-              MPP_DATA_EXCHANGE_TASK_EXECUTOR_POOL,
-              FRAGMENT_INSTANCE_MANAGEMENT_THREAD,
-              FRAGMENT_INSTANCE_NOTIFICATION_THREAD,
+              QUERY_WORKER,
+              QUERY_SENTINEL,
+              TIMED_QUERY_SQL_COUNT,
+              MPP_DATA_EXCHANGE_TASK_EXECUTOR,
+              FRAGMENT_INSTANCE_MANAGEMENT,
+              FRAGMENT_INSTANCE_NOTIFICATION,
               DATANODE_INTERNAL_RPC_SERVICE,
               DATANODE_INTERNAL_RPC_PROCESSOR,
               MPP_DATA_EXCHANGE_RPC_SERVICE,
@@ -169,8 +170,8 @@ public enum ThreadName {
   private static Set<ThreadName> flushThreadNames =
       new HashSet<>(
           Arrays.asList(
-              FLUSH_SERVICE,
-              FLUSH_SUB_TASK_SERVICE,
+              FLUSH,
+              FLUSH_SUB_TASK,
               FLUSH_TASK_SUBMIT,
               TIMED_FLUSH_SEQ_MEMTABLE,
               TIMED_FLUSH_UNSEQ_MEMTABLE));
@@ -198,17 +199,17 @@ public enum ThreadName {
   private static Set<ThreadName> ratisThreadNames =
       new HashSet<>(
           Arrays.asList(
-              RAFT_SERVER_PROXY_EXECUTOR_THREAD_NAME_PATTERN,
-              RAFT_SERVER_EXECUTOR_THREAD_NAME_PATTERN,
-              RAFT_SERVER_CLIENT_EXECUTOR_THREAD_NAME_PATTERN,
-              SEGMENT_RAFT_WORKER_THREAD_NAME_PATTERN,
-              STATE_MACHINE_UPDATER_THREAD_NAME_PATTERN,
-              FOLLOWER_STATE_THREAD_NAME_PATTERN,
-              LEADER_STATE_IMPL_PROCESSOR_THREAD_NAME,
-              LEADER_ELECTION_THREAD_NAME,
-              LOG_APPENDER_THREAD_NAME,
-              EVENT_PROCESSOR_THREAD_NAME,
-              RATIS_BG_DISK_GUARDIAN_THREAD_NAME,
+              RAFT_SERVER_PROXY_EXECUTOR,
+              RAFT_SERVER_EXECUTOR,
+              RAFT_SERVER_CLIENT_EXECUTOR,
+              SEGMENT_RAFT_WORKER,
+              STATE_MACHINE_UPDATER,
+              FOLLOWER_STATE,
+              LEADER_STATE_IMPL_PROCESSOR,
+              LEADER_ELECTION,
+              LOG_APPENDER,
+              EVENT_PROCESSOR,
+              RATIS_BG_DISK_GUARDIAN,
               GRPC_DEFAULT_BOSS_ELG,
               GPRC_DEFAULT_WORKER_ELG,
               GRPC_DEFAULT_EXECUTOR,
@@ -227,9 +228,9 @@ public enum ThreadName {
   private static Set<ThreadName> jvmThreadNames =
       new HashSet<>(
           Arrays.asList(
-              JVM_PAUSE_MONITOR_THREAD_NAME,
-              GC_THREAD_NAME,
-              COMPILE_THREAD_NAME,
+              JVM_PAUSE_MONITOR,
+              GC,
+              COMPILE,
               VM_PERIODIC_TASK,
               VM_THREAD,
               REFERENCE_HANDLER,
@@ -248,11 +249,11 @@ public enum ThreadName {
   private static Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
-              TTL_CHECK_SERVICE,
-              SETTLE_SERVICE,
+              TTL_CHECK,
+              SETTLE,
               INFLUXDB_RPC_SERVICE,
               INFLUXDB_RPC_PROCESSOR,
-              STORAGE_ENGINE_CACHED_SERVICE,
+              STORAGE_ENGINE_CACHED_POOL,
               MLNODE_RPC_SERVICE));
 
   ThreadName(String name) {
@@ -269,7 +270,7 @@ public enum ThreadName {
         return DataNodeThreadModule.QUERY;
       }
     }
-    if (givenThreadName.contains(MPP_COORDINATOR_SCHEDULED_EXECUTOR_POOL_NAME.getName())) {
+    if (givenThreadName.contains(MPP_COORDINATOR_SCHEDULED_EXECUTOR.getName())) {
       return DataNodeThreadModule.MPP_SCHEDULE;
     }
     for (ThreadName threadName : compactionThreadNames) {
@@ -282,7 +283,7 @@ public enum ThreadName {
         return DataNodeThreadModule.WAL;
       }
     }
-    if (givenThreadName.contains(MPP_COORDINATOR_WRITE_EXECUTOR_POOL_NAME.getName())) {
+    if (givenThreadName.contains(MPP_COORDINATOR_WRITE_EXECUTOR.getName())) {
       return DataNodeThreadModule.MPP_WRITE;
     }
     for (ThreadName threadName : flushThreadNames) {

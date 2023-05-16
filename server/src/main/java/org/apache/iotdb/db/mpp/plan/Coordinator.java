@@ -192,15 +192,14 @@ public class Coordinator {
   private ExecutorService getWriteExecutor() {
     int coordinatorWriteExecutorSize = CONFIG.getCoordinatorWriteExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
-        coordinatorWriteExecutorSize,
-        ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR_POOL_NAME.getName());
+        coordinatorWriteExecutorSize, ThreadName.MPP_COORDINATOR_WRITE_EXECUTOR.getName());
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE,
-        ThreadName.MPP_COORDINATOR_SCHEDULED_EXECUTOR_POOL_NAME.getName());
+        ThreadName.MPP_COORDINATOR_SCHEDULED_EXECUTOR.getName());
   }
 
   public QueryId createQueryId() {

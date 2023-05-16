@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.metrics.metricsets.cpu;
 
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -26,15 +32,9 @@ import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
-import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager {
   private final Logger log = LoggerFactory.getLogger(LinuxCpuUsageMetricsManager.class);
@@ -45,8 +45,6 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
   private final Map<Long, Long> threadCpuTimeMap = new HashMap<>();
   private final Map<String, Long> moduleCpuTimeMap = new HashMap<>();
   private final Map<String, Double> moduleCpuTimePercentageMap = new HashMap<>();
-  private final Map<String, Long> moduleIncrementCpuTimeMap = new HashMap<>();
-  private long jvmCpuTime = 0L;
   private long prevTotalCpuTime = 0L;
   private long systemCpuTime = 0L;
   private final Map<String, Double> threadCpuPercentageMap = new HashMap<>();
@@ -101,84 +99,51 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
     systemCpuTime = newCpuTime;
   }
 
+  private String getThreadModuleById(long id, ThreadInfo threadInfo) {
+    return threadIdToModuleCache.computeIfAbsent(
+        id, k -> threadNameToModule.apply(threadInfo.getThreadName()));
+  }
+
+  private String getThreadPoolById(long id, ThreadInfo threadInfo) {
+    return threadIdToPoolCache.computeIfAbsent(
+        id, k -> threadNameToPool.apply(threadInfo.getThreadName()));
+  }
+
   private void updateIoTDBCpuUsage() {
     // update
     long[] taskIds = threadMXBean.getAllThreadIds();
     ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(taskIds);
-    long totalCpuTime = prevTotalCpuTime;
     long incrementCpuTime = 0L;
     Map<String, Long> newModuleCpuTimeMap = new HashMap<>();
+    Map<String, Long> threadPoolIncrementCpuTimeMap = new HashMap<>();
     for (ThreadInfo threadInfo : threadInfos) {
       long id = threadInfo.getThreadId();
-      String module =
-          threadIdToModuleCache.computeIfAbsent(
-              id, k -> threadNameToModule.apply(threadInfo.getThreadName()));
-      if (module.equals("CLIENT_SERVICE") && threadInfo.getThreadName().contains("Processor")) {
-        ThreadInfo info = threadMXBean.getThreadInfo(id, 100);
-        StackTraceElement[] stackTraceElements = info.getStackTrace();
-        for (StackTraceElement stackTraceElement : stackTraceElements) {
-          String trace = stackTraceElement.toString();
-          if (trace.contains("insert") || trace.contains("Insert")) {
-            module = "WRITE";
-            break;
-          } else if (stackTraceElement.toString().contains("executeQueryStatement")) {
-            module = "QUERY";
-            break;
-          }
-        }
-      }
+      String module = getThreadModuleById(id, threadInfo);
+      String pool = getThreadPoolById(id, threadInfo);
       long cpuTime = threadMXBean.getThreadCpuTime(id);
       long prevCpuTime = threadCpuTimeMap.getOrDefault(id, 0L);
-      totalCpuTime += cpuTime - prevCpuTime;
       incrementCpuTime += cpuTime - prevCpuTime;
-      if (prevCpuTime > cpuTime) {
-        System.out.println("Prev Cpu Time is greater than new cpu time");
-      }
       newModuleCpuTimeMap.compute(
           module, (k, v) -> v == null ? cpuTime - prevCpuTime : v + cpuTime - prevCpuTime);
+      threadPoolIncrementCpuTimeMap.compute(
+          pool, (k, v) -> v == null ? cpuTime - prevCpuTime : v + cpuTime - prevCpuTime);
       threadIncrementCpuTimeMap.put(threadInfo.getThreadName(), cpuTime - prevCpuTime);
     }
-    long incrementJvmCpuTime = totalCpuTime - jvmCpuTime;
-    jvmCpuTime = totalCpuTime;
     for (Map.Entry<String, Long> entry : newModuleCpuTimeMap.entrySet()) {
       String module = entry.getKey();
       long cpuTime = entry.getValue();
-      long oldCpuTime = moduleCpuTimeMap.getOrDefault(module, 0L);
       moduleCpuTimeMap.put(module, cpuTime);
-      moduleIncrementCpuTimeMap.put(module, cpuTime - oldCpuTime);
       moduleCpuTimePercentageMap.put(module, (double) (cpuTime) / (double) incrementCpuTime);
     }
-    for (Map.Entry<String, Long> entry : threadIncrementCpuTimeMap.entrySet()) {
-      String threadName = entry.getKey();
+    for (Map.Entry<String, Long> entry : threadPoolIncrementCpuTimeMap.entrySet()) {
+      String pool = entry.getKey();
       long cpuTime = entry.getValue();
-      threadCpuPercentageMap.put(threadName, (double) cpuTime / (double) incrementCpuTime);
       if (metricService != null) {
         Gauge gauge =
             metricService.getOrCreateGauge(
-                "thread_cpu_usage", MetricLevel.IMPORTANT, "thread_name", threadName);
-        gauge.set((long) ((double) cpuTime / (double) incrementCpuTime * 10000));
+                "pool_cpu_usage", MetricLevel.IMPORTANT, "pool_name", pool);
+        gauge.set((long) ((double) cpuTime / (double) incrementCpuTime * 10000.0));
       }
     }
-    Map<String, Double> sorted1 =
-        moduleCpuTimePercentageMap.entrySet().stream()
-            .sorted(Map.Entry.comparingByValue())
-            .collect(
-                Collectors.toMap(
-                    x -> x.getKey(),
-                    x -> x.getValue(),
-                    (oldValue, newValue) -> oldValue,
-                    LinkedHashMap::new));
-    Map<String, Long> sorted2 =
-        newModuleCpuTimeMap.entrySet().stream()
-            .sorted(Map.Entry.comparingByValue())
-            .collect(
-                Collectors.toMap(
-                    x -> x.getKey(),
-                    x -> x.getValue(),
-                    (oldValue, newValue) -> oldValue,
-                    LinkedHashMap::new));
-    log.error("{}", sorted1);
-    log.error("{}", sorted2);
-    log.error("{}", incrementCpuTime);
   }
 }

@@ -87,10 +87,10 @@ public class FragmentInstanceManager {
     this.instanceExecution = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(
-            1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT_THREAD.getName());
+            1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT.getName());
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            4, ThreadName.FRAGMENT_INSTANCE_NOTIFICATION_THREAD.getName());
+            4, ThreadName.FRAGMENT_INSTANCE_NOTIFICATION.getName());
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 

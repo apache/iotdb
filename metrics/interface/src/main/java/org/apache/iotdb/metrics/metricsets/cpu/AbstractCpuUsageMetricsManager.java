@@ -19,17 +19,19 @@
 
 package org.apache.iotdb.metrics.metricsets.cpu;
 
+import org.apache.iotdb.metrics.AbstractMetricService;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.UnaryOperator;
-import org.apache.iotdb.metrics.AbstractMetricService;
 
 public class AbstractCpuUsageMetricsManager {
   protected AbstractMetricService metricService;
   protected final UnaryOperator<String> threadNameToModule;
   protected final UnaryOperator<String> threadNameToPool;
   protected final Map<Long, String> threadIdToModuleCache = new HashMap<>();
+  protected final Map<Long, String> threadIdToPoolCache = new HashMap<>();
 
   AbstractCpuUsageMetricsManager(
       UnaryOperator<String> threadNameToModule, UnaryOperator<String> threadNameToPool) {

@@ -38,7 +38,7 @@ public class QueryFrequencyRecorder {
   public QueryFrequencyRecorder(IoTDBConfig config) {
     ScheduledExecutorService timedQuerySqlCountThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.TIMED_QUERY_SQL_COUNT_THREAD_POOL_NAME.getName());
+            ThreadName.TIMED_QUERY_SQL_COUNT.getName());
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         timedQuerySqlCountThread,
         () -> {
