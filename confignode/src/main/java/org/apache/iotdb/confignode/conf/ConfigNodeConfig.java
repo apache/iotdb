@@ -219,6 +219,8 @@ public class ConfigNodeConfig {
   /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
   private boolean dataRegionRatisLogUnsafeFlushEnable = false;
 
+  private int dataRegionRatisLogForceSyncNum = 128;
+
   private boolean configNodeRatisLogUnsafeFlushEnable = false;
   private boolean schemaRegionRatisLogUnsafeFlushEnable = false;
 
@@ -231,6 +233,8 @@ public class ConfigNodeConfig {
 
   /** RatisConsensus protocol, flow control window for ratis grpc log appender */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  private int dataRegionRatisGrpcLeaderOutstandingAppendsMax = 128;
 
   private long configNodeRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
   private long schemaRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
@@ -745,6 +749,14 @@ public class ConfigNodeConfig {
     this.dataRegionRatisLogUnsafeFlushEnable = dataRegionRatisLogUnsafeFlushEnable;
   }
 
+  public int getDataRegionRatisLogForceSyncNum() {
+    return dataRegionRatisLogForceSyncNum;
+  }
+
+  public void setDataRegionRatisLogForceSyncNum(int dataRegionRatisLogForceSyncNum) {
+    this.dataRegionRatisLogForceSyncNum = dataRegionRatisLogForceSyncNum;
+  }
+
   public long getDataRegionRatisLogSegmentSizeMax() {
     return dataRegionRatisLogSegmentSizeMax;
   }
@@ -759,6 +771,16 @@ public class ConfigNodeConfig {
 
   public void setDataRegionRatisGrpcFlowControlWindow(long dataRegionRatisGrpcFlowControlWindow) {
     this.dataRegionRatisGrpcFlowControlWindow = dataRegionRatisGrpcFlowControlWindow;
+  }
+
+  public int getDataRegionRatisGrpcLeaderOutstandingAppendsMax() {
+    return dataRegionRatisGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setDataRegionRatisGrpcLeaderOutstandingAppendsMax(
+      int dataRegionRatisGrpcLeaderOutstandingAppendsMax) {
+    this.dataRegionRatisGrpcLeaderOutstandingAppendsMax =
+        dataRegionRatisGrpcLeaderOutstandingAppendsMax;
   }
 
   public long getDataRegionRatisRpcLeaderElectionTimeoutMinMs() {
