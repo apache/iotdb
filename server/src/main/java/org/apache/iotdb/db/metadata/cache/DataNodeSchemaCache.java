@@ -73,8 +73,12 @@ public class DataNodeSchemaCache {
     MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
   }
 
-  public double getHitRate() {
-    return dualKeyCache.stats().hitRate() * 100;
+  public long getHitCount() {
+    return dualKeyCache.stats().hitCount();
+  }
+
+  public long getRequestCount() {
+    return dualKeyCache.stats().requestCount();
   }
 
   public static DataNodeSchemaCache getInstance() {

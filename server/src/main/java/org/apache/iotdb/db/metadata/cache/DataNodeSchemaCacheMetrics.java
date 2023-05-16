@@ -38,18 +38,41 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
-        Metric.CACHE_HIT.toString(),
+        Metric.CACHE.toString(),
         MetricLevel.IMPORTANT,
         dataNodeSchemaCache,
-        o -> (long) o.getHitRate(),
+        DataNodeSchemaCache::getHitCount,
         Tag.NAME.toString(),
-        "schemaCache");
+        "SchemaCache",
+        Tag.TYPE.toString(),
+        "hit");
+    metricService.createAutoGauge(
+        Metric.CACHE.toString(),
+        MetricLevel.IMPORTANT,
+        dataNodeSchemaCache,
+        DataNodeSchemaCache::getRequestCount,
+        Tag.NAME.toString(),
+        "SchemaCache",
+        Tag.TYPE.toString(),
+        "all");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "schemaCache");
+        MetricType.AUTO_GAUGE,
+        Metric.CACHE.toString(),
+        Tag.NAME.toString(),
+        "SchemaCache",
+        Tag.TYPE.toString(),
+        "hit");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.CACHE.toString(),
+        Tag.NAME.toString(),
+        "SchemaCache",
+        Tag.TYPE.toString(),
+        "all");
   }
 
   @Override
