@@ -710,6 +710,34 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
             SchemaRegionReadPlanFactory.getShowDevicesPlan(
                 new PartialPath("root.**"), 3, 99, false, null));
     Assert.assertEquals(0, actualResult.size());
+    // CASE 11. show devices root.** where device contains 'laptop'
+    expectedList =
+        Arrays.asList(
+            new ShowDevicesResult("root.laptop", false),
+            new ShowDevicesResult("root.laptop.d1", false),
+            new ShowDevicesResult("root.laptop.d1.s2", false),
+            new ShowDevicesResult("root.laptop.d2", false));
+    actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 0, 0, false, new PathContainsFilter("laptop")));
+    expectedHashset = new HashSet<>(expectedList);
+    actualHashset = new HashSet<>(actualResult);
+    Assert.assertEquals(expectedHashset, actualHashset);
+    // CASE 11. show devices root.** where device contains 'laptop.d' limit 2 offset 0
+    expectedList =
+        Arrays.asList(
+            new ShowDevicesResult("root.laptop.d1", false),
+            new ShowDevicesResult("root.laptop.d1.s2", false));
+    actualResult =
+        SchemaRegionTestUtil.getMatchedDevices(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                new PartialPath("root.**"), 2, 0, false, new PathContainsFilter("laptop.d")));
+    expectedHashset = new HashSet<>(expectedList);
+    actualHashset = new HashSet<>(actualResult);
+    Assert.assertEquals(expectedHashset, actualHashset);
   }
 
   @Test
@@ -813,6 +841,34 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 "root.laptop.d1.s2.t1",
                 "root.laptop.d1.s3",
                 "root.laptop.d2.s1"));
+    expectedSize = expectedPathList.size();
+    Assert.assertEquals(expectedSize, result.size());
+    actualPathList = new HashSet<>();
+    for (int index = 0; index < expectedSize; index++) {
+      actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+
+    // CASE 05: show timeseries where path contains "laptop.d"
+    result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                new PartialPath("root.**"),
+                Collections.emptyMap(),
+                0,
+                0,
+                false,
+                new PathContainsFilter("laptop.d")));
+    expectedPathList =
+        new HashSet<>(
+            Arrays.asList(
+                "root.laptop.d0",
+                "root.laptop.d1.s1",
+                "root.laptop.d1.s2.t1",
+                "root.laptop.d1.s3",
+                "root.laptop.d2.s1",
+                "root.laptop.d2.s2"));
     expectedSize = expectedPathList.size();
     Assert.assertEquals(expectedSize, result.size());
     actualPathList = new HashSet<>();

@@ -113,8 +113,8 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
     boolean hasSgCol = ReadWriteIOUtils.readBool(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new DevicesSchemaScanNode(
         planNodeId, path, limit, offset, isPrefixPath, hasSgCol, schemaFilter);
   }

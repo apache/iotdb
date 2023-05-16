@@ -49,7 +49,7 @@ public class PathContainsFilter extends SchemaFilter {
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return null;
+    return SchemaFilterType.PATH_CONTAINS;
   }
 
   @Override

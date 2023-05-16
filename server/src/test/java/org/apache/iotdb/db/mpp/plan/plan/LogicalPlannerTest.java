@@ -54,6 +54,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggreg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterType;
+import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
 import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -508,7 +510,8 @@ public class LogicalPlannerTest {
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
       Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
-      Assert.assertTrue(showTimeSeriesNode.getSchemaFilter() instanceof TagFilter);
+      Assert.assertEquals(
+          SchemaFilterType.TAGS, showTimeSeriesNode.getSchemaFilter().getSchemaFilterType());
       Assert.assertFalse(((TagFilter) showTimeSeriesNode.getSchemaFilter()).isContains());
       Assert.assertEquals("tagK", ((TagFilter) showTimeSeriesNode.getSchemaFilter()).getKey());
       Assert.assertEquals("tagV", ((TagFilter) showTimeSeriesNode.getSchemaFilter()).getValue());
@@ -528,10 +531,66 @@ public class LogicalPlannerTest {
       Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
 
-      Assert.assertTrue(showTimeSeriesNode2.getSchemaFilter() instanceof TagFilter);
+      Assert.assertEquals(
+          SchemaFilterType.TAGS, showTimeSeriesNode2.getSchemaFilter().getSchemaFilterType());
       Assert.assertFalse(((TagFilter) showTimeSeriesNode2.getSchemaFilter()).isContains());
       Assert.assertEquals("tagK", ((TagFilter) showTimeSeriesNode2.getSchemaFilter()).getKey());
       Assert.assertEquals("tagV", ((TagFilter) showTimeSeriesNode2.getSchemaFilter()).getValue());
+      Assert.assertEquals(0, showTimeSeriesNode2.getLimit());
+      Assert.assertEquals(0, showTimeSeriesNode2.getOffset());
+      Assert.assertFalse(showTimeSeriesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testShowTimeSeriesWherePathContains() {
+    String sql =
+        "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE timeseries contains 'us' limit 20 offset 10";
+
+    try {
+      LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
+      OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+      SchemaQueryOrderByHeatNode schemaQueryOrderByHeatNode =
+          (SchemaQueryOrderByHeatNode) offsetNode.getChild();
+      SchemaQueryMergeNode metaMergeNode =
+          (SchemaQueryMergeNode) schemaQueryOrderByHeatNode.getChildren().get(0);
+      metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
+      TimeSeriesSchemaScanNode showTimeSeriesNode =
+          (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);
+      Assert.assertNotNull(showTimeSeriesNode);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
+      Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
+      Assert.assertEquals(
+          SchemaFilterType.PATH_CONTAINS,
+          showTimeSeriesNode.getSchemaFilter().getSchemaFilterType());
+      Assert.assertEquals(
+          "us", ((PathContainsFilter) showTimeSeriesNode.getSchemaFilter()).getPathContains());
+      Assert.assertEquals(0, showTimeSeriesNode.getLimit());
+      Assert.assertEquals(0, showTimeSeriesNode.getOffset());
+      Assert.assertFalse(showTimeSeriesNode.isHasLimit());
+
+      // test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+      showTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      TimeSeriesSchemaScanNode showTimeSeriesNode2 =
+          (TimeSeriesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertNotNull(showTimeSeriesNode2);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
+      Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
+
+      Assert.assertEquals(
+          SchemaFilterType.PATH_CONTAINS,
+          showTimeSeriesNode2.getSchemaFilter().getSchemaFilterType());
+      Assert.assertEquals(
+          "us", ((PathContainsFilter) showTimeSeriesNode2.getSchemaFilter()).getPathContains());
       Assert.assertEquals(0, showTimeSeriesNode2.getLimit());
       Assert.assertEquals(0, showTimeSeriesNode2.getOffset());
       Assert.assertFalse(showTimeSeriesNode2.isHasLimit());
@@ -574,7 +633,47 @@ public class LogicalPlannerTest {
     }
   }
 
-  // TODO: add UT
+  @Test
+  public void testShowDevicesWherePathContains() {
+    String sql = "SHOW DEVICES root.ln.wf01.wt01 WHERE device contains 'wt' limit 20 offset 10";
+    try {
+      LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
+      OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+      SchemaQueryMergeNode metaMergeNode = (SchemaQueryMergeNode) offsetNode.getChild();
+      DevicesSchemaScanNode showDevicesNode =
+          (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
+      Assert.assertNotNull(showDevicesNode);
+      Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
+      Assert.assertFalse(showDevicesNode.isHasSgCol());
+      Assert.assertEquals(
+          SchemaFilterType.PATH_CONTAINS, showDevicesNode.getSchemaFilter().getSchemaFilterType());
+      Assert.assertEquals(
+          "wt", ((PathContainsFilter) showDevicesNode.getSchemaFilter()).getPathContains());
+      Assert.assertEquals(30, showDevicesNode.getLimit());
+      Assert.assertEquals(0, showDevicesNode.getOffset());
+      Assert.assertTrue(showDevicesNode.isHasLimit());
+
+      // test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+      showDevicesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      DevicesSchemaScanNode showDevicesNode2 =
+          (DevicesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertNotNull(showDevicesNode2);
+      Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode2.getPath());
+      Assert.assertFalse(showDevicesNode2.isHasSgCol());
+      Assert.assertEquals(
+          SchemaFilterType.PATH_CONTAINS, showDevicesNode2.getSchemaFilter().getSchemaFilterType());
+      Assert.assertEquals(
+          "wt", ((PathContainsFilter) showDevicesNode2.getSchemaFilter()).getPathContains());
+      Assert.assertEquals(30, showDevicesNode2.getLimit());
+      Assert.assertEquals(0, showDevicesNode2.getOffset());
+      Assert.assertTrue(showDevicesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 
   @Test
   public void testCountNodes() {
