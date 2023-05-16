@@ -44,6 +44,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -63,6 +64,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -449,6 +451,53 @@ public class SessionConnection {
         execResp.queryResult,
         execResp.isIgnoreTimeStamp(),
         execResp.moreData);
+  }
+
+  protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
+      String db, String device, List<String> sensors, long timeOut)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSFastLastDataQueryForOneDeviceReq req =
+        new TSFastLastDataQueryForOneDeviceReq(sessionId, db, device, sensors, statementId);
+    req.setFetchSize(session.fetchSize);
+    req.setEnableRedirectQuery(enableRedirect);
+    req.setLegalPathNodes(true);
+    req.setTimeout(timeOut);
+    TSExecuteStatementResp tsExecuteStatementResp = null;
+    TEndPoint redirectedEndPoint = null;
+    try {
+      tsExecuteStatementResp = client.executeFastLastDataQueryForOneDeviceV2(req);
+      RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+    } catch (RedirectException e) {
+      redirectedEndPoint = e.getEndPoint();
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          req.setSessionId(sessionId);
+          req.setStatementId(statementId);
+          tsExecuteStatementResp = client.executeFastLastDataQueryForOneDeviceV2(req);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
+    return new Pair<>(
+        new SessionDataSet(
+            "",
+            tsExecuteStatementResp.getColumns(),
+            tsExecuteStatementResp.getDataTypeList(),
+            tsExecuteStatementResp.columnNameIndexMap,
+            tsExecuteStatementResp.getQueryId(),
+            statementId,
+            client,
+            sessionId,
+            tsExecuteStatementResp.queryResult,
+            tsExecuteStatementResp.isIgnoreTimeStamp(),
+            tsExecuteStatementResp.moreData),
+        redirectedEndPoint);
   }
 
   protected SessionDataSet executeLastDataQuery(List<String> paths, long time, long timeOut)

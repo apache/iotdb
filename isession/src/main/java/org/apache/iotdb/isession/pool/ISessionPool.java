@@ -421,6 +421,10 @@ public interface ISessionPool {
   SessionDataSetWrapper executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
+  SessionDataSetWrapper executeLastDataQueryForOneDevice(
+      String db, String device, List<String> sensors)
+      throws StatementExecutionException, IoTDBConnectionException;
+
   SessionDataSetWrapper executeAggregationQuery(
       List<String> paths, List<TAggregationType> aggregations)
       throws StatementExecutionException, IoTDBConnectionException;
