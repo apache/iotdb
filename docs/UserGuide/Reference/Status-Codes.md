@@ -83,7 +83,7 @@ Here is a list of Status Code and related message:
 | 523         | SCHEMA_FILE_REDO_LOG_BROKEN       | SchemaFile redo log has broken                                                            |
 | 524         | TEMPLATE_NOT_ACTIVATED            | Schema template is not activated                                                          |
 | 526         | SCHEMA_QUOTA_EXCEEDED             | Schema usage exceeds quota limit                                                          |
-| 527  | MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE            | Measurement already exists in schema template                  
+| 527  | MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE            | Measurement already exists in schema template                                    | 
 | 600         | SYSTEM_READ_ONLY                  | IoTDB system is read only                                                                 |
 | 601         | STORAGE_ENGINE_ERROR              | Storage engine related error                                                              |
 | 602         | STORAGE_ENGINE_NOT_READY          | The storage engine is in recovery, not ready fore accepting read/write operation          |
