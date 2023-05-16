@@ -1311,7 +1311,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
     if (showTimeSeriesPlan.getSchemaFilter() != null
-        && SchemaFilterType.TAGS.equals(
+        && SchemaFilterType.TAGS_FILTER.equals(
             showTimeSeriesPlan.getSchemaFilter().getSchemaFilterType())) {
       return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
     } else {

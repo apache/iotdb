@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.mpp.plan.schemafilter;
 
 public enum SchemaFilterType {
-  EMPTY((short) 0),
-  TAGS((short) 1),
+  NULL((short) -1),
+  TAGS_FILTER((short) 1),
   PATH_CONTAINS((short) 2);
 
   private final short code;
@@ -35,10 +35,10 @@ public enum SchemaFilterType {
 
   public static SchemaFilterType getSchemaFilterType(short code) {
     switch (code) {
-      case 0:
-        return EMPTY;
+      case -1:
+        return NULL;
       case 1:
-        return TAGS;
+        return TAGS_FILTER;
       case 2:
         return PATH_CONTAINS;
       default:

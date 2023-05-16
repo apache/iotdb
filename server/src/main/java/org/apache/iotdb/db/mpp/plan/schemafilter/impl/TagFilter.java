@@ -64,7 +64,7 @@ public class TagFilter extends SchemaFilter {
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.TAGS;
+    return SchemaFilterType.TAGS_FILTER;
   }
 
   @Override

@@ -30,7 +30,7 @@ public abstract class SchemaFilter {
 
   public static void serialize(SchemaFilter schemaFilter, ByteBuffer byteBuffer) {
     if (schemaFilter == null) {
-      ReadWriteIOUtils.write(SchemaFilterType.EMPTY.getCode(), byteBuffer);
+      ReadWriteIOUtils.write(SchemaFilterType.NULL.getCode(), byteBuffer);
     } else {
       ReadWriteIOUtils.write(schemaFilter.getSchemaFilterType().getCode(), byteBuffer);
       schemaFilter.serialize(byteBuffer);
@@ -40,7 +40,7 @@ public abstract class SchemaFilter {
   public static void serialize(SchemaFilter schemaFilter, DataOutputStream outputStream)
       throws IOException {
     if (schemaFilter == null) {
-      ReadWriteIOUtils.write(SchemaFilterType.EMPTY.getCode(), outputStream);
+      ReadWriteIOUtils.write(SchemaFilterType.NULL.getCode(), outputStream);
     } else {
       ReadWriteIOUtils.write(schemaFilter.getSchemaFilterType().getCode(), outputStream);
       schemaFilter.serialize(outputStream);
@@ -51,9 +51,9 @@ public abstract class SchemaFilter {
     SchemaFilterType type =
         SchemaFilterType.getSchemaFilterType(ReadWriteIOUtils.readShort(byteBuffer));
     switch (type) {
-      case EMPTY:
+      case NULL:
         return null;
-      case TAGS:
+      case TAGS_FILTER:
         return new TagFilter(byteBuffer);
       case PATH_CONTAINS:
         return new PathContainsFilter(byteBuffer);

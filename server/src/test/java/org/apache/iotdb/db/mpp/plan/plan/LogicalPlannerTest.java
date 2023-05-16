@@ -511,7 +511,7 @@ public class LogicalPlannerTest {
       Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
       Assert.assertEquals(
-          SchemaFilterType.TAGS, showTimeSeriesNode.getSchemaFilter().getSchemaFilterType());
+          SchemaFilterType.TAGS_FILTER, showTimeSeriesNode.getSchemaFilter().getSchemaFilterType());
       Assert.assertFalse(((TagFilter) showTimeSeriesNode.getSchemaFilter()).isContains());
       Assert.assertEquals("tagK", ((TagFilter) showTimeSeriesNode.getSchemaFilter()).getKey());
       Assert.assertEquals("tagV", ((TagFilter) showTimeSeriesNode.getSchemaFilter()).getValue());
@@ -532,7 +532,8 @@ public class LogicalPlannerTest {
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
 
       Assert.assertEquals(
-          SchemaFilterType.TAGS, showTimeSeriesNode2.getSchemaFilter().getSchemaFilterType());
+          SchemaFilterType.TAGS_FILTER,
+          showTimeSeriesNode2.getSchemaFilter().getSchemaFilterType());
       Assert.assertFalse(((TagFilter) showTimeSeriesNode2.getSchemaFilter()).isContains());
       Assert.assertEquals("tagK", ((TagFilter) showTimeSeriesNode2.getSchemaFilter()).getKey());
       Assert.assertEquals("tagV", ((TagFilter) showTimeSeriesNode2.getSchemaFilter()).getValue());
