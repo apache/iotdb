@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.query.info;
 
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Map;
 
@@ -27,11 +27,13 @@ public interface ITimeSeriesSchemaInfo extends ISchemaInfo {
 
   String getAlias();
 
-  MeasurementSchema getSchema();
+  IMeasurementSchema getSchema();
 
   Map<String, String> getTags();
 
   Map<String, String> getAttributes();
 
   boolean isUnderAlignedDevice();
+
+  boolean isLogicalView();
 }

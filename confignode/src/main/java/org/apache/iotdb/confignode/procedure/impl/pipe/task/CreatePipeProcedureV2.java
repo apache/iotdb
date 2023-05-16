@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -32,11 +31,8 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -68,12 +64,12 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  PipeTaskOperation getOperation() {
+  protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.CREATE_PIPE;
   }
 
   @Override
-  boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -89,7 +85,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -107,14 +104,14 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
-            (region, leader) -> {
-              consensusGroupIdToTaskMetaMap.put(region, new PipeTaskMeta(0, leader));
-            });
+            (region, leader) ->
+                // TODO: make index configurable
+                consensusGroupIdToTaskMetaMap.put(region, new PipeTaskMeta(0, leader)));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }
 
   @Override
-  void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
@@ -130,21 +127,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeManagementException, IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    if (RpcUtils.squashResponseStatusList(
-                env.createPipeOnDataNodes(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta)))
-            .getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format(
-              "Failed to create pipe instance [%s] on data nodes",
-              createPipeRequest.getPipeName()));
-    }
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override
@@ -178,22 +167,12 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    final TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq()
-            .setPipeName(createPipeRequest.getPipeName())
-            .setOperation((byte) PipeTaskOperation.DROP_PIPE.ordinal());
-    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format(
-              "Failed to rollback from operate on data nodes for task [%s]",
-              createPipeRequest.getPipeName()));
-    }
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override
@@ -201,26 +180,26 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(createPipeRequest.getPipeName(), stream);
-    stream.writeInt(createPipeRequest.getCollectorAttributesSize());
+    ReadWriteIOUtils.write(createPipeRequest.getCollectorAttributesSize(), stream);
     for (Map.Entry<String, String> entry : createPipeRequest.getCollectorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    stream.writeInt(createPipeRequest.getProcessorAttributesSize());
+    ReadWriteIOUtils.write(createPipeRequest.getProcessorAttributesSize(), stream);
     for (Map.Entry<String, String> entry : createPipeRequest.getProcessorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
-    stream.writeInt(createPipeRequest.getConnectorAttributesSize());
+    ReadWriteIOUtils.write(createPipeRequest.getConnectorAttributesSize(), stream);
     for (Map.Entry<String, String> entry : createPipeRequest.getConnectorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
     if (pipeStaticMeta != null) {
-      stream.writeBoolean(true);
+      ReadWriteIOUtils.write(true, stream);
       pipeStaticMeta.serialize(stream);
     } else {
-      stream.writeBoolean(false);
+      ReadWriteIOUtils.write(false, stream);
     }
   }
 
@@ -233,19 +212,19 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .setCollectorAttributes(new HashMap<>())
             .setProcessorAttributes(new HashMap<>())
             .setConnectorAttributes(new HashMap<>());
-    int size = byteBuffer.getInt();
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       createPipeRequest
           .getCollectorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
-    size = byteBuffer.getInt();
+    size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       createPipeRequest
           .getProcessorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
-    size = byteBuffer.getInt();
+    size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       createPipeRequest
           .getConnectorAttributes()

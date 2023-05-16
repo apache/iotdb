@@ -1158,7 +1158,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue, ISche
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-      measurementSchemas[index] = measurementSchemaInfo.getSchema();
+      measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
     }
 
     try {

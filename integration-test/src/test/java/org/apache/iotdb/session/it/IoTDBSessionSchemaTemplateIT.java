@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -236,6 +237,20 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
   @Test
   public void testBatchActivateTemplate()
       throws StatementExecutionException, IoTDBConnectionException, IOException {
+    try {
+      session.createTimeseriesUsingSchemaTemplate(Collections.singletonList(null));
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals("Given device path list should not be  or contains null.", e.getMessage());
+    }
+
+    try {
+      session.createTimeseriesUsingSchemaTemplate(Collections.singletonList("root.db.d1"));
+      fail();
+    } catch (StatementExecutionException e) {
+      assertTrue(e.getMessage().contains("Path [root.db.d1] has not been set any template"));
+    }
+
     session.createDatabase("root.db");
 
     Template temp1 = getTemplate("template1");

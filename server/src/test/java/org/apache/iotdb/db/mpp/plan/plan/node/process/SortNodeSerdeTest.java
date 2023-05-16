@@ -25,9 +25,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
@@ -56,7 +56,7 @@ public class SortNodeSerdeTest {
         new SortNode(
             new PlanNodeId("TestSortNode"),
             seriesScanNode,
-            new OrderByParameter(ImmutableList.of(new SortItem(SortKey.TIME, Ordering.ASC))));
+            new OrderByParameter(ImmutableList.of(new SortItem(OrderByKey.TIME, Ordering.ASC))));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     sortNode.serialize(byteBuffer);

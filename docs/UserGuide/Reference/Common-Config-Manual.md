@@ -1073,14 +1073,23 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 0                                                                                                                                      |
 |  Effective  | After restart system                                                                                                                   |
 
-* fsync\_wal\_delay\_in\_ms
+* wal\_async\_mode\_fsync\_delay\_in\_ms
 
-|    Name     | fsync\_wal\_delay\_in\_ms                                     |
-|:-----------:|:--------------------------------------------------------------|
-| Description | Duration a wal flush operation will wait before calling fsync |
-|    Type     | int32                                                         |
-|   Default   | 3                                                             |
-|  Effective  | hot-load                                                      |
+|    Name     | wal\_async\_mode\_fsync\_delay\_in\_ms                                          |
+|:-----------:|:--------------------------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync in the async mode |
+|    Type     | int32                                                                           |
+|   Default   | 1000                                                                            |
+|  Effective  | hot-load                                                                        |
+
+* wal\_sync\_mode\_fsync\_delay\_in\_ms
+
+|    Name     | wal\_sync\_mode\_fsync\_delay\_in\_ms                                          |
+|:-----------:|:-------------------------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync in the sync mode |
+|    Type     | int32                                                                          |
+|   Default   | 3                                                                              |
+|  Effective  | hot-load                                                                       |
 
 * wal\_buffer\_size\_in\_byte
 
@@ -1088,7 +1097,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-----------------------------|
 | Description | Buffer size of each wal node |
 |    Type     | int32                        |
-|   Default   | 16777216                     |
+|   Default   | 33554432                     |
 |  Effective  | After restart system         |
 
 * wal\_buffer\_queue\_capacity
@@ -1097,7 +1106,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-------------------------------------------|
 | Description | Blocking queue capacity of each wal buffer |
 |    Type     | int32                                      |
-|   Default   | 50                                         |
+|   Default   | 500                                        |
 |  Effective  | After restart system                       |
 
 * wal\_file\_size\_threshold\_in\_byte
@@ -1106,7 +1115,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-------------------------------------|
 | Description | Size threshold of each wal file      |
 |    Type     | int32                                |
-|   Default   | 10485760                             |
+|   Default   | 31457280                             |
 |  Effective  | hot-load                             |
 
 * wal\_min\_effective\_info\_ratio
@@ -1478,6 +1487,44 @@ Different configuration parameters take effect in the following three ways:
 |    Default    | 5                             |
 | Effective | hot-load                  |
 
+### IOTConsensus Configuration
+
+* data_region_iot_max_log_entries_num_per_batch
+
+|    Name     | data_region_iot_max_log_entries_num_per_batch                     |
+| :---------: | :------------------------------------------------ |
+| Description | The maximum log entries num in IoTConsensus Batch |
+|    Type     | int32                                             |
+|   Default   | 1024                                              |
+|  Effective  | After restarting system                           |
+
+* data_region_iot_max_size_per_batch
+
+|    Name     | data_region_iot_max_size_per_batch                     |
+| :---------: | :------------------------------------- |
+| Description | The maximum size in IoTConsensus Batch |
+|    Type     | int32                                  |
+|   Default   | 16MB                                   |
+|  Effective  | After restarting system                |
+
+* data_region_iot_max_pending_batches_num
+
+|    Name     | data_region_iot_max_pending_batches_num                         |
+| :---------: | :---------------------------------------------- |
+| Description | The maximum pending batches num in IoTConsensus |
+|    Type     | int32                                           |
+|   Default   | 12                                              |
+|  Effective  | After restarting system                         |
+
+* data_region_iot_max_memory_ratio_for_queue
+
+|    Name     | data_region_iot_max_memory_ratio_for_queue                         |
+| :---------: | :------------------------------------------------- |
+| Description | The maximum memory ratio for queue in IoTConsensus |
+|    Type     | double                                             |
+|   Default   | 0.6                                                |
+|  Effective  | After restarting system                            |
+
 ### RatisConsensus Configuration
 
 * config\_node\_ratis\_log\_appender\_buffer\_size\_max
@@ -1615,6 +1662,24 @@ Different configuration parameters take effect in the following three ways:
 |   Type   | int32                                      |
 |  Default   | 4MB                                        |
 | Effective | After restarting system                                       |
+
+* data_region_ratis_grpc_leader_outstanding_appends_max
+
+|    Name     | data_region_ratis_grpc_leader_outstanding_appends_max |
+| :---------: | :---------------------------------------------------- |
+| Description | data region grpc pipeline concurrency threshold       |
+|    Type     | int32                                                 |
+|   Default   | 128                                                   |
+|  Effective  | After restarting system                               |
+
+* data_region_ratis_log_force_sync_num
+
+|    Name     | data_region_ratis_log_force_sync_num |
+| :---------: | :----------------------------------- |
+| Description | data region fsync threshold          |
+|    Type     | int32                                |
+|   Default   | 128                                  |
+|  Effective  | After restarting system              |
 
 * config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
 

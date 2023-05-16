@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSe
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
@@ -167,7 +168,8 @@ public enum PlanNodeType {
   INTERNAL_CREATE_MULTI_TIMESERIES((short) 69),
   IDENTITY_SINK((short) 70),
   SHUFFLE_SINK((short) 71),
-  BATCH_ACTIVATE_TEMPLATE((short) 72);
+  BATCH_ACTIVATE_TEMPLATE((short) 72),
+  CREATE_LOGICAL_VIEW((short) 73);
 
   public static final int BYTES = Short.BYTES;
 
@@ -360,6 +362,8 @@ public enum PlanNodeType {
         return ShuffleSinkNode.deserialize(buffer);
       case 72:
         return BatchActivateTemplateNode.deserialize(buffer);
+      case 73:
+        return CreateLogicalViewNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

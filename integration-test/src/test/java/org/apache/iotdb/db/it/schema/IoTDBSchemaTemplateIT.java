@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -53,18 +54,41 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
     super(schemaTestMode);
   }
 
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
+  }
+
   @Before
   public void setUp() throws Exception {
-    super.setUp();
-    EnvFactory.getEnv().initClusterEnvironment();
-
     prepareTemplate();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    clearSchema();
+  }
+
+  private void prepareTemplate() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // create database
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.sg2");
+      statement.execute("CREATE DATABASE root.sg3");
+
+      // create schema template
+      statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
+    }
   }
 
   @Test
@@ -408,21 +432,6 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
     }
   }
 
-  private void prepareTemplate() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // create database
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE DATABASE root.sg2");
-      statement.execute("CREATE DATABASE root.sg3");
-
-      // create schema template
-      statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
-      statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
-      statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
-    }
-  }
-
   @Test
   public void testDeleteTimeSeriesWhenUsingTemplate() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -701,6 +710,51 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
                   "root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d1.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
+    }
+  }
+
+  @Test
+  public void testEmptySchemaTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // create empty schema template
+      statement.execute("create schema template e_t");
+      // set schema template
+      statement.execute("SET SCHEMA TEMPLATE e_t TO root.sg1");
+      try (ResultSet resultSet = statement.executeQuery("show nodes in schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute("alter schema template e_t add(s1 int32)");
+      statement.execute("insert into root.sg1.d(time, s2, s3) values(1, 1, 1)");
+
+      Set<String> expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d.s1,INT32,RLE,SNAPPY",
+                  "root.sg1.d.s2,FLOAT,GORILLA,SNAPPY",
+                  "root.sg1.d.s3,FLOAT,GORILLA,SNAPPY"));
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
         while (resultSet.next()) {
           String actualResult =
               resultSet.getString(ColumnHeaderConstant.TIMESERIES)

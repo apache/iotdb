@@ -38,7 +38,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -209,8 +208,8 @@ class ClusterSchemaFetchExecutor {
         throw new RuntimeException(
             new MetadataException("Failed to fetch schema because of unrecognized data"));
       }
-    } catch (IOException e) {
-      // Totally memory operation. This case won't happen.
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 }
