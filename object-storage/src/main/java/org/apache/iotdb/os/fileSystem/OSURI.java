@@ -62,7 +62,10 @@ public class OSURI {
   }
 
   public boolean equals(Object obj) {
-    if (!(obj instanceof OSURI)) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
     OSURI other = (OSURI) obj;

@@ -355,7 +355,10 @@ public class OSFile extends File {
 
   @Override
   public boolean equals(Object obj) {
-    if (!(obj instanceof OSFile)) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
     OSFile other = (OSFile) obj;
@@ -375,6 +378,10 @@ public class OSFile extends File {
   @Override
   public Path toPath() {
     throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+  }
+
+  public OSURI toOSURI() {
+    return osUri;
   }
 
   public BufferedReader getBufferedReader() {

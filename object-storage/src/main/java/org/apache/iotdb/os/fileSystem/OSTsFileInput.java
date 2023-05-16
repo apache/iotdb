@@ -33,7 +33,7 @@ import java.nio.channels.FileChannel;
 public class OSTsFileInput implements TsFileInput {
   private static final Logger logger = LoggerFactory.getLogger(OSTsFileInput.class);
 
-  private String osFileName;
+  private OSFile file;
   private OSFileCache cache = OSFileCache.getInstance();
 
   @Override
@@ -101,6 +101,6 @@ public class OSTsFileInput implements TsFileInput {
   }
 
   public InputStream getNextInputStream(long position) throws IOException {
-    return cache.getAsInputSteam(osFileName, position);
+    return cache.getAsInputSteam(file.toOSURI(), position);
   }
 }

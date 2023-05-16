@@ -20,7 +20,56 @@ package org.apache.iotdb.os.cache;
 
 import org.apache.iotdb.os.fileSystem.OSFile;
 
-public class OSFileCacheKey {
+import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
+public class OSFileCacheKey implements Serializable {
   private OSFile file;
-  private long position;
+  private long startPosition;
+  private int length;
+
+  public OSFileCacheKey(OSFile file, long startPosition, int length) {
+    this.file = file;
+    this.startPosition = startPosition;
+    this.length = length;
+  }
+
+  public ByteBuffer serializeToByteBuffer() {
+    byte[] pathBytes = file.toString().getBytes();
+    ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES + pathBytes.length + Integer.BYTES);
+    buffer.putInt(pathBytes.length);
+    buffer.put(pathBytes);
+    buffer.putInt(length);
+    return buffer;
+  }
+
+  public OSFile getFile() {
+    return file;
+  }
+
+  public long getStartPosition() {
+    return startPosition;
+  }
+
+  public int getLength() {
+    return length;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(file, startPosition, length);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    OSFileCacheKey that = (OSFileCacheKey) obj;
+    return file.equals(that.file) && startPosition == that.startPosition && length == that.length;
+  }
 }

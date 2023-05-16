@@ -19,36 +19,42 @@
 
 package org.apache.iotdb.os.cache;
 
+import java.io.File;
+
 public class OSFileCacheValue {
-  private String fileName;
+  private File cacheFile;
   // 如果每个块用一个文件来存储，则该值一直为 0
   // 如果使用一个大文件存储所有块，则该值为大文件中的起点
   private long startPosition;
   // 如果每个块用一个文件来存储，则该值一直为该文件的大小
   // 如果使用一个大文件存储所有块，则该值为该块的实际长度
-  private long length;
+  private int length;
 
-  public OSFileCacheValue(String fileName, long startPosition, long length) {
-    this.fileName = fileName;
+  public OSFileCacheValue(File cacheFile, long startPosition, int length) {
+    this.cacheFile = cacheFile;
     this.startPosition = startPosition;
     this.length = length;
   }
 
-  public String getFileName() {
-    return fileName;
+  public File getCacheFile() {
+    return cacheFile;
   }
 
   public long getStartPosition() {
     return startPosition;
   }
 
-  public long getLength() {
+  public int getLength() {
     return length;
   }
 
-  public long getOccupiedLength() {
+  public int getOccupiedLength() {
     // 如果使用多个文件，则返回该文件的大小
     // 如果使用一个文件，则返回每个槽的大小
     return length;
+  }
+
+  public void clear() {
+    cacheFile.delete();
   }
 }

@@ -16,31 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.os.cache;
 
-package org.apache.iotdb.os.io;
-
-import org.apache.iotdb.os.exception.ObjectStorageException;
 import org.apache.iotdb.os.fileSystem.OSURI;
 
-import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.FileChannel;
 
-public interface ObjectStorageConnector {
-  boolean doesObjectExist(OSURI osUri) throws ObjectStorageException;
+public interface IOSFileCache {
+  InputStream getAsInputSteam(OSURI file, long startPosition) throws IOException;
 
-  IMetaData getMetaData(OSURI osUri) throws ObjectStorageException;
-
-  boolean createNewEmptyObject(OSURI osUri) throws ObjectStorageException;
-
-  boolean delete(OSURI osUri) throws ObjectStorageException;
-
-  boolean renameTo(OSURI fromOSUri, OSURI toOSUri) throws ObjectStorageException;
-
-  InputStream getInputStream(OSURI osUri) throws ObjectStorageException;
-
-  OSURI[] list(OSURI osUri) throws ObjectStorageException;
-
-  void putLocalFile(OSURI osUri, File lcoalFile) throws ObjectStorageException;
-
-  byte[] getRemoteFile(OSURI osUri, long position, int len) throws ObjectStorageException;
+  FileChannel getLocalCacheFileChannel(OSURI file, long startPosition) throws IOException;
 }

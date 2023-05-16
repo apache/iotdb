@@ -24,6 +24,7 @@ import org.apache.iotdb.os.fileSystem.OSURI;
 import org.apache.iotdb.os.io.IMetaData;
 import org.apache.iotdb.os.io.ObjectStorageConnector;
 
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -31,6 +32,7 @@ import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
@@ -42,6 +44,7 @@ import java.io.File;
 import java.io.InputStream;
 
 public class S3ObjectStorageConnector implements ObjectStorageConnector {
+  private static final String RANGE_FORMAT = "%d-%d";
   private S3Client s3Client;
 
   public S3ObjectStorageConnector() {
@@ -161,11 +164,20 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
   }
 
   @Override
-  public byte[] getRemoteFile(OSURI osUri, long position, int size) throws ObjectStorageException {
-    GetObjectRequest req =
-        GetObjectRequest.builder().bucket(osUri.getBucket()).key(osUri.getKey()).build();
-    s3Client.getObject(req);
-    return new byte[0];
+  public byte[] getRemoteFile(OSURI osUri, long position, int len) throws ObjectStorageException {
+    String rangeStr = String.format(RANGE_FORMAT, position, position + len - 1);
+    try {
+      GetObjectRequest req =
+          GetObjectRequest.builder()
+              .bucket(osUri.getBucket())
+              .key(osUri.getKey())
+              .range(rangeStr)
+              .build();
+      ResponseBytes<GetObjectResponse> resp = s3Client.getObjectAsBytes(req);
+      return resp.asByteArray();
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
   }
 
   public void close() {
