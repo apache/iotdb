@@ -57,6 +57,7 @@ struct TTimePartitionSlot {
 struct TRegionReplicaSet {
   1: required TConsensusGroupId regionId
   2: required list<TDataNodeLocation> dataNodeLocations
+  3: optional i32 preferredLocation
 }
 
 struct TNodeResource {
