@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

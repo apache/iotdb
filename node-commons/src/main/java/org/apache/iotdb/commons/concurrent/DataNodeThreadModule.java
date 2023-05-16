@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.concurrent;
 
 public enum DataNodeThreadModule {
   QUERY,
+  WRITE,
   MPP_SCHEDULE,
   MPP_WRITE,
   COMPACTION,
@@ -34,6 +35,7 @@ public enum DataNodeThreadModule {
   SYNC,
   JVM,
   LOG_BACK,
+  METRICS,
   OTHER,
   UNKNOWN
 }

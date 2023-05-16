@@ -23,29 +23,38 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.UnaryOperator;
+import org.apache.iotdb.metrics.AbstractMetricService;
 
 public class AbstractCpuUsageMetricsManager {
+  protected AbstractMetricService metricService;
   protected final UnaryOperator<String> threadNameToModule;
+  protected final UnaryOperator<String> threadNameToPool;
   protected final Map<Long, String> threadIdToModuleCache = new HashMap<>();
 
-  AbstractCpuUsageMetricsManager(UnaryOperator<String> threadNameToModule) {
+  AbstractCpuUsageMetricsManager(
+      UnaryOperator<String> threadNameToModule, UnaryOperator<String> threadNameToPool) {
     this.threadNameToModule = threadNameToModule;
+    this.threadNameToPool = threadNameToPool;
   }
 
   public static AbstractCpuUsageMetricsManager getCpuUsageMetricsManager(
-      UnaryOperator<String> threadNameToModule) {
+      UnaryOperator<String> threadNameToModule, UnaryOperator<String> threadNameToPool) {
     String os = System.getProperty("os.name").toLowerCase();
 
     if (os.startsWith("windows")) {
-      return new WindowsCpuUsageMetricsManager(threadNameToModule);
+      return new WindowsCpuUsageMetricsManager(threadNameToModule, threadNameToPool);
     } else if (os.startsWith("linux")) {
-      return new LinuxCpuUsageMetricsManager(threadNameToModule);
+      return new LinuxCpuUsageMetricsManager(threadNameToModule, threadNameToPool);
     } else {
-      return new MacCpuUsageMetricsManager(threadNameToModule);
+      return new MacCpuUsageMetricsManager(threadNameToModule, threadNameToPool);
     }
   }
 
   public Map<String, Double> getCpuUsageForPerModule() {
     return Collections.emptyMap();
+  }
+
+  public void setMetricService(AbstractMetricService metricService) {
+    this.metricService = metricService;
   }
 }

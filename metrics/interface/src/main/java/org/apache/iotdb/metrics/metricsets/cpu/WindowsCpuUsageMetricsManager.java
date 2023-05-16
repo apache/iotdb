@@ -22,7 +22,8 @@ package org.apache.iotdb.metrics.metricsets.cpu;
 import java.util.function.UnaryOperator;
 
 public class WindowsCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager {
-  public WindowsCpuUsageMetricsManager(UnaryOperator<String> threadNameToModule) {
-    super(threadNameToModule);
+  public WindowsCpuUsageMetricsManager(
+      UnaryOperator<String> threadNameToModule, UnaryOperator<String> threadNameToPool) {
+    super(threadNameToModule, threadNameToPool);
   }
 }

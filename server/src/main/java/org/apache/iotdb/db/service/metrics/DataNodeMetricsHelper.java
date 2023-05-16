@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.service.metrics;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.commons.concurrent.DataNodeThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -37,10 +40,6 @@ import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode. */
   public static void bind() {
@@ -58,7 +57,12 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance()
         .addMetricSet(
             new CpuUsageMetrics(
-                threadModules, x -> ThreadName.getModuleTheThreadBelongs(x).toString()));
+                threadModules,
+                x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
+                x -> {
+                  ThreadName pool = ThreadName.getThreadPoolTheThreadBelongs(x);
+                  return pool == null ? "UNKNOWN" : pool.name();
+                }));
 
     // bind query related metrics
     MetricService.getInstance().addMetricSet(new QueryPlanCostMetricSet());

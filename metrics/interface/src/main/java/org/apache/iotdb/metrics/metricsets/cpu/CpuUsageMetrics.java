@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.metrics.metricsets.cpu;
 
+import java.util.List;
+import java.util.function.UnaryOperator;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
-
-import java.util.List;
-import java.util.function.UnaryOperator;
 
 public class CpuUsageMetrics implements IMetricSet {
 
@@ -34,16 +33,22 @@ public class CpuUsageMetrics implements IMetricSet {
   private final String cpuUsage = "cpu_usage";
   private final String module = "module";
   private final AbstractCpuUsageMetricsManager cpuUsageMetricsManager;
+  private AbstractMetricService metricService;
 
-  public CpuUsageMetrics(List<String> modules, UnaryOperator<String> threadNameToModule) {
+  public CpuUsageMetrics(
+      List<String> modules,
+      UnaryOperator<String> threadNameToModule,
+      UnaryOperator<String> threadNameToPool) {
     this.modules = modules;
     this.threadNameToModule = threadNameToModule;
     cpuUsageMetricsManager =
-        AbstractCpuUsageMetricsManager.getCpuUsageMetricsManager(threadNameToModule);
+        AbstractCpuUsageMetricsManager.getCpuUsageMetricsManager(
+            threadNameToModule, threadNameToPool);
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
+    this.metricService = metricService;
     for (String moduleName : modules) {
       metricService.createAutoGauge(
           cpuUsage,
@@ -53,6 +58,7 @@ public class CpuUsageMetrics implements IMetricSet {
           module,
           moduleName);
     }
+    cpuUsageMetricsManager.setMetricService(metricService);
   }
 
   @Override

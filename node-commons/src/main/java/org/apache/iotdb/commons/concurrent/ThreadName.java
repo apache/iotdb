@@ -126,6 +126,11 @@ public enum ThreadName {
   COMMON_CLEANER("Common-Cleaner"),
   // -------------------------- LogThread --------------------------
   LOG_BACK("logback"),
+  // -------------------------- Metrics --------------------------
+  SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
+  RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
+  PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
+  PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
   // -------------------------- Other --------------------------
   TTL_CHECK_SERVICE("TTL-CHECK"),
   SETTLE_SERVICE("Settle"),
@@ -133,9 +138,7 @@ public enum ThreadName {
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
   STORAGE_ENGINE_CACHED_SERVICE("StorageEngine"),
   MLNODE_RPC_SERVICE("MLNodeRpc-Service"),
-  SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
   IOTDB_SHUTDOWN_HOOK("IoTDB-Shutdown-Hook"),
-  RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   ;
 
@@ -234,6 +237,14 @@ public enum ThreadName {
               SIGNAL_DISPATCHER,
               DESTROY_JVM,
               COMMON_CLEANER));
+
+  private static Set<ThreadName> metricsThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              SYSTEM_SCHEDULE_METRICS,
+              RESOURCE_CONTROL_DISK_STATISTIC,
+              PROMETHEUS_REACTOR_HTTP_NIO,
+              PROMETHEUS_BOUNDED_ELASTIC));
   private static Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -321,6 +332,11 @@ public enum ThreadName {
     if (givenThreadName.contains(LOG_BACK.getName())) {
       return DataNodeThreadModule.LOG_BACK;
     }
+    for (ThreadName threadName : metricsThreadNames) {
+      if (givenThreadName.contains(threadName.getName())) {
+        return DataNodeThreadModule.METRICS;
+      }
+    }
     for (ThreadName threadName : otherThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
         return DataNodeThreadModule.OTHER;
@@ -328,5 +344,23 @@ public enum ThreadName {
     }
     log.error("Unknown thread name {}", givenThreadName);
     return DataNodeThreadModule.UNKNOWN;
+  }
+
+  public static ThreadName getThreadPoolTheThreadBelongs(String givenThreadName) {
+    ThreadName[] threadNames = ThreadName.values();
+    for (ThreadName threadName : threadNames) {
+      String name = threadName.getName();
+      if (name.contains("\\d")) {
+        // regex pattern
+        if (Pattern.compile(name).matcher(givenThreadName).find()) {
+          return threadName;
+        }
+      } else {
+        if (givenThreadName.contains(name)) {
+          return threadName;
+        }
+      }
+    }
+    return null;
   }
 }

@@ -22,7 +22,8 @@ package org.apache.iotdb.metrics.metricsets.cpu;
 import java.util.function.UnaryOperator;
 
 public class MacCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager {
-  public MacCpuUsageMetricsManager(UnaryOperator<String> threadNameToModule) {
-    super(threadNameToModule);
+  public MacCpuUsageMetricsManager(
+      UnaryOperator<String> threadNameToModule, UnaryOperator<String> threadNameToPool) {
+    super(threadNameToModule, threadNameToPool);
   }
 }
