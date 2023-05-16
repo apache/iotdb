@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import javax.annotation.Nonnull;
 
 import java.util.Objects;
+import org.apache.iotdb.commons.utils.ThriftUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,19 +88,7 @@ public class StorageExecutor implements ExecutorType {
     int i = 0;
     for (; i < dataNodeLocations.size(); i++) {
       TDataNodeLocation dataNodeLocation = dataNodeLocations.get(i);
-      if (Objects.equals(dataNodeLocation.getClientRpcEndPoint(), endPoint)) {
-        break;
-      }
-      if (Objects.equals(dataNodeLocation.getDataRegionConsensusEndPoint(), endPoint)) {
-        break;
-      }
-      if (Objects.equals(dataNodeLocation.getSchemaRegionConsensusEndPoint(), endPoint)) {
-        break;
-      }
-      if (Objects.equals(dataNodeLocation.getMPPDataExchangeEndPoint(), endPoint)) {
-        break;
-      }
-      if (Objects.equals(dataNodeLocation.getInternalEndPoint(), endPoint)) {
+      if (ThriftUtils.endPointInLocation(dataNodeLocation, endPoint)) {
         break;
       }
     }
