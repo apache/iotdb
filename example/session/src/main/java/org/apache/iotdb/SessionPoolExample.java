@@ -26,9 +26,9 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class SessionPoolExample {
 
@@ -50,7 +50,6 @@ public class SessionPoolExample {
   /** Build a redirect-able SessionPool for this example */
   private static void constructRedirectSessionPool() {
     List<String> nodeUrls = new ArrayList<>();
-    nodeUrls.add("127.0.0.1:6667");
     nodeUrls.add("127.0.0.1:6668");
     sessionPool =
         new SessionPool.Builder()
@@ -62,17 +61,54 @@ public class SessionPoolExample {
   }
 
   public static void main(String[] args)
-      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
+      throws StatementExecutionException, IoTDBConnectionException {
     // Choose the SessionPool you going to use
     constructRedirectSessionPool();
 
-    service = Executors.newFixedThreadPool(10);
-    insertRecord();
-    queryByRowRecord();
-    Thread.sleep(1000);
-    queryByIterator();
+    //    service = Executors.newFixedThreadPool(10);
+    //    insertRecord();
+    //    queryByRowRecord();
+    //    Thread.sleep(1000);
+    //    queryByIterator();
+
+    SessionDataSetWrapper sessionDataSetWrapper =
+        sessionPool.executeLastDataQueryForOneDevice(
+            "root.ca.condition",
+            "root.ca.condition.`123456789`",
+            Arrays.asList("Pa", "Pb", "Pc", "status", "Pd"));
+
+    while (sessionDataSetWrapper.hasNext()) {
+      System.out.println(sessionDataSetWrapper.next());
+    }
+
+    sessionDataSetWrapper.close();
+
+    sessionDataSetWrapper =
+        sessionPool.executeLastDataQueryForOneDevice(
+            "root.ca.condition",
+            "root.ca.condition.`123456789`",
+            Arrays.asList("Pa", "Pb", "Pc", "status", "Pd"));
+
+    while (sessionDataSetWrapper.hasNext()) {
+      System.out.println(sessionDataSetWrapper.next());
+    }
+
+    sessionDataSetWrapper.close();
+
+    sessionDataSetWrapper =
+        sessionPool.executeLastDataQueryForOneDevice(
+            "root.ca.condition",
+            "root.ca.condition.`123456789`",
+            Arrays.asList("Pa", "Pb", "Pc", "status", "Pd"));
+
+    while (sessionDataSetWrapper.hasNext()) {
+      System.out.println(sessionDataSetWrapper.next());
+    }
+
+    sessionDataSetWrapper.close();
+
     sessionPool.close();
-    service.shutdown();
+    //    service.shutdown();
   }
 
   // more insert example, see SessionExample.java

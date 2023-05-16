@@ -689,7 +689,15 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         TSExecuteStatementResp resp;
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-          resp.setStatus(result.status);
+          TSStatus tsstatus = new TSStatus();
+          tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+          tsstatus.setRedirectNode(
+              regionReplicaSets
+                  .get(regionReplicaSets.size() - 1)
+                  .dataNodeLocations
+                  .get(0)
+                  .clientRpcEndPoint);
+          resp.setStatus(tsstatus);
           finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
           quota.addReadResult(resp.getQueryResult());
@@ -725,8 +733,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   private TSLastDataQueryReq convert(TSFastLastDataQueryForOneDeviceReq req) {
-    TSLastDataQueryReq res = new TSLastDataQueryReq();
-    List<String> paths = new ArrayList<>(req.sensors);
+    List<String> paths = new ArrayList<>(req.sensors.size());
     for (String sensor : req.sensors) {
       paths.add(req.deviceId + "." + sensor);
     }
@@ -736,7 +743,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     tsLastDataQueryReq.setEnableRedirectQuery(req.enableRedirectQuery);
     tsLastDataQueryReq.setLegalPathNodes(req.legalPathNodes);
     tsLastDataQueryReq.setTimeout(req.timeout);
-    return res;
+    return tsLastDataQueryReq;
   }
 
   @Override
