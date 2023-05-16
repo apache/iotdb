@@ -29,6 +29,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class TemplateExtendInfo extends TemplateAlterInfo {
 
@@ -100,6 +101,37 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
       compressors = new ArrayList<>();
     }
     compressors.add(compressionType);
+  }
+
+  public List<String> removeMeasurements(Set<String> targetMeasurementSet) {
+    List<String> removedMeasurements = new ArrayList<>();
+
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+
+    for (int i = 0; i < this.measurements.size(); i++) {
+      if (targetMeasurementSet.contains(this.measurements.get(i))) {
+        removedMeasurements.add(this.measurements.get(i));
+        continue;
+      }
+      measurements.add(this.measurements.get(i));
+      dataTypes.add(this.dataTypes.get(i));
+      encodings.add(this.encodings.get(i));
+      compressors.add(this.compressors.get(i));
+    }
+
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.encodings = encodings;
+    this.compressors = compressors;
+
+    return removedMeasurements;
+  }
+
+  public boolean isEmpty() {
+    return measurements == null || measurements.isEmpty();
   }
 
   public void serialize(OutputStream outputStream) throws IOException {

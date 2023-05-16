@@ -773,16 +773,19 @@ public class ClusterSchemaManager {
     }
 
     Template template = resp.getTemplateList().get(0);
-    boolean needExtend = false;
-    for (String measurement : templateExtendInfo.getMeasurements()) {
-      if (!template.hasSchema(measurement)) {
-        needExtend = true;
-        break;
-      }
-    }
+    List<String> removedMeasurements =
+        templateExtendInfo.removeMeasurements(template.getSchemaMap().keySet());
 
-    if (!needExtend) {
-      return RpcUtils.SUCCESS_STATUS;
+    if (templateExtendInfo.isEmpty()) {
+      if (removedMeasurements.isEmpty()) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return RpcUtils.getStatus(
+            TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE,
+            String.format(
+                "Measurement %s already exist in schema template %s",
+                removedMeasurements, template.getName()));
+      }
     }
 
     ExtendSchemaTemplatePlan extendSchemaTemplatePlan =
@@ -824,7 +827,16 @@ public class ClusterSchemaManager {
                 template.getName(), dataNodeLocationMap.get(entry.getKey())));
       }
     }
-    return RpcUtils.SUCCESS_STATUS;
+
+    if (removedMeasurements.isEmpty()) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return RpcUtils.getStatus(
+          TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE,
+          String.format(
+              "Measurement %s already exist in schema template %s",
+              removedMeasurements, template.getName()));
+    }
   }
 
   public long getSchemaQuotaCount() {
