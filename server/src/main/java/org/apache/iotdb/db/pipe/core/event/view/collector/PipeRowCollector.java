@@ -61,6 +61,8 @@ public class PipeRowCollector implements RowCollector {
   }
 
   public TabletInsertionEvent toTabletInsertionEvent() {
-    return new PipeTabletInsertionEvent(tablet);
+    PipeTabletInsertionEvent tablet = new PipeTabletInsertionEvent(this.tablet);
+    this.tablet = null;
+    return tablet;
   }
 }
