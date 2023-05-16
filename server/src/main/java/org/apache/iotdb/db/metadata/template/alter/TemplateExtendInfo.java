@@ -108,8 +108,8 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
 
     List<String> measurements = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
-    List<CompressionType> compressors = new ArrayList<>();
+    List<TSEncoding> encodings = this.encodings == null ? null : new ArrayList<>();
+    List<CompressionType> compressors = this.compressors == null ? null : new ArrayList<>();
 
     for (int i = 0; i < this.measurements.size(); i++) {
       if (targetMeasurementSet.contains(this.measurements.get(i))) {
@@ -118,8 +118,12 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
       }
       measurements.add(this.measurements.get(i));
       dataTypes.add(this.dataTypes.get(i));
-      encodings.add(this.encodings.get(i));
-      compressors.add(this.compressors.get(i));
+      if (this.encodings != null) {
+        encodings.add(this.encodings.get(i));
+      }
+      if (this.compressors != null) {
+        compressors.add(this.compressors.get(i));
+      }
     }
 
     this.measurements = measurements;
