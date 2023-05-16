@@ -16,22 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.utils.listener;
+package org.apache.iotdb.db.wal.exception;
 
-import org.apache.iotdb.db.wal.buffer.WALEntryValue;
-import org.apache.iotdb.db.wal.utils.WALPipeHandler;
-
-/** This class helps judge whether wal is flushed to the storage device. */
-public class WALFlushListener extends AbstractResultListener {
-  // handler for pipeline, only exists then value is InsertNode
-  private final WALPipeHandler walPipeHandler;
-
-  public WALFlushListener(boolean wait, WALEntryValue value) {
-    super(wait);
-    walPipeHandler = new WALPipeHandler(value);
+public class WALPipeException extends WALException {
+  public WALPipeException(Throwable cause) {
+    super(cause);
   }
 
-  public WALPipeHandler getWalPipeHandler() {
-    return walPipeHandler;
+  public WALPipeException(String message) {
+    super(message);
+  }
+
+  public WALPipeException(String message, Throwable cause) {
+    super(message, cause);
   }
 }
