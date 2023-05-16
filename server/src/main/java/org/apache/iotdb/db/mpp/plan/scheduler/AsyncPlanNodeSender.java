@@ -132,7 +132,8 @@ public class AsyncPlanNodeSender {
         }
       }
 
-      if (status != null && status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      if (status != null
+          && status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         int instanceIndex = entry.getKey();
         FragmentInstance fragmentInstance = instances.get(instanceIndex);
         fragmentInstance.getExecutorType().updatePreferredLocation(status.getRedirectNode());

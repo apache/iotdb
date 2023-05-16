@@ -23,14 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-/**
- * The interface is used to indicate where to execute a FragmentInstance
- */
+/** The interface is used to indicate where to execute a FragmentInstance */
 public interface ExecutorType {
 
-  /**
-   * Indicate if ExecutorType is StorageExecutor
-   */
+  /** Indicate if ExecutorType is StorageExecutor */
   boolean isStorageExecutor();
 
   TDataNodeLocation getDataNodeLocation();
@@ -45,6 +41,5 @@ public interface ExecutorType {
    *
    * @param endPoint associated with the preferred location.
    */
-  default void updatePreferredLocation(TEndPoint endPoint) {
-  }
+  default void updatePreferredLocation(TEndPoint endPoint) {}
 }

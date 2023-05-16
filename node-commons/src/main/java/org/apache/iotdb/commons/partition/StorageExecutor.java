@@ -19,21 +19,20 @@
 
 package org.apache.iotdb.commons.partition;
 
-import java.util.List;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-
-import javax.annotation.Nonnull;
-
-import java.util.Objects;
 import org.apache.iotdb.commons.utils.ThriftUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * StorageExecutor indicates execution of this query need data from StorageEngine
- */
+import javax.annotation.Nonnull;
+
+import java.util.List;
+import java.util.Objects;
+
+/** StorageExecutor indicates execution of this query need data from StorageEngine */
 public class StorageExecutor implements ExecutorType {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageExecutor.class);
@@ -95,7 +94,9 @@ public class StorageExecutor implements ExecutorType {
 
     if (i < dataNodeLocations.size()) {
       regionReplicaSet.setPreferredLocation(i);
-      logger.info("Preferred location of {} has been set to {}", regionReplicaSet,
+      logger.info(
+          "Preferred location of {} has been set to {}",
+          regionReplicaSet,
           regionReplicaSet.getDataNodeLocations().get(i));
     }
   }
