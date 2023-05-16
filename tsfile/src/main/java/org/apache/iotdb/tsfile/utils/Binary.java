@@ -57,20 +57,15 @@ public class Binary implements Comparable<Binary>, Serializable {
       }
     }
 
-    int len1 = getLength();
-    int len2 = other.getLength();
-    int lim = Math.min(len1, len2);
-    for (int k = 0; k < lim; k++) {
-      if (this.values[k] != other.values[k]) {
-        return getChar(values, k) - getChar(other.values, k);
+    int i = 0;
+    while (i < getLength() && i < other.getLength()) {
+      if (this.values[i] == other.values[i]) {
+        i++;
+        continue;
       }
+      return this.values[i] - other.values[i];
     }
-    return len1 - len2;
-  }
-
-  // avoid overflow
-  private char getChar(byte[] val, int index) {
-    return (char) (val[index] & 0xff);
+    return getLength() - other.getLength();
   }
 
   @Override
