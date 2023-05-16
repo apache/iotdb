@@ -370,20 +370,27 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         PlanNode planNode = instance.getFragment().getPlanNodeTree();
         RegionWriteExecutor writeExecutor = new RegionWriteExecutor();
         RegionExecutionResult writeResult = writeExecutor.execute(groupId, planNode);
+
+        TSStatus status = writeResult.getStatus();
         if (!writeResult.isAccepted()) {
-          logger.warn(
-              "write locally failed. TSStatus: {}, message: {}",
-              writeResult.getStatus(),
-              writeResult.getMessage());
-          if (writeResult.getStatus() == null) {
+          if (status == null || status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            logger.warn(
+                "write locally failed. TSStatus: {}, message: {}",
+                status,
+                writeResult.getMessage());
+          } else {
+            // status code == REDIRECTION_RECOMMEND
+            instance.getExecutorType().updatePreferredLocation(status.getRedirectNode());
+          }
+
+          if (status == null) {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResult.getMessage()));
           } else {
-            throw new FragmentInstanceDispatchException(writeResult.getStatus());
+            throw new FragmentInstanceDispatchException(status);
           }
         } else {
           // some expected and accepted status except SUCCESS_STATUS need to be returned
-          TSStatus status = writeResult.getStatus();
           if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new FragmentInstanceDispatchException(status);
           }
