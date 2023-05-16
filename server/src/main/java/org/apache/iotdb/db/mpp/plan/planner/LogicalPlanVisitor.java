@@ -502,12 +502,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         planBuilder
             .planTimeSeriesSchemaSource(
                 showTimeSeriesStatement.getPathPattern(),
-                showTimeSeriesStatement.getKey(),
-                showTimeSeriesStatement.getValue(),
+                showTimeSeriesStatement.getSchemaFilter(),
                 limit,
                 offset,
                 showTimeSeriesStatement.isOrderByHeat(),
-                showTimeSeriesStatement.isContains(),
                 showTimeSeriesStatement.isPrefixPath(),
                 analysis.getRelatedTemplateInfo())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
@@ -560,7 +558,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 limit,
                 offset,
                 showDevicesStatement.isPrefixPath(),
-                showDevicesStatement.hasSgCol())
+                showDevicesStatement.hasSgCol(),
+                showDevicesStatement.getSchemaFilter())
             .planSchemaQueryMerge(false);
 
     if (!canPushDownOffsetLimit) {
@@ -591,9 +590,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planTimeSeriesCountSource(
             countTimeSeriesStatement.getPathPattern(),
             countTimeSeriesStatement.isPrefixPath(),
-            countTimeSeriesStatement.getKey(),
-            countTimeSeriesStatement.getValue(),
-            countTimeSeriesStatement.isContains(),
+            countTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo())
         .planCountMerge()
         .getRoot();
@@ -608,9 +605,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countLevelTimeSeriesStatement.getPathPattern(),
             countLevelTimeSeriesStatement.isPrefixPath(),
             countLevelTimeSeriesStatement.getLevel(),
-            countLevelTimeSeriesStatement.getKey(),
-            countLevelTimeSeriesStatement.getValue(),
-            countLevelTimeSeriesStatement.isContains())
+            countLevelTimeSeriesStatement.getSchemaFilter())
         .planCountMerge()
         .getRoot();
   }
