@@ -92,7 +92,7 @@ public class StorageExecutor implements ExecutorType {
       }
     }
 
-    if (i < dataNodeLocations.size()) {
+    if (i < dataNodeLocations.size() && regionReplicaSet.getPreferredLocation() != i) {
       regionReplicaSet.setPreferredLocation(i);
       logger.info(
           "Preferred location of {} has been set to {}",
