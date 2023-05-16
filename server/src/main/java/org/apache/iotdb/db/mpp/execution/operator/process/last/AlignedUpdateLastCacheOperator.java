@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -63,25 +62,25 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
 
     tsBlockBuilder.reset();
     for (int i = 0; i + 1 < res.getValueColumnCount(); i += 2) {
+      MeasurementPath measurementPath =
+          new MeasurementPath(
+              devicePath.concatNode(seriesPath.getMeasurementList().get(i / 2)),
+              seriesPath.getSchemaList().get(i / 2),
+              true);
       if (!res.getColumn(i).isNull(0)) {
         long lastTime = res.getColumn(i).getLong(0);
         TsPrimitiveType lastValue = res.getColumn(i + 1).getTsPrimitiveType(0);
-        MeasurementPath measurementPath =
-            new MeasurementPath(
-                devicePath.concatNode(seriesPath.getMeasurementList().get(i / 2)),
-                seriesPath.getSchemaList().get(i / 2),
-                true);
-        if (needUpdateCache) {
-          TimeValuePair timeValuePair = new TimeValuePair(lastTime, lastValue);
-          lastCache.updateLastCache(
-              getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
-        }
+        updateLastCache(lastTime, lastValue, measurementPath);
         LastQueryUtil.appendLastValue(
             tsBlockBuilder,
             lastTime,
             measurementPath.getFullPath(),
             lastValue.getStringValue(),
             seriesPath.getSchemaList().get(i / 2).getType().name());
+      } else {
+        // we still need to update last cache if there is no data for this time series to avoid
+        // scanning all files each time
+        updateLastCache(Long.MIN_VALUE, null, measurementPath);
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;

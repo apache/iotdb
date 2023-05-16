@@ -2031,6 +2031,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
     if (timeValuePair == null) { // last value is not cached
       return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
+    } else if (timeValuePair.getValue() == null) { // there is no data for this time series
+      return null;
     } else if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
         timeValuePair)) { // cached last value is not satisfied
@@ -2125,6 +2127,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
+      } else if (timeValuePair.getValue() == null) {
+        // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(
           updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
           timeValuePair)) { // cached last value is not satisfied
