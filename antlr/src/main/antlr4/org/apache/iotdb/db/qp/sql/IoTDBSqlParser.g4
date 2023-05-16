@@ -222,7 +222,7 @@ tagWhereClause
 // ---- Create Schema Template
 createSchemaTemplate
     : CREATE SCHEMA TEMPLATE templateName=identifier
-    ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    ALIGNED? (LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET)?
     ;
 
 templateMeasurementClause
