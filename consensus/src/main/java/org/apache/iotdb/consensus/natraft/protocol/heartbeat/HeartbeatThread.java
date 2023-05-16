@@ -235,7 +235,7 @@ public class HeartbeatThread implements Runnable {
     if (localMember.getAllNodes().size() == 1) {
       // single node group, this node is always the leader
       localMember.getStatus().setRole(RaftRole.LEADER);
-      localMember.getStatus().getLeader().set(localMember.getThisNode());
+      localMember.getStatus().setLeader(localMember.getThisNode());
       logger.info("{}: Winning the election because the node is the only node.", memberName);
     }
 
@@ -315,7 +315,7 @@ public class HeartbeatThread implements Runnable {
     if (electionState.isAccepted()) {
       logger.info("{}: Election {} accepted", memberName, nextTerm);
       localMember.getStatus().setRole(RaftRole.LEADER);
-      localMember.getStatus().getLeader().set(localMember.getThisNode());
+      localMember.getStatus().setLeader(localMember.getThisNode());
       localMember.getLogDispatcher().wakeUp();
     }
   }

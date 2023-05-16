@@ -363,7 +363,7 @@ public class RaftConsensus implements IConsensus {
     if (impl == null) {
       return false;
     }
-    return Objects.equals(impl.getStatus().getLeader().get(), impl.getThisNode());
+    return Objects.equals(impl.getStatus().getLeader(), impl.getThisNode());
   }
 
   @Override
@@ -372,7 +372,7 @@ public class RaftConsensus implements IConsensus {
     if (impl == null) {
       return null;
     }
-    return impl.getStatus().getLeader().get();
+    return impl.getStatus().getLeader();
   }
 
   @Override

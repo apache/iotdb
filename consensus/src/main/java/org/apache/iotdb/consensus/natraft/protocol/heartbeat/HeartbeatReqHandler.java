@@ -67,7 +67,7 @@ public class HeartbeatReqHandler {
             request.getLeader());
       }
     } else {
-      if (leaderTerm > thisTerm || member.getStatus().getLeader().get() == null) {
+      if (leaderTerm > thisTerm || member.getStatus().getLeader() == null) {
         // try updating local term or leader
         try {
           member.getLogManager().getLock().writeLock().lock();

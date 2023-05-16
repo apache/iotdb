@@ -136,6 +136,7 @@ public class SchemaRegionConsensusImpl {
                               .build())
                       .setStorageDir(conf.getSchemaRegionConsensusDir())
                       .setProperties(conf.getCustomizedProperties())
+                      .setClientRPCEndPoint(conf.getAddressAndPort())
                       .build(),
                   gid ->
                       new SchemaRegionStateMachine(

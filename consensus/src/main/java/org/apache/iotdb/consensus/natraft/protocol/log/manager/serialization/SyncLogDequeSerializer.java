@@ -411,7 +411,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private void switchBuffer() {
     ByteBuffer temp = logDataBuffer;
-    logDataBuffer = flushingLogIndexBuffer;
+    logDataBuffer = flushingLogDataBuffer;
     flushingLogDataBuffer = temp;
     temp = logIndexBuffer;
     logIndexBuffer = flushingLogIndexBuffer;

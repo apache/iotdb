@@ -194,6 +194,7 @@ public class DataRegionConsensusImpl {
                                       .build())
                               .build())
                       .setProperties(conf.getCustomizedProperties())
+                      .setClientRPCEndPoint(conf.getAddressAndPort())
                       .build(),
                   DataRegionConsensusImpl::createDataRegionStateMachine)
               .orElseThrow(

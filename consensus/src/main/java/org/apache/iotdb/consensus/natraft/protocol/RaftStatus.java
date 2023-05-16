@@ -21,11 +21,19 @@ package org.apache.iotdb.consensus.natraft.protocol;
 
 import org.apache.iotdb.consensus.common.Peer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class RaftStatus {
+
+  private static final Logger logger = LoggerFactory.getLogger(RaftStatus.class);
+
+  protected String name;
   /** when the node is a leader, this map is used to track log progress of each follower. */
   protected Map<Peer, PeerInfo> peerMap;
   /**
@@ -37,6 +45,10 @@ public class RaftStatus {
   volatile RaftRole role = RaftRole.CANDIDATE;
   AtomicReference<Peer> leader = new AtomicReference<>(null);
   volatile Peer voteFor;
+
+  public RaftStatus(String name) {
+    this.name = name;
+  }
 
   public Map<Peer, PeerInfo> getPeerMap() {
     return peerMap;
@@ -62,12 +74,16 @@ public class RaftStatus {
     this.role = role;
   }
 
-  public AtomicReference<Peer> getLeader() {
-    return leader;
+  public Peer getLeader() {
+    return leader.get();
   }
 
-  public void setLeader(AtomicReference<Peer> leader) {
-    this.leader = leader;
+  public void setLeader(Peer leader) {
+    Peer oldLeader = this.leader.get();
+    if (!Objects.equals(oldLeader, leader)) {
+      this.leader.set(leader);
+      logger.info("The leader of {} has been set to {}", name, leader);
+    }
   }
 
   public Peer getVoteFor() {

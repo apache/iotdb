@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.utils;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse.Builder;
@@ -76,21 +75,9 @@ public class StatusUtils {
     return status;
   }
 
-  public static TSStatus getStatus(TSStatusCode statusCode, TEndPoint redirectedNode) {
-    TSStatus status = getStatus(statusCode);
-    status.setRedirectNode(redirectedNode);
-    return status;
-  }
-
   public static TSStatus getStatus(TSStatus status, String message) {
     TSStatus newStatus = status.deepCopy();
     newStatus.setMessage(message);
-    return newStatus;
-  }
-
-  public static TSStatus getStatus(TSStatus status, TEndPoint redirectedNode) {
-    TSStatus newStatus = status.deepCopy();
-    newStatus.setRedirectNode(redirectedNode);
     return newStatus;
   }
 

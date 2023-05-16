@@ -151,7 +151,7 @@ public class RaftMember {
   protected String name;
   protected String storageDir;
 
-  protected RaftStatus status = new RaftStatus();
+  protected RaftStatus status;
 
   /** the raft logs are all stored and maintained in the log manager */
   protected RaftLogManager logManager;
@@ -222,6 +222,7 @@ public class RaftMember {
             + thisNode.getEndpoint().getIp()
             + "-"
             + thisNode.getEndpoint().getPort();
+    this.status = new RaftStatus(name);
 
     this.clientManager = clientManager;
     this.stateMachine = stateMachine;
@@ -425,14 +426,14 @@ public class RaftMember {
         status.term.set(newTerm);
         status.setVoteFor(null);
         status.setRole(RaftRole.CANDIDATE);
-        status.getLeader().set(null);
+        status.setLeader(null);
         updateHardState(newTerm, status.getVoteFor());
       }
 
       if (currTerm <= newTerm && newLeader != null) {
         // only when the request is from a leader should we update lastHeartbeatReceivedTime,
         // otherwise the node may be stuck in FOLLOWER state by a stale node.
-        status.getLeader().set(newLeader);
+        status.setLeader(newLeader);
         status.setRole(RaftRole.FOLLOWER);
         heartbeatThread.setLastHeartbeatReceivedTime(System.currentTimeMillis());
       }
@@ -550,7 +551,7 @@ public class RaftMember {
       } else {
         heartbeatThread.setLastHeartbeatReceivedTime(System.currentTimeMillis());
       }
-      status.getLeader().set(leader);
+      status.setLeader(leader);
     }
 
     logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
@@ -796,7 +797,8 @@ public class RaftMember {
 
   public ConsensusWriteResponse executeForwardedRequest(IConsensusRequest request) {
     TSStatus tsStatus = processRequest(request);
-    tsStatus.setRedirectNode(thisNode.getEndpoint());
+    tsStatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+    tsStatus.setRedirectNode(config.getRpcConfig().getClientRPCEndPoint());
     return new ConsensusWriteResponse(null, tsStatus);
   }
 
@@ -998,7 +1000,6 @@ public class RaftMember {
       this.status.leader.set(null);
       waitLeader();
     }
-    status.setRedirectNode(node);
     return status;
   }
 
@@ -1380,7 +1381,7 @@ public class RaftMember {
     lastReportIndex = logManager.getLastLogIndex();
     return new RaftMemberReport(
         status.role,
-        status.getLeader().get(),
+        status.getLeader(),
         status.getTerm().get(),
         logManager.getLastLogTerm(),
         lastReportIndex,

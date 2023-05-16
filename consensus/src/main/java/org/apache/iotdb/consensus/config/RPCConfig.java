@@ -4,6 +4,7 @@
 
 package org.apache.iotdb.consensus.config;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 
 import java.util.concurrent.TimeUnit;
@@ -19,6 +20,7 @@ public class RPCConfig {
   private int thriftMaxFrameSize;
   private int coreClientNumForEachNode;
   private int maxClientNumForEachNode;
+  private TEndPoint clientRPCEndPoint;
 
   private RPCConfig(
       int rpcSelectorThreadNum,
@@ -30,7 +32,8 @@ public class RPCConfig {
       int connectionTimeoutInMs,
       int thriftMaxFrameSize,
       int coreClientNumForEachNode,
-      int maxClientNumForEachNode) {
+      int maxClientNumForEachNode,
+      TEndPoint clientRPCEndPoint) {
     this.rpcSelectorThreadNum = rpcSelectorThreadNum;
     this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -41,6 +44,7 @@ public class RPCConfig {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.coreClientNumForEachNode = coreClientNumForEachNode;
     this.maxClientNumForEachNode = maxClientNumForEachNode;
+    this.clientRPCEndPoint = clientRPCEndPoint;
   }
 
   public int getRpcSelectorThreadNum() {
@@ -92,6 +96,7 @@ public class RPCConfig {
     private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
 
     private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+    private TEndPoint clientRPCEndPoint;
 
     public RPCConfig.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
@@ -144,6 +149,11 @@ public class RPCConfig {
       return this;
     }
 
+    public RPCConfig.Builder setClientRPCEndPoint(TEndPoint rpcEndPoint) {
+      this.clientRPCEndPoint = rpcEndPoint;
+      return this;
+    }
+
     public RPCConfig build() {
       return new RPCConfig(
           rpcSelectorThreadNum,
@@ -155,7 +165,8 @@ public class RPCConfig {
           connectionTimeoutInMs,
           thriftMaxFrameSize,
           coreClientNumForEachNode,
-          maxClientNumForEachNode);
+          maxClientNumForEachNode,
+          clientRPCEndPoint);
     }
   }
 
@@ -173,5 +184,9 @@ public class RPCConfig {
 
   public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
     this.maxClientNumForEachNode = maxClientNumForEachNode;
+  }
+
+  public TEndPoint getClientRPCEndPoint() {
+    return clientRPCEndPoint;
   }
 }

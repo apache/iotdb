@@ -40,7 +40,8 @@ public class ConsensusConfig {
       String storageDir,
       RatisConfig ratisConfig,
       IoTConsensusConfig ioTConsensusConfig,
-      Properties properties) {
+      Properties properties,
+      TEndPoint clientRPCEndPoint) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
@@ -59,6 +60,7 @@ public class ConsensusConfig {
             .setThriftMaxFrameSize(ioTConsensusConfig.getRpc().getThriftMaxFrameSize())
             .setCoreClientNumForEachNode(ioTConsensusConfig.getRpc().getCoreClientNumForEachNode())
             .setMaxClientNumForEachNode(ioTConsensusConfig.getRpc().getMaxClientNumForEachNode())
+            .setClientRPCEndPoint(clientRPCEndPoint)
             .build();
     this.properties = properties;
   }
@@ -103,6 +105,7 @@ public class ConsensusConfig {
     private RatisConfig ratisConfig;
     private IoTConsensusConfig ioTConsensusConfig;
     private Properties properties = new Properties();
+    private TEndPoint clientRPCEndPoint;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -112,7 +115,8 @@ public class ConsensusConfig {
           Optional.ofNullable(ratisConfig).orElseGet(() -> RatisConfig.newBuilder().build()),
           Optional.ofNullable(ioTConsensusConfig)
               .orElseGet(() -> IoTConsensusConfig.newBuilder().build()),
-          properties);
+          properties,
+          clientRPCEndPoint);
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -142,6 +146,11 @@ public class ConsensusConfig {
 
     public Builder setProperties(Properties properties) {
       this.properties = properties;
+      return this;
+    }
+
+    public Builder setClientRPCEndPoint(TEndPoint clientRPCEndPoint) {
+      this.clientRPCEndPoint = clientRPCEndPoint;
       return this;
     }
   }
