@@ -19,14 +19,19 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.partition.QueryExecutor;
+import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.ThriftUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -69,8 +74,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private final ExecutorService writeOperationExecutor;
   private final QueryType type;
   private final MPPQueryContext queryContext;
-  private final String localhostIpAddr;
-  private final int localhostInternalPort;
+  private final TEndPoint localEndPoint;
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       syncInternalServiceClientManager;
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
@@ -94,8 +98,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     this.writeOperationExecutor = writeOperationExecutor;
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
-    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
-    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    this.localEndPoint = new TEndPoint(
+        IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+        IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 
   @Override
@@ -170,8 +175,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     List<FragmentInstance> localInstances = new ArrayList<>();
     List<FragmentInstance> remoteInstances = new ArrayList<>();
     for (FragmentInstance instance : instances) {
-      TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-      if (isDispatchedToLocal(endPoint)) {
+      if (isDispatchedToLocal(instance)) {
         localInstances.add(instance);
       } else {
         remoteInstances.add(instance);
@@ -237,15 +241,28 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
     TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-    if (isDispatchedToLocal(endPoint)) {
+    if (isDispatchedToLocal(instance)) {
       dispatchLocally(instance);
     } else {
       dispatchRemote(instance, endPoint);
     }
   }
 
-  private boolean isDispatchedToLocal(TEndPoint endPoint) {
-    return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
+  private boolean isDispatchedToLocal(FragmentInstance instance) {
+    if (instance.getExecutorType().isStorageExecutor()) {
+      // For write requests, if the local node is in the replica set, dispatch locally.
+      // Because the consensus layer knows more accurate about which is the preferred location
+      // (leader/master/primary) than the PartitionCache.
+      TRegionReplicaSet regionReplicaSet = instance.getExecutorType().getRegionReplicaSet();
+      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+        if (ThriftUtils.endPointInLocation(dataNodeLocation, localEndPoint)) {
+          return true;
+        }
+      }
+      return false;
+    } else {
+      return localEndPoint.equals(instance.getHostDataNode().getInternalEndPoint());
+    }
   }
 
   private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
@@ -381,5 +398,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   @Override
-  public void abort() {}
+  public void abort() {
+  }
 }
