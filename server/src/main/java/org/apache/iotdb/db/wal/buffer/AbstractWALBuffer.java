@@ -83,22 +83,29 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     return currentWALFileWriter.size();
   }
 
-  /** Notice: only called by syncBufferThread and old log writer will be closed by this function. */
-  protected void rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
+  /**
+   * Notice: only called by syncBufferThread and old log writer will be closed by this function.
+   *
+   * @return last wal file
+   */
+  protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
     // close file
-    File currentFile = currentWALFileWriter.getLogFile();
-    String currentName = currentFile.getName();
+    File lastFile = currentWALFileWriter.getLogFile();
+    String lastName = lastFile.getName();
     currentWALFileWriter.close();
     addDiskUsage(currentWALFileWriter.size());
     addFileNum(1);
-    if (WALFileUtils.parseStatusCode(currentName) != fileStatus) {
+    if (WALFileUtils.parseStatusCode(lastName) != fileStatus) {
       String targetName =
           WALFileUtils.getLogFileName(
-              WALFileUtils.parseVersionId(currentName),
-              WALFileUtils.parseStartSearchIndex(currentName),
+              WALFileUtils.parseVersionId(lastName),
+              WALFileUtils.parseStartSearchIndex(lastName),
               fileStatus);
-      if (!currentFile.renameTo(SystemFileFactory.INSTANCE.getFile(logDirectory, targetName))) {
-        logger.error("Fail to rename file {} to {}", currentName, targetName);
+      File targetFile = SystemFileFactory.INSTANCE.getFile(logDirectory, targetName);
+      if (lastFile.renameTo(targetFile)) {
+        lastFile = targetFile;
+      } else {
+        logger.error("Fail to rename file {} to {}", lastName, targetName);
       }
     }
     // roll file
@@ -111,6 +118,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     currentWALFileWriter = new WALWriter(nextLogFile);
     currentWALFileVersion = nextFileVersion;
     logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
+    return lastFile;
   }
 
   public long getDiskUsage() {

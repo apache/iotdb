@@ -3360,6 +3360,10 @@ public class Session implements ISession {
   @Override
   public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (devicePathList == null || devicePathList.contains(null)) {
+      throw new StatementExecutionException(
+          "Given device path list should not be  or contains null.");
+    }
     TCreateTimeseriesUsingSchemaTemplateReq request = new TCreateTimeseriesUsingSchemaTemplateReq();
     request.setDevicePathList(devicePathList);
     defaultSessionConnection.createTimeseriesUsingSchemaTemplate(request);
