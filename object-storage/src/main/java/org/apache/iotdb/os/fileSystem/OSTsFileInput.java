@@ -18,89 +18,60 @@
  */
 package org.apache.iotdb.os.fileSystem;
 
-import org.apache.iotdb.os.cache.OSFileCache;
+import org.apache.iotdb.os.cache.CacheFileChannel;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 
 public class OSTsFileInput implements TsFileInput {
-  private static final Logger logger = LoggerFactory.getLogger(OSTsFileInput.class);
-
   private OSFile file;
-  private OSFileCache cache = OSFileCache.getInstance();
+  private CacheFileChannel channel;
+
+  public OSTsFileInput(OSFile file) {
+    this.file = file;
+    this.channel = new CacheFileChannel(file);
+  }
 
   @Override
   public long size() throws IOException {
-    return 0;
+    return channel.size();
   }
 
   @Override
   public long position() throws IOException {
-    return 0;
+    return channel.position();
   }
 
   @Override
   public TsFileInput position(long newPosition) throws IOException {
-    return null;
+    channel.position(newPosition);
+    return this;
   }
 
   @Override
   public int read(ByteBuffer dst) throws IOException {
-
-    return 0;
+    return channel.read(dst);
   }
 
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
-    return 0;
-  }
-
-  @Override
-  public int read() throws IOException {
-    return 0;
-  }
-
-  @Override
-  public int read(byte[] b, int off, int len) throws IOException {
-    return 0;
-  }
-
-  @Override
-  public FileChannel wrapAsFileChannel() throws IOException {
-    throw new UnsupportedEncodingException();
+    return channel.read(dst, position);
   }
 
   @Override
   public InputStream wrapAsInputStream() throws IOException {
-    return null;
+    return CacheFileChannel.newInputStream(channel);
   }
 
   @Override
-  public void close() throws IOException {}
-
-  @Override
-  public int readInt() throws IOException {
-    return 0;
-  }
-
-  @Override
-  public String readVarIntString(long offset) throws IOException {
-    return null;
+  public void close() throws IOException {
+    channel.close();
   }
 
   @Override
   public String getFilePath() {
-    return null;
-  }
-
-  public InputStream getNextInputStream(long position) throws IOException {
-    return cache.getAsInputSteam(file.toOSURI(), position);
+    return file.getPath();
   }
 }

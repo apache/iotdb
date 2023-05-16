@@ -18,26 +18,76 @@
  */
 package org.apache.iotdb.os.cache;
 
-import org.apache.iotdb.os.fileSystem.OSTsFileInput;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 public class CacheInputStream extends InputStream {
-  private OSTsFileInput osTsFileInput;
-  private long position; // 15
-  private long size; // 100
-  private InputStream currentInputStream; // 第二个文件，从 5 开始
+  private final CacheFileChannel channel;
 
-  public CacheInputStream(OSTsFileInput osTsFileInput, long position, long size) {
-    this.osTsFileInput = osTsFileInput;
-    this.position = position;
-    this.size = size;
+  public CacheInputStream(CacheFileChannel channel) {
+    super();
+    this.channel = channel;
   }
 
   @Override
   public int read() throws IOException {
+    byte[] b1 = new byte[1];
+    int n = read(b1);
+    if (n == 1) return b1[0] & 0xff;
+    return -1;
+  }
 
-    return 0;
+  @Override
+  public int read(byte[] b) throws IOException {
+    return read(b, 0, b.length);
+  }
+
+  @Override
+  public int read(byte[] b, int off, int len) throws IOException {
+    if (len == 0) {
+      return 0;
+    }
+    ByteBuffer buffer = ByteBuffer.wrap(b);
+    buffer.position(off);
+    buffer.limit(off + len);
+    return channel.read(buffer);
+  }
+
+  @Override
+  public long skip(long n) throws IOException {
+    if (n <= 0) {
+      return 0;
+    }
+    if (n > channel.size() - channel.position()) {
+      n = channel.size() - channel.position();
+    }
+    channel.position(channel.position() + n);
+    return n;
+  }
+
+  @Override
+  public int available() throws IOException {
+    return (int) (channel.size() - channel.position());
+  }
+
+  @Override
+  public void close() throws IOException {
+    channel.close();
+  }
+
+  @Override
+  public synchronized void mark(int readlimit) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public synchronized void reset() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean markSupported() {
+    throw new UnsupportedOperationException();
   }
 }

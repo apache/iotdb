@@ -29,11 +29,15 @@ public class OSFileCacheValue {
   // 如果每个块用一个文件来存储，则该值一直为该文件的大小
   // 如果使用一个大文件存储所有块，则该值为该块的实际长度
   private int length;
+  private int metaSize;
+  private boolean shouldDelete;
+  private int readCnt;
 
-  public OSFileCacheValue(File cacheFile, long startPosition, int length) {
+  public OSFileCacheValue(File cacheFile, long startPosition, int length, int metaSize) {
     this.cacheFile = cacheFile;
     this.startPosition = startPosition;
     this.length = length;
+    this.metaSize = metaSize;
   }
 
   public File getCacheFile() {
@@ -48,13 +52,36 @@ public class OSFileCacheValue {
     return length;
   }
 
+  public int getMetaSize() {
+    return metaSize;
+  }
+
   public int getOccupiedLength() {
     // 如果使用多个文件，则返回该文件的大小
     // 如果使用一个文件，则返回每个槽的大小
     return length;
   }
 
-  public void clear() {
-    cacheFile.delete();
+  public synchronized void setShouldDelete() {
+    this.shouldDelete = true;
+    if (readCnt == 0) {
+      cacheFile.delete();
+    }
+  }
+
+  public synchronized boolean readLock() {
+    if (cacheFile.exists()) {
+      this.readCnt++;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public synchronized void readUnlock() {
+    this.readCnt--;
+    if (shouldDelete && readCnt == 0) {
+      cacheFile.delete();
+    }
   }
 }

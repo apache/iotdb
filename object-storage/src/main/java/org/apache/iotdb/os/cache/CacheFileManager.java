@@ -31,15 +31,15 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** This class manages all io operations to the cache files */
+/** This class manages all write operations to the cache files */
 public class CacheFileManager {
   private static final Logger logger = LoggerFactory.getLogger(CacheFileManager.class);
   private static final String CACHE_FILE_SUFFIX = ".cache";
   private static final String TMP_CACHE_FILE_SUFFIX = ".cache.tmp";
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
-  private String[] cacheDirs;
-  private AtomicLong logFileId = new AtomicLong(0);
+  private final String[] cacheDirs;
+  private final AtomicLong logFileId = new AtomicLong(0);
 
   public CacheFileManager(String[] cacheDirs) {
     this.cacheDirs = cacheDirs;
@@ -69,7 +69,7 @@ public class CacheFileManager {
       ByteBuffer meta = key.serializeToByteBuffer();
       channel.write(meta);
       channel.write(ByteBuffer.wrap(data));
-      res = new OSFileCacheValue(tmpCacheFile, meta.capacity(), data.length);
+      res = new OSFileCacheValue(tmpCacheFile, meta.capacity(), data.length, meta.capacity());
     } catch (IOException e) {
       logger.error("Fail to persist data to cache file {}", tmpCacheFile, e);
       tmpCacheFile.delete();

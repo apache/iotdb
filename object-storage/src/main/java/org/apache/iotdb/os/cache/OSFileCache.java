@@ -21,7 +21,6 @@ package org.apache.iotdb.os.cache;
 
 import org.apache.iotdb.os.conf.ObjectStorageConfig;
 import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
-import org.apache.iotdb.os.fileSystem.OSURI;
 import org.apache.iotdb.os.io.ObjectStorageConnector;
 import org.apache.iotdb.os.io.aws.S3ObjectStorageConnector;
 
@@ -34,11 +33,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.channels.FileChannel;
-
-public class OSFileCache implements IOSFileCache {
+public class OSFileCache {
   private static final Logger logger = LoggerFactory.getLogger(OSFileCache.class);
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
@@ -58,9 +53,9 @@ public class OSFileCache implements IOSFileCache {
    * persistent LRU cache for remote TsFile, value is loaded successfully when it has been stored on
    * the disk
    */
-  private LoadingCache<OSFileCacheKey, OSFileCacheValue> remotePos2LocalCacheFile;
+  private final LoadingCache<OSFileCacheKey, OSFileCacheValue> remotePos2LocalCacheFile;
   /** manage all io operations to the cache files */
-  private CacheFileManager cacheFileManager = new CacheFileManager(config.getCacheDirs());
+  private final CacheFileManager cacheFileManager = new CacheFileManager(config.getCacheDirs());
 
   private OSFileCache() {
     remotePos2LocalCacheFile =
@@ -70,28 +65,16 @@ public class OSFileCache implements IOSFileCache {
                 (Weigher<OSFileCacheKey, OSFileCacheValue>)
                     (key, value) -> value.getOccupiedLength())
             .removalListener(
-                (key, value, cuase) -> {
+                (key, value, cause) -> {
                   if (value != null) {
-                    value.clear();
+                    value.setShouldDelete();
                   }
                 })
             .build(new OSFileCacheLoader());
   }
 
-  @Override
-  public InputStream getAsInputSteam(OSURI file, long startPosition) throws IOException {
-    return null;
-  }
-
-  @Override
-  public FileChannel getLocalCacheFileChannel(OSURI file, long startPosition) {
-    // 根据 fileName 和 startPosition 计算出对应的本地文件路径，并返回对应的 FileChannel
-    // 如果是使用一个 CacheFile, 则寻找到对应的位置，可能需要封装一个自己的 FileChannel 防止读多
-    return null;
-  }
-
-  void put(OSFileCacheKey key, OSFileCacheValue value) {
-    remotePos2LocalCacheFile.put(key, value);
+  public OSFileCacheValue get(OSFileCacheKey key) {
+    return remotePos2LocalCacheFile.get(key);
   }
 
   class OSFileCacheLoader implements CacheLoader<OSFileCacheKey, OSFileCacheValue> {
