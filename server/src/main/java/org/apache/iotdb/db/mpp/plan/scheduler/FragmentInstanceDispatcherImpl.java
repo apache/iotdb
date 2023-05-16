@@ -28,8 +28,6 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.partition.QueryExecutor;
-import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.ThriftUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -98,9 +96,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     this.writeOperationExecutor = writeOperationExecutor;
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
-    this.localEndPoint = new TEndPoint(
-        IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-        IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+    this.localEndPoint =
+        new TEndPoint(
+            IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 
   @Override
@@ -373,7 +372,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
         TSStatus status = writeResult.getStatus();
         if (!writeResult.isAccepted()) {
-          if (status == null || status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          if (status == null
+              || status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
             logger.warn(
                 "write locally failed. TSStatus: {}, message: {}",
                 status,
@@ -405,6 +405,5 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   @Override
-  public void abort() {
-  }
+  public void abort() {}
 }

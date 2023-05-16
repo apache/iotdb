@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.commons.utils;
 
-import java.util.Objects;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-/**
- * Utils that extend thrift generated objects.
- */
+import java.util.Objects;
+
+/** Utils that extend thrift generated objects. */
 public class ThriftUtils {
   private ThriftUtils() {
     // Empty constructor
