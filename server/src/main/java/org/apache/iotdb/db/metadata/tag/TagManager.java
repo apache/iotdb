@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.tag;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
-import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 

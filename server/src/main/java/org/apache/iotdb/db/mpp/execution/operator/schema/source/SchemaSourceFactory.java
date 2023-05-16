@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 
 import java.util.List;
 import java.util.Map;

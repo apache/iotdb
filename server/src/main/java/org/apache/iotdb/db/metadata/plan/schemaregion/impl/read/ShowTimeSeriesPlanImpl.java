@@ -21,9 +21,9 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 
 import java.util.Map;
 import java.util.Objects;

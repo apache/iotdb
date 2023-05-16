@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.schemafilter;
+package org.apache.iotdb.commons.schema.filter;
 
 public enum SchemaFilterType {
   NULL((short) -1),

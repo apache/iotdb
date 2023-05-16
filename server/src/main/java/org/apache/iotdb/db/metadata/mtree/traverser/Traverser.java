@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.metadata.mnode.utils.MNodeUtils;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.ReentrantReadOnlyCachedMTreeStore;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

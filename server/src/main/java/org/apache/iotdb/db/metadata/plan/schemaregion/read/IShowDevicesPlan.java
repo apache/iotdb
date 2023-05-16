@@ -20,7 +20,7 @@
 
 package org.apache.iotdb.db.metadata.plan.schemaregion.read;
 
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 
 public interface IShowDevicesPlan extends IShowSchemaPlan {
 

@@ -21,12 +21,12 @@ package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterVisitor;
-import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -96,12 +96,12 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
 
     @Override
     public Boolean visitPathContainsFilter(PathContainsFilter pathContainsFilter, N node) {
-      if (pathContainsFilter.getPathContains() == null) {
+      if (pathContainsFilter.getContainString() == null) {
         return true;
       }
       return StringUtils.join(
               getFullPathFromRootToNode(node.getAsMNode()), IoTDBConstant.PATH_SEPARATOR)
-          .contains(pathContainsFilter.getPathContains());
+          .contains(pathContainsFilter.getContainString());
     }
   }
 }

@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.schemafilter.impl;
+package org.apache.iotdb.commons.schema.filter.impl;
 
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterType;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -28,18 +28,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class PathContainsFilter extends SchemaFilter {
-  private final String pathContains;
+  private final String containString;
 
-  public PathContainsFilter(String pathContains) {
-    this.pathContains = pathContains;
+  public PathContainsFilter(String containString) {
+    this.containString = containString;
   }
 
   public PathContainsFilter(ByteBuffer byteBuffer) {
-    this.pathContains = ReadWriteIOUtils.readString(byteBuffer);
+    this.containString = ReadWriteIOUtils.readString(byteBuffer);
   }
 
-  public String getPathContains() {
-    return pathContains;
+  public String getContainString() {
+    return containString;
   }
 
   @Override
@@ -54,11 +54,11 @@ public class PathContainsFilter extends SchemaFilter {
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(pathContains, byteBuffer);
+    ReadWriteIOUtils.write(containString, byteBuffer);
   }
 
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(pathContains, stream);
+    ReadWriteIOUtils.write(containString, stream);
   }
 }

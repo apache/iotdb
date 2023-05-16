@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.schemafilter;
+package org.apache.iotdb.commons.schema.filter;
 
-import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
-import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
+import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;

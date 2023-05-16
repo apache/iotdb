@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 public class CountTimeSeriesStatement extends CountStatement {

@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.plan.plan;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -54,9 +57,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggreg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
-import org.apache.iotdb.db.mpp.plan.schemafilter.SchemaFilterType;
-import org.apache.iotdb.db.mpp.plan.schemafilter.impl.PathContainsFilter;
-import org.apache.iotdb.db.mpp.plan.schemafilter.impl.TagFilter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -570,7 +570,7 @@ public class LogicalPlannerTest {
           SchemaFilterType.PATH_CONTAINS,
           showTimeSeriesNode.getSchemaFilter().getSchemaFilterType());
       Assert.assertEquals(
-          "us", ((PathContainsFilter) showTimeSeriesNode.getSchemaFilter()).getPathContains());
+          "us", ((PathContainsFilter) showTimeSeriesNode.getSchemaFilter()).getContainString());
       Assert.assertEquals(0, showTimeSeriesNode.getLimit());
       Assert.assertEquals(0, showTimeSeriesNode.getOffset());
       Assert.assertFalse(showTimeSeriesNode.isHasLimit());
@@ -591,7 +591,7 @@ public class LogicalPlannerTest {
           SchemaFilterType.PATH_CONTAINS,
           showTimeSeriesNode2.getSchemaFilter().getSchemaFilterType());
       Assert.assertEquals(
-          "us", ((PathContainsFilter) showTimeSeriesNode2.getSchemaFilter()).getPathContains());
+          "us", ((PathContainsFilter) showTimeSeriesNode2.getSchemaFilter()).getContainString());
       Assert.assertEquals(0, showTimeSeriesNode2.getLimit());
       Assert.assertEquals(0, showTimeSeriesNode2.getOffset());
       Assert.assertFalse(showTimeSeriesNode2.isHasLimit());
@@ -649,7 +649,7 @@ public class LogicalPlannerTest {
       Assert.assertEquals(
           SchemaFilterType.PATH_CONTAINS, showDevicesNode.getSchemaFilter().getSchemaFilterType());
       Assert.assertEquals(
-          "wt", ((PathContainsFilter) showDevicesNode.getSchemaFilter()).getPathContains());
+          "wt", ((PathContainsFilter) showDevicesNode.getSchemaFilter()).getContainString());
       Assert.assertEquals(30, showDevicesNode.getLimit());
       Assert.assertEquals(0, showDevicesNode.getOffset());
       Assert.assertTrue(showDevicesNode.isHasLimit());
@@ -666,7 +666,7 @@ public class LogicalPlannerTest {
       Assert.assertEquals(
           SchemaFilterType.PATH_CONTAINS, showDevicesNode2.getSchemaFilter().getSchemaFilterType());
       Assert.assertEquals(
-          "wt", ((PathContainsFilter) showDevicesNode2.getSchemaFilter()).getPathContains());
+          "wt", ((PathContainsFilter) showDevicesNode2.getSchemaFilter()).getContainString());
       Assert.assertEquals(30, showDevicesNode2.getLimit());
       Assert.assertEquals(0, showDevicesNode2.getOffset());
       Assert.assertTrue(showDevicesNode2.isHasLimit());
