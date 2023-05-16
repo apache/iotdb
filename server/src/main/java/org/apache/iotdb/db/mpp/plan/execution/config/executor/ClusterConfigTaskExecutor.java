@@ -212,10 +212,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -1392,20 +1390,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         .getOperationType()
         .equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
       // check duplicate measurement
-      Set<String> existingMeasurements = new HashSet<>();
       TemplateExtendInfo templateExtendInfo =
           (TemplateExtendInfo) alterSchemaTemplateStatement.getTemplateAlterInfo();
-      for (String measurement : templateExtendInfo.getMeasurements()) {
-        if (existingMeasurements.contains(measurement)) {
-          future.setException(
-              new MetadataException(
-                  String.format(
-                      "Duplicated measurement [%s] in schema template alter request",
-                      measurement)));
-          return future;
-        } else {
-          existingMeasurements.add(measurement);
-        }
+      String duplicateMeasurement = templateExtendInfo.getFirstDuplicateMeasurement();
+      if (duplicateMeasurement != null) {
+        future.setException(
+            new MetadataException(
+                String.format(
+                    "Duplicated measurement [%s] in schema template alter request",
+                    duplicateMeasurement)));
+        return future;
       }
     }
 

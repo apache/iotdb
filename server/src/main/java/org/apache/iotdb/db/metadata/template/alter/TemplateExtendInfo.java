@@ -104,6 +104,21 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
     compressors.add(compressionType);
   }
 
+  // if there's duplicate measurements, return the first one, otherwise return null
+  public String getFirstDuplicateMeasurement() {
+    if (measurements != null) {
+      Set<String> set = new HashSet<>();
+      for (String measurement : measurements) {
+        if (set.contains(measurement)) {
+          return measurement;
+        } else {
+          set.add(measurement);
+        }
+      }
+    }
+    return null;
+  }
+
   // deduplicate the measurements with same name, keep the first one
   public TemplateExtendInfo deduplicate() {
     if (measurements == null || measurements.isEmpty()) {
