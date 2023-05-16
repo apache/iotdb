@@ -612,7 +612,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (ctx.tagContainsExpression() != null) {
         return new TagFilter(
             parseAttributeKey(ctx.tagContainsExpression().attributeKey()),
-            parseStringLiteral(ctx.timeseriesContainsExpression().value.getText()),
+            parseStringLiteral(ctx.tagContainsExpression().value.getText()),
             true);
       } else {
         return new TagFilter(

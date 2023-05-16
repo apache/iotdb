@@ -465,6 +465,37 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   }
 
   @Test
+  public void showCountTimeSeriesWithPathContains() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String[] sqls =
+          new String[] {
+            "COUNT TIMESERIES root.** where TIMESERIES contains 'wf01.wt01'",
+            "COUNT TIMESERIES root.ln.** where TIMESERIES contains 's'",
+          };
+      String[] standards = new String[] {"6,\n", "3,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            builder.append("\n");
+          }
+          Assert.assertEquals(standard, builder.toString());
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
   public void showCountDevices() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
