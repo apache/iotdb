@@ -25,11 +25,15 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import javax.annotation.Nullable;
 
 public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator {
   protected static final TsBlock LAST_QUERY_EMPTY_TSBLOCK =
@@ -78,6 +82,14 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
               .getDatabaseName();
     }
     return databaseName;
+  }
+
+  protected void updateLastCache(
+      long time, @Nullable TsPrimitiveType value, MeasurementPath fullPath) {
+    if (needUpdateCache) {
+      TimeValuePair timeValuePair = new TimeValuePair(time, value);
+      lastCache.updateLastCache(getDatabaseName(), fullPath, timeValuePair, false, Long.MIN_VALUE);
+    }
   }
 
   @Override
