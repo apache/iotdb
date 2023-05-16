@@ -74,7 +74,12 @@ public class IoTDBLastQueryLastCacheIT {
         "insert into root.ln_1.tb_6141(time,CO2_DOUBLE) aligned values(1679365910000,12.0);",
         "insert into root.ln_1.tb_6141(time,`waterNH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
         "insert into root.ln_1.tb_6141(time,`waterNH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
-        "insert into root.ln_1.tb_6141(time,`switch_BOOLEAN`) aligned values(1675995566000,false);"
+        "insert into root.ln_1.tb_6141(time,`switch_BOOLEAN`) aligned values(1675995566000,false);",
+        "create aligned timeseries root.sg(风机退出_BOOLEAN BOOLEAN encoding=RLE,`出水NH4-N_DOUBLE` DOUBLE encoding=GORILLA,膜产水状态_BOOLEAN BOOLEAN encoding=RLE,11_TEXT TEXT encoding=PLAIN,产水间歇运行时间设置_DOUBLE DOUBLE encoding=GORILLA,文本_TEXT TEXT encoding=PLAIN, 风机投入_BOOLEAN BOOLEAN encoding=RLE,枚举_INT32 INT32 encoding=RLE,出水TP_DOUBLE DOUBLE encoding=GORILLA,水管流速_DOUBLE DOUBLE encoding=GORILLA,CO2_DOUBLE DOUBLE encoding=GORILLA,`开关量-运行_BOOLEAN` BOOLEAN encoding=RLE,功能码_DOUBLE DOUBLE encoding=GORILLA);",
+        "alter timeseries root.sg.`出水NH4-N_DOUBLE` upsert alias=`出水NH4-N`;",
+        "alter timeseries root.sg.功能码_DOUBLE upsert alias=功能码;",
+        "insert into root.sg(time,功能码_DOUBLE) aligned values(1679477545000,2.0);",
+        "insert into root.sg(time,`出水NH4-N_DOUBLE`) aligned values(1679365910000,12.0);"
       };
 
   @BeforeClass
@@ -141,5 +146,17 @@ public class IoTDBLastQueryLastCacheIT {
         };
     resultSetEqualTest(
         "select last * from root.ln_1.tb_6141 order by timeseries desc;", expectedHeader, retArray);
+  }
+
+  @Test
+  public void testLastQuery1() {
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
+    String[] retArray =
+        new String[] {
+          "1679365910000,root.sg.`出水NH4-N_DOUBLE`,12.0,DOUBLE,",
+          "1679477545000,root.sg.功能码_DOUBLE,2.0,DOUBLE,",
+        };
+    resultSetEqualTest("select last * from root.sg;", expectedHeader, retArray);
   }
 }
