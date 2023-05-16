@@ -47,7 +47,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -815,13 +814,6 @@ public class MTreeBelowSGCachedImpl {
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
     }
   }
-
-  public long countAllMeasurement() throws MetadataException {
-    try (MeasurementCounter<ICachedMNode> measurementCounter =
-        new MeasurementCounter<>(rootNode, MetadataConstant.ALL_MATCH_PATTERN, store, false)) {
-      return measurementCounter.count();
-    }
-  }
   // endregion
 
   // region Interfaces and Implementation for Template check and query
@@ -985,7 +977,7 @@ public class MTreeBelowSGCachedImpl {
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     try (EntityCounter<ICachedMNode> counter =
-        new EntityCounter(rootNode, pathPattern, store, false)) {
+        new EntityCounter<>(rootNode, pathPattern, store, false)) {
       counter.setSchemaTemplateFilter(templateId);
       return counter.count();
     }
@@ -1036,6 +1028,7 @@ public class MTreeBelowSGCachedImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
+    collector.setSchemaFilter(showDevicesPlan.getSchemaFilter());
     TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, ICachedMNode> traverser =
         new TraverserWithLimitOffsetWrapper<>(
             collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
@@ -1119,6 +1112,7 @@ public class MTreeBelowSGCachedImpl {
         };
 
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
+    collector.setSchemaFilter(showTimeSeriesPlan.getSchemaFilter());
     Traverser<ITimeSeriesSchemaInfo, ICachedMNode> traverser;
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
       traverser =

@@ -15,18 +15,34 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.commons.schema.filter;
 
-package org.apache.iotdb.db.metadata.plan.schemaregion.read;
+public enum SchemaFilterType {
+  NULL((short) -1),
+  TAGS_FILTER((short) 1),
+  PATH_CONTAINS((short) 2);
 
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+  private final short code;
 
-public interface IShowDevicesPlan extends IShowSchemaPlan {
+  SchemaFilterType(short code) {
+    this.code = code;
+  }
 
-  SchemaFilter getSchemaFilter();
+  public short getCode() {
+    return code;
+  }
 
-  boolean usingSchemaTemplate();
-
-  int getSchemaTemplateId();
+  public static SchemaFilterType getSchemaFilterType(short code) {
+    switch (code) {
+      case -1:
+        return NULL;
+      case 1:
+        return TAGS_FILTER;
+      case 2:
+        return PATH_CONTAINS;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + code);
+    }
+  }
 }
