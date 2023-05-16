@@ -57,7 +57,6 @@ public class Binary implements Comparable<Binary>, Serializable {
       }
     }
 
-    // copied from StringLatin1.compareT0
     int len1 = getLength();
     int len2 = other.getLength();
     int lim = Math.min(len1, len2);
