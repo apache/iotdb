@@ -28,7 +28,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class TemplateExtendInfo extends TemplateAlterInfo {
 
@@ -100,6 +102,24 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
       compressors = new ArrayList<>();
     }
     compressors.add(compressionType);
+  }
+
+  // deduplicate the measurements with same name, keep the first one
+  public TemplateExtendInfo deduplicate() {
+    if (measurements == null || measurements.isEmpty()) {
+      return new TemplateExtendInfo();
+    }
+    Set<String> set = new HashSet<>();
+    TemplateExtendInfo result = new TemplateExtendInfo();
+    for (int i = 0; i < measurements.size(); i++) {
+      if (set.contains(measurements.get(i))) {
+        continue;
+      }
+      set.add(measurements.get(i));
+      result.addMeasurement(
+          measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i));
+    }
+    return result;
   }
 
   public void serialize(OutputStream outputStream) throws IOException {

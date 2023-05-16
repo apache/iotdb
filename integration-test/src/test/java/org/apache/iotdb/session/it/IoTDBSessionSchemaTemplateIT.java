@@ -406,4 +406,96 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
 
     Assert.assertTrue(expectedSeries.isEmpty());
   }
+
+  @Test
+  public void testHybridAutoExtendSchemaTemplate()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    session.createDatabase("root.db");
+
+    Template temp1 = getTemplate("template1");
+    Template temp2 = new Template("template2", false);
+
+    assertEquals("[]", session.showAllTemplates().toString());
+
+    session.createSchemaTemplate(temp1);
+    session.createSchemaTemplate(temp2);
+
+    session.setSchemaTemplate("template1", "root.db.v1");
+
+    session.createTimeseriesUsingSchemaTemplate(Collections.singletonList("root.db.v1.d1"));
+
+    session.setSchemaTemplate("template2", "root.db.v4");
+
+    List<String> deviceIds =
+        Arrays.asList(
+            "root.db.v1.d1", "root.db.v1.d2", "root.db.v2.d1", "root.db.v4.d1", "root.db.v4.d2");
+    List<Long> timestamps = Arrays.asList(1L, 1L, 1L, 1L, 1L);
+    List<String> measurements = Arrays.asList("x", "y", "z");
+    List<List<String>> allMeasurements =
+        Arrays.asList(measurements, measurements, measurements, measurements, measurements);
+    List<TSDataType> tsDataTypes =
+        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.TEXT);
+    List<List<TSDataType>> allTsDataTypes =
+        Arrays.asList(tsDataTypes, tsDataTypes, tsDataTypes, tsDataTypes, tsDataTypes);
+    List<Object> values = Arrays.asList(1f, 2f, "3");
+    List<List<Object>> allValues = Arrays.asList(values, values, values, values, values);
+
+    session.insertRecords(deviceIds, timestamps, allMeasurements, allTsDataTypes, allValues);
+
+    Set<String> expectedSeries =
+        new HashSet<>(
+            Arrays.asList(
+                "root.db.v1.d1.x",
+                "root.db.v1.d1.y",
+                "root.db.v1.d1.z",
+                "root.db.v1.d2.x",
+                "root.db.v1.d2.y",
+                "root.db.v1.d2.z",
+                "root.db.v2.d1.x",
+                "root.db.v2.d1.y",
+                "root.db.v2.d1.z",
+                "root.db.v4.d1.x",
+                "root.db.v4.d1.y",
+                "root.db.v4.d1.z",
+                "root.db.v4.d2.x",
+                "root.db.v4.d2.y",
+                "root.db.v4.d2.z"));
+
+    try (SessionDataSet dataSet = session.executeQueryStatement("show timeseries")) {
+      SessionDataSet.DataIterator iterator = dataSet.iterator();
+      while (iterator.next()) {
+        Assert.assertTrue(expectedSeries.contains(iterator.getString(1)));
+        expectedSeries.remove(iterator.getString(1));
+      }
+    }
+
+    Assert.assertTrue(expectedSeries.isEmpty());
+
+    deviceIds = Arrays.asList("root.db.v4.d1", "root.db.v4.d2");
+    timestamps = Arrays.asList(1L, 1L);
+    measurements = Arrays.asList("a", "b", "c");
+    allMeasurements = Arrays.asList(measurements, measurements);
+    allTsDataTypes =
+        Arrays.asList(
+            Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.TEXT),
+            Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.INT32));
+    allValues = Arrays.asList(Arrays.asList(1f, 2f, "3"), Arrays.asList(1d, 2d, 3));
+
+    try {
+      session.insertRecords(deviceIds, timestamps, allMeasurements, allTsDataTypes, allValues);
+    } catch (StatementExecutionException e) {
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  "data type of root.db.v4.d2.a is not consistent, registered type FLOAT, inserting type DOUBLE"));
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  "data type of root.db.v4.d2.b is not consistent, registered type FLOAT, inserting type DOUBLE"));
+      Assert.assertTrue(
+          e.getMessage()
+              .contains(
+                  "data type of root.db.v4.d2.c is not consistent, registered type TEXT, inserting type INT32"));
+    }
+  }
 }
