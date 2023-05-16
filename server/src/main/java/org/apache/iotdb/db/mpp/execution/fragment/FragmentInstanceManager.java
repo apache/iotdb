@@ -75,6 +75,8 @@ public class FragmentInstanceManager {
 
   private final ExecutorService intoOperationExecutor;
 
+  private final ExecutorService modelInferenceExecutor;
+
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
   public static FragmentInstanceManager getInstance() {
@@ -104,6 +106,11 @@ public class FragmentInstanceManager {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
             "into-operation-executor");
+
+    this.modelInferenceExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            IoTDBDescriptor.getInstance().getConfig().getModelInferenceExecutionThreadCount(),
+            "model-inference-executor");
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
@@ -312,6 +319,10 @@ public class FragmentInstanceManager {
 
   public ExecutorService getIntoOperationExecutor() {
     return intoOperationExecutor;
+  }
+
+  public ExecutorService getModelInferenceExecutor() {
+    return modelInferenceExecutor;
   }
 
   private static class InstanceHolder {

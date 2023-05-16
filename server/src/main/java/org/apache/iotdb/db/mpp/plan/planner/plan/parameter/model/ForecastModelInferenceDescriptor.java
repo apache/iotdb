@@ -88,6 +88,14 @@ public class ForecastModelInferenceDescriptor extends ModelInferenceDescriptor {
     return modelInputLength;
   }
 
+  public int getModelPredictLength() {
+    return modelPredictLength;
+  }
+
+  public int getExpectedPredictLength() {
+    return expectedPredictLength;
+  }
+
   @Override
   public LinkedHashMap<String, String> getOutputAttributes() {
     if (outputAttributes == null) {

@@ -36,7 +36,10 @@ struct TDeleteModelReq {
 
 struct TForecastReq {
   1: required string modelPath
-  2: required binary dataset
+  2: required binary inputData
+  3: required list<string> inputTypeList
+  4: required list<string> inputColumnNameList
+  5: required i32 predictLength
 }
 
 struct TForecastResp {

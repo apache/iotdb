@@ -62,6 +62,10 @@ public abstract class ModelInferenceDescriptor {
     return modelId;
   }
 
+  public String getModelPath() {
+    return modelPath;
+  }
+
   public List<FunctionExpression> getModelInferenceOutputExpressions() {
     return modelInferenceOutputExpressions;
   }

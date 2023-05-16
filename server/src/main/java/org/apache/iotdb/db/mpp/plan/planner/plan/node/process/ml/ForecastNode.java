@@ -51,6 +51,10 @@ public class ForecastNode extends SingleChildProcessNode {
     this.modelInferenceDescriptor = modelInferenceDescriptor;
   }
 
+  public ForecastModelInferenceDescriptor getModelInferenceDescriptor() {
+    return modelInferenceDescriptor;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitForecast(this, context);
