@@ -103,7 +103,15 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
     compressors.add(compressionType);
   }
 
-  public List<String> removeMeasurements(Set<String> targetMeasurementSet) {
+  /**
+   * Updates this to be the difference of set between this and targetMeasurementSet. Returns the
+   * intersection.
+   *
+   * @param targetMeasurementSet The set to compare with measurement set of this.
+   * @return A list of elements representing the intersection between measurement set of this and
+   *     the targetMeasurementSet.
+   */
+  public List<String> updateAsDifferenceAndGetIntersection(Set<String> targetMeasurementSet) {
     List<String> removedMeasurements = new ArrayList<>();
 
     List<String> measurements = new ArrayList<>();

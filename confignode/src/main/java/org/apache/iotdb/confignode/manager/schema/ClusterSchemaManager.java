@@ -773,18 +773,18 @@ public class ClusterSchemaManager {
     }
 
     Template template = resp.getTemplateList().get(0);
-    List<String> removedMeasurements =
-        templateExtendInfo.removeMeasurements(template.getSchemaMap().keySet());
+    List<String> intersectionMeasurements =
+        templateExtendInfo.updateAsDifferenceAndGetIntersection(template.getSchemaMap().keySet());
 
     if (templateExtendInfo.isEmpty()) {
-      if (removedMeasurements.isEmpty()) {
+      if (intersectionMeasurements.isEmpty()) {
         return RpcUtils.SUCCESS_STATUS;
       } else {
         return RpcUtils.getStatus(
             TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE,
             String.format(
                 "Measurement %s already exist in schema template %s",
-                removedMeasurements, template.getName()));
+                intersectionMeasurements, template.getName()));
       }
     }
 
@@ -828,14 +828,14 @@ public class ClusterSchemaManager {
       }
     }
 
-    if (removedMeasurements.isEmpty()) {
+    if (intersectionMeasurements.isEmpty()) {
       return RpcUtils.SUCCESS_STATUS;
     } else {
       return RpcUtils.getStatus(
           TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE,
           String.format(
               "Measurement %s already exist in schema template %s",
-              removedMeasurements, template.getName()));
+              intersectionMeasurements, template.getName()));
     }
   }
 
