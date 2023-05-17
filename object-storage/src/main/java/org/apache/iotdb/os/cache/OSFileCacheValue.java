@@ -33,9 +33,9 @@ public class OSFileCacheValue {
   /** cache key size */
   private int metaSize;
   /** start position in the remote TsFile */
-  private long startPositionInTsFile;
+  private long startPositionInOSFile;
   /** start position in the remote TsFile */
-  private long endPositionInTsFile;
+  private long endPositionInOSFile;
 
   private boolean shouldDelete;
   private int readCnt;
@@ -45,13 +45,13 @@ public class OSFileCacheValue {
       long startPositionInCacheFile,
       int metaSize,
       int dataSize,
-      long startPositionInTsFile) {
+      long startPositionInOSFile) {
     this.cacheFile = cacheFile;
     this.startPositionInCacheFile = startPositionInCacheFile;
     this.metaSize = metaSize;
     this.dataSize = dataSize;
-    this.startPositionInTsFile = startPositionInTsFile;
-    this.endPositionInTsFile = startPositionInTsFile + dataSize;
+    this.startPositionInOSFile = startPositionInOSFile;
+    this.endPositionInOSFile = startPositionInOSFile + dataSize;
   }
 
   public File getCacheFile() {
@@ -76,12 +76,12 @@ public class OSFileCacheValue {
     return metaSize + dataSize;
   }
 
-  public long getStartPositionInTsFile() {
-    return startPositionInTsFile;
+  public long getStartPositionInOSFile() {
+    return startPositionInOSFile;
   }
 
-  public long getEndPositionInTsFile() {
-    return endPositionInTsFile;
+  public long getEndPositionInOSFile() {
+    return endPositionInOSFile;
   }
 
   public long getEndPositionInCacheFile() {
@@ -93,10 +93,10 @@ public class OSFileCacheValue {
    * the position is outside the cache file range
    */
   public long convertTsFilePos2CachePos(long positionInTsFile) {
-    if (positionInTsFile < startPositionInTsFile || positionInTsFile >= endPositionInTsFile) {
+    if (positionInTsFile < startPositionInOSFile || positionInTsFile >= endPositionInOSFile) {
       return -1;
     }
-    return startPositionInCacheFile + metaSize + (positionInTsFile - startPositionInTsFile);
+    return startPositionInCacheFile + metaSize + (positionInTsFile - startPositionInOSFile);
   }
 
   /** Mark this value should be deleted, delete this value when no one is reading it. */

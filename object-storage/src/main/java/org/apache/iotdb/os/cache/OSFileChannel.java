@@ -40,35 +40,26 @@ public class OSFileChannel implements Closeable {
   private static final OSFileCache cache = OSFileCache.getInstance();
   private final OSFile osFile;
   private long position = 0;
-  private OSFileCacheValue cacheFile;
-  private FileChannel cacheFileChannel;
+
+  private OSFileBlock currentOSFileBlock;
 
   public OSFileChannel(OSFile osFile) throws IOException {
     this.osFile = osFile;
-    openNextCacheFile();
   }
 
   public static InputStream newInputStream(OSFileChannel channel) {
     return new OSInputStream(channel);
   }
 
-  private boolean isPositionValid() {
-    return cacheFile.getStartPositionInTsFile() <= position
-        && position < cacheFile.getEndPositionInTsFile();
-  }
-
-  private void openNextCacheFile() throws IOException {
+  private void openNextCacheFile(int position) throws IOException {
     // close prev cache file
-    close();
+    closeCurrentOSFileBlock();
     // open next cache file
-    OSFileCacheKey key = locateCacheFileFromPosition();
-    while (!cacheFile.tryReadLock()) {
-      cacheFile = cache.get(key);
-    }
-    cacheFileChannel = FileChannel.open(cacheFile.getCacheFile().toPath(), StandardOpenOption.READ);
+    OSFileCacheKey key = locateCacheFileFromPosition(position);
+    currentOSFileBlock = new OSFileBlock(key);
   }
 
-  private OSFileCacheKey locateCacheFileFromPosition() throws IOException {
+  private OSFileCacheKey locateCacheFileFromPosition(int position) throws IOException {
     if (position >= size()) {
       throw new IOException("EOF");
     }
@@ -84,19 +75,26 @@ public class OSFileChannel implements Closeable {
     return position;
   }
 
-  public void position(long newPosition) {
+  public synchronized void position(long newPosition) {
     if (newPosition < 0) {
       throw new IllegalArgumentException();
     }
     position = newPosition;
   }
 
-  public int read(ByteBuffer dst) throws IOException {
-    return read(dst, position);
+  public synchronized int read(ByteBuffer dst) throws IOException {
+    int readSize = read(dst, position);
+    position(position + readSize);
+    return readSize;
   }
 
-  public int read(ByteBuffer dst, long position) throws IOException {
+  public synchronized int read(ByteBuffer dst, long position) throws IOException {
+    int currentPosition = (int) position;
     dst.mark();
+    int dstLimit = dst.limit();
+    // read each cache file
+    int totalReadBytes = 0;
+
     // determiner the ead range
     long startPos = position;
     long endPos = position + dst.remaining();
@@ -106,41 +104,77 @@ public class OSFileChannel implements Closeable {
     if (endPos > size()) {
       endPos = size();
     }
-    // read each cache file
-    int totalReadBytes = 0;
-    while (startPos < endPos) {
-      if (!isPositionValid()) {
-        openNextCacheFile();
+    try {
+      while (startPos < endPos) {
+        if (currentOSFileBlock == null || !currentOSFileBlock.canRead(startPos)) {
+          openNextCacheFile(currentPosition);
+        }
+        int readSize = currentOSFileBlock.read(dst, startPos, endPos);
+        totalReadBytes += readSize;
+        startPos += readSize;
+        currentPosition += readSize;
       }
-      long readStartPosition = cacheFile.convertTsFilePos2CachePos(startPos);
-      long readEndPosition = cacheFile.convertTsFilePos2CachePos(endPos);
-      if (readEndPosition < 0) {
-        readEndPosition = cacheFile.getEndPositionInCacheFile();
-      }
-      int readSize = (int) (readEndPosition - readStartPosition);
-      cacheFileChannel.position(readStartPosition);
-      long read = cacheFileChannel.read(new ByteBuffer[] {dst}, 0, readSize);
-      if (read != readSize) {
-        dst.reset();
-        throw new IOException(
-            String.format(
-                "Cache file %s may crash because cannot read enough information in the cash file.",
-                osFile));
-      }
-      totalReadBytes += read;
-      startPos += read;
+    } catch (IOException e) {
+      dst.reset();
+      throw e;
+    } finally {
+      dst.limit(dstLimit);
     }
-    this.position = position + totalReadBytes;
     return totalReadBytes;
+  }
+
+  private void closeCurrentOSFileBlock() throws IOException {
+    if (currentOSFileBlock != null) {
+      currentOSFileBlock.close();
+    }
   }
 
   @Override
   public void close() throws IOException {
-    if (cacheFile != null) {
+    closeCurrentOSFileBlock();
+  }
+
+  private static class OSFileBlock {
+    private OSFileCacheValue cacheValue;
+    private FileChannel fileChannel;
+
+    public OSFileBlock(OSFileCacheKey cacheKey) throws IOException {
+      do {
+        cacheValue = cache.get(cacheKey);
+      } while (!cacheValue.tryReadLock());
+      fileChannel = FileChannel.open(cacheValue.getCacheFile().toPath(), StandardOpenOption.READ);
+    }
+
+    public boolean canRead(long positionInOSFile) {
+      return cacheValue.getStartPositionInOSFile() <= positionInOSFile
+          && positionInOSFile < cacheValue.getEndPositionInOSFile();
+    }
+
+    public int read(ByteBuffer dst, long startPos, long endPos) throws IOException {
+      long readStartPosition = cacheValue.convertTsFilePos2CachePos(startPos);
+      long expectedReadLength = endPos - startPos;
+
+      int readSize =
+          (int)
+              Math.min(
+                  expectedReadLength, cacheValue.getEndPositionInCacheFile() - readStartPosition);
+
+      dst.limit(dst.position() + readSize);
+      long actualReadSize = fileChannel.read(dst, readStartPosition);
+      if (actualReadSize != readSize) {
+        throw new IOException(
+            String.format(
+                "Cache file %s may crash because cannot read enough information in the cash file.",
+                cacheValue.getCacheFile()));
+      }
+      return readSize;
+    }
+
+    public void close() throws IOException {
       try {
-        cacheFileChannel.close();
+        fileChannel.close();
       } finally {
-        cacheFile.readUnlock();
+        cacheValue.readUnlock();
       }
     }
   }
