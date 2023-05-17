@@ -668,8 +668,13 @@ public class SessionPool implements ISessionPool {
   }
 
   private boolean complementaryNodeUrl() {
-    try (SessionDataSetWrapper wrapper = executeQueryStatement("SHOW DATANODES")) {
-      List<String> columnNames = wrapper.getColumnNames();
+    Session oneTimeSession = constructNewSession();
+    try {
+      oneTimeSession.open();
+    } catch (IoTDBConnectionException ignored) {
+    }
+    try (SessionDataSet dataSet = oneTimeSession.executeQueryStatement("SHOW DATANODES")) {
+      List<String> columnNames = dataSet.getColumnNames();
       Integer hostNum = null;
       Integer portNum = null;
       for (int i = 0; i < columnNames.size(); i++) {
@@ -685,8 +690,8 @@ public class SessionPool implements ISessionPool {
       }
       boolean change = false;
       List<String> newNodeUrls = new ArrayList<>();
-      while (wrapper.hasNext()) {
-        RowRecord record = wrapper.next();
+      while (dataSet.hasNext()) {
+        RowRecord record = dataSet.next();
         String host = record.getFields().get(hostNum).getStringValue();
         if ("0.0.0.0".equals(host)) {
           continue;
@@ -699,14 +704,17 @@ public class SessionPool implements ISessionPool {
       }
       if (change || (!newNodeUrls.isEmpty() && newNodeUrls.size() != nodeUrls.size())) {
         nodeUrls = newNodeUrls;
-        sessionList.forEach(
-            session -> {
-              session.setNodeUrls(nodeUrls);
-            });
+        sessionList.forEach(session -> session.setNodeUrls(nodeUrls));
       }
       return true;
-    } catch (StatementExecutionException | IoTDBConnectionException ignored) {
+    } catch (StatementExecutionException | IoTDBConnectionException | RuntimeException ignored) {
       return false;
+    } finally {
+      try {
+        oneTimeSession.close();
+      } catch (IoTDBConnectionException e) {
+        logger.warn(CLOSE_THE_SESSION_FAILED, e);
+      }
     }
   }
 
