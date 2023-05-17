@@ -115,7 +115,7 @@ public class OSFileChannel implements Closeable {
       long readStartPosition = cacheFile.convertTsFilePos2CachePos(startPos);
       long readEndPosition = cacheFile.convertTsFilePos2CachePos(endPos);
       if (readEndPosition < 0) {
-        readEndPosition = cacheFile.getEndPositionInTsFile();
+        readEndPosition = cacheFile.getEndPositionInCacheFile();
       }
       int readSize = (int) (readEndPosition - readStartPosition);
       cacheFileChannel.position(readStartPosition);

@@ -84,6 +84,10 @@ public class OSFileCacheValue {
     return endPositionInTsFile;
   }
 
+  public long getEndPositionInCacheFile() {
+    return startPositionInCacheFile + getLength();
+  }
+
   /**
    * Convert position in the TsFile to the corresponding position in the cache file. Return -1 when
    * the position is outside the cache file range
