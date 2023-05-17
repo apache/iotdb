@@ -26,11 +26,11 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FlushDeviceContext {
-  private IDeviceID deviceID;
-  private List<String> measurementIds;
-  private IChunkWriter[] chunkWriters;
+  private volatile IDeviceID deviceID;
+  private volatile List<String> measurementIds;
+  private volatile IChunkWriter[] chunkWriters;
   private AtomicInteger encodedCounter = new AtomicInteger();
-  private Map<String, Integer> seriesIndexMap;
+  private volatile Map<String, Integer> seriesIndexMap;
 
   public AtomicInteger getEncodedCounter() {
     return encodedCounter;
