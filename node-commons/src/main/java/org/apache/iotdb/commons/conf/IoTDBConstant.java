@@ -85,7 +85,7 @@ public class IoTDBConstant {
   public static final String VERSION =
       IoTDBConstant.class.getPackage().getImplementationVersion() != null
           ? IoTDBConstant.class.getPackage().getImplementationVersion()
-          : "1.2";
+          : "UNKNOWN";
   public static final String MAJOR_VERSION =
       "UNKNOWN".equals(VERSION)
           ? "UNKNOWN"
