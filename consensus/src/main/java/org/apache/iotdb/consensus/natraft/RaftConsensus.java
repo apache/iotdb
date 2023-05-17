@@ -117,11 +117,6 @@ public class RaftConsensus implements IConsensus {
             new Thread(
                 () -> {
                   logger.info(Timer.Statistic.getReport());
-                  try {
-                    stop();
-                  } catch (IOException e) {
-                    logger.error("Error during exiting", e);
-                  }
                 }));
     reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
