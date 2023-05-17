@@ -122,10 +122,7 @@ public class DataPartition extends Partition {
           "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
     List<TRegionReplicaSet> regions =
-        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).entrySet().stream()
-            .filter(entry -> entry.getKey().equals(timePartitionSlot))
-            .flatMap(entry -> entry.getValue().stream())
-            .collect(Collectors.toList());
+        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).get(timePartitionSlot);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there
     // are more than 1 Regions for one timeSlot
     return regions.get(0);
