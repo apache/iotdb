@@ -1797,7 +1797,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    if (!useWildcard && ctx.wildcard().size() > 0) {
+    if (!useWildcard && !ctx.wildcard().isEmpty()) {
       useWildcard = true;
     }
     return parseNodeString(ctx.getText());

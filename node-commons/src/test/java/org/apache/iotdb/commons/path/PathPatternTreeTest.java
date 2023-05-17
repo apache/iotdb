@@ -196,15 +196,25 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.d1.s1"),
             new PartialPath("root.sg1.d2.s1"),
             new PartialPath("root.sg1.d1.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d1.t2.s2"),
             new PartialPath("root.sg1.d2.s1"),
             new PartialPath("root.sg1.d2.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d1.t2.s2"),
             new PartialPath("root.sg1.d1.s1")),
         Arrays.asList(
             new PartialPath("root.sg1.d1.s1"),
             new PartialPath("root.sg1.d1.s2"),
             new PartialPath("root.sg1.d2.s1"),
-            new PartialPath("root.sg1.d2.s2")),
-        Arrays.asList(new PartialPath("root.sg1.d1"), new PartialPath("root.sg1.d2")),
+            new PartialPath("root.sg1.d2.s2"),
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d1.t2.s2")),
+        Arrays.asList(
+            new PartialPath("root.sg1.d1"),
+            new PartialPath("root.sg1.d2"),
+            new PartialPath("root.sg1.d1.t1"),
+            new PartialPath("root.sg1.d1.t2")),
         false);
   }
 
