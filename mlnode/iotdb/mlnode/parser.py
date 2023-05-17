@@ -54,9 +54,9 @@ class _ConfigParser(argparse.ArgumentParser):
         """
         args = []
         for k, v in config_dict.items():
-            args.append("--{}".format(k))
             if v is None:
                 continue
+            args.append("--{}".format(k))
             if isinstance(v, str) and re.match(r'^\[(.*)]$', v):
                 v = eval(v)
                 v = [str(i) for i in v]
