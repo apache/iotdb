@@ -67,7 +67,9 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
           new PipeParameters(new HashMap<>(collectorParameters.getAttribute()));
       // set data region id to collector parameters, so that collector can get data region id inside
       // collector
-      collectorParameters.getAttribute().put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
+      this.collectorParameters
+          .getAttribute()
+          .put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
 
       collectorPendingQueue = new ListenableUnblockingPendingQueue<>();
       this.pipeCollector = new IoTDBDataRegionCollector(collectorPendingQueue);

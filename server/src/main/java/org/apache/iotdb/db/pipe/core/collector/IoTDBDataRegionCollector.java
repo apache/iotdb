@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.core.collector;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionTsFileCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
@@ -37,12 +36,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTDBDataRegionCollector implements PipeCollector {
 
-  private int dataRegionId;
   private final AtomicBoolean hasBeenStarted;
 
   private final PipeRealtimeDataRegionCollector realtimeCollector;
   // TODO: support pattern in historical collector
   private final PipeHistoricalDataRegionTsFileCollector historicalCollector;
+
+  private int dataRegionId;
 
   public IoTDBDataRegionCollector(ListenableUnblockingPendingQueue<Event> collectorPendingQueue) {
     hasBeenStarted = new AtomicBoolean(false);
@@ -75,18 +75,30 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     }
     hasBeenStarted.set(true);
 
-    final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (dataRegion != null) {
-      dataRegion.writeLock(
-          String.format("Pipe: start %s", IoTDBDataRegionCollector.class.getName()));
-      try {
-        startHistoricalCollectorAndRealtimeCollector();
-      } finally {
-        dataRegion.writeUnlock();
+    while (true) {
+      // try to start collectors in the data region ...
+      // first try to run if data region exists, then try to run if data region does not exist.
+      // both conditions fail is not common, which means the data region is created during the
+      // runIfPresent and runIfAbsent operations. in this case, we need to retry.
+      if (StorageEngine.getInstance()
+              .runIfPresent(
+                  new DataRegionId(dataRegionId),
+                  (dataRegion -> {
+                    dataRegion.writeLock(
+                        String.format(
+                            "Pipe: starting %s", IoTDBDataRegionCollector.class.getName()));
+                    try {
+                      startHistoricalCollectorAndRealtimeCollector();
+                    } finally {
+                      dataRegion.writeUnlock();
+                    }
+                  }))
+          || StorageEngine.getInstance()
+              .runIfAbsent(
+                  new DataRegionId(dataRegionId),
+                  this::startHistoricalCollectorAndRealtimeCollector)) {
+        return;
       }
-    } else {
-      startHistoricalCollectorAndRealtimeCollector();
     }
   }
 
