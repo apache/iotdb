@@ -31,22 +31,28 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.os.utils.ObjectStorageConstant.CACHE_FILE_SUFFIX;
+import static org.apache.iotdb.os.utils.ObjectStorageConstant.TMP_CACHE_FILE_SUFFIX;
+
 /** This class manages all write operations to the cache files */
 public class CacheFileManager {
   private static final Logger logger = LoggerFactory.getLogger(CacheFileManager.class);
-  private static final String CACHE_FILE_SUFFIX = ".cache";
-  private static final String TMP_CACHE_FILE_SUFFIX = ".cache.tmp";
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
-  private final String[] cacheDirs;
-  private final AtomicLong logFileId = new AtomicLong(0);
+  private final String[] cacheDirs = config.getCacheDirs();
+  private final AtomicLong cacheFileId = new AtomicLong(0);
 
-  public CacheFileManager(String[] cacheDirs) {
-    this.cacheDirs = cacheDirs;
+  private CacheFileManager() {
+    for (String cacheDir : cacheDirs) {
+      File cacheDirFile = new File(cacheDir);
+      if (!cacheDirFile.exists()) {
+        cacheDirFile.mkdirs();
+      }
+    }
   }
 
   private long getNextCacheFileId() {
-    return logFileId.getAndIncrement();
+    return cacheFileId.getAndIncrement();
   }
 
   private File getTmpCacheFile(long id) {
@@ -66,14 +72,29 @@ public class CacheFileManager {
     File tmpCacheFile = getTmpCacheFile(cacheFileId);
     try (FileChannel channel =
         FileChannel.open(tmpCacheFile.toPath(), StandardOpenOption.CREATE_NEW)) {
-      ByteBuffer meta = key.serializeToByteBuffer();
+      ByteBuffer meta = key.serialize();
       channel.write(meta);
       channel.write(ByteBuffer.wrap(data));
-      res = new OSFileCacheValue(tmpCacheFile, meta.capacity(), data.length, meta.capacity());
+      res = new OSFileCacheValue(tmpCacheFile, 0, meta.capacity(), data.length);
     } catch (IOException e) {
       logger.error("Fail to persist data to cache file {}", tmpCacheFile, e);
       tmpCacheFile.delete();
     }
     return tmpCacheFile.renameTo(getCacheFile(cacheFileId)) ? res : null;
+  }
+
+  /** This method is used by the recover procedure */
+  void setCacheFileId(long startId) {
+    cacheFileId.set(startId);
+  }
+
+  public static CacheFileManager getInstance() {
+    return InstanceHolder.INSTANCE;
+  }
+
+  private static class InstanceHolder {
+    private InstanceHolder() {}
+
+    private static final CacheFileManager INSTANCE = new CacheFileManager();
   }
 }

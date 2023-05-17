@@ -19,15 +19,21 @@
 package org.apache.iotdb.os.cache;
 
 import org.apache.iotdb.os.fileSystem.OSFile;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class OSFileCacheKey implements Serializable {
-  private OSFile file;
-  private long startPosition;
-  private int length;
+  /** remote TsFile */
+  private final OSFile file;
+  /** start position in the remote TsFile */
+  private final long startPosition;
+  /** data length */
+  private final int length;
 
   public OSFileCacheKey(OSFile file, long startPosition, int length) {
     this.file = file;
@@ -35,13 +41,23 @@ public class OSFileCacheKey implements Serializable {
     this.length = length;
   }
 
-  public ByteBuffer serializeToByteBuffer() {
-    byte[] pathBytes = file.toString().getBytes();
-    ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES + pathBytes.length + Integer.BYTES);
-    buffer.putInt(pathBytes.length);
-    buffer.put(pathBytes);
-    buffer.putInt(length);
+  public int serializeSize() {
+    return Integer.BYTES + file.toString().getBytes().length + Long.BYTES + Integer.BYTES;
+  }
+
+  public ByteBuffer serialize() {
+    ByteBuffer buffer = ByteBuffer.allocate(serializeSize());
+    ReadWriteIOUtils.write(file.toString(), buffer);
+    ReadWriteIOUtils.write(startPosition, buffer);
+    ReadWriteIOUtils.write(length, buffer);
     return buffer;
+  }
+
+  public static OSFileCacheKey deserialize(InputStream inputStream) throws IOException {
+    String filePath = ReadWriteIOUtils.readString(inputStream);
+    long startPosition = ReadWriteIOUtils.readLong(inputStream);
+    int length = ReadWriteIOUtils.readInt(inputStream);
+    return new OSFileCacheKey(new OSFile(filePath), startPosition, length);
   }
 
   public OSFile getFile() {

@@ -42,8 +42,8 @@ public class CacheFileChannel implements Closeable {
   private long position = 0;
   private OSFileCacheValue currentCacheFile;
   private FileChannel cacheFileChannel;
-  private long cacheFileStartPosition = position;
-  private long cacheFileEndPosition = position + config.getCachePageSize();
+  private long startPositionInTsFile = position;
+  private long endPositionInTsFile = position + config.getCachePageSize();
 
   public CacheFileChannel(OSFile osFile) {
     this.osFile = osFile;
@@ -53,27 +53,27 @@ public class CacheFileChannel implements Closeable {
     return new CacheInputStream(channel);
   }
 
-  private OSFileCacheKey getNextCacheFile() {
-    long startPosition = position - position % config.getCachePageSize();
-    return new OSFileCacheKey(osFile, startPosition, config.getCachePageSize());
+  private boolean isPositionValid() {
+    return startPositionInTsFile <= position && position < endPositionInTsFile;
   }
 
   private void openNextCacheFile() throws IOException {
     // close prev cache file
     close();
     // open next cache file
-    OSFileCacheKey key = getNextCacheFile();
-    while (!currentCacheFile.readLock()) {
+    OSFileCacheKey key = locateCacheFileFromPosition();
+    while (!currentCacheFile.tryReadLock()) {
       currentCacheFile = cache.get(key);
     }
     cacheFileChannel =
         FileChannel.open(currentCacheFile.getCacheFile().toPath(), StandardOpenOption.READ);
-    cacheFileStartPosition = currentCacheFile.getStartPosition();
-    cacheFileEndPosition = cacheFileStartPosition + config.getCachePageSize();
+    startPositionInTsFile = currentCacheFile.getStartPosition();
+    endPositionInTsFile = startPositionInTsFile + currentCacheFile.getLength();
   }
 
-  private boolean isPositionValid(long position) {
-    return cacheFileStartPosition <= position && position <= cacheFileEndPosition;
+  private OSFileCacheKey locateCacheFileFromPosition() {
+    long startPosition = position - position % config.getCachePageSize();
+    return new OSFileCacheKey(osFile, startPosition, config.getCachePageSize());
   }
 
   public long size() {
@@ -108,13 +108,13 @@ public class CacheFileChannel implements Closeable {
     // read each cache file
     int totalReadBytes = 0;
     while (startPos < endPos) {
-      if (!isPositionValid(startPos)) {
+      if (!isPositionValid()) {
         openNextCacheFile();
       }
-      long readStartPosition = currentCacheFile.getMetaSize() + (startPos - cacheFileStartPosition);
+      long readStartPosition = currentCacheFile.getMetaSize() + (startPos - startPositionInTsFile);
       long readEndPosition =
           currentCacheFile.getMetaSize()
-              + (Math.min(endPos, cacheFileEndPosition) - cacheFileStartPosition);
+              + (Math.min(endPos, endPositionInTsFile) - startPositionInTsFile);
       int readSize = (int) (readEndPosition - readStartPosition);
       dst.limit(dst.position() + readSize);
       int read = cacheFileChannel.read(dst, readStartPosition);

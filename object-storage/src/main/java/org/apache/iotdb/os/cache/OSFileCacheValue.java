@@ -22,22 +22,25 @@ package org.apache.iotdb.os.cache;
 import java.io.File;
 
 public class OSFileCacheValue {
+  /** local cache file */
   private File cacheFile;
   // 如果每个块用一个文件来存储，则该值一直为 0
   // 如果使用一个大文件存储所有块，则该值为大文件中的起点
+  /** start position in the local cache file */
   private long startPosition;
-  // 如果每个块用一个文件来存储，则该值一直为该文件的大小
-  // 如果使用一个大文件存储所有块，则该值为该块的实际长度
-  private int length;
+  /** cache data size */
+  private int dataSize;
+  /** cache key size */
   private int metaSize;
+
   private boolean shouldDelete;
   private int readCnt;
 
-  public OSFileCacheValue(File cacheFile, long startPosition, int length, int metaSize) {
+  public OSFileCacheValue(File cacheFile, long startPosition, int metaSize, int dataSize) {
     this.cacheFile = cacheFile;
     this.startPosition = startPosition;
-    this.length = length;
     this.metaSize = metaSize;
+    this.dataSize = dataSize;
   }
 
   public File getCacheFile() {
@@ -48,20 +51,21 @@ public class OSFileCacheValue {
     return startPosition;
   }
 
-  public int getLength() {
-    return length;
-  }
-
   public int getMetaSize() {
     return metaSize;
   }
 
-  public int getOccupiedLength() {
-    // 如果使用多个文件，则返回该文件的大小
-    // 如果使用一个文件，则返回每个槽的大小
-    return length;
+  public int getDataSize() {
+    return dataSize;
   }
 
+  // 如果每个块用一个文件来存储，则该值一直为该文件的大小
+  // 如果使用一个大文件存储所有块，则该值为该块的实际长度
+  public int getLength() {
+    return metaSize + dataSize;
+  }
+
+  /** Mark this value should be deleted, delete this value when no one is reading it. */
   public synchronized void setShouldDelete() {
     this.shouldDelete = true;
     if (readCnt == 0) {
@@ -69,15 +73,23 @@ public class OSFileCacheValue {
     }
   }
 
-  public synchronized boolean readLock() {
-    if (cacheFile.exists()) {
+  /**
+   * Try to get the read lock, return false when this cache value should be deleted or has been
+   * deleted.
+   */
+  public synchronized boolean tryReadLock() {
+    if (shouldDelete || !cacheFile.exists()) {
+      return false;
+    } else {
       this.readCnt++;
       return true;
-    } else {
-      return false;
     }
   }
 
+  /**
+   * Release the read lock, delete the cache value when no one else is reading it and this cache
+   * value should be deleted.
+   */
   public synchronized void readUnlock() {
     this.readCnt--;
     if (shouldDelete && readCnt == 0) {

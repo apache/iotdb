@@ -55,15 +55,13 @@ public class OSFileCache {
    */
   private final LoadingCache<OSFileCacheKey, OSFileCacheValue> remotePos2LocalCacheFile;
   /** manage all io operations to the cache files */
-  private final CacheFileManager cacheFileManager = new CacheFileManager(config.getCacheDirs());
+  private final CacheFileManager cacheFileManager = CacheFileManager.getInstance();
 
   private OSFileCache() {
     remotePos2LocalCacheFile =
         Caffeine.newBuilder()
             .maximumWeight(config.getCacheMaxDiskUsage())
-            .weigher(
-                (Weigher<OSFileCacheKey, OSFileCacheValue>)
-                    (key, value) -> value.getOccupiedLength())
+            .weigher((Weigher<OSFileCacheKey, OSFileCacheValue>) (key, value) -> value.getLength())
             .removalListener(
                 (key, value, cause) -> {
                   if (value != null) {
@@ -75,6 +73,11 @@ public class OSFileCache {
 
   public OSFileCacheValue get(OSFileCacheKey key) {
     return remotePos2LocalCacheFile.get(key);
+  }
+
+  /** This method is used by the recover procedure */
+  void put(OSFileCacheKey key, OSFileCacheValue value) {
+    remotePos2LocalCacheFile.put(key, value);
   }
 
   class OSFileCacheLoader implements CacheLoader<OSFileCacheKey, OSFileCacheValue> {

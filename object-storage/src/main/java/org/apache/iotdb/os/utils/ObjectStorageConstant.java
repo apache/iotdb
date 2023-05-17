@@ -19,5 +19,7 @@
 package org.apache.iotdb.os.utils;
 
 public class ObjectStorageConstant {
-  public static String FILE_SEPARATOR = "/";
+  public static final String FILE_SEPARATOR = "/";
+  public static final String CACHE_FILE_SUFFIX = ".cache";
+  public static final String TMP_CACHE_FILE_SUFFIX = ".cache.tmp";
 }
