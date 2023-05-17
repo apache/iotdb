@@ -92,7 +92,7 @@ public class OSFileCacheValue {
     if (positionInTsFile < startPositionInTsFile || positionInTsFile >= endPositionInTsFile) {
       return -1;
     }
-    return metaSize + (positionInTsFile - startPositionInTsFile);
+    return startPositionInCacheFile + metaSize + (positionInTsFile - startPositionInTsFile);
   }
 
   /** Mark this value should be deleted, delete this value when no one is reading it. */
