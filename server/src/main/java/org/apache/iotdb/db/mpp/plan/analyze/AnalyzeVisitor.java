@@ -490,35 +490,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return null;
   }
 
-  private ISchemaTree fetchAllPathsInLogicalViewFromResultColumnsForAlignedByDevice(
-      List<ResultColumn> resultColumnList,
-      ISchemaTree originSchemaTree,
-      Set<PartialPath> deviceSet) {
-    // record paths that need to re-fetch. It's useful if expression contains logical view.
-    ReplaceLogicalViewVisitor replaceLogicalViewVisitor = new ReplaceLogicalViewVisitor();
-    for (ResultColumn resultColumn : resultColumnList) {
-      Expression selectExpression = resultColumn.getExpression();
-      for (PartialPath device : deviceSet) {
-        List<Expression> selectExpressionsOfOneDevice =
-            ExpressionAnalyzer.concatDeviceAndRemoveWildcard(
-                selectExpression, device, originSchemaTree);
-        for (Expression expression : selectExpressionsOfOneDevice) {
-          replaceLogicalViewVisitor.replaceViewInThisExpression(expression);
-        }
-      }
-    }
-    if (!replaceLogicalViewVisitor.getNewAddedPathList().isEmpty()) {
-      PathPatternTree reFetchPathPatternTree = new PathPatternTree();
-      for (PartialPath path : replaceLogicalViewVisitor.getNewAddedPathList()) {
-        reFetchPathPatternTree.appendFullPath(path);
-      }
-      // This schemaTree only contains paths in view expression!
-      ISchemaTree viewSchemaTree = schemaFetcher.fetchSchema(reFetchPathPatternTree, null);
-      return viewSchemaTree;
-    }
-    return null;
-  }
-
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Map<Integer, List<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
