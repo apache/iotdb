@@ -1003,9 +1003,8 @@ public class DataRegion implements IDataRegionForQuery {
                   TSStatusCode.OUT_OF_TTL,
                   String.format(
                       "Insertion time [%s] is less than ttl time bound [%s]",
-                      DateTimeUtils.convertMillsecondToZonedDateTime(currTime),
-                      DateTimeUtils.convertMillsecondToZonedDateTime(
-                          DateTimeUtils.currentTime() - dataTTL)));
+                      DateTimeUtils.convertLongToDate(currTime),
+                      DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL)));
           loc++;
           noFailure = false;
         } else {
@@ -3168,9 +3167,8 @@ public class DataRegion implements IDataRegionForQuery {
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
-                          DateTimeUtils.convertMillsecondToZonedDateTime(insertRowNode.getTime()),
-                          DateTimeUtils.convertMillsecondToZonedDateTime(
-                              DateTimeUtils.currentTime() - dataTTL))));
+                          DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
+                          DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL))));
           continue;
         }
         // init map
