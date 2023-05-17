@@ -36,7 +36,12 @@ struct TDeleteModelReq {
 
 struct TForecastReq {
   1: required string modelPath
-  2: required binary dataset
+  2: required list<binary> tsDataset
+  3: required list<string> columnNameList
+  4: required list<string> columnTypeList
+  5: required map<string, i32> columnNameIndexMap
+  6: required i32 predLength
+  7: required string modelId
 }
 
 struct TForecastResp {
