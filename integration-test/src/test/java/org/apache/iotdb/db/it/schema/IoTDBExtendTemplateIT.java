@@ -84,6 +84,15 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       statement.execute(
           "ALTER SCHEMA TEMPLATE t1 ADD(s3 INT64 ENCODING=RLE, s4 DOUBLE ENCODING=GORILLA)");
 
+      try {
+        statement.execute(
+            "ALTER SCHEMA TEMPLATE t1 ADD(s5 INT64 ENCODING=RLE, s5 DOUBLE ENCODING=GORILLA)");
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains("Duplicated measurement [s5] in schema template alter request"));
+      }
+
       String[] sqls =
           new String[] {
             "show timeseries",

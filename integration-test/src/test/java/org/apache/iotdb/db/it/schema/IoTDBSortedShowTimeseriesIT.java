@@ -310,7 +310,8 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("show LATEST timeseries where 'unit'='cores'");
+      ResultSet resultSet =
+          statement.executeQuery("show LATEST timeseries where TAGS(unit)='cores'");
       int count = 0;
       while (resultSet.next()) {
         String ans =
