@@ -728,7 +728,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserializeFromOldFile();
       upgradeRet.add(fileResource);
