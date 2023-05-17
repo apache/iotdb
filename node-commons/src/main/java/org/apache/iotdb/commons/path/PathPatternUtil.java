@@ -36,7 +36,12 @@ public class PathPatternUtil {
     return node.startsWith(ONE_LEVEL_PATH_WILDCARD) || node.endsWith(ONE_LEVEL_PATH_WILDCARD);
   }
 
-  /** The input patternNode shall be a string starts or ends with *, e.g. *, **, d*, *d* */
+  /**
+   * Determine if a node pattern matches a node name.
+   *
+   * @param patternNode must be a string starts or ends with *, e.g. *, **, d*, *d*
+   * @param nodeName node to match
+   */
   public static boolean isNodeMatch(String patternNode, String nodeName) {
     if (patternNode.equals(ONE_LEVEL_PATH_WILDCARD)
         || patternNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
