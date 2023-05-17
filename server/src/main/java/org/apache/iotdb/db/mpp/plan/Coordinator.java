@@ -186,7 +186,7 @@ public class Coordinator {
     int coordinatorReadExecutorSize =
         CONFIG.isClusterMode() ? CONFIG.getCoordinatorReadExecutorSize() : 1;
     return IoTDBThreadPoolFactory.newFixedThreadPool(
-        coordinatorReadExecutorSize, ThreadName.MPP_COORDINATOR_EXECUTOR_POOL_NAME.getName());
+        coordinatorReadExecutorSize, ThreadName.MPP_COORDINATOR_EXECUTOR_POOL.getName());
   }
 
   private ExecutorService getWriteExecutor() {

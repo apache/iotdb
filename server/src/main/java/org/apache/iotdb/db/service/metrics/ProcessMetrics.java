@@ -33,6 +33,10 @@ import java.lang.management.ManagementFactory;
 public class ProcessMetrics implements IMetricSet {
   private final OperatingSystemMXBean sunOsMxBean;
   private final Runtime runtime;
+  private long lastUpdateTime = 0L;
+  private final long updateInterval = 15_000L;
+  private volatile long processCpuLoad = 0L;
+  private volatile long processCpuTime = 0L;
 
   public ProcessMetrics() {
     sunOsMxBean =
@@ -61,7 +65,13 @@ public class ProcessMetrics implements IMetricSet {
         Metric.PROCESS_CPU_LOAD.toString(),
         MetricLevel.CORE,
         sunOsMxBean,
-        a -> (long) (sunOsMxBean.getProcessCpuLoad() * 100),
+        a -> {
+          if (System.currentTimeMillis() - lastUpdateTime > updateInterval) {
+            lastUpdateTime = System.currentTimeMillis();
+            processCpuLoad = (long) (sunOsMxBean.getProcessCpuLoad() * 100);
+          }
+          return processCpuLoad;
+        },
         Tag.NAME.toString(),
         "process");
 
@@ -69,7 +79,13 @@ public class ProcessMetrics implements IMetricSet {
         Metric.PROCESS_CPU_TIME.toString(),
         MetricLevel.CORE,
         sunOsMxBean,
-        com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
+        bean -> {
+          if (System.currentTimeMillis() - lastUpdateTime > updateInterval) {
+            lastUpdateTime = System.currentTimeMillis();
+            processCpuTime = sunOsMxBean.getProcessCpuTime();
+          }
+          return processCpuTime;
+        },
         Tag.NAME.toString(),
         "process");
   }

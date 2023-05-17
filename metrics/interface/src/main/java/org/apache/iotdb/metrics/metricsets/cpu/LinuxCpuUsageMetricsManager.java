@@ -111,6 +111,12 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
 
   private void updateIoTDBCpuUsage() {
     // update
+    if (!threadMXBean.isThreadCpuTimeSupported()) {
+      return;
+    }
+    if (!threadMXBean.isThreadCpuTimeEnabled()) {
+      threadMXBean.setThreadCpuTimeEnabled(true);
+    }
     long[] taskIds = threadMXBean.getAllThreadIds();
     ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(taskIds);
     long incrementCpuTime = 0L;
@@ -129,11 +135,14 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
           pool, (k, v) -> v == null ? cpuTime - prevCpuTime : v + cpuTime - prevCpuTime);
       threadIncrementCpuTimeMap.put(threadInfo.getThreadName(), cpuTime - prevCpuTime);
     }
+    double processCpuLoad =
+        metricService.getAutoGauge("process_cpu_load", MetricLevel.CORE, "name", "process").value();
     for (Map.Entry<String, Long> entry : newModuleCpuTimeMap.entrySet()) {
       String module = entry.getKey();
       long cpuTime = entry.getValue();
       moduleCpuTimeMap.put(module, cpuTime);
-      moduleCpuTimePercentageMap.put(module, (double) (cpuTime) / (double) incrementCpuTime);
+      moduleCpuTimePercentageMap.put(
+          module, (double) (cpuTime) / (double) incrementCpuTime * processCpuLoad);
     }
     for (Map.Entry<String, Long> entry : threadPoolIncrementCpuTimeMap.entrySet()) {
       String pool = entry.getKey();
@@ -142,7 +151,8 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
         Gauge gauge =
             metricService.getOrCreateGauge(
                 "pool_cpu_usage", MetricLevel.IMPORTANT, "pool_name", pool);
-        gauge.set((long) ((double) cpuTime / (double) incrementCpuTime * 10000.0));
+        double percentage = (double) cpuTime / (double) incrementCpuTime * processCpuLoad;
+        gauge.set((long) (percentage * 10000));
       }
     }
   }

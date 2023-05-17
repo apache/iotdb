@@ -38,7 +38,7 @@ public enum ThreadName {
   DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
   MPP_DATA_EXCHANGE_RPC_SERVICE("MPPDataExchangeRPC-Service"),
   MPP_DATA_EXCHANGE_RPC_PROCESSOR("MPPDataExchangeRPC-Processor"),
-  MPP_COORDINATOR_EXECUTOR_POOL_NAME("MPP-Coordinator-Executor"),
+  MPP_COORDINATOR_EXECUTOR_POOL("MPP-Coordinator-Executor"),
   ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
 
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
@@ -116,7 +116,12 @@ public enum ThreadName {
   // NOTICE: The thread name of jvm cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
   JVM_PAUSE_MONITOR("JvmPauseMonitor"),
-  GC("GC task thread"),
+  PARALLEL_GC("GC task thread"),
+  G1_GC("GC Thread"),
+  G1_MAIN_MARKER("G1 Main Marker"),
+  G1_CONC("G1 Conc"),
+  G1_REFINE("G1 Refine"),
+  G1_YOUNG_REMSET_SAMPLING("G1 Young RemSet Sampling"),
   COMPILE("CompilerThread"),
   VM_PERIODIC_TASK("VM Periodic Task Thread"),
   VM_THREAD("VM Thread"),
@@ -158,7 +163,7 @@ public enum ThreadName {
               DATANODE_INTERNAL_RPC_PROCESSOR,
               MPP_DATA_EXCHANGE_RPC_SERVICE,
               MPP_DATA_EXCHANGE_RPC_PROCESSOR,
-              MPP_COORDINATOR_EXECUTOR_POOL_NAME,
+              MPP_COORDINATOR_EXECUTOR_POOL,
               DRIVER_TASK_SCHEDULER_NOTIFICATION,
               ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL));
   private static Set<ThreadName> compactionThreadNames =
@@ -229,7 +234,12 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               JVM_PAUSE_MONITOR,
-              GC,
+              PARALLEL_GC,
+              G1_GC,
+              G1_MAIN_MARKER,
+              G1_REFINE,
+              G1_CONC,
+              G1_YOUNG_REMSET_SAMPLING,
               COMPILE,
               VM_PERIODIC_TASK,
               VM_THREAD,
@@ -348,6 +358,7 @@ public enum ThreadName {
   }
 
   public static ThreadName getThreadPoolTheThreadBelongs(String givenThreadName) {
+    log.error("ThreadName: {}", givenThreadName);
     ThreadName[] threadNames = ThreadName.values();
     for (ThreadName threadName : threadNames) {
       String name = threadName.getName();
