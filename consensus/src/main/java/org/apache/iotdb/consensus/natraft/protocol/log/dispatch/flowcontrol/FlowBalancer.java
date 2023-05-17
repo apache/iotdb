@@ -81,7 +81,7 @@ public class FlowBalancer {
 
   public void stop() {
     scheduledExecutorService.shutdownNow();
-    logger.info("Total burst duration: {}ms", burstDuration);
+    logger.info("{}: Total burst duration: {}ms", member.getName(), burstDuration);
   }
 
   private void rebalance() {
