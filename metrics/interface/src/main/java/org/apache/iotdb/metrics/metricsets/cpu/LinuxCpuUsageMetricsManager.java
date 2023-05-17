@@ -137,6 +137,7 @@ public class LinuxCpuUsageMetricsManager extends AbstractCpuUsageMetricsManager 
     }
     double processCpuLoad =
         metricService.getAutoGauge("process_cpu_load", MetricLevel.CORE, "name", "process").value();
+    // TODO: Consider GC Time
     for (Map.Entry<String, Long> entry : newModuleCpuTimeMap.entrySet()) {
       String module = entry.getKey();
       long cpuTime = entry.getValue();
