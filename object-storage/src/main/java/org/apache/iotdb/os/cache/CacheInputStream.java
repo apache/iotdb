@@ -23,9 +23,9 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 public class CacheInputStream extends InputStream {
-  private final CacheFileChannel channel;
+  private final OSFileChannel channel;
 
-  public CacheInputStream(CacheFileChannel channel) {
+  public CacheInputStream(OSFileChannel channel) {
     super();
     this.channel = channel;
   }

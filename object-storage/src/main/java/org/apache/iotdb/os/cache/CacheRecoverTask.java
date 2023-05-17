@@ -70,7 +70,8 @@ public class CacheRecoverTask implements Runnable {
               cacheFile.delete();
               continue;
             }
-            OSFileCacheValue value = new OSFileCacheValue(cacheFile, 0, metaSize, dataSize);
+            OSFileCacheValue value =
+                new OSFileCacheValue(cacheFile, 0, key.getStartPosition(), metaSize, dataSize);
             cache.put(key, value);
           }
           // update max cache file id

@@ -30,45 +30,37 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.StandardOpenOption;
 
-public class CacheFileChannel implements Closeable {
+public class OSFileChannel implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(OSTsFileInput.class);
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
   private static final OSFileCache cache = OSFileCache.getInstance();
   private final OSFile osFile;
   private long position = 0;
-  private OSFileCacheValue currentCacheFile;
-  private FileChannel cacheFileChannel;
-  private long startPositionInTsFile = position;
-  private long endPositionInTsFile = position + config.getCachePageSize();
+  private OSFileCacheValue currentOSFileBlock;
 
-  public CacheFileChannel(OSFile osFile) {
+  public OSFileChannel(OSFile osFile) {
     this.osFile = osFile;
   }
 
-  public static InputStream newInputStream(CacheFileChannel channel) {
+  public static InputStream newInputStream(OSFileChannel channel) {
     return new CacheInputStream(channel);
   }
 
-  private boolean isPositionValid() {
-    return startPositionInTsFile <= position && position < endPositionInTsFile;
+  private boolean canReadFromCurrentCacheBlock(long startPos) {
+    return currentOSFileBlock != null && currentOSFileBlock.containsPosition(startPos);
   }
 
   private void openNextCacheFile() throws IOException {
     // close prev cache file
-    close();
+    releaseCurrentOSFileBlock();
     // open next cache file
     OSFileCacheKey key = locateCacheFileFromPosition();
-    while (!currentCacheFile.tryReadLock()) {
-      currentCacheFile = cache.get(key);
+    // 用 while 是为了防止从 cache 中拿出来之后，对应的 value 又被挤出去，导致对应的文件被删除？
+    while (currentOSFileBlock == null || !currentOSFileBlock.tryReadLock()) {
+      currentOSFileBlock = cache.get(key);
     }
-    cacheFileChannel =
-        FileChannel.open(currentCacheFile.getCacheFile().toPath(), StandardOpenOption.READ);
-    startPositionInTsFile = currentCacheFile.getStartPosition();
-    endPositionInTsFile = startPositionInTsFile + currentCacheFile.getLength();
   }
 
   private OSFileCacheKey locateCacheFileFromPosition() {
@@ -108,17 +100,15 @@ public class CacheFileChannel implements Closeable {
     // read each cache file
     int totalReadBytes = 0;
     while (startPos < endPos) {
-      if (!isPositionValid()) {
+      if (!canReadFromCurrentCacheBlock(startPos)) {
         openNextCacheFile();
       }
-      long readStartPosition = currentCacheFile.getMetaSize() + (startPos - startPositionInTsFile);
-      long readEndPosition =
-          currentCacheFile.getMetaSize()
-              + (Math.min(endPos, endPositionInTsFile) - startPositionInTsFile);
-      int readSize = (int) (readEndPosition - readStartPosition);
-      dst.limit(dst.position() + readSize);
-      int read = cacheFileChannel.read(dst, readStartPosition);
-      if (read != readSize) {
+
+      int maxReadSize = (int) Math.min(endPos - startPos, currentOSFileBlock.getDataSize());
+      dst.limit(dst.position() + maxReadSize);
+
+      int read = currentOSFileBlock.read(dst, startPos);
+      if (read != maxReadSize) {
         throw new IOException(
             String.format(
                 "Cache file %s may crash because cannot read enough information in the cash file.",
@@ -131,12 +121,14 @@ public class CacheFileChannel implements Closeable {
     return totalReadBytes;
   }
 
+  public void releaseCurrentOSFileBlock() throws IOException {
+    if (currentOSFileBlock != null) {
+      currentOSFileBlock.readUnlock();
+    }
+  }
+
   @Override
   public void close() throws IOException {
-    try {
-      cacheFileChannel.close();
-    } finally {
-      currentCacheFile.readUnlock();
-    }
+    releaseCurrentOSFileBlock();
   }
 }
