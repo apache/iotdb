@@ -116,7 +116,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
 
     createFiles(1, 2, 3, 200, 200, 10000, 50, 50, false, true);
-    seqResources.get(1).setStatus(TsFileResourceStatus.CLOSED);
+    seqResources.get(1).setStatus(TsFileResourceStatus.NORMAL);
     seqResources.get(2).setStatus(TsFileResourceStatus.UNCLOSED);
     selected = selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.size());
@@ -125,7 +125,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
     createFiles(1, 2, 3, 200, 1000, 10000, 50, 50, false, true);
     createFiles(1, 2, 3, 200, 2000, 10000, 50, 50, false, true);
-    seqResources.get(2).setStatus(TsFileResourceStatus.CLOSED);
+    seqResources.get(2).setStatus(TsFileResourceStatus.NORMAL);
     seqResources.get(4).setStatus(TsFileResourceStatus.UNCLOSED);
     selected = selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.size());
