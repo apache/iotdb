@@ -50,28 +50,33 @@ public class TaskRunner extends DynamicThread {
 
   @Override
   public void runInternal() {
-    Thread.currentThread().setName(Thread.currentThread().getName() + "-" + taskName);
-    while (!Thread.interrupted()) {
-      Task task;
-      try {
-        task = input.take();
-        idleToRunning();
-        task.run();
-        Task nextTask = task.nextTask();
-        if (nextTask != null) {
-          output.put(nextTask);
-        }
-        runningToIdle();
+    String baseName = Thread.currentThread().getName();
+    Thread.currentThread().setName(baseName + "-" + taskName);
+    try {
+      while (!Thread.interrupted()) {
+        Task task;
+        try {
+          task = input.take();
+          idleToRunning();
+          task.run();
+          Task nextTask = task.nextTask();
+          if (nextTask != null) {
+            output.put(nextTask);
+          }
+          runningToIdle();
 
-        if (shouldExit()) {
+          if (shouldExit()) {
+            break;
+          }
+        } catch (InterruptedException e1) {
+          Thread.currentThread().interrupt();
           break;
         }
-      } catch (InterruptedException e1) {
-        Thread.currentThread().interrupt();
-        break;
       }
-    }
 
-    cleanUp.run();
+      cleanUp.run();
+    } finally {
+      Thread.currentThread().setName(baseName);
+    }
   }
 }
