@@ -106,6 +106,8 @@ public abstract class DynamicThread implements Runnable {
   public void run() {
     try {
       runInternal();
+    } catch (Exception e) {
+      logger.error("Unexpected exception", e);
     } finally {
       if (threadGroup != null) {
         threadGroup.onThreadExit(this);
