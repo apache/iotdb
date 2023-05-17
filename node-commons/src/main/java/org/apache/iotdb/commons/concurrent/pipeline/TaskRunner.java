@@ -33,20 +33,24 @@ public class TaskRunner extends DynamicThread {
   private Runnable cleanUp;
   private BlockingQueue<Task> input;
   private BlockingQueue<Task> output;
+  private String taskName;
 
   public TaskRunner(
       DynamicThreadGroup threadGroup,
       Runnable cleanUp,
       BlockingQueue<Task> input,
-      BlockingQueue<Task> output) {
+      BlockingQueue<Task> output,
+      String taskName) {
     super(threadGroup);
     this.cleanUp = cleanUp;
     this.input = input;
     this.output = output;
+    this.taskName = taskName;
   }
 
   @Override
   public void runInternal() {
+    Thread.currentThread().setName(Thread.currentThread().getName() + "-" + taskName);
     while (!Thread.interrupted()) {
       Task task;
       try {

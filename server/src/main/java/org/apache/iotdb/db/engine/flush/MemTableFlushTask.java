@@ -83,6 +83,7 @@ public class MemTableFlushTask {
 
   private IMemTable memTable;
   private FlushContext allContext;
+  private String taskName;
 
   /**
    * @param memTable the memTable to flush
@@ -100,28 +101,24 @@ public class MemTableFlushTask {
     this.allContext = new FlushContext();
     this.allContext.setWriter(writer);
     this.allContext.setMemTable(memTable);
+    this.taskName = storageGroup + "-" + dataRegionId + "-" + memTable;
 
     this.sortTasks =
         new DynamicThreadGroup(
-            storageGroup + "-" + dataRegionId + "-" + memTable,
+            taskName,
             SUB_TASK_POOL_MANAGER::submit,
             this::newSortThread,
             config.getFlushMemTableMinSubThread(),
             config.getFlushMemTableMaxSubThread());
     this.encodingTasks =
         new DynamicThreadGroup(
-            storageGroup + "-" + dataRegionId + "-" + memTable,
+            taskName,
             SUB_TASK_POOL_MANAGER::submit,
             this::newEncodingThread,
             config.getFlushMemTableMinSubThread(),
             config.getFlushMemTableMaxSubThread());
     this.ioTask =
-        new DynamicThreadGroup(
-            storageGroup + "-" + dataRegionId + "-" + memTable,
-            SUB_TASK_POOL_MANAGER::submit,
-            this::newIOThread,
-            1,
-            1);
+        new DynamicThreadGroup(taskName, SUB_TASK_POOL_MANAGER::submit, this::newIOThread, 1, 1);
     this.sortTasks.init();
     this.encodingTasks.init();
     this.ioTask.init();
@@ -292,15 +289,21 @@ public class MemTableFlushTask {
   }
 
   private DynamicThread newSortThread() {
-    return new TaskRunner(sortTasks, this::cleanSortThread, sortTaskQueue, encodingTaskQueue);
+    return new TaskRunner(
+        sortTasks, this::cleanSortThread, sortTaskQueue, encodingTaskQueue, taskName + "-sort");
   }
 
   private DynamicThread newEncodingThread() {
-    return new TaskRunner(encodingTasks, this::cleanEncodingThread, encodingTaskQueue, ioTaskQueue);
+    return new TaskRunner(
+        encodingTasks,
+        this::cleanEncodingThread,
+        encodingTaskQueue,
+        ioTaskQueue,
+        taskName + "-encode");
   }
 
   private DynamicThread newIOThread() {
-    return new TaskRunner(null, this::cleanIOThread, ioTaskQueue, ioTaskQueue);
+    return new TaskRunner(null, this::cleanIOThread, ioTaskQueue, ioTaskQueue, taskName + "-io");
   }
 
   private void cleanSortThread() {
@@ -311,7 +314,6 @@ public class MemTableFlushTask {
 
   private void cleanEncodingThread() {
     metricFlush();
-
     WRITING_METRICS.recordFlushCost(
         WritingMetrics.FLUSH_STAGE_ENCODING, allContext.getEncodingTime().get());
   }
