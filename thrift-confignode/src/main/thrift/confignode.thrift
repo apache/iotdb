@@ -446,6 +446,11 @@ struct TGetJarInListResp {
   2: required list<binary> jarList
 }
 
+struct TPullPipeMetaResp {
+  1: required common.TSStatus status
+  2: required list<binary> pipeMetas
+}
+
 struct TGetDataNodeLocationsResp {
   1: required common.TSStatus status
   2: required list<common.TDataNodeLocation> dataNodeLocationList
@@ -1144,6 +1149,11 @@ service IConfigNodeRPCService {
    * Return the pipe plugin jar list of the plugin name list
    */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
+
+  /**
+   * Receive pipeMetas from ConfigNodes, for synchronization
+   */
+  TPullPipeMetaResp pullPipeMeta()
 
   // ======================================================
   // Maintenance Tools

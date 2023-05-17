@@ -96,6 +96,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TPullPipeMetaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -1480,6 +1481,22 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TGetJarInListResp resp = client.getPipePluginJar(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TPullPipeMetaResp pullPipeMeta() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TPullPipeMetaResp resp = client.pullPipeMeta();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }

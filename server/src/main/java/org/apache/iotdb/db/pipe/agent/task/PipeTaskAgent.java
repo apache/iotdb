@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
+import org.apache.iotdb.db.service.ResourcesInformationHolder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,10 +63,12 @@ public class PipeTaskAgent {
 
   private final PipeMetaKeeper pipeMetaKeeper;
   private final PipeTaskManager pipeTaskManager;
+  private final PipeNodeStartHandler pipeNodeStartHandler;
 
   public PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
     pipeTaskManager = new PipeTaskManager();
+    pipeNodeStartHandler = new PipeNodeStartHandler();
   }
 
   ////////////////////////// Pipe Task Management //////////////////////////
@@ -522,5 +526,11 @@ public class PipeTaskAgent {
     if (pipeTask != null) {
       pipeTask.stop();
     }
+  }
+
+  public void preparePipeResources(ResourcesInformationHolder resourcesInformationHolder)
+      throws StartupException {
+    pipeNodeStartHandler.preparePipePluginResources(resourcesInformationHolder);
+    pipeNodeStartHandler.preparePipeTaskResources();
   }
 }
