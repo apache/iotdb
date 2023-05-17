@@ -49,7 +49,9 @@ public class PipeConnectorSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      // 1. construct, validate and customize PipeConnector
+      // TODO: construct all PipeConnector with the same reflection method, avoid using if-else
+      // 1. construct, validate and customize PipeConnector, and then handshake (create connection)
+      // with the target
       final PipeConnector pipeConnector =
           pipeConnectorParameters
                   .getStringOrDefault(
@@ -57,8 +59,7 @@ public class PipeConnectorSubtaskManager {
                       BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
                   .equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
               ? new PipeIoTDBThriftConnector()
-              : PipeAgent.plugin()
-                  .reflectConnector(pipeConnectorParameters); // TODO: reflect construct connector
+              : PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
       try {
         pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
         final PipeConnectorRuntimeConfiguration runtimeConfiguration =
