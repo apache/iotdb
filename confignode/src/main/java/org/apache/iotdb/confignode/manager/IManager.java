@@ -87,6 +87,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPullPipeMetaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -446,6 +447,9 @@ public interface IManager {
 
   /** Get pipe plugin jar */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req);
+
+  /** Pull pipeMetas */
+  TPullPipeMetaResp pullPipeMeta();
 
   /** Merge on all DataNodes */
   TSStatus merge();
