@@ -186,6 +186,7 @@ keyWords
     | STOP
     | SUBSTRING
     | SYSTEM
+    | TAG
     | TAGS
     | TASK
     | TEMPLATE
@@ -214,6 +215,7 @@ keyWords
     | VARIATION
     | VERIFY
     | VERSION
+    | VIEW
     | WHEN
     | WHERE
     | WITH
