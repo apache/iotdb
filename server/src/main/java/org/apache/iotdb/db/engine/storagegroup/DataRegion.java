@@ -106,6 +106,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -1002,9 +1003,8 @@ public class DataRegion implements IDataRegionForQuery {
                   TSStatusCode.OUT_OF_TTL,
                   String.format(
                       "Insertion time [%s] is less than ttl time bound [%s]",
-                      DateTimeUtils.convertMillsecondToZonedDateTime(currTime),
-                      DateTimeUtils.convertMillsecondToZonedDateTime(
-                          DateTimeUtils.currentTime() - dataTTL)));
+                      DateTimeUtils.convertLongToDate(currTime),
+                      DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL)));
           loc++;
           noFailure = false;
         } else {
@@ -1146,14 +1146,28 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+        || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
+      // disable updating last cache on follower
       return;
+    }
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
+      }
     }
     DataNodeSchemaCache.getInstance()
         .updateLastCache(
             getDatabaseName(),
             node.getDevicePath(),
-            node.getMeasurements(),
+            rawMeasurements,
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeLastTimeValuePair,
@@ -1186,14 +1200,28 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+        || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
+      // disable updating last cache on follower
       return;
+    }
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
+      }
     }
     DataNodeSchemaCache.getInstance()
         .updateLastCache(
             getDatabaseName(),
             node.getDevicePath(),
-            node.getMeasurements(),
+            rawMeasurements,
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeTimeValuePair,
@@ -3139,9 +3167,8 @@ public class DataRegion implements IDataRegionForQuery {
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
-                          DateTimeUtils.convertMillsecondToZonedDateTime(insertRowNode.getTime()),
-                          DateTimeUtils.convertMillsecondToZonedDateTime(
-                              DateTimeUtils.currentTime() - dataTTL))));
+                          DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
+                          DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL))));
           continue;
         }
         // init map

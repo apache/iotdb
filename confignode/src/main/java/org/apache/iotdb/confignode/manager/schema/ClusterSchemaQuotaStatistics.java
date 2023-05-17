@@ -16,7 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.manager.schema;
 
-package org.apache.iotdb.db.pipe.resource;
+import javax.validation.constraints.NotNull;
 
-public class PipeRaftlogHolder {}
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class ClusterSchemaQuotaStatistics {
+
+  // TODO: it can be merged with statistics in ClusterQuotaManager
+  private final Map<Integer, Long> countMap = new ConcurrentHashMap<>();
+
+  public void updateCount(@NotNull Map<Integer, Long> schemaCountMap) {
+    countMap.putAll(schemaCountMap);
+  }
+
+  public long getSchemaQuotaCount(Set<Integer> consensusGroupIdSet) {
+    return countMap.entrySet().stream()
+        .filter(i -> consensusGroupIdSet.contains(i.getKey()))
+        .mapToLong(Map.Entry::getValue)
+        .sum();
+  }
+
+  public void clear() {
+    countMap.clear();
+  }
+}

@@ -28,6 +28,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -583,8 +586,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowTimeSeriesStatement(
               new PartialPath(SqlConstant.getSingleRootArray()), orderByHeat);
     }
-    if (ctx.tagWhereClause() != null) {
-      parseTagWhereClause(ctx.tagWhereClause(), showTimeSeriesStatement);
+    if (ctx.timeseriesWhereClause() != null) {
+      SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
+      showTimeSeriesStatement.setSchemaFilter(schemaFilter);
     }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
@@ -598,33 +602,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return showTimeSeriesStatement;
   }
 
-  private void parseTagWhereClause(IoTDBSqlParser.TagWhereClauseContext ctx, Statement statement) {
-    IoTDBSqlParser.AttributeValueContext attributeValueContext;
-    String key;
-    String value;
-    boolean isContains;
-    if (ctx.containsExpression() != null) {
-      isContains = true;
-      attributeValueContext = ctx.containsExpression().attributeValue();
-      key = parseAttributeKey(ctx.containsExpression().attributeKey());
+  private SchemaFilter parseTimeseriesWhereClause(IoTDBSqlParser.TimeseriesWhereClauseContext ctx) {
+    if (ctx.timeseriesContainsExpression() != null) {
+      // path contains filter
+      return new PathContainsFilter(
+          parseStringLiteral(ctx.timeseriesContainsExpression().value.getText()));
     } else {
-      isContains = false;
-      attributeValueContext = ctx.attributePair().attributeValue();
-      key = parseAttributeKey(ctx.attributePair().attributeKey());
-    }
-    value = parseAttributeValue(attributeValueContext);
-    if (statement instanceof ShowTimeSeriesStatement) {
-      ((ShowTimeSeriesStatement) statement).setContains(isContains);
-      ((ShowTimeSeriesStatement) statement).setKey(key);
-      ((ShowTimeSeriesStatement) statement).setValue(value);
-    } else if (statement instanceof CountTimeSeriesStatement) {
-      ((CountTimeSeriesStatement) statement).setContains(isContains);
-      ((CountTimeSeriesStatement) statement).setKey(key);
-      ((CountTimeSeriesStatement) statement).setValue(value);
-    } else if (statement instanceof CountLevelTimeSeriesStatement) {
-      ((CountLevelTimeSeriesStatement) statement).setContains(isContains);
-      ((CountLevelTimeSeriesStatement) statement).setKey(key);
-      ((CountLevelTimeSeriesStatement) statement).setValue(value);
+      // tag filter
+      if (ctx.tagContainsExpression() != null) {
+        return new TagFilter(
+            parseAttributeKey(ctx.tagContainsExpression().attributeKey()),
+            parseStringLiteral(ctx.tagContainsExpression().value.getText()),
+            true);
+      } else {
+        return new TagFilter(
+            parseAttributeKey(ctx.tagEqualsExpression().attributeKey()),
+            parseAttributeValue(ctx.tagEqualsExpression().attributeValue()),
+            false);
+      }
     }
   }
 
@@ -659,6 +654,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showDevicesStatement =
           new ShowDevicesStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
+    if (ctx.devicesWhereClause() != null) {
+      showDevicesStatement.setSchemaFilter(parseDevicesWhereClause(ctx.devicesWhereClause()));
+    }
+
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
         showDevicesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
@@ -672,6 +671,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showDevicesStatement.setSgCol(true);
     }
     return showDevicesStatement;
+  }
+
+  private SchemaFilter parseDevicesWhereClause(IoTDBSqlParser.DevicesWhereClauseContext ctx) {
+    // path contains filter
+    return new PathContainsFilter(
+        parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
   }
 
   // Count Devices ========================================================================
@@ -703,8 +708,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       statement = new CountTimeSeriesStatement(path);
     }
-    if (ctx.tagWhereClause() != null) {
-      parseTagWhereClause(ctx.tagWhereClause(), statement);
+    if (ctx.timeseriesWhereClause() != null) {
+      SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
+      if (statement instanceof CountTimeSeriesStatement) {
+        ((CountTimeSeriesStatement) statement).setSchemaFilter(schemaFilter);
+      } else if (statement instanceof CountLevelTimeSeriesStatement) {
+        ((CountLevelTimeSeriesStatement) statement).setSchemaFilter(schemaFilter);
+      }
     }
     return statement;
   }
@@ -3384,7 +3394,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> collectorMap = new HashMap<>();
     for (IoTDBSqlParser.CollectorAttributeClauseContext singleCtx :
         ctx.collectorAttributeClause()) {
-      collectorMap.put(singleCtx.collectorKey.getText(), singleCtx.collectorValue.getText());
+      collectorMap.put(
+          parseStringLiteral(singleCtx.collectorKey.getText()),
+          parseStringLiteral(singleCtx.collectorValue.getText()));
     }
     return collectorMap;
   }
@@ -3394,7 +3406,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> processorMap = new HashMap<>();
     for (IoTDBSqlParser.ProcessorAttributeClauseContext singleCtx :
         ctx.processorAttributeClause()) {
-      processorMap.put(singleCtx.processorKey.getText(), singleCtx.processorValue.getText());
+      processorMap.put(
+          parseStringLiteral(singleCtx.processorKey.getText()),
+          parseStringLiteral(singleCtx.processorValue.getText()));
     }
     return processorMap;
   }
@@ -3404,7 +3418,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Map<String, String> connectorMap = new HashMap<>();
     for (IoTDBSqlParser.ConnectorAttributeClauseContext singleCtx :
         ctx.connectorAttributeClause()) {
-      connectorMap.put(singleCtx.connectorKey.getText(), singleCtx.connectorValue.getText());
+      connectorMap.put(
+          parseStringLiteral(singleCtx.connectorKey.getText()),
+          parseStringLiteral(singleCtx.connectorValue.getText()));
     }
     return connectorMap;
   }

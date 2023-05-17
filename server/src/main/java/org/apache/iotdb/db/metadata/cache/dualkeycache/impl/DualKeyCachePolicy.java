@@ -20,5 +20,6 @@
 package org.apache.iotdb.db.metadata.cache.dualkeycache.impl;
 
 public enum DualKeyCachePolicy {
-  LRU;
+  LRU,
+  FIFO;
 }
