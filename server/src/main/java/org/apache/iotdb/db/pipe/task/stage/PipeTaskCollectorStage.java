@@ -54,26 +54,26 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
   private final PipeCollector pipeCollector;
 
   public PipeTaskCollectorStage(String dataRegionId, PipeParameters collectorParameters) {
-    this.collectorParameters =
-        new PipeParameters(
-            new HashMap<>(
-                collectorParameters.getAttribute())); // deep copy from collectorParameters
-    // set data region id to collector parameters, so that collector can get data region id inside
-    // collector
-    this.collectorParameters
-        .getAttribute()
-        .put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
-
+    // TODO: avoid if-else, use reflection to create collector all the time
     if (collectorParameters
         .getStringOrDefault(
             PipeCollectorConstant.COLLECTOR_KEY,
             BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName())
-        .equals(
-            BuiltinPipePlugin.DEFAULT_COLLECTOR
-                .getPipePluginName())) { // TODO: reflect construct collector
+        .equals(BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName())) {
+      // we want to pass data region id to collector, so we need to create a new collector
+      // parameters and put data region id into it. we can't put data region id into collector
+      // parameters directly, because the given collector parameters may be used by other pipe task.
+      this.collectorParameters =
+          new PipeParameters(new HashMap<>(collectorParameters.getAttribute()));
+      // set data region id to collector parameters, so that collector can get data region id inside
+      // collector
+      collectorParameters.getAttribute().put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
+
       collectorPendingQueue = new ListenableUnblockingPendingQueue<>();
       this.pipeCollector = new IoTDBDataRegionCollector(collectorPendingQueue);
     } else {
+      this.collectorParameters = collectorParameters;
+
       this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
     }
   }
