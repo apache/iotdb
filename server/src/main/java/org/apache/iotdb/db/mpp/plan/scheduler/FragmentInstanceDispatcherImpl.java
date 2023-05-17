@@ -372,7 +372,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
         TSStatus status = writeResult.getStatus();
         if (!writeResult.isAccepted()) {
-          if (status == null || status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          if (status == null
+              || status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
             logger.warn(
                 "write locally failed. TSStatus: {}, message: {}",
                 status,
