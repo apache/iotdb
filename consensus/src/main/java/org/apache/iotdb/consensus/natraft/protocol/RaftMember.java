@@ -373,10 +373,11 @@ public class RaftMember {
    * induce side effects.
    */
   public void stop() {
-    setStopped(true);
-    if (heartbeatThread == null) {
+    if (stopped) {
       return;
     }
+    setStopped(true);
+
     closeLogManager();
 
     logDispatcher.stop();
@@ -396,9 +397,6 @@ public class RaftMember {
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
       }
     }
-    status.leader.set(null);
-    catchUpManager = null;
-    heartbeatThread = null;
 
     if (flowBalancer != null) {
       flowBalancer.stop();
