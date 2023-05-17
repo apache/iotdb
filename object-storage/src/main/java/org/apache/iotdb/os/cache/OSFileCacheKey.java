@@ -32,32 +32,27 @@ public class OSFileCacheKey implements Serializable {
   private final OSFile file;
   /** start position in the remote TsFile */
   private final long startPosition;
-  /** data length */
-  private final int length;
 
-  public OSFileCacheKey(OSFile file, long startPosition, int length) {
+  public OSFileCacheKey(OSFile file, long startPosition) {
     this.file = file;
     this.startPosition = startPosition;
-    this.length = length;
   }
 
   public int serializeSize() {
-    return Integer.BYTES + file.toString().getBytes().length + Long.BYTES + Integer.BYTES;
+    return Integer.BYTES + file.toString().getBytes().length + Long.BYTES;
   }
 
   public ByteBuffer serialize() {
     ByteBuffer buffer = ByteBuffer.allocate(serializeSize());
     ReadWriteIOUtils.write(file.toString(), buffer);
     ReadWriteIOUtils.write(startPosition, buffer);
-    ReadWriteIOUtils.write(length, buffer);
     return buffer;
   }
 
   public static OSFileCacheKey deserialize(InputStream inputStream) throws IOException {
     String filePath = ReadWriteIOUtils.readString(inputStream);
     long startPosition = ReadWriteIOUtils.readLong(inputStream);
-    int length = ReadWriteIOUtils.readInt(inputStream);
-    return new OSFileCacheKey(new OSFile(filePath), startPosition, length);
+    return new OSFileCacheKey(new OSFile(filePath), startPosition);
   }
 
   public OSFile getFile() {
@@ -68,13 +63,9 @@ public class OSFileCacheKey implements Serializable {
     return startPosition;
   }
 
-  public int getLength() {
-    return length;
-  }
-
   @Override
   public int hashCode() {
-    return Objects.hash(file, startPosition, length);
+    return Objects.hash(file, startPosition);
   }
 
   @Override
@@ -86,6 +77,6 @@ public class OSFileCacheKey implements Serializable {
       return false;
     }
     OSFileCacheKey that = (OSFileCacheKey) obj;
-    return file.equals(that.file) && startPosition == that.startPosition && length == that.length;
+    return file.equals(that.file) && startPosition == that.startPosition;
   }
 }

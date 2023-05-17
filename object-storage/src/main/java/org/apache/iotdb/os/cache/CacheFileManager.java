@@ -75,7 +75,9 @@ public class CacheFileManager {
       ByteBuffer meta = key.serialize();
       channel.write(meta);
       channel.write(ByteBuffer.wrap(data));
-      res = new OSFileCacheValue(tmpCacheFile, 0, meta.capacity(), data.length);
+      res =
+          new OSFileCacheValue(
+              tmpCacheFile, 0, meta.capacity(), data.length, key.getStartPosition());
     } catch (IOException e) {
       logger.error("Fail to persist data to cache file {}", tmpCacheFile, e);
       tmpCacheFile.delete();

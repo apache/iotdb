@@ -33,28 +33,28 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 
-public class CacheFileChannel implements Closeable {
+public class OSFileChannel implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(OSTsFileInput.class);
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
   private static final OSFileCache cache = OSFileCache.getInstance();
   private final OSFile osFile;
   private long position = 0;
-  private OSFileCacheValue currentCacheFile;
+  private OSFileCacheValue cacheFile;
   private FileChannel cacheFileChannel;
-  private long startPositionInTsFile = position;
-  private long endPositionInTsFile = position + config.getCachePageSize();
 
-  public CacheFileChannel(OSFile osFile) {
+  public OSFileChannel(OSFile osFile) throws IOException {
     this.osFile = osFile;
+    openNextCacheFile();
   }
 
-  public static InputStream newInputStream(CacheFileChannel channel) {
-    return new CacheInputStream(channel);
+  public static InputStream newInputStream(OSFileChannel channel) {
+    return new OSInputStream(channel);
   }
 
   private boolean isPositionValid() {
-    return startPositionInTsFile <= position && position < endPositionInTsFile;
+    return cacheFile.getStartPositionInTsFile() <= position
+        && position < cacheFile.getEndPositionInTsFile();
   }
 
   private void openNextCacheFile() throws IOException {
@@ -62,18 +62,18 @@ public class CacheFileChannel implements Closeable {
     close();
     // open next cache file
     OSFileCacheKey key = locateCacheFileFromPosition();
-    while (!currentCacheFile.tryReadLock()) {
-      currentCacheFile = cache.get(key);
+    while (!cacheFile.tryReadLock()) {
+      cacheFile = cache.get(key);
     }
-    cacheFileChannel =
-        FileChannel.open(currentCacheFile.getCacheFile().toPath(), StandardOpenOption.READ);
-    startPositionInTsFile = currentCacheFile.getStartPosition();
-    endPositionInTsFile = startPositionInTsFile + currentCacheFile.getLength();
+    cacheFileChannel = FileChannel.open(cacheFile.getCacheFile().toPath(), StandardOpenOption.READ);
   }
 
-  private OSFileCacheKey locateCacheFileFromPosition() {
+  private OSFileCacheKey locateCacheFileFromPosition() throws IOException {
+    if (position >= size()) {
+      throw new IOException("EOF");
+    }
     long startPosition = position - position % config.getCachePageSize();
-    return new OSFileCacheKey(osFile, startPosition, config.getCachePageSize());
+    return new OSFileCacheKey(osFile, startPosition);
   }
 
   public long size() {
@@ -96,6 +96,7 @@ public class CacheFileChannel implements Closeable {
   }
 
   public int read(ByteBuffer dst, long position) throws IOException {
+    dst.mark();
     // determiner the ead range
     long startPos = position;
     long endPos = position + dst.remaining();
@@ -111,14 +112,16 @@ public class CacheFileChannel implements Closeable {
       if (!isPositionValid()) {
         openNextCacheFile();
       }
-      long readStartPosition = currentCacheFile.getMetaSize() + (startPos - startPositionInTsFile);
-      long readEndPosition =
-          currentCacheFile.getMetaSize()
-              + (Math.min(endPos, endPositionInTsFile) - startPositionInTsFile);
+      long readStartPosition = cacheFile.convertTsFilePos2CachePos(startPos);
+      long readEndPosition = cacheFile.convertTsFilePos2CachePos(endPos);
+      if (readEndPosition < 0) {
+        readEndPosition = cacheFile.getEndPositionInTsFile();
+      }
       int readSize = (int) (readEndPosition - readStartPosition);
-      dst.limit(dst.position() + readSize);
-      int read = cacheFileChannel.read(dst, readStartPosition);
+      cacheFileChannel.position(readStartPosition);
+      long read = cacheFileChannel.read(new ByteBuffer[] {dst}, 0, readSize);
       if (read != readSize) {
+        dst.reset();
         throw new IOException(
             String.format(
                 "Cache file %s may crash because cannot read enough information in the cash file.",
@@ -133,10 +136,12 @@ public class CacheFileChannel implements Closeable {
 
   @Override
   public void close() throws IOException {
-    try {
-      cacheFileChannel.close();
-    } finally {
-      currentCacheFile.readUnlock();
+    if (cacheFile != null) {
+      try {
+        cacheFileChannel.close();
+      } finally {
+        cacheFile.readUnlock();
+      }
     }
   }
 }

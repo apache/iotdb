@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.os.fileSystem;
 
-import org.apache.iotdb.os.cache.CacheFileChannel;
+import org.apache.iotdb.os.cache.OSFileChannel;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import java.io.IOException;
@@ -27,11 +27,11 @@ import java.nio.ByteBuffer;
 
 public class OSTsFileInput implements TsFileInput {
   private OSFile file;
-  private CacheFileChannel channel;
+  private OSFileChannel channel;
 
-  public OSTsFileInput(OSFile file) {
+  public OSTsFileInput(OSFile file) throws IOException {
     this.file = file;
-    this.channel = new CacheFileChannel(file);
+    this.channel = new OSFileChannel(file);
   }
 
   @Override
@@ -62,7 +62,7 @@ public class OSTsFileInput implements TsFileInput {
 
   @Override
   public InputStream wrapAsInputStream() throws IOException {
-    return CacheFileChannel.newInputStream(channel);
+    return OSFileChannel.newInputStream(channel);
   }
 
   @Override

@@ -27,28 +27,39 @@ public class OSFileCacheValue {
   // 如果每个块用一个文件来存储，则该值一直为 0
   // 如果使用一个大文件存储所有块，则该值为大文件中的起点
   /** start position in the local cache file */
-  private long startPosition;
+  private long startPositionInCacheFile;
   /** cache data size */
   private int dataSize;
   /** cache key size */
   private int metaSize;
+  /** start position in the remote TsFile */
+  private long startPositionInTsFile;
+  /** start position in the remote TsFile */
+  private long endPositionInTsFile;
 
   private boolean shouldDelete;
   private int readCnt;
 
-  public OSFileCacheValue(File cacheFile, long startPosition, int metaSize, int dataSize) {
+  public OSFileCacheValue(
+      File cacheFile,
+      long startPositionInCacheFile,
+      int metaSize,
+      int dataSize,
+      long startPositionInTsFile) {
     this.cacheFile = cacheFile;
-    this.startPosition = startPosition;
+    this.startPositionInCacheFile = startPositionInCacheFile;
     this.metaSize = metaSize;
     this.dataSize = dataSize;
+    this.startPositionInTsFile = startPositionInTsFile;
+    this.endPositionInTsFile = startPositionInTsFile + dataSize;
   }
 
   public File getCacheFile() {
     return cacheFile;
   }
 
-  public long getStartPosition() {
-    return startPosition;
+  public long getStartPositionInCacheFile() {
+    return startPositionInCacheFile;
   }
 
   public int getMetaSize() {
@@ -63,6 +74,25 @@ public class OSFileCacheValue {
   // 如果使用一个大文件存储所有块，则该值为该块的实际长度
   public int getLength() {
     return metaSize + dataSize;
+  }
+
+  public long getStartPositionInTsFile() {
+    return startPositionInTsFile;
+  }
+
+  public long getEndPositionInTsFile() {
+    return endPositionInTsFile;
+  }
+
+  /**
+   * Convert position in the TsFile to the corresponding position in the cache file. Return -1 when
+   * the position is outside the cache file range
+   */
+  public long convertTsFilePos2CachePos(long positionInTsFile) {
+    if (positionInTsFile < startPositionInTsFile || positionInTsFile >= endPositionInTsFile) {
+      return -1;
+    }
+    return metaSize + (positionInTsFile - startPositionInTsFile);
   }
 
   /** Mark this value should be deleted, delete this value when no one is reading it. */

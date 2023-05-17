@@ -22,10 +22,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
-public class CacheInputStream extends InputStream {
-  private final CacheFileChannel channel;
+public class OSInputStream extends InputStream {
+  private final OSFileChannel channel;
 
-  public CacheInputStream(CacheFileChannel channel) {
+  public OSInputStream(OSFileChannel channel) {
     super();
     this.channel = channel;
   }

@@ -84,7 +84,8 @@ public class OSFileCache {
     @Override
     public @Nullable OSFileCacheValue load(@NonNull OSFileCacheKey key) throws Exception {
       byte[] data =
-          connector.getRemoteFile(key.getFile().toOSURI(), key.getStartPosition(), key.getLength());
+          connector.getRemoteFile(
+              key.getFile().toOSURI(), key.getStartPosition(), config.getCachePageSize());
       return cacheFileManager.persist(key, data);
     }
   }
