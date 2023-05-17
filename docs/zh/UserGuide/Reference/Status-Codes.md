@@ -84,6 +84,7 @@ try {
 | 523  | SCHEMA_FILE_REDO_LOG_BROKEN        | SchemaFile 的 redo 日志损坏    |
 | 524  | TEMPLATE_NOT_ACTIVATED             | 元数据模板未激活                  |
 | 526  | SCHEMA_QUOTA_EXCEEDED              | 集群元数据超过配额上限               |
+| 527  | MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE            | 元数据模板中已存在物理量                  |
 | 600  | SYSTEM_READ_ONLY                   | IoTDB 系统只读                |
 | 601  | STORAGE_ENGINE_ERROR               | 存储引擎相关错误                  |
 | 602  | STORAGE_ENGINE_NOT_READY           | 存储引擎还在恢复中，还不能接受读写操作       |
