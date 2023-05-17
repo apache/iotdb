@@ -101,7 +101,7 @@ public class MemTableFlushTask {
     this.allContext = new FlushContext();
     this.allContext.setWriter(writer);
     this.allContext.setMemTable(memTable);
-    this.taskName = storageGroup + "-" + dataRegionId + "-" + memTable;
+    this.taskName = storageGroup + "-" + dataRegionId + "-" + writer.getFile();
 
     this.sortTasks =
         new DynamicThreadGroup(
