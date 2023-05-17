@@ -186,7 +186,6 @@ keyWords
     | STOP
     | SUBSTRING
     | SYSTEM
-    | TAG
     | TAGS
     | TASK
     | TEMPLATE
