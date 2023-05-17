@@ -557,8 +557,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
           // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
           if ((PathPatternUtil.hasWildcard(nodes1[i - 1])
                   && PathPatternUtil.isNodeMatch(nodes1[i - 1], nodes2[j - 1]))
-              || (PathPatternUtil.hasWildcard(nodes2[i - 1])
-                  && PathPatternUtil.isNodeMatch(nodes2[i - 1], nodes1[j - 1]))
+              || (PathPatternUtil.hasWildcard(nodes2[j - 1])
+                  && PathPatternUtil.isNodeMatch(nodes2[j - 1], nodes1[i - 1]))
               || nodes1[i - 1].equals(nodes2[j - 1])) {
             // if nodes1[i-1] and nodes[2] is matched, dp[i][j] = dp[i-1][j-1]
             dp[i][j] |= dp[i - 1][j - 1];
