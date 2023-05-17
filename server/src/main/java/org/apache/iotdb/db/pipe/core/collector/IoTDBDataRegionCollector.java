@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.pipe.core.collector;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionTsFileCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
@@ -33,6 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTDBDataRegionCollector implements PipeCollector {
 
+  private int dataRegionId;
   private final AtomicBoolean hasBeenStarted;
 
   private final PipeRealtimeDataRegionCollector realtimeCollector;
@@ -47,6 +52,8 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
+    validator.validateRequiredAttribute(PipeCollectorConstant.DATA_REGION_KEY);
+
     // TODO: require more attributes
     realtimeCollector.validate(validator);
     historicalCollector.validate(validator);
@@ -55,6 +62,8 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   @Override
   public void customize(
       PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+    dataRegionId = parameters.getInt(PipeCollectorConstant.DATA_REGION_KEY);
+
     realtimeCollector.customize(parameters, configuration);
     historicalCollector.customize(parameters, configuration);
   }
@@ -66,8 +75,24 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     }
     hasBeenStarted.set(true);
 
-    realtimeCollector.start();
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
+    if (dataRegion != null) {
+      dataRegion.writeLock(
+          String.format("Pipe: start %s", IoTDBDataRegionCollector.class.getName()));
+      try {
+        startHistoricalCollectorAndRealtimeCollector();
+      } finally {
+        dataRegion.writeUnlock();
+      }
+    } else {
+      startHistoricalCollectorAndRealtimeCollector();
+    }
+  }
+
+  public void startHistoricalCollectorAndRealtimeCollector() {
     historicalCollector.start();
+    realtimeCollector.start();
   }
 
   @Override

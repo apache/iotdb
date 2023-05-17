@@ -40,7 +40,6 @@ import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -100,7 +99,7 @@ public class PipeIoTDBThriftConnector implements PipeConnector {
             new PipeValidateHandshakeReq(
                     PIPE_VERSION, CONFIG.getIoTDBMajorVersion(), CONFIG.getTimestampPrecision())
                 .toTPipeHandshakeReq());
-    if (!resp.status.equals(RpcUtils.SUCCESS_STATUS)) {
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
     }
   }
@@ -115,7 +114,7 @@ public class PipeIoTDBThriftConnector implements PipeConnector {
             new PipeTransferInsertNodeReq(
                     PIPE_VERSION, ((PipeTabletInsertionEvent) tabletInsertionEvent).getInsertNode())
                 .toTPipeTransferReq());
-    if (!resp.status.equals(RpcUtils.SUCCESS_STATUS)) {
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
               "Transfer tablet insertion event %s error, result status %s",
@@ -125,7 +124,11 @@ public class PipeIoTDBThriftConnector implements PipeConnector {
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    File tsFile = ((PipeTsFileInsertionEvent) tsFileInsertionEvent).getTsFile();
+    PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
+        (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+    pipeTsFileInsertionEvent.waitForTsFileClose();
+
+    File tsFile = pipeTsFileInsertionEvent.getTsFile();
     byte[] readBuffer = new byte[PipeConfig.getInstance().getReadFileBufferSize()];
 
     long position = 0;
@@ -152,7 +155,7 @@ public class PipeIoTDBThriftConnector implements PipeConnector {
           position = resp.getEndOffset();
           reader.seek(position);
           LOGGER.info(String.format("Redirect file position to %s.", position));
-        } else if (!resp.getStatus().equals(RpcUtils.SUCCESS_STATUS)) {
+        } else if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           throw new PipeException(
               String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()));
         }
@@ -163,7 +166,7 @@ public class PipeIoTDBThriftConnector implements PipeConnector {
         client.pipeTransfer(
             new PipeTransferFileSealReq(PIPE_VERSION, tsFile.getName(), tsFile.length())
                 .toTPipeTransferReq());
-    if (!resp.getStatus().equals(RpcUtils.SUCCESS_STATUS)) {
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
     }

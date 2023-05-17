@@ -123,7 +123,6 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
       }
 
       collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
-
       if (suppliedEvent != null) {
         return suppliedEvent;
       }

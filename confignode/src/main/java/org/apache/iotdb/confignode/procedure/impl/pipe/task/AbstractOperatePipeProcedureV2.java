@@ -90,6 +90,7 @@ public abstract class AbstractOperatePipeProcedureV2
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
           if (!executeFromValidateTask(env)) {
             env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+            // TODO: setFailure
             return Flow.NO_MORE_STATE;
           }
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);

@@ -32,6 +32,8 @@ import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfig
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import java.util.HashMap;
+
 public class PipeTaskCollectorStage extends PipeTaskStage {
 
   private final PipeParameters collectorParameters;
@@ -52,10 +54,15 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
   private final PipeCollector pipeCollector;
 
   public PipeTaskCollectorStage(String dataRegionId, PipeParameters collectorParameters) {
-    this.collectorParameters = collectorParameters;
+    this.collectorParameters =
+        new PipeParameters(
+            new HashMap<>(
+                collectorParameters.getAttribute())); // deep copy from collectorParameters
     // set data region id to collector parameters, so that collector can get data region id inside
     // collector
-    collectorParameters.getAttribute().put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
+    this.collectorParameters
+        .getAttribute()
+        .put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
 
     if (collectorParameters
         .getStringOrDefault(

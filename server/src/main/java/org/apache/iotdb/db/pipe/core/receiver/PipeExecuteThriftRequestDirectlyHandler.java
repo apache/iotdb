@@ -56,6 +56,7 @@ public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftReques
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeExecuteThriftRequestDirectlyHandler.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final String RECEIVE_DIR = PipeConfig.getInstance().getReceiveFileDir();
 
   private File writingFile;
   private RandomAccessFile writer;
@@ -78,6 +79,7 @@ public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftReques
       LOGGER.warn(msg);
       return new TPipeHandshakeResp(RpcUtils.getStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR, msg));
     }
+    LOGGER.info("Handshake successfully.");
     return new TPipeHandshakeResp(RpcUtils.SUCCESS_STATUS);
   }
 
@@ -162,8 +164,10 @@ public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftReques
         writingFile.deleteOnExit();
         LOGGER.info(String.format("Delete origin file %s.", writingFile.getPath()));
       }
-      writingFile =
-          new File(PipeConfig.getInstance().getReceiveFileDir() + File.separator + fileName);
+      if (!new File(RECEIVE_DIR).exists()) {
+        boolean ignored = new File(RECEIVE_DIR).mkdirs();
+      }
+      writingFile = new File(RECEIVE_DIR, fileName);
       writer = new RandomAccessFile(writingFile, "rw");
       LOGGER.info(String.format("Start to write transferring file %s.", writingFile.getPath()));
     }
@@ -178,6 +182,14 @@ public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftReques
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     try {
+      if (!validateFileExist()) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "Seal file error, target file %s does not exist on receiver.",
+                    req.getFileName())));
+      }
       if (!validateFileName(req.getFileName())) {
         return new TPipeTransferResp(
             RpcUtils.getStatus(
@@ -195,13 +207,11 @@ public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftReques
                     req.getFileLength(), writer.length())));
       }
 
-      writingFile = null;
-      writer.close();
-
       LoadTsFileStatement statement = new LoadTsFileStatement(writingFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
       statement.setVerifySchema(true);
       statement.setAutoCreateDatabase(false);
+      writer.close();
       return new TPipeTransferResp(executeStatement(statement, partitionFetcher, schemaFetcher));
     } catch (IOException e) {
       LOGGER.warn(String.format("Seal file %s form req %s error.", writingFile, req), e);
@@ -212,8 +222,12 @@ public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftReques
     }
   }
 
+  private boolean validateFileExist() {
+    return writingFile != null && writingFile.exists() && writer != null;
+  }
+
   private boolean validateFileName(String fileName) {
-    return writingFile != null && writingFile.getName().equals(fileName);
+    return writingFile.getName().equals(fileName);
   }
 
   private boolean validateFileLength(long fileLength) throws IOException {

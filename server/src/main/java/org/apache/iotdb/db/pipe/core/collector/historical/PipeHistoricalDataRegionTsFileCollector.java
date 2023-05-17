@@ -56,6 +56,11 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
   public synchronized void start() {
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
+    if (dataRegion == null) { // dataRegion delay creation
+      pendingQueue = new ArrayDeque<>();
+      return;
+    }
+
     dataRegion.writeLock("Pipe: collect historical TsFile");
     try {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -66,12 +71,16 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(true).stream()
-                .map(o -> new PipeTsFileInsertionEvent(o.getTsFile()))
+                .map(PipeTsFileInsertionEvent::new)
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
-                .map(o -> new PipeTsFileInsertionEvent(o.getTsFile()))
+                .map(PipeTsFileInsertionEvent::new)
                 .collect(Collectors.toList()));
+        pendingQueue.forEach(
+            event ->
+                event.increaseReferenceCount(
+                    PipeHistoricalDataRegionTsFileCollector.class.getName()));
       } finally {
         tsFileManager.readUnlock();
       }

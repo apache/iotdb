@@ -45,6 +45,11 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     return fileLength;
   }
 
+  @Override
+  public short getType() {
+    return PipeTransferReqType.FILE_SEAL.getNodeType();
+  }
+
   public TPipeTransferReq toTPipeTransferReq() throws IOException {
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

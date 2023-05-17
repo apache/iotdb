@@ -47,11 +47,6 @@ public class PipeConfig {
 
   private final String pipeVersion = "1.0";
 
-  private final String receiveFileDir =
-      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-          + File.separator
-          + "pipe"; // TODO: replace with resource manager
-
   private final int readFileBufferSize = 8388608;
 
   public int getDefaultRingBufferSize() {
@@ -75,7 +70,9 @@ public class PipeConfig {
   }
 
   public String getReceiveFileDir() {
-    return receiveFileDir;
+    return IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+        + File.separator
+        + "pipe"; // TODO: replace with resource manager
   }
 
   public int getReadFileBufferSize() {

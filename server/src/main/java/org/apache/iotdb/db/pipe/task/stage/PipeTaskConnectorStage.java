@@ -34,16 +34,15 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   public PipeTaskConnectorStage(PipeParameters pipeConnectorParameters) {
     this.pipeConnectorParameters = pipeConnectorParameters;
-  }
-
-  @Override
-  public void createSubtask() throws PipeException {
     connectorSubtaskId =
         PipeConnectorSubtaskManager.instance()
             .register(
                 PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
-                pipeConnectorParameters);
+                pipeConnectorParameters); // TODO: should split to create
   }
+
+  @Override
+  public void createSubtask() throws PipeException {}
 
   @Override
   public void startSubtask() throws PipeException {

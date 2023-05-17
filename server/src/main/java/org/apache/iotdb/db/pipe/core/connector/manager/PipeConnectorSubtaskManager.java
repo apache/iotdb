@@ -65,6 +65,7 @@ public class PipeConnectorSubtaskManager {
             new PipeConnectorRuntimeConfiguration();
         pipeConnector.customize(pipeConnectorParameters, runtimeConfiguration);
         // TODO: use runtimeConfiguration to configure PipeConnector
+        pipeConnector.handshake();
       } catch (Exception e) {
         throw new PipeManagementException(
             "Failed to construct PipeConnector, because of " + e.getMessage(), e);
