@@ -19,6 +19,22 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import static org.apache.iotdb.db.utils.ModificationUtils.modifyChunkMetaData;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
@@ -53,23 +69,6 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.TreeMap;
-
-import static org.apache.iotdb.db.utils.ModificationUtils.modifyChunkMetaData;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
 
 public class CompactionCheckerUtils {
 
@@ -545,6 +544,10 @@ public class CompactionCheckerUtils {
       List<TimeValuePair> expectedTimeValueList = expectedData.get(path);
       List<TimeValuePair> actualTimeValueList = actualData.get(path);
 
+      if (actualTimeValueList == null) {
+        assertNull(expectedTimeValueList);
+        continue;
+      }
       assertEquals(expectedTimeValueList.size(), actualTimeValueList.size());
 
       for (int i = 0; i < expectedTimeValueList.size(); ++i) {

@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -32,28 +40,25 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
 public class ReadChunkCompactionPerformerAlignedTest {
   private static final String storageGroup = "root.testAlignedCompaction";
@@ -651,5 +656,74 @@ public class ReadChunkCompactionPerformerAlignedTest {
             Collections.singletonList(targetResource),
             new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
+  }
+
+  @Test
+  public void testEmptyChunkWithModification() throws Exception {
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s0", TSDataType.DOUBLE));
+    schemas.add(new MeasurementSchema("s1", TSDataType.FLOAT));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s3", TSDataType.INT32));
+    schemas.add(new MeasurementSchema("s4", TSDataType.TEXT));
+    schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+    Map<PartialPath, List<TimeValuePair>> originData = new HashMap<>();
+    List<TsFileResource> resources = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      TsFileIOWriter writer =
+          new TsFileIOWriter(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(schemas);
+      for (int j = i * 100; j < i * 100 + 100; j++) {
+        TsPrimitiveType[] values = {
+          new TsPrimitiveType.TsDouble(0.0D),
+          new TsPrimitiveType.TsFloat(0.0F),
+          null,
+          null,
+          new TsPrimitiveType.TsBinary(new Binary("")),
+          new TsPrimitiveType.TsBoolean(false)
+        };
+        originData
+            .computeIfAbsent(new PartialPath("root.sg.d1.s0"), k -> new ArrayList<>())
+            .add(new TimeValuePair(j, values[0]));
+        originData
+            .computeIfAbsent(new PartialPath("root.sg.d1.s1"), k -> new ArrayList<>())
+            .add(new TimeValuePair(j, values[1]));
+        originData.computeIfAbsent(new PartialPath("root.sg.d1.s2"), k -> null);
+        originData.computeIfAbsent(new PartialPath("root.sg.d1.s3"), k -> null);
+        originData
+            .computeIfAbsent(new PartialPath("root.sg.d1.s4"), k -> new ArrayList<>())
+            .add(new TimeValuePair(j, values[4]));
+        originData
+            .computeIfAbsent(new PartialPath("root.sg.d1.s5"), k -> new ArrayList<>())
+            .add(new TimeValuePair(j, values[5]));
+        alignedChunkWriter.write(j, values);
+      }
+      writer.startChunkGroup("root.sg.d1");
+      alignedChunkWriter.writeToFileWriter(writer);
+      writer.endChunkGroup();
+      writer.endFile();
+      TsFileResource resource = new TsFileResource(writer.getFile(), TsFileResourceStatus.NORMAL);
+      resource
+          .getModFile()
+          .write(new Deletion(new PartialPath("root.sg.d1.*"), i * 100, i * 100 + 20));
+      resource.getModFile().close();
+      int finalI = i;
+      originData.forEach(
+          (x, y) ->
+              y.removeIf(
+                  timeValuePair ->
+                      timeValuePair.getTimestamp() >= finalI * 100
+                          && timeValuePair.getTimestamp() < finalI * 100 + 20));
+      resources.add(resource);
+    }
+    performer.setSourceFiles(resources);
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
+    Assert.assertTrue(targetResource.getTsFile().exists());
+    RestorableTsFileIOWriter checkWriter = new RestorableTsFileIOWriter(targetResource.getTsFile());
+    Assert.assertFalse(checkWriter.hasCrashed());
   }
 }
