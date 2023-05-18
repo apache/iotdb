@@ -40,12 +40,12 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   private final AtomicBoolean isClosed;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
-    this.tsFile = resource.getTsFile();
-    this.isClosed = new AtomicBoolean();
+    tsFile = resource.getTsFile();
 
+    isClosed = new AtomicBoolean(resource.isClosed());
     // register close listener if TsFile is not closed
-    if (!resource.isClosed()) {
-      TsFileProcessor processor = resource.getProcessor();
+    if (!isClosed.get()) {
+      final TsFileProcessor processor = resource.getProcessor();
       if (processor != null) {
         processor.addCloseFileListener(
             o -> {
@@ -56,13 +56,14 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
             });
       }
     }
-    this.isClosed.set(resource.isClosed());
   }
 
   public void waitForTsFileClose() throws InterruptedException {
-    synchronized (isClosed) {
-      while (!isClosed.get()) {
-        isClosed.wait();
+    if (!isClosed.get()) {
+      synchronized (isClosed) {
+        while (!isClosed.get()) {
+          isClosed.wait();
+        }
       }
     }
   }
