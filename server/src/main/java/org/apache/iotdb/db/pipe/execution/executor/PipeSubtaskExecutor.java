@@ -79,7 +79,9 @@ public abstract class PipeSubtaskExecutor {
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
     if (subtask.isSubmittingSelf()) {
-      LOGGER.info("The subtask {} is already running.", subTaskID);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("The subtask {} is already running.", subTaskID);
+      }
     } else {
       subtask.allowSubmittingSelf();
       subtask.submitSelf();

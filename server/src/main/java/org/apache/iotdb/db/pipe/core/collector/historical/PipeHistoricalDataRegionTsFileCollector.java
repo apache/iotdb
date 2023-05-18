@@ -56,7 +56,7 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
   public synchronized void start() {
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (dataRegion == null) { // dataRegion delay creation
+    if (dataRegion == null) {
       pendingQueue = new ArrayDeque<>();
       return;
     }
