@@ -24,17 +24,18 @@ from abc import abstractmethod
 from typing import Dict, Tuple
 
 import optuna
+import torch
 from torch import nn
 from torch.utils.data import Dataset
-from multiprocessing import Pipe
+from multiprocessing.connection import Connection
 
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.algorithm.factory import create_forecast_model
-from iotdb.mlnode.client import client_manager, ConfigNodeClient
+from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
 from iotdb.thrift.common.ttypes import TrainingState
-from iotdb.mlnode.data_access.utils import timefeatures
+from iotdb.mlnode.storage import model_storage
 
 
 class ForestingTrainingObjective:
@@ -124,21 +125,31 @@ class _BasicTrainingTask(_BasicTask):
 
 
 class _BasicInferenceTask(_BasicTask):
-    def __int__(
+    def __init__(
             self,
             task_configs: Dict,
             model_configs: Dict,
             pid_info: Dict,
             data: Tuple,
-            model: nn.Module
+            model_path: str,
+            model_id: str
     ):
+        """
+        Args:
+            task_configs:
+            model_configs:
+            pid_info:
+            data:
+            model:
+        """
         super().__init__(task_configs, model_configs, pid_info)
         self.data = data
-        self.model = model
         self.input_len = self.model_configs['input_len']
+        self.model_path = model_path
+        self.model_id = model_id
 
     @abstractmethod
-    def __call__(self, pipe: Pipe = None):
+    def __call__(self, pipe: Connection = None):
         raise NotImplementedError
 
     @abstractmethod
@@ -204,7 +215,6 @@ class ForecastingTuningTrainingTask(_BasicTrainingTask):
         self.study = optuna.create_study(direction='minimize')
 
     def __call__(self):
-        # try:
         self.study.optimize(ForestingTrainingObjective(
             self.task_configs,
             self.model_configs,
@@ -213,63 +223,64 @@ class ForecastingTuningTrainingTask(_BasicTrainingTask):
             n_jobs=descriptor.get_config().get_mn_tuning_trial_concurrency())
         best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
         self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
-        #
-        # except Exception as e:
-        #     logger.warn(e)
-        #     raise e
 
 
 class ForecastingInferenceTask(_BasicInferenceTask):
-    def __int__(
+    def __init__(
             self,
             task_configs: Dict,
             model_configs: Dict,
             pid_info: Dict,
-            data: Tuple,
-            model: nn.Module
+            data:Tuple,
+            model_path: str,
+            model_id: str
     ):
-        super().__init__(task_configs, model_configs, pid_info, data, model)
+        super().__init__(task_configs, model_configs, pid_info, data, model_path, model_id)
         self.pred_len = self.task_configs['pred_len']
         self.model_pred_len = self.model_configs['pred_len']
 
-    def __call__(self, pipe: Pipe = None):
+    def __call__(self, pipe: Connection = None):
+        self.model, _ = model_storage.load_model(self.model_id, self.model_path)
         data, data_stamp = self.data
+        data_stamp = pd.to_datetime(data_stamp.values[:, 0], unit='ms', utc=True) \
+            .tz_convert('Asia/Shanghai')  # for iotdb
         data, data_stamp = self.data_align(data, data_stamp)
         full_data, full_data_stamp = data, data_stamp
         current_pred_len = 0
         while current_pred_len < self.pred_len:
             current_data = full_data[:, -self.input_len:, :]
-            current_data_stamp = timefeatures.time_features(full_data_stamp.iloc[-self.input_len:, :])[None, :] # batch
-            output_data = self.model(current_data, current_data_stamp)
+            # current_data_stamp = timefeatures.time_features(full_data_stamp.iloc[-self.input_len:, :])[None, :] # batch
+            current_data = torch.Tensor(current_data)
+            output_data = self.model(current_data).detach().numpy()
             full_data = np.concatenate([full_data, output_data], axis=1)
-            full_data_stamp = pd.concat([full_data_stamp, self.generate_future_mark(full_data_stamp, self.pred_len)])
+            # full_data_stamp = pd.concat([full_data_stamp, self.generate_future_mark(full_data_stamp, self.pred_len)])
             current_pred_len += self.model_pred_len
         full_data_stamp = full_data_stamp.values
-        ret_data = np.concatenate([full_data_stamp[0], full_data[0]], axis=1)
+        # ret_data = np.concatenate([full_data_stamp[0], full_data[0]], axis=1)
+        ret_data = full_data[0, -self.pred_len:, :]
         ret_data = pd.DataFrame(ret_data)
         pipe.send(ret_data)
 
-
-    def data_align(self, data: pd.DataFrame, data_stamp: pd.DataFrame) -> Tuple[np.ndarray, pd.DatetimeIndex]:
+    def data_align(self, data: pd.DataFrame, data_stamp) -> Tuple[np.ndarray, pd.DatetimeIndex]:
         """
         data: L x C, DataFrame, suppose no batch dim
         time_stamp: L x 1, DataFrame
         """
+        data_stamp = pd.DataFrame(data_stamp)
         assert len(data.shape) == 2, 'expect inference data to have two dimensions'
-        assert len(data_stamp.shape) == 2 and data_stamp.shape[1] == 1, \
-            'expect inference timestamps to be shaped as [L, 1]'
+        assert len(data_stamp.shape) == 2, 'expect inference timestamps to be shaped as [L, 1]'
         time_deltas = data_stamp.diff().dropna()
         mean_timedelta = time_deltas.mean()[0]
+        data = data.values
         if data.shape[0] < self.input_len:
             extra_len = self.input_len - data.shape[0]
             data = np.concatenate([np.mean(data, axis=0, keepdims=True).repeat(extra_len, axis=0), data], axis=0)
             extrapolated_timestamp = pd.date_range(data_stamp[0][0] - extra_len * mean_timedelta, periods=extra_len,
                                                    freq=mean_timedelta)
-            data_stamp = np.concatenate([extrapolated_timestamp.to_frame(), data_stamp])
+            data_stamp = pd.concat([extrapolated_timestamp.to_frame(), data_stamp])
         else:
             data = data[-self.input_len:, :]
             data_stamp = data_stamp[-self.input_len:]
-
         data = data[None, :]  # add batch dim
         return data, data_stamp
 

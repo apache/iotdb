@@ -39,7 +39,7 @@ class TaskManager(object):
         self.__shared_resource_manager = mp.Manager()
         self.__pid_info = self.__shared_resource_manager.dict()
         self.__training_process_pool = mp.Pool(pool_size)
-        self.__inference_process_pool = mp.Pool(pool_size)
+        # self.__inference_process_pool = mp.Pool(pool_size)
 
     def create_training_task(self,
                              dataset: Dataset,
@@ -88,19 +88,22 @@ class TaskManager(object):
                              task_configs,
                              model_configs,
                              data,
-                             model) -> ForecastingInferenceTask:
+                             model_path,
+                             model_id) -> ForecastingInferenceTask:
         task = ForecastingInferenceTask(
             task_configs,
             model_configs,
             self.__pid_info,
             data,
-            model
+            model_path,
+            model_id
         )
         return task
 
     def submit_forecast_task(self, task: ForecastingInferenceTask) -> pd.DataFrame:
         read_pipe, send_pipe = mp.Pipe()
         if task is not None:
-            self.__inference_process_pool.apply_async(task, args=(send_pipe,))
+            self.__training_process_pool.apply_async(task, args=(send_pipe,))
             logger.info(f'Forecasting process submitted successfully')
+            # task(send_pipe)
         return read_pipe.recv()

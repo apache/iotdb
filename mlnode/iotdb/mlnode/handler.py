@@ -72,13 +72,33 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
                 task_configs,
                 model_configs,
                 data,
-                model
+                model_path,
+                model_id
             )
         except Exception as e:
+            print(e)
             return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
         finally:
             # submit task stage & check resource and decide pending/start
             forecast_result = self.__task_manager.submit_forecast_task(task)
             binary_result = convert_to_binary(forecast_result)
+            binary_result = binary_result[0]
             resp = TForecastResp(get_status(TSStatusCode.SUCCESS_STATUS), binary_result)
             return resp
+
+
+# if __name__ == '__main__':
+#     handler = MLNodeRPCServiceHandler()
+#     import pickle
+#     f = open('D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\test_tsdataset.pkl', 'rb')
+#     ts_dataset = pickle.load(f)
+#     req = TForecastReq(
+#         'D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\models\\Model_1\\tid_0.pt',
+#         ts_dataset,
+#         ['root.eg.etth1.s0'],
+#         ['FLOAT'],
+#         {'root.eg.etth1.s0': 0},
+#         192,
+#         'Model_2'
+#     )
+#     handler.forecast(req)

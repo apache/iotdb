@@ -37,7 +37,9 @@ from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
                                           TRecordModelMetricsReq,
                                           TFetchMoreDataReq)
 from iotdb.thrift.mlnode import IMLNodeRPCService
-from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
+from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
+                                        TDeleteModelReq,
+                                        TForecastReq)
 
 
 class ClientManager(object):
@@ -52,13 +54,17 @@ class ClientManager(object):
     def borrow_config_node_client(self):
         return ConfigNodeClient(config_leader=self.__config_node_endpoint)
 
+    def borrow_mlnode_client(self):
+        return MLNodeClient(descriptor.get_config().get_mn_rpc_address(),
+                            descriptor.get_config().get_mn_rpc_port())
+
 
 class MLNodeClient(object):
     def __init__(self, host, port):
         self.__host = host
         self.__port = port
 
-        transport = TTransport.TBufferedTransport(
+        transport = TTransport.TFramedTransport(
             TSocket.TSocket(self.__host, self.__port)
         )
         if not transport.isOpen():
@@ -89,9 +95,29 @@ class MLNodeClient(object):
         except TTransport.TException as e:
             raise e
 
-    def create_forecast_task(self) -> None:
-        # TODO
-        pass
+    def create_forecast_task(self,
+                             model_path: str,
+                             ts_dataset: List,
+                             column_name_list: List[str],
+                             column_type_list: List[str],
+                             column_name_index_map: Dict[str, int],
+                             pred_length: int,
+                             model_id: str
+                             ) -> None:
+        req = TForecastReq(
+            modelPath=model_path,
+            tsDataset=ts_dataset,
+            columnNameList=column_name_list,
+            columnTypeList=column_type_list,
+            columnNameIndexMap=column_name_index_map,
+            predLength=pred_length,
+            modelId=model_id
+        )
+        try:
+            result = self.__client.forecast(req)
+            print(result)
+        except Exception as e:
+            raise e
 
     def delete_model(self,
                      model_id: str,
@@ -142,7 +168,13 @@ class DataNodeClient(object):
 
             if len(resp.tsDataset) == 0:
                 raise RuntimeError(f'No data fetched with query filter: {query_filter}')
-
+            print(resp.columnNameList)
+            print(resp.columnTypeList)
+            print(resp.columnNameIndexMap)
+            print(type(resp.tsDataset[0]))
+            import pickle
+            with open('test_tsdataset.pkl', 'wb') as f:
+                pickle.dump(resp.tsDataset, f, True)
             data = serde.convert_to_df(resp.columnNameList,
                                        resp.columnTypeList,
                                        resp.columnNameIndexMap,
@@ -335,3 +367,18 @@ class ConfigNodeClient(object):
 
 
 client_manager = ClientManager()
+
+if __name__ == '__main__':
+    client = client_manager.borrow_mlnode_client()
+    import pickle
+    f = open('D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\test_tsdataset.pkl', 'rb')
+    ts_dataset = pickle.load(f)
+    client.create_forecast_task(
+        'D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\models\\Model_1\\tid_0.pt',
+        ts_dataset,
+        ['root.eg.etth1.s0'],
+        ['FLOAT'],
+        {'root.eg.etth1.s0': 0},
+        192,
+        'Model_2'
+    )
