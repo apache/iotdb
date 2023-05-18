@@ -24,7 +24,7 @@ import org.apache.iotdb.os.utils.ObjectStorageType;
 import java.io.File;
 
 public class ObjectStorageConfig {
-  private ObjectStorageType osType = ObjectStorageType.AWS_S3;
+  private ObjectStorageType osType = ObjectStorageType.TEST;
 
   private AWSS3Config awss3Config = new AWSS3Config();
 
@@ -42,8 +42,16 @@ public class ObjectStorageConfig {
     return osType;
   }
 
+  public void setOsType(ObjectStorageType osType) {
+    this.osType = osType;
+  }
+
   public String[] getCacheDirs() {
     return cacheDirs;
+  }
+
+  public void setCacheDirs(String[] cacheDirs) {
+    this.cacheDirs = cacheDirs;
   }
 
   public long getCacheMaxDiskUsage() {
@@ -52,5 +60,9 @@ public class ObjectStorageConfig {
 
   public int getCachePageSize() {
     return cachePageSize;
+  }
+
+  public void setCachePageSize(int cachePageSize) {
+    this.cachePageSize = cachePageSize;
   }
 }

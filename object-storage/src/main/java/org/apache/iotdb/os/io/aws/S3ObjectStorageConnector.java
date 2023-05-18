@@ -45,15 +45,11 @@ import java.io.InputStream;
 
 public class S3ObjectStorageConnector implements ObjectStorageConnector {
   private static final String RANGE_FORMAT = "%d-%d";
-  private S3Client s3Client;
-
-  public S3ObjectStorageConnector() {
-    s3Client =
-        S3Client.builder()
-            .region(Region.of(AWSS3Config.getRegion()))
-            .credentialsProvider(AWSS3Config.getCredentialProvider())
-            .build();
-  }
+  private static final S3Client s3Client =
+      S3Client.builder()
+          .region(Region.of(AWSS3Config.getRegion()))
+          .credentialsProvider(AWSS3Config.getCredentialProvider())
+          .build();
 
   @Override
   public boolean doesObjectExist(OSURI osUri) throws ObjectStorageException {

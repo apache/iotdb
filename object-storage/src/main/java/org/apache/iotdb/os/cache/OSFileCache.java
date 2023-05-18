@@ -22,7 +22,7 @@ package org.apache.iotdb.os.cache;
 import org.apache.iotdb.os.conf.ObjectStorageConfig;
 import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
 import org.apache.iotdb.os.io.ObjectStorageConnector;
-import org.apache.iotdb.os.io.aws.S3ObjectStorageConnector;
+import org.apache.iotdb.os.utils.ObjectStorageType;
 
 import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -37,27 +37,18 @@ public class OSFileCache {
   private static final Logger logger = LoggerFactory.getLogger(OSFileCache.class);
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
-  private static final ObjectStorageConnector connector;
+  private ObjectStorageConnector connector;
 
-  static {
-    switch (config.getOsType()) {
-      case AWS_S3:
-        connector = new S3ObjectStorageConnector();
-        break;
-      default:
-        connector = null;
-    }
-  }
-
+  /** manage all io operations to the cache files */
+  private final CacheFileManager cacheFileManager = CacheFileManager.getInstance();
   /**
    * persistent LRU cache for remote TsFile, value is loaded successfully when it has been stored on
    * the disk
    */
   private final LoadingCache<OSFileCacheKey, OSFileCacheValue> remotePos2LocalCacheFile;
-  /** manage all io operations to the cache files */
-  private final CacheFileManager cacheFileManager = CacheFileManager.getInstance();
 
-  private OSFileCache() {
+  OSFileCache() {
+    connector = ObjectStorageType.getConnector();
     remotePos2LocalCacheFile =
         Caffeine.newBuilder()
             .maximumWeight(config.getCacheMaxDiskUsage())
@@ -78,6 +69,11 @@ public class OSFileCache {
   /** This method is used by the recover procedure */
   void put(OSFileCacheKey key, OSFileCacheValue value) {
     remotePos2LocalCacheFile.put(key, value);
+  }
+
+  // test only
+  void setConnector(ObjectStorageConnector connector) {
+    this.connector = connector;
   }
 
   class OSFileCacheLoader implements CacheLoader<OSFileCacheKey, OSFileCacheValue> {

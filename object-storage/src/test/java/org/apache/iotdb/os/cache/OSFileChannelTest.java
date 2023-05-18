@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.os.utils;
+package org.apache.iotdb.os.cache;
 
-import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
-import org.apache.iotdb.os.io.ObjectStorageConnector;
-import org.apache.iotdb.os.io.aws.S3ObjectStorageConnector;
+import org.junit.Test;
 
-public enum ObjectStorageType {
-  TEST,
-  AWS_S3;
+import static org.junit.Assert.*;
 
-  public static ObjectStorageConnector getConnector() {
-    switch (ObjectStorageDescriptor.getInstance().getConfig().getOsType()) {
-      case AWS_S3:
-        return new S3ObjectStorageConnector();
-      case TEST:
-      default:
-        return null;
-    }
-  }
+public class OSFileChannelTest {
+
+  @Test
+  public void size() {}
+
+  @Test
+  public void position() {}
+
+  @Test
+  public void testPosition() {}
+
+  @Test
+  public void read() {}
+
+  @Test
+  public void testRead() {}
 }

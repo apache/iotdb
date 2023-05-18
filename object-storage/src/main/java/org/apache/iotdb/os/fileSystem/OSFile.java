@@ -22,7 +22,7 @@ import org.apache.iotdb.os.conf.ObjectStorageConfig;
 import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
 import org.apache.iotdb.os.exception.ObjectStorageException;
 import org.apache.iotdb.os.io.ObjectStorageConnector;
-import org.apache.iotdb.os.io.aws.S3ObjectStorageConnector;
+import org.apache.iotdb.os.utils.ObjectStorageType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,53 +50,40 @@ public class OSFile extends File {
       "Current object storage file doesn't support this operation.";
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
-  private static final ObjectStorageConnector connector;
-
-  static {
-    switch (config.getOsType()) {
-      case AWS_S3:
-        connector = new S3ObjectStorageConnector();
-        break;
-      default:
-        connector = null;
-    }
-  }
+  private ObjectStorageConnector connector;
 
   private final OSURI osUri;
 
   private long length = 0L;
 
+  public OSFile(OSURI osUri) {
+    super(osUri.getURI().toString());
+    this.osUri = osUri;
+    connector = ObjectStorageType.getConnector();
+  }
+
   public OSFile(String pathname) {
-    super(pathname);
-    this.osUri = new OSURI(pathname);
+    this(new OSURI(pathname));
   }
 
   public OSFile(String parent, String child) {
-    super(parent, child);
-    this.osUri = new OSURI(concatPath(parent, child));
+    this(new OSURI(concatPath(parent, child)));
   }
 
   public OSFile(File parent, String child) {
-    super(parent, child);
-    this.osUri = new OSURI(concatPath(parent.toString(), child));
+    this(new OSURI(concatPath(parent.toString(), child)));
   }
 
   public OSFile(URI uri) {
-    super(uri);
-    this.osUri = new OSURI(uri);
+    this(new OSURI(uri));
   }
 
-  private String concatPath(String parent, String child) {
+  private static String concatPath(String parent, String child) {
     if (parent.endsWith(FILE_SEPARATOR)) {
       return parent + child;
     } else {
       return parent + FILE_SEPARATOR + child;
     }
-  }
-
-  public OSFile(OSURI osUri) {
-    super(osUri.getURI());
-    this.osUri = osUri;
   }
 
   @Override
@@ -434,5 +421,10 @@ public class OSFile extends File {
       logger.error("Fail to list objects under the object {} by prefix {}.", osUri, prefix, e);
       return null;
     }
+  }
+
+  // test only
+  public void setConnector(ObjectStorageConnector connector) {
+    this.connector = connector;
   }
 }

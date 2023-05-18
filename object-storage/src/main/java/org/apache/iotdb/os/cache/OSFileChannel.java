@@ -92,9 +92,6 @@ public class OSFileChannel implements Closeable {
     int currentPosition = (int) position;
     dst.mark();
     int dstLimit = dst.limit();
-    // read each cache file
-    int totalReadBytes = 0;
-
     // determiner the ead range
     long startPos = position;
     long endPos = position + dst.remaining();
@@ -104,6 +101,8 @@ public class OSFileChannel implements Closeable {
     if (endPos > size()) {
       endPos = size();
     }
+    // read each cache file
+    int totalReadBytes = 0;
     try {
       while (startPos < endPos) {
         if (currentOSFileBlock == null || !currentOSFileBlock.canRead(startPos)) {

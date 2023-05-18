@@ -39,11 +39,10 @@ public class CacheFileManager {
   private static final Logger logger = LoggerFactory.getLogger(CacheFileManager.class);
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
-  private final String[] cacheDirs = config.getCacheDirs();
   private final AtomicLong cacheFileId = new AtomicLong(0);
 
   private CacheFileManager() {
-    for (String cacheDir : cacheDirs) {
+    for (String cacheDir : config.getCacheDirs()) {
       File cacheDirFile = new File(cacheDir);
       if (!cacheDirFile.exists()) {
         cacheDirFile.mkdirs();
@@ -56,33 +55,48 @@ public class CacheFileManager {
   }
 
   private File getTmpCacheFile(long id) {
-    long dirId = id % cacheDirs.length;
-    return new File(cacheDirs[(int) dirId], id + TMP_CACHE_FILE_SUFFIX);
+    long dirId = id % config.getCacheDirs().length;
+    return new File(config.getCacheDirs()[(int) dirId], id + TMP_CACHE_FILE_SUFFIX);
   }
 
   private File getCacheFile(long id) {
-    long dirId = id % cacheDirs.length;
-    return new File(cacheDirs[(int) dirId], id + CACHE_FILE_SUFFIX);
+    long dirId = id % config.getCacheDirs().length;
+    return new File(config.getCacheDirs()[(int) dirId], id + CACHE_FILE_SUFFIX);
   }
 
   /** Persist data, return null when failing to persist data */
   public OSFileCacheValue persist(OSFileCacheKey key, byte[] data) {
-    OSFileCacheValue res = null;
-    long cacheFileId = getNextCacheFileId();
-    File tmpCacheFile = getTmpCacheFile(cacheFileId);
-    try (FileChannel channel =
-        FileChannel.open(tmpCacheFile.toPath(), StandardOpenOption.CREATE_NEW)) {
+    long cacheFileId;
+    File tmpCacheFile;
+    // create new tmp cache file
+    try {
+      do {
+        cacheFileId = getNextCacheFileId();
+        tmpCacheFile = getTmpCacheFile(cacheFileId);
+      } while (!tmpCacheFile.createNewFile());
+    } catch (IOException e) {
+      logger.error("Fail to create cache file.", e);
+      return null;
+    }
+    // write value into tmp cache file
+    try (FileChannel channel = FileChannel.open(tmpCacheFile.toPath(), StandardOpenOption.WRITE)) {
       ByteBuffer meta = key.serialize();
+      meta.flip();
       channel.write(meta);
       channel.write(ByteBuffer.wrap(data));
-      res =
-          new OSFileCacheValue(
-              tmpCacheFile, 0, meta.capacity(), data.length, key.getStartPosition());
     } catch (IOException e) {
-      logger.error("Fail to persist data to cache file {}", tmpCacheFile, e);
+      logger.error("Fail to persist data to cache file {}.", tmpCacheFile, e);
       tmpCacheFile.delete();
+      return null;
     }
-    return tmpCacheFile.renameTo(getCacheFile(cacheFileId)) ? res : null;
+    // rename tmp file to cache file
+    File cacheFile = getCacheFile(cacheFileId);
+    if (tmpCacheFile.renameTo(cacheFile)) {
+      return new OSFileCacheValue(
+          cacheFile, 0, key.serializeSize(), data.length, key.getStartPosition());
+    } else {
+      return null;
+    }
   }
 
   /** This method is used by the recover procedure */
