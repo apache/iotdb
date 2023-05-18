@@ -52,7 +52,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -628,7 +627,7 @@ public class MTreeBelowSGMemoryImpl {
    * @return true if the device node exists
    */
   public boolean checkDeviceNodeExists(PartialPath deviceId) {
-    IMemMNode deviceMNode = null;
+    IMemMNode deviceMNode;
     try {
       deviceMNode = getNodeByPath(deviceId);
       return deviceMNode.isDevice();
@@ -704,13 +703,6 @@ public class MTreeBelowSGMemoryImpl {
     } else {
       throw new MNodeTypeMismatchException(
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
-    }
-  }
-
-  public long countAllMeasurement() throws MetadataException {
-    try (MeasurementCounter<IMemMNode> measurementCounter =
-        new MeasurementCounter<>(rootNode, MetadataConstant.ALL_MATCH_PATTERN, store, false)) {
-      return measurementCounter.count();
     }
   }
 
@@ -823,7 +815,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
+      PartialPath activatePath, int templateId, boolean isAligned) {
     String[] nodes = activatePath.getNodes();
     IMemMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
@@ -875,6 +867,7 @@ public class MTreeBelowSGMemoryImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
+    collector.setSchemaFilter(showDevicesPlan.getSchemaFilter());
     TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, IMemMNode> traverser =
         new TraverserWithLimitOffsetWrapper<>(
             collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
@@ -956,6 +949,8 @@ public class MTreeBelowSGMemoryImpl {
             };
           }
         };
+
+    collector.setSchemaFilter(showTimeSeriesPlan.getSchemaFilter());
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     Traverser<ITimeSeriesSchemaInfo, IMemMNode> traverser;
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {

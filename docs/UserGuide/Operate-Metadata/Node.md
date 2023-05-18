@@ -134,18 +134,20 @@ It costs 0.002s
 
 ## Show Devices
 
-* SHOW DEVICES pathPattern? (WITH DATABASE)? limitClause? #showDevices
+* SHOW DEVICES pathPattern? (WITH DATABASE)? devicesWhereClause? limitClause?
 
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
 * `SHOW DEVICES` statement presents all devices' information, which is equal to `SHOW DEVICES root.**`.
 * `SHOW DEVICES <PathPattern>` statement specifies the `PathPattern` and returns the devices information matching the pathPattern and under the given level.
+* `WHERE` condition supports `DEVICE contains 'xxx'`  to do a fuzzy query based on the device name.
 
 SQL statement is as follows:
 
 ```
 IoTDB> show devices
 IoTDB> show devices root.ln.**
+IoTDB> show devices root.ln.** where device contains 't'
 ```
 
 You can get results below:

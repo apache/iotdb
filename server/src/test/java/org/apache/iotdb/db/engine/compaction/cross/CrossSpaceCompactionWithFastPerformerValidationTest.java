@@ -2149,7 +2149,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
     tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0, true);
     CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
 
     // start selecting files and then start a cross space compaction task
     ICrossSpaceSelector selector =
@@ -2289,7 +2289,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     Assert.assertEquals(0, innerSelector.selectInnerSpaceTask(targetResources).size());
 
     // first compaction task finishes successfully
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
 
     // target file of first compaction task can be selected to participate in another cross
     // compaction task
