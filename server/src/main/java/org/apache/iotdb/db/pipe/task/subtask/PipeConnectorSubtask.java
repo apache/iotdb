@@ -82,6 +82,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
           throw new UnsupportedOperationException(
               "Unsupported event type: " + event.getClass().getName());
       }
+    } catch (PipeConnectionException e) {
+      throw e;
     } catch (Exception e) {
       e.printStackTrace();
       throw new PipeException(
