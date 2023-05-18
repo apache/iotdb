@@ -47,6 +47,11 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     this.pipeMetaList = new ArrayList<>();
   }
 
+  public PipeMetaSyncProcedure(List<PipeMeta> pipeMetaList) {
+    super();
+    this.pipeMetaList = pipeMetaList;
+  }
+
   @Override
   protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.SYNC_PIPE_META;
@@ -121,7 +126,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
     ReadWriteIOUtils.write(pipeMetaList.size(), stream);
     for (PipeMeta pipeMeta : pipeMetaList) {
-      ReadWriteIOUtils.write(pipeMeta.serialize(), stream);
+      pipeMeta.serialize(stream);
     }
   }
 
