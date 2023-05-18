@@ -362,7 +362,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (modification.getDevice().equals(currentDevice.left)) {
         for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
           IChunkMetadata chunkMetadata = valueChunkMetadataList.get(i);
-          if (modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
+          if (chunkMetadata != null
+              && modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
             modificationForCurDevice.get(i).add(modification);
           }
         }
