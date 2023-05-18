@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.core.connector.manager;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.PipeIoTDBThriftConnector;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorImpl;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
@@ -58,7 +58,7 @@ public class PipeConnectorSubtaskManager {
                       PipeConnectorConstant.CONNECTOR_KEY,
                       BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
                   .equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
-              ? new PipeIoTDBThriftConnector()
+              ? new IoTDBThriftConnectorImpl()
               : PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
       try {
         pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));

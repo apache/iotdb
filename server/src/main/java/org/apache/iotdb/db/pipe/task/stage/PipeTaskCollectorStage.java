@@ -58,8 +58,8 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
     if (collectorParameters
         .getStringOrDefault(
             PipeCollectorConstant.COLLECTOR_KEY,
-            BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName())
-        .equals(BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName())) {
+            BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
+        .equals(BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())) {
       // we want to pass data region id to collector, so we need to create a new collector
       // parameters and put data region id into it. we can't put data region id into collector
       // parameters directly, because the given collector parameters may be used by other pipe task.

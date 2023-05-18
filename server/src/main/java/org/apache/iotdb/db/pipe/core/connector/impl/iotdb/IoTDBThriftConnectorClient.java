@@ -28,9 +28,10 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
-public class PipeClientRPCServiceClient extends IClientRPCService.Client
+public class IoTDBThriftConnectorClient extends IClientRPCService.Client
     implements ThriftClient, AutoCloseable {
-  public PipeClientRPCServiceClient(ThriftClientProperty property, String ipAddress, int port)
+
+  public IoTDBThriftConnectorClient(ThriftClientProperty property, String ipAddress, int port)
       throws TTransportException {
     super(
         property

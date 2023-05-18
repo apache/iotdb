@@ -52,8 +52,8 @@ import java.io.File;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
-public class PipeIoTDBThriftConnector implements PipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeIoTDBThriftConnector.class);
+public class IoTDBThriftConnectorImpl implements PipeConnector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorImpl.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final String PIPE_VERSION = PipeConfig.getInstance().getPipeVersion();
@@ -62,9 +62,9 @@ public class PipeIoTDBThriftConnector implements PipeConnector {
 
   private String ipAddress;
   private int port;
-  private PipeClientRPCServiceClient client;
+  private IoTDBThriftConnectorClient client;
 
-  public PipeIoTDBThriftConnector() {}
+  public IoTDBThriftConnectorImpl() {}
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -87,7 +87,7 @@ public class PipeIoTDBThriftConnector implements PipeConnector {
     }
 
     client =
-        new PipeClientRPCServiceClient(
+        new IoTDBThriftConnectorClient(
             new ThriftClientProperty.Builder()
                 .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
                 .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
