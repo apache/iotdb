@@ -117,12 +117,14 @@ public class DataPartition extends Partition {
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
-    if (!dataPartitionMap.containsKey(storageGroup)) {
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+        databasePartitionMap = dataPartitionMap.get(storageGroup);
+    if (databasePartitionMap == null) {
       throw new RuntimeException(
           "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
     }
     List<TRegionReplicaSet> regions =
-        dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).get(timePartitionSlot);
+        databasePartitionMap.get(seriesPartitionSlot).get(timePartitionSlot);
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there
     // are more than 1 Regions for one timeSlot
     return regions.get(0);
