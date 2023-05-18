@@ -122,6 +122,10 @@ public class DataNodeSchemaCache {
     }
   }
 
+  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath path) {
+    return deviceUsingTemplateSchemaCache.getMatchedSchemaWithTemplate(path);
+  }
+
   public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {
     return timeSeriesSchemaCache.compute(schemaComputation);
   }
