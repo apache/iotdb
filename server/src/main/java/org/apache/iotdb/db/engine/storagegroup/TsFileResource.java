@@ -461,7 +461,7 @@ public class TsFileResource {
   }
 
   public void close() throws IOException {
-    this.setStatus(TsFileResourceStatus.CLOSED);
+    this.setStatus(TsFileResourceStatus.NORMAL);
     closeWithoutSettingStatus();
   }
 
@@ -625,8 +625,8 @@ public class TsFileResource {
 
   public void setStatus(TsFileResourceStatus status) {
     switch (status) {
-      case CLOSED:
-        this.status = TsFileResourceStatus.CLOSED;
+      case NORMAL:
+        this.status = TsFileResourceStatus.NORMAL;
         break;
       case UNCLOSED:
         this.status = TsFileResourceStatus.UNCLOSED;
@@ -645,7 +645,7 @@ public class TsFileResource {
         }
         break;
       case COMPACTION_CANDIDATE:
-        if (this.status == TsFileResourceStatus.CLOSED) {
+        if (this.status == TsFileResourceStatus.NORMAL) {
           this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
         } else {
           throw new RuntimeException(

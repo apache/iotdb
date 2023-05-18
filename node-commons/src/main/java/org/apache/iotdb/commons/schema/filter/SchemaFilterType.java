@@ -16,18 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.schema.filter;
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+public enum SchemaFilterType {
+  NULL((short) -1),
+  TAGS_FILTER((short) 1),
+  PATH_CONTAINS((short) 2);
 
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
+  private final short code;
 
-import java.util.List;
+  SchemaFilterType(short code) {
+    this.code = code;
+  }
 
-/**
- * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
- * nodes needs to implement it.
- */
-public interface BatchInsertNode {
+  public short getCode() {
+    return code;
+  }
 
-  List<ISchemaValidation> getSchemaValidationList();
+  public static SchemaFilterType getSchemaFilterType(short code) {
+    switch (code) {
+      case -1:
+        return NULL;
+      case 1:
+        return TAGS_FILTER;
+      case 2:
+        return PATH_CONTAINS;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + code);
+    }
+  }
 }
