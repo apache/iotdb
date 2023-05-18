@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
-import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -52,8 +51,10 @@ public class PipeProcessorSubtask extends PipeSubtask {
   }
 
   @Override
-  protected void executeForAWhile() throws Exception {
-    Event event = inputEventSupplier.supply();
+  protected synchronized void executeForAWhile() throws Exception {
+    final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
+    // record the last event for retry when exception occurs
+    lastEvent = event;
     if (event == null) {
       return;
     }
@@ -73,22 +74,26 @@ public class PipeProcessorSubtask extends PipeSubtask {
           throw new UnsupportedOperationException(
               "Unsupported event type: " + event.getClass().getName());
       }
+
+      releaseLastEvent();
     } catch (Exception e) {
       e.printStackTrace();
       throw new PipeException(
           "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
-    } finally {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).decreaseReferenceCount(PipeProcessorSubtask.class.getName());
-      }
     }
   }
 
   @Override
-  public void close() {
+  // synchronized for pipeProcessor.close() and releaseLastEvent() in super.close().
+  // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
+  // resource leak because of the lastEvent is not released.
+  public synchronized void close() {
     try {
       pipeProcessor.close();
+
+      // should be called after pipeProcessor.close()
+      super.close();
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.info(

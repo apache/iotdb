@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.receiver.request;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request;
 
 import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -30,14 +31,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PipeValidateHandshakeReq extends TPipeHandshakeReq {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeValidateHandshakeReq.class);
+public class PipeValidateHandshakeReq extends TPipeTransferReq {
   private final String timestampPrecision;
 
-  public PipeValidateHandshakeReq(
-      String pipeVersion, String IoTDBVersion, String timestampPrecision) {
+  public PipeValidateHandshakeReq(tring timestampPrecision) {
     this.pipeVersion = pipeVersion;
-    this.IoTDBVersion = IoTDBVersion;
     this.timestampPrecision = timestampPrecision;
   }
 

@@ -17,22 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.receiver.request;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb;
 
-public enum PipeTransferReqType {
-  INSERT_NODE((short) 0),
-  FILE_PIECE((short) 1),
-  FILE_SEAL((short) 2);
+public enum IoTDBThriftConnectorType {
+  VERSION_ONE((short) 1),
+  ;
 
-  public static final int BYTES = Short.BYTES;
+  private final short type;
 
-  private final short nodeType;
-
-  PipeTransferReqType(short nodeType) {
-    this.nodeType = nodeType;
+  IoTDBThriftConnectorType(short type) {
+    this.type = type;
   }
 
-  public short getNodeType() {
-    return nodeType;
+  public short getType() {
+    return type;
   }
 }

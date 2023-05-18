@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.receiver;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -29,11 +29,11 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.core.receiver.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.core.receiver.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.core.receiver.request.PipeValidateHandshakeReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeValidateHandshakeReq;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -52,9 +52,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-public class PipeExecuteThriftRequestDirectlyHandler implements PipeThriftRequestHandler {
+public class IoTDBThriftReceiverImpl implements IoTDBThriftReceiver {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeExecuteThriftRequestDirectlyHandler.class);
+      LoggerFactory.getLogger(IoTDBThriftReceiverImpl.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String RECEIVE_DIR = PipeConfig.getInstance().getReceiveFileDir();
 

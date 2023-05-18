@@ -29,13 +29,10 @@ import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.NotThreadSafe;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
-@NotThreadSafe
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
@@ -71,7 +68,7 @@ public abstract class PipeSubtaskExecutor {
     subtask.bindExecutors(subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor);
   }
 
-  public final void start(String subTaskID) {
+  public final synchronized void start(String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
       LOGGER.warn("The subtask {} is not registered.", subTaskID);
       return;
@@ -89,7 +86,7 @@ public abstract class PipeSubtaskExecutor {
     }
   }
 
-  public final void stop(String subTaskID) {
+  public final synchronized void stop(String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
       LOGGER.warn("The subtask {} is not registered.", subTaskID);
       return;
@@ -98,7 +95,7 @@ public abstract class PipeSubtaskExecutor {
     registeredIdSubtaskMapper.get(subTaskID).disallowSubmittingSelf();
   }
 
-  public final void deregister(String subTaskID) {
+  public final synchronized void deregister(String subTaskID) {
     stop(subTaskID);
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.remove(subTaskID);
@@ -124,7 +121,7 @@ public abstract class PipeSubtaskExecutor {
 
   /////////////////////// executor management  ///////////////////////
 
-  public final void shutdown() {
+  public final synchronized void shutdown() {
     if (isShutdown()) {
       return;
     }
