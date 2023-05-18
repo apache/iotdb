@@ -626,7 +626,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       } else {
         Assert.assertTrue(resource.getTsFile().exists());
         Assert.assertTrue(resource.resourceFileExists());
-        Assert.assertEquals(TsFileResourceStatus.CLOSED, resource.getStatus());
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
       }
     }
   }

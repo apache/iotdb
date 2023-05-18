@@ -142,7 +142,7 @@ public class CrossSpaceCompactionCandidate {
   private List<TsFileResourceCandidate> filterUnseqResource(List<TsFileResource> unseqResources) {
     List<TsFileResourceCandidate> ret = new ArrayList<>();
     for (TsFileResource resource : unseqResources) {
-      if (resource.getStatus() != TsFileResourceStatus.CLOSED || !resource.getTsFile().exists()) {
+      if (resource.getStatus() != TsFileResourceStatus.NORMAL || !resource.getTsFile().exists()) {
         break;
       } else if (resource.stillLives(ttlLowerBound)) {
         ret.add(new TsFileResourceCandidate(resource));
@@ -198,7 +198,7 @@ public class CrossSpaceCompactionCandidate {
       // although we do the judgement here, the task should be validated before executing because
       // the status of file may be changed after the task is submitted to queue
       this.isValidCandidate =
-          tsFileResource.getStatus() == TsFileResourceStatus.CLOSED
+          tsFileResource.getStatus() == TsFileResourceStatus.NORMAL
               && tsFileResource.getTsFile().exists();
     }
 
