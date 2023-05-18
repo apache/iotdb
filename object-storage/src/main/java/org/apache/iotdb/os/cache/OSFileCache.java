@@ -47,8 +47,8 @@ public class OSFileCache {
    */
   private final LoadingCache<OSFileCacheKey, OSFileCacheValue> remotePos2LocalCacheFile;
 
-  OSFileCache() {
-    connector = ObjectStorageType.getConnector();
+  OSFileCache(ObjectStorageType osType) {
+    connector = ObjectStorageType.getConnector(osType);
     remotePos2LocalCacheFile =
         Caffeine.newBuilder()
             .maximumWeight(config.getCacheMaxDiskUsage())
@@ -93,6 +93,6 @@ public class OSFileCache {
   private static class InstanceHolder {
     private InstanceHolder() {}
 
-    private static final OSFileCache INSTANCE = new OSFileCache();
+    private static final OSFileCache INSTANCE = new OSFileCache(config.getOsType());
   }
 }

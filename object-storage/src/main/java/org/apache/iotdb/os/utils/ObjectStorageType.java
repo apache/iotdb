@@ -26,13 +26,17 @@ public enum ObjectStorageType {
   TEST,
   AWS_S3;
 
-  public static ObjectStorageConnector getConnector() {
-    switch (ObjectStorageDescriptor.getInstance().getConfig().getOsType()) {
+  public static ObjectStorageConnector getConnector(ObjectStorageType type) {
+    switch (type) {
       case AWS_S3:
         return new S3ObjectStorageConnector();
       case TEST:
       default:
         return null;
     }
+  }
+
+  public static ObjectStorageConnector getConnector() {
+    return getConnector(ObjectStorageDescriptor.getInstance().getConfig().getOsType());
   }
 }

@@ -57,9 +57,13 @@ public class OSFile extends File {
   private long length = 0L;
 
   public OSFile(OSURI osUri) {
+    this(osUri, config.getOsType());
+  }
+
+  public OSFile(OSURI osUri, ObjectStorageType osType) {
     super(osUri.getURI().toString());
     this.osUri = osUri;
-    connector = ObjectStorageType.getConnector();
+    connector = ObjectStorageType.getConnector(osType);
   }
 
   public OSFile(String pathname) {

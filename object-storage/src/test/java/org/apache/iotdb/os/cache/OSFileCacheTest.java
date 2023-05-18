@@ -23,6 +23,7 @@ import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
 import org.apache.iotdb.os.fileSystem.OSFile;
 import org.apache.iotdb.os.fileSystem.OSURI;
 import org.apache.iotdb.os.io.ObjectStorageConnector;
+import org.apache.iotdb.os.utils.ObjectStorageType;
 
 import org.junit.After;
 import org.junit.Before;
@@ -48,8 +49,12 @@ public class OSFileCacheTest {
   private static final File cacheDir = new File("target" + File.separator + "cache");
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
-  @InjectMocks private OSFileCache cache = new OSFileCache();
-  @InjectMocks private OSFile testFile = new OSFile(new OSURI("test_bucket", "test_key"));
+  @InjectMocks private OSFileCache cache = new OSFileCache(ObjectStorageType.TEST);
+
+  @InjectMocks
+  private OSFile testFile =
+      new OSFile(new OSURI("test_bucket", "test_key"), ObjectStorageType.TEST);
+
   @Mock private ObjectStorageConnector connector;
   private int prevCachePageSize;
   private String[] prevCacheDirs;

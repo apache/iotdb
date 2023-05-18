@@ -24,7 +24,7 @@ import org.apache.iotdb.os.utils.ObjectStorageType;
 import java.io.File;
 
 public class ObjectStorageConfig {
-  private ObjectStorageType osType = ObjectStorageType.TEST;
+  private ObjectStorageType osType = ObjectStorageType.AWS_S3;
 
   private AWSS3Config awss3Config = new AWSS3Config();
 
