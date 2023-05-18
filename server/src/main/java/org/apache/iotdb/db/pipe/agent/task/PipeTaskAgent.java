@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -61,6 +62,8 @@ public class PipeTaskAgent {
 
   private final PipeMetaKeeper pipeMetaKeeper;
   private final PipeTaskManager pipeTaskManager;
+
+  private boolean isDataNodeRemoving = false;
 
   public PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
@@ -322,6 +325,10 @@ public class PipeTaskAgent {
 
   // TODO: handle progress index
   public synchronized void handlePipeMetaChanges(List<PipeMeta> pipeMetaListFromConfigNode) {
+    // Do nothing if the dataNode is marked as removing, because all the pipes are already dropped
+    if (isDataNodeRemoving) {
+      return;
+    }
     // iterate through pipe meta list from config node, check if pipe meta exists on data node
     // or has changed
     for (final PipeMeta metaFromConfigNode : pipeMetaListFromConfigNode) {
@@ -521,6 +528,20 @@ public class PipeTaskAgent {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
       pipeTask.stop();
+    }
+  }
+
+  public void handleDataNodeRemove() {
+    isDataNodeRemoving = true;
+    // TODO: stop metaSync process
+
+    // Deepcopy the references to pipeNames here instead of iterating directly over it, because the
+    // result of modifying map when Iterating over its keySet is undefined according to the jdk
+    // document.
+    List<String> pipeNames = new ArrayList<>();
+    pipeMetaKeeper.getPipeNameList().forEach(pipeNames::add);
+    for (String pipeName : pipeNames) {
+      dropPipe(pipeName);
     }
   }
 }
