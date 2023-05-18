@@ -22,7 +22,6 @@ package org.apache.iotdb.metrics.type;
 import java.util.Map;
 
 public interface Gauge extends IMetric {
-  // TODO @spricoder extend to double
   /** Set value. */
   void set(long value);
 

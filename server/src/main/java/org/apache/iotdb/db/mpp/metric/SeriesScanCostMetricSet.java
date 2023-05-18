@@ -34,14 +34,19 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   // TODO @spricoder
   public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
+  private static final String LOAD_TIMESERIES_METADATA = "load_timeseries_metadata";
+  private static final String ALIGNED = "aligned";
+  private static final String NON_ALIGNED = "non_aligned";
+  private static final String MEM = "mem";
+  private static final String DISK = "disk";
   public static final String LOAD_TIMESERIES_METADATA_ALIGNED_MEM =
-      "load_timeseries_metadata_aligned_mem";
+      LOAD_TIMESERIES_METADATA + "_" + ALIGNED + "_" + MEM;
   public static final String LOAD_TIMESERIES_METADATA_ALIGNED_DISK =
-      "load_timeseries_metadata_aligned_disk";
+      LOAD_TIMESERIES_METADATA + "_" + ALIGNED + "_" + DISK;
   public static final String LOAD_TIMESERIES_METADATA_NONALIGNED_MEM =
-      "load_timeseries_metadata_nonaligned_mem";
+      LOAD_TIMESERIES_METADATA + "_" + NON_ALIGNED + "_" + MEM;
   public static final String LOAD_TIMESERIES_METADATA_NONALIGNED_DISK =
-      "load_timeseries_metadata_nonaligned_disk";
+      LOAD_TIMESERIES_METADATA + "_" + NON_ALIGNED + "_" + DISK;
 
   static {
     metricInfoMap.put(
@@ -50,48 +55,53 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "load_timeseries_metadata",
+            LOAD_TIMESERIES_METADATA,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "load_timeseries_metadata",
+            LOAD_TIMESERIES_METADATA,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
     metricInfoMap.put(
         LOAD_TIMESERIES_METADATA_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "load_timeseries_metadata",
+            LOAD_TIMESERIES_METADATA,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "load_timeseries_metadata",
+            LOAD_TIMESERIES_METADATA,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
   }
 
-  public static final String READ_TIMESERIES_METADATA_CACHE = "read_timeseries_metadata_cache";
-  public static final String READ_TIMESERIES_METADATA_FILE = "read_timeseries_metadata_file";
+  private static final String READ_TIMESERIES_METADATA = "read_timeseries_metadata";
+  private static final String CACHE = "cache";
+  private static final String FILE = "file";
+  private static final String NULL = "null";
+  public static final String READ_TIMESERIES_METADATA_CACHE =
+      READ_TIMESERIES_METADATA + "_" + CACHE;
+  public static final String READ_TIMESERIES_METADATA_FILE = READ_TIMESERIES_METADATA + "_" + FILE;
 
   static {
     metricInfoMap.put(
@@ -100,28 +110,29 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "read_timeseries_metadata",
+            READ_TIMESERIES_METADATA,
             Tag.TYPE.toString(),
-            "null",
+            NULL,
             Tag.FROM.toString(),
-            "cache"));
+            CACHE));
     metricInfoMap.put(
         READ_TIMESERIES_METADATA_FILE,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "read_timeseries_metadata",
+            READ_TIMESERIES_METADATA,
             Tag.TYPE.toString(),
-            "null",
+            NULL,
             Tag.FROM.toString(),
-            "file"));
+            FILE));
   }
 
+  private static final String TIMESERIES_METADATA_MODIFICATION = "timeseries_metadata_modification";
   public static final String TIMESERIES_METADATA_MODIFICATION_ALIGNED =
-      "timeseries_metadata_modification_aligned";
+      TIMESERIES_METADATA_MODIFICATION + "_" + ALIGNED;
   public static final String TIMESERIES_METADATA_MODIFICATION_NONALIGNED =
-      "timeseries_metadata_modification_nonaligned";
+      TIMESERIES_METADATA_MODIFICATION + "_" + NON_ALIGNED;
 
   static {
     metricInfoMap.put(
@@ -130,32 +141,33 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "timeseries_metadata_modification",
+            TIMESERIES_METADATA_MODIFICATION,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "null"));
+            NULL));
     metricInfoMap.put(
         TIMESERIES_METADATA_MODIFICATION_NONALIGNED,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "timeseries_metadata_modification",
+            TIMESERIES_METADATA_MODIFICATION,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "null"));
+            NULL));
   }
 
+  private static final String LOAD_CHUNK_METADATA_LIST = "load_chunk_metadata_list";
   public static final String LOAD_CHUNK_METADATA_LIST_ALIGNED_MEM =
-      "load_chunk_metadata_list_aligned_mem";
+      LOAD_CHUNK_METADATA_LIST + "_" + ALIGNED + "_" + MEM;
   public static final String LOAD_CHUNK_METADATA_LIST_ALIGNED_DISK =
-      "load_chunk_metadata_list_aligned_disk";
+      LOAD_CHUNK_METADATA_LIST + "_" + ALIGNED + "_" + DISK;
   public static final String LOAD_CHUNK_METADATA_LIST_NONALIGNED_MEM =
-      "load_chunk_metadata_list_nonaligned_mem";
+      LOAD_CHUNK_METADATA_LIST + "_" + NON_ALIGNED + "_" + MEM;
   public static final String LOAD_CHUNK_METADATA_LIST_NONALIGNED_DISK =
-      "load_chunk_metadata_list_nonaligned_disk";
+      LOAD_CHUNK_METADATA_LIST + "_" + NON_ALIGNED + "_" + DISK;
 
   static {
     metricInfoMap.put(
@@ -164,54 +176,55 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "load_chunk_metadata_list",
+            LOAD_CHUNK_METADATA_LIST,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         LOAD_CHUNK_METADATA_LIST_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "load_chunk_metadata_list",
+            LOAD_CHUNK_METADATA_LIST,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
     metricInfoMap.put(
         LOAD_CHUNK_METADATA_LIST_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "load_chunk_metadata_list",
+            LOAD_CHUNK_METADATA_LIST,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         LOAD_CHUNK_METADATA_LIST_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "load_chunk_metadata_list",
+            LOAD_CHUNK_METADATA_LIST,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
   }
 
+  private static final String CHUNK_METADATA_MODIFICATION = "chunk_metadata_modification";
   public static final String CHUNK_METADATA_MODIFICATION_ALIGNED_MEM =
-      "chunk_metadata_modification_aligned_mem";
+      CHUNK_METADATA_MODIFICATION + "_" + ALIGNED + "_" + MEM;
   public static final String CHUNK_METADATA_MODIFICATION_ALIGNED_DISK =
-      "chunk_metadata_modification_aligned_disk";
+      CHUNK_METADATA_MODIFICATION + "_" + ALIGNED + "_" + DISK;
   public static final String CHUNK_METADATA_MODIFICATION_NONALIGNED_MEM =
-      "chunk_metadata_modification_nonaligned_mem";
+      CHUNK_METADATA_MODIFICATION + "_" + NON_ALIGNED + "_" + MEM;
   public static final String CHUNK_METADATA_MODIFICATION_NONALIGNED_DISK =
-      "chunk_metadata_modification_nonaligned_disk";
+      CHUNK_METADATA_MODIFICATION + "_" + NON_ALIGNED + "_" + DISK;
 
   static {
     metricInfoMap.put(
@@ -220,54 +233,55 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "chunk_metadata_modification",
+            CHUNK_METADATA_MODIFICATION,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         CHUNK_METADATA_MODIFICATION_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "chunk_metadata_modification",
+            CHUNK_METADATA_MODIFICATION,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
     metricInfoMap.put(
         CHUNK_METADATA_MODIFICATION_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "chunk_metadata_modification",
+            CHUNK_METADATA_MODIFICATION,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         CHUNK_METADATA_MODIFICATION_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "chunk_metadata_modification",
+            CHUNK_METADATA_MODIFICATION,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
   }
 
+  private static final String CHUNK_METADATA_FILTER = "chunk_metadata_filter";
   public static final String CHUNK_METADATA_FILTER_ALIGNED_MEM =
-      "chunk_metadata_filter_aligned_mem";
+      CHUNK_METADATA_FILTER + "_" + ALIGNED + "_" + MEM;
   public static final String CHUNK_METADATA_FILTER_ALIGNED_DISK =
-      "chunk_metadata_filter_aligned_disk";
+      CHUNK_METADATA_FILTER + "_" + ALIGNED + "_" + DISK;
   public static final String CHUNK_METADATA_FILTER_NONALIGNED_MEM =
-      "chunk_metadata_filter_nonaligned_mem";
+      CHUNK_METADATA_FILTER + "_" + NON_ALIGNED + "_" + MEM;
   public static final String CHUNK_METADATA_FILTER_NONALIGNED_DISK =
-      "chunk_metadata_filter_nonaligned_disk";
+      CHUNK_METADATA_FILTER + "_" + NON_ALIGNED + "_" + DISK;
 
   static {
     metricInfoMap.put(
@@ -276,54 +290,55 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "chunk_metadata_filter",
+            CHUNK_METADATA_FILTER,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         CHUNK_METADATA_FILTER_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "chunk_metadata_filter",
+            CHUNK_METADATA_FILTER,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
     metricInfoMap.put(
         CHUNK_METADATA_FILTER_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "chunk_metadata_filter",
+            CHUNK_METADATA_FILTER,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         CHUNK_METADATA_FILTER_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "chunk_metadata_filter",
+            CHUNK_METADATA_FILTER,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
   }
 
+  private static final String CONSTRUCT_CHUNK_READER = "construct_chunk_reader";
   public static final String CONSTRUCT_CHUNK_READER_ALIGNED_MEM =
-      "construct_chunk_reader_aligned_mem";
+      CONSTRUCT_CHUNK_READER + "_" + ALIGNED + "_" + MEM;
   public static final String CONSTRUCT_CHUNK_READER_ALIGNED_DISK =
-      "construct_chunk_reader_aligned_disk";
+      CONSTRUCT_CHUNK_READER + "_" + ALIGNED + "_" + DISK;
   public static final String CONSTRUCT_CHUNK_READER_NONALIGNED_MEM =
-      "construct_chunk_reader_nonaligned_mem";
+      CONSTRUCT_CHUNK_READER + "_" + NON_ALIGNED + "_" + MEM;
   public static final String CONSTRUCT_CHUNK_READER_NONALIGNED_DISK =
-      "construct_chunk_reader_nonaligned_disk";
+      CONSTRUCT_CHUNK_READER + "_" + NON_ALIGNED + "_" + DISK;
 
   static {
     metricInfoMap.put(
@@ -332,48 +347,50 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "construct_chunk_reader",
+            CONSTRUCT_CHUNK_READER,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         CONSTRUCT_CHUNK_READER_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "construct_chunk_reader",
+            CONSTRUCT_CHUNK_READER,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
     metricInfoMap.put(
         CONSTRUCT_CHUNK_READER_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "construct_chunk_reader",
+            CONSTRUCT_CHUNK_READER,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         CONSTRUCT_CHUNK_READER_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "construct_chunk_reader",
+            CONSTRUCT_CHUNK_READER,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
   }
 
-  public static final String READ_CHUNK_ALL = "read_chunk_all";
-  public static final String READ_CHUNK_FILE = "read_chunk_file";
+  private static final String READ_CHUNK = "read_chunk";
+  private static final String ALL = "all";
+  public static final String READ_CHUNK_ALL = READ_CHUNK + "_" + ALL;
+  public static final String READ_CHUNK_FILE = READ_CHUNK + "_" + FILE;
 
   static {
     metricInfoMap.put(
@@ -382,29 +399,33 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "read_chunk",
+            READ_CHUNK,
             Tag.TYPE.toString(),
-            "null",
+            NULL,
             Tag.FROM.toString(),
-            "all"));
+            ALL));
     metricInfoMap.put(
         READ_CHUNK_FILE,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "read_chunk",
+            READ_CHUNK,
             Tag.TYPE.toString(),
-            "null",
+            NULL,
             Tag.FROM.toString(),
-            "file"));
+            FILE));
   }
 
-  public static final String INIT_CHUNK_READER_ALIGNED_MEM = "init_chunk_reader_aligned_mem";
-  public static final String INIT_CHUNK_READER_ALIGNED_DISK = "init_chunk_reader_aligned_disk";
-  public static final String INIT_CHUNK_READER_NONALIGNED_MEM = "init_chunk_reader_nonaligned_mem";
+  private static final String INIT_CHUNK_READER = "init_chunk_reader";
+  public static final String INIT_CHUNK_READER_ALIGNED_MEM =
+      INIT_CHUNK_READER + "_" + ALIGNED + "_" + MEM;
+  public static final String INIT_CHUNK_READER_ALIGNED_DISK =
+      INIT_CHUNK_READER + "_" + ALIGNED + "_" + DISK;
+  public static final String INIT_CHUNK_READER_NONALIGNED_MEM =
+      INIT_CHUNK_READER + "_" + NON_ALIGNED + "_" + MEM;
   public static final String INIT_CHUNK_READER_NONALIGNED_DISK =
-      "init_chunk_reader_nonaligned_disk";
+      INIT_CHUNK_READER + "_" + NON_ALIGNED + "_" + DISK;
 
   static {
     metricInfoMap.put(
@@ -413,54 +434,55 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "init_chunk_reader",
+            INIT_CHUNK_READER,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         INIT_CHUNK_READER_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "init_chunk_reader",
+            INIT_CHUNK_READER,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
     metricInfoMap.put(
         INIT_CHUNK_READER_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "init_chunk_reader",
+            INIT_CHUNK_READER,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         INIT_CHUNK_READER_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "init_chunk_reader",
+            INIT_CHUNK_READER,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
   }
 
+  private static final String BUILD_TSBLOCK_FROM_PAGE_READER = "build_tsblock_from_page_reader";
   public static final String BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM =
-      "build_tsblock_from_page_reader_aligned_mem";
+      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + ALIGNED + "_" + MEM;
   public static final String BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK =
-      "build_tsblock_from_page_reader_aligned_disk";
+      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + ALIGNED + "_" + DISK;
   public static final String BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM =
-      "build_tsblock_from_page_reader_nonaligned_mem";
+      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + NON_ALIGNED + "_" + MEM;
   public static final String BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK =
-      "build_tsblock_from_page_reader_nonaligned_disk";
+      BUILD_TSBLOCK_FROM_PAGE_READER + "_" + NON_ALIGNED + "_" + DISK;
 
   static {
     metricInfoMap.put(
@@ -469,50 +491,51 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "build_tsblock_from_page_reader",
+            BUILD_TSBLOCK_FROM_PAGE_READER,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "build_tsblock_from_page_reader",
+            BUILD_TSBLOCK_FROM_PAGE_READER,
             Tag.TYPE.toString(),
-            "aligned",
+            ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
     metricInfoMap.put(
         BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "build_tsblock_from_page_reader",
+            BUILD_TSBLOCK_FROM_PAGE_READER,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "mem"));
+            MEM));
     metricInfoMap.put(
         BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "build_tsblock_from_page_reader",
+            BUILD_TSBLOCK_FROM_PAGE_READER,
             Tag.TYPE.toString(),
-            "non_aligned",
+            NON_ALIGNED,
             Tag.FROM.toString(),
-            "disk"));
+            DISK));
   }
 
+  private static final String BUILD_TSBLOCK_FROM_MERGE_READER = "build_tsblock_from_merge_reader";
   public static final String BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED =
-      "build_tsblock_from_merge_reader_aligned";
+      BUILD_TSBLOCK_FROM_MERGE_READER + "_" + ALIGNED;
   public static final String BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED =
-      "build_tsblock_from_merge_reader_nonaligned";
+      BUILD_TSBLOCK_FROM_MERGE_READER + "_" + NON_ALIGNED;
 
   static {
     metricInfoMap.put(
@@ -521,22 +544,22 @@ public class SeriesScanCostMetricSet implements IMetricSet {
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "build_tsblock_from_merge_reader",
+            BUILD_TSBLOCK_FROM_MERGE_READER,
             Tag.FROM.toString(),
-            "null",
+            NULL,
             Tag.TYPE.toString(),
-            "aligned"));
+            ALIGNED));
     metricInfoMap.put(
         BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED,
         new MetricInfo(
             MetricType.TIMER,
             Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
-            "build_tsblock_from_merge_reader",
+            BUILD_TSBLOCK_FROM_MERGE_READER,
             Tag.FROM.toString(),
-            "null",
+            NULL,
             Tag.TYPE.toString(),
-            "non_aligned"));
+            NON_ALIGNED));
   }
 
   @Override
