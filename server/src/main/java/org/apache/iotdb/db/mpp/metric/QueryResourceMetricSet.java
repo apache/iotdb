@@ -36,23 +36,22 @@ public class QueryResourceMetricSet implements IMetricSet {
   public static final String FLUSHING_MEMTABLE = "flushing_memtable";
   public static final String WORKING_MEMTABLE = "working_memtable";
 
-  private static final String metric = Metric.QUERY_RESOURCE.toString();
-  private final String tagKey = Tag.TYPE.toString();
-
   private static final List<String> resourceTypes =
       Arrays.asList(SEQUENCE_TSFILE, UNSEQUENCE_TSFILE, FLUSHING_MEMTABLE, WORKING_MEMTABLE);
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
     for (String type : resourceTypes) {
-      metricService.getOrCreateHistogram(metric, MetricLevel.IMPORTANT, tagKey, type);
+      metricService.getOrCreateHistogram(
+          Metric.QUERY_RESOURCE.toString(), MetricLevel.IMPORTANT, Tag.TYPE.toString(), type);
     }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (String type : resourceTypes) {
-      metricService.remove(MetricType.HISTOGRAM, metric, tagKey, type);
+      metricService.remove(
+          MetricType.HISTOGRAM, Metric.QUERY_RESOURCE.toString(), Tag.TYPE.toString(), type);
     }
   }
 }

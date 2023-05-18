@@ -61,8 +61,12 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     MppDataExchangeServiceThriftHandlerMetrics that =
         (MppDataExchangeServiceThriftHandlerMetrics) o;
     return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);

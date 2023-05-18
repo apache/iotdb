@@ -48,7 +48,9 @@ public class CompactionMetricsManager {
   private final AtomicInteger finishUnseqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger finishCrossCompactionTaskNum = new AtomicInteger(0);
 
-  private CompactionMetricsManager() {}
+  private CompactionMetricsManager() {
+    // empty constructor
+  }
 
   public static CompactionMetricsManager getInstance() {
     return INSTANCE;

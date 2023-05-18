@@ -55,14 +55,14 @@ public class PartitionMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindRegionPartitionMetrics(metricService);
-    bindDataNodePartitionMetrics();
+    bindDataNodePartitionMetrics(metricService);
     bindDatabasePartitionMetrics(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     unbindRegionPartitionMetrics(metricService);
-    unbindDataNodePartitionMetrics();
+    unbindDataNodePartitionMetrics(metricService);
     unbindDatabasePartitionMetrics(metricService);
   }
 
@@ -116,8 +116,8 @@ public class PartitionMetrics implements IMetricSet {
     }
   }
 
-  public static void bindDataNodePartitionMetrics(IManager configManager, int dataNodeId) {
-    MetricService metricService = MetricService.getInstance();
+  public static void bindDataNodePartitionMetrics(
+      AbstractMetricService metricService, IManager configManager, int dataNodeId) {
     NodeManager nodeManager = configManager.getNodeManager();
     PartitionManager partitionManager = configManager.getPartitionManager();
     LoadManager loadManager = configManager.getLoadManager();
@@ -167,17 +167,16 @@ public class PartitionMetrics implements IMetricSet {
         TConsensusGroupType.DataRegion.toString());
   }
 
-  private void bindDataNodePartitionMetrics() {
+  private void bindDataNodePartitionMetrics(AbstractMetricService metricService) {
     List<TDataNodeConfiguration> registerDataNodes = getNodeManager().getRegisteredDataNodes();
     for (TDataNodeConfiguration dataNodeConfiguration : registerDataNodes) {
       int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-      bindDataNodePartitionMetrics(configManager, dataNodeId);
+      bindDataNodePartitionMetrics(metricService, configManager, dataNodeId);
     }
   }
 
-  public static void unbindDataNodePartitionMetrics(String dataNodeName) {
-    MetricService metricService = MetricService.getInstance();
-
+  public static void unbindDataNodePartitionMetrics(
+      AbstractMetricService metricService, String dataNodeName) {
     // Remove the number of Regions in the specified DataNode
     metricService.remove(
         MetricType.AUTO_GAUGE,
@@ -211,13 +210,13 @@ public class PartitionMetrics implements IMetricSet {
         TConsensusGroupType.DataRegion.toString());
   }
 
-  private void unbindDataNodePartitionMetrics() {
+  private void unbindDataNodePartitionMetrics(AbstractMetricService metricService) {
     List<TDataNodeConfiguration> registerDataNodes = getNodeManager().getRegisteredDataNodes();
     for (TDataNodeConfiguration dataNodeConfiguration : registerDataNodes) {
       String dataNodeName =
           NodeUrlUtils.convertTEndPointUrl(
               dataNodeConfiguration.getLocation().getClientRpcEndPoint());
-      unbindDataNodePartitionMetrics(dataNodeName);
+      unbindDataNodePartitionMetrics(metricService, dataNodeName);
     }
   }
 

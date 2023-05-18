@@ -31,9 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SeriesScanCostMetricSet implements IMetricSet {
-
-  private static final String metric = Metric.SERIES_SCAN_COST.toString();
-
+  // TODO @spricoder
   public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
   public static final String LOAD_TIMESERIES_METADATA_ALIGNED_MEM =
@@ -50,7 +48,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         LOAD_TIMESERIES_METADATA_ALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "load_timeseries_metadata",
             Tag.TYPE.toString(),
@@ -61,7 +59,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         LOAD_TIMESERIES_METADATA_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "load_timeseries_metadata",
             Tag.TYPE.toString(),
@@ -72,7 +70,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         LOAD_TIMESERIES_METADATA_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "load_timeseries_metadata",
             Tag.TYPE.toString(),
@@ -83,7 +81,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "load_timeseries_metadata",
             Tag.TYPE.toString(),
@@ -100,7 +98,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         READ_TIMESERIES_METADATA_CACHE,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "read_timeseries_metadata",
             Tag.TYPE.toString(),
@@ -111,7 +109,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         READ_TIMESERIES_METADATA_FILE,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "read_timeseries_metadata",
             Tag.TYPE.toString(),
@@ -130,7 +128,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         TIMESERIES_METADATA_MODIFICATION_ALIGNED,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "timeseries_metadata_modification",
             Tag.TYPE.toString(),
@@ -141,7 +139,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         TIMESERIES_METADATA_MODIFICATION_NONALIGNED,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "timeseries_metadata_modification",
             Tag.TYPE.toString(),
@@ -164,7 +162,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         LOAD_CHUNK_METADATA_LIST_ALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "load_chunk_metadata_list",
             Tag.TYPE.toString(),
@@ -175,7 +173,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         LOAD_CHUNK_METADATA_LIST_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "load_chunk_metadata_list",
             Tag.TYPE.toString(),
@@ -186,7 +184,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         LOAD_CHUNK_METADATA_LIST_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "load_chunk_metadata_list",
             Tag.TYPE.toString(),
@@ -197,7 +195,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         LOAD_CHUNK_METADATA_LIST_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "load_chunk_metadata_list",
             Tag.TYPE.toString(),
@@ -220,7 +218,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CHUNK_METADATA_MODIFICATION_ALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "chunk_metadata_modification",
             Tag.TYPE.toString(),
@@ -231,7 +229,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CHUNK_METADATA_MODIFICATION_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "chunk_metadata_modification",
             Tag.TYPE.toString(),
@@ -242,7 +240,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CHUNK_METADATA_MODIFICATION_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "chunk_metadata_modification",
             Tag.TYPE.toString(),
@@ -253,7 +251,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CHUNK_METADATA_MODIFICATION_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "chunk_metadata_modification",
             Tag.TYPE.toString(),
@@ -276,7 +274,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CHUNK_METADATA_FILTER_ALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "chunk_metadata_filter",
             Tag.TYPE.toString(),
@@ -287,7 +285,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CHUNK_METADATA_FILTER_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "chunk_metadata_filter",
             Tag.TYPE.toString(),
@@ -298,7 +296,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CHUNK_METADATA_FILTER_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "chunk_metadata_filter",
             Tag.TYPE.toString(),
@@ -309,7 +307,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CHUNK_METADATA_FILTER_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "chunk_metadata_filter",
             Tag.TYPE.toString(),
@@ -332,7 +330,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CONSTRUCT_CHUNK_READER_ALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "construct_chunk_reader",
             Tag.TYPE.toString(),
@@ -343,7 +341,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CONSTRUCT_CHUNK_READER_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "construct_chunk_reader",
             Tag.TYPE.toString(),
@@ -354,7 +352,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CONSTRUCT_CHUNK_READER_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "construct_chunk_reader",
             Tag.TYPE.toString(),
@@ -365,7 +363,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         CONSTRUCT_CHUNK_READER_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "construct_chunk_reader",
             Tag.TYPE.toString(),
@@ -382,7 +380,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         READ_CHUNK_ALL,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "read_chunk",
             Tag.TYPE.toString(),
@@ -393,7 +391,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         READ_CHUNK_FILE,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "read_chunk",
             Tag.TYPE.toString(),
@@ -413,7 +411,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         INIT_CHUNK_READER_ALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "init_chunk_reader",
             Tag.TYPE.toString(),
@@ -424,7 +422,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         INIT_CHUNK_READER_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "init_chunk_reader",
             Tag.TYPE.toString(),
@@ -435,7 +433,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         INIT_CHUNK_READER_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "init_chunk_reader",
             Tag.TYPE.toString(),
@@ -446,7 +444,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         INIT_CHUNK_READER_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "init_chunk_reader",
             Tag.TYPE.toString(),
@@ -469,7 +467,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "build_tsblock_from_page_reader",
             Tag.TYPE.toString(),
@@ -480,7 +478,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "build_tsblock_from_page_reader",
             Tag.TYPE.toString(),
@@ -491,7 +489,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_MEM,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "build_tsblock_from_page_reader",
             Tag.TYPE.toString(),
@@ -502,7 +500,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         BUILD_TSBLOCK_FROM_PAGE_READER_NONALIGNED_DISK,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "build_tsblock_from_page_reader",
             Tag.TYPE.toString(),
@@ -521,7 +519,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "build_tsblock_from_merge_reader",
             Tag.FROM.toString(),
@@ -532,7 +530,7 @@ public class SeriesScanCostMetricSet implements IMetricSet {
         BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.SERIES_SCAN_COST.toString(),
             Tag.STAGE.toString(),
             "build_tsblock_from_merge_reader",
             Tag.FROM.toString(),
@@ -552,7 +550,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (MetricInfo metricInfo : metricInfoMap.values()) {
-      metricService.remove(MetricType.TIMER, metric, metricInfo.getTagsInArray());
+      metricService.remove(
+          MetricType.TIMER, Metric.SERIES_SCAN_COST.toString(), metricInfo.getTagsInArray());
     }
   }
 }

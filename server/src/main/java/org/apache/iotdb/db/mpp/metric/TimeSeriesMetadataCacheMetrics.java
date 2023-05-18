@@ -43,7 +43,7 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
-        l -> (long) timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio(),
+        l -> timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio(),
         Tag.NAME.toString(),
         "timeSeriesMeta");
     metricService.createAutoGauge(
@@ -65,8 +65,12 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     TimeSeriesMetadataCacheMetrics that = (TimeSeriesMetadataCacheMetrics) o;
     return Objects.equals(timeSeriesMetadataCache, that.timeSeriesMetadataCache);
   }

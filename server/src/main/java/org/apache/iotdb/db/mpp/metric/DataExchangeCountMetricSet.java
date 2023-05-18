@@ -31,75 +31,79 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DataExchangeCountMetricSet implements IMetricSet {
-
-  private static final String metric = Metric.DATA_EXCHANGE_COUNT.toString();
-
   public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
-  public static final String SEND_NEW_DATA_BLOCK_NUM_CALLER = "send_new_data_block_num_caller";
-  public static final String SEND_NEW_DATA_BLOCK_NUM_SERVER = "send_new_data_block_num_server";
+  public static final String CALLER = "caller";
+  public static final String SERVER = "server";
+  private static final String SEND_NEW_DATA_BLOCK_NUM = "send_new_data_block_num";
+  public static final String SEND_NEW_DATA_BLOCK_NUM_CALLER =
+      SEND_NEW_DATA_BLOCK_NUM + "_" + CALLER;
+  public static final String SEND_NEW_DATA_BLOCK_NUM_SERVER =
+      SEND_NEW_DATA_BLOCK_NUM + "_" + SERVER;
+  private static final String ON_ACKNOWLEDGE_DATA_BLOCK_NUM = "on_acknowledge_data_block_num";
   public static final String ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER =
-      "on_acknowledge_data_block_num_caller";
+      ON_ACKNOWLEDGE_DATA_BLOCK_NUM + "_" + CALLER;
   public static final String ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER =
-      "on_acknowledge_data_block_num_server";
-  public static final String GET_DATA_BLOCK_NUM_CALLER = "get_data_block_num_caller";
-  public static final String GET_DATA_BLOCK_NUM_SERVER = "get_data_block_num_server";
+      ON_ACKNOWLEDGE_DATA_BLOCK_NUM + "_" + SERVER;
+  private static final String GET_DATA_BLOCK_NUM = "get_data_block_num";
+  public static final String GET_DATA_BLOCK_NUM_CALLER = GET_DATA_BLOCK_NUM + "_" + CALLER;
+  public static final String GET_DATA_BLOCK_NUM_SERVER = GET_DATA_BLOCK_NUM + "_" + SERVER;
 
   static {
     metricInfoMap.put(
         SEND_NEW_DATA_BLOCK_NUM_CALLER,
         new MetricInfo(
             MetricType.HISTOGRAM,
-            metric,
+            Metric.DATA_EXCHANGE_COUNT.toString(),
             Tag.NAME.toString(),
-            "send_new_data_block_num",
+            SEND_NEW_DATA_BLOCK_NUM,
             Tag.TYPE.toString(),
-            "caller"));
+            CALLER));
     metricInfoMap.put(
         SEND_NEW_DATA_BLOCK_NUM_SERVER,
         new MetricInfo(
             MetricType.HISTOGRAM,
-            metric,
+            Metric.DATA_EXCHANGE_COUNT.toString(),
             Tag.NAME.toString(),
-            "send_new_data_block_num",
+            SEND_NEW_DATA_BLOCK_NUM,
             Tag.TYPE.toString(),
-            "server"));
+            SERVER));
     metricInfoMap.put(
         ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER,
         new MetricInfo(
             MetricType.HISTOGRAM,
-            metric,
+            Metric.DATA_EXCHANGE_COUNT.toString(),
             Tag.NAME.toString(),
-            "on_acknowledge_data_block_num",
+            ON_ACKNOWLEDGE_DATA_BLOCK_NUM,
             Tag.TYPE.toString(),
-            "caller"));
+            CALLER));
     metricInfoMap.put(
         ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER,
         new MetricInfo(
             MetricType.HISTOGRAM,
-            metric,
+            Metric.DATA_EXCHANGE_COUNT.toString(),
             Tag.NAME.toString(),
-            "on_acknowledge_data_block_num",
+            ON_ACKNOWLEDGE_DATA_BLOCK_NUM,
             Tag.TYPE.toString(),
-            "server"));
+            SERVER));
     metricInfoMap.put(
         GET_DATA_BLOCK_NUM_CALLER,
         new MetricInfo(
             MetricType.HISTOGRAM,
-            metric,
+            Metric.DATA_EXCHANGE_COUNT.toString(),
             Tag.NAME.toString(),
-            "get_data_block_num",
+            GET_DATA_BLOCK_NUM,
             Tag.TYPE.toString(),
-            "caller"));
+            CALLER));
     metricInfoMap.put(
         GET_DATA_BLOCK_NUM_SERVER,
         new MetricInfo(
             MetricType.HISTOGRAM,
-            metric,
+            Metric.DATA_EXCHANGE_COUNT.toString(),
             Tag.NAME.toString(),
-            "get_data_block_num",
+            GET_DATA_BLOCK_NUM,
             Tag.TYPE.toString(),
-            "server"));
+            SERVER));
   }
 
   @Override
@@ -113,7 +117,8 @@ public class DataExchangeCountMetricSet implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (MetricInfo metricInfo : metricInfoMap.values()) {
-      metricService.remove(MetricType.HISTOGRAM, metric, metricInfo.getTagsInArray());
+      metricService.remove(
+          MetricType.HISTOGRAM, Metric.DATA_EXCHANGE_COUNT.toString(), metricInfo.getTagsInArray());
     }
   }
 }

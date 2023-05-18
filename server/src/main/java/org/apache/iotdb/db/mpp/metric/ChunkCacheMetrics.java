@@ -43,7 +43,7 @@ public class ChunkCacheMetrics implements IMetricSet {
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         chunkCache,
-        o -> (long) o.getHitRate(),
+        ChunkCache::getHitRate,
         Tag.NAME.toString(),
         "chunk");
   }
@@ -56,8 +56,12 @@ public class ChunkCacheMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     ChunkCacheMetrics that = (ChunkCacheMetrics) o;
     return Objects.equals(chunkCache, that.chunkCache);
   }

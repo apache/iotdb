@@ -77,8 +77,12 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DataNodeSchemaCacheMetrics that = (DataNodeSchemaCacheMetrics) o;
     return Objects.equals(dataNodeSchemaCache, that.dataNodeSchemaCache);
   }

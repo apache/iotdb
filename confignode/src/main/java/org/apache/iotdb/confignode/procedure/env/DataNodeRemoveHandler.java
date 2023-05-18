@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
@@ -566,6 +567,7 @@ public class DataNodeRemoveHandler {
 
     // Remove metrics
     PartitionMetrics.unbindDataNodePartitionMetrics(
+        MetricService.getInstance(),
         NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
   }
 

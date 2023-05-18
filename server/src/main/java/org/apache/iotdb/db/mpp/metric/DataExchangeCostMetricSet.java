@@ -31,143 +31,156 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DataExchangeCostMetricSet implements IMetricSet {
-
-  private static final String metric = Metric.DATA_EXCHANGE_COST.toString();
-
   public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
-  public static final String SOURCE_HANDLE_GET_TSBLOCK_LOCAL = "source_handle_get_tsblock_local";
-  public static final String SOURCE_HANDLE_GET_TSBLOCK_REMOTE = "source_handle_get_tsblock_remote";
+  public static final String LOCAL = "local";
+  public static final String REMOTE = "remote";
+  private static final String SOURCE_HANDLE_GET_TSBLOCK = "source_handle_get_tsblock";
+  public static final String SOURCE_HANDLE_GET_TSBLOCK_LOCAL =
+      SOURCE_HANDLE_GET_TSBLOCK + "_" + LOCAL;
+  public static final String SOURCE_HANDLE_GET_TSBLOCK_REMOTE =
+      SOURCE_HANDLE_GET_TSBLOCK + "_" + REMOTE;
+  private static final String SOURCE_HANDLE_DESERIALIZE_TSBLOCK =
+      "source_handle_deserialize_tsblock";
   public static final String SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL =
-      "source_handle_deserialize_tsblock_local";
+      SOURCE_HANDLE_DESERIALIZE_TSBLOCK + "_" + LOCAL;
   public static final String SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE =
-      "source_handle_deserialize_tsblock_remote";
-  public static final String SINK_HANDLE_SEND_TSBLOCK_LOCAL = "sink_handle_send_tsblock_local";
-  public static final String SINK_HANDLE_SEND_TSBLOCK_REMOTE = "sink_handle_send_tsblock_remote";
+      SOURCE_HANDLE_DESERIALIZE_TSBLOCK + "_" + REMOTE;
+  private static final String SINK_HANDLE_SEND_TSBLOCK = "sink_handle_send_tsblock";
+  public static final String SINK_HANDLE_SEND_TSBLOCK_LOCAL =
+      SINK_HANDLE_SEND_TSBLOCK + "_" + LOCAL;
+  public static final String SINK_HANDLE_SEND_TSBLOCK_REMOTE =
+      SINK_HANDLE_SEND_TSBLOCK + "_" + REMOTE;
 
   static {
     metricInfoMap.put(
         SOURCE_HANDLE_GET_TSBLOCK_LOCAL,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "source_handle_get_tsblock",
+            SOURCE_HANDLE_GET_TSBLOCK,
             Tag.TYPE.toString(),
-            "local"));
+            LOCAL));
     metricInfoMap.put(
         SOURCE_HANDLE_GET_TSBLOCK_REMOTE,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "source_handle_get_tsblock",
+            SOURCE_HANDLE_GET_TSBLOCK,
             Tag.TYPE.toString(),
-            "remote"));
+            REMOTE));
     metricInfoMap.put(
         SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "source_handle_deserialize_tsblock",
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK,
             Tag.TYPE.toString(),
-            "local"));
+            LOCAL));
     metricInfoMap.put(
         SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "source_handle_deserialize_tsblock",
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK,
             Tag.TYPE.toString(),
-            "remote"));
+            REMOTE));
     metricInfoMap.put(
         SINK_HANDLE_SEND_TSBLOCK_LOCAL,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "sink_handle_send_tsblock",
+            SINK_HANDLE_SEND_TSBLOCK,
             Tag.TYPE.toString(),
-            "local"));
+            LOCAL));
     metricInfoMap.put(
         SINK_HANDLE_SEND_TSBLOCK_REMOTE,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "sink_handle_send_tsblock",
+            SINK_HANDLE_SEND_TSBLOCK,
             Tag.TYPE.toString(),
-            "remote"));
+            REMOTE));
   }
 
+  public static final String CALLER = "caller";
+  public static final String SERVER = "server";
+  private static final String SEND_NEW_DATA_BLOCK_EVENT_TASK = "send_new_data_block_event_task";
   public static final String SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER =
-      "send_new_data_block_event_task_caller";
+      SEND_NEW_DATA_BLOCK_EVENT_TASK + "_" + CALLER;
   public static final String SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER =
-      "send_new_data_block_event_task_server";
+      SEND_NEW_DATA_BLOCK_EVENT_TASK + "_" + SERVER;
+  private static final String ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK =
+      "on_acknowledge_data_block_event_task";
   public static final String ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER =
-      "on_acknowledge_data_block_event_task_caller";
+      ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK + "_" + CALLER;
   public static final String ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER =
-      "on_acknowledge_data_block_event_task_server";
-  public static final String GET_DATA_BLOCK_TASK_CALLER = "get_data_block_task_caller";
-  public static final String GET_DATA_BLOCK_TASK_SERVER = "get_data_block_task_server";
+      ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK + "_" + SERVER;
+  private static final String GET_DATA_BLOCK_TASK = "get_data_block_task";
+  public static final String GET_DATA_BLOCK_TASK_CALLER = GET_DATA_BLOCK_TASK + "_" + CALLER;
+  public static final String GET_DATA_BLOCK_TASK_SERVER = GET_DATA_BLOCK_TASK + "_" + SERVER;
 
   static {
     metricInfoMap.put(
         SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "send_new_data_block_event_task",
+            SEND_NEW_DATA_BLOCK_EVENT_TASK,
             Tag.TYPE.toString(),
-            "caller"));
+            CALLER));
     metricInfoMap.put(
         SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "send_new_data_block_event_task",
+            SEND_NEW_DATA_BLOCK_EVENT_TASK,
             Tag.TYPE.toString(),
-            "server"));
+            SERVER));
     metricInfoMap.put(
         ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "on_acknowledge_data_block_event_task",
+            ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK,
             Tag.TYPE.toString(),
-            "caller"));
+            CALLER));
     metricInfoMap.put(
         ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "on_acknowledge_data_block_event_task",
+            ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK,
             Tag.TYPE.toString(),
-            "server"));
+            SERVER));
     metricInfoMap.put(
         GET_DATA_BLOCK_TASK_CALLER,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "get_data_block_task",
+            GET_DATA_BLOCK_TASK,
             Tag.TYPE.toString(),
-            "caller"));
+            CALLER));
     metricInfoMap.put(
         GET_DATA_BLOCK_TASK_SERVER,
         new MetricInfo(
             MetricType.TIMER,
-            metric,
+            Metric.DATA_EXCHANGE_COST.toString(),
             Tag.OPERATION.toString(),
-            "get_data_block_task",
+            GET_DATA_BLOCK_TASK,
             Tag.TYPE.toString(),
-            "server"));
+            SERVER));
   }
 
   @Override
@@ -181,7 +194,8 @@ public class DataExchangeCostMetricSet implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (MetricInfo metricInfo : metricInfoMap.values()) {
-      metricService.remove(MetricType.TIMER, metric, metricInfo.getTagsInArray());
+      metricService.remove(
+          MetricType.TIMER, Metric.DATA_EXCHANGE_COST.toString(), metricInfo.getTagsInArray());
     }
   }
 }

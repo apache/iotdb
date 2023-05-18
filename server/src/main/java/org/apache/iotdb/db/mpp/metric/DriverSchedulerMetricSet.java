@@ -28,9 +28,6 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class DriverSchedulerMetricSet implements IMetricSet {
-
-  private static final String metric = Metric.DRIVER_SCHEDULER.toString();
-
   public static final String READY_QUEUED_TIME = "ready_queued_time";
   public static final String BLOCK_QUEUED_TIME = "block_queued_time";
 
@@ -40,18 +37,24 @@ public class DriverSchedulerMetricSet implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.getOrCreateTimer(
-        metric, MetricLevel.IMPORTANT, Tag.NAME.toString(), READY_QUEUED_TIME);
+        Metric.DRIVER_SCHEDULER.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        READY_QUEUED_TIME);
     metricService.getOrCreateTimer(
-        metric, MetricLevel.IMPORTANT, Tag.NAME.toString(), BLOCK_QUEUED_TIME);
+        Metric.DRIVER_SCHEDULER.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        BLOCK_QUEUED_TIME);
     metricService.createAutoGauge(
-        metric,
+        Metric.DRIVER_SCHEDULER.toString(),
         MetricLevel.IMPORTANT,
         DriverScheduler.getInstance(),
         DriverScheduler::getReadyQueueTaskCount,
         Tag.NAME.toString(),
         READY_QUEUE_TASK_COUNT);
     metricService.createAutoGauge(
-        metric,
+        Metric.DRIVER_SCHEDULER.toString(),
         MetricLevel.IMPORTANT,
         DriverScheduler.getInstance(),
         DriverScheduler::getBlockQueueTaskCount,
@@ -61,11 +64,25 @@ public class DriverSchedulerMetricSet implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(MetricType.TIMER, metric, Tag.NAME.toString(), READY_QUEUED_TIME);
-    metricService.remove(MetricType.TIMER, metric, Tag.NAME.toString(), BLOCK_QUEUED_TIME);
     metricService.remove(
-        MetricType.AUTO_GAUGE, metric, Tag.NAME.toString(), READY_QUEUE_TASK_COUNT);
+        MetricType.TIMER,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        READY_QUEUED_TIME);
     metricService.remove(
-        MetricType.AUTO_GAUGE, metric, Tag.NAME.toString(), BLOCK_QUEUE_TASK_COUNT);
+        MetricType.TIMER,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        BLOCK_QUEUED_TIME);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        READY_QUEUE_TASK_COUNT);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        BLOCK_QUEUE_TASK_COUNT);
   }
 }

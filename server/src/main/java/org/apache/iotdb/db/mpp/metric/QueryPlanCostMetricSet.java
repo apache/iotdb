@@ -37,9 +37,6 @@ public class QueryPlanCostMetricSet implements IMetricSet {
   public static final String PARTITION_FETCHER = "partition_fetcher";
   public static final String SCHEMA_FETCHER = "schema_fetcher";
 
-  private final String metric = Metric.QUERY_PLAN_COST.toString();
-  private final String tagKey = Tag.STAGE.toString();
-
   private static final List<String> stages =
       Arrays.asList(
           ANALYZER, LOGICAL_PLANNER, DISTRIBUTION_PLANNER, PARTITION_FETCHER, SCHEMA_FETCHER);
@@ -47,14 +44,16 @@ public class QueryPlanCostMetricSet implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     for (String stage : stages) {
-      metricService.getOrCreateTimer(metric, MetricLevel.IMPORTANT, tagKey, stage);
+      metricService.getOrCreateTimer(
+          Metric.QUERY_PLAN_COST.toString(), MetricLevel.IMPORTANT, Tag.STAGE.toString(), stage);
     }
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (String stage : stages) {
-      metricService.remove(MetricType.TIMER, metric, tagKey, stage);
+      metricService.remove(
+          MetricType.TIMER, Metric.QUERY_PLAN_COST.toString(), Tag.STAGE.toString(), stage);
     }
   }
 }
