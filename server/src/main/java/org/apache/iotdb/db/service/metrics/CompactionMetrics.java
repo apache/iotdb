@@ -33,7 +33,6 @@ public class CompactionMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    // TODO spricoder optimize
     bindTaskInfo(metricService);
     bindPerformanceInfo(metricService);
   }

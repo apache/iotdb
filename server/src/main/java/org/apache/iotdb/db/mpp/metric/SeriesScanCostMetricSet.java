@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SeriesScanCostMetricSet implements IMetricSet {
-  // TODO @spricoder
   public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
   private static final String LOAD_TIMESERIES_METADATA = "load_timeseries_metadata";
