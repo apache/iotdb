@@ -457,8 +457,4 @@ public class CompactionTaskManager implements IService {
     }
     return storageGroupTasks.get(regionWithSG).get(task);
   }
-
-  public FixedPriorityBlockingQueue<AbstractCompactionTask> getCandidateCompactionTaskQueue() {
-    return candidateCompactionTaskQueue;
-  }
 }
