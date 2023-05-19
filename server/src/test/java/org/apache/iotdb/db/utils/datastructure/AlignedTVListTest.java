@@ -29,10 +29,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VectorTVListTest {
+public class AlignedTVListTest {
 
   @Test
-  public void testVectorTVList1() {
+  public void testAlignedTVList1() {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
@@ -45,7 +45,7 @@ public class VectorTVListTest {
         value[j] = i;
         columnOrder[j] = j;
       }
-      tvList.putAlignedValue(i, value, columnOrder);
+      tvList.putAlignedValue(i, value);
     }
     for (int i = 0; i < tvList.rowCount; i++) {
       StringBuilder builder = new StringBuilder("[");
@@ -60,7 +60,7 @@ public class VectorTVListTest {
   }
 
   @Test
-  public void testVectorTVList2() {
+  public void testAlignedTVList2() {
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.BOOLEAN);
     dataTypes.add(TSDataType.INT32);
@@ -81,7 +81,7 @@ public class VectorTVListTest {
       for (int j = 0; j < 6; j++) {
         columnOrder[j] = j;
       }
-      tvList.putAlignedValue(i, value, columnOrder);
+      tvList.putAlignedValue(i, value);
     }
     tvList.sort();
     for (int i = 0; i < tvList.rowCount; i++) {
@@ -94,7 +94,7 @@ public class VectorTVListTest {
   }
 
   @Test
-  public void testVectorTVLists() {
+  public void testAlignedTVLists() {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
@@ -124,7 +124,7 @@ public class VectorTVListTest {
   }
 
   @Test
-  public void testVectorTVListsWithBitMaps() {
+  public void testAlignedTVListsWithBitMaps() {
     List<TSDataType> dataTypes = new ArrayList<>();
     BitMap[] bitMaps = new BitMap[5];
     for (int i = 0; i < 5; i++) {
@@ -224,7 +224,7 @@ public class VectorTVListTest {
       Object[] value = new Object[2];
       value[0] = i;
       value[1] = new Binary(String.valueOf(i));
-      tvList.putAlignedValue(i, value, columnOrder);
+      tvList.putAlignedValue(i, value);
     }
 
     Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);

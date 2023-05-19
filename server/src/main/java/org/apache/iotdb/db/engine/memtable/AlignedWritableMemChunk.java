@@ -40,7 +40,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,8 +118,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public boolean putAlignedValueWithFlushCheck(long t, Object[] v, int[] columnIndexArray) {
-    list.putAlignedValue(t, v, columnIndexArray);
+  public boolean putAlignedValueWithFlushCheck(long t, Object[] v) {
+    list.putAlignedValue(t, v);
     return list.reachMaxChunkSizeThreshold();
   }
 
@@ -156,8 +156,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean putAlignedValuesWithFlushCheck(
-      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
-    list.putAlignedValues(t, v, bitMaps, columnIndexArray, start, end);
+      long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
+    list.putAlignedValues(t, v, bitMaps, start, end);
     return list.reachMaxChunkSizeThreshold();
   }
 
@@ -169,8 +169,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean writeAlignedValueWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
-    return putAlignedValueWithFlushCheck(insertTime, objectValue, columnIndexArray);
+    Object[] reorderedValue = new Object[measurementIndexMap.size()];
+    checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null, reorderedValue, null);
+    return putAlignedValueWithFlushCheck(insertTime, reorderedValue);
   }
 
   @Override
@@ -187,8 +188,15 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
-    return putAlignedValuesWithFlushCheck(times, valueList, bitMaps, columnIndexArray, start, end);
+    Object[] reorderedColumnValues = new Object[measurementIndexMap.size()];
+    BitMap[] reorderedBitMaps = null;
+    if (bitMaps != null) {
+      reorderedBitMaps = new BitMap[measurementIndexMap.size()];
+    }
+    checkAndReorderColumnValuesInInsertPlan(
+        schemaList, valueList, bitMaps, reorderedColumnValues, reorderedBitMaps);
+    return putAlignedValuesWithFlushCheck(
+        times, reorderedColumnValues, reorderedBitMaps, start, end);
   }
 
   /**
@@ -198,24 +206,37 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
    *     have been deleted, there will be null in its slot.
    * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
    */
-  private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
-    Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
+  private void checkAndReorderColumnValuesInInsertPlan(
+      List<IMeasurementSchema> schemaListInInsertPlan,
+      Object[] columnValues,
+      BitMap[] bitMaps,
+      Object[] reorderedColumnValues,
+      BitMap[] reorderedBitMaps) {
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      if (schemaListInInsertPlan.get(i) != null) {
-        measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
-        if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
+      IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
+      if (measurementSchema != null) {
+        Integer index = this.measurementIndexMap.get(measurementSchema.getMeasurementId());
+        // Index is null means this measurement was not in this AlignedTVList before.
+        // We need to extend a new column in AlignedMemChunk and AlignedTVList.
+        // And the reorderedColumnValues should extend one more column for the new measurement
+        if (index == null) {
           this.measurementIndexMap.put(
               schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
           this.schemaList.add(schemaListInInsertPlan.get(i));
           this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+          index = measurementIndexMap.size();
+          reorderedColumnValues =
+              Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
+          if (bitMaps != null) {
+            reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
+          }
+        }
+        reorderedColumnValues[index] = columnValues[i];
+        if (bitMaps != null) {
+          reorderedBitMaps[index] = reorderedBitMaps[i];
         }
       }
     }
-    int[] columnIndexArray = new int[measurementIndexMap.size()];
-    measurementIndexMap.forEach(
-        (measurementId, i) ->
-            columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1));
-    return columnIndexArray;
   }
 
   @Override

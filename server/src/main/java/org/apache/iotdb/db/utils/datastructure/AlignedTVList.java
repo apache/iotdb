@@ -166,14 +166,14 @@ public abstract class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValue(long timestamp, Object[] value, int[] columnIndexArray) {
+  public void putAlignedValue(long timestamp, Object[] value) {
     checkExpansion();
     int arrayIndex = rowCount / ARRAY_SIZE;
     int elementIndex = rowCount % ARRAY_SIZE;
     maxTime = Math.max(maxTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     for (int i = 0; i < values.size(); i++) {
-      Object columnValue = columnIndexArray[i] < 0 ? null : value[columnIndexArray[i]];
+      Object columnValue = value[i];
       List<Object> columnValues = values.get(i);
       if (columnValue == null) {
         markNullValue(i, arrayIndex, elementIndex);
@@ -699,8 +699,7 @@ public abstract class AlignedTVList extends TVList {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public void putAlignedValues(
-      long[] time, Object[] value, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
+  public void putAlignedValues(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
     checkExpansion();
     int idx = start;
 
@@ -714,14 +713,12 @@ public abstract class AlignedTVList extends TVList {
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-        arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining, columnIndexArray);
+        arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining);
         for (int i = 0; i < inputRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = rowCount;
           for (int j = 0; j < values.size(); j++) {
-            if (columnIndexArray[j] < 0
-                || bitMaps != null
-                    && bitMaps[columnIndexArray[j]] != null
-                    && bitMaps[columnIndexArray[j]].isMarked(idx + i)) {
+            if (value[j] == null
+                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
@@ -732,14 +729,12 @@ public abstract class AlignedTVList extends TVList {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
         // one and enter the next loop
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-        arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining, columnIndexArray);
+        arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining);
         for (int i = 0; i < internalRemaining; i++) {
           indices.get(arrayIdx)[elementIdx + i] = rowCount;
           for (int j = 0; j < values.size(); j++) {
-            if (columnIndexArray[j] < 0
-                || bitMaps != null
-                    && bitMaps[columnIndexArray[j]] != null
-                    && bitMaps[columnIndexArray[j]].isMarked(idx + i)) {
+            if (value[j] == null
+                || bitMaps != null && bitMaps[j] != null && bitMaps[j].isMarked(idx + i)) {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
@@ -751,22 +746,16 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  private void arrayCopy(
-      Object[] value,
-      int idx,
-      int arrayIndex,
-      int elementIndex,
-      int remaining,
-      int[] columnIndexArray) {
+  private void arrayCopy(Object[] value, int idx, int arrayIndex, int elementIndex, int remaining) {
     for (int i = 0; i < values.size(); i++) {
-      if (columnIndexArray[i] < 0) {
+      if (value[i] == null) {
         continue;
       }
       List<Object> columnValues = values.get(i);
       switch (dataTypes.get(i)) {
         case TEXT:
           Binary[] arrayT = ((Binary[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[columnIndexArray[i]], idx, arrayT, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayT, elementIndex, remaining);
 
           // update raw size of Text chunk
           for (int i1 = 0; i1 < remaining; i1++) {
@@ -779,23 +768,23 @@ public abstract class AlignedTVList extends TVList {
           break;
         case FLOAT:
           float[] arrayF = ((float[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[columnIndexArray[i]], idx, arrayF, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayF, elementIndex, remaining);
           break;
         case INT32:
           int[] arrayI = ((int[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[columnIndexArray[i]], idx, arrayI, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayI, elementIndex, remaining);
           break;
         case INT64:
           long[] arrayL = ((long[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[columnIndexArray[i]], idx, arrayL, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayL, elementIndex, remaining);
           break;
         case DOUBLE:
           double[] arrayD = ((double[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[columnIndexArray[i]], idx, arrayD, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayD, elementIndex, remaining);
           break;
         case BOOLEAN:
           boolean[] arrayB = ((boolean[]) columnValues.get(arrayIndex));
-          System.arraycopy(value[columnIndexArray[i]], idx, arrayB, elementIndex, remaining);
+          System.arraycopy(value[i], idx, arrayB, elementIndex, remaining);
           break;
         default:
           break;
@@ -1065,10 +1054,8 @@ public abstract class AlignedTVList extends TVList {
   public static AlignedTVList deserialize(DataInputStream stream) throws IOException {
     int dataTypeNum = stream.readInt();
     List<TSDataType> dataTypes = new ArrayList<>(dataTypeNum);
-    int[] columnIndexArray = new int[dataTypeNum];
     for (int columnIndex = 0; columnIndex < dataTypeNum; ++columnIndex) {
       dataTypes.add(ReadWriteIOUtils.readDataType(stream));
-      columnIndexArray[columnIndex] = columnIndex;
     }
 
     int rowCount = stream.readInt();
@@ -1152,7 +1139,7 @@ public abstract class AlignedTVList extends TVList {
     }
 
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
-    tvList.putAlignedValues(times, values, bitMaps, columnIndexArray, 0, rowCount);
+    tvList.putAlignedValues(times, values, bitMaps, 0, rowCount);
     return tvList;
   }
 }
