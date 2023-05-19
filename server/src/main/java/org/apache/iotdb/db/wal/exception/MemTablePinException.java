@@ -16,7 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.wal.exception;
 
-package org.apache.iotdb.db.pipe.resource;
+public class MemTablePinException extends WALException {
+  public MemTablePinException(Throwable cause) {
+    super(cause);
+  }
 
-public class PipeTsFileHolder {}
+  public MemTablePinException(String message) {
+    super(message);
+  }
+
+  public MemTablePinException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}

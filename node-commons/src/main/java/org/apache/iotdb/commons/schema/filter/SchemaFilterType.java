@@ -16,7 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.schema.filter;
 
-package org.apache.iotdb.db.pipe.resource;
+public enum SchemaFilterType {
+  NULL((short) -1),
+  TAGS_FILTER((short) 1),
+  PATH_CONTAINS((short) 2),
+  DATA_TYPE((short) 3);
 
-public class PipeRaftlogHolder {}
+  private final short code;
+
+  SchemaFilterType(short code) {
+    this.code = code;
+  }
+
+  public short getCode() {
+    return code;
+  }
+
+  public static SchemaFilterType getSchemaFilterType(short code) {
+    switch (code) {
+      case -1:
+        return NULL;
+      case 1:
+        return TAGS_FILTER;
+      case 2:
+        return PATH_CONTAINS;
+      case 3:
+        return DATA_TYPE;
+      default:
+        throw new IllegalArgumentException("Invalid input: " + code);
+    }
+  }
+}

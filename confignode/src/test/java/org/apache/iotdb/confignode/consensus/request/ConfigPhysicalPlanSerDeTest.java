@@ -91,6 +91,7 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
@@ -1116,6 +1117,23 @@ public class ConfigPhysicalPlanSerDeTest {
         (DropPipePluginPlan)
             ConfigPhysicalPlan.Factory.create(dropPipePluginPlan.serializeToByteBuffer());
     Assert.assertEquals(dropPipePluginPlan.getPluginName(), dropPipePluginPlan1.getPluginName());
+  }
+
+  @Test
+  public void pipeHandleLeaderChangePlanTest() throws IOException {
+    Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
+    newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), 2);
+    newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), 3);
+    newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), 5);
+
+    PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
+        new PipeHandleLeaderChangePlan(newLeaderMap);
+    PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan1 =
+        (PipeHandleLeaderChangePlan)
+            ConfigPhysicalPlan.Factory.create(pipeHandleLeaderChangePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        pipeHandleLeaderChangePlan.getConsensusGroupId2NewDataRegionLeaderIdMap(),
+        pipeHandleLeaderChangePlan1.getConsensusGroupId2NewDataRegionLeaderIdMap());
   }
 
   @Test

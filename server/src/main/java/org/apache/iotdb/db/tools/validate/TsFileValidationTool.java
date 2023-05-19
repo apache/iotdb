@@ -158,10 +158,18 @@ public class TsFileValidationTool {
                             file -> file.getName().endsWith(TSFILE_SUFFIX))));
             // sort the seq files with timestamp
             tsFiles.sort(
-                (f1, f2) ->
-                    Long.compareUnsigned(
-                        Long.parseLong(f1.getName().split("-")[0]),
-                        Long.parseLong(f2.getName().split("-")[0])));
+                (f1, f2) -> {
+                  int timeDiff =
+                      Long.compareUnsigned(
+                          Long.parseLong(f1.getName().split("-")[0]),
+                          Long.parseLong(f2.getName().split("-")[0]));
+                  return timeDiff == 0
+                      ? Long.compareUnsigned(
+                          Long.parseLong(f1.getName().split("-")[1]),
+                          Long.parseLong(f2.getName().split("-")[1]))
+                      : timeDiff;
+                });
+
             findUncorrectFiles(tsFiles);
           }
           // clear map

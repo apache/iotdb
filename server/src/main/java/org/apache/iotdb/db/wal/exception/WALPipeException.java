@@ -16,7 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.wal.exception;
 
-package org.apache.iotdb.db.pipe.resource;
+public class WALPipeException extends WALException {
+  public WALPipeException(Throwable cause) {
+    super(cause);
+  }
 
-public class PipeWALHolder {}
+  public WALPipeException(String message) {
+    super(message);
+  }
+
+  public WALPipeException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}

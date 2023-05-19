@@ -67,10 +67,13 @@ public enum ProcedureType {
   DROP_PIPE_PLUGIN_PROCEDURE((short) 901),
 
   /** Pipe Task */
-  CREATE_PIPE_PROCEDURE_V2((short) 1001),
-  START_PIPE_PROCEDURE_V2((short) 1002),
-  STOP_PIPE_PROCEDURE_V2((short) 1003),
-  DROP_PIPE_PROCEDURE_V2((short) 1004);
+  CREATE_PIPE_PROCEDURE_V2((short) 1000),
+  START_PIPE_PROCEDURE_V2((short) 1001),
+  STOP_PIPE_PROCEDURE_V2((short) 1002),
+  DROP_PIPE_PROCEDURE_V2((short) 1003),
+
+  /** Pipe Runtime */
+  PIPE_HANDLE_LEADER_CHANGE_PROCEDURE((short) 1100);
 
   private final short typeCode;
 

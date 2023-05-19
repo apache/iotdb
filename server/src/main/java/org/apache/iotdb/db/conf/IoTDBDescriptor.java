@@ -370,7 +370,8 @@ public class IoTDBDescriptor {
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
-    conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
+    conf.setDataDirs(
+        properties.getProperty("dn_data_dirs", String.join(",", conf.getDataDirs())).split(","));
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
@@ -1088,6 +1089,38 @@ public class IoTDBDescriptor {
     conf.setDataNodeSchemaCacheEvictionPolicy(
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
+
+    loadIoTConsensusProps(properties);
+  }
+
+  private void loadIoTConsensusProps(Properties properties) {
+    conf.setMaxLogEntriesNumPerBatch(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_iot_max_log_entries_num_per_batch",
+                    String.valueOf(conf.getMaxLogEntriesNumPerBatch()))
+                .trim()));
+    conf.setMaxSizePerBatch(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_iot_max_size_per_batch", String.valueOf(conf.getMaxSizePerBatch()))
+                .trim()));
+    conf.setMaxPendingBatchesNum(
+        Integer.parseInt(
+            properties
+                .getProperty(
+                    "data_region_iot_max_pending_batches_num",
+                    String.valueOf(conf.getMaxPendingBatchesNum()))
+                .trim()));
+    conf.setMaxMemoryRatioForQueue(
+        Double.parseDouble(
+            properties
+                .getProperty(
+                    "data_region_iot_max_memory_ratio_for_queue",
+                    String.valueOf(conf.getMaxMemoryRatioForQueue()))
+                .trim()));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -2029,12 +2062,15 @@ public class IoTDBDescriptor {
 
     conf.setDataRatisConsensusLogUnsafeFlushEnable(ratisConfig.isDataLogUnsafeFlushEnable());
     conf.setSchemaRatisConsensusLogUnsafeFlushEnable(ratisConfig.isSchemaLogUnsafeFlushEnable());
+    conf.setDataRatisConsensusLogForceSyncNum(ratisConfig.getDataRegionLogForceSyncNum());
 
     conf.setDataRatisConsensusLogSegmentSizeMax(ratisConfig.getDataLogSegmentSizeMax());
     conf.setSchemaRatisConsensusLogSegmentSizeMax(ratisConfig.getSchemaLogSegmentSizeMax());
 
     conf.setDataRatisConsensusGrpcFlowControlWindow(ratisConfig.getDataGrpcFlowControlWindow());
     conf.setSchemaRatisConsensusGrpcFlowControlWindow(ratisConfig.getSchemaGrpcFlowControlWindow());
+    conf.setDataRatisConsensusGrpcLeaderOutstandingAppendsMax(
+        ratisConfig.getDataRegionGrpcLeaderOutstandingAppendsMax());
 
     conf.setDataRatisConsensusLeaderElectionTimeoutMinMs(
         ratisConfig.getDataLeaderElectionTimeoutMin());

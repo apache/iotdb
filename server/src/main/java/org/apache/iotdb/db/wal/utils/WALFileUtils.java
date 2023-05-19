@@ -71,6 +71,17 @@ public class WALFileUtils {
     return dir.listFiles(WALFileUtils::walFilenameFilter);
   }
 
+  /** Get the .wal file starts with the specified version id in the directory */
+  public static File getWALFile(File dir, long versionId) {
+    String filePrefix = WAL_FILE_PREFIX + versionId + FILE_NAME_SEPARATOR;
+    File[] files =
+        dir.listFiles((d, name) -> walFilenameFilter(d, name) && name.startsWith(filePrefix));
+    if (files == null || files.length != 1) {
+      return null;
+    }
+    return files[0];
+  }
+
   /** Parse version id from filename */
   public static long parseVersionId(String filename) {
     Matcher matcher = WAL_FILE_NAME_PATTERN.matcher(filename);

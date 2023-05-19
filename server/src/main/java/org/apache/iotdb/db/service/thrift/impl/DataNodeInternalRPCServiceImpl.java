@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -802,8 +803,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus pushPipeMeta(TPushPipeMetaReq req) throws TException {
-    return null;
+  public TSStatus pushPipeMeta(TPushPipeMetaReq req) {
+    final List<PipeMeta> pipeMetas = new ArrayList<>();
+    for (ByteBuffer byteBuffer : req.getPipeMetas()) {
+      pipeMetas.add(PipeMeta.deserialize(byteBuffer));
+    }
+    PipeAgent.task().handlePipeMetaChanges(pipeMetas);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private TSStatus executeInternalSchemaTask(
