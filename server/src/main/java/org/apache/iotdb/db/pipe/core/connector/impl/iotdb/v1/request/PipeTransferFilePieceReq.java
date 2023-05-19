@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -63,7 +64,7 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(startWritingOffset, outputStream);
-      ReadWriteIOUtils.write(ByteBuffer.wrap(filePiece), outputStream);
+      ReadWriteIOUtils.write(new Binary(filePiece), outputStream);
       filePieceReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
@@ -76,8 +77,7 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
 
     filePieceReq.fileName = ReadWriteIOUtils.readString(transferReq.body);
     filePieceReq.startWritingOffset = ReadWriteIOUtils.readLong(transferReq.body);
-    filePieceReq.filePiece =
-        ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(transferReq.body);
+    filePieceReq.filePiece = ReadWriteIOUtils.readBinary(transferReq.body).getValues();
 
     filePieceReq.version = transferReq.version;
     filePieceReq.type = transferReq.type;
