@@ -3271,11 +3271,10 @@ public class VirtualStorageGroupProcessor {
     readLock();
     try {
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
-        // 正在被删的tsfile加读锁
         if (!resource.isClosed()) {
           continue;
         }
-        // TODO: where will the read lock be unlocked
+        // The read lock acquired here will be released in BackupExecutor.
         resource.readLock();
         resources.add(resource);
       }
@@ -3283,7 +3282,7 @@ public class VirtualStorageGroupProcessor {
         if (!resource.isClosed()) {
           continue;
         }
-        // TODO: where will the read lock be unlocked
+        // The read lock acquired here will be released in BackupExecutor.
         resource.readLock();
         resources.add(resource);
       }

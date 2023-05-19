@@ -8,17 +8,16 @@ import org.slf4j.LoggerFactory;
 public class DummyTask extends AbstractBackupFileTask {
   private static final Logger logger = LoggerFactory.getLogger(DummyTask.class);
 
-  public DummyTask(String sourcePath, String targetPath) {
-    super(sourcePath, targetPath);
+  public DummyTask(
+      String sourcePath,
+      String targetPath,
+      BackupService.OnBackupFileTaskFinishCallBack onBackupFileTaskFinishCallBack) {
+    super(sourcePath, targetPath, onBackupFileTaskFinishCallBack);
   }
 
   @Override
   public boolean backupFile() {
-    if (BackupService.getINSTANCE().getBackupByCopyCount().addAndGet(-1) == 0) {
-      logger.info("Backup completed.");
-      BackupService.getINSTANCE().cleanUpBackupTmpDir();
-      BackupService.getINSTANCE().getIsBackupRunning().set(false);
-    }
+    onBackupFileTaskFinishCallBack.call();
     return true;
   }
 }

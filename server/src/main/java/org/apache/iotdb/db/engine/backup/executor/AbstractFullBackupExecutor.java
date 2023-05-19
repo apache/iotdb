@@ -3,6 +3,7 @@ package org.apache.iotdb.db.engine.backup.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.backup.task.BackupByCopyTask;
 import org.apache.iotdb.db.engine.backup.task.BackupByMoveTask;
+import org.apache.iotdb.db.service.BackupService;
 import org.apache.iotdb.db.utils.BackupUtils;
 
 import java.io.File;
@@ -11,6 +12,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AbstractFullBackupExecutor extends AbstractBackupExecutor {
+
+  protected AbstractFullBackupExecutor(
+      BackupService.OnSubmitBackupTaskCallBack onSubmitBackupTaskCallBack,
+      BackupService.OnBackupFileTaskFinishCallBack onBackupFileTaskFinishCallBack) {
+    super(onSubmitBackupTaskCallBack, onBackupFileTaskFinishCallBack);
+  }
 
   @Override
   public boolean checkBackupPathValid(String outputPath) {
@@ -46,7 +53,9 @@ public abstract class AbstractFullBackupExecutor extends AbstractBackupExecutor 
       if (!BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTargetPath), file)) {
         String systemFileTmpPath = BackupUtils.getSystemFileTmpLinkPath(file);
         BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTmpPath), file);
-        backupFileTaskList.add(new BackupByMoveTask(systemFileTmpPath, systemFileTargetPath));
+        backupFileTaskList.add(
+            new BackupByMoveTask(
+                systemFileTmpPath, systemFileTargetPath, onBackupFileTaskFinishCallBack));
       }
     }
     return systemFiles.size();
@@ -63,7 +72,8 @@ public abstract class AbstractFullBackupExecutor extends AbstractBackupExecutor 
         // logger.error("Failed to create directory during backup: " + e.getMessage());
         if (!BackupUtils.createTargetDirAndTryCreateLink(new File(configFileTargetPath), file)) {
           backupFileTaskList.add(
-              new BackupByCopyTask(file.getAbsolutePath(), configFileTargetPath));
+              new BackupByCopyTask(
+                  file.getAbsolutePath(), configFileTargetPath, onBackupFileTaskFinishCallBack));
         }
       }
     } else {

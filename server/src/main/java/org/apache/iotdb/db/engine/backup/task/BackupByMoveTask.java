@@ -12,8 +12,11 @@ import java.io.IOException;
 public class BackupByMoveTask extends AbstractBackupFileTask {
   private static final Logger logger = LoggerFactory.getLogger(BackupByMoveTask.class);
 
-  public BackupByMoveTask(String sourcePath, String targetPath) {
-    super(sourcePath, targetPath);
+  public BackupByMoveTask(
+      String sourcePath,
+      String targetPath,
+      BackupService.OnBackupFileTaskFinishCallBack onBackupFileTaskFinishCallBack) {
+    super(sourcePath, targetPath, onBackupFileTaskFinishCallBack);
   }
 
   @Override
@@ -29,11 +32,7 @@ public class BackupByMoveTask extends AbstractBackupFileTask {
               "Failed to move temporary file during backup: from %s to %s",
               sourcePath, targetPath));
     }
-    if (BackupService.getINSTANCE().getBackupByCopyCount().addAndGet(-1) == 0) {
-      logger.info("Backup completed.");
-      BackupService.getINSTANCE().cleanUpBackupTmpDir();
-      BackupService.getINSTANCE().getIsBackupRunning().set(false);
-    }
+    onBackupFileTaskFinishCallBack.call();
     return isSuccess;
   }
 }

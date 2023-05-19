@@ -19,16 +19,23 @@
 
 package org.apache.iotdb.db.engine.backup.task;
 
+import org.apache.iotdb.db.service.BackupService;
+
 import java.util.concurrent.Callable;
 
 public abstract class AbstractBackupFileTask implements Callable<Boolean> {
 
   String sourcePath;
   String targetPath;
+  BackupService.OnBackupFileTaskFinishCallBack onBackupFileTaskFinishCallBack;
 
-  public AbstractBackupFileTask(String sourcePath, String targetPath) {
+  public AbstractBackupFileTask(
+      String sourcePath,
+      String targetPath,
+      BackupService.OnBackupFileTaskFinishCallBack onBackupFileTaskFinishCallBack) {
     this.sourcePath = sourcePath;
     this.targetPath = targetPath;
+    this.onBackupFileTaskFinishCallBack = onBackupFileTaskFinishCallBack;
   }
 
   public abstract boolean backupFile();

@@ -23,12 +23,14 @@ public class SimpleIncrementalBackupExecutor extends AbstractIncrementalBackupEx
   private static final Logger logger =
       LoggerFactory.getLogger(SimpleIncrementalBackupExecutor.class);
 
+  public SimpleIncrementalBackupExecutor(
+      BackupService.OnSubmitBackupTaskCallBack onSubmitBackupTaskCallBack,
+      BackupService.OnBackupFileTaskFinishCallBack onBackupFileTaskFinishCallBack) {
+    super(onSubmitBackupTaskCallBack, onBackupFileTaskFinishCallBack);
+  }
+
   @Override
-  public void executeBackup(
-      List<TsFileResource> resources,
-      String outputPath,
-      boolean isSync,
-      BackupService.SubmitBackupTaskCallBack submitBackupTaskCallBack) {
+  public void executeBackup(List<TsFileResource> resources, String outputPath, boolean isSync) {
     if (!checkBackupPathValid(outputPath)) {
       logger.error("Full backup path invalid. Backup aborted.");
       return;
@@ -70,7 +72,8 @@ public class SimpleIncrementalBackupExecutor extends AbstractIncrementalBackupEx
               backupFileTaskList.add(
                   new BackupByMoveTask(
                       tsfileTmpPath + ModificationFile.FILE_SUFFIX,
-                      tsfileTargetPath + ModificationFile.FILE_SUFFIX));
+                      tsfileTargetPath + ModificationFile.FILE_SUFFIX,
+                      onBackupFileTaskFinishCallBack));
             }
           } catch (IOException e) {
             e.printStackTrace();
@@ -96,14 +99,17 @@ public class SimpleIncrementalBackupExecutor extends AbstractIncrementalBackupEx
           String tsfileTmpPath = BackupUtils.getTsFileTmpLinkPath(resource.getTsFile());
           BackupUtils.createTargetDirAndTryCreateLink(
               new File(tsfileTmpPath), resource.getTsFile());
-          backupFileTaskList.add(new BackupByMoveTask(tsfileTmpPath, tsfileTargetPath));
+          backupFileTaskList.add(
+              new BackupByMoveTask(
+                  tsfileTmpPath, tsfileTargetPath, onBackupFileTaskFinishCallBack));
           BackupUtils.createTargetDirAndTryCreateLink(
               new File(tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX),
               new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
           backupFileTaskList.add(
               new BackupByMoveTask(
                   tsfileTmpPath + TsFileResource.RESOURCE_SUFFIX,
-                  tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX));
+                  tsfileTargetPath + TsFileResource.RESOURCE_SUFFIX,
+                  onBackupFileTaskFinishCallBack));
           if (resource.getModFile().exists()) {
             BackupUtils.createTargetDirAndTryCreateLink(
                 new File(tsfileTmpPath + ModificationFile.FILE_SUFFIX),
@@ -111,7 +117,8 @@ public class SimpleIncrementalBackupExecutor extends AbstractIncrementalBackupEx
             backupFileTaskList.add(
                 new BackupByMoveTask(
                     tsfileTmpPath + ModificationFile.FILE_SUFFIX,
-                    tsfileTargetPath + ModificationFile.FILE_SUFFIX));
+                    tsfileTargetPath + ModificationFile.FILE_SUFFIX,
+                    onBackupFileTaskFinishCallBack));
           }
         }
       } catch (IOException e) {
@@ -151,9 +158,9 @@ public class SimpleIncrementalBackupExecutor extends AbstractIncrementalBackupEx
             "%d files can't be hard-linked and should be copied.", backupFileTaskList.size()));
 
     if (backupFileTaskList.size() == 0) {
-      backupFileTaskList.add(new DummyTask("", ""));
+      backupFileTaskList.add(new DummyTask("", "", onBackupFileTaskFinishCallBack));
     }
-    List<Future<Boolean>> taskFutureList = submitBackupTaskCallBack.call(backupFileTaskList);
+    List<Future<Boolean>> taskFutureList = onSubmitBackupTaskCallBack.call(backupFileTaskList);
     if (isSync) {
       boolean isAllSuccess = true;
       try {

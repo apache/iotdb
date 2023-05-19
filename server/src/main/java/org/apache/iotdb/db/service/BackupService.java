@@ -73,8 +73,12 @@ public class BackupService implements IService {
 
   @Override
   public void start() throws StartupException {
-    fullBackupExecutor = new SimpleFullBackupExecutor();
-    incrementalBackupExecutor = new SimpleIncrementalBackupExecutor();
+    fullBackupExecutor =
+        new SimpleFullBackupExecutor(
+            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack);
+    incrementalBackupExecutor =
+        new SimpleIncrementalBackupExecutor(
+            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack);
     if (backupThreadPool == null) {
       int backupThreadNum = IoTDBDescriptor.getInstance().getConfig().getBackupThreadNum();
       backupThreadPool =
@@ -103,25 +107,39 @@ public class BackupService implements IService {
     }
   }
 
-  public interface SubmitBackupTaskCallBack {
+  @FunctionalInterface
+  public interface OnSubmitBackupTaskCallBack {
     List<Future<Boolean>> call(List<AbstractBackupFileTask> backupTaskList);
   }
 
-  private List<Future<Boolean>> submitBackupTaskCallBack(
+  @FunctionalInterface
+  public interface OnBackupFileTaskFinishCallBack {
+    void call();
+  }
+
+  private List<Future<Boolean>> onSubmitBackupTaskCallBack(
       List<AbstractBackupFileTask> backupFileTaskList) {
     List<Future<Boolean>> taskFutureList = new ArrayList<>();
     backupByCopyCount.addAndGet(backupFileTaskList.size());
     for (AbstractBackupFileTask backupFileTask : backupFileTaskList) {
-      taskFutureList.add(submitBackupByCopyTask(backupFileTask));
+      taskFutureList.add(backupThreadPool.submit(backupFileTask));
     }
     return taskFutureList;
   }
 
+  private void onBackupFileTaskFinishCallBack() {
+    if (backupByCopyCount.addAndGet(-1) == 0) {
+      logger.info("Backup completed.");
+      cleanUpBackupTmpDir();
+      isBackupRunning.set(false);
+    }
+  }
+
   /**
-   * Back up given TsFiles, and will back up system files and config files.
+   * Back up TsFiles, system files and config files.
    *
-   * @param resources
    * @param outputPath
+   * @param isSync
    */
   public void performFullBackup(String outputPath, boolean isSync) {
     if (isBackupRunning.get()) {
@@ -131,9 +149,15 @@ public class BackupService implements IService {
     List<TsFileResource> resources = new ArrayList<>();
     StorageEngine.getInstance().syncCloseAllProcessor();
     StorageEngine.getInstance().applyReadLockAndCollectFilesForBackup(resources);
-    fullBackupExecutor.executeBackup(resources, outputPath, isSync, this::submitBackupTaskCallBack);
+    fullBackupExecutor.executeBackup(resources, outputPath, isSync);
   }
 
+  /**
+   * Incremental backup on TsFiles, system files and config files.
+   *
+   * @param outputPath
+   * @param isSync
+   */
   public void performIncrementalBackup(String outputPath, boolean isSync) {
     if (isBackupRunning.get()) {
       logger.error("Another backup task is already running, please try later.");
@@ -142,8 +166,7 @@ public class BackupService implements IService {
     List<TsFileResource> resources = new ArrayList<>();
     StorageEngine.getInstance().syncCloseAllProcessor();
     StorageEngine.getInstance().applyReadLockAndCollectFilesForBackup(resources);
-    incrementalBackupExecutor.executeBackup(
-        resources, outputPath, isSync, this::submitBackupTaskCallBack);
+    incrementalBackupExecutor.executeBackup(resources, outputPath, isSync);
   }
 
   public AtomicInteger getBackupByCopyCount() {
@@ -152,10 +175,6 @@ public class BackupService implements IService {
 
   public AtomicBoolean getIsBackupRunning() {
     return isBackupRunning;
-  }
-
-  private Future<Boolean> submitBackupByCopyTask(AbstractBackupFileTask task) {
-    return backupThreadPool.submit(task);
   }
 
   public void cleanUpBackupTmpDir() {
