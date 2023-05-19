@@ -169,8 +169,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public boolean writeAlignedValueWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    Object[] reorderedValue = new Object[measurementIndexMap.size()];
-    checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null, reorderedValue, null);
+    Object[] reorderedValue =
+        checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null).left;
     return putAlignedValueWithFlushCheck(insertTime, reorderedValue);
   }
 
@@ -188,13 +188,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    Object[] reorderedColumnValues = new Object[measurementIndexMap.size()];
-    BitMap[] reorderedBitMaps = null;
-    if (bitMaps != null) {
-      reorderedBitMaps = new BitMap[measurementIndexMap.size()];
-    }
-    checkAndReorderColumnValuesInInsertPlan(
-        schemaList, valueList, bitMaps, reorderedColumnValues, reorderedBitMaps);
+    Pair<Object[], BitMap[]> pair =
+        checkAndReorderColumnValuesInInsertPlan(schemaList, valueList, bitMaps);
+    Object[] reorderedColumnValues = pair.left;
+    BitMap[] reorderedBitMaps = pair.right;
     return putAlignedValuesWithFlushCheck(
         times, reorderedColumnValues, reorderedBitMaps, start, end);
   }
@@ -206,12 +203,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
    *     have been deleted, there will be null in its slot.
    * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
    */
-  private void checkAndReorderColumnValuesInInsertPlan(
-      List<IMeasurementSchema> schemaListInInsertPlan,
-      Object[] columnValues,
-      BitMap[] bitMaps,
-      Object[] reorderedColumnValues,
-      BitMap[] reorderedBitMaps) {
+  private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
+      List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {
+    Object[] reorderedColumnValues = new Object[schemaList.size()];
+    BitMap[] reorderedBitMaps = bitMaps == null ? null : new BitMap[schemaList.size()];
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
       IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(i);
       if (measurementSchema != null) {
@@ -226,16 +221,17 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
           reorderedColumnValues =
               Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
-          if (bitMaps != null) {
+          if (reorderedBitMaps != null) {
             reorderedBitMaps = Arrays.copyOf(reorderedBitMaps, reorderedBitMaps.length + 1);
           }
         }
         reorderedColumnValues[index] = columnValues[i];
         if (bitMaps != null) {
-          reorderedBitMaps[index] = reorderedBitMaps[i];
+          reorderedBitMaps[index] = bitMaps[i];
         }
       }
     }
+    return new Pair<>(reorderedColumnValues, reorderedBitMaps);
   }
 
   @Override
