@@ -217,7 +217,6 @@ def parse_training_request(req: TCreateTrainingTaskReq) -> Tuple[Dict, Dict, Dic
 
 def parse_forecast_request(req: TForecastReq):
     model_path = req.modelPath
-    model_id = req.modelId
     column_name_list = req.columnNameList
     column_type_list = req.columnTypeList
     column_name_index_map = req.columnNameIndexMap
@@ -227,4 +226,4 @@ def parse_forecast_request(req: TForecastReq):
     data = convert_to_df(column_name_list, column_type_list, column_name_index_map, ts_dataset)
     time_stamp, data = data[data.columns[0:1]], data[data.columns[1:]]
     full_data = (data, time_stamp)
-    return model_path, model_id, full_data, pred_len
+    return model_path, full_data, pred_len

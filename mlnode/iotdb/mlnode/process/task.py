@@ -131,8 +131,7 @@ class _BasicInferenceTask(_BasicTask):
             model_configs: Dict,
             pid_info: Dict,
             data: Tuple,
-            model_path: str,
-            model_id: str
+            model_path: str
     ):
         """
         Args:
@@ -146,7 +145,6 @@ class _BasicInferenceTask(_BasicTask):
         self.data = data
         self.input_len = self.model_configs['input_len']
         self.model_path = model_path
-        self.model_id = model_id
 
     @abstractmethod
     def __call__(self, pipe: Connection = None):
@@ -232,20 +230,20 @@ class ForecastingInferenceTask(_BasicInferenceTask):
             model_configs: Dict,
             pid_info: Dict,
             data:Tuple,
-            model_path: str,
-            model_id: str
+            model_path: str
     ):
-        super().__init__(task_configs, model_configs, pid_info, data, model_path, model_id)
+        super().__init__(task_configs, model_configs, pid_info, data, model_path)
         self.pred_len = self.task_configs['pred_len']
         self.model_pred_len = self.model_configs['pred_len']
 
     def __call__(self, pipe: Connection = None):
-        self.model, _ = model_storage.load_model(self.model_id, self.model_path)
-        data, data_stamp = self.data
-        data_stamp = pd.to_datetime(data_stamp.values[:, 0], unit='ms', utc=True) \
+        self.model, _ = model_storage.load_model(self.model_path)
+        data, time_stamp = self.data
+        L, C = data.shape
+        time_stamp = pd.to_datetime(time_stamp.values[:, 0], unit='ms', utc=True) \
             .tz_convert('Asia/Shanghai')  # for iotdb
-        data, data_stamp = self.data_align(data, data_stamp)
-        full_data, full_data_stamp = data, data_stamp
+        data, time_stamp = self.data_align(data, time_stamp)
+        full_data, full_data_stamp = data, time_stamp
         current_pred_len = 0
         while current_pred_len < self.pred_len:
             current_data = full_data[:, -self.input_len:, :]
@@ -255,13 +253,15 @@ class ForecastingInferenceTask(_BasicInferenceTask):
             full_data = np.concatenate([full_data, output_data], axis=1)
             # full_data_stamp = pd.concat([full_data_stamp, self.generate_future_mark(full_data_stamp, self.pred_len)])
             current_pred_len += self.model_pred_len
-        full_data_stamp = full_data_stamp.values
-        # ret_data = np.concatenate([full_data_stamp[0], full_data[0]], axis=1)
-        ret_data = full_data[0, -self.pred_len:, :]
-        ret_data = pd.DataFrame(ret_data)
+        full_data_stamp = self.generate_future_mark(full_data_stamp, self.pred_len)
+        # ret_data = np.concatenate([full_data_stamp, full_data[0, -self.pred_len:, :]], axis=1)
+        # ret_data = ret_data[-
+        ret_data = pd.concat([pd.DataFrame(full_data_stamp.astype(np.int64)), pd.DataFrame(full_data[0, -self.pred_len:, :])], axis=1)
+        # ret_data = pd.DataFrame(ret_data)
+        ret_data.columns = list(np.arange(0, C + 1))
         pipe.send(ret_data)
 
-    def data_align(self, data: pd.DataFrame, data_stamp) -> Tuple[np.ndarray, pd.DatetimeIndex]:
+    def data_align(self, data: pd.DataFrame, data_stamp) -> Tuple[np.ndarray, pd.DataFrame]:
         """
         data: L x C, DataFrame, suppose no batch dim
         time_stamp: L x 1, DataFrame
@@ -287,46 +287,9 @@ class ForecastingInferenceTask(_BasicInferenceTask):
     def generate_future_mark(self, data_stamp:pd.DataFrame, future_len: int) -> pd.DatetimeIndex:
         time_deltas = data_stamp.diff().dropna()
         mean_timedelta = time_deltas.mean()[0]
-        extrapolated_timestamp = pd.date_range(data_stamp[0][0], periods=future_len,
+        extrapolated_timestamp = pd.date_range(data_stamp.values[0][0], periods=future_len,
                                                freq=mean_timedelta)
-        return extrapolated_timestamp
+        return extrapolated_timestamp[:, None]
 
 if __name__ == '__main__':
     pass
-    # def data_align(data: np.ndarray, data_stamp: pd.DataFrame, input_len):
-    #     """
-    #     data: L x C, ndarray
-    #     time_stamp: L,
-    #     """
-    #     assert len(data.shape) == 2, 'expect inference data to have two dimensions'
-    #     assert len(data_stamp.shape) == 2 and data_stamp.shape[1] == 1, \
-    #         'expect inference timestamps to be shaped as [L, 1]'
-    #     time_deltas = data_stamp.diff().dropna()
-    #     mean_timedelta = time_deltas.mean()[0]
-    #     if data.shape[0] < input_len:
-    #         extra_len = input_len - data.shape[0]
-    #         data = np.concatenate([np.mean(data, axis=0, keepdims=True).repeat(extra_len, axis=0), data], axis=0)
-    #         extrapolated_timestamp = pd.date_range(data_stamp[0][0] - extra_len * mean_timedelta, periods=extra_len,
-    #                                                freq=mean_timedelta)
-    #         data_stamp = np.concatenate([extrapolated_timestamp.to_frame(), data_stamp])
-    #     else:
-    #         data = data[-input_len:, :]
-    #         data_stamp = data_stamp[-input_len:]
-    #
-    #     data = data[None, :]  # add batch dim
-    #     data_stamp = data_stamp[None, :]
-    #     return data, data_stamp
-    #
-    # data = pd.DataFrame([1,2,3,4,5,1,2,3,4,5,1,2,3,4,5])
-    # data_stamp = pd.DataFrame(pd.to_datetime([
-    # '2023-01-01 00:00:00', '2023-01-01 01:00:00',
-    # '2023-01-01 02:00:00', '2023-01-01 03:00:00',
-    # '2023-01-01 04:00:00', '2023-01-01 05:00:00',
-    # '2023-01-01 06:00:00', '2023-01-01 07:00:00',
-    # '2023-01-01 08:00:00', '2023-01-01 09:00:00',
-    # '2023-01-01 10:00:00', '2023-01-01 11:00:00',
-    # '2023-01-01 12:00:00', '2023-01-01 13:00:00',
-    # '2023-01-01 14:00:00'
-    # ]))
-    # a, b = data_align(data.values, data_stamp, 20)
-    # print(a.shape, b.shape)

@@ -63,8 +63,8 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
-        model_path, model_id, data, pred_length = parse_forecast_request(req)
-        model, model_configs = model_storage.load_model(model_id, model_path)
+        model_path, data, pred_length = parse_forecast_request(req)
+        model, model_configs = model_storage.load_model(model_path)
         task = None
         task_configs = {'pred_len': pred_length}
         try:
@@ -72,8 +72,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
                 task_configs,
                 model_configs,
                 data,
-                model_path,
-                model_id
+                model_path
             )
         except Exception as e:
             print(e)

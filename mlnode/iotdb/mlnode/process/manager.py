@@ -88,15 +88,13 @@ class TaskManager(object):
                              task_configs,
                              model_configs,
                              data,
-                             model_path,
-                             model_id) -> ForecastingInferenceTask:
+                             model_path) -> ForecastingInferenceTask:
         task = ForecastingInferenceTask(
             task_configs,
             model_configs,
             self.__pid_info,
             data,
-            model_path,
-            model_id
+            model_path
         )
         return task
 
