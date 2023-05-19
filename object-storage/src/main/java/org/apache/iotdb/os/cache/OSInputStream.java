@@ -31,7 +31,7 @@ public class OSInputStream extends InputStream {
   }
 
   @Override
-  public int read() throws IOException {
+  public synchronized int read() throws IOException {
     byte[] b1 = new byte[1];
     int n = read(b1);
     if (n == 1) return b1[0] & 0xff;
@@ -39,12 +39,15 @@ public class OSInputStream extends InputStream {
   }
 
   @Override
-  public int read(byte[] b) throws IOException {
+  public synchronized int read(byte[] b) throws IOException {
     return read(b, 0, b.length);
   }
 
   @Override
-  public int read(byte[] b, int off, int len) throws IOException {
+  public synchronized int read(byte[] b, int off, int len) throws IOException {
+    if (off < 0 || len < 0 || len > b.length - off) {
+      throw new IndexOutOfBoundsException();
+    }
     if (len == 0) {
       return 0;
     }
@@ -55,7 +58,7 @@ public class OSInputStream extends InputStream {
   }
 
   @Override
-  public long skip(long n) throws IOException {
+  public synchronized long skip(long n) throws IOException {
     if (n <= 0) {
       return 0;
     }
@@ -67,12 +70,12 @@ public class OSInputStream extends InputStream {
   }
 
   @Override
-  public int available() throws IOException {
+  public synchronized int available() throws IOException {
     return (int) (channel.size() - channel.position());
   }
 
   @Override
-  public void close() throws IOException {
+  public synchronized void close() throws IOException {
     channel.close();
   }
 
@@ -87,7 +90,7 @@ public class OSInputStream extends InputStream {
   }
 
   @Override
-  public boolean markSupported() {
+  public synchronized boolean markSupported() {
     throw new UnsupportedOperationException();
   }
 }

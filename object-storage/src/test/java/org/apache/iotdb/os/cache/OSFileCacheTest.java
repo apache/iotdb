@@ -77,7 +77,7 @@ public class OSFileCacheTest {
   }
 
   @Test
-  public void get() throws Exception {
+  public void testGet() throws Exception {
     // pull 0-100, and 0-100 exists
     byte[] bytes0to100 = new byte[100];
     for (int i = 0; i < 100; ++i) {
@@ -102,7 +102,7 @@ public class OSFileCacheTest {
     // pull 100-200, but only 100-150 exists
     byte[] bytes100to150 = new byte[150 - 100];
     for (int i = 0; i < 150 - 100; ++i) {
-      bytes0to100[i] = (byte) i;
+      bytes100to150[i] = (byte) i;
     }
     when(connector.getRemoteFile(testFile.toOSURI(), 100, 100)).thenReturn(bytes100to150);
     OSFileCacheKey key100to150 = new OSFileCacheKey(testFile, 100);

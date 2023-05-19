@@ -37,13 +37,18 @@ public class OSFileChannel implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(OSTsFileInput.class);
   private static final ObjectStorageConfig config =
       ObjectStorageDescriptor.getInstance().getConfig();
-  private static final OSFileCache cache = OSFileCache.getInstance();
+  private final OSFileCache cache;
   private final OSFile osFile;
   private long position = 0;
 
   private OSFileBlock currentOSFileBlock;
 
   public OSFileChannel(OSFile osFile) throws IOException {
+    this(osFile, OSFileCache.getInstance());
+  }
+
+  OSFileChannel(OSFile osFile, OSFileCache cache) throws IOException {
+    this.cache = cache;
     this.osFile = osFile;
   }
 
@@ -133,7 +138,7 @@ public class OSFileChannel implements Closeable {
     closeCurrentOSFileBlock();
   }
 
-  private static class OSFileBlock {
+  private class OSFileBlock {
     private OSFileCacheValue cacheValue;
     private FileChannel fileChannel;
 
