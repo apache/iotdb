@@ -220,11 +220,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         // We need to extend a new column in AlignedMemChunk and AlignedTVList.
         // And the reorderedColumnValues should extend one more column for the new measurement
         if (index == null) {
-          this.measurementIndexMap.put(
-              schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
+          index = measurementIndexMap.size();
+          this.measurementIndexMap.put(schemaListInInsertPlan.get(i).getMeasurementId(), index);
           this.schemaList.add(schemaListInInsertPlan.get(i));
           this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
-          index = measurementIndexMap.size();
           reorderedColumnValues =
               Arrays.copyOf(reorderedColumnValues, reorderedColumnValues.length + 1);
           if (bitMaps != null) {
