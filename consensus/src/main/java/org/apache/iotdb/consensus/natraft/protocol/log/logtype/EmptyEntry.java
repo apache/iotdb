@@ -20,12 +20,12 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.logtype;
 
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public class EmptyEntry extends Entry {
 
@@ -39,7 +39,9 @@ public class EmptyEntry extends Entry {
   @Override
   protected ByteBuffer serializeInternal(byte[] buffer) {
     ByteArrayOutputStream byteArrayOutputStream =
-        buffer == null ? new PublicBAOS(getDefaultSerializationBufferSize()) : new PublicBAOS(buffer);
+        buffer == null
+            ? new PublicBAOS(getDefaultSerializationBufferSize())
+            : new PublicBAOS(buffer);
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) Types.EMPTY.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());

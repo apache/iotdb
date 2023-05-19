@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log.logtype;
 
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -28,7 +29,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public class ConfigChangeEntry extends Entry {
 
@@ -43,7 +43,9 @@ public class ConfigChangeEntry extends Entry {
   @Override
   protected ByteBuffer serializeInternal(byte[] buffer) {
     ByteArrayOutputStream byteArrayOutputStream =
-        buffer == null ? new PublicBAOS(getDefaultSerializationBufferSize()) : new PublicBAOS(buffer);
+        buffer == null
+            ? new PublicBAOS(getDefaultSerializationBufferSize())
+            : new PublicBAOS(buffer);
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) Types.EMPTY.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());

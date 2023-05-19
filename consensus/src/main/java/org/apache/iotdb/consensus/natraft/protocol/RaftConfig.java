@@ -700,12 +700,10 @@ public class RaftConfig {
                 "entry_serialization_buffer_size",
                 String.valueOf(this.getEntryDefaultSerializationBufferSize()))));
 
-
     this.setEntryAllocatorCapacity(
         Integer.parseInt(
             properties.getProperty(
-                "entry_allocator_capacity",
-                String.valueOf(this.getEntryAllocatorCapacity()))));
+                "entry_allocator_capacity", String.valueOf(this.getEntryAllocatorCapacity()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

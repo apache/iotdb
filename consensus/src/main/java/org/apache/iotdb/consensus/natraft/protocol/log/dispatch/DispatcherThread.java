@@ -124,9 +124,8 @@ class DispatcherThread extends DynamicThread {
 
   protected void serializeEntries() throws InterruptedException {
     for (VotingEntry request : currBatch) {
-
-      request.getAppendEntryRequest().entry = request.getEntry().serialize();
-      request.getEntry().setByteSize(request.getAppendEntryRequest().entry.limit());
+      ByteBuffer serialized = request.getEntry().serialize();
+      request.getEntry().setByteSize(serialized.remaining());
     }
   }
 
@@ -228,12 +227,13 @@ class DispatcherThread extends DynamicThread {
 
       for (; logIndex < currBatch.size(); logIndex++) {
         VotingEntry entry = currBatch.get(logIndex);
-        long curSize = entry.getAppendEntryRequest().entry.remaining();
+        ByteBuffer serialized = entry.getEntry().serialize();
+        long curSize = serialized.remaining();
         if (logSizeLimit - curSize - logSize <= IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
           break;
         }
         logSize += curSize;
-        logList.add(entry.getAppendEntryRequest().entry);
+        logList.add(serialized);
         Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENDING.calOperationCostTimeFromStart(
             entry.getEntry().createTime);
       }

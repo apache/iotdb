@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
-import java.util.function.Supplier;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -50,6 +49,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public abstract class RaftLogManager {
 
@@ -117,7 +117,8 @@ public abstract class RaftLogManager {
       String name,
       IStateMachine stateMachine,
       RaftConfig config,
-      Consumer<List<Entry>> unappliedEntryExaminer, Supplier<Long> safeIndexProvider,
+      Consumer<List<Entry>> unappliedEntryExaminer,
+      Supplier<Long> safeIndexProvider,
       Consumer<Entry> entryRecycler) {
     this.logApplier = applier;
     this.name = name;
@@ -208,14 +209,10 @@ public abstract class RaftLogManager {
    * applied before take snapshot
    *
    * <p>
-   *
    */
   public abstract void takeSnapshot(RaftMember member);
 
-  /**
-   * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.
-   *
-   */
+  /** Update the raftNode's hardState(currentTerm,voteFor) and flush to disk. */
   public void updateHardState(HardState state) {
     getStableEntryManager().setHardStateAndFlush(state);
   }

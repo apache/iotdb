@@ -644,7 +644,8 @@ public class RaftMember {
     }
 
     logger.debug("{}: Processing request {}", name, request);
-    Entry entry = requestEntryAllocator.Allocate();
+    RequestEntry entry = requestEntryAllocator.Allocate();
+    entry.setRequest(request);
     entry.preSerialize();
     entry.receiveTime = System.nanoTime();
 

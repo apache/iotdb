@@ -34,16 +34,13 @@ import java.util.Objects;
 
 import static org.apache.iotdb.consensus.natraft.protocol.log.Entry.Types.CLIENT_REQUEST;
 
-/**
- * RequestLog contains a non-partitioned request like set storage group.
- */
+/** RequestLog contains a non-partitioned request like set storage group. */
 public class RequestEntry extends Entry {
 
   private static final Logger logger = LoggerFactory.getLogger(RequestEntry.class);
   private volatile IConsensusRequest request;
 
-  public RequestEntry() {
-  }
+  public RequestEntry() {}
 
   public RequestEntry(IConsensusRequest request) {
     setRequest(request);
@@ -52,7 +49,9 @@ public class RequestEntry extends Entry {
   @Override
   protected ByteBuffer serializeInternal(byte[] buffer) {
     PublicBAOS byteArrayOutputStream =
-        buffer == null ? new PublicBAOS(getDefaultSerializationBufferSize()) : new PublicBAOS(buffer);
+        buffer == null
+            ? new PublicBAOS(getDefaultSerializationBufferSize())
+            : new PublicBAOS(buffer);
     int requestSize = 0;
     int requestPos = 0;
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.exception.LogExecutionException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
