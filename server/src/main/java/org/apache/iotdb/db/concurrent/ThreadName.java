@@ -59,6 +59,7 @@ public enum ThreadName {
   TIMED_CLOSE_TSFILE("Timed-Close-TsFile"),
   SETTLE_SERVICE("Settle"),
   BACKUP_SERVICE("Backup-Service"),
+  BACKUP_THREAD_POOL("Backup-Thread-Pool"),
   BACKUP_TEMPORARY_FILE_CHECK("Backup-Temporary-File-Check"),
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
   CLUSTER_INFO_SERVICE("ClusterInfoClient"),

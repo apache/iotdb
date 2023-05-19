@@ -43,23 +43,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class BackupService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(BackupService.class);
-  private static int BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE = 5;
+  private static final int BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE = 5;
+  private static int backupThreadNum;
   private ExecutorService backupThreadPool;
-
-  /** Records the files that can't be hard-linked and should be copied. */
-  private List<AbstractBackupFileTask> backupFileTaskList = new ArrayList<>();
-
-  /** Record the files in incremental backup. */
-  private Map<String, File> backupTsFileMap = new HashMap<>();
-
-  private Map<String, TsFileResource> databaseTsFileResourceMap = new HashMap<>();
-
   private ScheduledExecutorService backupTmpFileCheckPool;
 
-  private AtomicInteger backupByCopyCount = new AtomicInteger();
-  private AtomicBoolean isBackupRunning = new AtomicBoolean();
-  private AbstractFullBackupExecutor fullBackupExecutor;
-  private AbstractIncrementalBackupExecutor incrementalBackupExecutor;
+  private final AtomicInteger backupByCopyCount = new AtomicInteger();
+  private final AtomicBoolean isBackupRunning = new AtomicBoolean();
 
   public static BackupService getINSTANCE() {
     return BackupService.InstanceHolder.INSTANCE;
@@ -73,23 +63,13 @@ public class BackupService implements IService {
 
   @Override
   public void start() throws StartupException {
-    fullBackupExecutor =
-        new SimpleFullBackupExecutor(
-            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack);
-    incrementalBackupExecutor =
-        new SimpleIncrementalBackupExecutor(
-            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack);
-    if (backupThreadPool == null) {
-      int backupThreadNum = IoTDBDescriptor.getInstance().getConfig().getBackupThreadNum();
-      backupThreadPool =
-          IoTDBThreadPoolFactory.newFixedThreadPool(
-              backupThreadNum, ThreadName.BACKUP_SERVICE.getName());
-      backupTmpFileCheckPool =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.BACKUP_TEMPORARY_FILE_CHECK.getName());
-      backupTmpFileCheckPool.scheduleWithFixedDelay(
-          this::cleanUpBackupTmpDir, 0, BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE, TimeUnit.MINUTES);
-    }
+    Thread.currentThread().setName(ThreadName.BACKUP_SERVICE.getName());
+    backupThreadNum = IoTDBDescriptor.getInstance().getConfig().getBackupThreadNum();
+    backupTmpFileCheckPool =
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                    ThreadName.BACKUP_TEMPORARY_FILE_CHECK.getName());
+    backupTmpFileCheckPool.scheduleWithFixedDelay(
+            this::cleanUpBackupTmpDir, 0, BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE, TimeUnit.MINUTES);
     if (BackupUtils.checkConfDir()) {
       logger.info("Found the config directory: " + BackupUtils.getConfDir());
     } else {
@@ -102,8 +82,8 @@ public class BackupService implements IService {
     if (backupThreadPool != null) {
       backupThreadPool.shutdownNow();
     }
-    if (!BackupUtils.deleteBackupTmpDir()) {
-      logger.warn("Failed to delete backup temporary directories when stopping BackupService.");
+    if (backupTmpFileCheckPool != null) {
+      backupTmpFileCheckPool.shutdownNow();
     }
   }
 
@@ -130,6 +110,8 @@ public class BackupService implements IService {
   private void onBackupFileTaskFinishCallBack() {
     if (backupByCopyCount.addAndGet(-1) == 0) {
       logger.info("Backup completed.");
+      backupThreadPool.shutdownNow();
+      backupThreadPool = null;
       cleanUpBackupTmpDir();
       isBackupRunning.set(false);
     }
@@ -148,8 +130,12 @@ public class BackupService implements IService {
     }
     List<TsFileResource> resources = new ArrayList<>();
     StorageEngine.getInstance().syncCloseAllProcessor();
+    backupThreadPool =
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                    backupThreadNum, ThreadName.BACKUP_THREAD_POOL.getName());
     StorageEngine.getInstance().applyReadLockAndCollectFilesForBackup(resources);
-    fullBackupExecutor.executeBackup(resources, outputPath, isSync);
+    new SimpleFullBackupExecutor(
+            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack).executeBackup(resources, outputPath, isSync);
   }
 
   /**
@@ -166,25 +152,21 @@ public class BackupService implements IService {
     List<TsFileResource> resources = new ArrayList<>();
     StorageEngine.getInstance().syncCloseAllProcessor();
     StorageEngine.getInstance().applyReadLockAndCollectFilesForBackup(resources);
-    incrementalBackupExecutor.executeBackup(resources, outputPath, isSync);
+    backupThreadPool =
+            IoTDBThreadPoolFactory.newFixedThreadPool(
+                    backupThreadNum, ThreadName.BACKUP_THREAD_POOL.getName());
+    new SimpleIncrementalBackupExecutor(
+            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack).executeBackup(resources, outputPath, isSync);
   }
 
-  public AtomicInteger getBackupByCopyCount() {
-    return backupByCopyCount;
-  }
-
-  public AtomicBoolean getIsBackupRunning() {
-    return isBackupRunning;
-  }
-
-  public void cleanUpBackupTmpDir() {
+  private void cleanUpBackupTmpDir() {
     if (isBackupRunning.get()) {
       logger.info("Backup is running, will not remove temporary files.");
       return;
     }
     logger.info("Removing back up temporary files now.");
     if (BackupUtils.deleteBackupTmpDir()) {
-      logger.info("Back up temporary files are all clear.");
+      logger.info("Backup temporary files are all clear.");
     } else {
       logger.warn("Failed to delete some backup temporary files. Will try later.");
     }

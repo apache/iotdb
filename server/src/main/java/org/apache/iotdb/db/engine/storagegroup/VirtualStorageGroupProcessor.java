@@ -3268,6 +3268,7 @@ public class VirtualStorageGroupProcessor {
   }
 
   public void applyReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
+    // Acquire read lock to prevent change on TsFileList during the for loop.
     readLock();
     try {
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
