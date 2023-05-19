@@ -21,7 +21,8 @@ package org.apache.iotdb.commons.schema.filter;
 public enum SchemaFilterType {
   NULL((short) -1),
   TAGS_FILTER((short) 1),
-  PATH_CONTAINS((short) 2);
+  PATH_CONTAINS((short) 2),
+  DATA_TYPE((short) 3);
 
   private final short code;
 
@@ -41,6 +42,8 @@ public enum SchemaFilterType {
         return TAGS_FILTER;
       case 2:
         return PATH_CONTAINS;
+      case 3:
+        return DATA_TYPE;
       default:
         throw new IllegalArgumentException("Invalid input: " + code);
     }
