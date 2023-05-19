@@ -52,26 +52,35 @@ public class CompactionScheduler {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
+  /**
+   * Select compaction task and submit them to CompactionTaskManager
+   *
+   * @param tsFileManager tsfileManager that contains source files
+   * @param timePartition the time partition to execute the selection
+   * @return the count of submitted task
+   */
+  public static int scheduleCompaction(TsFileManager tsFileManager, long timePartition) {
     if (!tsFileManager.isAllowCompaction()) {
-      return;
+      return 0;
     }
+    int submitCount = 0;
     try {
-      tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition);
-      tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true);
-      tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false);
+      submitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition);
+      submitCount += tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true);
+      submitCount += tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false);
     } catch (InterruptedException e) {
       LOGGER.error("Exception occurs when selecting compaction tasks", e);
       Thread.currentThread().interrupt();
     }
+    return submitCount;
   }
 
-  public static void tryToSubmitInnerSpaceCompactionTask(
+  public static int tryToSubmitInnerSpaceCompactionTask(
       TsFileManager tsFileManager, long timePartition, boolean sequence)
       throws InterruptedException {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
-      return;
+      return 0;
     }
 
     String storageGroupName = tsFileManager.getStorageGroupName();
@@ -94,6 +103,7 @@ public class CompactionScheduler {
             sequence
                 ? tsFileManager.getOrCreateSequenceListByTimePartition(timePartition)
                 : tsFileManager.getOrCreateUnsequenceListByTimePartition(timePartition));
+    int submitCount = 0;
     for (List<TsFileResource> task : taskList) {
       ICompactionPerformer performer =
           sequence
@@ -105,7 +115,7 @@ public class CompactionScheduler {
                   .getConfig()
                   .getInnerUnseqCompactionPerformer()
                   .createInstance();
-      CompactionTaskManager.getInstance()
+      if (CompactionTaskManager.getInstance()
           .addTaskToWaitingQueue(
               new InnerSpaceCompactionTask(
                   timePartition,
@@ -114,15 +124,19 @@ public class CompactionScheduler {
                   sequence,
                   performer,
                   CompactionTaskManager.currentTaskNum,
-                  tsFileManager.getNextCompactionTaskId()));
+                  tsFileManager.getNextCompactionTaskId()))) {
+        submitCount++;
+      }
     }
+    return submitCount;
   }
 
-  private static void tryToSubmitCrossSpaceCompactionTask(
+  private static int tryToSubmitCrossSpaceCompactionTask(
       TsFileManager tsFileManager, long timePartition) throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
-      return;
+      return 0;
     }
+    int submitCount = 0;
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
     ICrossSpaceSelector crossSpaceCompactionSelector =
@@ -138,7 +152,7 @@ public class CompactionScheduler {
             .map(CrossCompactionTaskResource::getTotalMemoryCost)
             .collect(Collectors.toList());
     for (int i = 0, size = taskList.size(); i < size; ++i) {
-      CompactionTaskManager.getInstance()
+      if (CompactionTaskManager.getInstance()
           .addTaskToWaitingQueue(
               new CrossSpaceCompactionTask(
                   timePartition,
@@ -151,7 +165,10 @@ public class CompactionScheduler {
                       .createInstance(),
                   CompactionTaskManager.currentTaskNum,
                   memoryCost.get(i),
-                  tsFileManager.getNextCompactionTaskId()));
+                  tsFileManager.getNextCompactionTaskId()))) {
+        submitCount++;
+      }
     }
+    return submitCount;
   }
 }
