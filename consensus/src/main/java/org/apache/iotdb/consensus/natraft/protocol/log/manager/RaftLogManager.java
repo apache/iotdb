@@ -652,7 +652,7 @@ public abstract class RaftLogManager {
       return;
     }
 
-    List<Entry> removedEntries = Collections.emptyList();
+    List<Entry> removedEntries;
     try {
       lock.writeLock().lock();
       long startTime = Statistic.RAFT_SENDER_COMMIT_HOLD_LOCK.getOperationStartTime();
@@ -842,8 +842,7 @@ public abstract class RaftLogManager {
   }
 
   private List<Entry> innerDeleteLog(int sizeToReserve) {
-    long safeIndex = safeIndexProvider.get();
-    long indexToReserve = Math.max(appliedIndex, safeIndex);
+    long indexToReserve = appliedIndex;
     long removableLogNum = indexToReserve - getFirstIndex();
     long removeSize = removableLogNum - sizeToReserve;
     if (removeSize <= 0) {
