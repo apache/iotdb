@@ -269,7 +269,18 @@ public class AlignedTVListTest {
     Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 2);
     Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 324);
 
+    tvList.extendColumn(TSDataType.TEXT);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 3);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 324);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
+
+    tvList.delete(4, 6);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 3);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 216);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
+
     tvList.clear();
     Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
   }
 }
