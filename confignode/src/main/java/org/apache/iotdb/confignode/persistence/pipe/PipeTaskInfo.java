@@ -176,6 +176,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return pipeMetaKeeper.getPipeMetaList();
   }
 
+  public boolean isEmpty() {
+    return pipeMetaKeeper.isEmpty();
+  }
+
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////
 
   /** handle the data region leader change event and update the pipe task meta accordingly */

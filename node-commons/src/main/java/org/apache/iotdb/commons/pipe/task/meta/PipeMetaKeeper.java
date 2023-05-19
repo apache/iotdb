@@ -63,6 +63,10 @@ public class PipeMetaKeeper {
     this.pipeNameToPipeMetaMap.clear();
   }
 
+  public boolean isEmpty() {
+    return pipeNameToPipeMetaMap.isEmpty();
+  }
+
   public void processTakeSnapshot(FileOutputStream fileOutputStream) throws IOException {
     ReadWriteIOUtils.write(pipeNameToPipeMetaMap.size(), fileOutputStream);
     for (Map.Entry<String, PipeMeta> entry : pipeNameToPipeMetaMap.entrySet()) {

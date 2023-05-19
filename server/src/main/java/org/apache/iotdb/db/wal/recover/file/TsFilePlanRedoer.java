@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -109,9 +108,6 @@ public class TsFilePlanRedoer {
       // TODO get device id by idTable
       // idTable.getSeriesSchemas(node);
     } else {
-      if (!IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-        SchemaValidator.validate(node);
-      }
       node.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(node.getDevicePath()));
     }
 
