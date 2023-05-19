@@ -17,8 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.receiver.request;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request;
 
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -28,45 +30,59 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class PipeTransferFilePieceReq extends TPipeTransferReq {
-  private final String fileName;
-  private final long startOffset;
 
-  public PipeTransferFilePieceReq(
-      String pipeVersion, ByteBuffer body, String fileName, long startOffset) {
-    this.pipeVersion = pipeVersion;
-    this.body = body;
-    this.fileName = fileName;
-    this.startOffset = startOffset;
-  }
+  private String fileName;
+  private long startWritingOffset;
+  private byte[] filePiece;
+
+  private PipeTransferFilePieceReq() {}
 
   public String getFileName() {
     return fileName;
   }
 
-  public long getStartOffset() {
-    return startOffset;
+  public long getStartWritingOffset() {
+    return startWritingOffset;
   }
 
-  @Override
-  public short getType() {
-    return PipeTransferReqType.FILE_PIECE.getNodeType();
+  public byte[] getFilePiece() {
+    return filePiece;
   }
 
-  public TPipeTransferReq toTPipeTransferReq() throws IOException {
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      this.type = getType();
+  public static PipeTransferFilePieceReq toTPipeTransferReq(
+      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
+    final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
+
+    filePieceReq.fileName = fileName;
+    filePieceReq.startWritingOffset = startWritingOffset;
+    filePieceReq.filePiece = filePiece;
+
+    filePieceReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    filePieceReq.type = PipeRequestType.TRANSFER_FILE_PIECE.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileName, outputStream);
-      ReadWriteIOUtils.write(startOffset, outputStream);
-      this.transferInfo =
+      ReadWriteIOUtils.write(startWritingOffset, outputStream);
+      ReadWriteIOUtils.write(ByteBuffer.wrap(filePiece), outputStream);
+      filePieceReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      return this;
     }
+
+    return filePieceReq;
   }
 
-  public static PipeTransferFilePieceReq fromTPipeTransferReq(TPipeTransferReq req) {
-    String fileName = ReadWriteIOUtils.readString(req.transferInfo);
-    long offset = ReadWriteIOUtils.read(req.transferInfo);
-    return new PipeTransferFilePieceReq(req.pipeVersion, req.body, fileName, offset);
+  public static PipeTransferFilePieceReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
+
+    filePieceReq.fileName = ReadWriteIOUtils.readString(transferReq.body);
+    filePieceReq.startWritingOffset = ReadWriteIOUtils.readLong(transferReq.body);
+    filePieceReq.filePiece =
+        ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(transferReq.body);
+
+    filePieceReq.version = transferReq.version;
+    filePieceReq.type = transferReq.type;
+    filePieceReq.body = transferReq.body;
+
+    return filePieceReq;
   }
 }

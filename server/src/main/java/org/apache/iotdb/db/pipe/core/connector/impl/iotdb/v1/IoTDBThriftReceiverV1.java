@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.connector.impl.iotdb;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -28,23 +28,20 @@ import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeValidateHandshakeReq;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeResp;
-import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,74 +49,57 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-public class IoTDBThriftReceiverImpl implements IoTDBThriftReceiver {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBThriftReceiverImpl.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverV1.class);
+
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final String RECEIVE_DIR = PipeConfig.getInstance().getReceiveFileDir();
 
   private File writingFile;
-  private RandomAccessFile writer;
+  private RandomAccessFile writingFileWriter;
 
   @Override
-  public TPipeHandshakeResp handleHandshakeReq(TPipeHandshakeReq req) {
-    PipeValidateHandshakeReq validateReq = PipeValidateHandshakeReq.fromTPipeHandshakeReq(req);
-    if (!config.getIoTDBMajorVersion().equals(validateReq.getIoTDBVersion())) {
-      String msg =
-          String.format(
-              "IoTDB version %s, handshake pipe version %s, validate error.",
-              config.getIoTDBMajorVersion(), validateReq.getIoTDBVersion());
-      LOGGER.warn(msg);
-      return new TPipeHandshakeResp(RpcUtils.getStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR, msg));
-    } else if (!config.getTimestampPrecision().equals(validateReq.getTimestampPrecision())) {
-      String msg =
-          String.format(
-              "IoTDB timestamp precision %s, handshake timestamp precision %s, validate error.",
-              config.getTimestampPrecision(), validateReq.getTimestampPrecision());
-      LOGGER.warn(msg);
-      return new TPipeHandshakeResp(RpcUtils.getStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR, msg));
-    }
-    LOGGER.info("Handshake successfully.");
-    return new TPipeHandshakeResp(RpcUtils.SUCCESS_STATUS);
-  }
-
-  @Override
-  public TPipeHeartbeatResp handleHeartbeatReq(TPipeHeartbeatReq req) {
-    throw new NotImplementedException("Not implement for pipe heartbeat thrift request.");
-  }
-
-  @Override
-  public TPipeTransferResp handleTransferReq(
+  public synchronized TPipeTransferResp handleTransferReq(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    switch (req.getType()) {
-      case 0:
-        return handleTransferInsertNode(
-            PipeTransferInsertNodeReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-      case 1:
-        return handleTransferFilePiece(PipeTransferFilePieceReq.fromTPipeTransferReq(req));
-      case 2:
-        return handleTransferFileSeal(
-            PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-      default:
-        return new TPipeTransferResp(
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format("Unknown transfer type %s.", req.getType())));
+    final short rawRequestType = req.getType();
+    if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
+      switch (PipeRequestType.valueOf(rawRequestType)) {
+        case HANDSHAKE:
+          return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
+        case TRANSFER_INSERT_NODE:
+          return handleTransferInsertNode(
+              PipeTransferInsertNodeReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+        case TRANSFER_FILE_PIECE:
+          return handleTransferFilePiece(PipeTransferFilePieceReq.fromTPipeTransferReq(req));
+        case TRANSFER_FILE_SEAL:
+          return handleTransferFileSeal(
+              PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+        default:
+          break;
+      }
     }
+
+    // unknown request type, which means the request can not be handled by this receiver,
+    // maybe the version of the receiver is not compatible with the sender
+    return new TPipeTransferResp(
+        RpcUtils.getStatus(
+            TSStatusCode.PIPE_TYPE_ERROR,
+            String.format("Unknown transfer type %s.", rawRequestType)));
   }
 
-  @Override
-  public void handleExit() {
-    try {
-      if (writer != null) {
-        writer.close();
-      }
-      if (writingFile != null) {
-        writingFile.deleteOnExit();
-      }
-    } catch (IOException e) {
-      LOGGER.warn("Clean up Pipe writing file error when closing handler.", e);
+  private TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
+    if (!IOTDB_CONFIG.getTimestampPrecision().equals(req.getTimestampPrecision())) {
+      String msg =
+          String.format(
+              "IoTDB receiver's timestamp precision %s, connector's timestamp precision %s. validation fails.",
+              IOTDB_CONFIG.getTimestampPrecision(), req.getTimestampPrecision());
+      LOGGER.warn(msg);
+      return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR, msg));
     }
+
+    LOGGER.info("Handshake successfully.");
+    return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private TPipeTransferResp handleTransferInsertNode(
@@ -130,114 +110,10 @@ public class IoTDBThriftReceiverImpl implements IoTDBThriftReceiver {
         executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
   }
 
-  private TPipeTransferResp handleTransferFilePiece(PipeTransferFilePieceReq req) {
-    try {
-      validateAndCreateFile(req.getFileName());
-      if (!validateOffset(req.getStartOffset())) {
-        return new PipeTransferFilePieceResp(
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_REDIRECTION,
-                String.format(
-                    "Redirection offset from %s to %s.", req.getStartOffset(), writer.length())),
-            writer.length());
-      }
-
-      writer.write(req.getBody());
-      return new PipeTransferFilePieceResp(RpcUtils.SUCCESS_STATUS, writer.length());
-    } catch (IOException e) {
-      LOGGER.warn(String.format("Write file piece form req %s error.", req), e);
-      return new PipeTransferFilePieceResp(
-              RpcUtils.getStatus(
-                  TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                  String.format("Write file piece error, because %s", e.getMessage())),
-              PipeTransferFilePieceResp.ERROR_END_OFFSET)
-          .toTPipeTransferResp();
-    }
-  }
-
-  private void validateAndCreateFile(String fileName) throws IOException {
-    if (writingFile == null || !writingFile.getName().equals(fileName)) {
-      if (writer != null) {
-        writer.close();
-      }
-      if (writingFile != null && writingFile.exists()) {
-        writingFile.deleteOnExit();
-        LOGGER.info(String.format("Delete origin file %s.", writingFile.getPath()));
-      }
-      if (!new File(RECEIVE_DIR).exists()) {
-        boolean ignored = new File(RECEIVE_DIR).mkdirs();
-      }
-      writingFile = new File(RECEIVE_DIR, fileName);
-      writer = new RandomAccessFile(writingFile, "rw");
-      LOGGER.info(String.format("Start to write transferring file %s.", writingFile.getPath()));
-    }
-  }
-
-  private boolean validateOffset(long offset) throws IOException {
-    return offset == writer.length();
-  }
-
-  private TPipeTransferResp handleTransferFileSeal(
-      PipeTransferFileSealReq req,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
-    try {
-      if (!validateFileExist()) {
-        return new TPipeTransferResp(
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format(
-                    "Seal file error, target file %s does not exist on receiver.",
-                    req.getFileName())));
-      }
-      if (!validateFileName(req.getFileName())) {
-        return new TPipeTransferResp(
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format(
-                    "Seal wrong file, want to seal %s, but %s exits.",
-                    req.getFileName(), writingFile)));
-      }
-      if (!validateFileLength(req.getFileLength())) {
-        return new TPipeTransferResp(
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-                String.format(
-                    "Seal file length error, origin file has length %s, but receive file has length %s.",
-                    req.getFileLength(), writer.length())));
-      }
-
-      LoadTsFileStatement statement = new LoadTsFileStatement(writingFile.getAbsolutePath());
-      statement.setDeleteAfterLoad(true);
-      statement.setVerifySchema(true);
-      statement.setAutoCreateDatabase(false);
-      writer.close();
-      return new TPipeTransferResp(executeStatement(statement, partitionFetcher, schemaFetcher));
-    } catch (IOException e) {
-      LOGGER.warn(String.format("Seal file %s form req %s error.", writingFile, req), e);
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-              String.format("Seal file error, because %s", e.getMessage())));
-    }
-  }
-
-  private boolean validateFileExist() {
-    return writingFile != null && writingFile.exists() && writer != null;
-  }
-
-  private boolean validateFileName(String fileName) {
-    return writingFile.getName().equals(fileName);
-  }
-
-  private boolean validateFileLength(long fileLength) throws IOException {
-    return writer.length() == fileLength;
-  }
-
   private TSStatus executeStatement(
       Statement statement, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    long queryId = SessionManager.getInstance().requestQueryId();
-    ExecutionResult result =
+    final long queryId = SessionManager.getInstance().requestQueryId();
+    final ExecutionResult result =
         Coordinator.getInstance()
             .execute(
                 statement,
@@ -249,8 +125,151 @@ public class IoTDBThriftReceiverImpl implements IoTDBThriftReceiver {
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "Execute Statement error, statement: {}, result status is: {}", statement, result.status);
+          "failed to execute statement, statement: {}, result status is: {}",
+          statement,
+          result.status);
     }
     return result.status;
+  }
+
+  private TPipeTransferResp handleTransferFilePiece(PipeTransferFilePieceReq req) {
+    try {
+      updateWritingFileIfNeeded(req.getFileName());
+
+      if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
+        return PipeTransferFilePieceResp.toTPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET,
+                String.format(
+                    "request sender reset file reader's offset from %s to %s.",
+                    req.getStartWritingOffset(), writingFileWriter.length())),
+            writingFileWriter.length());
+      }
+
+      writingFileWriter.write(req.getFilePiece());
+      return PipeTransferFilePieceResp.toTPipeTransferResp(
+          RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
+    } catch (Exception e) {
+      LOGGER.warn(String.format("failed to write file piece from req %s.", req), e);
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format("failed to write file piece, because %s", e.getMessage()));
+      try {
+        return PipeTransferFilePieceResp.toTPipeTransferResp(
+            status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
+      } catch (IOException ex) {
+        return PipeTransferFilePieceResp.toTPipeTransferResp(status);
+      }
+    }
+  }
+
+  private void updateWritingFileIfNeeded(String fileName) throws IOException {
+    if (isFileExistedAndNameCorrect(fileName)) {
+      return;
+    }
+
+    if (writingFileWriter != null) {
+      writingFileWriter.close();
+      writingFileWriter = null;
+    }
+    if (writingFile != null && writingFile.exists()) {
+      final boolean ignored = writingFile.delete();
+      LOGGER.info(String.format("original file %s was deleted.", writingFile.getPath()));
+      writingFile = null;
+    }
+
+    final File receiveDir = new File(RECEIVE_DIR);
+    if (!receiveDir.exists()) {
+      boolean ignored = receiveDir.mkdirs();
+    }
+    writingFile = new File(RECEIVE_DIR, fileName);
+    writingFileWriter = new RandomAccessFile(writingFile, "rw");
+    LOGGER.info(String.format("start to write transferring file %s.", writingFile.getPath()));
+  }
+
+  private boolean isFileExistedAndNameCorrect(String fileName) {
+    return writingFile != null && writingFile.getName().equals(fileName);
+  }
+
+  private boolean isWritingFileOffsetCorrect(long offset) throws IOException {
+    return writingFileWriter.length() == offset;
+  }
+
+  private TPipeTransferResp handleTransferFileSeal(
+      PipeTransferFileSealReq req,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    try {
+      if (!isWritingFileAvailable()) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "failed to seal file, because writing file %s is not available.",
+                    req.getFileName())));
+      }
+
+      if (!isFileExistedAndNameCorrect(req.getFileName())) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "failed to seal file %s, but writing file is %s.",
+                    req.getFileName(), writingFile)));
+      }
+
+      if (!isWritingFileOffsetCorrect(req.getFileLength())) {
+        return new TPipeTransferResp(
+            RpcUtils.getStatus(
+                TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+                String.format(
+                    "failed to seal file because the length of file is not correct. "
+                        + "the original file has length %s, but receiver file has length %s.",
+                    req.getFileLength(), writingFileWriter.length())));
+      }
+
+      writingFileWriter.close();
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement(writingFile.getAbsolutePath());
+      statement.setDeleteAfterLoad(true);
+      statement.setVerifySchema(true);
+      statement.setAutoCreateDatabase(false);
+      return new TPipeTransferResp(executeStatement(statement, partitionFetcher, schemaFetcher));
+    } catch (IOException e) {
+      LOGGER.warn(String.format("failed to seal file %s from req %s.", writingFile, req), e);
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
+              String.format("failed to seal file %s because %s", writingFile, e.getMessage())));
+    }
+  }
+
+  private boolean isWritingFileAvailable() {
+    return writingFile != null && writingFile.exists() && writingFileWriter != null;
+  }
+
+  @Override
+  public synchronized void handleExit() {
+    try {
+      if (writingFileWriter != null) {
+        writingFileWriter.close();
+      }
+      if (writingFile != null) {
+        if (!writingFile.delete()) {
+          LOGGER.warn(
+              String.format(
+                  "IoTDBThriftReceiverV1#handleExit: delete file %s error.",
+                  writingFile.getPath()));
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.warn("IoTDBThriftReceiverV1#handleExit: meeting errors on handleExit().", e);
+    }
+  }
+
+  @Override
+  public IoTDBThriftConnectorVersion getVersion() {
+    return IoTDBThriftConnectorVersion.VERSION_ONE;
   }
 }

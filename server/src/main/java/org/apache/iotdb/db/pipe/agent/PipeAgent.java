@@ -73,11 +73,11 @@ public class PipeAgent {
   }
 
   /**
-   * Get the singleton instance of PipeReceiveAgent.
+   * Get the singleton instance of PipeReceiverAgent.
    *
-   * @return the singleton instance of PipeReceiveAgent
+   * @return the singleton instance of PipeReceiverAgent
    */
-  public static PipeReceiverAgent receive() {
+  public static PipeReceiverAgent receiver() {
     return PipeAgentHolder.HANDLE.pipeReceiverAgent;
   }
 }

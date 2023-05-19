@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.receiver.reponse;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.reponse;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -29,35 +29,52 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class PipeTransferFilePieceResp extends TPipeTransferResp {
+
   public static final long ERROR_END_OFFSET = -1;
-  private final long endOffset;
 
-  public PipeTransferFilePieceResp(TSStatus status, long endOffset) {
-    this.status = status;
-    this.endOffset = endOffset;
+  private long endWritingOffset;
+
+  private PipeTransferFilePieceResp() {}
+
+  public long getEndWritingOffset() {
+    return endWritingOffset;
   }
 
-  public long getEndOffset() {
-    return endOffset;
-  }
+  public static PipeTransferFilePieceResp toTPipeTransferResp(
+      TSStatus status, long endWritingOffset) throws IOException {
+    final PipeTransferFilePieceResp filePieceResp = new PipeTransferFilePieceResp();
 
-  public TPipeTransferResp toTPipeTransferResp() {
+    filePieceResp.status = status;
+
+    filePieceResp.endWritingOffset = endWritingOffset;
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(endOffset, outputStream);
-      this.transferResponse =
+      ReadWriteIOUtils.write(endWritingOffset, outputStream);
+      filePieceResp.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      return this;
-    } catch (IOException e) {
-      return this;
     }
+
+    return filePieceResp;
   }
 
-  public static PipeTransferFilePieceResp fromTPipeTransferResp(TPipeTransferResp resp) {
-    long endOffset = ERROR_END_OFFSET;
-    if (resp.isSetTransferResponse()) {
-      endOffset = ReadWriteIOUtils.readLong(resp.transferResponse);
+  public static PipeTransferFilePieceResp toTPipeTransferResp(TSStatus status) {
+    final PipeTransferFilePieceResp filePieceResp = new PipeTransferFilePieceResp();
+
+    filePieceResp.status = status;
+
+    return filePieceResp;
+  }
+
+  public static PipeTransferFilePieceResp fromTPipeTransferResp(TPipeTransferResp transferResp) {
+    final PipeTransferFilePieceResp filePieceResp = new PipeTransferFilePieceResp();
+
+    filePieceResp.status = transferResp.status;
+
+    if (transferResp.isSetBody()) {
+      filePieceResp.endWritingOffset = ReadWriteIOUtils.readLong(transferResp.body);
+      filePieceResp.body = transferResp.body;
     }
-    return new PipeTransferFilePieceResp(resp.status, endOffset);
+
+    return filePieceResp;
   }
 }

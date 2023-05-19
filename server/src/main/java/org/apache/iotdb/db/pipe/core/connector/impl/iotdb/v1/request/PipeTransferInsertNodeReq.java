@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.receiver.request;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
@@ -26,27 +26,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
-
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferInsertNodeReq.class);
-  private final InsertNode insertNode;
 
-  public PipeTransferInsertNodeReq(String pipeVersion, InsertNode insertNode) {
-    this.pipeVersion = pipeVersion;
-    this.insertNode = insertNode;
-  }
+  private InsertNode insertNode;
 
-  public PipeTransferInsertNodeReq(String pipeVersion, InsertNode insertNode, ByteBuffer body) {
-    this.pipeVersion = pipeVersion;
-    this.insertNode = insertNode;
-    this.body = body;
-  }
+  private PipeTransferInsertNodeReq() {}
 
   public InsertNode getInsertNode() {
     return insertNode;
@@ -54,9 +42,9 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
   public Statement constructStatement() {
     if (insertNode instanceof InsertRowNode) {
-      InsertRowNode node = (InsertRowNode) insertNode;
-      InsertRowStatement statement = new InsertRowStatement();
+      final InsertRowNode node = (InsertRowNode) insertNode;
 
+      final InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(node.getDevicePath());
       statement.setTime(node.getTime());
       statement.setMeasurements(node.getMeasurements());
@@ -65,10 +53,12 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
       statement.setNeedInferType(true);
       statement.setAligned(node.isAligned());
       return statement;
-    } else if (insertNode instanceof InsertTabletNode) {
-      InsertTabletNode node = (InsertTabletNode) insertNode;
-      InsertTabletStatement statement = new InsertTabletStatement();
+    }
 
+    if (insertNode instanceof InsertTabletNode) {
+      final InsertTabletNode node = (InsertTabletNode) insertNode;
+
+      final InsertTabletStatement statement = new InsertTabletStatement();
       statement.setDevicePath(node.getDevicePath());
       statement.setMeasurements(node.getMeasurements());
       statement.setTimes(node.getTimes());
@@ -78,28 +68,35 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
       statement.setDataTypes(node.getDataTypes());
       statement.setAligned(node.isAligned());
       return statement;
-    } else {
-      LOGGER.warn(
-          String.format(
-              "Unknown Insert Node type %s when constructing statement from insert node.",
-              insertNode));
-      return null;
     }
+
+    throw new UnsupportedOperationException(
+        String.format(
+            "unknown InsertNode type %s when constructing statement from insert node.",
+            insertNode));
   }
 
-  @Override
-  public short getType() {
-    return PipeTransferReqType.INSERT_NODE.getNodeType();
+  public static PipeTransferInsertNodeReq toTPipeTransferReq(InsertNode insertNode) {
+    final PipeTransferInsertNodeReq req = new PipeTransferInsertNodeReq();
+
+    req.insertNode = insertNode;
+
+    req.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    req.type = PipeRequestType.TRANSFER_INSERT_NODE.getType();
+    req.body = insertNode.serializeToByteBuffer();
+
+    return req;
   }
 
-  public TPipeTransferReq toTPipeTransferReq() {
-    this.type = getType();
-    this.body = insertNode.serializeToByteBuffer();
-    return this;
-  }
+  public static PipeTransferInsertNodeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferInsertNodeReq insertNodeReq = new PipeTransferInsertNodeReq();
 
-  public static PipeTransferInsertNodeReq fromTPipeTransferReq(TPipeTransferReq req) {
-    return new PipeTransferInsertNodeReq(
-        req.pipeVersion, (InsertNode) PlanNodeType.deserialize(req.body), req.body);
+    insertNodeReq.insertNode = (InsertNode) PlanNodeType.deserialize(transferReq.body);
+
+    insertNodeReq.version = transferReq.version;
+    insertNodeReq.type = transferReq.type;
+    insertNodeReq.body = transferReq.body;
+
+    return insertNodeReq;
   }
 }

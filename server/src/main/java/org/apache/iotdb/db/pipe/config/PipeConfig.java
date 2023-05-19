@@ -45,8 +45,6 @@ public class PipeConfig {
   private final int realtimeCollectorPendingQueueTabletLimit =
       realtimeCollectorPendingQueueCapacity / 2;
 
-  private final String pipeVersion = "1.0";
-
   private final int readFileBufferSize = 8388608;
 
   public int getDefaultRingBufferSize() {
@@ -63,10 +61,6 @@ public class PipeConfig {
 
   public int getRealtimeCollectorPendingQueueTabletLimit() {
     return realtimeCollectorPendingQueueTabletLimit;
-  }
-
-  public String getPipeVersion() {
-    return pipeVersion;
   }
 
   public String getReceiveFileDir() {

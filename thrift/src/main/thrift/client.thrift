@@ -455,37 +455,15 @@ struct TSyncTransportMetaInfo{
   2:required i64 startIndex
 }
 
-struct TPipeHandshakeReq {
-    1:required string pipeVersion
-    2:required string IoTDBVersion
-    3:optional binary handshakeInfo
-}
-
-struct TPipeHandshakeResp {
-    1:required common.TSStatus status
-    2:optional binary handshakeResponse
-}
-
-struct TPipeHeartbeatReq {
-    1:required string pipeVersion
-    2:optional binary heartbeatInfo
-}
-
-struct TPipeHeartbeatResp {
-    1:required common.TSStatus status
-    2:optional binary heartbeatResponse
-}
-
 struct TPipeTransferReq {
-    1:required string pipeVersion
-    2:required i16 type
-    3:optional binary body
-    4:optional binary transferInfo
+  1:required i8 version
+  2:required i16 type
+  3:required binary body
 }
 
 struct TPipeTransferResp {
-    1:required common.TSStatus status
-    2:optional binary transferResponse
+  1:required common.TSStatus status
+  2:optional binary body
 }
 
 struct TSBackupConfigurationResp {
@@ -627,10 +605,6 @@ service IClientRPCService {
   common.TSStatus sendPipeData(1:binary buff);
 
   common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
-
-  TPipeHandshakeResp pipeHandshake(TPipeHandshakeReq req);
-
-  TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req);
 
   TPipeTransferResp pipeTransfer(TPipeTransferReq req);
 

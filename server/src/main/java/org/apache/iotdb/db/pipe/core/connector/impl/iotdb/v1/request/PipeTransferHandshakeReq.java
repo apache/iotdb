@@ -19,44 +19,53 @@
 
 package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request;
 
-import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PipeValidateHandshakeReq extends TPipeTransferReq {
-  private final String timestampPrecision;
+public class PipeTransferHandshakeReq extends TPipeTransferReq {
 
-  public PipeValidateHandshakeReq(tring timestampPrecision) {
-    this.pipeVersion = pipeVersion;
-    this.timestampPrecision = timestampPrecision;
-  }
+  private String timestampPrecision;
+
+  private PipeTransferHandshakeReq() {}
 
   public String getTimestampPrecision() {
     return timestampPrecision;
   }
 
-  public TPipeHandshakeReq toTPipeHandshakeReq() throws IOException {
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+  public static PipeTransferHandshakeReq toTPipeTransferReq(String timestampPrecision)
+      throws IOException {
+    final PipeTransferHandshakeReq handshakeReq = new PipeTransferHandshakeReq();
+
+    handshakeReq.timestampPrecision = timestampPrecision;
+
+    handshakeReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    handshakeReq.type = PipeRequestType.HANDSHAKE.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(timestampPrecision, outputStream);
-      this.handshakeInfo =
+      handshakeReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      return this;
     }
+
+    return handshakeReq;
   }
 
-  public static PipeValidateHandshakeReq fromTPipeHandshakeReq(TPipeHandshakeReq req) {
-    return new PipeValidateHandshakeReq(
-        req.getPipeVersion(),
-        req.getIoTDBVersion(),
-        ReadWriteIOUtils.readString(req.handshakeInfo));
+  public static PipeTransferHandshakeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferHandshakeReq handshakeReq = new PipeTransferHandshakeReq();
+
+    handshakeReq.timestampPrecision = ReadWriteIOUtils.readString(transferReq.body);
+
+    handshakeReq.version = transferReq.version;
+    handshakeReq.type = transferReq.type;
+    handshakeReq.body = transferReq.body;
+
+    return handshakeReq;
   }
 }

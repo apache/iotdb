@@ -17,19 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.connector.impl.iotdb;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1;
 
-public enum IoTDBThriftConnectorVersion {
-  VERSION_ONE((byte) 1),
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+public enum PipeRequestType {
+  HANDSHAKE((short) 1),
+
+  TRANSFER_INSERT_NODE((short) 2),
+
+  TRANSFER_FILE_PIECE((short) 3),
+  TRANSFER_FILE_SEAL((short) 4),
   ;
 
-  private final byte version;
+  private final short type;
 
-  IoTDBThriftConnectorVersion(byte type) {
-    this.version = type;
+  PipeRequestType(short type) {
+    this.type = type;
   }
 
-  public byte getVersion() {
-    return version;
+  public short getType() {
+    return type;
+  }
+
+  private static final Map<Short, PipeRequestType> TYPE_MAP =
+      Arrays.stream(PipeRequestType.values())
+          .collect(HashMap::new, (map, type) -> map.put(type.getType(), type), HashMap::putAll);
+
+  public static boolean isValidatedRequestType(short type) {
+    return TYPE_MAP.containsKey(type);
+  }
+
+  public static PipeRequestType valueOf(short type) {
+    return TYPE_MAP.get(type);
   }
 }

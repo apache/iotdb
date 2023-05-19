@@ -17,8 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.receiver.request;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request;
 
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -28,14 +30,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class PipeTransferFileSealReq extends TPipeTransferReq {
-  private final String fileName;
-  private final long fileLength;
 
-  public PipeTransferFileSealReq(String pipeVersion, String fileName, long fileLength) {
-    this.pipeVersion = pipeVersion;
-    this.fileName = fileName;
-    this.fileLength = fileLength;
-  }
+  private String fileName;
+  private long fileLength;
+
+  private PipeTransferFileSealReq() {}
 
   public String getFileName() {
     return fileName;
@@ -45,26 +44,36 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     return fileLength;
   }
 
-  @Override
-  public short getType() {
-    return PipeTransferReqType.FILE_SEAL.getNodeType();
-  }
+  public static PipeTransferFileSealReq toTPipeTransferReq(String fileName, long fileLength)
+      throws IOException {
+    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
 
-  public TPipeTransferReq toTPipeTransferReq() throws IOException {
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      this.type = getType();
+    fileSealReq.fileName = fileName;
+    fileSealReq.fileLength = fileLength;
+
+    fileSealReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    fileSealReq.type = PipeRequestType.TRANSFER_FILE_SEAL.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(fileLength, outputStream);
-      this.transferInfo =
+      fileSealReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      return this;
     }
+
+    return fileSealReq;
   }
 
   public static PipeTransferFileSealReq fromTPipeTransferReq(TPipeTransferReq req) {
-    String fileName = ReadWriteIOUtils.readString(req.transferInfo);
-    long fileLength = ReadWriteIOUtils.readLong(req.transferInfo);
-    return new PipeTransferFileSealReq(req.pipeVersion, fileName, fileLength);
+    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
+
+    fileSealReq.fileName = ReadWriteIOUtils.readString(req.body);
+    fileSealReq.fileLength = ReadWriteIOUtils.readLong(req.body);
+
+    fileSealReq.version = req.version;
+    fileSealReq.type = req.type;
+    fileSealReq.body = req.body;
+
+    return fileSealReq;
   }
 }

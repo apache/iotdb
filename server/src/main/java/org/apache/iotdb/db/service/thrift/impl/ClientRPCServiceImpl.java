@@ -76,10 +76,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeHandshakeResp;
-import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -2082,18 +2078,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TPipeHandshakeResp pipeHandshake(TPipeHandshakeReq req) throws TException {
-    return PipeAgent.receive().handshake(req);
-  }
-
-  @Override
-  public TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req) throws TException {
-    return PipeAgent.receive().heartbeat(req);
-  }
-
-  @Override
-  public TPipeTransferResp pipeTransfer(TPipeTransferReq req) throws TException {
-    return PipeAgent.receive().transfer(req, partitionFetcher, schemaFetcher);
+  public TPipeTransferResp pipeTransfer(TPipeTransferReq req) {
+    return PipeAgent.receiver().transfer(req, partitionFetcher, schemaFetcher);
   }
 
   @Override
@@ -2218,6 +2204,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       closeSession(req);
     }
     SyncService.getInstance().handleClientExit();
-    PipeAgent.receive().handleClientExit();
+    PipeAgent.receiver().handleClientExit();
   }
 }
