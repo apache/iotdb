@@ -431,11 +431,11 @@ public class StorageGroupManager {
     }
   }
 
-  public void takeReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
+  public void applyReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
     for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
         this.virtualStorageGroupProcessor) {
       if (virtualStorageGroupProcessor != null) {
-        virtualStorageGroupProcessor.takeReadLockAndCollectFilesForBackup(resources);
+        virtualStorageGroupProcessor.applyReadLockAndCollectFilesForBackup(resources);
       }
     }
   }

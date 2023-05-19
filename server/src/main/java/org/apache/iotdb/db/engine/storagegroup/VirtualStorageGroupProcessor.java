@@ -3267,16 +3267,23 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  public void takeReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
+  public void applyReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
     readLock();
     try {
-      //
       for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
         // 正在被删的tsfile加读锁
+        if (!resource.isClosed()) {
+          continue;
+        }
+        // TODO: where will the read lock be unlocked
         resource.readLock();
         resources.add(resource);
       }
       for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+        if (!resource.isClosed()) {
+          continue;
+        }
+        // TODO: where will the read lock be unlocked
         resource.readLock();
         resources.add(resource);
       }

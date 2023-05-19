@@ -2157,7 +2157,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus executeBackup(TSBackupReq req) {
-    BackupPlan plan = new BackupPlan(req.outputPath, req.isFullBackup);
+    BackupPlan plan = new BackupPlan(req.outputPath, req.isFullBackup, req.isSyncBackup);
     return executeNonQueryPlan(plan);
   }
 

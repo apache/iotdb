@@ -60,7 +60,6 @@ public enum ThreadName {
   SETTLE_SERVICE("Settle"),
   BACKUP_SERVICE("Backup-Service"),
   BACKUP_TEMPORARY_FILE_CHECK("Backup-Temporary-File-Check"),
-  BACKUP_CLIENT("Backup-Client"),
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
   CLUSTER_INFO_SERVICE("ClusterInfoClient"),
   CLUSTER_RPC_SERVICE("ClusterRPC"),

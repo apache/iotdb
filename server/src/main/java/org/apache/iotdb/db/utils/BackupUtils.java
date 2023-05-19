@@ -175,10 +175,6 @@ public class BackupUtils {
         + absolutePath.replace(systemDir, "");
   }
 
-  public static void copyFile(Path source, Path target) throws IOException {
-    Files.copy(source, target);
-  }
-
   public static List<File> getAllFilesInOneDir(String path) {
     List<File> sonFiles = new ArrayList<>();
     File[] sonFileAndDirs = new File(path).listFiles();
