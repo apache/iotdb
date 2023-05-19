@@ -594,7 +594,7 @@ public class AbstractCompactionTest {
       filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
-    resource.updatePlanIndexes(fileVersion++);
+    resource.updatePlanIndexes(fileVersion);
     resource.setStatus(TsFileResourceStatus.NORMAL);
     return resource;
   }
