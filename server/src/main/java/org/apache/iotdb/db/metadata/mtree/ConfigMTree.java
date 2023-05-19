@@ -538,13 +538,13 @@ public class ConfigMTree {
           @Override
           protected boolean acceptFullMatchedNode(IConfigMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)
-                || super.acceptFullMatchedNode(node);
+                && super.acceptFullMatchedNode(node);
           }
 
           @Override
           protected boolean acceptInternalMatchedNode(IConfigMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)
-                || super.acceptInternalMatchedNode(node);
+                && super.acceptInternalMatchedNode(node);
           }
 
           @Override
