@@ -119,7 +119,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
             "show timeseries", // the same as root
             "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
             "show timeseries root.** where timeseries contains 'tat'",
-            "show timeseries root.ln.** where timeseries contains 'wf01.wt01'"
+            "show timeseries root.ln.** where timeseries contains 'wf01.wt01'",
+            "show timeseries root.ln.** where dataType=BOOLEAN"
           };
       Set<String>[] standards =
           new Set[] {
@@ -156,6 +157,10 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
                 Arrays.asList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,,",
                     "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,,",
+                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,null,null,,")),
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
