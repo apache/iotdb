@@ -538,20 +538,22 @@ public class ConfigMTree {
           @Override
           protected boolean acceptFullMatchedNode(IConfigMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)
-                && super.acceptFullMatchedNode(node);
+                || super.acceptFullMatchedNode(node);
           }
 
           @Override
           protected boolean acceptInternalMatchedNode(IConfigMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)
-                && super.acceptInternalMatchedNode(node);
+                || super.acceptInternalMatchedNode(node);
           }
 
           @Override
           protected Void collectMNode(IConfigMNode node) {
-            result
-                .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
-                .add(getPartialPathFromRootToNode(node));
+            if (node.getSchemaTemplateId() != NON_TEMPLATE && !node.isSchemaTemplatePreUnset()) {
+              result
+                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
+                  .add(getPartialPathFromRootToNode(node));
+            }
             return null;
           }
 
