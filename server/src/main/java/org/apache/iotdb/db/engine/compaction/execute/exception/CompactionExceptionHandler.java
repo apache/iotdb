@@ -240,7 +240,7 @@ public class CompactionExceptionHandler {
         continue;
       } else {
         // set target resources to CLOSED, so that they can be selected to compact
-        targetResource.setStatus(TsFileResourceStatus.CLOSED);
+        targetResource.setStatus(TsFileResourceStatus.NORMAL);
       }
       if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
         LOGGER.error(

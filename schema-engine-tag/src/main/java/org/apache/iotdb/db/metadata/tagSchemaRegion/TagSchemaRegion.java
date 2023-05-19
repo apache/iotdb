@@ -296,6 +296,11 @@ public class TagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("checkMeasurementExistence");
   }
 
+  @Override
+  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum) {
+    throw new UnsupportedOperationException();
+  }
+
   private void filterExistingMeasurements(
       ICreateAlignedTimeSeriesPlan plan, Set<String> measurementSet) {
     List<String> measurements = plan.getMeasurements();
@@ -588,16 +593,6 @@ public class TagSchemaRegion implements ISchemaRegion {
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
     throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public long countDeviceNumBySchemaRegion() throws MetadataException {
-    throw new UnsupportedOperationException("countDeviceNumBySchemaRegion");
-  }
-
-  @Override
-  public long countTimeSeriesNumBySchemaRegion() throws MetadataException {
-    throw new UnsupportedOperationException("countTimeSeriesNumBySchemaRegion");
   }
 
   @Override

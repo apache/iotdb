@@ -43,13 +43,13 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(PipeCollectorConstant.PATTERN_DATA_REGION_KEY);
+    validator.validateRequiredAttribute(PipeCollectorConstant.DATA_REGION_KEY);
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
-    dataRegionId = parameters.getInt(PipeCollectorConstant.PATTERN_DATA_REGION_KEY);
+    dataRegionId = parameters.getInt(PipeCollectorConstant.DATA_REGION_KEY);
   }
 
   @Override

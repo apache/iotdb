@@ -21,8 +21,12 @@ package org.apache.iotdb.db.pipe.config;
 
 public class PipeCollectorConstant {
 
-  public static final String PATTERN_PATTERN_KEY = "collector.pattern";
-  public static final String PATTERN_DATA_REGION_KEY = "collector.data-region";
+  public static final String COLLECTOR_KEY = "collector";
+
+  public static final String COLLECTOR_PATTERN_KEY = "collector.pattern";
+  public static final String COLLECTOR_PATTERN_DEFAULT_VALUE = "root";
+
+  public static final String DATA_REGION_KEY = "collector.data-region";
 
   private PipeCollectorConstant() {
     throw new IllegalStateException("Utility class");

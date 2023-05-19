@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewMNode;
-import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpressionType;
-import org.apache.iotdb.db.metadata.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -89,7 +89,9 @@ public class LogicalViewInfo implements IMeasurementInfo {
 
   @Override
   public void setSchema(IMeasurementSchema schema) {
-    this.schema = (LogicalViewSchema) schema;
+    if (schema.isLogicalView()) {
+      this.schema = (LogicalViewSchema) schema;
+    }
   }
 
   @Override

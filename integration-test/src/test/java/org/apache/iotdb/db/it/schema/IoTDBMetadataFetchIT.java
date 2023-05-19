@@ -118,6 +118,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
             "show timeseries root.ln.*.wt01.*", // seriesPath with stars
             "show timeseries", // the same as root
             "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
+            "show timeseries root.** where timeseries contains 'tat'",
+            "show timeseries root.ln.** where timeseries contains 'wf01.wt01'"
           };
       Set<String>[] standards =
           new Set[] {
@@ -144,7 +146,16 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
                     "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,,",
                     "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,,",
                     "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,,")),
-            new HashSet<>()
+            new HashSet<>(),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,,",
+                    "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,,",
+                    "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,null,null,,",
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,null,null,,")),
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -254,11 +265,16 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls =
-          new String[] {"show devices root.ln.**", "show devices root.ln.wf01.wt01.temperature"};
+          new String[] {
+            "show devices root.ln.**",
+            "show devices root.ln.wf01.wt01.temperature",
+            "show devices root.** where device contains 'wt02'"
+          };
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(Arrays.asList("root.ln.wf01.wt01,false,", "root.ln.wf01.wt02,true,")),
-            new HashSet<>()
+            new HashSet<>(),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt02,true,")),
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -422,11 +438,42 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.ln1.** where tag1 = v1",
-            "COUNT TIMESERIES where tag1 = v1",
-            "COUNT TIMESERIES where tag3 = v3"
+            "COUNT TIMESERIES root.ln1.** where TAGS(tag1) = v1",
+            "COUNT TIMESERIES where TAGS(tag1) = v1",
+            "COUNT TIMESERIES where TAGS(tag3) = v3"
           };
       String[] standards = new String[] {"1,\n", "2,\n", "0,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            builder.append("\n");
+          }
+          Assert.assertEquals(standard, builder.toString());
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void showCountTimeSeriesWithPathContains() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String[] sqls =
+          new String[] {
+            "COUNT TIMESERIES root.** where TIMESERIES contains 'wf01.wt01'",
+            "COUNT TIMESERIES root.ln.** where TIMESERIES contains 's'",
+          };
+      String[] standards = new String[] {"6,\n", "3,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -559,10 +606,10 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       statement.execute("ALTER timeseries root.ln2.wf01.wt01.status ADD TAGS tag1=v1");
       String[] sqls =
           new String[] {
-            "COUNT TIMESERIES root.** where tag1 = v1 group by level=1",
-            "COUNT TIMESERIES root.** where tag2 = v2 group by level=3",
-            "COUNT TIMESERIES root.**.status where tag1 = v1 group by level=2",
-            "COUNT TIMESERIES root.** where tag3 = v3 group by level=2"
+            "COUNT TIMESERIES root.** where TAGS(tag1) = v1 group by level=1",
+            "COUNT TIMESERIES root.** where TAGS(tag2) = v2 group by level=3",
+            "COUNT TIMESERIES root.**.status where TAGS(tag1) = v1 group by level=2",
+            "COUNT TIMESERIES root.** where TAGS(tag3) = v3 group by level=2"
           };
       Set<String>[] standards =
           new Set[] {
@@ -570,6 +617,38 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
             new HashSet<>(Collections.singletonList("root.ln1.wf01.wt01,1,")),
             new HashSet<>(Arrays.asList("root.ln1.wf01,1,", "root.ln2.wf01,1,")),
             Collections.emptySet(),
+          };
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        Set<String> standard = standards[n];
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          while (resultSet.next()) {
+            String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
+          }
+          assertEquals(0, standard.size());
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void showCountTimeSeriesGroupByWithPathContains() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String[] sqls =
+          new String[] {
+            "COUNT TIMESERIES root.** where TIMESERIES contains 'wf01.wt01' group by level=1",
+            "COUNT TIMESERIES root.ln.** where TIMESERIES contains 's' group by level=3"
+          };
+      Set<String>[] standards =
+          new Set[] {
+            new HashSet<>(Arrays.asList("root.ln,2,", "root.ln1,2,", "root.ln2,2,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,1,", "root.ln.wf01.wt02,2,"))
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];

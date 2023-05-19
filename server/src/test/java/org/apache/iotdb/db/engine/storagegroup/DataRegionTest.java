@@ -282,11 +282,11 @@ public class DataRegionTest {
             false,
             measurements,
             dataTypes,
+            measurementSchemas,
             times,
             null,
             columns,
             times.length);
-    insertTabletNode1.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -304,11 +304,11 @@ public class DataRegionTest {
             false,
             measurements,
             dataTypes,
+            measurementSchemas,
             times,
             null,
             columns,
             times.length);
-    insertTabletNode2.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -445,11 +445,11 @@ public class DataRegionTest {
             false,
             measurements,
             dataTypes,
+            measurementSchemas,
             times,
             null,
             columns,
             times.length);
-    insertTabletNode1.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -466,11 +466,11 @@ public class DataRegionTest {
             false,
             measurements,
             dataTypes,
+            measurementSchemas,
             times,
             null,
             columns,
             times.length);
-    insertTabletNode2.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -533,11 +533,11 @@ public class DataRegionTest {
             false,
             measurements,
             dataTypes,
+            measurementSchemas,
             times,
             null,
             columns,
             times.length);
-    insertTabletNode1.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -554,11 +554,11 @@ public class DataRegionTest {
             false,
             measurements,
             dataTypes,
+            measurementSchemas,
             times,
             null,
             columns,
             times.length);
-    insertTabletNode2.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -621,11 +621,11 @@ public class DataRegionTest {
             false,
             measurements,
             dataTypes,
+            measurementSchemas,
             times,
             null,
             columns,
             times.length);
-    insertTabletNode1.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -642,11 +642,11 @@ public class DataRegionTest {
             false,
             measurements,
             dataTypes,
+            measurementSchemas,
             times,
             null,
             columns,
             times.length);
-    insertTabletNode2.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();

@@ -67,7 +67,6 @@ import org.junit.Assert;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -326,7 +325,7 @@ public class AbstractCompactionTest {
             startTime + pointNum * i + timeInterval * i + pointNum - 1);
       }
       resource.updatePlanIndexes(fileVersion);
-      resource.setStatus(TsFileResourceStatus.CLOSED);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
       resource.serialize();
       if (isSeq) {
         seqResources.add(resource);
@@ -354,7 +353,7 @@ public class AbstractCompactionTest {
     }
 
     resource.updatePlanIndexes(fileVersion);
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
     resource.serialize();
     if (isSeq) {
       seqResources.add(resource);
@@ -489,7 +488,7 @@ public class AbstractCompactionTest {
               FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                   EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
               tsFileManager.getTsFileList(true),
-              Collections.emptyList(),
+              tsFileManager.getTsFileList(false),
               true);
       List<TimeValuePair> timeseriesData = entry.getValue();
       tmpSourceDatas.put(entry.getKey(), new ArrayList<>(timeseriesData));
@@ -595,8 +594,8 @@ public class AbstractCompactionTest {
       filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
-    resource.updatePlanIndexes(fileVersion);
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.updatePlanIndexes(fileVersion++);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
     return resource;
   }
 

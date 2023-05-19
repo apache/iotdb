@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 
 import java.util.List;
 import java.util.Map;

@@ -24,8 +24,25 @@ import org.apache.iotdb.db.metadata.cache.dualkeycache.impl.DualKeyCachePolicy;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+import java.util.Arrays;
+import java.util.List;
+
+@RunWith(Parameterized.class)
 public class DualKeyCacheTest {
+
+  private final String policy;
+
+  public DualKeyCacheTest(String policy) {
+    this.policy = policy;
+  }
+
+  @Parameterized.Parameters
+  public static List<String> getTestModes() {
+    return Arrays.asList("FIFO", "LRU");
+  }
 
   @Test
   public void testBasicReadPut() {

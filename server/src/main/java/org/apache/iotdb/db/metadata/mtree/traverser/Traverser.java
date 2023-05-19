@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
@@ -70,6 +71,8 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
+
+  protected SchemaFilter schemaFilter;
 
   protected Traverser() {}
 
@@ -176,6 +179,10 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   public void setTemplateMap(Map<Integer, Template> templateMap, IMNodeFactory<N> nodeFactory) {
     this.templateMap = templateMap;
     this.nodeFactory = nodeFactory;
+  }
+
+  public void setSchemaFilter(SchemaFilter schemaFilter) {
+    this.schemaFilter = schemaFilter;
   }
 
   public void setSkipPreDeletedSchema(boolean skipPreDeletedSchema) {

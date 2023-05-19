@@ -30,10 +30,10 @@ import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
-import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
@@ -247,6 +247,7 @@ public class MemMTreeSnapshotUtil {
         childrenNum = 0;
         node = deserializer.deserializeLogicalViewMNode(inputStream);
         measurementProcess.accept(node.getAsMeasurementMNode());
+        break;
       default:
         throw new IOException("Unrecognized MNode type " + type);
     }
@@ -256,6 +257,12 @@ public class MemMTreeSnapshotUtil {
     if (!ancestors.isEmpty()) {
       node.setParent(ancestors.peek());
       ancestors.peek().addChild(node);
+      if (node.isMeasurement() && node.getAsMeasurementMNode().getAlias() != null) {
+        ancestors
+            .peek()
+            .getAsDeviceMNode()
+            .addAlias(node.getAsMeasurementMNode().getAlias(), node.getAsMeasurementMNode());
+      }
     }
 
     // Storage type means current node is root node, so it must be returned.

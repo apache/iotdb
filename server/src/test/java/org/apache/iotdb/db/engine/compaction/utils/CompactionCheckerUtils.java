@@ -545,6 +545,10 @@ public class CompactionCheckerUtils {
       List<TimeValuePair> expectedTimeValueList = expectedData.get(path);
       List<TimeValuePair> actualTimeValueList = actualData.get(path);
 
+      if (actualTimeValueList == null) {
+        assertNull(expectedTimeValueList);
+        continue;
+      }
       assertEquals(expectedTimeValueList.size(), actualTimeValueList.size());
 
       for (int i = 0; i < expectedTimeValueList.size(); ++i) {
