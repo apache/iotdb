@@ -67,6 +67,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.manager.CommitLogTask;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.DirectorySnapshotRaftLogManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.SyncLogDequeSerializer;
+import org.apache.iotdb.consensus.natraft.protocol.log.recycle.EntryAllocator;
 import org.apache.iotdb.consensus.natraft.protocol.log.sequencing.LogSequencer;
 import org.apache.iotdb.consensus.natraft.protocol.log.sequencing.LogSequencerFactory;
 import org.apache.iotdb.consensus.natraft.protocol.log.sequencing.SynchronousSequencer;
@@ -192,6 +193,7 @@ public class RaftMember {
   private volatile LogAppender logAppender;
   private FlowBalancer flowBalancer;
   private Consumer<ConsensusGroupId> onRemove;
+  private EntryAllocator<RequestEntry> requestEntryAllocator;
 
   public RaftMember(
       String storageDir,
@@ -231,6 +233,7 @@ public class RaftMember {
     votingLogList.setEnableWeakAcceptance(config.isEnableWeakAcceptance());
     this.heartbeatReqHandler = new HeartbeatReqHandler(this);
     this.electionReqHandler = new ElectionReqHandler(this);
+    this.requestEntryAllocator = new EntryAllocator<>(config, RequestEntry::new, this::getSafeIndex);
     this.logManager =
         new DirectorySnapshotRaftLogManager(
             new SyncLogDequeSerializer(groupId, config),
@@ -238,7 +241,9 @@ public class RaftMember {
             name,
             stateMachine,
             config,
-            this::examineUnappliedEntry);
+            this::examineUnappliedEntry,
+            this::getSafeIndex,
+            this::recycleEntry);
     this.appenderFactory =
         config.isUseFollowerSlidingWindow() ? new Factory() : new BlockingLogAppender.Factory();
     this.logAppender = appenderFactory.create(this, config);
@@ -247,6 +252,16 @@ public class RaftMember {
     this.onRemove = onRemove;
 
     initPeerMap();
+  }
+
+  public void recycleEntry(Entry entry) {
+    if (entry instanceof RequestEntry) {
+      requestEntryAllocator.recycle(((RequestEntry) entry));
+    }
+  }
+
+  public long getSafeIndex() {
+    return votingLogList.getSafeIndex();
   }
 
   public void applyConfigChange(ConfigChangeEntry configChangeEntry) {
@@ -629,7 +644,7 @@ public class RaftMember {
     }
 
     logger.debug("{}: Processing request {}", name, request);
-    Entry entry = new RequestEntry(request);
+    Entry entry = requestEntryAllocator.Allocate();
     entry.preSerialize();
     entry.receiveTime = System.nanoTime();
 

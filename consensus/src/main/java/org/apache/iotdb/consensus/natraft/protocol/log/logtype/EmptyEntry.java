@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public class EmptyEntry extends Entry {
 
@@ -36,9 +37,9 @@ public class EmptyEntry extends Entry {
   }
 
   @Override
-  protected ByteBuffer serializeInternal() {
+  protected ByteBuffer serializeInternal(byte[] buffer) {
     ByteArrayOutputStream byteArrayOutputStream =
-        new ByteArrayOutputStream(getDefaultSerializationBufferSize());
+        buffer == null ? new PublicBAOS(getDefaultSerializationBufferSize()) : new PublicBAOS(buffer);
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) Types.EMPTY.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());

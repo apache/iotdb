@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public class ConfigChangeEntry extends Entry {
 
@@ -40,9 +41,9 @@ public class ConfigChangeEntry extends Entry {
   }
 
   @Override
-  protected ByteBuffer serializeInternal() {
+  protected ByteBuffer serializeInternal(byte[] buffer) {
     ByteArrayOutputStream byteArrayOutputStream =
-        new ByteArrayOutputStream(getDefaultSerializationBufferSize());
+        buffer == null ? new PublicBAOS(getDefaultSerializationBufferSize()) : new PublicBAOS(buffer);
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) Types.EMPTY.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());

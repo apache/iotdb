@@ -56,6 +56,7 @@ public abstract class Entry implements Comparable<Entry> {
   public long applyTime;
   public long waitEndTime;
 
+  protected volatile byte[] recycledBuffer;
   protected volatile ByteBuffer preSerializationCache;
   protected volatile ByteBuffer serializationCache;
 
@@ -63,7 +64,7 @@ public abstract class Entry implements Comparable<Entry> {
     return DEFAULT_SERIALIZATION_BUFFER_SIZE;
   }
 
-  protected abstract ByteBuffer serializeInternal();
+  protected abstract ByteBuffer serializeInternal(byte[] buffer);
 
   /**
    * Perform serialization before indexing to avoid serialization under locked environment. It
@@ -76,7 +77,7 @@ public abstract class Entry implements Comparable<Entry> {
       return;
     }
     long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
-    ByteBuffer byteBuffer = serializeInternal();
+    ByteBuffer byteBuffer = serializeInternal(recycledBuffer);
     Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
     preSerializationCache = byteBuffer;
   }
@@ -97,7 +98,7 @@ public abstract class Entry implements Comparable<Entry> {
       preSerializationCache = null;
     } else {
       long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
-      ByteBuffer byteBuffer = serializeInternal();
+      ByteBuffer byteBuffer = serializeInternal(recycledBuffer);
       Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
       serializationCache = byteBuffer;
     }
@@ -223,5 +224,28 @@ public abstract class Entry implements Comparable<Entry> {
 
   public void setSerializationCache(ByteBuffer serializationCache) {
     this.serializationCache = serializationCache;
+  }
+
+  public void recycle() {
+    currLogTerm = -1;
+    prevTerm = -1;
+    applied = false;
+    exception = null;
+    byteSize = -1;
+    fromThisNode = false;
+    receiveTime = 0;
+    createTime = 0;
+    acceptedTime = 0;
+    committedTime = 0;
+    applyTime = 0;
+    waitEndTime = 0;
+    if (preSerializationCache != null) {
+      recycledBuffer = preSerializationCache.array();
+      preSerializationCache = null;
+    }
+    if (serializationCache != null) {
+      recycledBuffer = serializationCache.array();
+      serializationCache = null;
+    }
   }
 }

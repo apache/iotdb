@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.exception.LogExecutionException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
@@ -79,8 +81,6 @@ public class VotingLogList {
    * When an entry of index-term is strongly accepted by a node of acceptingNodeId, record the id in
    * all entries whose index <= the accepted entry. If any entry is accepted by a quorum, remove it
    * from the list.
-   *
-   * @return the lastly removed entry if any.
    */
   public void onStronglyAccept(VotingEntry entry, Peer acceptingNode) {
     logger.debug(
@@ -140,5 +140,18 @@ public class VotingLogList {
     NOT_ACCEPTED,
     STRONGLY_ACCEPTED,
     WEAKLY_ACCEPTED
+  }
+
+  /**
+   * Safe index is the maximum index that all followers has reached. Entries below the index is no
+   * longer needed to be stored.
+   *
+   * @return the safe index
+   */
+  public long getSafeIndex() {
+    if (stronglyAcceptedIndices.size() < member.getAllNodes().size() - 1) {
+      return -1;
+    }
+    return stronglyAcceptedIndices.values().stream().min(Long::compareTo).orElse(-1L);
   }
 }

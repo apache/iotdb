@@ -78,6 +78,7 @@ public class RaftConfig {
   private boolean waitApply = true;
   private double flowControlMinFlow = 10_000_000;
   private double flowControlMaxFlow = 100_000_000;
+  private int entryAllocatorCapacity = 100000;
   private CompressionType dispatchingCompressionType = CompressionType.SNAPPY;
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
   private RPCConfig rpcConfig;
@@ -463,6 +464,14 @@ public class RaftConfig {
     this.applierThreadNum = applierThreadNum;
   }
 
+  public int getEntryAllocatorCapacity() {
+    return entryAllocatorCapacity;
+  }
+
+  public void setEntryAllocatorCapacity(int entryAllocatorCapacity) {
+    this.entryAllocatorCapacity = entryAllocatorCapacity;
+  }
+
   public void loadProperties(Properties properties) {
     logger.debug("Loading properties: {}", properties);
 
@@ -690,6 +699,13 @@ public class RaftConfig {
             properties.getProperty(
                 "entry_serialization_buffer_size",
                 String.valueOf(this.getEntryDefaultSerializationBufferSize()))));
+
+
+    this.setEntryAllocatorCapacity(
+        Integer.parseInt(
+            properties.getProperty(
+                "entry_allocator_capacity",
+                String.valueOf(this.getEntryAllocatorCapacity()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

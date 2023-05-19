@@ -1,0 +1,58 @@
+package org.apache.iotdb.consensus.natraft.protocol.log.recycle;
+
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.function.Supplier;
+import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
+import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
+
+public class EntryAllocator<T extends Entry> {
+  private Queue<T> entryPool;
+  private Supplier<T> entryFactory;
+  private Queue<T> recyclingEntries;
+  private Supplier<Long> safeIndexProvider;
+
+  public EntryAllocator(RaftConfig config, Supplier<T> entryFactory, Supplier<Long> safeIndexProvider) {
+    this.entryPool = new ArrayBlockingQueue<>(config.getEntryAllocatorCapacity());
+    this.recyclingEntries = new ArrayBlockingQueue<>(config.getEntryAllocatorCapacity() / 2);
+    this.entryFactory = entryFactory;
+    this.safeIndexProvider = safeIndexProvider;
+  }
+
+  public T Allocate() {
+    T entry = entryPool.poll();
+    if (entry == null) {
+      entry = entryFactory.get();
+    }
+    return entry;
+  }
+
+  public void recycle(T entry) {
+    Long safeIndex = safeIndexProvider.get();
+    if (entry.getCurrLogIndex() <= safeIndex) {
+      entry.recycle();
+      entryPool.add(entry);
+    } else {
+      recyclingEntries.add(entry);
+    }
+
+    checkRecyclingEntries();
+  }
+
+  public void checkRecyclingEntries() {
+    Long safeIndex = safeIndexProvider.get();
+    while (!recyclingEntries.isEmpty()) {
+      T recyclingEntry = recyclingEntries.poll();
+      if (recyclingEntry != null && recyclingEntry.getCurrLogIndex() <= safeIndex) {
+        recyclingEntry.recycle();
+        entryPool.add(recyclingEntry);
+      } else {
+        if (recyclingEntry != null) {
+          recyclingEntries.add(recyclingEntry);
+        }
+        break;
+      }
+    }
+  }
+
+}

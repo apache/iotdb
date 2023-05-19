@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 
+import java.util.function.Supplier;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -107,6 +108,8 @@ public abstract class RaftLogManager {
 
   protected ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   private long committedEntrySize;
+  private Supplier<Long> safeIndexProvider;
+  private Consumer<Entry> entryRecycler;
 
   protected RaftLogManager(
       StableEntryManager stableEntryManager,
@@ -114,12 +117,15 @@ public abstract class RaftLogManager {
       String name,
       IStateMachine stateMachine,
       RaftConfig config,
-      Consumer<List<Entry>> unappliedEntryExaminer) {
+      Consumer<List<Entry>> unappliedEntryExaminer, Supplier<Long> safeIndexProvider,
+      Consumer<Entry> entryRecycler) {
     this.logApplier = applier;
     this.name = name;
     this.stateMachine = stateMachine;
     this.setStableEntryManager(stableEntryManager);
     this.config = config;
+    this.safeIndexProvider = safeIndexProvider;
+    this.entryRecycler = entryRecycler;
 
     initConf();
     initEntries(unappliedEntryExaminer);
@@ -132,7 +138,7 @@ public abstract class RaftLogManager {
     this.checkLogApplierExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutorWithDaemon("check-log-applier-" + name);
 
-    /** deletion check period of the submitted log */
+    /* deletion check period of the submitted log */
     int logDeleteCheckIntervalSecond = config.getLogDeleteCheckIntervalSecond();
 
     if (logDeleteCheckIntervalSecond > 0) {
@@ -147,7 +153,7 @@ public abstract class RaftLogManager {
 
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
 
-    /** flush log to file periodically */
+    /* flush log to file periodically */
     if (config.isEnableRaftLogPersistence()) {
       this.applyAllCommittedLogWhenStartUp();
     }
@@ -203,14 +209,12 @@ public abstract class RaftLogManager {
    *
    * <p>
    *
-   * @throws IOException timeout exception
    */
   public abstract void takeSnapshot(RaftMember member);
 
   /**
    * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.
    *
-   * @param state
    */
   public void updateHardState(HardState state) {
     getStableEntryManager().setHardStateAndFlush(state);
@@ -579,7 +583,7 @@ public abstract class RaftLogManager {
     return entries.size() - 1;
   }
 
-  private void checkCompaction(List<Entry> entries) {
+  private List<Entry> checkCompaction(List<Entry> entries) {
     boolean needToCompactLog = false;
     // calculate the number of old committed entries to be reserved by entry number
     int numToReserveForNew = minNumOfLogsInMem;
@@ -601,11 +605,13 @@ public abstract class RaftLogManager {
     }
 
     // reserve old committed entries with the minimum number
+    List<Entry> removedEntries = Collections.emptyList();
     if (needToCompactLog) {
       int numForNew = Math.min(numToReserveForNew, sizeToReserveForNew);
       int sizeToReserveForConfig = minNumOfLogsInMem;
-      innerDeleteLog(Math.min(sizeToReserveForConfig, numForNew));
+      removedEntries = innerDeleteLog(Math.min(sizeToReserveForConfig, numForNew));
     }
+    return removedEntries;
   }
 
   private void removedCommitted(List<Entry> entries) {
@@ -636,7 +642,6 @@ public abstract class RaftLogManager {
           entry.notify();
         }
       }
-      entry.setSerializationCache(null);
     }
   }
 
@@ -650,6 +655,7 @@ public abstract class RaftLogManager {
       return;
     }
 
+    List<Entry> removedEntries = Collections.emptyList();
     try {
       lock.writeLock().lock();
       long startTime = Statistic.RAFT_SENDER_COMMIT_HOLD_LOCK.getOperationStartTime();
@@ -669,12 +675,19 @@ public abstract class RaftLogManager {
               System.nanoTime() - entry.createTime);
         }
       }
-      checkCompaction(entries);
+      removedEntries = checkCompaction(entries);
       commitEntries(entries);
       applyEntries(entries);
       Statistic.RAFT_SENDER_COMMIT_HOLD_LOCK.calOperationCostTimeFromStart(startTime);
     } finally {
       lock.writeLock().unlock();
+    }
+    recycleEntries(removedEntries);
+  }
+
+  protected void recycleEntries(List<Entry> removedEntries) {
+    for (Entry removedEntry : removedEntries) {
+      entryRecycler.accept(removedEntry);
     }
   }
 
@@ -816,24 +829,28 @@ public abstract class RaftLogManager {
 
   /** check whether delete the committed log */
   void checkDeleteLog() {
+    List<Entry> removedEntries = Collections.emptyList();
     try {
       lock.writeLock().lock();
       if (appliedIndex - getFirstIndex() <= minNumOfLogsInMem) {
         return;
       }
-      innerDeleteLog(minNumOfLogsInMem);
+      removedEntries = innerDeleteLog(minNumOfLogsInMem);
     } catch (Exception e) {
       logger.error("{}, error occurred when checking delete log", name, e);
     } finally {
       lock.writeLock().unlock();
     }
+    recycleEntries(removedEntries);
   }
 
-  private void innerDeleteLog(int sizeToReserve) {
-    long appliedLogNum = appliedIndex - getFirstIndex();
-    long removeSize = appliedLogNum - sizeToReserve;
+  private List<Entry> innerDeleteLog(int sizeToReserve) {
+    long safeIndex = safeIndexProvider.get();
+    long indexToReserve = Math.max(appliedIndex, safeIndex);
+    long removableLogNum = indexToReserve - getFirstIndex();
+    long removeSize = removableLogNum - sizeToReserve;
     if (removeSize <= 0) {
-      return;
+      return Collections.emptyList();
     }
 
     long compactIndex = getFirstIndex() + removeSize;
@@ -847,7 +864,7 @@ public abstract class RaftLogManager {
         removeSize,
         commitIndex - getFirstIndex(),
         appliedIndex);
-    compactEntries(compactIndex);
+    List<Entry> removedEntries = compactEntries(compactIndex);
     if (config.isEnableRaftLogPersistence()) {
       getStableEntryManager().removeCompactedEntries(compactIndex);
     }
@@ -857,16 +874,17 @@ public abstract class RaftLogManager {
         getFirstIndex(),
         getLastLogIndex(),
         commitIndex - getFirstIndex());
+    return removedEntries;
   }
 
-  void compactEntries(long compactIndex) {
+  List<Entry> compactEntries(long compactIndex) {
     long firstIndex = getFirstIndex();
     if (compactIndex < firstIndex) {
       logger.info(
           "entries before request index ({}) have been compacted, and the compactIndex is ({})",
           firstIndex,
           compactIndex);
-      return;
+      return Collections.emptyList();
     }
     long lastLogIndex = getLastLogIndex();
     if (compactIndex >= lastLogIndex) {
@@ -877,9 +895,12 @@ public abstract class RaftLogManager {
     for (int i = 0; i < index; i++) {
       committedEntrySize -= entries.get(0).estimateSize();
     }
+    List<Entry> removedEntries = Collections.emptyList();
     if (index > 0) {
+      removedEntries = new ArrayList<>(entries.subList(0, index));
       entries.subList(0, index).clear();
     }
+    return removedEntries;
   }
 
   public Object getLogUpdateCondition(long logIndex) {
