@@ -130,6 +130,7 @@ public class SlidingWindowLogAppender implements LogAppender {
       if ((logManager.getCommitLogIndex() - logManager.getAppliedIndex())
           <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
         success = logManager.maybeAppend(logs);
+        Statistic.RAFT_RECEIVER_WINDOW_FLUSH_SIZE.add(logs.size());
         break;
       }
       try {
@@ -178,19 +179,8 @@ public class SlidingWindowLogAppender implements LogAppender {
           .setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
     }
 
-    AppendEntryResult result = null;
-    for (Entry entry : entries) {
-      long startTime = Statistic.RAFT_RECEIVER_APPEND_ONE_ENTRY.getOperationStartTime();
-      result = appendEntry(leaderCommit, entry);
-      Statistic.RAFT_RECEIVER_APPEND_ONE_ENTRY.calOperationCostTimeFromStart(startTime);
-
-      if (result.status != Response.RESPONSE_AGREE
-          && result.status != Response.RESPONSE_STRONG_ACCEPT
-          && result.status != Response.RESPONSE_WEAK_ACCEPT) {
-        return result;
-      }
-    }
-
+    AppendEntryResult result;
+    result = appendEntries(leaderCommit, entries);
     return result;
   }
 
@@ -228,13 +218,68 @@ public class SlidingWindowLogAppender implements LogAppender {
         return result;
       }
     }
+    Statistic.RAFT_RECEIVER_APPEND_ONE_ENTRY_SYNC.calOperationCostTimeFromStart(startTime);
 
     if (appended) {
+      long startTime1 = Statistic.RAFT_RECEIVER_UPDATE_COMMIT_INDEX.getOperationStartTime();
       result.setLastLogIndex(logManager.getLastEntryIndexUnsafe());
       member.tryUpdateCommitIndex(member.getStatus().getTerm().get(), leaderCommit, -1);
+      Statistic.RAFT_RECEIVER_UPDATE_COMMIT_INDEX.calOperationCostTimeFromStart(startTime1);
     }
     return result;
   }
+
+  private AppendEntryResult appendEntries(long leaderCommit, List<Entry> entries) {
+    boolean appended = false;
+
+    AppendEntryResult result = new AppendEntryResult();
+    Collections.reverse(entries);
+    long startTime = Statistic.RAFT_RECEIVER_WAIT_FOR_WINDOW.getOperationStartTime();
+    synchronized (this) {
+      Statistic.RAFT_RECEIVER_WAIT_FOR_WINDOW.calOperationCostTimeFromStart(startTime);
+      for (Entry entry : entries) {
+        long prevLogIndex = entry.getCurrLogIndex() - 1;
+        long entryStartTime = Statistic.RAFT_RECEIVER_WAIT_FOR_WINDOW.getOperationStartTime();
+        int windowPos = (int) (prevLogIndex - firstPosPrevIndex);
+        if (windowPos < 0) {
+          // the new entry may replace an appended entry
+          appended = logManager.maybeAppend(Collections.singletonList(entry));
+          moveWindowLeftward(-windowPos);
+          result.status = Response.RESPONSE_STRONG_ACCEPT;
+        } else if (windowPos < windowCapacity) {
+          // the new entry falls into the window
+          logWindow[windowPos] = entry;
+          if (windowLength < windowPos + 1) {
+            windowLength = windowPos + 1;
+          }
+          checkLog(windowPos);
+          if (windowPos == 0) {
+            appended = flushWindow(result);
+            Statistic.RAFT_FOLLOWER_STRONG_ACCEPT.calOperationCostTimeFromStart(entryStartTime);
+          } else {
+            result.status = Response.RESPONSE_WEAK_ACCEPT;
+            Statistic.RAFT_FOLLOWER_WEAK_ACCEPT.calOperationCostTimeFromStart(entryStartTime);
+          }
+        } else {
+          result.setStatus(Response.RESPONSE_OUT_OF_WINDOW);
+          result.setGroupId(member.getRaftGroupId().convertToTConsensusGroupId());
+          return result;
+        }
+        Statistic.RAFT_RECEIVER_APPEND_ONE_ENTRY_SYNC.calOperationCostTimeFromStart(entryStartTime);
+      }
+    }
+    Statistic.RAFT_RECEIVER_APPEND_ENTRIES.calOperationCostTimeFromStart(startTime);
+
+    if (appended) {
+      long startTime1 = Statistic.RAFT_RECEIVER_UPDATE_COMMIT_INDEX.getOperationStartTime();
+      result.setLastLogIndex(logManager.getLastEntryIndexUnsafe());
+      member.tryUpdateCommitIndex(member.getStatus().getTerm().get(), leaderCommit, -1);
+      Statistic.RAFT_RECEIVER_UPDATE_COMMIT_INDEX.calOperationCostTimeFromStart(startTime1);
+    }
+    return result;
+  }
+
+  public void windowInsertion() {}
 
   @Override
   public void reset() {

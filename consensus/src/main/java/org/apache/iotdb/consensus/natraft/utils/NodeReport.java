@@ -52,6 +52,7 @@ public class NodeReport {
     for (RaftMemberReport memberReport : memberReports) {
       stringBuilder.append(memberReport).append(System.lineSeparator());
     }
+    stringBuilder.append(", \n timer: ").append(Timer.Statistic.getReport());
     return stringBuilder.toString();
   }
 
@@ -101,7 +102,6 @@ public class NodeReport {
 
     @Override
     public String toString() {
-      String transportCompressionReport = "";
       return "RaftReport {\n"
           + "character="
           + character
@@ -128,9 +128,6 @@ public class NodeReport {
           + "ms ago"
           + ", logIncrement="
           + (lastLogIndex - prevLastLogIndex)
-          + transportCompressionReport
-          + ", \n timer: "
-          + Timer.Statistic.getReport()
           + '}';
     }
 

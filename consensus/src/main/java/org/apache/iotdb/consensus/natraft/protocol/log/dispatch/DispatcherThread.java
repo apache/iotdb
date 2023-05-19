@@ -31,8 +31,8 @@ import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
-import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 class DispatcherThread extends DynamicThread {
 
@@ -51,33 +52,27 @@ class DispatcherThread extends DynamicThread {
   Peer receiver;
   private final BlockingQueue<VotingEntry> logBlockingDeque;
   protected List<VotingEntry> currBatch = new ArrayList<>();
-  private final String baseName;
-  private final RateLimiter rateLimiter;
   private final DispatcherGroup group;
   private long lastDispatchTime;
+  private PublicBAOS batchLogBuffer = new PublicBAOS(64 * 1024);
+  private AtomicReference<byte[]> compressionBuffer = new AtomicReference<>(new byte[64 * 1024]);
 
   protected DispatcherThread(
       LogDispatcher logDispatcher,
       Peer receiver,
       BlockingQueue<VotingEntry> logBlockingDeque,
-      RateLimiter rateLimiter,
       DispatcherGroup group) {
     super(group.getDynamicThreadGroup());
     this.logDispatcher = logDispatcher;
     this.receiver = receiver;
     this.logBlockingDeque = logBlockingDeque;
-    this.rateLimiter = rateLimiter;
     this.group = group;
-    this.baseName = "LogDispatcher-" + logDispatcher.member.getName() + "-" + receiver;
   }
 
   @Override
   public void runInternal() {
-    if (logger.isDebugEnabled()) {
-      Thread.currentThread().setName(baseName);
-    }
     try {
-      while (!Thread.interrupted()) {
+      while (!Thread.interrupted() && !group.getDynamicThreadGroup().isStopped()) {
         if (group.isDelayed()) {
           if (logBlockingDeque.size() < logDispatcher.maxBatchSize
               && System.nanoTime() - lastDispatchTime < 1_000_000_000L) {
@@ -97,7 +92,7 @@ class DispatcherThread extends DynamicThread {
             if (group.getLogDispatcher().getMember().isLeader()) {
               logBlockingDeque.wait(1000);
             } else {
-              logBlockingDeque.wait(0);
+              logBlockingDeque.wait(5000);
             }
             continue;
           }
@@ -208,7 +203,9 @@ class DispatcherThread extends DynamicThread {
     request.setLeaderId(logDispatcher.member.getThisNode().getNodeId());
     request.setLeaderCommit(logDispatcher.member.getLogManager().getCommitLogIndex());
     request.setTerm(logDispatcher.member.getStatus().getTerm().get());
-    request.setEntryBytes(LogUtils.compressEntries(logList, logDispatcher.compressor, request));
+    request.setEntryBytes(
+        LogUtils.compressEntries(
+            logList, logDispatcher.compressor, request, batchLogBuffer, compressionBuffer));
     request.setCompressionType((byte) logDispatcher.compressor.getType().ordinal());
     return request;
   }
@@ -252,7 +249,7 @@ class DispatcherThread extends DynamicThread {
       if (logDispatcher.getConfig().isUseFollowerLoadBalance()) {
         FlowMonitorManager.INSTANCE.report(receiver.getEndpoint(), logSize);
       }
-      rateLimiter.acquire((int) logSize);
+      group.getRateLimiter().acquire((int) logSize);
     }
   }
 

@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -39,6 +40,7 @@ public class DynamicThreadGroup {
   private int minThreadCnt;
   private int maxThreadCnt;
   private Map<DynamicThread, Future<?>> threadFutureMap = new ConcurrentHashMap<>();
+  private boolean stopped;
 
   public DynamicThreadGroup(
       String name,
@@ -101,14 +103,22 @@ public class DynamicThreadGroup {
 
   public void cancelAll() {
     threadFutureMap.forEach((t, f) -> f.cancel(true));
-    threadFutureMap.clear();
     threadCnt.set(0);
+    stopped = true;
   }
 
   public void join() throws ExecutionException, InterruptedException {
     for (Future<?> future : threadFutureMap.values()) {
-      future.get();
+      try {
+        future.get();
+      } catch (CancellationException e) {
+        // ignore
+      }
     }
+  }
+
+  public boolean isStopped() {
+    return stopped;
   }
 
   @Override

@@ -39,11 +39,12 @@ public class DispatcherGroup {
   private final Peer peer;
   private final BlockingQueue<VotingEntry> entryQueue;
   private boolean nodeEnabled;
-  private final RateLimiter rateLimiter;
+  private RateLimiter rateLimiter;
   private final ExecutorService dispatcherThreadPool;
   private final LogDispatcher logDispatcher;
   private boolean delayed;
   private DynamicThreadGroup dynamicThreadGroup;
+  private String name;
 
   public DispatcherGroup(Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
     this.logDispatcher = logDispatcher;
@@ -52,11 +53,12 @@ public class DispatcherGroup {
     this.nodeEnabled = true;
     this.rateLimiter = RateLimiter.create(Double.MAX_VALUE);
     this.dispatcherThreadPool = createPool(peer, logDispatcher.getMember().getName());
+    this.name = logDispatcher.member.getName() + "-" + peer;
     this.dynamicThreadGroup =
         new DynamicThreadGroup(
-            logDispatcher.member.getName() + "-" + peer,
+            name,
             dispatcherThreadPool::submit,
-            () -> newDispatcherThread(peer, entryQueue, rateLimiter),
+            () -> newDispatcherThread(peer, entryQueue),
             maxBindingThreadNum / 4,
             maxBindingThreadNum);
     this.dynamicThreadGroup.init();
@@ -71,14 +73,14 @@ public class DispatcherGroup {
     }
   }
 
-  DispatcherThread newDispatcherThread(
-      Peer node, BlockingQueue<VotingEntry> logBlockingQueue, RateLimiter rateLimiter) {
-    return new DispatcherThread(logDispatcher, node, logBlockingQueue, rateLimiter, this);
+  DispatcherThread newDispatcherThread(Peer node, BlockingQueue<VotingEntry> logBlockingQueue) {
+    return new DispatcherThread(logDispatcher, node, logBlockingQueue, this);
   }
 
   public void updateRate(double rate) {
-    rateLimiter.setRate(rate);
+    rateLimiter = RateLimiter.create(rate);
     delayed = rate != Double.MAX_VALUE;
+    logger.info("{} is delayed: {}", name, delayed);
   }
 
   ExecutorService createPool(Peer node, String name) {
@@ -125,5 +127,9 @@ public class DispatcherGroup {
     synchronized (entryQueue) {
       entryQueue.notifyAll();
     }
+  }
+
+  public RateLimiter getRateLimiter() {
+    return rateLimiter;
   }
 }

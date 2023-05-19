@@ -41,6 +41,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class LogUtils {
 
@@ -79,9 +80,11 @@ public class LogUtils {
   public static ByteBuffer compressEntries(
       List<ByteBuffer> entryByteList,
       ICompressor compressor,
-      AppendCompressedEntriesRequest request) {
-    PublicBAOS baos = new PublicBAOS(entryByteList.size() * 16 * 1024);
-    DataOutputStream dataOutputStream = new DataOutputStream(baos);
+      AppendCompressedEntriesRequest request,
+      PublicBAOS batchLogBuffer,
+      AtomicReference<byte[]> compressionBuffer) {
+    batchLogBuffer.reset();
+    DataOutputStream dataOutputStream = new DataOutputStream(batchLogBuffer);
     try {
       dataOutputStream.writeInt(entryByteList.size());
       for (ByteBuffer byteBuffer : entryByteList) {
@@ -91,11 +94,29 @@ public class LogUtils {
             byteBuffer.arrayOffset() + byteBuffer.position(),
             byteBuffer.remaining());
       }
-      Statistic.LOG_DISPATCHER_RAW_SIZE.add(baos.size());
-      request.setUncompressedSize(baos.size());
-      byte[] compressed = compressor.compress(baos.getBuf(), 0, baos.size());
-      Statistic.LOG_DISPATCHER_COMPRESSED_SIZE.add(compressed.length);
-      return ByteBuffer.wrap(compressed);
+      Statistic.LOG_DISPATCHER_RAW_SIZE.add(batchLogBuffer.size());
+      request.setUncompressedSize(batchLogBuffer.size());
+
+      byte[] compressed;
+      int compressedSize;
+      if (compressionBuffer == null) {
+        compressed = compressor.compress(batchLogBuffer.getBuf(), 0, batchLogBuffer.size());
+        compressedSize = compressed.length;
+      } else {
+        compressed = compressionBuffer.get();
+        int maxBytesForCompression = compressor.getMaxBytesForCompression(batchLogBuffer.size());
+        if (compressed.length < maxBytesForCompression) {
+          compressed = new byte[maxBytesForCompression];
+          compressionBuffer.set(compressed);
+        }
+        compressedSize =
+            compressor.compress(batchLogBuffer.getBuf(), 0, batchLogBuffer.size(), compressed);
+      }
+
+      Statistic.LOG_DISPATCHER_COMPRESSED_SIZE.add(compressedSize);
+      ByteBuffer wrap = ByteBuffer.wrap(compressed);
+      wrap.limit(compressedSize);
+      return wrap;
     } catch (IOException e) {
       logger.warn("Failed to compress entries", e);
     }

@@ -38,7 +38,6 @@ import java.util.function.Consumer;
 public class AsyncLogApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncLogApplier.class);
-  private static final int CONCURRENT_CONSUMER_NUM = 16;
   private LogApplier embeddedApplier;
   private DataLogConsumer[] consumers;
   private ExecutorService consumerPool;
@@ -52,9 +51,10 @@ public class AsyncLogApplier implements LogApplier {
 
   public AsyncLogApplier(LogApplier embeddedApplier, String name, RaftConfig config) {
     this.embeddedApplier = embeddedApplier;
-    consumers = new DataLogConsumer[CONCURRENT_CONSUMER_NUM];
+    consumers = new DataLogConsumer[config.getApplierThreadNum()];
     consumerPool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(CONCURRENT_CONSUMER_NUM, "ApplierThread");
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            config.getApplierThreadNum(), "ApplierThread-" + name);
     for (int i = 0; i < consumers.length; i++) {
       consumers[i] = new DataLogConsumer(name + "-" + i, config.getMaxNumOfLogsInMem());
       consumerPool.submit(consumers[i]);
@@ -96,7 +96,7 @@ public class AsyncLogApplier implements LogApplier {
   }
 
   private void provideLogToConsumers(PartialPath planKey, Entry e) {
-    consumers[Math.abs(planKey.hashCode()) % CONCURRENT_CONSUMER_NUM].accept(e);
+    consumers[Math.abs(planKey.hashCode()) % consumers.length].accept(e);
   }
 
   private void drainConsumers() {

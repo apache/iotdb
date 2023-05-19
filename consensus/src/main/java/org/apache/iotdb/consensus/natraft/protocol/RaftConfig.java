@@ -52,6 +52,7 @@ public class RaftConfig {
   private long writeOperationTimeoutMS = 20_000L;
   private int logNumInBatch = 100;
   private int dispatcherBindingThreadNum = 16;
+  private int applierThreadNum = 16;
   private int followerLoadBalanceWindowsToUse = 1;
   private double followerLoadBalanceOverestimateFactor = 1.1;
   private int flowMonitorMaxWindowNum = 1000;
@@ -454,6 +455,14 @@ public class RaftConfig {
     this.logPersistCompressor = logPersistCompressor;
   }
 
+  public int getApplierThreadNum() {
+    return applierThreadNum;
+  }
+
+  public void setApplierThreadNum(int applierThreadNum) {
+    this.applierThreadNum = applierThreadNum;
+  }
+
   public void loadProperties(Properties properties) {
     logger.debug("Loading properties: {}", properties);
 
@@ -606,6 +615,11 @@ public class RaftConfig {
             properties.getProperty(
                 "dispatcher_binding_thread_num",
                 String.valueOf(this.getDispatcherBindingThreadNum()))));
+
+    this.setApplierThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "applier_thread_num", String.valueOf(this.getApplierThreadNum()))));
 
     this.setUseFollowerLoadBalance(
         Boolean.parseBoolean(

@@ -220,18 +220,42 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_RECEIVER_WINDOW_FLUSH_SIZE(
+        RAFT_MEMBER_RECEIVER,
+        "receiver window flush size",
+        1,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_RECEIVER_APPEND_INTERNAL(
         RAFT_MEMBER_RECEIVER,
         "append entry (internal)",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
-    RAFT_RECEIVER_APPEND_ONE_ENTRY(
+    RAFT_RECEIVER_APPEND_ENTRIES(
         RAFT_MEMBER_RECEIVER,
-        "receiver append one entries",
+        "receiver append entries",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_RECEIVER_APPEND_ONE_ENTRY(
+        RAFT_MEMBER_RECEIVER,
+        "receiver append one entry",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_RECEIVER_APPEND_ONE_ENTRY_SYNC(
+        RAFT_MEMBER_RECEIVER,
+        "receiver append one entry (sync)",
+        TIME_SCALE,
+        true,
+        RAFT_RECEIVER_APPEND_ONE_ENTRY),
+    RAFT_RECEIVER_UPDATE_COMMIT_INDEX(
+        RAFT_MEMBER_RECEIVER,
+        "receiver update commit index",
+        TIME_SCALE,
+        true,
+        RAFT_RECEIVER_APPEND_ONE_ENTRY),
     RAFT_RECEIVER_APPEND_ENTRY(
         RAFT_MEMBER_RECEIVER,
         "append entrys",
@@ -420,6 +444,8 @@ public class Timer {
     RAFT_SENDER_OOW(RAFT_MEMBER_SENDER, "out of window", 1, true, ROOT),
     RAFT_LEADER_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "leader weak accept", 1, true, ROOT),
     RAFT_FOLLOWER_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "follower weak accept", TIME_SCALE, true, ROOT),
+    RAFT_PUT_LOG(RAFT_MEMBER_SENDER, "put logs", TIME_SCALE, true, ROOT),
+    RAFT_PUT_ENTRY(RAFT_MEMBER_SENDER, "put one entry", TIME_SCALE, true, ROOT),
     RAFT_FOLLOWER_STRONG_ACCEPT(
         RAFT_MEMBER_SENDER, "follower strong accept", TIME_SCALE, true, ROOT),
     RAFT_CONCURRENT_SENDER(RAFT_MEMBER_SENDER, "concurrent sender", 1, true, ROOT),

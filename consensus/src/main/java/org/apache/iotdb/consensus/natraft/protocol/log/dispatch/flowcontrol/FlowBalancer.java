@@ -107,6 +107,7 @@ public class FlowBalancer {
         burstWindowNum++;
       }
     }
+
     double assumedFlow =
         latestWindows.stream().mapToLong(w -> w.sum).sum()
             * 1.0
@@ -131,7 +132,7 @@ public class FlowBalancer {
             entry.getValue().averageFlow(windowsToUse),
             inBurst);
       }
-    } else if (burstWindowNum < latestWindows.size() / 2 && inBurst) {
+    } else if (burstWindowNum <= latestWindows.size() / 2 && inBurst) {
       exitBurst(followerNum, nodesRate, followers);
       logDispatcher.updateRateLimiter();
       for (Entry<TEndPoint, FlowMonitor> entry : flowMonitorManager.getMonitorMap().entrySet()) {

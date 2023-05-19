@@ -377,6 +377,7 @@ public class RaftMember {
       return;
     }
     setStopped(true);
+    logger.info("Member {} stopping", name);
 
     closeLogManager();
 

@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.LogParser;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.SyncLogDequeSerializer.VersionController.SimpleFileVersionController;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -103,6 +104,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private ByteBuffer logIndexBuffer;
   private ByteBuffer flushingLogDataBuffer;
   private ByteBuffer flushingLogIndexBuffer;
+  private byte[] compressionBuffer;
 
   private long offsetOfTheCurrentLogDataOutputStream = 0;
 
@@ -164,7 +166,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     logDataBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
     logIndexBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
     flushingLogDataBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
-    flushingLogIndexBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
+    flushingLogIndexBuffer = ByteBuffer.allocate(16);
+    compressionBuffer = new byte[64 * 1024];
 
     maxNumberOfLogsPerFetchOnDisk = config.getMaxNumberOfLogsPerFetchOnDisk();
     maxRaftLogIndexSizeInMemory = config.getMaxRaftLogIndexSizeInMemory();
@@ -298,22 +301,26 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    * @param entries logs to put to buffer
    */
   private void putLogs(List<Entry> entries) {
-    for (Entry log : entries) {
+    long startTime = Statistic.RAFT_PUT_LOG.getOperationStartTime();
+    for (Entry entry : entries) {
+      long entryStartTime = Statistic.RAFT_PUT_ENTRY.getOperationStartTime();
       logDataBuffer.mark();
       logIndexBuffer.mark();
-      ByteBuffer logData = log.serialize();
-      try {
-        logDataBuffer.put(logData);
-        lastLogIndex = log.getCurrLogIndex();
-      } catch (BufferOverflowException e) {
-        logger.debug("Raft log buffer overflow!");
-        logDataBuffer.reset();
-        logIndexBuffer.reset();
-        flushLogBuffer(true);
-        logDataBuffer.put(logData);
-        lastLogIndex = log.getCurrLogIndex();
-      }
+      putOneEntry(entry);
+      Statistic.RAFT_PUT_ENTRY.calOperationCostTimeFromStart(entryStartTime);
     }
+    Statistic.RAFT_PUT_LOG.calOperationCostTimeFromStart(startTime);
+  }
+
+  private void putOneEntry(Entry entry) {
+    ByteBuffer logData = entry.serialize();
+    if (logData.remaining() <= logDataBuffer.remaining()) {
+      logDataBuffer.put(logData);
+    } else {
+      flushLogBuffer(true);
+      logDataBuffer.put(logData);
+    }
+    lastLogIndex = entry.getCurrLogIndex();
   }
 
   private void checkCloseCurrentFile(long fileEndIndex) {
@@ -423,15 +430,24 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     try {
       checkStream();
       // 1. write to the log data file
-      byte[] compressed =
-          compressor.compress(flushingLogDataBuffer.array(), 0, flushingLogDataBuffer.position());
-      ReadWriteIOUtils.write(compressed.length, currentLogDataOutputStream);
+      int maxBytesForCompression =
+          compressor.getMaxBytesForCompression(flushingLogDataBuffer.position());
+      if (maxBytesForCompression > compressionBuffer.length) {
+        compressionBuffer = new byte[maxBytesForCompression];
+      }
+      int compressedLength =
+          compressor.compress(
+              flushingLogDataBuffer.array(),
+              0,
+              flushingLogDataBuffer.position(),
+              compressionBuffer);
+      ReadWriteIOUtils.write(compressedLength, currentLogDataOutputStream);
       logIndexOffsetList.add(new Pair<>(lastLogIndex, offsetOfTheCurrentLogDataOutputStream));
       flushingLogIndexBuffer.putLong(lastLogIndex);
       flushingLogIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
-      offsetOfTheCurrentLogDataOutputStream += Integer.BYTES + compressed.length;
+      offsetOfTheCurrentLogDataOutputStream += Integer.BYTES + compressedLength;
 
-      currentLogDataOutputStream.write(compressed);
+      currentLogDataOutputStream.write(compressionBuffer, 0, compressedLength);
       ReadWriteIOUtils.writeWithoutSize(
           logIndexBuffer, 0, logIndexBuffer.position(), currentLogIndexOutputStream);
       if (config.getFlushRaftLogThreshold() == 0) {
@@ -945,6 +961,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       recoverMetaFile();
       meta = new LogManagerMeta();
       createNewLogFile(logDir, firstLogIndex);
+      this.persistedLogIndex = commitIndex;
       logger.info("{}, clean all logs success, the new firstLogIndex={}", this, firstLogIndex);
     } catch (IOException e) {
       logger.error("clear all logs failed,", e);
