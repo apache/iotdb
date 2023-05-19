@@ -88,6 +88,7 @@ public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Trave
       }
       return StringUtils.join(
               getFullPathFromRootToNode(node.getAsMNode()), IoTDBConstant.PATH_SEPARATOR)
+          .toLowerCase()
           .contains(pathContainsFilter.getContainString());
     }
 

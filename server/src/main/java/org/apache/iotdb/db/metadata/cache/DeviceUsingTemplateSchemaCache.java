@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -87,6 +88,37 @@ public class DeviceUsingTemplateSchemaCache {
             null,
             template.isDirectAligned());
         schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
+      }
+    }
+    return schemaTree;
+  }
+
+  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath path) {
+    PartialPath devicePath = path.getDevicePath();
+    DeviceCacheEntry deviceCacheEntry = cache.getIfPresent(devicePath);
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    if (deviceCacheEntry != null) {
+      Template template = templateManager.getTemplate(deviceCacheEntry.getTemplateId());
+      String measurement = path.getMeasurement();
+      if (PathPatternUtil.hasWildcard(measurement)) {
+        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+          if (PathPatternUtil.isNodeMatch(measurement, entry.getKey())) {
+            schemaTree.appendSingleMeasurement(
+                devicePath.concatNode(entry.getKey()),
+                entry.getValue(),
+                null,
+                null,
+                template.isDirectAligned());
+            schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
+          }
+        }
+      } else {
+        IMeasurementSchema measurementSchema = template.getSchema(measurement);
+        if (measurementSchema != null) {
+          schemaTree.appendSingleMeasurement(
+              path, measurementSchema, null, null, template.isDirectAligned());
+          schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
+        }
       }
     }
     return schemaTree;
