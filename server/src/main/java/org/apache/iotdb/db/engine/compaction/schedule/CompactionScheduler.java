@@ -53,7 +53,7 @@ public class CompactionScheduler {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
-   * Select compaction task and submit them to CompactionTaskManager
+   * Select compaction task and submit them to CompactionTaskManager.
    *
    * @param tsFileManager tsfileManager that contains source files
    * @param timePartition the time partition to execute the selection
