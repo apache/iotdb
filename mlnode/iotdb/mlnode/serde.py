@@ -92,7 +92,7 @@ def convert_to_binary(data_frame: pd.DataFrame):
                 value = value.byteswap()
             binary += value.tobytes()
 
-    return [binary]
+    return binary
 
 
 # convert tsBlock in binary to dataFrame
