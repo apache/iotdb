@@ -22,8 +22,6 @@ package org.apache.iotdb.confignode.manager.pipe;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
@@ -36,9 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
@@ -46,16 +41,11 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   private final ConfigManager configManager;
 
-  /** * Pipe Meta Sync *** */
-  private static final long SYNC_INTERVAL = 3; // 3 minutes
-
-  private final Object metaSyncMonitor = new Object();
-  private Future<?> currentMetaSyncFuture;
-  private final ScheduledExecutorService metaSyncExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("PipeMeta-Sync-Thread");
+  private final PipeMetaSyncer pipeMetaSyncer;
 
   public PipeRuntimeCoordinator(ConfigManager configManager) {
     this.configManager = configManager;
+    this.pipeMetaSyncer = new PipeMetaSyncer(configManager);
   }
 
   @Override
@@ -98,30 +88,11 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     }
   }
 
-  public void startPipeMetaSyncThread() {
-    synchronized (metaSyncMonitor) {
-      if (currentMetaSyncFuture == null) {
-        currentMetaSyncFuture =
-            ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                metaSyncExecutor, this::pipeMetaSyncLoopBody, 0, SYNC_INTERVAL, TimeUnit.MINUTES);
-      }
-    }
+  public void startPipeMetaSync() {
+    pipeMetaSyncer.start();
   }
 
-  public void stopPipeMetaSyncThread() {
-    synchronized (metaSyncMonitor) {
-      if (currentMetaSyncFuture != null) {
-        currentMetaSyncFuture.cancel(false);
-        currentMetaSyncFuture = null;
-        LOGGER.info("PipeMetaSync Thread is stopped successfully.");
-      }
-    }
-  }
-
-  private void pipeMetaSyncLoopBody() {
-    final TSStatus status = configManager.getProcedureManager().pipeMetaSync();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("PipeRuntimeCoordinator meets error in syncing pipe meta, status: ({})", status);
-    }
+  public void stopPipeMetaSync() {
+    pipeMetaSyncer.stop();
   }
 }

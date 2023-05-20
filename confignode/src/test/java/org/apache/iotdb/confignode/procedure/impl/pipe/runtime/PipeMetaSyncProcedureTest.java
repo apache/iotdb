@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -29,42 +26,28 @@ import org.junit.Test;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class PipeMetaSyncProcedureTest {
+
   @Test
   public void serializeDeserializeTest() {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    Map<String, String> collectorAttributes = new HashMap<>();
-    Map<String, String> processorAttributes = new HashMap<>();
-    Map<String, String> connectorAttributes = new HashMap<>();
-    collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
-    processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
-    connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-
-    PipeStaticMeta staticMeta =
-        new PipeStaticMeta(
-            "testPipe", 0, collectorAttributes, processorAttributes, connectorAttributes);
-    PipeRuntimeMeta runtimeMeta = new PipeRuntimeMeta();
-    PipeMeta pipeMeta = new PipeMeta(staticMeta, runtimeMeta);
-
-    PipeMetaSyncProcedure proc = new PipeMetaSyncProcedure(Collections.singletonList(pipeMeta));
+    final PipeMetaSyncProcedure proc1 = new PipeMetaSyncProcedure();
 
     try {
-      proc.serialize(outputStream);
+      proc1.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      PipeMetaSyncProcedure proc2 =
+
+      final PipeMetaSyncProcedure proc2 =
           (PipeMetaSyncProcedure) ProcedureFactory.getInstance().create(buffer);
 
-      assertEquals(proc, proc2);
+      assertEquals(proc1, proc2);
     } catch (Exception e) {
       fail();
     }

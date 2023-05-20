@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,24 +30,13 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMetaSyncProcedure.class);
 
-  private List<PipeMeta> pipeMetaList;
-
   public PipeMetaSyncProcedure() {
     super();
-    this.pipeMetaList = new ArrayList<>();
-  }
-
-  public PipeMetaSyncProcedure(List<PipeMeta> pipeMetaList) {
-    super();
-    this.pipeMetaList = pipeMetaList;
   }
 
   @Override
@@ -58,23 +45,24 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromValidateTask");
-    pipeMetaList = getPipeMetaList(env);
 
-    return true;
+    // do nothing
   }
 
   @Override
   protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
-    // Do nothing
+
+    // do nothing
   }
 
   @Override
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
-    // Do nothing
+
+    // do nothing
   }
 
   @Override
@@ -87,56 +75,40 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   @Override
   protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromValidateTask");
-    // Do nothing
+
+    // do nothing
   }
 
   @Override
   protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
-    // Do nothing
+
+    // do nothing
   }
 
   @Override
   protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
-    // Do nothing
+
+    // do nothing
   }
 
   @Override
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
-    // Do nothing
 
     pushPipeMetaToDataNodes(env);
-  }
-
-  private List<PipeMeta> getPipeMetaList(ConfigNodeProcedureEnv env) {
-    return (List<PipeMeta>)
-        env.getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMetaList();
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.PIPE_META_SYNC_PROCEDURE.getTypeCode());
     super.serialize(stream);
-
-    ReadWriteIOUtils.write(pipeMetaList.size(), stream);
-    for (PipeMeta pipeMeta : pipeMetaList) {
-      pipeMeta.serialize(stream);
-    }
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    final int size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; i++) {
-      pipeMetaList.add(PipeMeta.deserialize(byteBuffer));
-    }
   }
 
   @Override
@@ -144,15 +116,11 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    PipeMetaSyncProcedure that = (PipeMetaSyncProcedure) o;
-    return this.pipeMetaList.equals(that.pipeMetaList);
+    return o instanceof PipeMetaSyncProcedure;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeMetaList);
+    return 0;
   }
 }
