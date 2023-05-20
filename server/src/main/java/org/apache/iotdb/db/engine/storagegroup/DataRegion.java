@@ -2147,17 +2147,21 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
-  protected void executeCompaction() {
+  protected int executeCompaction() {
+    // the name of this variable is trySubmitCount, because the task submitted to the queue could be
+    // evicted due to the low priority of the task
+    int trySubmitCount = 0;
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
       for (long timePartition : timePartitions) {
-        CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+        trySubmitCount += CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
     }
+    return trySubmitCount;
   }
 
   /**
@@ -2288,10 +2292,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** merge file under this database processor */
-  public void compact() {
+  public int compact() {
     writeLock("merge");
     try {
-      executeCompaction();
+      return executeCompaction();
     } finally {
       writeUnlock();
     }
