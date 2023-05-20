@@ -18,8 +18,7 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.common;
 
-import org.spark_project.guava.collect.ImmutableMap;
-
+import java.util.HashMap;
 import java.util.Map;
 
 /** this class contains several constants used in SQL. */
@@ -74,62 +73,69 @@ public class SQLConstant {
   public static final int TOK_PROPERTY_UNLINK = 58;
 
   public static final Map<Integer, String> tokenSymbol =
-      new ImmutableMap.Builder<Integer, String>()
-          .put(KW_AND, "&")
-          .put(KW_OR, "|")
-          .put(KW_NOT, "!")
-          .put(EQUAL, "=")
-          .put(NOTEQUAL, "<>")
-          .put(EQUAL_NS, "<=>")
-          .put(LESSTHANOREQUALTO, "<=")
-          .put(LESSTHAN, "<")
-          .put(GREATERTHANOREQUALTO, ">=")
-          .put(GREATERTHAN, ">")
-          .build();
+      new HashMap<Integer, String>() {
+        {
+          put(KW_AND, "&");
+          put(KW_OR, "|");
+          put(KW_NOT, "!");
+          put(EQUAL, "=");
+          put(NOTEQUAL, "<>");
+          put(EQUAL_NS, "<=>");
+          put(LESSTHANOREQUALTO, "<=");
+          put(LESSTHAN, "<");
+          put(GREATERTHANOREQUALTO, ">=");
+          put(GREATERTHAN, ">");
+        }
+      };
+
   public static final Map<Integer, String> tokenNames =
-      new ImmutableMap.Builder<Integer, String>()
-          .put(KW_AND, "and")
-          .put(KW_OR, "or")
-          .put(KW_NOT, "not")
-          .put(EQUAL, "equal")
-          .put(NOTEQUAL, "not_equal")
-          .put(EQUAL_NS, "equal_ns")
-          .put(LESSTHANOREQUALTO, "lessthan_or_equalto")
-          .put(LESSTHAN, "lessthan")
-          .put(GREATERTHANOREQUALTO, "greaterthan_or_equalto")
-          .put(GREATERTHAN, "greaterthan")
-          .put(TOK_SELECT, "TOK_SELECT")
-          .put(TOK_FROM, "TOK_FROM")
-          .put(TOK_WHERE, "TOK_WHERE")
-          .put(TOK_INSERT, "TOK_INSERT")
-          .put(TOK_DELETE, "TOK_DELETE")
-          .put(TOK_UPDATE, "TOK_UPDATE")
-          .put(TOK_QUERY, "TOK_QUERY")
-          .put(TOK_AUTHOR_CREATE, "TOK_AUTHOR_CREATE")
-          .put(TOK_AUTHOR_DROP, "TOK_AUTHOR_DROP")
-          .put(TOK_AUTHOR_GRANT, "TOK_AUTHOR_GRANT")
-          .put(TOK_AUTHOR_REVOKE, "TOK_AUTHOR_REVOKE")
-          .put(TOK_DATALOAD, "TOK_DATALOAD")
-          .put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE")
-          .put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE")
-          .put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL")
-          .put(TOK_PROPERTY_CREATE, "TOK_PROPERTY_CREATE")
-          .put(TOK_PROPERTY_ADD_LABEL, "TOK_PROPERTY_ADD_LABEL")
-          .put(TOK_PROPERTY_DELETE_LABEL, "TOK_PROPERTY_DELETE_LABEL")
-          .put(TOK_PROPERTY_LINK, "TOK_PROPERTY_LINK")
-          .put(TOK_PROPERTY_UNLINK, "TOK_PROPERTY_UNLINK")
-          .build();
+      new HashMap<Integer, String>() {
+        {
+          put(KW_AND, "and");
+          put(KW_OR, "or");
+          put(KW_NOT, "not");
+          put(EQUAL, "equal");
+          put(NOTEQUAL, "not_equal");
+          put(EQUAL_NS, "equal_ns");
+          put(LESSTHANOREQUALTO, "lessthan_or_equalto");
+          put(LESSTHAN, "lessthan");
+          put(GREATERTHANOREQUALTO, "greaterthan_or_equalto");
+          put(GREATERTHAN, "greaterthan");
+          put(TOK_SELECT, "TOK_SELECT");
+          put(TOK_FROM, "TOK_FROM");
+          put(TOK_WHERE, "TOK_WHERE");
+          put(TOK_INSERT, "TOK_INSERT");
+          put(TOK_DELETE, "TOK_DELETE");
+          put(TOK_UPDATE, "TOK_UPDATE");
+          put(TOK_QUERY, "TOK_QUERY");
+          put(TOK_AUTHOR_CREATE, "TOK_AUTHOR_CREATE");
+          put(TOK_AUTHOR_DROP, "TOK_AUTHOR_DROP");
+          put(TOK_AUTHOR_GRANT, "TOK_AUTHOR_GRANT");
+          put(TOK_AUTHOR_REVOKE, "TOK_AUTHOR_REVOKE");
+          put(TOK_DATALOAD, "TOK_DATALOAD");
+          put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE");
+          put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE");
+          put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL");
+          put(TOK_PROPERTY_CREATE, "TOK_PROPERTY_CREATE");
+          put(TOK_PROPERTY_ADD_LABEL, "TOK_PROPERTY_ADD_LABEL");
+          put(TOK_PROPERTY_DELETE_LABEL, "TOK_PROPERTY_DELETE_LABEL");
+          put(TOK_PROPERTY_LINK, "TOK_PROPERTY_LINK");
+          put(TOK_PROPERTY_UNLINK, "TOK_PROPERTY_UNLINK");
+        }
+      };
   public static final Map<Integer, Integer> reverseWords =
-      new ImmutableMap.Builder<Integer, Integer>()
-          .put(KW_AND, KW_OR)
-          .put(KW_OR, KW_AND)
-          .put(EQUAL, NOTEQUAL)
-          .put(NOTEQUAL, EQUAL)
-          .put(LESSTHAN, GREATERTHANOREQUALTO)
-          .put(GREATERTHANOREQUALTO, LESSTHAN)
-          .put(LESSTHANOREQUALTO, GREATERTHAN)
-          .put(GREATERTHAN, LESSTHANOREQUALTO)
-          .build();
+      new HashMap<Integer, Integer>() {
+        {
+          put(KW_AND, KW_OR);
+          put(KW_OR, KW_AND);
+          put(EQUAL, NOTEQUAL);
+          put(NOTEQUAL, EQUAL);
+          put(LESSTHAN, GREATERTHANOREQUALTO);
+          put(GREATERTHANOREQUALTO, LESSTHAN);
+          put(LESSTHANOREQUALTO, GREATERTHAN);
+          put(GREATERTHAN, LESSTHANOREQUALTO);
+        }
+      };
 
   public static boolean isReservedPath(String pathStr) {
     return pathStr.equals(SQLConstant.RESERVED_TIME)

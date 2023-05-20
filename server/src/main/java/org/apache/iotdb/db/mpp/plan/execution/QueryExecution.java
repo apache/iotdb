@@ -137,7 +137,8 @@ public class QueryExecution implements IQueryExecution {
 
   private final AtomicBoolean stopped;
 
-  private long totalExecutionTime;
+  // cost time in ns
+  private long totalExecutionTime = 0;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 

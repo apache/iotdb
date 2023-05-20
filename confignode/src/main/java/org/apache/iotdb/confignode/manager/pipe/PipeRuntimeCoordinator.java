@@ -41,8 +41,11 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   private final ConfigManager configManager;
 
+  private final PipeMetaSyncer pipeMetaSyncer;
+
   public PipeRuntimeCoordinator(ConfigManager configManager) {
     this.configManager = configManager;
+    this.pipeMetaSyncer = new PipeMetaSyncer(configManager);
   }
 
   @Override
@@ -83,5 +86,13 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
           "PipeRuntimeCoordinator meets error in handling data region leader change, status: ({})",
           result);
     }
+  }
+
+  public void startPipeMetaSync() {
+    pipeMetaSyncer.start();
+  }
+
+  public void stopPipeMetaSync() {
+    pipeMetaSyncer.stop();
   }
 }
