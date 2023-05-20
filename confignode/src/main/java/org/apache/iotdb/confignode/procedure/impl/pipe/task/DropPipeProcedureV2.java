@@ -55,11 +55,11 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    return env.getConfigManager()
+    env.getConfigManager()
         .getPipeManager()
         .getPipeTaskCoordinator()
         .getPipeTaskInfo()

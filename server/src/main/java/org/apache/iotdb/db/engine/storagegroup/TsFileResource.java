@@ -482,7 +482,7 @@ public class TsFileResource {
     timeIndex.close();
   }
 
-  TsFileProcessor getProcessor() {
+  public TsFileProcessor getProcessor() {
     return processor;
   }
 

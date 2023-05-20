@@ -17,9 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.connector;
+package org.apache.iotdb.db.pipe.core.connector.manager;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
@@ -46,15 +49,24 @@ public class PipeConnectorSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      // 1. construct, validate and customize PipeConnector
+      // TODO: construct all PipeConnector with the same reflection method, avoid using if-else
+      // 1. construct, validate and customize PipeConnector, and then handshake (create connection)
+      // with the target
       final PipeConnector pipeConnector =
-          PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
+          pipeConnectorParameters
+                  .getStringOrDefault(
+                      PipeConnectorConstant.CONNECTOR_KEY,
+                      BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+                  .equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+              ? new IoTDBThriftConnectorV1()
+              : PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
       try {
         pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
         final PipeConnectorRuntimeConfiguration runtimeConfiguration =
             new PipeConnectorRuntimeConfiguration();
         pipeConnector.customize(pipeConnectorParameters, runtimeConfiguration);
         // TODO: use runtimeConfiguration to configure PipeConnector
+        pipeConnector.handshake();
       } catch (Exception e) {
         throw new PipeManagementException(
             "Failed to construct PipeConnector, because of " + e.getMessage(), e);

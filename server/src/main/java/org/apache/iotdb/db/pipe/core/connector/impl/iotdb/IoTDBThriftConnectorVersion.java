@@ -17,16 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb;
 
-public class PipeConnectorConstant {
+public enum IoTDBThriftConnectorVersion {
+  VERSION_ONE((byte) 1),
+  ;
 
-  public static final String CONNECTOR_KEY = "connector";
+  private final byte version;
 
-  public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
-  public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
+  IoTDBThriftConnectorVersion(byte type) {
+    this.version = type;
+  }
 
-  private PipeConnectorConstant() {
-    throw new IllegalStateException("Utility class");
+  public byte getVersion() {
+    return version;
   }
 }

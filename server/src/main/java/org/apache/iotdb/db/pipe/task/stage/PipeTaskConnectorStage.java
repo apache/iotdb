@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.core.connector.PipeConnectorSubtaskManager;
+import org.apache.iotdb.db.pipe.core.connector.manager.PipeConnectorSubtaskManager;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -34,16 +34,15 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   public PipeTaskConnectorStage(PipeParameters pipeConnectorParameters) {
     this.pipeConnectorParameters = pipeConnectorParameters;
-  }
-
-  @Override
-  public void createSubtask() throws PipeException {
     connectorSubtaskId =
         PipeConnectorSubtaskManager.instance()
             .register(
                 PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
-                pipeConnectorParameters);
+                pipeConnectorParameters); // TODO: should split to create
   }
+
+  @Override
+  public void createSubtask() throws PipeException {}
 
   @Override
   public void startSubtask() throws PipeException {

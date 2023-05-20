@@ -17,16 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.db.pipe.agent.receiver;
 
-public class PipeConnectorConstant {
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-  public static final String CONNECTOR_KEY = "connector";
+public interface IoTDBThriftReceiver {
 
-  public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
-  public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
+  IoTDBThriftConnectorVersion getVersion();
 
-  private PipeConnectorConstant() {
-    throw new IllegalStateException("Utility class");
-  }
+  TPipeTransferResp handleTransferReq(
+      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
+
+  void handleExit();
 }

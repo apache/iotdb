@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.pipe.core.collector;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionTsFileCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
@@ -39,6 +42,8 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   // TODO: support pattern in historical collector
   private final PipeHistoricalDataRegionTsFileCollector historicalCollector;
 
+  private int dataRegionId;
+
   public IoTDBDataRegionCollector(ListenableUnblockingPendingQueue<Event> collectorPendingQueue) {
     hasBeenStarted = new AtomicBoolean(false);
     realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
@@ -47,6 +52,8 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
+    validator.validateRequiredAttribute(PipeCollectorConstant.DATA_REGION_KEY);
+
     // TODO: require more attributes
     realtimeCollector.validate(validator);
     historicalCollector.validate(validator);
@@ -55,6 +62,8 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   @Override
   public void customize(
       PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+    dataRegionId = parameters.getInt(PipeCollectorConstant.DATA_REGION_KEY);
+
     realtimeCollector.customize(parameters, configuration);
     historicalCollector.customize(parameters, configuration);
   }
@@ -66,8 +75,36 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     }
     hasBeenStarted.set(true);
 
-    realtimeCollector.start();
+    while (true) {
+      // try to start collectors in the data region ...
+      // first try to run if data region exists, then try to run if data region does not exist.
+      // both conditions fail is not common, which means the data region is created during the
+      // runIfPresent and runIfAbsent operations. in this case, we need to retry.
+      if (StorageEngine.getInstance()
+              .runIfPresent(
+                  new DataRegionId(dataRegionId),
+                  (dataRegion -> {
+                    dataRegion.writeLock(
+                        String.format(
+                            "Pipe: starting %s", IoTDBDataRegionCollector.class.getName()));
+                    try {
+                      startHistoricalCollectorAndRealtimeCollector();
+                    } finally {
+                      dataRegion.writeUnlock();
+                    }
+                  }))
+          || StorageEngine.getInstance()
+              .runIfAbsent(
+                  new DataRegionId(dataRegionId),
+                  this::startHistoricalCollectorAndRealtimeCollector)) {
+        return;
+      }
+    }
+  }
+
+  public void startHistoricalCollectorAndRealtimeCollector() {
     historicalCollector.start();
+    realtimeCollector.start();
   }
 
   @Override
