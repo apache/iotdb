@@ -19,20 +19,25 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeRuntimeAgent {
 
-  /////////////////////////  Singleton Instance Holder  /////////////////////////
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
 
-  private PipeRuntimeAgent() {}
-
-  private static class PipeRuntimeAgentHolder {
-    private static PipeRuntimeAgent INSTANCE = null;
+  public void report(PipeSubtask subtask) {
+    // TODO: terminate the task by the given taskID
+    LOGGER.warn(
+        "Failed to execute task {} after many retries, last failed cause by {}",
+        subtask.getTaskID(),
+        subtask.getLastFailedCause());
   }
 
-  public static PipeRuntimeAgent setupAndGetInstance() {
-    if (PipeRuntimeAgentHolder.INSTANCE == null) {
-      PipeRuntimeAgentHolder.INSTANCE = new PipeRuntimeAgent();
-    }
-    return PipeRuntimeAgentHolder.INSTANCE;
+  public void report(PipeRuntimeException pipeRuntimeException) {
+    // TODO: complete this method
   }
 }

@@ -103,7 +103,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
@@ -200,6 +200,8 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
         } else {
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
+          children.get(i).close();
+          children.set(i, null);
         }
       }
     }
@@ -272,7 +274,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
   protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       if (canCallNext[i]) {
@@ -287,6 +289,8 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
         } else {
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
+          children.get(i).close();
+          children.set(i, null);
         }
 
       } else {

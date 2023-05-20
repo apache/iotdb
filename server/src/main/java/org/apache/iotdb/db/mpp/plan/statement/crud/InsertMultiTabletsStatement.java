@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
@@ -101,16 +100,29 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
-  public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
-    List<TEndPoint> result = new ArrayList<>();
-    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
-      TRegionReplicaSet regionReplicaSet =
-          dataPartition.getDataRegionReplicaSetForWriting(
-              insertTabletStatement.devicePath.getFullPath(),
-              TimePartitionUtils.getTimePartition(
-                  insertTabletStatement.getTimes()[insertTabletStatement.getTimes().length - 1]));
-      result.add(regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
-    }
-    return result;
+  public ISchemaValidation getSchemaValidation() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<ISchemaValidation> getSchemaValidationList() {
+    return insertTabletStatementList.stream()
+        .map(InsertTabletStatement::getSchemaValidation)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
+  }
+
+  @Override
+  public long getMinTime() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
   }
 }

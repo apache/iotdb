@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.util.List;
@@ -65,7 +66,8 @@ public interface IRoleManager extends SnapshotProcessor {
    * @return True if the permission is successfully added, false if the permission already exists.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean grantPrivilegeToRole(String rolename, String path, int privilegeId) throws AuthException;
+  boolean grantPrivilegeToRole(String rolename, PartialPath path, int privilegeId)
+      throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a role.
@@ -78,7 +80,7 @@ public interface IRoleManager extends SnapshotProcessor {
    *     exists.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean revokePrivilegeFromRole(String rolename, String path, int privilegeId)
+  boolean revokePrivilegeFromRole(String rolename, PartialPath path, int privilegeId)
       throws AuthException;
 
   /** Re-initialize this object. */

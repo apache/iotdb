@@ -75,6 +75,10 @@ public abstract class TSEncodingBuilder {
         return new Zigzag();
       case CHIMP:
         return new Chimp();
+      case SPRINTZ:
+        return new Sprintz();
+      case RLBE:
+        return new RLBE();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -363,6 +367,52 @@ public abstract class TSEncodingBuilder {
     @Override
     public void initFromProps(Map<String, String> props) {
       // allowed do nothing
+    }
+  }
+
+  public static class Sprintz extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntSprintzEncoder();
+        case INT64:
+          return new LongSprintzEncoder();
+        case FLOAT:
+          return new FloatSprintzEncoder();
+        case DOUBLE:
+          return new DoubleSprintzEncoder();
+        default:
+          throw new UnSupportedDataTypeException("Sprintz doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class RLBE extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntRLBE();
+        case INT64:
+          return new LongRLBE();
+        case FLOAT:
+          return new FloatRLBE();
+        case DOUBLE:
+          return new DoubleRLBE();
+        default:
+          throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
     }
   }
 

@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -32,7 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
-import org.apache.iotdb.db.exception.metadata.SeriesNumberOverflowException;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -61,16 +63,20 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNo
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -92,6 +98,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -145,6 +152,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private MLogDescriptionWriter logDescriptionWriter;
 
   private final CachedSchemaRegionStatistics regionStatistics;
+  private final DataNodeSchemaQuotaManager schemaQuotaManager =
+      DataNodeSchemaQuotaManager.getInstance();
 
   private MTreeBelowSGCachedImpl mtree;
   private TagManager tagManager;
@@ -188,19 +197,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               new PartialPath(storageGroupFullPath),
               tagManager::readTags,
               this::flushCallback,
-              measurementMNode -> {
-                if (measurementMNode.getOffset() == -1) {
-                  return;
-                }
-                try {
-                  tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
-                } catch (IOException e) {
-                  logger.error(
-                      "Failed to recover tagIndex for {} in schemaRegion {}.",
-                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
-                      schemaRegionId);
-                }
-              },
+              measurementInitProcess(),
+              deviceInitProcess(),
               schemaRegionId.getId(),
               regionStatistics);
 
@@ -222,6 +220,32 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
           e);
     }
     initialized = true;
+  }
+
+  private Consumer<IMeasurementMNode<ICachedMNode>> measurementInitProcess() {
+    return measurementMNode -> {
+      regionStatistics.addTimeseries(1L);
+      if (measurementMNode.getOffset() == -1) {
+        return;
+      }
+      try {
+        tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
+      } catch (IOException e) {
+        logger.error(
+            "Failed to recover tagIndex for {} in schemaRegion {}.",
+            storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+            schemaRegionId);
+      }
+    };
+  }
+
+  private Consumer<IDeviceMNode<ICachedMNode>> deviceInitProcess() {
+    return deviceMNode -> {
+      regionStatistics.addDevice();
+      if (deviceMNode.getSchemaTemplateIdWithState() >= 0) {
+        regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
+      }
+    };
   }
 
   private void flushCallback() {
@@ -417,7 +441,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   // region Interfaces for schema region Info query and operation
 
   @Override
-  public String getStorageGroupFullPath() {
+  public String getDatabaseFullPath() {
     return storageGroupFullPath;
   }
 
@@ -503,25 +527,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
               storageGroupFullPath,
               schemaRegionId.getId(),
               regionStatistics,
-              measurementMNode -> {
-                regionStatistics.addTimeseries(1L);
-                if (measurementMNode.getOffset() == -1) {
-                  return;
-                }
-                try {
-                  tagManager.recoverIndex(measurementMNode.getOffset(), measurementMNode);
-                } catch (IOException e) {
-                  logger.error(
-                      "Failed to recover tagIndex for {} in schemaRegion {}.",
-                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
-                      schemaRegionId);
-                }
-              },
-              deviceMNode -> {
-                if (deviceMNode.getSchemaTemplateIdWithState() >= 0) {
-                  regionStatistics.activateTemplate(deviceMNode.getSchemaTemplateId());
-                }
-              },
+              measurementInitProcess(),
+              deviceInitProcess(),
               tagManager::readTags,
               this::flushCallback);
       logger.info(
@@ -590,16 +597,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!regionStatistics.isAllowToCreateNewSeries()) {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
-      if (!regionStatistics.isAllowToCreateNewSeries()) {
-        logger.warn("Series overflow when creating: [{}]", plan.getPath().getFullPath());
-        throw new SeriesOverflowException();
-      }
-    }
-
-    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(1)) {
-      throw new SeriesNumberOverflowException();
     }
 
     try {
@@ -713,15 +712,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
-    if (!regionStatistics.isAllowToCreateNewSeries()) {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
       CacheMemoryManager.getInstance().waitIfReleasing();
-      if (!regionStatistics.isAllowToCreateNewSeries()) {
-        throw new SeriesOverflowException();
-      }
-    }
-
-    if (seriesNumerMonitor != null && !seriesNumerMonitor.addTimeSeries(seriesCount)) {
-      throw new SeriesNumberOverflowException();
     }
 
     try {
@@ -829,6 +821,18 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
+  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum)
+      throws SchemaQuotaExceededException {
+    if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.TIMESERIES)) {
+      schemaQuotaManager.checkMeasurementLevel(timeSeriesNum);
+    } else if (schemaQuotaManager.getLevel().equals(ClusterSchemaQuotaLevel.DEVICE)) {
+      if (!mtree.checkDeviceNodeExists(devicePath)) {
+        schemaQuotaManager.checkDeviceLevel();
+      }
+    }
+  }
+
+  @Override
   public long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
     long preDeletedNum = 0;
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
@@ -846,6 +850,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       }
     }
     return preDeletedNum;
+  }
+
+  private void recoverPreDeleteTimeseries(PartialPath path) throws MetadataException {
+    mtree.constructSchemaBlackList(path);
   }
 
   @Override
@@ -890,6 +898,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
+  @Override
+  public void createLogicalView(ICreateLogicalViewPlan createLogicalViewPlan)
+      throws MetadataException {
+    throw new UnsupportedOperationException("createLogicalView is unsupported.");
+  }
+
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
@@ -899,6 +913,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     if (seriesNumerMonitor != null) {
       seriesNumerMonitor.deleteTimeSeries(1);
     }
+  }
+
+  private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
+    mtree.rollbackSchemaBlackList(path);
   }
 
   /** @param path full path from root to leaf node */
@@ -1213,7 +1231,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
-
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      CacheMemoryManager.getInstance().waitIfReleasing();
+    }
     try {
       ICachedMNode deviceNode = getDeviceNodeWithAutoCreate(plan.getActivatePath());
       try {
@@ -1226,6 +1246,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       logger.error(e.getMessage(), e);
       throw new MetadataException(e);
     }
+  }
+
+  private void recoverActivatingSchemaTemplate(IActivateTemplateInClusterPlan plan)
+      throws MetadataException {
+    mtree.activateTemplateWithoutCheck(
+        plan.getActivatePath(), plan.getTemplateId(), plan.isAligned());
   }
 
   @Override
@@ -1284,7 +1310,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
-    if (showTimeSeriesPlan.getKey() != null && showTimeSeriesPlan.getValue() != null) {
+    if (showTimeSeriesPlan.getSchemaFilter() != null
+        && SchemaFilterType.TAGS_FILTER.equals(
+            showTimeSeriesPlan.getSchemaFilter().getSchemaFilterType())) {
       return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
     } else {
       return mtree.getTimeSeriesReader(
@@ -1400,6 +1428,75 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, SchemaRegionSchemaFileImpl context) {
       try {
         autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitActivateTemplateInCluster(
+        IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
+        SchemaRegionSchemaFileImpl context) {
+      try {
+        recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitPreDeleteTimeSeries(
+        IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, SchemaRegionSchemaFileImpl context) {
+      try {
+        recoverPreDeleteTimeseries(preDeleteTimeSeriesPlan.getPath());
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitRollbackPreDeleteTimeSeries(
+        IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan,
+        SchemaRegionSchemaFileImpl context) {
+      try {
+        recoverRollbackPreDeleteTimeseries(rollbackPreDeleteTimeSeriesPlan.getPath());
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitPreDeactivateTemplate(
+        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, SchemaRegionSchemaFileImpl context) {
+      try {
+        constructSchemaBlackListWithTemplate(preDeactivateTemplatePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitRollbackPreDeactivateTemplate(
+        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
+        SchemaRegionSchemaFileImpl context) {
+      try {
+        rollbackSchemaBlackListWithTemplate(rollbackPreDeactivateTemplatePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitDeactivateTemplate(
+        IDeactivateTemplatePlan deactivateTemplatePlan, SchemaRegionSchemaFileImpl context) {
+      try {
+        deactivateTemplateInBlackList(deactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException e) {
         return new RecoverOperationResult(e);

@@ -346,7 +346,7 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             Tag.STAGE.toString(),
             PerformanceOverviewMetrics.ENGINE);
     // bind engine metrics
-    localScheduleTimer =
+    lockTimer =
         metricService.getOrCreateTimer(
             PERFORMANCE_OVERVIEW_ENGINE_DETAIL, MetricLevel.CORE, Tag.STAGE.toString(), LOCK);
     createMemtableBlockTimer =

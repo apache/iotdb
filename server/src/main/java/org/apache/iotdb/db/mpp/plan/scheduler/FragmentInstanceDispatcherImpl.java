@@ -40,10 +40,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -52,6 +53,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -164,6 +166,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private Future<FragInstanceDispatchResult> dispatchWriteAsync(List<FragmentInstance> instances) {
+    List<TSStatus> dataNodeFailureList = new ArrayList<>();
     // split local and remote instances
     List<FragmentInstance> localInstances = new ArrayList<>();
     List<FragmentInstance> remoteInstances = new ArrayList<>();
@@ -180,24 +183,24 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
     asyncPlanNodeSender.sendAll();
 
-    List<TSStatus> dataNodeFailureList = new ArrayList<>();
-
-    // sync dispatch to local
-    long localScheduleStartTime = System.nanoTime();
-    for (FragmentInstance localInstance : localInstances) {
-      try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
-        dispatchOneInstance(localInstance);
-      } catch (FragmentInstanceDispatchException e) {
-        dataNodeFailureList.add(e.getFailureStatus());
-      } catch (Throwable t) {
-        logger.warn("[DispatchFailed]", t);
-        dataNodeFailureList.add(
-            RpcUtils.getStatus(
-                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+    if (!localInstances.isEmpty()) {
+      // sync dispatch to local
+      long localScheduleStartTime = System.nanoTime();
+      for (FragmentInstance localInstance : localInstances) {
+        try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
+          dispatchLocally(localInstance);
+        } catch (FragmentInstanceDispatchException e) {
+          dataNodeFailureList.add(e.getFailureStatus());
+        } catch (Throwable t) {
+          logger.warn("[DispatchFailed]", t);
+          dataNodeFailureList.add(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+        }
       }
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
+          System.nanoTime() - localScheduleStartTime);
     }
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
-        System.nanoTime() - localScheduleStartTime);
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();
@@ -266,11 +269,15 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           }
           break;
         case WRITE:
-          TSendPlanNodeReq sendPlanNodeReq =
-              new TSendPlanNodeReq(
-                  new TPlanNode(instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
-                  instance.getRegionReplicaSet().getRegionId());
-          TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
+          TSendBatchPlanNodeReq sendPlanNodeReq =
+              new TSendBatchPlanNodeReq(
+                  Collections.singletonList(
+                      new TSendSinglePlanNodeReq(
+                          new TPlanNode(
+                              instance.getFragment().getPlanNodeTree().serializeToByteBuffer()),
+                          instance.getRegionReplicaSet().getRegionId())));
+          TSendSinglePlanNodeResp sendPlanNodeResp =
+              client.sendBatchPlanNode(sendPlanNodeReq).getResponses().get(0);
           if (!sendPlanNodeResp.accepted) {
             logger.warn(
                 "dispatch write failed. status: {}, code: {}, message: {}, node {}",

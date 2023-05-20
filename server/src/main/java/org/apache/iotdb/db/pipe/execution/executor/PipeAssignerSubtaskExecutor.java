@@ -19,4 +19,14 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
-public class PipeAssignerSubtaskExecutor implements PipeSubtaskExecutor {}
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
+public class PipeAssignerSubtaskExecutor extends PipeSubtaskExecutor {
+
+  PipeAssignerSubtaskExecutor() {
+    super(
+        IoTDBDescriptor.getInstance().getConfig().getPipeSubtaskExecutorMaxThreadNum(),
+        ThreadName.PIPE_ASSIGNER_EXECUTOR_POOL);
+  }
+}

@@ -69,22 +69,21 @@ public abstract class AbstractCompactionTask {
 
   public abstract void setSourceFilesToCompactionCandidate();
 
-  protected abstract void doCompaction();
+  protected abstract boolean doCompaction();
 
-  public void start() {
+  public boolean start() {
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
-    CompactionMetricsManager.getInstance().reportTaskStartRunning(crossTask, innerSeqTask);
     try {
       summary.start();
-      doCompaction();
-      isSuccess = true;
+      isSuccess = doCompaction();
     } finally {
       this.currentTaskNum.decrementAndGet();
       summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
       CompactionMetricsManager.getInstance()
           .reportTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
+      return isSuccess;
     }
   }
 
@@ -159,6 +158,10 @@ public abstract class AbstractCompactionTask {
 
   public boolean isCrossTask() {
     return crossTask;
+  }
+
+  public long getTemporalFileSize() {
+    return summary.getTemporalFileSize();
   }
 
   public boolean isInnerSeqTask() {

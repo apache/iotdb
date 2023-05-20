@@ -24,3 +24,8 @@ class _BaseError(Exception):
 class BadNodeUrlError(_BaseError):
     def __init__(self, node_url: str):
         self.message = "Bad node url: {}".format(node_url)
+
+
+class ModelNotExistError(_BaseError):
+    def __init__(self, file_path: str):
+        self.message = "Model path: ({}) not exists".format(file_path)

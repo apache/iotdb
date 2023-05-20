@@ -19,19 +19,47 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.db.pipe.core.connector.manager.PipeConnectorSubtaskManager;
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-public class PipeTaskConnectorStage implements PipeTaskStage {
+public class PipeTaskConnectorStage extends PipeTaskStage {
+
+  protected final PipeParameters pipeConnectorParameters;
+
+  protected String connectorSubtaskId = null;
+
+  public PipeTaskConnectorStage(PipeParameters pipeConnectorParameters) {
+    this.pipeConnectorParameters = pipeConnectorParameters;
+    connectorSubtaskId =
+        PipeConnectorSubtaskManager.instance()
+            .register(
+                PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
+                pipeConnectorParameters); // TODO: should split to create
+  }
 
   @Override
-  public void create() throws PipeException {}
+  public void createSubtask() throws PipeException {}
 
   @Override
-  public void start() throws PipeException {}
+  public void startSubtask() throws PipeException {
+    PipeConnectorSubtaskManager.instance().start(connectorSubtaskId);
+  }
 
   @Override
-  public void stop() throws PipeException {}
+  public void stopSubtask() throws PipeException {
+    PipeConnectorSubtaskManager.instance().stop(connectorSubtaskId);
+  }
 
   @Override
-  public void drop() throws PipeException {}
+  public void dropSubtask() throws PipeException {
+    PipeConnectorSubtaskManager.instance().deregister(connectorSubtaskId);
+  }
+
+  public ListenableBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
+    return PipeConnectorSubtaskManager.instance().getPipeConnectorPendingQueue(connectorSubtaskId);
+  }
 }

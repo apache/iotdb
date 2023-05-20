@@ -93,8 +93,9 @@ public class LastQueryMergeOperator implements ProcessOperator {
   public ListenableFuture<?> isBlocked() {
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && empty(i)) {
-        ListenableFuture<?> blocked = children.get(i).isBlocked();
+      Operator currentChild = children.get(i);
+      if (!noMoreTsBlocks[i] && empty(i) && currentChild != null) {
+        ListenableFuture<?> blocked = currentChild.isBlocked();
         if (!blocked.isDone()) {
           listenableFutures.add(blocked);
         }
@@ -115,10 +116,11 @@ public class LastQueryMergeOperator implements ProcessOperator {
     // min/max TimeSeries
     // among all the input TsBlock as the current output TsBlock's endTimeSeries.
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && empty(i)) {
-        if (children.get(i).hasNextWithTimer()) {
+      Operator currentChild = children.get(i);
+      if (!noMoreTsBlocks[i] && empty(i) && currentChild != null) {
+        if (currentChild.hasNextWithTimer()) {
           inputIndex[i] = 0;
-          inputTsBlocks[i] = children.get(i).nextWithTimer();
+          inputTsBlocks[i] = currentChild.nextWithTimer();
           if (!empty(i)) {
             int rowSize = inputTsBlocks[i].getPositionCount();
             for (int row = 0; row < rowSize; row++) {
@@ -145,6 +147,8 @@ public class LastQueryMergeOperator implements ProcessOperator {
         } else { // no more tsBlock
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
+          currentChild.close();
+          children.set(i, null);
         }
       }
       // update the currentEndTimeSeries if the TsBlock is not empty
@@ -189,11 +193,16 @@ public class LastQueryMergeOperator implements ProcessOperator {
       if (!empty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
-        if (children.get(i).hasNextWithTimer()) {
+        Operator currentChild = children.get(i);
+        if (currentChild != null && currentChild.hasNextWithTimer()) {
           return true;
         } else {
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
+          if (currentChild != null) {
+            currentChild.close();
+            children.set(i, null);
+          }
         }
       }
     }
@@ -203,7 +212,9 @@ public class LastQueryMergeOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     for (Operator child : children) {
-      child.close();
+      if (child != null) {
+        child.close();
+      }
     }
     tsBlockBuilder = null;
   }

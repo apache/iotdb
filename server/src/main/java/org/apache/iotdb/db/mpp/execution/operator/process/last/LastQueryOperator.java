@@ -111,6 +111,9 @@ public class LastQueryOperator implements ProcessOperator {
         } else if (!tsBlock.isEmpty()) {
           LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
         }
+      } else {
+        children.get(currentIndex).close();
+        children.set(currentIndex, null);
       }
 
       currentIndex++;
@@ -134,7 +137,9 @@ public class LastQueryOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     for (Operator child : children) {
-      child.close();
+      if (child != null) {
+        child.close();
+      }
     }
     tsBlockBuilder = null;
   }

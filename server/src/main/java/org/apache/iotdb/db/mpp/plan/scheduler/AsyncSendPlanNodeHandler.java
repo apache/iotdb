@@ -19,37 +19,42 @@
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
-import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNodeResp> {
-  private final int instanceId;
+public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendBatchPlanNodeResp> {
+
+  private final List<Integer> instanceIds;
   private final AtomicLong pendingNumber;
-  private final Map<Integer, TSendPlanNodeResp> instanceId2RespMap;
+  private final Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap;
   private final long sendTime;
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
   public AsyncSendPlanNodeHandler(
-      int instanceId,
+      List<Integer> instanceIds,
       AtomicLong pendingNumber,
-      Map<Integer, TSendPlanNodeResp> instanceId2RespMap,
+      Map<Integer, TSendSinglePlanNodeResp> instanceId2RespMap,
       long sendTime) {
-    this.instanceId = instanceId;
+    this.instanceIds = instanceIds;
     this.pendingNumber = pendingNumber;
     this.instanceId2RespMap = instanceId2RespMap;
     this.sendTime = sendTime;
   }
 
   @Override
-  public void onComplete(TSendPlanNodeResp tSendPlanNodeResp) {
-    instanceId2RespMap.put(instanceId, tSendPlanNodeResp);
+  public void onComplete(TSendBatchPlanNodeResp sendBatchPlanNodeResp) {
+    for (int i = 0; i < sendBatchPlanNodeResp.getResponses().size(); i++) {
+      instanceId2RespMap.put(instanceIds.get(i), sendBatchPlanNodeResp.getResponses().get(i));
+    }
     if (pendingNumber.decrementAndGet() == 0) {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleRemoteCost(System.nanoTime() - sendTime);
       synchronized (pendingNumber) {
@@ -60,13 +65,13 @@ public class AsyncSendPlanNodeHandler implements AsyncMethodCallback<TSendPlanNo
 
   @Override
   public void onError(Exception e) {
-    TSendPlanNodeResp resp = new TSendPlanNodeResp();
+    TSendSinglePlanNodeResp resp = new TSendSinglePlanNodeResp();
     String errorMsg = String.format("Fail to send plan node, exception message: %s", e);
     resp.setAccepted(false);
     resp.setMessage(errorMsg);
     resp.setStatus(
         RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg));
-    instanceId2RespMap.put(instanceId, resp);
+    instanceIds.forEach(instanceId -> instanceId2RespMap.put(instanceId, resp));
     if (pendingNumber.decrementAndGet() == 0) {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleRemoteCost(System.nanoTime() - sendTime);
       synchronized (pendingNumber) {

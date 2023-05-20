@@ -22,7 +22,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.ratis.Utils;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;

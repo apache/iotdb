@@ -25,7 +25,7 @@
 
 Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可以通过 Zeppelin 连接数据源并使用 SQL、Scala 等进行交互式操作。操作可以保存为文档（类似于 Jupyter）。Zeppelin 支持多种数据源，包括 Spark、ElasticSearch、Cassandra 和 InfluxDB 等等。现在，IoTDB 已经支持使用 Zeppelin 进行操作。样例如下：
 
-![iotdb-note-snapshot](/img/github/102752947-520a3e80-43a5-11eb-8fb1-8fac471c8c7e.png)
+![iotdb-note-snapshot](https://alioss.timecho.com/docs/img/github/102752947-520a3e80-43a5-11eb-8fb1-8fac471c8c7e.png)
 
 ### Zeppelin-IoTDB 解释器
 
@@ -105,7 +105,7 @@ or
 
 现在可以开始使用 Zeppelin 操作 IoTDB 了。
 
-![iotdb-create-note](/img/github/102752945-5171a800-43a5-11eb-8614-53b3276a3ce2.png)
+![iotdb-create-note](https://alioss.timecho.com/docs/img/github/102752945-5171a800-43a5-11eb-8614-53b3276a3ce2.png)
 
 我们提供了一些简单的 SQL 来展示 Zeppelin-IoTDB 解释器的使用：
 
@@ -138,7 +138,7 @@ WHERE time >= 1
 
 样例如下：
 
-![iotdb-note-snapshot2](/img/github/102752948-52a2d500-43a5-11eb-9156-0c55667eb4cd.png)
+![iotdb-note-snapshot2](https://alioss.timecho.com/docs/img/github/102752948-52a2d500-43a5-11eb-9156-0c55667eb4cd.png)
 
 用户也可以参考 [[1]](https://zeppelin.apache.org/docs/0.9.0/usage/display_system/basic.html) 编写更丰富多彩的文档。
 
@@ -148,7 +148,7 @@ WHERE time >= 1
 
 进入页面 [http://127.0.0.1:8080/#/interpreter](http://127.0.0.1:8080/#/interpreter) 并配置 IoTDB 的连接参数：
 
-![iotdb-configuration](/img/github/102752940-50407b00-43a5-11eb-94fb-3e3be222183c.png)
+![iotdb-configuration](https://alioss.timecho.com/docs/img/github/102752940-50407b00-43a5-11eb-94fb-3e3be222183c.png)
 
 可配置参数默认值和解释如下：
 

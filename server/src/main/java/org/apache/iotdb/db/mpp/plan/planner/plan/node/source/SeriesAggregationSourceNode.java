@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import javax.annotation.Nullable;
 
 import java.util.List;
+import java.util.Objects;
 
 public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
 
@@ -40,8 +41,11 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   protected Ordering scanOrder = Ordering.ASC;
 
-  // time filter for current series, could be null if doesn't exist
+  // time filter for current series, could be null if it doesn't exist
   @Nullable protected Filter timeFilter;
+
+  // push-downing query filter for current series, could be null if it doesn't exist
+  @Nullable protected Filter valueFilter;
 
   // The parameter of `group by time`
   // Its value will be null if there is no `group by time` clause,
@@ -70,8 +74,51 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
     return timeFilter;
   }
 
+  public void setTimeFilter(@Nullable Filter timeFilter) {
+    this.timeFilter = timeFilter;
+  }
+
+  @Nullable
+  public Filter getValueFilter() {
+    return valueFilter;
+  }
+
+  public void setValueFilter(@Nullable Filter valueFilter) {
+    this.valueFilter = valueFilter;
+  }
+
   @Nullable
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    SeriesAggregationSourceNode that = (SeriesAggregationSourceNode) o;
+    return aggregationDescriptorList.equals(that.aggregationDescriptorList)
+        && scanOrder == that.scanOrder
+        && Objects.equals(timeFilter, that.timeFilter)
+        && Objects.equals(valueFilter, that.valueFilter)
+        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(),
+        aggregationDescriptorList,
+        scanOrder,
+        timeFilter,
+        valueFilter,
+        groupByTimeParameter);
   }
 }

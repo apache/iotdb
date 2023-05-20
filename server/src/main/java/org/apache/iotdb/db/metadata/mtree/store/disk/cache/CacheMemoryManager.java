@@ -35,9 +35,9 @@ import org.apache.iotdb.db.utils.concurrent.FiniteSemaphore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -49,7 +49,7 @@ public class CacheMemoryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(CacheMemoryManager.class);
 
-  private final List<CachedMTreeStore> storeList = new ArrayList<>();
+  private final List<CachedMTreeStore> storeList = new CopyOnWriteArrayList<>();
 
   private CachedSchemaEngineStatistics engineStatistics;
   private SchemaEngineCachedMetric engineMetric;
@@ -70,7 +70,7 @@ public class CacheMemoryManager {
 
   private IReleaseFlushStrategy releaseFlushStrategy;
 
-  private static final int MAX_WAITING_TIME_WHEN_RELEASING = 10_000;
+  private static final int MAX_WAITING_TIME_WHEN_RELEASING = 3_000;
   private final Object blockObject = new Object();
 
   /**
@@ -80,11 +80,9 @@ public class CacheMemoryManager {
    * @return LRUCacheManager
    */
   public ICacheManager createLRUCacheManager(CachedMTreeStore store, MemManager memManager) {
-    synchronized (storeList) {
-      ICacheManager cacheManager = new LRUCacheManager(memManager);
-      storeList.add(store);
-      return cacheManager;
-    }
+    ICacheManager cacheManager = new LRUCacheManager(memManager);
+    storeList.add(store);
+    return cacheManager;
   }
 
   public void init(ISchemaEngineStatistics engineStatistics) {
@@ -200,34 +198,32 @@ public class CacheMemoryManager {
    * added or updated, fire flush task.
    */
   private void tryExecuteMemoryRelease() {
-    synchronized (storeList) {
-      long startTime = System.currentTimeMillis();
-      CompletableFuture.allOf(
-              storeList.stream()
-                  .map(
-                      store ->
-                          CompletableFuture.runAsync(
-                              () -> {
-                                store.getLock().threadReadLock();
-                                try {
-                                  executeMemoryRelease(store);
-                                } finally {
-                                  store.getLock().threadReadUnlock();
-                                }
-                              },
-                              releaseTaskProcessor))
-                  .toArray(CompletableFuture[]::new))
-          .join();
-      if (engineMetric != null) {
-        engineMetric.recordRelease(System.currentTimeMillis() - startTime);
-      }
-      synchronized (blockObject) {
-        hasReleaseTask = false;
-        if (isExceedFlushThreshold()) {
-          registerFlushTask();
-        } else {
-          blockObject.notifyAll();
-        }
+    long startTime = System.currentTimeMillis();
+    CompletableFuture.allOf(
+            storeList.stream()
+                .map(
+                    store ->
+                        CompletableFuture.runAsync(
+                            () -> {
+                              store.getLock().threadReadLock(true);
+                              try {
+                                executeMemoryRelease(store);
+                              } finally {
+                                store.getLock().threadReadUnlock();
+                              }
+                            },
+                            releaseTaskProcessor))
+                .toArray(CompletableFuture[]::new))
+        .join();
+    if (engineMetric != null) {
+      engineMetric.recordRelease(System.currentTimeMillis() - startTime);
+    }
+    synchronized (blockObject) {
+      hasReleaseTask = false;
+      if (isExceedFlushThreshold()) {
+        registerFlushTask();
+      } else {
+        blockObject.notifyAll();
       }
     }
   }
@@ -252,32 +248,30 @@ public class CacheMemoryManager {
 
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
   private void tryFlushVolatileNodes() {
-    synchronized (storeList) {
-      long startTime = System.currentTimeMillis();
-      CompletableFuture.allOf(
-              storeList.stream()
-                  .map(
-                      store ->
-                          CompletableFuture.runAsync(
-                              () -> {
-                                store.getLock().writeLock();
-                                try {
-                                  store.flushVolatileNodes();
-                                  executeMemoryRelease(store);
-                                } finally {
-                                  store.getLock().unlockWrite();
-                                }
-                              },
-                              flushTaskProcessor))
-                  .toArray(CompletableFuture[]::new))
-          .join();
-      if (engineMetric != null) {
-        engineMetric.recordFlush(System.currentTimeMillis() - startTime);
-      }
-      synchronized (blockObject) {
-        hasFlushTask = false;
-        blockObject.notifyAll();
-      }
+    long startTime = System.currentTimeMillis();
+    CompletableFuture.allOf(
+            storeList.stream()
+                .map(
+                    store ->
+                        CompletableFuture.runAsync(
+                            () -> {
+                              store.getLock().writeLock();
+                              try {
+                                store.flushVolatileNodes();
+                                executeMemoryRelease(store);
+                              } finally {
+                                store.getLock().unlockWrite();
+                              }
+                            },
+                            flushTaskProcessor))
+                .toArray(CompletableFuture[]::new))
+        .join();
+    if (engineMetric != null) {
+      engineMetric.recordFlush(System.currentTimeMillis() - startTime);
+    }
+    synchronized (blockObject) {
+      hasFlushTask = false;
+      blockObject.notifyAll();
     }
   }
 

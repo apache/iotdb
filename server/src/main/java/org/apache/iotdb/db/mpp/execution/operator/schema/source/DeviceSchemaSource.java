@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -32,6 +33,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
+
 public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final PartialPath pathPattern;
@@ -42,8 +45,15 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final boolean hasSgCol;
 
+  private final SchemaFilter schemaFilter;
+
   DeviceSchemaSource(
-      PartialPath pathPattern, boolean isPrefixPath, long limit, long offset, boolean hasSgCol) {
+      PartialPath pathPattern,
+      boolean isPrefixPath,
+      long limit,
+      long offset,
+      boolean hasSgCol,
+      SchemaFilter schemaFilter) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixPath;
 
@@ -51,6 +61,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
     this.offset = offset;
 
     this.hasSgCol = hasSgCol;
+    this.schemaFilter = schemaFilter;
   }
 
   @Override
@@ -58,7 +69,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
     try {
       return schemaRegion.getDeviceReader(
           SchemaRegionReadPlanFactory.getShowDevicesPlan(
-              pathPattern, limit, offset, isPrefixMatch));
+              pathPattern, limit, offset, isPrefixMatch, schemaFilter));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
@@ -83,5 +94,15 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       builder.getColumnBuilder(1).writeBinary(new Binary(String.valueOf(device.isAligned())));
     }
     builder.declarePosition();
+  }
+
+  @Override
+  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
+    return pathPattern.equals(ALL_MATCH_PATTERN);
+  }
+
+  @Override
+  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+    return schemaRegion.getSchemaRegionStatistics().getDevicesNumber();
   }
 }

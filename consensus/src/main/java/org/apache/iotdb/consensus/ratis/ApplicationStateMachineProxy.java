@@ -26,6 +26,8 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.proto.RaftProtos;
 import org.apache.ratis.proto.RaftProtos.RaftConfigurationProto;
@@ -132,7 +134,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     Message ret = null;
-    waitUntilSystemNotReadOnly();
+    waitUntilSystemAllowApply();
     TSStatus finalStatus = null;
     boolean shouldRetry = false;
     boolean firstTry = true;
@@ -163,9 +165,12 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
         Thread.currentThread().interrupt();
       } catch (Throwable rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
-        ret = Message.valueOf("internal error. statemachine throws a runtime exception: " + rte);
-        if (applicationStateMachine.isReadOnly()) {
-          waitUntilSystemNotReadOnly();
+        ret =
+            new ResponseMessage(
+                new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+                    .setMessage("internal error. statemachine throws a runtime exception: " + rte));
+        if (Utils.stallApply()) {
+          waitUntilSystemAllowApply();
           shouldRetry = true;
         } else {
           break;
@@ -186,8 +191,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     return CompletableFuture.completedFuture(ret);
   }
 
-  private void waitUntilSystemNotReadOnly() {
-    while (applicationStateMachine.isReadOnly()) {
+  private void waitUntilSystemAllowApply() {
+    while (Utils.stallApply()) {
       try {
         TimeUnit.SECONDS.sleep(60);
       } catch (InterruptedException e) {

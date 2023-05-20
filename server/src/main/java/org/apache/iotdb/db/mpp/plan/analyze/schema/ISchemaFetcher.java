@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.analyze.schema;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,7 +43,7 @@ public interface ISchemaFetcher {
    * @param patternTree used for matching the timeseries
    * @return the matched timeseries schema organized as tree structure logically
    */
-  ISchemaTree fetchSchema(PathPatternTree patternTree);
+  ISchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context);
 
   /**
    * Fetch all the schema with tags of existing timeseries matched by the given patternTree
@@ -83,11 +84,12 @@ public interface ISchemaFetcher {
       List<CompressionType[]> compressionTypes,
       List<Boolean> aligned);
 
-  Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
+  Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath);
+
+  Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(
+      PartialPath timeSeriesPath, String alias);
 
   Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
 
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
-
-  void invalidAllCache();
 }

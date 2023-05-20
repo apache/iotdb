@@ -341,14 +341,17 @@ public abstract class AbstractCli {
     }
   }
 
-  static void displayLogo(String version, String buildInfo) {
+  static void displayLogo(String logo, String version, String buildInfo) {
     println(
-        " _____       _________  ______   ______    \n"
-            + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
-            + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
-            + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
-            + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
-            + "|_____|'.__.' |_____|  |______.'|_______/  version "
+        (logo != null
+                ? logo
+                : (" _____       _________  ______   ______    \n"
+                    + "|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n"
+                    + "  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n"
+                    + "  | | / .'`\\ \\  | |      | |  | | |  __'.  \n"
+                    + " _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n"
+                    + "|_____|'.__.' |_____|  |______.'|_______/  "))
+            + "version "
             + version
             + " (Build: "
             + (buildInfo != null ? buildInfo : "UNKNOWN")

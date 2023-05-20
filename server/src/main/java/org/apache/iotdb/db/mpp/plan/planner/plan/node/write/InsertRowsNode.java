@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -31,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -42,9 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-public class InsertRowsNode extends InsertNode implements BatchInsertNode {
+public class InsertRowsNode extends InsertNode {
 
   /**
    * Suppose there is an InsertRowsNode, which contains 5 InsertRowNodes,
@@ -121,11 +118,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    return false;
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -153,23 +145,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public List<ISchemaValidation> getSchemaValidationList() {
-    return insertRowNodeList.stream()
-        .map(InsertRowNode::getSchemaValidation)
-        .collect(Collectors.toList());
-  }
-
-  @Override
-  public void updateAfterSchemaValidation() throws QueryProcessException {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.updateAfterSchemaValidation();
-      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
-      }
-    }
   }
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
@@ -236,6 +211,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
+    List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // data region for insert row node
@@ -245,6 +221,8 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
               .getDataRegionReplicaSetForWriting(
                   insertRowNode.devicePath.getFullPath(),
                   TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
+      // collect redirectInfo
+      redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       if (splitMap.containsKey(dataRegionReplicaSet)) {
         InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);
@@ -255,6 +233,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }
     }
+    analysis.setRedirectNodeList(redirectInfo);
 
     return new ArrayList<>(splitMap.values());
   }
@@ -266,11 +245,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
 
   @Override
   public long getMinTime() {
-    throw new NotImplementedException();
-  }
-
-  @Override
-  public Object getFirstValueOfIndex(int index) {
     throw new NotImplementedException();
   }
 }

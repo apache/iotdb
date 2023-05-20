@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FilterAndProjectOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.IntoOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
@@ -45,6 +47,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregati
 import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
@@ -465,6 +468,39 @@ public class OperatorMemoryTest {
   }
 
   @Test
+  public void horizontallyConcatOperatorTest() {
+    long expectedMaxReturnSize = 0;
+    long expectedMaxPeekMemory = 0;
+    long childrenMaxPeekMemory = 0;
+
+    List<Operator> children = new ArrayList<>(4);
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+      children.add(child);
+
+      expectedMaxReturnSize += child.calculateMaxReturnSize();
+      childrenMaxPeekMemory =
+          Math.max(childrenMaxPeekMemory, expectedMaxPeekMemory + child.calculateMaxPeekMemory());
+      expectedMaxPeekMemory += child.calculateMaxReturnSize();
+    }
+
+    expectedMaxPeekMemory =
+        Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
+
+    HorizontallyConcatOperator horizontallyConcatOperator =
+        new HorizontallyConcatOperator(
+            Mockito.mock(OperatorContext.class), children, Collections.emptyList());
+
+    assertEquals(expectedMaxPeekMemory, horizontallyConcatOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, horizontallyConcatOperator.calculateMaxReturnSize());
+    assertEquals(
+        3 * 64 * 1024L, horizontallyConcatOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
   public void sortOperatorTest() {
     Operator child = Mockito.mock(Operator.class);
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
@@ -476,11 +512,18 @@ public class OperatorMemoryTest {
             Mockito.mock(OperatorContext.class),
             child,
             Collections.singletonList(TSDataType.INT32),
+            "",
             null);
 
-    assertEquals(2048 + 512, sortOperator.calculateMaxPeekMemory());
-    assertEquals(1024, sortOperator.calculateMaxReturnSize());
-    assertEquals(512, sortOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(
+        2048 + 512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        sortOperator.calculateMaxPeekMemory());
+    assertEquals(
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+        sortOperator.calculateMaxReturnSize());
+    assertEquals(
+        512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        sortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -1421,5 +1464,81 @@ public class OperatorMemoryTest {
     assertEquals(
         expectedMaxRetainSize + expectedChildrenRetainedSize,
         aggregationOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void intoOperatorTest() {
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory())
+        .thenReturn((long) DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+    Mockito.when(child.calculateMaxReturnSize())
+        .thenReturn((long) DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+
+    long statementSizePerLine1 = 8 + 1000 * (4 + 8 + 4 + 8 + 1 + 512);
+    IntoOperator intoOperator1 = createIntoOperator(child, statementSizePerLine1);
+    int expectedMaxRowNumber = 195;
+    long expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine1;
+    assertEquals(expectedMaxRowNumber, intoOperator1.getMaxRowNumberInStatement());
+    assertEquals(
+        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        intoOperator1.calculateMaxPeekMemory());
+    assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator1.calculateMaxReturnSize());
+    assertEquals(
+        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        intoOperator1.calculateRetainedSizeAfterCallingNext());
+
+    long statementSizePerLine2 = 8 + 1000 * (4 + 8 + 4 + 8 + 1);
+    IntoOperator intoOperator2 = createIntoOperator(child, statementSizePerLine2);
+    expectedMaxRowNumber = 4192;
+    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine2;
+    assertEquals(expectedMaxRowNumber, intoOperator2.getMaxRowNumberInStatement());
+    assertEquals(
+        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        intoOperator2.calculateMaxPeekMemory());
+    assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator2.calculateMaxReturnSize());
+    assertEquals(
+        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        intoOperator2.calculateRetainedSizeAfterCallingNext());
+
+    long statementSizePerLine3 = 8 + 100 * (4 + 8 + 4 + 8 + 1);
+    IntoOperator intoOperator3 = createIntoOperator(child, statementSizePerLine3);
+    expectedMaxRowNumber = 10000;
+    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine3;
+    assertEquals(expectedMaxRowNumber, intoOperator3.getMaxRowNumberInStatement());
+    assertEquals(
+        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        intoOperator3.calculateMaxPeekMemory());
+    assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator3.calculateMaxReturnSize());
+    assertEquals(
+        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        intoOperator3.calculateRetainedSizeAfterCallingNext());
+
+    long statementSizePerLine4 = 8 + 1000000 * (4 + 8 + 4 + 8 + 1 + 512);
+    IntoOperator intoOperator4 = createIntoOperator(child, statementSizePerLine4);
+    expectedMaxRowNumber = 1;
+    expectedMaxStatementSize = expectedMaxRowNumber * statementSizePerLine4;
+    assertEquals(expectedMaxRowNumber, intoOperator4.getMaxRowNumberInStatement());
+    assertEquals(
+        expectedMaxStatementSize + 3L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        intoOperator4.calculateMaxPeekMemory());
+    assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, intoOperator4.calculateMaxReturnSize());
+    assertEquals(
+        expectedMaxStatementSize + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        intoOperator4.calculateRetainedSizeAfterCallingNext());
+  }
+
+  private IntoOperator createIntoOperator(Operator child, long statementSizePerLine) {
+    return new IntoOperator(
+        Mockito.mock(OperatorContext.class),
+        child,
+        Collections.emptyList(),
+        Collections.emptyMap(),
+        Collections.emptyMap(),
+        Collections.emptyMap(),
+        Collections.emptyList(),
+        Collections.emptyMap(),
+        null,
+        statementSizePerLine);
   }
 }

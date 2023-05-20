@@ -43,6 +43,8 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
   public static final String BLANK_STRING = " ";
   public static final String COMMA_STRING = ",";
 
+  public static final String NULL_STRING = "null";
+
   @Override
   public void checkBuiltInScalarFunctionInputSize(FunctionExpression functionExpression)
       throws SemanticException {
@@ -50,6 +52,10 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
         || functionExpression.getExpressions().size() != 1) {
       throw new SemanticException(
           "Argument exception,the scalar function [SUBSTRING] needs at least one argument,it must be a signed integer");
+    }
+    if (functionExpression.getExpressionString().contains(NULL_STRING)) {
+      throw new SemanticException(
+          "Syntax error,please check that the parameters of the function are correct");
     }
   }
 
@@ -72,34 +78,35 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
   public ColumnTransformer getBuiltInScalarFunctionColumnTransformer(
       FunctionExpression expression, ColumnTransformer columnTransformer) {
     LinkedHashMap<String, String> functionAttributes = expression.getFunctionAttributes();
-    String subStringLength =
-        functionAttributes.getOrDefault(SUBSTRING_LENGTH, String.valueOf(Integer.MAX_VALUE));
-    if (Long.parseLong(subStringLength) < 0) {
+    int subStringLength =
+        Integer.parseInt(
+            functionAttributes.getOrDefault(SUBSTRING_LENGTH, String.valueOf(Integer.MAX_VALUE)));
+    int subStringStart = Integer.parseInt(functionAttributes.getOrDefault(SUBSTRING_START, "0"));
+    if (subStringLength < 0 || subStringStart < 0) {
       throw new SemanticException(
-          "Argument exception,the scalar function [SUBSTRING] substring length has to be greater than 0");
+          "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
     }
 
     return new SubStringFunctionColumnTransformer(
         TypeFactory.getType(this.getBuiltInScalarFunctionReturnType(expression)),
         columnTransformer,
-        Integer.parseInt(functionAttributes.getOrDefault(SUBSTRING_START, "0")),
-        Integer.parseInt(subStringLength));
+        subStringStart,
+        subStringLength);
   }
 
   @Override
   public Transformer getBuiltInScalarFunctionTransformer(
       FunctionExpression expression, LayerPointReader layerPointReader) {
     LinkedHashMap<String, String> functionAttributes = expression.getFunctionAttributes();
-    String subStringLength =
-        functionAttributes.getOrDefault(SUBSTRING_LENGTH, String.valueOf(Integer.MAX_VALUE));
-    if (Long.parseLong(subStringLength) < 0) {
+    int subStringLength =
+        Integer.parseInt(
+            functionAttributes.getOrDefault(SUBSTRING_LENGTH, String.valueOf(Integer.MAX_VALUE)));
+    int subStringStart = Integer.parseInt(functionAttributes.getOrDefault(SUBSTRING_START, "0"));
+    if (subStringLength < 0 || subStringStart < 0) {
       throw new SemanticException(
-          "Argument exception,the scalar function [SUBSTRING] substring length has to be greater than 0");
+          "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
     }
-    return new SubStringFunctionTransformer(
-        layerPointReader,
-        Integer.parseInt(functionAttributes.getOrDefault(SUBSTRING_START, "0")),
-        Integer.parseInt(subStringLength));
+    return new SubStringFunctionTransformer(layerPointReader, subStringStart, subStringLength);
   }
 
   @Override

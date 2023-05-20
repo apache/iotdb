@@ -36,7 +36,6 @@ import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
-import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
@@ -48,7 +47,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -67,7 +65,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -103,6 +105,8 @@ import java.util.function.Function;
  */
 public class MTreeBelowSGCachedImpl {
 
+  private static final Logger logger = LoggerFactory.getLogger(MTreeBelowSGCachedImpl.class);
+
   private final CachedMTreeStore store;
   private volatile ICachedMNode storageGroupMNode;
   private final ICachedMNode rootNode;
@@ -117,6 +121,7 @@ public class MTreeBelowSGCachedImpl {
       Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter,
       Runnable flushCallback,
       Consumer<IMeasurementMNode<ICachedMNode>> measurementProcess,
+      Consumer<IDeviceMNode<ICachedMNode>> deviceProcess,
       int schemaRegionId,
       CachedSchemaRegionStatistics regionStatistics)
       throws MetadataException, IOException {
@@ -128,14 +133,17 @@ public class MTreeBelowSGCachedImpl {
     this.rootNode = store.generatePrefix(storageGroupPath);
     levelOfSG = storageGroupPath.getNodeLength() - 1;
 
-    // recover measurement
-    try (MeasurementCollector<Void, ICachedMNode> collector =
-        new MeasurementCollector<Void, ICachedMNode>(
+    // recover MNode
+    try (MNodeCollector<Void, ICachedMNode> collector =
+        new MNodeCollector<Void, ICachedMNode>(
             this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
-
-          protected Void collectMeasurement(IMeasurementMNode<ICachedMNode> node) {
-            measurementProcess.accept(node);
-            regionStatistics.addTimeseries(1L);
+          @Override
+          protected Void collectMNode(ICachedMNode node) {
+            if (node.isMeasurement()) {
+              measurementProcess.accept(node.getAsMeasurementMNode());
+            } else if (node.isDevice()) {
+              deviceProcess.accept(node.getAsDeviceMNode());
+            }
             return null;
           }
         }) {
@@ -159,7 +167,7 @@ public class MTreeBelowSGCachedImpl {
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
 
-    // recover measurement
+    // recover MNode
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
             this.rootNode, new PartialPath(storageGroupMNode.getFullPath()), this.store, true) {
@@ -708,6 +716,27 @@ public class MTreeBelowSGCachedImpl {
       unPinPath(cur);
     }
   }
+
+  /**
+   * Check if the device node exists
+   *
+   * @param deviceId full path of device
+   * @return true if the device node exists
+   */
+  public boolean checkDeviceNodeExists(PartialPath deviceId) {
+    ICachedMNode deviceMNode = null;
+    try {
+      deviceMNode = getNodeByPath(deviceId);
+      return deviceMNode.isDevice();
+    } catch (MetadataException e) {
+      return false;
+    } finally {
+      if (deviceMNode != null) {
+        unPinMNode(deviceMNode);
+      }
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
@@ -785,13 +814,6 @@ public class MTreeBelowSGCachedImpl {
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
     }
   }
-
-  public long countAllMeasurement() throws MetadataException {
-    try (MeasurementCounter<ICachedMNode> measurementCounter =
-        new MeasurementCounter<>(rootNode, MetadataConstant.ALL_MATCH_PATTERN, store, false)) {
-      return measurementCounter.count();
-    }
-  }
   // endregion
 
   // region Interfaces and Implementation for Template check and query
@@ -812,13 +834,6 @@ public class MTreeBelowSGCachedImpl {
         cur = child;
       }
       synchronized (this) {
-        for (String measurement : template.getSchemaMap().keySet()) {
-          if (store.hasChild(cur, measurement)) {
-            throw new TemplateImcompatibeException(
-                activatePath.concatNode(measurement).getFullPath(), template.getName());
-          }
-        }
-
         if (cur.isDevice()) {
           entityMNode = cur.getAsDeviceMNode();
         } else {
@@ -845,6 +860,43 @@ public class MTreeBelowSGCachedImpl {
 
       store.updateMNode(entityMNode.getAsMNode());
       regionStatistics.activateTemplate(template.getId());
+    } finally {
+      unPinPath(cur);
+    }
+  }
+
+  public void activateTemplateWithoutCheck(
+      PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
+    String[] nodes = activatePath.getNodes();
+    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode child;
+    IDeviceMNode<ICachedMNode> entityMNode;
+
+    try {
+      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+        child = store.getChild(cur, nodes[i]);
+        if (child == null) {
+          throw new PathNotExistException(activatePath.getFullPath());
+        }
+        cur = child;
+      }
+      if (cur.isDevice()) {
+        entityMNode = cur.getAsDeviceMNode();
+      } else {
+        entityMNode = store.setToEntity(cur);
+        if (entityMNode.isDatabase()) {
+          replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
+        }
+      }
+
+      if (!entityMNode.isAligned()) {
+        entityMNode.setAligned(isAligned);
+      }
+      entityMNode.setUseTemplate(true);
+      entityMNode.setSchemaTemplateId(templateId);
+
+      store.updateMNode(entityMNode.getAsMNode());
+      regionStatistics.activateTemplate(templateId);
     } finally {
       unPinPath(cur);
     }
@@ -925,7 +977,7 @@ public class MTreeBelowSGCachedImpl {
   public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
       throws MetadataException {
     try (EntityCounter<ICachedMNode> counter =
-        new EntityCounter(rootNode, pathPattern, store, false)) {
+        new EntityCounter<>(rootNode, pathPattern, store, false)) {
       counter.setSchemaTemplateFilter(templateId);
       return counter.count();
     }
@@ -976,6 +1028,7 @@ public class MTreeBelowSGCachedImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
+    collector.setSchemaFilter(showDevicesPlan.getSchemaFilter());
     TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, ICachedMNode> traverser =
         new TraverserWithLimitOffsetWrapper<>(
             collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
@@ -1020,8 +1073,8 @@ public class MTreeBelowSGCachedImpl {
                 return node.getAlias();
               }
 
-              public MeasurementSchema getSchema() {
-                return (MeasurementSchema) node.getSchema();
+              public IMeasurementSchema getSchema() {
+                return node.getSchema();
               }
 
               public Map<String, String> getTags() {
@@ -1042,6 +1095,11 @@ public class MTreeBelowSGCachedImpl {
                 return getParentOfNextMatchedNode().getAsDeviceMNode().isAligned();
               }
 
+              @Override
+              public boolean isLogicalView() {
+                return node.isLogicalView();
+              }
+
               public String getFullPath() {
                 return getPartialPathFromRootToNode(node.getAsMNode()).getFullPath();
               }
@@ -1054,6 +1112,7 @@ public class MTreeBelowSGCachedImpl {
         };
 
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
+    collector.setSchemaFilter(showTimeSeriesPlan.getSchemaFilter());
     Traverser<ITimeSeriesSchemaInfo, ICachedMNode> traverser;
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
       traverser =

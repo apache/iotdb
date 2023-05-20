@@ -25,7 +25,7 @@ IoTDB provides you three installation methods, you can refer to the following su
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
-* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/Dockerfile
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker
 
 ### Prerequisites
 
@@ -90,7 +90,7 @@ Add environments of docker to update the configurations of Apache IoTDB.
 #### Have a try
 ```shell
 # get IoTDB official image
-docker pull apache/iotdb:1.0.1-standalone
+docker pull apache/iotdb:1.1.0-standalone
 # create docker bridge network
 docker network create --driver=bridge --subnet=172.18.0.0/16 --gateway=172.18.0.1 iotdb
 # create docker container
@@ -110,7 +110,7 @@ docker run -d --name iotdb-service \
               -e dn_schema_region_consensus_port=10750 \
               -e dn_data_region_consensus_port=10760 \
               -e dn_rpc_port=6667 \
-              apache/iotdb:1.0.1-standalone              
+              apache/iotdb:1.1.0-standalone              
 # execute SQL
 docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
 ```
@@ -125,7 +125,7 @@ Notice：The confignode service would fail when restarting this container if the
 version: "3"
 services:
   iotdb-service:
-    image: apache/iotdb:1.0.1-standalone
+    image: apache/iotdb:1.1.0-standalone
     hostname: iotdb-service
     container_name: iotdb-service
     ports:
@@ -136,6 +136,7 @@ services:
       - cn_consensus_port=10720
       - cn_target_config_node_list=iotdb-service:10710
       - dn_rpc_address=iotdb-service
+      - dn_internal_address=iotdb-service
       - dn_rpc_port=6667
       - dn_mpp_data_exchange_port=10740
       - dn_schema_region_consensus_port=10750
@@ -162,8 +163,8 @@ Here is the docker-compose file of iotdb-2, as the sample:
 version: "3"
 services:
   iotdb-confignode:
-    image: apache/iotdb:1.0.1-confignode
-    container_name: iotdb-confignode1.0.1-
+    image: apache/iotdb:1.1.0-confignode
+    container_name: iotdb-confignode
     environment:
       - cn_internal_address=iotdb-2
       - cn_target_config_node_list=iotdb-1:10710
@@ -181,7 +182,7 @@ services:
     network_mode: "host"
 
   iotdb-datanode:
-    image: apache/iotdb:1.0.1-datanode
+    image: apache/iotdb:1.1.0-datanode
     container_name: iotdb-datanode
     environment:
       - dn_rpc_address=iotdb-2

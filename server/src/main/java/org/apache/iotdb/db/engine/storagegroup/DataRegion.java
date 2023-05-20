@@ -68,6 +68,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -81,6 +82,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDevic
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.sync.SyncService;
@@ -104,6 +106,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -132,6 +135,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -728,7 +732,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserializeFromOldFile();
       upgradeRet.add(fileResource);
@@ -999,9 +1003,8 @@ public class DataRegion implements IDataRegionForQuery {
                   TSStatusCode.OUT_OF_TTL,
                   String.format(
                       "Insertion time [%s] is less than ttl time bound [%s]",
-                      DateTimeUtils.convertMillsecondToZonedDateTime(currTime),
-                      DateTimeUtils.convertMillsecondToZonedDateTime(
-                          DateTimeUtils.currentTime() - dataTTL)));
+                      DateTimeUtils.convertLongToDate(currTime),
+                      DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL)));
           loc++;
           noFailure = false;
         } else {
@@ -1143,21 +1146,34 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+        || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
+      // disable updating last cache on follower
       return;
     }
-    for (int i = 0; i < node.getColumns().length; i++) {
-      if (node.getColumns()[i] == null) {
-        continue;
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
       }
-      // Update cached last value with high priority
-      DataNodeSchemaCache.getInstance()
-          .updateLastCache(
-              node.getDevicePath().concatNode(node.getMeasurements()[i]),
-              node.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
     }
+    DataNodeSchemaCache.getInstance()
+        .updateLastCache(
+            getDatabaseName(),
+            node.getDevicePath(),
+            rawMeasurements,
+            node.getMeasurementSchemas(),
+            node.isAligned(),
+            node::composeLastTimeValuePair,
+            index -> node.getColumns()[index] != null,
+            true,
+            latestFlushedTime);
   }
 
   private void insertToTsFileProcessor(
@@ -1184,21 +1200,34 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+        || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
+      // disable updating last cache on follower
       return;
     }
-    for (int i = 0; i < node.getValues().length; i++) {
-      if (node.getValues()[i] == null) {
-        continue;
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
       }
-      // Update cached last value with high priority
-      DataNodeSchemaCache.getInstance()
-          .updateLastCache(
-              node.getDevicePath().concatNode(node.getMeasurements()[i]),
-              node.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
     }
+    DataNodeSchemaCache.getInstance()
+        .updateLastCache(
+            getDatabaseName(),
+            node.getDevicePath(),
+            rawMeasurements,
+            node.getMeasurementSchemas(),
+            node.isAligned(),
+            node::composeTimeValuePair,
+            index -> node.getValues()[index] != null,
+            true,
+            latestFlushedTime);
   }
 
   /**
@@ -1253,6 +1282,15 @@ public class DataRegion implements IDataRegionForQuery {
     int retryCnt = 0;
     do {
       try {
+        if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+          if (!DataNodeSpaceQuotaManager.getInstance().checkRegionDisk(databaseName)) {
+            throw new ExceedQuotaException(
+                "Unable to continue writing data, because the space allocated to the database "
+                    + databaseName
+                    + " has already used the upper limit",
+                TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
+          }
+        }
         if (sequence) {
           tsFileProcessor =
               getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, true);
@@ -1276,6 +1314,9 @@ public class DataRegion implements IDataRegionForQuery {
           CommonDescriptor.getInstance().getConfig().handleUnrecoverableError();
           break;
         }
+      } catch (ExceedQuotaException e) {
+        logger.error(e.getMessage());
+        break;
       }
     } while (tsFileProcessor == null);
     return tsFileProcessor;
@@ -1886,7 +1927,12 @@ public class DataRegion implements IDataRegionForQuery {
 
       // delete Last cache record if necessary
       // todo implement more precise process
-      DataNodeSchemaCache.getInstance().invalidateAll();
+      DataNodeSchemaCache.getInstance().takeWriteLock();
+      try {
+        DataNodeSchemaCache.getInstance().invalidateAll();
+      } finally {
+        DataNodeSchemaCache.getInstance().releaseWriteLock();
+      }
 
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
@@ -2295,7 +2341,12 @@ public class DataRegion implements IDataRegionForQuery {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    DataNodeSchemaCache.getInstance().invalidateAll();
+    DataNodeSchemaCache.getInstance().takeWriteLock();
+    try {
+      DataNodeSchemaCache.getInstance().invalidateAll();
+    } finally {
+      DataNodeSchemaCache.getInstance().releaseWriteLock();
+    }
   }
 
   /**
@@ -3116,9 +3167,8 @@ public class DataRegion implements IDataRegionForQuery {
                       TSStatusCode.OUT_OF_TTL.getStatusCode(),
                       String.format(
                           "Insertion time [%s] is less than ttl time bound [%s]",
-                          DateTimeUtils.convertMillsecondToZonedDateTime(insertRowNode.getTime()),
-                          DateTimeUtils.convertMillsecondToZonedDateTime(
-                              DateTimeUtils.currentTime() - dataTTL))));
+                          DateTimeUtils.convertLongToDate(insertRowNode.getTime()),
+                          DateTimeUtils.convertLongToDate(DateTimeUtils.currentTime() - dataTTL))));
           continue;
         }
         // init map
@@ -3208,6 +3258,38 @@ public class DataRegion implements IDataRegionForQuery {
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
       throw new BatchProcessException("Partial failed inserting multi tablets");
+    }
+  }
+
+  /** @return the disk space occupied by this data region, unit is MB */
+  public long countRegionDiskSize() {
+    AtomicLong diskSize = new AtomicLong(0);
+    DirectoryManager.getInstance()
+        .getAllFilesFolders()
+        .forEach(
+            folder -> {
+              folder = folder + File.separator + databaseName + File.separator + dataRegionId;
+              countFolderDiskSize(folder, diskSize);
+            });
+    return diskSize.get() / 1024 / 1024;
+  }
+
+  /**
+   * @param folder the folder's path
+   * @param diskSize the disk space occupied by this folder, unit is MB
+   */
+  private void countFolderDiskSize(String folder, AtomicLong diskSize) {
+    File file = new File(folder);
+    File[] allFile = file.listFiles();
+    if (allFile == null) {
+      return;
+    }
+    for (File f : allFile) {
+      if (f.isFile()) {
+        diskSize.addAndGet(f.length());
+      } else if (f.isDirectory()) {
+        countFolderDiskSize(f.getAbsolutePath(), diskSize);
+      }
     }
   }
 

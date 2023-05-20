@@ -142,6 +142,10 @@ public class SourceHandle implements ISourceHandle {
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
+    localMemoryManager
+        .getQueryPool()
+        .registerPlanNodeIdToQueryMemoryMap(
+            localFragmentInstanceId.queryId, fullFragmentInstanceId, localPlanNodeId);
   }
 
   @Override
@@ -332,10 +336,6 @@ public class SourceHandle implements ISourceHandle {
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
-      localMemoryManager
-          .getQueryPool()
-          .clearMemoryReservationMap(
-              localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
       aborted = true;
       sourceHandleListener.onAborted(this);
     }
@@ -343,7 +343,30 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public void abort(Throwable t) {
-    abort();
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      if (aborted || closed) {
+        return;
+      }
+      if (blocked != null && !blocked.isDone()) {
+        blocked.setException(t);
+      }
+      if (blockedOnMemory != null) {
+        bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+      }
+      sequenceIdToDataBlockSize.clear();
+      if (bufferRetainedSizeInBytes > 0) {
+        localMemoryManager
+            .getQueryPool()
+            .free(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                bufferRetainedSizeInBytes);
+        bufferRetainedSizeInBytes = 0;
+      }
+      aborted = true;
+      sourceHandleListener.onAborted(this);
+    }
   }
 
   @Override
@@ -369,10 +392,6 @@ public class SourceHandle implements ISourceHandle {
                 bufferRetainedSizeInBytes);
         bufferRetainedSizeInBytes = 0;
       }
-      localMemoryManager
-          .getQueryPool()
-          .clearMemoryReservationMap(
-              localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
       closed = true;
       executorService.submit(new SendCloseSinkChannelEventTask());
       currSequenceId = lastSequenceId + 1;

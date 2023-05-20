@@ -20,8 +20,7 @@
 -->
 
 # 监控告警
-在 IoTDB 的运行过程中，我们希望对 IoTDB 的状态进行观测，以便于排查系统问题或者及时发现系统潜在的风险，能够**反映系统运行状态的一系列指标
-**就是系统监控指标。
+在 IoTDB 的运行过程中，我们希望对 IoTDB 的状态进行观测，以便于排查系统问题或者及时发现系统潜在的风险，能够**反映系统运行状态的一系列指标**就是系统监控指标。
 
 ## 1. 什么场景下会使用到监控?
 
@@ -287,18 +286,20 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.4. 缓存统计
 
-| Metric    | Tags                               | Type      | Description                                             |
-| --------- | ---------------------------------- | --------- | ------------------------------------------------------- |
-| cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                             |
-| cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                            |
-| cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%                |
+| Metric    | Tags                               | Type      | Description                                   |
+| --------- |------------------------------------| --------- |-----------------------------------------------|
+| cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                           |
+| cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                          |
+| cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%              |
 | cache_hit | name="bloomFilter"                 | AutoGauge | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
-| cache     | name="Database", type="hit"        | Counter   | Database Cache 的命中次数                               |
-| cache     | name="Database", type="all"        | Counter   | Database Cache 的访问次数                               |
-| cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                        |
-| cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                        |
-| cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
-| cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
+| cache     | name="Database", type="hit"        | Counter   | Database Cache 的命中次数                          |
+| cache     | name="Database", type="all"        | Counter   | Database Cache 的访问次数                          |
+| cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                   |
+| cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                   |
+| cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                     |
+| cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                     |
+| cache     | name="SchemaCache", type="hit"     | Counter   | SchemaCache 的命中次数                             |
+| cache     | name="SchemaCache", type="all"     | Counter   | SchemaCache 的访问次数                             |
 
 #### 4.2.5. 内存统计
 
@@ -489,18 +490,18 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.metrics" 的 "MBean"，可以在侧边栏中查看所有监控指标的具体值。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="/img/github/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" alt="metric-jmx" src="https://alioss.timecho.com/docs/img/github/204018765-6fda9391-ebcf-4c80-98c5-26f34bd74df0.png">
 
 #### 5.1.2. 获取其他相关数据
 
 连接到 JMX 后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.service" 的 "MBean"，如下图所示，了解服务的基本状态
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/149951720-707f1ee8-32ee-4fde-9252-048caebd232e.png"> <br>
 
 为了提高查询性能，IOTDB 对 ChunkMetaData 和 TsFileMetaData 进行了缓存。用户可以使用 MXBean
 ，展开侧边栏`org.apache.iotdb.db.service`查看缓存命中率：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/112426760-73e3da80-8d73-11eb-9a8f-9232d1f2033b.png">
 
 ### 5.2. 使用 Prometheus 方式
 
@@ -588,176 +589,7 @@ static_configs:
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-##### 5.2.4.1. 如何获取 Apache IoTDB Dashboard？
-
-1. 您可以在 GitHub 上获取到Dashboard的json文件。
-    1. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-ConfigNode-Dashboard.json">
-       Apache IoTDB ConfigNode Dashboard</a>
-    2. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-DataNode-Dashboard.json">
-       Apache IoTDB DataNode Dashboard</a>
-    3. <a href = "https://github.com/apache/iotdb/tree/master/docs/UserGuide/Monitor-Alert/Apache-IoTDB-Performance-Overview-Dashboard.json">Apache IoTDB Performance Overview Dashboard</a>
-2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
-
-在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
-
-##### 5.2.4.2. Apache IoTDB ConfigNode Dashboard 说明
-
-> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用
-
-- `Overview`：系统概述
-    - `Registered Node`：注册的ConfigNode/DataNode个数
-    - `DataNode`(仅在 ConfigNode Leader 侧可见)：集群DataNode的存活状态，包括Online和Unknown两种。
-    - `ConfigNode`(仅在 ConfigNode Leader 侧可见)：集群ConfigNode的存活状态，包括Online和Unknown两种。
-    - `The Status Of Node`：集群具体节点运行状态，包括Online和Unkown两种。
-- `Region`：Region概述
-    - `Region Number`：Region个数，包括总个数，DataRegion 个数和 SchemaRegion 个数。
-    - `Leadership distribution`：集群 Leader 分布情况，指每个节点上对应 Region 的 Leader 的个数。
-    - `Total Region in Node`：不同 Node 的 Region 总数量。
-    - `Region in Node`：不同 Node 的 SchemaRegion/DataRegion 数量。
-    - `Region in Database`（Normal级别）：不同 Database 的 Region 数量，包括 SchemaRegion、DataRegion。
-    - `Slot in Database`(Normal级别)：不同 Database 的Slot数量，包括 DataSlot 数量和 SchemaSlot 数量。
-- `System`：系统
-    - `CPU Core`：系统 CPU 核数情况。
-    - `CPU Load`：系统 CPU 负载情况、进度 CPU 负载情况。
-    - `CPU Time Per Minute`：进程平均每分钟占用系统 CPU 时间，注意：多核会导致该值超过1分钟。
-    - `System Memory`：系统物理内存大小、系统使用物理内存大小、虚拟机提交的内存大小。
-    - `System Swap Size`：系统交换区总大小、系统交换区使用大小。
-    - `Process Memory`：IoTDB 进程最大内存总大小、IoTDB 进程总内存大小、IoTDB 进程使用内存大小。
-    - `The Number of GC Per Minute`：平均每分钟 GC 次数。
-    - `The Time Consumed Of GC Per Minute`：平均每分钟 GC 耗时。
-    - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
-    - `Heap Memory`：IoTDB 进程的堆内存
-    - `Off Heap Memory`：IoTDB 进程的堆外内存
-    - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
-    - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
-    - `The Number Of Class`：JVM 加载和卸载的类数量
-
-##### 5.2.4.3. Apache IoTDB DataNode Dashboard 说明
-
-> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
-
-- `Overview`：系统概述
-    - `The Number Of Entity`：实体数量，包含时间序列等
-    - `Write Point Per Minute`：每分钟系统平均写入点数
-    - `Database Used Memory`：每个 Database 使用的内存大小
-- `Interface`：接口
-    - `The Time Consumed Of Operation(50%)`：不同客户端操作耗时的中位数
-    - `The Time Consumed Of Operation(99%)`：不同客户端操作耗时的P99
-    - `The Time Consumed Of Operation(99.9%)`：不同客户端操作耗时的P999
-    - `The OPS of Interface`：系统接口每秒钟访问次数
-    - `The Time Consumed Of Interface`：系统接口的平均耗时
-    - `Cache Hit Rate`：缓存命中率
-    - `Thrift Connection`：建立的 Thrift 连接个数
-    - `Thrift Active Thread`：建立的活跃的 Thrift 连接的个数
-- `Engine`：引擎
-    - `Task Number`：系统中不同状态的任务个数
-    - `The Time Consumed Of Tasking`：系统中不同状态的任务的耗时
-    - `Compaction Read And Write Per Minute`：平均每分钟合并读取和写入数据量
-    - `Compaction R/W Ratio Per Minute`：平均每分钟合并读取和写入数据比
-    - `Compaction Number Per Minute`：平均每分钟不同类型的合并任务数量
-- `Query Engine`：查询引擎
-    - `The time consumed of query plan stages(avg\50%\99%\99.9%)`：查询规划各阶段耗时的平均值\中位数\P99\P999
-    - `The time consumed of plan dispatch stages(avg\50%\99%\99.9%)`：查询计划分发耗时的平均值\中位数\P99\P999
-    - `The time consumed of query execution stages(avg\50%\99%\99.9%)`：查询执行各阶段耗时的平均值\中位数\P99\P999
-    - `The time consumed of operator execution stages(avg\50%\99%\99.9%)`：查询算子耗时的平均值\中位数\P99\P999
-    - `The time consumed of query aggregation(avg\50%\99%\99.9%)`：查询聚合计算耗时的平均值\中位数\P99\P999
-    - `The time consumed of query scan(avg\50%\99%\99.9%)`：查询文件/内存耗时的平均值\中位数\P99\P999
-    - `The usage of query resource(avg\50%\99%\99.9%)`：查询不同资源访问数量的平均值\中位数\P99\P999
-    - `The time consumed of query data exchange(avg\50%\99%\99.9%)`：查询数据传输耗时的平均值\中位数\P99\P999
-    - `The count of data exchange(avg)`：查询数据传输平均次数
-    - `The count of data exchange`：查询数据传输次数的分布情况（最小值、下四分位数、中位数、上四分位数、最大值）
-    - `The number of query queue`：查询不同队列的大小
-    - `The time consumed of query schedule time(avg\50%\99%\99.9%)`：查询任务调度耗时的平均值\中位数\P99\P999
-- `Query Interface`：查询文件/耗时的具体耗时情况
-    - `The time consumed of load timesereis metadata(avg\50%\99%\99.9%)`：查询从不同来源加载时间序列元数据耗时的平均值\中位数\P99\P999
-    - `The time consumed of read timeseries metadata(avg\50%\99%\99.9%)`：查询从不同来源读取时间序列元数据耗时的平均值\中位数\P99\P999
-    - `The time consumed of timeseries metadata modiftication(avg\50%\99%\99.9%)`：查询修改不同类型时间序列元数据耗时的平均值\中位数\P99\P999
-    - `The time consumed of load chunk metadata list(avg\50%\99%\99.9%)`：查询加载不同类型Chunk元数据耗时的平均值\中位数\P99\P999
-    - `The time consumed of chunk metadata modification(avg\50%\99%\99.9%)`：查询修改不同类型Chunk元数据耗时的平均值\中位数\P99\P999
-    - `The time consumed of chunk metadata filter(avg\50%\99%\99.9%)`：查询过滤不同类型Chunk元数据耗时的平均值\中位数\P99\P999
-    - `The time consumed of construct chunk reader(avg\50%\99%\99.9%)`：查询构造不同类型Chunk读取器耗时的平均值\中位数\P99\P999
-    - `The time consumed of read chunk(avg\50%\99%\99.9%)`：查询读取不同类型Chunk耗时的平均值\中位数\P99\P999
-    - `The time consumed of init chunk reader(avg\50%\99%\99.9%)`：查询初始化不同类型Chunk读取器耗时的平均值\中位数\P99\P999
-    - `The time consumed of build tsblock from page reader(avg\50%\99%\99.9%)`：查询从PageReader构造TsBlock耗时的平均值\中位数\P99\P999
-    - `The time consumed of build tsblock from merge reader(avg\50%\99%\99.9%)`：查询从MergeReader构造TsBlock耗时的平均值\中位数\P99\P999
-- `Query Data Exchange`：查询数据传输的具体耗时情况
-    - `The time consumed of source handle get tsblock(avg\50%\99%\99.9%)`：查询从不同来源获取TsBlock的耗时的平均值\中位数\P99\P999
-    - `The time consumed of source handle deserialize tsblock(avg\50%\99%\99.9%)`：查询从不同来源反序列化TsBlock的耗时的平均值\中位数\P99\P999
-    - `The time consumed of sink handle send tsblock(avg\50%\99%\99.9%)`：查询向不同地方发送TsBlock的耗时的平均值\中位数\P99\P999
-    - `The time consumed of on acknowledge data block event task(avg\50%\99%\99.9%)`：查询从不同地方确认Block耗时的平均值\中位数\P99\P999
-    - `The time consumed of get data block event task(avg\50%\99%\99.9%)`：查询从不同地方获取Block耗时的平均值\中位数\P99\P999
-- `IoTConsensus`：IoT共识协议
-    - `IoTConsensus Used Memory`：IoT共识层使用的内存大小
-    - `IoTConsensus Sync Index`：不同的Region的写入Index和同步Index
-    - `IoTConsensus Overview`：不同节点的同步总差距、总缓存的请求个数
-    - `The time consumed of different stages(50%)`：不同阶段耗时的中位数
-    - `The time consumed of different stages(99%)`：不同阶段耗时的P99
-    - `The time consumed of different stages(99.9%)`：不同阶段耗时的P999
-    - `IoTConsensus Search Index Rate`：不同region的写入Index的增长速度
-    - `IoTConsensus Safe Index Rate`：不同region的同步Index的增长速度
-    - `IoTConsensus LogDispatcher Request Size`：不同的LogDispatcherThread缓存的请求个数
-    - `Sync Lag`：每个region的同步index差距
-    - `Min Peer Sync Lag`：每个region的写入index和同步最快的LogDispatcherThread的同步index之间的差距
-    - `Sync speed diff of Peers`：每个region中同步最快的LogDispatcherThread与同步最慢的LogDispatcherThread之间的同步index差距
-- `System`：系统
-    - `CPU Core`：系统 CPU 核数情况。
-    - `CPU Load`：系统 CPU 负载情况、进度 CPU 负载情况。
-    - `CPU Time Per Minute`：进程平均每分钟占用系统 CPU 时间，注意：多核会导致该值超过1分钟。
-    - `System Memory`：系统物理内存大小、系统使用物理内存大小、虚拟机提交的内存大小。
-    - `System Swap Size`：系统交换区总大小、系统交换区使用大小。
-    - `Process Memory`：IoTDB 进程最大内存总大小、IoTDB 进程总内存大小、IoTDB 进程使用内存大小。
-    - `The Size Of File`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小
-    - `The Number Of File`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数
-    - `The Space Of Disk`：当前data目录所挂载的磁盘总大小和剩余大小
-    - `The Number of GC Per Minute`：平均每分钟 GC 次数。
-    - `The Time Consumed Of GC Per Minute`：平均每分钟 GC 耗时。
-    - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
-    - `Heap Memory`：IoTDB 进程的堆内存
-    - `Off Heap Memory`：IoTDB 进程的堆外内存
-    - `Log Number Per Minute`：IoTDB 进程平均每分钟日志数
-    - `The Time Consumed of Compliation Per Minute`：平均每分钟编译耗时
-    - `The Number Of Class`：JVM 加载和卸载的类数量
-
-##### 5.2.4.4. Apache IoTDB Performance Overview Dashboard 说明
-
-> 除特殊说明的监控项以外，以下监控项均保证在Core级别的监控框架中可用。
-
-- `Overview`：系统概述
-    - `CPU Core`：系统 CPU 核数情况。
-    - `Total Disk Space`：系统 data 目录挂载的磁盘总大小
-    - `System Memory`：系统内存总大小
-    - `Swap Memory`：系统交换区内存大小
-    - `Total Timeseries`：系统当前时间序列总数量
-    - `Total File Number`：系统文件总数量
-    - `CPU Load`：系统 CPU 负载率，单位为%
-    - `Disk`：系统 Disk 占比率，单位为%
-    - `Process Memory`：进程内存使用率，单位为%
-    - `System Memory`： 系统内存使用率，单位为%
-    - `Write Point Per Second`：系统每秒中写入点数
-- `Performance`：系统性能
-    - `OPS`：系统接口和RPC每秒钟访问次数
-    - `OPS Of Stage`：Stage 各部分的每秒钟执行次数
-    - `OPS Of Schedule`：Schedule 各部分的每秒钟执行次数
-    - `Time Consumed Of Operation`：不同操作的耗时情况
-    - `P99 Time Consumed of Interface`：不同接口的 P99 耗时情况
-    - `Average Time Consumed of Interface`：不同接口的平均耗时情况
-    - `P99 Time Consumed of Stage`：不同阶段的 P99 耗时情况
-    - `Average Time Consumed of Stage`：不同阶段的平均耗时情况
-    - `P99 Time Consumed of Schedule Stage`：不同 Schedule 阶段的 P99 耗时情况
-    - `Average Time Consumed of Schedule Stage`：不同 Schedule 阶段的平均耗时情况
-    - `Task Number`：任务个数
-    - `P99 Time Consumed of Task`：任务的 P99 耗时情况
-    - `Average Time Consumed of Task`：任务的平均耗时情况
-- `System`：系统
-    - `CPU Load`：CPU 负载变化情况
-    - `CPU Time Per Minute`：CPU 平均每分钟的耗时
-    - `GC Time Per Minute`：GC 平均每分钟的耗时
-    - `Heap Memory`：IoTDB 进程的堆内存
-    - `Off Heap Memory`：IoTDB 进程的堆外内存
-    - `The Number Of Java Thread`：IoTDB 进程的不同状态的线程数。
-    - `File Count`：文件数量变化情况
-    - `File Size`：文件大小变化情况
-    - `Log Number Per Minute`：日志每分钟变化情况
+你可以在企业版中获取到 Dashboard 的 Json文件。
 
 ### 5.3. 使用 IoTDB 方式
 

@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -44,7 +45,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   private final TsBlockBuilder tsBlockBuilder;
   private final boolean[] noMoreTsBlocks;
   private final MergeSortHeap mergeSortHeap;
-  private final Comparator<MergeSortKey> comparator;
+  private final Comparator<SortKey> comparator;
 
   private boolean finished;
 
@@ -52,7 +53,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       OperatorContext operatorContext,
       List<Operator> inputOperators,
       List<TSDataType> dataTypes,
-      Comparator<MergeSortKey> comparator) {
+      Comparator<SortKey> comparator) {
     super(operatorContext, inputOperators);
     this.dataTypes = dataTypes;
     this.mergeSortHeap = new MergeSortHeap(inputOperatorsCount, comparator);
@@ -66,7 +67,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
@@ -101,7 +102,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
                     minMergeSortKey.tsBlock, minMergeSortKey.tsBlock.getPositionCount() - 1),
                 mergeSortHeap.peek())
             < 0) {
-      inputTsBlocks[minMergeSortKey.columnIndex] = null;
+      inputTsBlocks[minMergeSortKey.inputChannelIndex] = null;
       return minMergeSortKey.rowIndex == 0
           ? minMergeSortKey.tsBlock
           : minMergeSortKey.tsBlock.subTsBlock(minMergeSortKey.rowIndex);
@@ -126,7 +127,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       }
       tsBlockBuilder.declarePosition();
       if (mergeSortKey.rowIndex == mergeSortKey.tsBlock.getPositionCount() - 1) {
-        inputTsBlocks[mergeSortKey.columnIndex] = null;
+        inputTsBlocks[mergeSortKey.inputChannelIndex] = null;
         if (!mergeSortHeap.isEmpty()
             && comparator.compare(mergeSortHeap.peek(), mergeSortKey) > 0) {
           break;
@@ -155,6 +156,8 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         if (!canCallNext[i] || children.get(i).hasNextWithTimer()) {
           return true;
         } else {
+          children.get(i).close();
+          children.set(i, null);
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
         }
@@ -220,7 +223,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       if (canCallNext[i]) {

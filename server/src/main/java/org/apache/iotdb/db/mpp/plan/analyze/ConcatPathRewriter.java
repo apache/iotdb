@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -62,6 +61,12 @@ public class ConcatPathRewriter {
             prefixPaths,
             patternTree);
       }
+      if (queryStatement.hasOrderByExpression()) {
+        for (Expression sortItemExpression : queryStatement.getExpressionSortItemList()) {
+          ExpressionAnalyzer.constructPatternTreeFromExpression(
+              sortItemExpression, prefixPaths, patternTree);
+        }
+      }
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
@@ -69,7 +74,7 @@ public class ConcatPathRewriter {
               queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
       queryStatement.getSelectComponent().setResultColumns(resultColumns);
 
-      // concat GROUP BY VARIATION with FROM
+      // concat GROUP BY with FROM
       if (queryStatement.hasGroupByExpression()) {
         queryStatement
             .getGroupByComponent()
@@ -77,6 +82,11 @@ public class ConcatPathRewriter {
                 contactGroupByWithFrom(
                     queryStatement.getGroupByComponent().getControlColumnExpression(),
                     prefixPaths));
+      }
+      if (queryStatement.hasOrderByExpression()) {
+        List<Expression> sortItemExpressions = queryStatement.getExpressionSortItemList();
+        sortItemExpressions.replaceAll(
+            expression -> contactOrderByWithFrom(expression, prefixPaths));
       }
     }
 
@@ -105,16 +115,9 @@ public class ConcatPathRewriter {
     // resultColumns after concat
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-      boolean needAliasCheck = resultColumn.hasAlias() && !isGroupByLevel;
       List<Expression> resultExpressions =
           ExpressionAnalyzer.concatExpressionWithSuffixPaths(
               resultColumn.getExpression(), prefixPaths, patternTree);
-      if (needAliasCheck && resultExpressions.size() > 1) {
-        throw new SemanticException(
-            String.format(
-                "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
-      }
-
       for (Expression resultExpression : resultExpressions) {
         resultColumns.add(
             new ResultColumn(
@@ -129,6 +132,15 @@ public class ConcatPathRewriter {
         ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
     if (resultExpressions.size() != 1) {
       throw new IllegalStateException("Expression in group by should indicate one value");
+    }
+    return resultExpressions.get(0);
+  }
+
+  private Expression contactOrderByWithFrom(Expression expression, List<PartialPath> prefixPaths) {
+    List<Expression> resultExpressions =
+        ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
+    if (resultExpressions.size() != 1) {
+      throw new IllegalStateException("Expression in order by should indicate one value");
     }
     return resultExpressions.get(0);
   }

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
+import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
@@ -291,6 +292,12 @@ public class IntermediateLayerVisitor
     return context.expressionIntermediateLayerMap.get(constantOperand);
   }
 
+  @Override
+  public IntermediateLayer visitCaseWhenThenExpression(
+      CaseWhenThenExpression caseWhenThenExpression, IntermediateLayerVisitorContext context) {
+    throw new UnsupportedOperationException("CASE expression cannot be used with non-mappable UDF");
+  }
+
   private Transformer getConcreteUnaryTransformer(
       Expression expression, LayerPointReader pointReader) {
     switch (expression.getExpressionType()) {
@@ -437,7 +444,7 @@ public class IntermediateLayerVisitor
   }
 
   public static class IntermediateLayerVisitorContext {
-    long queryId;
+    String queryId;
 
     UDTFContext udtfContext;
 
@@ -450,7 +457,7 @@ public class IntermediateLayerVisitor
     LayerMemoryAssigner memoryAssigner;
 
     public IntermediateLayerVisitorContext(
-        long queryId,
+        String queryId,
         UDTFContext udtfContext,
         QueryDataSetInputLayer rawTimeSeriesInputLayer,
         Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,

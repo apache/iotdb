@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.path.fa.nfa;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
@@ -127,7 +128,7 @@ public class SimpleNFA implements IPatternFA {
       } else if (rawNodes[nextIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
         patternNodes[nextIndex] =
             new OneLevelWildcardMatchNode(nextIndex, currentNode.getTracebackNode());
-      } else if (rawNodes[nextIndex].contains(ONE_LEVEL_PATH_WILDCARD)) {
+      } else if (PathPatternUtil.hasWildcard(rawNodes[nextIndex])) {
         patternNodes[nextIndex] = new RegexMatchNode(nextIndex, currentNode.getTracebackNode());
       } else {
         patternNodes[nextIndex] = new NameMatchNode(nextIndex, currentNode.getTracebackNode());

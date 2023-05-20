@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.read.reader.series;
 
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
 public class PaginationController {
 
   public static final PaginationController UNLIMITED_PAGINATION_CONTROLLER =
@@ -62,5 +64,26 @@ public class PaginationController {
     if (hasLimit) {
       curLimit--;
     }
+  }
+
+  public void consumeLimit(long rowCount) {
+    if (hasLimit) {
+      curLimit -= rowCount;
+    }
+  }
+
+  public TsBlock applyTsBlock(TsBlock resultTsBlock) {
+
+    int fromIndex = 0, length = resultTsBlock.getPositionCount();
+    if (hasCurOffset()) {
+      fromIndex = (int) Math.min(curOffset, length);
+      length -= fromIndex;
+      consumeOffset(fromIndex);
+    }
+    if (hasLimit && curLimit > 0) {
+      length = (int) Math.min(curLimit, length);
+      consumeLimit(length);
+    }
+    return resultTsBlock.getRegion(fromIndex, length);
   }
 }

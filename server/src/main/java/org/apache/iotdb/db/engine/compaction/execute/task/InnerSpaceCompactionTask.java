@@ -103,9 +103,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void doCompaction() {
+  protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
-      return;
+      return true;
     }
     long startTime = System.currentTimeMillis();
     // get resource of target file
@@ -117,6 +117,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         sequence ? "Sequence" : "Unsequence",
         selectedTsFileResourceList.size(),
         selectedFileSize / 1024 / 1024);
+    boolean isSuccess = true;
 
     try {
       targetTsFileResource =
@@ -238,7 +239,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               .addFile(targetTsFileResource.getTsFile().length(), sequence);
 
           // set target resource to CLOSED, so that it can be selected to compact
-          targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+          targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
         } else {
           // target resource is empty after compaction, then delete it
           targetTsFileResource.remove();
@@ -264,6 +265,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
+      isSuccess = false;
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
@@ -303,6 +305,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     } finally {
       releaseFileLocksAndResetMergingStatus();
+      return isSuccess;
     }
   }
 
@@ -397,7 +400,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
   /**
@@ -415,7 +418,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
       try {
         if (!resource.isDeleted()) {
-          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);
+          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.NORMAL);
         }
       } catch (Throwable e) {
         LOGGER.error("Exception occurs when resetting resource status", e);

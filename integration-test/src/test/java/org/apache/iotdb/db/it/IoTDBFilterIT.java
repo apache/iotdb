@@ -147,6 +147,11 @@ public class IoTDBFilterIT {
         "select s1, s2 from root.vehicle.testTimeSeries " + "Where s1 || s2",
         expectedHeader,
         retArray);
+
+    resultSetEqualTest(
+        "select s1, s2 from root.vehicle.testTimeSeries " + "Where s1 || false",
+        expectedHeader,
+        retArray);
   }
 
   @Test

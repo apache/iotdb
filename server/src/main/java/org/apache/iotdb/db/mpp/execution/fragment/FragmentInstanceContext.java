@@ -62,6 +62,8 @@ public class FragmentInstanceContext extends QueryContext {
   private Set<TsFileResource> closedFilePaths;
   /** unClosed tsfile used in this fragment instance */
   private Set<TsFileResource> unClosedFilePaths;
+  /** check if there is tmp file to be deleted */
+  private boolean mayHaveTmpFile = false;
 
   private final long createNanos = System.nanoTime();
 
@@ -355,17 +357,32 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   protected synchronized void releaseResource() {
-    for (TsFileResource tsFile : closedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+    // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
+    if (closedFilePaths != null) {
+      for (TsFileResource tsFile : closedFilePaths) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+      }
+      closedFilePaths = null;
     }
-    closedFilePaths = null;
-    for (TsFileResource tsFile : unClosedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+
+    if (unClosedFilePaths != null) {
+      for (TsFileResource tsFile : unClosedFilePaths) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+      }
+      unClosedFilePaths = null;
     }
-    unClosedFilePaths = null;
+
     dataRegion = null;
     timeFilter = null;
     sourcePaths = null;
     sharedQueryDataSource = null;
+  }
+
+  public void setMayHaveTmpFile(boolean mayHaveTmpFile) {
+    this.mayHaveTmpFile = mayHaveTmpFile;
+  }
+
+  public boolean mayHaveTmpFile() {
+    return mayHaveTmpFile;
   }
 }

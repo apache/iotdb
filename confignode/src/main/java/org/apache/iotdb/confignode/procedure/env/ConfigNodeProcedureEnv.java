@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -36,7 +37,6 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
@@ -44,21 +44,19 @@ import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGr
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
-import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
-import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -68,6 +66,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -80,6 +79,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,7 +123,7 @@ public class ConfigNodeProcedureEnv {
    * @param name database name
    * @return tsStatus
    */
-  public TSStatus deleteConfig(String name) {
+  public TSStatus deleteDatabaseConfig(String name) {
     DeleteDatabasePlan deleteDatabasePlan = new DeleteDatabasePlan(name);
     return getClusterSchemaManager().deleteDatabase(deleteDatabasePlan);
   }
@@ -134,8 +134,9 @@ public class ConfigNodeProcedureEnv {
    * @param preDeleteType execute/rollback
    * @param deleteSgName database name
    */
-  public void preDelete(PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
-    getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
+  public void preDeleteDatabase(
+      PreDeleteDatabasePlan.PreDeleteType preDeleteType, String deleteSgName) {
+    getPartitionManager().preDeleteDatabase(deleteSgName, preDeleteType);
   }
 
   /**
@@ -145,8 +146,7 @@ public class ConfigNodeProcedureEnv {
    * @throws TException Thrift IOE
    */
   public boolean invalidateCache(String storageGroupName) throws IOException, TException {
-    NodeManager nodeManager = configManager.getNodeManager();
-    List<TDataNodeConfiguration> allDataNodes = nodeManager.getRegisteredDataNodes();
+    List<TDataNodeConfiguration> allDataNodes = getNodeManager().getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
@@ -154,14 +154,14 @@ public class ConfigNodeProcedureEnv {
       int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
 
       // if the node is not alive, sleep 1 second and try again
-      NodeStatus nodeStatus = nodeManager.getNodeStatusByNodeId(dataNodeId);
+      NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
       if (nodeStatus == NodeStatus.Unknown) {
         try {
           TimeUnit.MILLISECONDS.sleep(1000);
         } catch (InterruptedException e) {
           LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
         }
-        nodeStatus = nodeManager.getNodeStatusByNodeId(dataNodeId);
+        nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
       }
 
       if (nodeStatus == NodeStatus.Running) {
@@ -202,14 +202,11 @@ public class ConfigNodeProcedureEnv {
   }
 
   public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
-    return configManager
-                .getNodeManager()
+    return getNodeManager()
                 .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
                 .size()
             - Boolean.compare(
-                configManager
-                        .getNodeManager()
-                        .getNodeStatusByNodeId(removedDatanode.getDataNodeId())
+                getLoadManager().getNodeStatus(removedDatanode.getDataNodeId())
                     != NodeStatus.Unknown,
                 false)
         >= NodeInfo.getMinimumDataNode();
@@ -305,8 +302,6 @@ public class ConfigNodeProcedureEnv {
    * @throws ProcedureException if failed status
    */
   public void stopConfigNode(TConfigNodeLocation tConfigNodeLocation) throws ProcedureException {
-    getNodeManager().removeNodeCache(tConfigNodeLocation.getConfigNodeId());
-
     TSStatus tsStatus =
         (TSStatus)
             SyncConfigNodeClientPool.getInstance()
@@ -318,6 +313,8 @@ public class ConfigNodeProcedureEnv {
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
     }
+
+    getLoadManager().removeNodeCache(tConfigNodeLocation.getConfigNodeId());
   }
 
   /**
@@ -371,8 +368,7 @@ public class ConfigNodeProcedureEnv {
    */
   public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) {
     // Send request to update NodeStatus on the DataNode to be removed
-    if (configManager.getNodeManager().getNodeStatusByNodeId(dataNodeLocation.getDataNodeId())
-        == NodeStatus.Unknown) {
+    if (getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()) == NodeStatus.Unknown) {
       SyncDataNodeClientPool.getInstance()
           .sendSyncRequestToDataNodeWithGivenRetry(
               dataNodeLocation.getInternalEndPoint(),
@@ -388,10 +384,11 @@ public class ConfigNodeProcedureEnv {
     }
 
     // Force updating NodeStatus to Removing
-    getNodeManager()
-        .getNodeCacheMap()
-        .get(dataNodeLocation.getDataNodeId())
-        .forceUpdate(NodeHeartbeatSample.generateDefaultSample(NodeStatus.Removing));
+    getLoadManager()
+        .forceUpdateNodeCache(
+            NodeType.DataNode,
+            dataNodeLocation.getDataNodeId(),
+            NodeHeartbeatSample.generateDefaultSample(NodeStatus.Removing));
   }
 
   /**
@@ -530,40 +527,24 @@ public class ConfigNodeProcedureEnv {
     getConsensusManager().write(createRegionGroupsPlan);
   }
 
+  /**
+   * Force activating RegionGroup by setting status to Running, therefore the ConfigNode-leader can
+   * use this RegionGroup to allocate new Partitions
+   *
+   * @param regionGroupId Specified RegionGroup
+   * @param regionStatusMap Map<DataNodeId, RegionStatus>
+   */
   public void activateRegionGroup(
       TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
-    // Force activating RegionGroup
     long currentTime = System.currentTimeMillis();
     Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
     regionStatusMap.forEach(
         (dataNodeId, regionStatus) ->
             heartbeatSampleMap.put(
                 dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
-    getPartitionManager()
-        .getRegionGroupCacheMap()
-        .computeIfAbsent(regionGroupId, empty -> new RegionGroupCache(regionGroupId))
-        .forceUpdate(heartbeatSampleMap);
-
-    // Select leader greedily for iot consensus protocol
-    if (TConsensusGroupType.DataRegion.equals(regionGroupId.getType())
-        && ConsensusFactory.IOT_CONSENSUS.equals(
-            ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass())) {
-      List<Integer> availableDataNodes = new ArrayList<>();
-      for (Map.Entry<Integer, RegionStatus> statusEntry : regionStatusMap.entrySet()) {
-        if (RegionStatus.isNormalStatus(statusEntry.getValue())) {
-          availableDataNodes.add(statusEntry.getKey());
-        }
-      }
-      getLoadManager().getRouteBalancer().greedySelectLeader(regionGroupId, availableDataNodes);
-    }
-
-    // Force update RegionRouteMap
-    getLoadManager().getRouteBalancer().updateRegionRouteMap();
-  }
-
-  public void broadcastRegionGroup() {
-    // Broadcast the latest RegionRouteMap
-    getLoadManager().broadcastLatestRegionRouteMap();
+    getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
+    // Wait for leader election
+    getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
@@ -652,6 +633,17 @@ public class ConfigNodeProcedureEnv {
     AsyncClientHandler<TDropPipePluginInstanceReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.DROP_PIPE_PLUGIN, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
+  }
+
+  public List<TSStatus> pushPipeMetaToDataNodes(List<ByteBuffer> pipeMetaBinaryList) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
+
+    final AsyncClientHandler<TPushPipeMetaReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

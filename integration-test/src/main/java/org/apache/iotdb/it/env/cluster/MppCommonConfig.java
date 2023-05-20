@@ -340,4 +340,34 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty("write_memory_proportion", writeMemoryProportion);
     return this;
   }
+
+  @Override
+  public CommonConfig setQuotaEnable(boolean quotaEnable) {
+    setProperty("quota_enable", String.valueOf(quotaEnable));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSortBufferSize(long sortBufferSize) {
+    setProperty("sort_buffer_size_in_bytes", String.valueOf(sortBufferSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
+    setProperty("max_tsblock_size_in_bytes", String.valueOf(maxTsBlockSizeInByte));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    setProperty("cluster_schema_limit_level", clusterSchemaLimitLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    setProperty("cluster_schema_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
+    return this;
+  }
 }

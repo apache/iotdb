@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
@@ -146,6 +147,12 @@ public class SessionManager implements SessionManagerMBean {
 
   public boolean closeSession(IClientSession session, Consumer<Long> releaseByQueryId) {
     releaseSessionResource(session, releaseByQueryId);
+    MetricService.getInstance()
+        .remove(
+            MetricType.HISTOGRAM,
+            Metric.SESSION_IDLE_TIME.toString(),
+            Tag.NAME.toString(),
+            String.valueOf(session.getId()));
     // TODO we only need to do so when query is killed by time out
     //    // close the socket.
     //    // currently, we only focus on RPC service.
@@ -351,7 +358,11 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public SessionInfo getSessionInfo(IClientSession session) {
-    return new SessionInfo(session.getId(), session.getUsername(), session.getZoneId().getId());
+    return new SessionInfo(
+        session.getId(),
+        session.getUsername(),
+        session.getZoneId().getId(),
+        session.getClientVersion());
   }
 
   @Override

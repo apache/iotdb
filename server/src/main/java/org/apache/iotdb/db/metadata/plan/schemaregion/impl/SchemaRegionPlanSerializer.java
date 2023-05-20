@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.logfile.ISerializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNo
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
@@ -395,6 +397,31 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         for (int templateId : entry.getValue()) {
           dataOutputStream.writeInt(templateId);
         }
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitCreateLogicalView(
+        ICreateLogicalViewPlan createLogicalViewPlan, DataOutputStream dataOutputStream) {
+      try {
+        int viewSize = createLogicalViewPlan.getViewSize();
+        // serialize size of views
+        dataOutputStream.writeInt(viewSize);
+        List<PartialPath> viewPAthList = createLogicalViewPlan.getViewPathList();
+        Map<PartialPath, ViewExpression> viewPathToSourceMap =
+            createLogicalViewPlan.getViewPathToSourceExpressionMap();
+        for (int i = 0; i < viewSize; i++) {
+          PartialPath thisPath = viewPAthList.get(i);
+          ViewExpression thisExp = viewPathToSourceMap.get(thisPath);
+          // for each view, serialize info of it
+          byte[] bytes = thisPath.getFullPath().getBytes();
+          dataOutputStream.writeInt(bytes.length);
+          dataOutputStream.write(bytes);
+          ViewExpression.serialize(thisExp, dataOutputStream);
+        }
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
       }
     }
   }

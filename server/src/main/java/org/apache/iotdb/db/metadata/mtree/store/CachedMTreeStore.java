@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import org.slf4j.Logger;
@@ -58,19 +59,13 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
 
   private final MemManager memManager;
-
   private final ICacheManager cacheManager;
-
   private ISchemaFile file;
-
   private ICachedMNode root;
-
   private final Runnable flushCallback;
-
   private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
-
   private final CachedSchemaRegionStatistics regionStatistics;
-
+  private final DataNodeSchemaQuotaManager quotaManager = DataNodeSchemaQuotaManager.getInstance();
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
   public CachedMTreeStore(
@@ -339,6 +334,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
     IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
+      regionStatistics.addDevice();
       memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
     }
     updateMNode(result.getAsMNode());
@@ -349,6 +345,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
     ICachedMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
     if (result != entityMNode) {
+      regionStatistics.deleteDevice();
       memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
     }
     updateMNode(result);

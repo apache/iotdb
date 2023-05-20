@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -36,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
+
 public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 
   private final PartialPath pathPattern;
@@ -44,9 +47,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final long limit;
   private final long offset;
 
-  private final String key;
-  private final String value;
-  private final boolean isContains;
+  private final SchemaFilter schemaFilter;
 
   private final Map<Integer, Template> templateMap;
 
@@ -55,9 +56,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       boolean isPrefixMatch,
       long limit,
       long offset,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
@@ -65,9 +64,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.limit = limit;
     this.offset = offset;
 
-    this.key = key;
-    this.value = value;
-    this.isContains = isContains;
+    this.schemaFilter = schemaFilter;
 
     this.templateMap = templateMap;
   }
@@ -77,7 +74,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     try {
       return schemaRegion.getTimeSeriesReader(
           SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-              pathPattern, templateMap, isContains, key, value, limit, offset, isPrefixMatch));
+              pathPattern, templateMap, limit, offset, isPrefixMatch, schemaFilter));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
@@ -96,14 +93,32 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     builder.writeNullableText(0, series.getFullPath());
     builder.writeNullableText(1, series.getAlias());
     builder.writeNullableText(2, database);
-    builder.writeNullableText(3, series.getSchema().getType().toString());
-    builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
-    builder.writeNullableText(5, series.getSchema().getCompressor().toString());
+    if (series.isLogicalView()) {
+      builder.writeNullableText(3, "");
+      builder.writeNullableText(4, "null");
+      builder.writeNullableText(5, "null");
+      builder.writeNullableText(10, "logical");
+    } else {
+      builder.writeNullableText(3, series.getSchema().getType().toString());
+      builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
+      builder.writeNullableText(5, series.getSchema().getCompressor().toString());
+      builder.writeNullableText(10, "");
+    }
     builder.writeNullableText(6, mapToString(series.getTags()));
     builder.writeNullableText(7, mapToString(series.getAttributes()));
     builder.writeNullableText(8, deadbandInfo.left);
     builder.writeNullableText(9, deadbandInfo.right);
     builder.declarePosition();
+  }
+
+  @Override
+  public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
+    return pathPattern.equals(ALL_MATCH_PATTERN) && (schemaFilter == null);
+  }
+
+  @Override
+  public long getSchemaStatistic(ISchemaRegion schemaRegion) {
+    return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
   }
 
   private String mapToString(Map<String, String> map) {
