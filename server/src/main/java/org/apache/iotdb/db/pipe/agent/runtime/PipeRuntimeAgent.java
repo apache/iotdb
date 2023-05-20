@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 
 import org.slf4j.Logger;
@@ -28,6 +30,13 @@ import org.slf4j.LoggerFactory;
 public class PipeRuntimeAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
+
+  public synchronized void launch(ResourcesInformationHolder resourcesInformationHolder)
+      throws StartupException {
+    final PipeLauncher pipeLauncher = new PipeLauncher();
+    pipeLauncher.launchPipePluginAgent(resourcesInformationHolder);
+    pipeLauncher.launchPipeTaskAgent();
+  }
 
   public void report(PipeSubtask subtask) {
     // TODO: terminate the task by the given taskID

@@ -16,19 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.pipe;
+package org.apache.iotdb.confignode.manager.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.task.PullPipeMetaPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
-import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeMetaResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TPullPipeMetaResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -79,20 +75,6 @@ public class PipeTaskCoordinator {
     return configManager.getProcedureManager().dropPipe(pipeName);
   }
 
-  public TGetAllPipeInfoResp showPipes() {
-    try {
-      return ((PipeTableResp)
-              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-          .convertToTGetAllPipeInfoResp();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get AllPipeInfo", e);
-      return new TGetAllPipeInfoResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
-    }
-  }
-
   public TShowPipeResp showPipes(TShowPipeReq req) {
     return ((PipeTableResp)
             configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
@@ -100,18 +82,14 @@ public class PipeTaskCoordinator {
         .convertToTShowPipeResp();
   }
 
-  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
-    throw new UnsupportedOperationException("Not implemented yet");
-  }
-
-  public TPullPipeMetaResp pullPipeMeta() {
+  public TGetAllPipeInfoResp getAllPipeInfo() {
     try {
-      return ((PipeMetaResp)
-              configManager.getConsensusManager().read(new PullPipeMetaPlan()).getDataset())
-          .convertToThriftResponse();
+      return ((PipeTableResp)
+              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+          .convertToTGetAllPipeInfoResp();
     } catch (IOException e) {
-      LOGGER.error("Fail to pull PipeMeta", e);
-      return new TPullPipeMetaResp(
+      LOGGER.error("Fail to get AllPipeInfo", e);
+      return new TGetAllPipeInfoResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
           Collections.emptyList());

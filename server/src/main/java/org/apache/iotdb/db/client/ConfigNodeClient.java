@@ -96,8 +96,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TPullPipeMetaResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -1493,22 +1491,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TPullPipeMetaResp pullPipeMeta() throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TPullPipeMetaResp resp = client.pullPipeMeta();
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1888,22 +1870,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         TGetAllPipeInfoResp resp = client.getAllPipeInfo();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
-  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.recordPipeMessage(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
         }
       } catch (TException e) {
         configLeader = null;

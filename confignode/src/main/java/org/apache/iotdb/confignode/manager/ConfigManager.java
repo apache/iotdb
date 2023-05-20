@@ -144,8 +144,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TPullPipeMetaResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -1265,14 +1263,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TPullPipeMetaResp pullPipeMeta() {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipeTaskCoordinator().pullPipeMeta()
-        : new TPullPipeMetaResp(status, Collections.emptyList());
-  }
-
-  @Override
   public TSStatus merge() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1633,16 +1623,8 @@ public class ConfigManager implements IManager {
   public TGetAllPipeInfoResp getAllPipeInfo() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipeTaskCoordinator().showPipes()
+        ? pipeManager.getPipeTaskCoordinator().getAllPipeInfo()
         : new TGetAllPipeInfoResp().setStatus(status);
-  }
-
-  @Override
-  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipeTaskCoordinator().recordPipeMessage(req)
-        : status;
   }
 
   @Override

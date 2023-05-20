@@ -29,7 +29,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.Pipe
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
-import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeMetaResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -180,12 +179,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new PipeTableResp(
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         StreamSupport.stream(getPipeMetaList().spliterator(), false).collect(Collectors.toList()));
-  }
-
-  public DataSet pullPipeMeta() {
-    return new PipeMetaResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        pipeMetaKeeper.getPipeMetaList());
   }
 
   public Iterable<PipeMeta> getPipeMetaList() {
