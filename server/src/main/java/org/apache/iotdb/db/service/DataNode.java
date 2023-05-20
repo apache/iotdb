@@ -31,8 +31,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -84,7 +82,6 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
@@ -461,7 +458,7 @@ public class DataNode implements DataNodeMBean {
   private void prepareResources() throws StartupException {
     prepareUDFResources();
     prepareTriggerResources();
-    preparePipePluginResources();
+    preparePipeResources();
   }
 
   /** register services and set up DataNode */
@@ -836,93 +833,8 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  private void preparePipePluginResources() throws StartupException {
-    initPipePluginRelatedInstance();
-    if (resourcesInformationHolder.getPipePluginMetaList() == null
-        || resourcesInformationHolder.getPipePluginMetaList().isEmpty()) {
-      return;
-    }
-
-    // get jars from config node
-    List<PipePluginMeta> pipePluginNeedJarList = getJarListForPipePlugin();
-    int index = 0;
-    while (index < pipePluginNeedJarList.size()) {
-      List<PipePluginMeta> curList = new ArrayList<>();
-      int offset = 0;
-      while (offset < ResourcesInformationHolder.getJarNumOfOneRpc()
-          && index + offset < pipePluginNeedJarList.size()) {
-        curList.add(pipePluginNeedJarList.get(index + offset));
-        offset++;
-      }
-      index += (offset + 1);
-      getJarOfPipePlugins(curList);
-    }
-
-    // create instances of pipe plugins and do registration
-    try {
-      for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
-        if (meta.isBuiltin()) {
-          continue;
-        }
-        PipeAgent.plugin().doRegister(meta);
-      }
-    } catch (Exception e) {
-      throw new StartupException(e);
-    }
-  }
-
-  private void initPipePluginRelatedInstance() throws StartupException {
-    try {
-      PipePluginExecutableManager.setupAndGetInstance(
-          config.getPipeTemporaryLibDir(), config.getPipeDir());
-      PipePluginClassLoaderManager.setupAndGetInstance(config.getPipeDir());
-    } catch (IOException e) {
-      throw new StartupException(e);
-    }
-  }
-
-  private List<PipePluginMeta> getJarListForPipePlugin() {
-    List<PipePluginMeta> res = new ArrayList<>();
-    for (PipePluginMeta pipePluginMeta : resourcesInformationHolder.getPipePluginMetaList()) {
-      if (pipePluginMeta.isBuiltin()) {
-        continue;
-      }
-      // If jar does not exist, add current pipePluginMeta to list
-      if (!PipePluginExecutableManager.getInstance()
-          .hasFileUnderInstallDir(pipePluginMeta.getJarName())) {
-        res.add(pipePluginMeta);
-      } else {
-        try {
-          // local jar has conflicts with jar on config node, add current pipePluginMeta to list
-          if (!PipePluginExecutableManager.getInstance().isLocalJarMatched(pipePluginMeta)) {
-            res.add(pipePluginMeta);
-          }
-        } catch (PipeManagementException e) {
-          res.add(pipePluginMeta);
-        }
-      }
-    }
-    return res;
-  }
-
-  private void getJarOfPipePlugins(List<PipePluginMeta> pipePluginMetaList)
-      throws StartupException {
-    try (ConfigNodeClient configNodeClient =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      List<String> jarNameList =
-          pipePluginMetaList.stream().map(PipePluginMeta::getJarName).collect(Collectors.toList());
-      TGetJarInListResp resp = configNodeClient.getPipePluginJar(new TGetJarInListReq(jarNameList));
-      if (resp.getStatus().getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
-        throw new StartupException("Failed to get pipe plugin jar from config node.");
-      }
-      List<ByteBuffer> jarList = resp.getJarList();
-      for (int i = 0; i < pipePluginMetaList.size(); i++) {
-        PipePluginExecutableManager.getInstance()
-            .saveToInstallDir(jarList.get(i), pipePluginMetaList.get(i).getJarName());
-      }
-    } catch (IOException | TException | ClientManagerException e) {
-      throw new StartupException(e);
-    }
+  private void preparePipeResources() throws StartupException {
+    PipeAgent.runtime().launch(resourcesInformationHolder);
   }
 
   private void getPipeInformationList(List<ByteBuffer> allPipeInformation) {
