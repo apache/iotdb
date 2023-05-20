@@ -289,12 +289,15 @@ public class ConfigManager implements IManager {
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
-    this.loadManager = new LoadManager(this);
     this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
     this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
+
+    // Please keep loadManager initializing at last because it may require other managers to
+    // register the eventBus
+    this.loadManager = new LoadManager(this);
   }
 
   public void initConsensusManager() throws IOException {

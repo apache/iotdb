@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -607,6 +608,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       // path contains filter
       return new PathContainsFilter(
           parseStringLiteral(ctx.timeseriesContainsExpression().value.getText()));
+    } else if (ctx.columnEqualsExpression() != null) {
+      return parseColumnEqualsExpressionContext(ctx.columnEqualsExpression());
     } else {
       // tag filter
       if (ctx.tagContainsExpression() != null) {
@@ -620,6 +623,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
             parseAttributeValue(ctx.tagEqualsExpression().attributeValue()),
             false);
       }
+    }
+  }
+
+  private SchemaFilter parseColumnEqualsExpressionContext(
+      IoTDBSqlParser.ColumnEqualsExpressionContext ctx) {
+    String column = parseAttributeKey(ctx.attributeKey());
+    String value = parseAttributeValue(ctx.attributeValue());
+    if (column.equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+      try {
+        TSDataType dataType = TSDataType.valueOf(value.toUpperCase());
+        return new DataTypeFilter(dataType);
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported datatype: %s", value));
+      }
+    } else {
+      throw new SemanticException("unexpected filter key");
     }
   }
 

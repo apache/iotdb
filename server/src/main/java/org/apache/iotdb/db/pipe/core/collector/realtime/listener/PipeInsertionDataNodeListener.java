@@ -81,9 +81,7 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    assigner.publishToAssign(
-        PipeRealtimeCollectEventFactory.createCollectEvent(
-            tsFileResource.getTsFile(), tsFileResource));
+    assigner.publishToAssign(PipeRealtimeCollectEventFactory.createCollectEvent(tsFileResource));
   }
 
   // TODO: check whether the method is called on the right place.

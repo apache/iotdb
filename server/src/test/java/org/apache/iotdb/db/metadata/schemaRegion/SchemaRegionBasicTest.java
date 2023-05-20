@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -869,6 +870,54 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 "root.laptop.d1.s3",
                 "root.laptop.d2.s1",
                 "root.laptop.d2.s2"));
+    expectedSize = expectedPathList.size();
+    Assert.assertEquals(expectedSize, result.size());
+    actualPathList = new HashSet<>();
+    for (int index = 0; index < expectedSize; index++) {
+      actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+
+    // CASE 06: show timeseries where dataType=INT64
+    result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                new PartialPath("root.**"),
+                Collections.emptyMap(),
+                0,
+                0,
+                false,
+                new DataTypeFilter(TSDataType.INT64)));
+    expectedPathList =
+        new HashSet<>(
+            Arrays.asList(
+                "root.laptop.d0",
+                "root.laptop.d1.s1",
+                "root.laptop.d1.s2.t1",
+                "root.laptop.d1.s3",
+                "root.laptop.d2.s1",
+                "root.laptop.d2.s2"));
+    expectedSize = expectedPathList.size();
+    Assert.assertEquals(expectedSize, result.size());
+    actualPathList = new HashSet<>();
+    for (int index = 0; index < expectedSize; index++) {
+      actualPathList.add(result.get(index).getFullPath());
+    }
+    Assert.assertEquals(expectedPathList, actualPathList);
+
+    // CASE 07: show timeseries where dataType=BOOLEAN
+    result =
+        SchemaRegionTestUtil.showTimeseries(
+            schemaRegion,
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                new PartialPath("root.**"),
+                Collections.emptyMap(),
+                0,
+                0,
+                false,
+                new DataTypeFilter(TSDataType.BOOLEAN)));
+    expectedPathList = new HashSet<>(Collections.emptyList());
     expectedSize = expectedPathList.size();
     Assert.assertEquals(expectedSize, result.size());
     actualPathList = new HashSet<>();

@@ -17,17 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+package org.apache.iotdb.db.pipe.agent.receiver;
 
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import java.util.List;
+public interface IoTDBThriftReceiver {
 
-/**
- * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
- * nodes needs to implement it.
- */
-public interface BatchInsertNode {
+  IoTDBThriftConnectorVersion getVersion();
 
-  List<ISchemaValidation> getSchemaValidationList();
+  TPipeTransferResp handleTransferReq(
+      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
+
+  void handleExit();
 }

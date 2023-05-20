@@ -119,7 +119,7 @@ public class UpgradeUtils {
       if (fsFactory.getFile(partitionDir, newModsFile.getName()).exists()) {
         upgradedResource.getModFile();
       }
-      upgradedResource.setStatus(TsFileResourceStatus.CLOSED);
+      upgradedResource.setStatus(TsFileResourceStatus.NORMAL);
       upgradedResource.serialize();
       // delete generated temp resource file
       Files.delete(tempResourceFile.toPath());

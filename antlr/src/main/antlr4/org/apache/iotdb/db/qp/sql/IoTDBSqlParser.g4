@@ -224,11 +224,15 @@ deviceContainsExpression
 
 // ---- Timeseries Where Clause
 timeseriesWhereClause
-    : WHERE (timeseriesContainsExpression | tagEqualsExpression | tagContainsExpression)
+    : WHERE (timeseriesContainsExpression | columnEqualsExpression | tagEqualsExpression | tagContainsExpression)
     ;
 
 timeseriesContainsExpression
     : TIMESERIES OPERATOR_CONTAINS value=STRING_LITERAL
+    ;
+
+columnEqualsExpression
+    : attributeKey operator_eq attributeValue
     ;
 
 tagEqualsExpression
