@@ -40,6 +40,15 @@ class MLNodeConfig(object):
         # Cache number of model storage to avoid repeated loading
         self.__mn_model_storage_cache_size = 30
 
+        # Maximum number of training model tasks, otherwise the task is pending
+        self.__mn_task_pool_size = 10
+
+        # Maximum number of trials to be explored in a tuning task
+        self.__mn_tuning_trial_num = 20
+
+        # Concurrency of trials in a tuning task
+        self.__mn_tuning_trial_concurrency = 4
+
         # Target ConfigNode to be connected by MLNode
         self.__mn_target_config_node: TEndPoint = TEndPoint("127.0.0.1", 10710)
 
@@ -69,6 +78,24 @@ class MLNodeConfig(object):
 
     def set_mn_model_storage_cache_size(self, mn_model_storage_cache_size: int) -> None:
         self.__mn_model_storage_cache_size = mn_model_storage_cache_size
+
+    def get_mn_mn_task_pool_size(self) -> int:
+        return self.__mn_task_pool_size
+
+    def set_mn_task_pool_size(self, mn_task_pool_size: int) -> None:
+        self.__mn_task_pool_size = mn_task_pool_size
+
+    def get_mn_tuning_trial_num(self) -> int:
+        return self.__mn_tuning_trial_num
+
+    def set_mn_tuning_trial_num(self, mn_tuning_trial_num: int) -> None:
+        self.__mn_tuning_trial_num = mn_tuning_trial_num
+
+    def get_mn_tuning_trial_concurrency(self) -> int:
+        return self.__mn_tuning_trial_concurrency
+
+    def set_mn_tuning_trial_concurrency(self, mn_tuning_trial_concurrency: int) -> None:
+        self.__mn_tuning_trial_concurrency = mn_tuning_trial_concurrency
 
     def get_mn_target_config_node(self) -> TEndPoint:
         return self.__mn_target_config_node
@@ -113,6 +140,15 @@ class MLNodeDescriptor(object):
 
             if file_configs.mn_model_storage_cache_size is not None:
                 self.__config.set_mn_model_storage_cache_size(file_configs.mn_model_storage_cache_size)
+
+            if file_configs.mn_task_pool_size is not None:
+                self.__config.set_mn_task_pool_size(file_configs.mn_task_pool_size)
+
+            if file_configs.mn_tuning_trial_num is not None:
+                self.__config.set_mn_tuning_trial_num(file_configs.mn_tuning_trial_num)
+
+            if file_configs.mn_tuning_trial_concurrency is not None:
+                self.__config.set_mn_tuning_trial_concurrency(file_configs.mn_tuning_trial_concurrency)
 
             if file_configs.mn_target_config_node is not None:
                 self.__config.set_mn_target_config_node(file_configs.mn_target_config_node)

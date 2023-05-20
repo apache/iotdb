@@ -39,6 +39,18 @@ mn_model_storage_dir = "models"
 # Datatype: int
 mn_model_storage_cachesize = 30
 
+# Maximum number of training model tasks, otherwise the task is pending
+# Datatype: int
+mn_task_pool_size = 10
+
+# Maximum number of trials to be explored in a tuning task
+# Datatype: int
+mn_tuning_trial_num = 20
+
+# Concurrency of trials in a tuning task
+# Datatype: int
+mn_tuning_trial_concurrency = 4
+
 ####################
 ### Target Config Node
 ####################
