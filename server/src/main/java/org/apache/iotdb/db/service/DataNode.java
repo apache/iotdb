@@ -838,13 +838,13 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void getPipeInformationList(List<ByteBuffer> allPipeInformation) {
-    if (allPipeInformation != null && !allPipeInformation.isEmpty()) {
-      List<PipePluginMeta> list = new ArrayList<>();
+    final List<PipePluginMeta> list = new ArrayList<>();
+    if (allPipeInformation != null) {
       for (ByteBuffer pipeInformationByteBuffer : allPipeInformation) {
         list.add(PipePluginMeta.deserialize(pipeInformationByteBuffer));
       }
-      resourcesInformationHolder.setPipePluginMetaList(list);
     }
+    resourcesInformationHolder.setPipePluginMetaList(list);
   }
 
   private void initSchemaEngine() {
