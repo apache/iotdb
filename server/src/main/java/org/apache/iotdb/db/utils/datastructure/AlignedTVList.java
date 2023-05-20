@@ -516,8 +516,10 @@ public abstract class AlignedTVList extends TVList {
         int arrayIndex = originRowIndex / ARRAY_SIZE;
         int elementIndex = originRowIndex % ARRAY_SIZE;
         if (dataTypes.get(columnIndex) == TSDataType.TEXT) {
-          memoryBinaryChunkSize[columnIndex] -=
-              getBinarySize(((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex]);
+          Binary value = ((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex];
+          if (value != null) {
+            memoryBinaryChunkSize[columnIndex] -= getBinarySize(value);
+          }
         }
         markNullValue(columnIndex, arrayIndex, elementIndex);
         deletedNumber++;

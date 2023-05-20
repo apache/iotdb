@@ -17,17 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+package org.apache.iotdb.db.pipe.core.connector.impl.iotdb;
 
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
+public enum IoTDBThriftConnectorVersion {
+  VERSION_ONE((byte) 1),
+  ;
 
-import java.util.List;
+  private final byte version;
 
-/**
- * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
- * nodes needs to implement it.
- */
-public interface BatchInsertNode {
+  IoTDBThriftConnectorVersion(byte type) {
+    this.version = type;
+  }
 
-  List<ISchemaValidation> getSchemaValidationList();
+  public byte getVersion() {
+    return version;
+  }
 }

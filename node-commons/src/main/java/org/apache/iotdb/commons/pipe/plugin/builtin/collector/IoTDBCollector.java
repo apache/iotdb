@@ -31,7 +31,7 @@ import org.apache.iotdb.pipe.api.event.Event;
  * imported here. The pipe agent in the server module will replace this class with the real
  * implementation when initializing the collector.
  */
-public class DefaultCollector implements PipeCollector {
+public class IoTDBCollector implements PipeCollector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");

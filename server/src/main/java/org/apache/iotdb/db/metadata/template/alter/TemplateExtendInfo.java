@@ -137,6 +137,49 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
     return result;
   }
 
+  /**
+   * Updates this to be the difference of set between this and targetMeasurementSet. Returns the
+   * intersection.
+   *
+   * @param targetMeasurementSet The set to compare with measurement set of this.
+   * @return A list of elements representing the intersection between measurement set of this and
+   *     the targetMeasurementSet.
+   */
+  public List<String> updateAsDifferenceAndGetIntersection(Set<String> targetMeasurementSet) {
+    List<String> removedMeasurements = new ArrayList<>();
+
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = this.encodings == null ? null : new ArrayList<>();
+    List<CompressionType> compressors = this.compressors == null ? null : new ArrayList<>();
+
+    for (int i = 0; i < this.measurements.size(); i++) {
+      if (targetMeasurementSet.contains(this.measurements.get(i))) {
+        removedMeasurements.add(this.measurements.get(i));
+        continue;
+      }
+      measurements.add(this.measurements.get(i));
+      dataTypes.add(this.dataTypes.get(i));
+      if (this.encodings != null) {
+        encodings.add(this.encodings.get(i));
+      }
+      if (this.compressors != null) {
+        compressors.add(this.compressors.get(i));
+      }
+    }
+
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.encodings = encodings;
+    this.compressors = compressors;
+
+    return removedMeasurements;
+  }
+
+  public boolean isEmpty() {
+    return measurements == null || measurements.isEmpty();
+  }
+
   public void serialize(OutputStream outputStream) throws IOException {
     super.serialize(outputStream);
     ReadWriteIOUtils.write(measurements.size(), outputStream);

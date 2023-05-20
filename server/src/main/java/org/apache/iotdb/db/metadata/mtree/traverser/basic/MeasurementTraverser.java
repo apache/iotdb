@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
@@ -87,7 +88,13 @@ public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Trave
       }
       return StringUtils.join(
               getFullPathFromRootToNode(node.getAsMNode()), IoTDBConstant.PATH_SEPARATOR)
+          .toLowerCase()
           .contains(pathContainsFilter.getContainString());
+    }
+
+    @Override
+    public Boolean visitDataTypeFilter(DataTypeFilter dataTypeFilter, N node) {
+      return node.getAsMeasurementMNode().getSchema().getType() == dataTypeFilter.getDataType();
     }
   }
 }

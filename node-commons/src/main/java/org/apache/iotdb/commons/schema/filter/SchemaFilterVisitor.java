@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.schema.filter;
 
+import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 
@@ -50,5 +51,9 @@ public abstract class SchemaFilterVisitor<R, C> {
 
   public R visitPathContainsFilter(PathContainsFilter pathContainsFilter, C context) {
     return visitFilter(pathContainsFilter, context);
+  }
+
+  public R visitDataTypeFilter(DataTypeFilter dataTypeFilter, C context) {
+    return visitFilter(dataTypeFilter, context);
   }
 }

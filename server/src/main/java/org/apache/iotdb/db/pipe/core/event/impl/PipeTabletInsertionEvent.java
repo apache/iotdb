@@ -41,6 +41,10 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
     this.referenceCount = new AtomicInteger(0);
   }
 
+  public InsertNode getInsertNode() {
+    return insertNode;
+  }
+
   @Override
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     throw new UnsupportedOperationException("Not implemented yet");

@@ -101,6 +101,7 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
       }
       return StringUtils.join(
               getFullPathFromRootToNode(node.getAsMNode()), IoTDBConstant.PATH_SEPARATOR)
+          .toLowerCase()
           .contains(pathContainsFilter.getContainString());
     }
   }
