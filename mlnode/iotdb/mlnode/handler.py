@@ -18,6 +18,7 @@
 
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_forecast_dataset
+from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import parse_training_request, parse_forecast_request
 from iotdb.mlnode.process.manager import TaskManager
 from iotdb.mlnode.storage import model_storage
@@ -39,6 +40,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             model_storage.delete_model(req.modelId)
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
+            logger.warn(e)
             return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
 
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
@@ -57,6 +59,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
 
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
+            logger.warn(e)
             return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
         finally:
             # submit task stage & check resource and decide pending/start
@@ -65,7 +68,6 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def forecast(self, req: TForecastReq):
         model_path, data, pred_length = parse_forecast_request(req)
         model, model_configs = model_storage.load_model(model_path)
-        task = None
         task_configs = {'pred_len': pred_length}
         try:
             task = self.__task_manager.create_forecast_task(
@@ -74,30 +76,10 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
                 data,
                 model_path
             )
-        except Exception as e:
-            print(e)
-            return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
-        finally:
             # submit task stage & check resource and decide pending/start
-            forecast_result = self.__task_manager.submit_forecast_task(task)
-            binary_result = convert_to_binary(forecast_result)
-            binary_result = binary_result[0]
-            resp = TForecastResp(get_status(TSStatusCode.SUCCESS_STATUS), binary_result)
+            forecast_result = convert_to_binary(self.__task_manager.submit_forecast_task(task))
+            resp = TForecastResp(get_status(TSStatusCode.SUCCESS_STATUS), forecast_result)
             return resp
-
-
-# if __name__ == '__main__':
-#     handler = MLNodeRPCServiceHandler()
-#     import pickle
-#     f = open('D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\test_tsdataset.pkl', 'rb')
-#     ts_dataset = pickle.load(f)
-#     req = TForecastReq(
-#         'D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\models\\Model_1\\tid_0.pt',
-#         ts_dataset,
-#         ['root.eg.etth1.s0'],
-#         ['FLOAT'],
-#         {'root.eg.etth1.s0': 0},
-#         192,
-#         'Model_2'
-#     )
-#     handler.forecast(req)
+        except Exception as e:
+            logger.warn(e)
+            return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
