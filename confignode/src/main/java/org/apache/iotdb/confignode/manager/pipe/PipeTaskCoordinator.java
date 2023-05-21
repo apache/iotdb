@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.pipe.task;
+package org.apache.iotdb.confignode.manager.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -75,14 +76,7 @@ public class PipeTaskCoordinator {
     return configManager.getProcedureManager().dropPipe(pipeName);
   }
 
-  public TShowPipeResp showPipes(TShowPipeReq req) {
-    return ((PipeTableResp)
-            configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-        .filter(req.whereClause, req.pipeName)
-        .convertToTShowPipeResp();
-  }
-
-  public TGetAllPipeInfoResp getAllPipeInfo() {
+  public TGetAllPipeInfoResp showPipes() {
     try {
       return ((PipeTableResp)
               configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
@@ -94,5 +88,16 @@ public class PipeTaskCoordinator {
               .setMessage(e.getMessage()),
           Collections.emptyList());
     }
+  }
+
+  public TShowPipeResp showPipes(TShowPipeReq req) {
+    return ((PipeTableResp)
+            configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+        .filter(req.whereClause, req.pipeName)
+        .convertToTShowPipeResp();
+  }
+
+  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 }

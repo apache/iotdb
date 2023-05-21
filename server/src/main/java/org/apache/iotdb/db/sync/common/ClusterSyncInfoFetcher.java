@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -125,7 +126,15 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
 
   @Override
   public TSStatus recordMsg(String pipeName, PipeMessage message) {
-    return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, "method not supported");
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TRecordPipeMessageReq req =
+          new TRecordPipeMessageReq(pipeName, message.serializeToByteBuffer());
+      return configNodeClient.recordPipeMessage(req);
+    } catch (Exception e) {
+      LOGGER.error("RecordMsg error because {}", e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
+    }
   }
 
   // endregion
