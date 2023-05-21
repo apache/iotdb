@@ -57,7 +57,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -1274,7 +1274,7 @@ public class TsFileProcessor {
           totalMemTableSize,
           writer.getPos());
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
-      WritingMetricsManager.getInstance()
+      WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
       CompressionRatio.getInstance().updateRatio(compressionRatio);
     } catch (IOException e) {

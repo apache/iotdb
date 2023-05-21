@@ -61,14 +61,14 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.CACHE_HIT.toString(),
+        Metric.CACHE.toString(),
         Tag.NAME.toString(),
         "SchemaCache",
         Tag.TYPE.toString(),
         "hit");
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.CACHE_HIT.toString(),
+        Metric.CACHE.toString(),
         Tag.NAME.toString(),
         "SchemaCache",
         Tag.TYPE.toString(),

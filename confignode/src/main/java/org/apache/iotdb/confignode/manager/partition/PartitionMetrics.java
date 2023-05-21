@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -220,8 +219,8 @@ public class PartitionMetrics implements IMetricSet {
     }
   }
 
-  public static void bindDatabasePartitionMetrics(IManager configManager, String database) {
-    MetricService metricService = MetricService.getInstance();
+  public static void bindDatabasePartitionMetrics(
+      AbstractMetricService metricService, IManager configManager, String database) {
     PartitionManager partitionManager = configManager.getPartitionManager();
 
     // Count the number of SeriesSlots in the specified Database
@@ -278,13 +277,12 @@ public class PartitionMetrics implements IMetricSet {
 
     List<String> databases = getClusterSchemaManager().getDatabaseNames();
     for (String database : databases) {
-      bindDatabasePartitionMetrics(configManager, database);
+      bindDatabasePartitionMetrics(metricService, configManager, database);
     }
   }
 
-  public static void unbindDatabasePartitionMetrics(String database) {
-    MetricService metricService = MetricService.getInstance();
-
+  public static void unbindDatabasePartitionMetrics(
+      AbstractMetricService metricService, String database) {
     // Remove the number of SeriesSlots in the specified Database
     metricService.remove(
         MetricType.AUTO_GAUGE,
@@ -315,7 +313,7 @@ public class PartitionMetrics implements IMetricSet {
 
     List<String> databases = getClusterSchemaManager().getDatabaseNames();
     for (String database : databases) {
-      unbindDatabasePartitionMetrics(database);
+      unbindDatabasePartitionMetrics(metricService, database);
     }
   }
 

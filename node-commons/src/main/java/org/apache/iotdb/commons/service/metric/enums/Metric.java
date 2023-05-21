@@ -65,7 +65,7 @@ public enum Metric {
   // schema engine related
   MEM("mem"),
   CACHE("cache"),
-  CACHE_HIT("cache_hit"),
+  CACHE_HIT_RATE("cache_hit"),
   QUANTITY("quantity"),
   SCHEMA_REGION("schema_region"),
   SCHEMA_ENGINE("schema_engine"),
