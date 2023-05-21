@@ -113,6 +113,8 @@ public class QueryStatement extends Statement {
 
   private boolean isOutputEndTime = false;
 
+  private boolean useWildcard = true;
+
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
   }
@@ -465,6 +467,14 @@ public class QueryStatement extends Statement {
 
   public boolean hasOffset() {
     return rowOffset > 0;
+  }
+
+  public void setUseWildcard(boolean useWildcard) {
+    this.useWildcard = useWildcard;
+  }
+
+  public boolean useWildcard() {
+    return useWildcard;
   }
 
   public void semanticCheck() {

@@ -48,14 +48,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class PipeLauncher {
+class PipeLauncher {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeLauncher.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  public void launchPipePluginAgent(ResourcesInformationHolder resourcesInformationHolder)
-      throws StartupException {
+  private PipeLauncher() {
+    // forbidding instantiation
+  }
+
+  public static synchronized void launchPipePluginAgent(
+      ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
     initPipePluginRelatedInstances();
 
     if (resourcesInformationHolder.getPipePluginMetaList() == null
@@ -91,7 +95,7 @@ public class PipeLauncher {
     }
   }
 
-  private void initPipePluginRelatedInstances() throws StartupException {
+  private static void initPipePluginRelatedInstances() throws StartupException {
     try {
       PipePluginExecutableManager.setupAndGetInstance(
           IOTDB_CONFIG.getPipeTemporaryLibDir(), IOTDB_CONFIG.getPipeDir());
@@ -101,7 +105,7 @@ public class PipeLauncher {
     }
   }
 
-  private List<PipePluginMeta> getUninstalledOrConflictedPipePluginMetaList(
+  private static List<PipePluginMeta> getUninstalledOrConflictedPipePluginMetaList(
       ResourcesInformationHolder resourcesInformationHolder) {
     final List<PipePluginMeta> pipePluginMetaList = new ArrayList<>();
     for (PipePluginMeta pipePluginMeta : resourcesInformationHolder.getPipePluginMetaList()) {
@@ -126,7 +130,7 @@ public class PipeLauncher {
     return pipePluginMetaList;
   }
 
-  private void fetchAndSavePipePluginJars(List<PipePluginMeta> pipePluginMetaList)
+  private static void fetchAndSavePipePluginJars(List<PipePluginMeta> pipePluginMetaList)
       throws StartupException {
     try (ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -147,7 +151,7 @@ public class PipeLauncher {
     }
   }
 
-  public void launchPipeTaskAgent() {
+  public static synchronized void launchPipeTaskAgent() {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();

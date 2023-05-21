@@ -540,6 +540,8 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(RegionMigrateService.getInstance());
 
     registerManager.register(CompactionTaskManager.getInstance());
+
+    registerManager.register(PipeAgent.runtime());
   }
 
   /** set up RPC and protocols after DataNode is available */
@@ -834,17 +836,17 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void preparePipeResources() throws StartupException {
-    PipeAgent.runtime().launch(resourcesInformationHolder);
+    PipeAgent.runtime().launchPipePluginAgent(resourcesInformationHolder);
   }
 
   private void getPipeInformationList(List<ByteBuffer> allPipeInformation) {
-    if (allPipeInformation != null && !allPipeInformation.isEmpty()) {
-      List<PipePluginMeta> list = new ArrayList<>();
+    final List<PipePluginMeta> list = new ArrayList<>();
+    if (allPipeInformation != null) {
       for (ByteBuffer pipeInformationByteBuffer : allPipeInformation) {
         list.add(PipePluginMeta.deserialize(pipeInformationByteBuffer));
       }
-      resourcesInformationHolder.setPipePluginMetaList(list);
     }
+    resourcesInformationHolder.setPipePluginMetaList(list);
   }
 
   private void initSchemaEngine() {
