@@ -24,7 +24,6 @@ import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 
@@ -123,7 +122,6 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
       }
 
       collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
-
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
@@ -144,7 +142,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                 (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)) {
-      if (event.increaseReferenceCount(PipeProcessorSubtask.class.getName())) {
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
         return event.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by
@@ -174,7 +172,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
             });
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
-      if (event.increaseReferenceCount(PipeProcessorSubtask.class.getName())) {
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
         return event.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by

@@ -195,24 +195,22 @@ public class WALNodeTest {
       }
       bitMaps[i].mark(i % times.length);
     }
-
-    InsertTabletNode insertTabletNode =
-        new InsertTabletNode(
-            new PlanNodeId(""),
-            new PartialPath(devicePath),
-            false,
-            measurements,
-            dataTypes,
-            times,
-            bitMaps,
-            columns,
-            times.length);
     MeasurementSchema[] schemas = new MeasurementSchema[6];
     for (int i = 0; i < 6; i++) {
       schemas[i] = new MeasurementSchema(measurements[i], dataTypes[i], TSEncoding.PLAIN);
     }
-    insertTabletNode.setMeasurementSchemas(schemas);
-    return insertTabletNode;
+
+    return new InsertTabletNode(
+        new PlanNodeId(""),
+        new PartialPath(devicePath),
+        false,
+        measurements,
+        dataTypes,
+        schemas,
+        times,
+        bitMaps,
+        columns,
+        times.length);
   }
 
   @Test

@@ -166,6 +166,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private Future<FragInstanceDispatchResult> dispatchWriteAsync(List<FragmentInstance> instances) {
+    List<TSStatus> dataNodeFailureList = new ArrayList<>();
     // split local and remote instances
     List<FragmentInstance> localInstances = new ArrayList<>();
     List<FragmentInstance> remoteInstances = new ArrayList<>();
@@ -182,14 +183,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
     asyncPlanNodeSender.sendAll();
 
-    List<TSStatus> dataNodeFailureList = new ArrayList<>();
-
     if (!localInstances.isEmpty()) {
       // sync dispatch to local
       long localScheduleStartTime = System.nanoTime();
       for (FragmentInstance localInstance : localInstances) {
         try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
-          dispatchOneInstance(localInstance);
+          dispatchLocally(localInstance);
         } catch (FragmentInstanceDispatchException e) {
           dataNodeFailureList.add(e.getFailureStatus());
         } catch (Throwable t) {

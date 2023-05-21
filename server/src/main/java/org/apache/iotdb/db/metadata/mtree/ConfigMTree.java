@@ -549,9 +549,11 @@ public class ConfigMTree {
 
           @Override
           protected Void collectMNode(IConfigMNode node) {
-            result
-                .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
-                .add(getPartialPathFromRootToNode(node));
+            if (node.getSchemaTemplateId() != NON_TEMPLATE && !node.isSchemaTemplatePreUnset()) {
+              result
+                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
+                  .add(getPartialPathFromRootToNode(node));
+            }
             return null;
           }
 
