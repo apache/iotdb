@@ -1183,7 +1183,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
       commonConfig.setNodeStatus(NodeStatus.parse(status));
       if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
-        PipeAgent.runtime().shutdown();
+        PipeAgent.runtime().stop();
       }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
@@ -30,22 +32,26 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeRuntimeAgent {
+public class PipeRuntimeAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
 
   private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
-  public synchronized void launch(ResourcesInformationHolder resourcesInformationHolder)
-      throws StartupException {
-    final PipeLauncher pipeLauncher = new PipeLauncher();
-    pipeLauncher.launchPipePluginAgent(resourcesInformationHolder);
-    pipeLauncher.launchPipeTaskAgent();
+  public synchronized void launchPipePluginAgent(
+      ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+    PipeLauncher.launchPipePluginAgent(resourcesInformationHolder);
+  }
+
+  @Override
+  public synchronized void start() throws StartupException {
+    PipeLauncher.launchPipeTaskAgent();
 
     isShutdown.set(false);
   }
 
-  public synchronized void shutdown() {
+  @Override
+  public synchronized void stop() {
     if (isShutdown.get()) {
       return;
     }
@@ -56,6 +62,11 @@ public class PipeRuntimeAgent {
 
   public boolean isShutdown() {
     return isShutdown.get();
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.PIPE_RUNTIME_AGENT;
   }
 
   public void report(PipeSubtask subtask) {
