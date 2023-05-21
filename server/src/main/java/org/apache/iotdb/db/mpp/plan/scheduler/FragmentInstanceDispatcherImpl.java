@@ -33,7 +33,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.mpp.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.mpp.execution.executor.RegionWriteExecutor;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -76,7 +76,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
+      QueryExecutionMetricSet.getInstance();
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
@@ -124,7 +125,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(
                     TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
       } finally {
-        QUERY_METRICS.recordExecutionCost(DISPATCH_READ, System.nanoTime() - startTime);
+        QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
+            DISPATCH_READ, System.nanoTime() - startTime);
       }
     }
     return immediateFuture(new FragInstanceDispatchResult(true));

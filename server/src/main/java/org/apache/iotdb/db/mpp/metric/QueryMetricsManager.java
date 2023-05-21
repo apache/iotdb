@@ -50,16 +50,6 @@ public class QueryMetricsManager {
         operatorType);
   }
 
-  public void recordExecutionCost(String stage, long costTimeInNanos) {
-    MetricInfo metricInfo = QueryExecutionMetricSet.metricInfoMap.get(stage);
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        metricInfo.getName(),
-        MetricLevel.IMPORTANT,
-        metricInfo.getTagsInArray());
-  }
-
   public void recordQueryResourceNum(String type, int count) {
     metricService.histogram(
         count, Metric.QUERY_RESOURCE.toString(), MetricLevel.IMPORTANT, Tag.TYPE.toString(), type);

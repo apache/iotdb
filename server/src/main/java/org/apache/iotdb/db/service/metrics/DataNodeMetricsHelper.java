@@ -49,8 +49,8 @@ public class DataNodeMetricsHelper {
 
     // bind query related metrics
     MetricService.getInstance().addMetricSet(QueryPlanCostMetricSet.getInstance());
-    MetricService.getInstance().addMetricSet(new SeriesScanCostMetricSet());
-    MetricService.getInstance().addMetricSet(new QueryExecutionMetricSet());
+    MetricService.getInstance().addMetricSet(SeriesScanCostMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(QueryExecutionMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(new QueryResourceMetricSet());
     MetricService.getInstance().addMetricSet(new DataExchangeCostMetricSet());
     MetricService.getInstance().addMetricSet(new DataExchangeCountMetricSet());

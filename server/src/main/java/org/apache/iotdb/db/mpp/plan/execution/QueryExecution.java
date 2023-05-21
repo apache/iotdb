@@ -38,7 +38,7 @@ import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.SourceHandle;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
@@ -141,7 +141,8 @@ public class QueryExecution implements IQueryExecution {
   // cost time in ns
   private long totalExecutionTime = 0;
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
+      QueryExecutionMetricSet.getInstance();
   private static final QueryPlanCostMetricSet QUERY_PLAN_COST_METRIC_SET =
       QueryPlanCostMetricSet.getInstance();
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
@@ -494,7 +495,8 @@ public class QueryExecution implements IQueryExecution {
           ListenableFuture<?> blocked = resultHandle.isBlocked();
           blocked.get();
         } finally {
-          QUERY_METRICS.recordExecutionCost(WAIT_FOR_RESULT, System.nanoTime() - startTime);
+          QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
+              WAIT_FOR_RESULT, System.nanoTime() - startTime);
         }
 
         if (!resultHandle.isFinished()) {
