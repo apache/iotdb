@@ -224,6 +224,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private ZoneId zoneId;
 
+  private boolean useWildcard = false;
+
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
   }
@@ -1037,6 +1039,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setResultSetFormat(parseAlignBy(ctx.alignByClause()));
     }
 
+    queryStatement.setUseWildcard(useWildcard);
     return queryStatement;
   }
 
@@ -1596,6 +1599,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
+    if (!useWildcard && !ctx.wildcard().isEmpty()) {
+      useWildcard = true;
+    }
     return parseNodeString(ctx.getText());
   }
 
