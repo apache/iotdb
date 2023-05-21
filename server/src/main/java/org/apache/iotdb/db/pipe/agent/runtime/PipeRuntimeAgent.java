@@ -35,7 +35,7 @@ public class PipeRuntimeAgent {
       throws StartupException {
     final PipeLauncher pipeLauncher = new PipeLauncher();
     pipeLauncher.launchPipePluginAgent(resourcesInformationHolder);
-    pipeLauncher.launchPipeTaskAgent();
+    // pipeLauncher.launchPipeTaskAgent();
   }
 
   public void report(PipeSubtask subtask) {
