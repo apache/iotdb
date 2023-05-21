@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -141,7 +142,8 @@ public class QueryExecution implements IQueryExecution {
   private long totalExecutionTime = 0;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
-
+  private static final QueryPlanCostMetricSet QUERY_PLAN_COST_METRIC_SET =
+      QueryPlanCostMetricSet.getInstance();
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
@@ -358,7 +360,8 @@ public class QueryExecution implements IQueryExecution {
     this.distributedPlan = planner.planFragments();
 
     if (rawStatement.isQuery()) {
-      QUERY_METRICS.recordPlanCost(DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
+          DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
     }
     if (isQuery() && logger.isDebugEnabled()) {
       logger.debug(

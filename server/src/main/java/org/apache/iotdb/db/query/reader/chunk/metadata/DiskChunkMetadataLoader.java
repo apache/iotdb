@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.reader.chunk.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -49,7 +49,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   private final Filter filter;
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
+      SeriesScanCostMetricSet.getInstance();
 
   public DiskChunkMetadataLoader(
       TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter filter) {
@@ -87,7 +88,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
         chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
       }
 
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_MODIFICATION_NONALIGNED_DISK, System.nanoTime() - t2);
 
       // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
@@ -109,7 +110,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
                       && !filter.satisfyStartEndTime(
                           chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
                   || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_FILTER_NONALIGNED_DISK, System.nanoTime() - t3);
 
       // For chunkMetadata from old TsFile, do not set version
@@ -126,7 +127,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
       return chunkMetadataList;
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           LOAD_CHUNK_METADATA_LIST_NONALIGNED_DISK, System.nanoTime() - t1);
     }
   }

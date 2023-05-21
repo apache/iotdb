@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.reader.chunk.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -41,7 +41,8 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   private final QueryContext context;
   private final Filter timeFilter;
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
+      SeriesScanCostMetricSet.getInstance();
 
   public MemAlignedChunkMetadataLoader(
       TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
@@ -88,14 +89,15 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
                       && !timeFilter.satisfyStartEndTime(
                           chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
                   || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
-      QUERY_METRICS.recordSeriesScanCost(CHUNK_METADATA_FILTER_ALIGNED_MEM, System.nanoTime() - t2);
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+          CHUNK_METADATA_FILTER_ALIGNED_MEM, System.nanoTime() - t2);
 
       for (IChunkMetadata metadata : chunkMetadataList) {
         metadata.setVersion(resource.getVersion());
       }
       return chunkMetadataList;
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           LOAD_CHUNK_METADATA_LIST_ALIGNED_MEM, System.nanoTime() - t1);
     }
   }

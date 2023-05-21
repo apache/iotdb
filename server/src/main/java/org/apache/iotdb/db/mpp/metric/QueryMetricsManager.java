@@ -31,16 +31,6 @@ public class QueryMetricsManager {
 
   private final MetricService metricService = MetricService.getInstance();
 
-  public void recordPlanCost(String stage, long costTimeInNanos) {
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.QUERY_PLAN_COST.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.STAGE.toString(),
-        stage);
-  }
-
   public void recordOperatorExecutionCost(String operatorType, long costTimeInNanos) {
     metricService.timer(
         costTimeInNanos,
@@ -58,16 +48,6 @@ public class QueryMetricsManager {
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         operatorType);
-  }
-
-  public void recordSeriesScanCost(String stage, long costTimeInNanos) {
-    MetricInfo metricInfo = SeriesScanCostMetricSet.metricInfoMap.get(stage);
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        metricInfo.getName(),
-        MetricLevel.IMPORTANT,
-        metricInfo.getTagsInArray());
   }
 
   public void recordExecutionCost(String stage, long costTimeInNanos) {

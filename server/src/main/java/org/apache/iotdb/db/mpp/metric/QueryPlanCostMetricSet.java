@@ -22,14 +22,16 @@ package org.apache.iotdb.db.mpp.metric;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Arrays;
-import java.util.List;
 
 public class QueryPlanCostMetricSet implements IMetricSet {
+  private static final QueryPlanCostMetricSet INSTANCE = new QueryPlanCostMetricSet();
   public static final String ANALYZER = "analyzer";
   public static final String LOGICAL_PLANNER = "logical_planner";
   public static final String DISTRIBUTION_PLANNER = "distribution_planner";
@@ -37,23 +39,84 @@ public class QueryPlanCostMetricSet implements IMetricSet {
   public static final String PARTITION_FETCHER = "partition_fetcher";
   public static final String SCHEMA_FETCHER = "schema_fetcher";
 
-  private static final List<String> stages =
-      Arrays.asList(
-          ANALYZER, LOGICAL_PLANNER, DISTRIBUTION_PLANNER, PARTITION_FETCHER, SCHEMA_FETCHER);
+  private QueryPlanCostMetricSet() {
+    // empty constructor
+  }
 
-  @Override
-  public void bindTo(AbstractMetricService metricService) {
-    for (String stage : stages) {
-      metricService.getOrCreateTimer(
-          Metric.QUERY_PLAN_COST.toString(), MetricLevel.IMPORTANT, Tag.STAGE.toString(), stage);
+  private Timer analyzerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer logicalPlannerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer distributionPlannerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer partitionFetcherTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer schemaFetcherTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordPlanCost(String stage, long costTimeInNanos) {
+    switch (stage) {
+      case ANALYZER:
+        analyzerTimer.updateNanos(costTimeInNanos);
+        break;
+      case LOGICAL_PLANNER:
+        logicalPlannerTimer.updateNanos(costTimeInNanos);
+        break;
+      case DISTRIBUTION_PLANNER:
+        distributionPlannerTimer.updateNanos(costTimeInNanos);
+        break;
+      case PARTITION_FETCHER:
+        partitionFetcherTimer.updateNanos(costTimeInNanos);
+        break;
+      case SCHEMA_FETCHER:
+        schemaFetcherTimer.updateNanos(costTimeInNanos);
+        break;
+      default:
+        throw new UnsupportedOperationException("Unsupported stage: " + stage);
     }
   }
 
   @Override
+  public void bindTo(AbstractMetricService metricService) {
+    analyzerTimer =
+        metricService.getOrCreateTimer(
+            Metric.QUERY_PLAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            ANALYZER);
+    logicalPlannerTimer =
+        metricService.getOrCreateTimer(
+            Metric.QUERY_PLAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            LOGICAL_PLANNER);
+    distributionPlannerTimer =
+        metricService.getOrCreateTimer(
+            Metric.QUERY_PLAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            DISTRIBUTION_PLANNER);
+    partitionFetcherTimer =
+        metricService.getOrCreateTimer(
+            Metric.QUERY_PLAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            PARTITION_FETCHER);
+    schemaFetcherTimer =
+        metricService.getOrCreateTimer(
+            Metric.QUERY_PLAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            SCHEMA_FETCHER);
+  }
+
+  @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    for (String stage : stages) {
-      metricService.remove(
-          MetricType.TIMER, Metric.QUERY_PLAN_COST.toString(), Tag.STAGE.toString(), stage);
-    }
+    Arrays.asList(
+            ANALYZER, LOGICAL_PLANNER, DISTRIBUTION_PLANNER, PARTITION_FETCHER, SCHEMA_FETCHER)
+        .forEach(
+            stage -> {
+              metricService.remove(
+                  MetricType.TIMER, Metric.QUERY_PLAN_COST.toString(), Tag.STAGE.toString(), stage);
+            });
+  }
+
+  public static QueryPlanCostMetricSet getInstance() {
+    return INSTANCE;
   }
 }
