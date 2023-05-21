@@ -141,7 +141,7 @@ public class CompactionMetrics implements IMetricSet {
       ProcessChunkType processChunkType,
       boolean aligned,
       long byteNum) {
-    String type = aligned ? "ALIGNED" : "NOT_ALIGNED";
+    String type = aligned ? "aligned" : "not_aligned";
     writeInfoCounterMap.get(type).get(compactionType).get(processChunkType).inc(byteNum / 1024L);
     totalCompactionWriteInfoCounter.inc(byteNum / 1024L);
   }
