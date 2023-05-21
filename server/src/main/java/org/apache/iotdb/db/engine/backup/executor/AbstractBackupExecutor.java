@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.backup.executor;
 
 import org.apache.iotdb.db.engine.backup.task.AbstractBackupFileTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.BackupService;
 
 import java.io.IOException;
@@ -43,8 +42,7 @@ public abstract class AbstractBackupExecutor {
 
   public abstract boolean checkBackupPathValid(String outputPath);
 
-  public abstract void executeBackup(
-      List<TsFileResource> resources, String outputPath, boolean isSync);
+  public abstract void executeBackup(String outputPath, boolean isSync);
 
   protected abstract int backupSystemFiles(String outputPath) throws IOException;
 

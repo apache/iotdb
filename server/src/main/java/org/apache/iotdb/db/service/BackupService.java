@@ -22,21 +22,16 @@ package org.apache.iotdb.db.service;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.backup.executor.*;
 import org.apache.iotdb.db.engine.backup.task.AbstractBackupFileTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.BackupUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -66,10 +61,10 @@ public class BackupService implements IService {
     Thread.currentThread().setName(ThreadName.BACKUP_SERVICE.getName());
     backupThreadNum = IoTDBDescriptor.getInstance().getConfig().getBackupThreadNum();
     backupTmpFileCheckPool =
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-                    ThreadName.BACKUP_TEMPORARY_FILE_CHECK.getName());
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.BACKUP_TEMPORARY_FILE_CHECK.getName());
     backupTmpFileCheckPool.scheduleWithFixedDelay(
-            this::cleanUpBackupTmpDir, 0, BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE, TimeUnit.MINUTES);
+        this::cleanUpBackupTmpDir, 0, BACKUP_TMP_FILE_CHECK_INTERVAL_IN_MINUTE, TimeUnit.MINUTES);
     if (BackupUtils.checkConfDir()) {
       logger.info("Found the config directory: " + BackupUtils.getConfDir());
     } else {
@@ -128,35 +123,31 @@ public class BackupService implements IService {
       logger.error("Another backup task is already running, please try later.");
       return;
     }
-    List<TsFileResource> resources = new ArrayList<>();
-    StorageEngine.getInstance().syncCloseAllProcessor();
     backupThreadPool =
-            IoTDBThreadPoolFactory.newFixedThreadPool(
-                    backupThreadNum, ThreadName.BACKUP_THREAD_POOL.getName());
-    StorageEngine.getInstance().applyReadLockAndCollectFilesForBackup(resources);
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            backupThreadNum, ThreadName.BACKUP_THREAD_POOL.getName());
     new SimpleFullBackupExecutor(
-            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack).executeBackup(resources, outputPath, isSync);
+            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack)
+        .executeBackup(outputPath, isSync);
   }
 
   /**
-   * Incremental backup on TsFiles, system files and config files.
+   * Differential backup on TsFiles, system files and config files.
    *
    * @param outputPath
    * @param isSync
    */
-  public void performIncrementalBackup(String outputPath, boolean isSync) {
+  public void performDifferentialBackup(String outputPath, boolean isSync) {
     if (isBackupRunning.get()) {
       logger.error("Another backup task is already running, please try later.");
       return;
     }
-    List<TsFileResource> resources = new ArrayList<>();
-    StorageEngine.getInstance().syncCloseAllProcessor();
-    StorageEngine.getInstance().applyReadLockAndCollectFilesForBackup(resources);
     backupThreadPool =
-            IoTDBThreadPoolFactory.newFixedThreadPool(
-                    backupThreadNum, ThreadName.BACKUP_THREAD_POOL.getName());
-    new SimpleIncrementalBackupExecutor(
-            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack).executeBackup(resources, outputPath, isSync);
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            backupThreadNum, ThreadName.BACKUP_THREAD_POOL.getName());
+    new SimpleDifferentialBackupExecutor(
+            this::onSubmitBackupTaskCallBack, this::onBackupFileTaskFinishCallBack)
+        .executeBackup(outputPath, isSync);
   }
 
   private void cleanUpBackupTmpDir() {

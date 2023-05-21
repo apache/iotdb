@@ -2742,7 +2742,7 @@ public class PlanExecutor implements IPlanExecutor {
     if (plan.getIsFullBackup()) {
       BackupService.getINSTANCE().performFullBackup(outputPath, isSync);
     } else {
-      BackupService.getINSTANCE().performIncrementalBackup(outputPath, isSync);
+      BackupService.getINSTANCE().performDifferentialBackup(outputPath, isSync);
     }
   }
 }

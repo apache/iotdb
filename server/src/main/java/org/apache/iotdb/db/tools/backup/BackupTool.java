@@ -48,7 +48,7 @@ public class BackupTool {
   private static final String PORT_PARAM = "-p";
   private static final String PATH_PARAM = "-P";
   private static final String FULL_BACKUP_PARAM = "-f";
-  private static final String INCREMENTAL_BACKUP_PARAM = "-i";
+  private static final String DIFFERENTIAL_BACKUP_PARAM = "-d";
   private static final String SYNC_BACKUP_PARAM = "-sync";
   private static final String ASYNC_BACKUP_PARAM = "-async";
 
@@ -63,7 +63,7 @@ public class BackupTool {
             String.format(
                 "Performing %s %s backup, host: %s, port: %s, target path is %s.",
                 isSyncBackup ? "sync" : "async",
-                isFullBackup ? "full" : "incremental",
+                isFullBackup ? "full" : "differential",
                 host,
                 port,
                 outputCanonicalPathStr));
@@ -92,7 +92,7 @@ public class BackupTool {
         case FULL_BACKUP_PARAM:
           isFullBackup = true;
           break;
-        case INCREMENTAL_BACKUP_PARAM:
+        case DIFFERENTIAL_BACKUP_PARAM:
           isFullBackup = false;
           break;
         case SYNC_BACKUP_PARAM:

@@ -114,7 +114,7 @@ public class BackupUtils {
                 + "data"
                 + File.separator
                 + IoTDBConstant.SYSTEM_FOLDER_NAME))) {
-      throw new IOException("Failed to delete old files during incremental backup.");
+      throw new IOException("Failed to delete old files during differential backup.");
     }
   }
 
@@ -139,7 +139,7 @@ public class BackupUtils {
   public static void deleteOldConfigFiles(String outputBaseDir) throws IOException {
     if (!deleteFileOrDirRecursively(
         new File(FilePathUtils.regularizePath(outputBaseDir) + "conf"))) {
-      throw new IOException("Failed to delete old files during incremental backup.");
+      throw new IOException("Failed to delete old files during differential backup.");
     }
   }
 

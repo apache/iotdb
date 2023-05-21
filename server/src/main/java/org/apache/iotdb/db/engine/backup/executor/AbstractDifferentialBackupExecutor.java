@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.backup.executor;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.backup.task.BackupByCopyTask;
-import org.apache.iotdb.db.engine.backup.task.BackupByMoveTask;
 import org.apache.iotdb.db.service.BackupService;
 import org.apache.iotdb.db.utils.BackupUtils;
 
@@ -30,9 +29,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class AbstractIncrementalBackupExecutor extends AbstractBackupExecutor {
+public abstract class AbstractDifferentialBackupExecutor extends AbstractBackupExecutor {
 
-  protected AbstractIncrementalBackupExecutor(
+  protected AbstractDifferentialBackupExecutor(
       BackupService.OnSubmitBackupTaskCallBack onSubmitBackupTaskCallBack,
       BackupService.OnBackupFileTaskFinishCallBack onBackupFileTaskFinishCallBack) {
     super(onSubmitBackupTaskCallBack, onBackupFileTaskFinishCallBack);
@@ -42,7 +41,7 @@ public abstract class AbstractIncrementalBackupExecutor extends AbstractBackupEx
   public boolean checkBackupPathValid(String outputPath) {
     File tempFile = new File(outputPath);
     String[] files = tempFile.list();
-    // Output path for incremental backup should be a non-empty folder.
+    // Output path for differential backup should be a non-empty folder.
     return tempFile.exists() && !tempFile.isFile() && files != null;
   }
 
@@ -58,13 +57,9 @@ public abstract class AbstractIncrementalBackupExecutor extends AbstractBackupEx
     for (File file : systemFiles) {
       String systemFileTargetPath = BackupUtils.getSystemFileTargetPath(file, outputPath);
       // logger.error("Failed to create directory during backup: " + e.getMessage());
-      if (!BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTargetPath), file)) {
-        String systemFileTmpPath = BackupUtils.getSystemFileTmpLinkPath(file);
-        BackupUtils.createTargetDirAndTryCreateLink(new File(systemFileTmpPath), file);
-        backupFileTaskList.add(
-            new BackupByMoveTask(
-                systemFileTmpPath, systemFileTargetPath, onBackupFileTaskFinishCallBack));
-      }
+      backupFileTaskList.add(
+          new BackupByCopyTask(
+              file.getPath(), systemFileTargetPath, onBackupFileTaskFinishCallBack));
     }
     return systemFiles.size();
   }
@@ -83,11 +78,9 @@ public abstract class AbstractIncrementalBackupExecutor extends AbstractBackupEx
       for (File file : configFiles) {
         String configFileTargetPath = BackupUtils.getConfigFileTargetPath(file, outputPath);
         // logger.error("Failed to create directory during backup: " + e.getMessage());
-        if (!BackupUtils.createTargetDirAndTryCreateLink(new File(configFileTargetPath), file)) {
-          backupFileTaskList.add(
-              new BackupByCopyTask(
-                  file.getAbsolutePath(), configFileTargetPath, onBackupFileTaskFinishCallBack));
-        }
+        backupFileTaskList.add(
+            new BackupByCopyTask(
+                file.getAbsolutePath(), configFileTargetPath, onBackupFileTaskFinishCallBack));
       }
     } else {
       // logger.warn("Can't find config directory during backup, skipping.");

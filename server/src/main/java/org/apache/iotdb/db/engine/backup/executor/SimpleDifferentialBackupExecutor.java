@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.backup.executor;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.backup.task.BackupByMoveTask;
 import org.apache.iotdb.db.engine.backup.task.DummyTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -32,24 +33,25 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-public class SimpleIncrementalBackupExecutor extends AbstractIncrementalBackupExecutor {
+public class SimpleDifferentialBackupExecutor extends AbstractDifferentialBackupExecutor {
   private static final Logger logger =
-      LoggerFactory.getLogger(SimpleIncrementalBackupExecutor.class);
+      LoggerFactory.getLogger(SimpleDifferentialBackupExecutor.class);
 
-  public SimpleIncrementalBackupExecutor(
+  public SimpleDifferentialBackupExecutor(
       BackupService.OnSubmitBackupTaskCallBack onSubmitBackupTaskCallBack,
       BackupService.OnBackupFileTaskFinishCallBack onBackupFileTaskFinishCallBack) {
     super(onSubmitBackupTaskCallBack, onBackupFileTaskFinishCallBack);
   }
 
   @Override
-  public void executeBackup(List<TsFileResource> resources, String outputPath, boolean isSync) {
+  public void executeBackup(String outputPath, boolean isSync) {
     if (!checkBackupPathValid(outputPath)) {
       logger.error("Full backup path invalid. Backup aborted.");
       return;
@@ -58,6 +60,9 @@ public class SimpleIncrementalBackupExecutor extends AbstractIncrementalBackupEx
       logger.error("Failed to delete backup temporary directories before backup. Backup aborted.");
       return;
     }
+    List<TsFileResource> resources = new ArrayList<>();
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    StorageEngine.getInstance().applyReadLockAndCollectFilesForBackup(resources);
     Map<String, File> backupTsFileMap = new HashMap<>();
     for (File tsFile :
         BackupUtils.getAllFilesWithSuffixInOneDir(outputPath, TsFileConstant.TSFILE_SUFFIX)) {
