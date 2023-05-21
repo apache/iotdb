@@ -44,8 +44,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionMetrics implements IMetricSet {
-  private static final CompactionMetrics INSTANCE = new CompactionMetrics();
   private static final List<String> TYPES = Arrays.asList("aligned", "not_aligned");
+  private static final CompactionMetrics INSTANCE = new CompactionMetrics();
   private long lastUpdateTime = 0L;
   private static final long UPDATE_INTERVAL = 10_000L;
   private final AtomicInteger waitingSeqInnerCompactionTaskNum = new AtomicInteger(0);
