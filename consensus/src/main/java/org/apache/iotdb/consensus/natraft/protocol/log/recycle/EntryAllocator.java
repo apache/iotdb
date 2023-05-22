@@ -125,7 +125,6 @@ public class EntryAllocator<T extends Entry> {
         + ","
         + "recycleRatio="
         + recycleHitRatio()
-        + ","
         + "}";
   }
 }

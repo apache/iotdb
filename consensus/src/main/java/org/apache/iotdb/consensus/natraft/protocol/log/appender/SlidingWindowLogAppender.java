@@ -165,9 +165,11 @@ public class SlidingWindowLogAppender implements LogAppender {
 
   private void moveWindowLeftward(int step) {
     int length = Math.max(windowCapacity - step, 0);
-    System.arraycopy(logWindow, 0, logWindow, step, length);
-    for (int i = 0; i < length; i++) {
-      logWindow[i] = null;
+    if (length > 0) {
+      System.arraycopy(logWindow, 0, logWindow, step, length);
+      for (int i = 0; i < length; i++) {
+        logWindow[i] = null;
+      }
     }
     firstPosPrevIndex = logManager.getLastLogIndex();
   }

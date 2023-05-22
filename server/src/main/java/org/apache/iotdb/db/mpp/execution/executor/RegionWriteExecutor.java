@@ -235,8 +235,8 @@ public class RegionWriteExecutor {
         if (writeResponse.getStatus() != null) {
           response.setAccepted(
               TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode()
-                      || TSStatusCode.WEAKLY_ACCEPTED.getStatusCode()
-                          == writeResponse.getStatus().getCode());
+                  || TSStatusCode.WEAKLY_ACCEPTED.getStatusCode()
+                      == writeResponse.getStatus().getCode());
           if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != writeResponse.getStatus().getCode()) {
             response.setMessage(writeResponse.getStatus().message);
             response.setStatus(writeResponse.getStatus());

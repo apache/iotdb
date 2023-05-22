@@ -702,6 +702,10 @@ public abstract class RaftLogManager {
     } catch (Exception e) {
       return false;
     }
+    if (term == -1) {
+      // the leader is probing for catch-up and the entry must be committed
+      return index <= commitIndex;
+    }
     return t == term;
   }
 

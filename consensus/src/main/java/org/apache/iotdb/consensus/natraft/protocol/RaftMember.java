@@ -237,7 +237,7 @@ public class RaftMember {
         new EntryAllocator<>(config, RequestEntry::new, this::getSafeIndex);
     this.logManager =
         new DirectorySnapshotRaftLogManager(
-            new SyncLogDequeSerializer(groupId, config),
+            new SyncLogDequeSerializer(groupId, config, this),
             new AsyncLogApplier(new BaseApplier(stateMachine, this), name, config),
             name,
             stateMachine,
@@ -1085,6 +1085,13 @@ public class RaftMember {
     } finally {
       snapshotApplyLock.unlock();
     }
+    logManager.getLock().writeLock().lock();
+    try {
+      logAppender.reset();
+    } finally {
+      logManager.getLock().writeLock().unlock();
+    }
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

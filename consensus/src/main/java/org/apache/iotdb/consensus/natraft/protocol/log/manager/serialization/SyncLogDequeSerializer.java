@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.consensus.natraft.exception.UnknownLogTypeException;
 import org.apache.iotdb.consensus.natraft.protocol.HardState;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
+import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.LogParser;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.serialization.SyncLogDequeSerializer.VersionController.SimpleFileVersionController;
@@ -161,6 +162,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private RaftConfig config;
   private ICompressor compressor = ICompressor.getCompressor(CompressionType.SNAPPY);
   private IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.SNAPPY);
+  private RaftMember member;
 
   private void initCommonProperties() {
     logDataBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
@@ -210,12 +212,13 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    *
    * <p>build serializer with node id
    */
-  public SyncLogDequeSerializer(ConsensusGroupId groupId, RaftConfig config) {
+  public SyncLogDequeSerializer(ConsensusGroupId groupId, RaftConfig config, RaftMember member) {
     this.config = config;
     name = groupId.toString();
     logDir = getLogDir(groupId);
     initCommonProperties();
     initMetaAndLogFiles();
+    this.member = member;
   }
 
   public String getLogDir(ConsensusGroupId groupId) {
@@ -319,6 +322,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     } else {
       flushLogBuffer(true);
       logDataBuffer.put(logData);
+    }
+    // followers only use the cache in persistence, and it is of no use beyond this point
+    if (!member.isLeader()) {
+      entry.setSerializationCache(null);
     }
     lastLogIndex = entry.getCurrLogIndex();
   }

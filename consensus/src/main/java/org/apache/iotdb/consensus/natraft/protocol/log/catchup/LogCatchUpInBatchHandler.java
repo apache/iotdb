@@ -82,7 +82,10 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<AppendEntry
         appendSucceed.notifyAll();
       }
       logger.warn(
-          "{}: Catch-up with {} logs aborted because leadership is lost", logs.size(), memberName);
+          "{}: Catch-up with {} logs aborted because leadership is lost, resp: {}",
+          logs.size(),
+          memberName,
+          resp);
     }
   }
 
