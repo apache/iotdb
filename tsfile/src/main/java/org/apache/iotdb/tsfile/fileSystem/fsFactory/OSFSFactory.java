@@ -199,6 +199,9 @@ public class OSFSFactory implements FSFactory {
   }
 
   @Override
+  public void copyFile(File srcFile, File destFile) throws IOException {}
+
+  @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     try {
       return (File[])

@@ -104,6 +104,11 @@ public class HybridFSFactory implements FSFactory {
   }
 
   @Override
+  public void copyFile(File srcFile, File destFile) throws IOException {
+    // TODO
+  }
+
+  @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     FSPath folder = FSUtils.parse(fileFolder);
     return fsFactories.get(folder.getFsType()).listFilesBySuffix(folder.getPath(), suffix);

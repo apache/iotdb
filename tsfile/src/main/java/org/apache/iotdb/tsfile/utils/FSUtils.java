@@ -95,7 +95,11 @@ public class FSUtils {
     return new FSPath(type, path);
   }
 
-  public static FSPath parseLocalTsFile2OSFile(File lcoalFile, String bucket, String dataNodeId)
+  public static String getOSDefaultPath(String bucket, int dataNodeId) {
+    return new FSPath(FSType.OBJECT_STORAGE, fsPrefix[0] + "/" + dataNodeId).getPath();
+  }
+
+  public static FSPath parseLocalTsFile2OSFile(File lcoalFile, String bucket, int dataNodeId)
       throws IOException {
     String canonicalPath = lcoalFile.getCanonicalPath();
     int startIdx = canonicalPath.lastIndexOf("unsequence");

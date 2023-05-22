@@ -142,7 +142,9 @@ public class CrossSpaceCompactionCandidate {
   private List<TsFileResourceCandidate> filterUnseqResource(List<TsFileResource> unseqResources) {
     List<TsFileResourceCandidate> ret = new ArrayList<>();
     for (TsFileResource resource : unseqResources) {
-      if (resource.getStatus() != TsFileResourceStatus.CLOSED || !resource.getTsFile().exists()) {
+      if (resource.getStatus() != TsFileResourceStatus.CLOSED
+          || resource.isMigrating()
+          || !resource.getTsFile().exists()) {
         break;
       } else if (resource.stillLives(ttlLowerBound)) {
         ret.add(new TsFileResourceCandidate(resource));
@@ -199,6 +201,7 @@ public class CrossSpaceCompactionCandidate {
       // the status of file may be changed after the task is submitted to queue
       this.isValidCandidate =
           tsFileResource.getStatus() == TsFileResourceStatus.CLOSED
+              && !tsFileResource.isMigrating()
               && tsFileResource.getTsFile().exists();
     }
 

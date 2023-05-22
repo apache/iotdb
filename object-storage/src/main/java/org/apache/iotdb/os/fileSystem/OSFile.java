@@ -260,12 +260,12 @@ public class OSFile extends File {
 
   @Override
   public boolean mkdir() {
-    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+    return true;
   }
 
   @Override
   public boolean mkdirs() {
-    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+    return true;
   }
 
   @Override
@@ -326,17 +326,20 @@ public class OSFile extends File {
 
   @Override
   public long getTotalSpace() {
-    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+    // object storage has infinity space
+    return Long.MAX_VALUE;
   }
 
   @Override
   public long getFreeSpace() {
-    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+    // object storage has infinity space
+    return Long.MAX_VALUE;
   }
 
   @Override
   public long getUsableSpace() {
-    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
+    // object storage has infinity space
+    return Long.MAX_VALUE;
   }
 
   @Override

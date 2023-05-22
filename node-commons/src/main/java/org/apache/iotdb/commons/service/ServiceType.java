@@ -75,7 +75,9 @@ public enum ServiceType {
   IOT_CONSENSUS_SERVICE("IoTConsensus Service", "IoTConsensusRPCService"),
   PIPE_PLUGIN_CLASSLOADER_MANAGER_SERVICE(
       "Pipe Plugin Classloader Manager Service", "PipePluginClassLoader"),
-  MLNode_RPC_SERVICE("Rpc Service for MLNode", "MLNodeRPCService");
+  MLNode_RPC_SERVICE("Rpc Service for MLNode", "MLNodeRPCService"),
+  MIGRATION_SERVICE("Migration Manager", "Migration Manager");
+
   private final String name;
   private final String jmxName;
 

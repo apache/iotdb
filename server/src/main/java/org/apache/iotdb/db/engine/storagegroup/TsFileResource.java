@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion.SettleTsFileCallBack;
@@ -130,6 +131,10 @@ public class TsFileResource {
 
   private long ramSize;
 
+  private volatile int tierLevel = 0;
+
+  private volatile boolean isMigrating = false;
+
   private volatile long tsFileSize = -1L;
 
   private TsFileProcessor processor;
@@ -170,6 +175,7 @@ public class TsFileResource {
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.tsFileSize = other.tsFileSize;
+    this.tierLevel = other.tierLevel;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -177,6 +183,7 @@ public class TsFileResource {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
+    this.tierLevel = TierManager.getInstance().getFileTierLevel(file);
   }
 
   /** Used for compaction to create target files. */
@@ -191,6 +198,7 @@ public class TsFileResource {
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.processor = processor;
+    this.tierLevel = TierManager.getInstance().getFileTierLevel(file);
   }
 
   /** unsealed TsFile, for query */
@@ -206,6 +214,7 @@ public class TsFileResource {
     this.pathToChunkMetadataListMap.put(path, chunkMetadataList);
     this.originTsFileResource = originTsFileResource;
     this.version = originTsFileResource.version;
+    this.tierLevel = originTsFileResource.tierLevel;
   }
 
   /** unsealed TsFile, for query */
@@ -221,6 +230,7 @@ public class TsFileResource {
     generatePathToTimeSeriesMetadataMap();
     this.originTsFileResource = originTsFileResource;
     this.version = originTsFileResource.version;
+    this.tierLevel = originTsFileResource.tierLevel;
   }
 
   @TestOnly
@@ -355,9 +365,10 @@ public class TsFileResource {
     return compactionModFile;
   }
 
-  public void resetModFile() {
+  public void resetModFile() throws IOException {
     if (modFile != null) {
       synchronized (this) {
+        modFile.close();
         modFile = null;
       }
     }
@@ -373,6 +384,10 @@ public class TsFileResource {
 
   public String getTsFilePath() {
     return file.getPath();
+  }
+
+  public int getTierLevel() {
+    return tierLevel;
   }
 
   public long getTsFileSize() {
@@ -419,8 +434,7 @@ public class TsFileResource {
   public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
     try (InputStream inputStream =
-        FSFactoryProducer.getFSFactory()
-            .getBufferedInputStream(file.getPath() + TsFileResource.RESOURCE_SUFFIX)) {
+        FSFactoryProducer.getFSFactory().getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
       ReadWriteIOUtils.readByte(inputStream);
       ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
       if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
@@ -429,7 +443,7 @@ public class TsFileResource {
       return (DeviceTimeIndex) timeIndexFromResourceFile;
     } catch (Exception e) {
       throw new IOException(
-          "Can't read file " + file.getPath() + TsFileResource.RESOURCE_SUFFIX + " from disk", e);
+          "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
     } finally {
       readUnlock();
     }
@@ -616,6 +630,14 @@ public class TsFileResource {
 
   public boolean isCompactionCandidate() {
     return this.status == TsFileResourceStatus.COMPACTION_CANDIDATE;
+  }
+
+  public boolean isMigrating() {
+    return isMigrating;
+  }
+
+  public void setIsMigrating(boolean isMigrating) {
+    this.isMigrating = isMigrating;
   }
 
   public void setStatus(TsFileResourceStatus status) {

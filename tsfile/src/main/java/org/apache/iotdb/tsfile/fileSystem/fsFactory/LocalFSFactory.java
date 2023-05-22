@@ -124,6 +124,11 @@ public class LocalFSFactory implements FSFactory {
   }
 
   @Override
+  public void copyFile(File srcFile, File destFile) throws IOException {
+    FileUtils.copyFile(srcFile, destFile);
+  }
+
+  @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     return new File(fileFolder).listFiles(file -> file.getName().endsWith(suffix));
   }

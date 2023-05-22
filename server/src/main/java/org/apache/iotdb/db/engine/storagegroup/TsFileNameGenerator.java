@@ -79,10 +79,7 @@ public class TsFileNameGenerator {
       long timePartitionId)
       throws DiskSpaceInsufficientException {
     TierManager tierManager = TierManager.getInstance();
-    String baseDir =
-        sequence
-            ? tierManager.getNextFolderForSequenceFile(0)
-            : tierManager.getNextFolderForUnSequenceFile(0);
+    String baseDir = tierManager.getNextFolderForTsFile(0, sequence);
     return baseDir
         + File.separator
         + logicalStorageGroup

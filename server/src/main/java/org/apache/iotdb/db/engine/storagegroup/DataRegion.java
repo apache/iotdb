@@ -2676,7 +2676,7 @@ public class DataRegion implements IDataRegionForQuery {
       case LOAD_UNSEQUENCE:
         targetFile =
             fsFactory.getFile(
-                TierManager.getInstance().getNextFolderForUnSequenceFile(0),
+                TierManager.getInstance().getNextFolderForTsFile(0, false),
                 databaseName
                     + File.separatorChar
                     + dataRegionId
@@ -2698,7 +2698,7 @@ public class DataRegion implements IDataRegionForQuery {
       case LOAD_SEQUENCE:
         targetFile =
             fsFactory.getFile(
-                TierManager.getInstance().getNextFolderForSequenceFile(0),
+                TierManager.getInstance().getNextFolderForTsFile(0, true),
                 databaseName
                     + File.separatorChar
                     + dataRegionId

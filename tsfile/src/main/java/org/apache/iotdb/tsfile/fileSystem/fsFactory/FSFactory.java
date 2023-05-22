@@ -105,12 +105,20 @@ public interface FSFactory {
   BufferedOutputStream getBufferedOutputStream(String filePath);
 
   /**
-   * move file
+   * TODO(zhm) move file
    *
    * @param srcFile src file
    * @param destFile dest file
    */
   void moveFile(File srcFile, File destFile);
+
+  /**
+   * TODO(zhm) copy file
+   *
+   * @param srcFile src file
+   * @param destFile dest file
+   */
+  void copyFile(File srcFile, File destFile) throws IOException;
 
   /**
    * list file by suffix

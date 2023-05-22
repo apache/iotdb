@@ -33,11 +33,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** The main class of multiple directories. Used to allocate folders to data files. */
@@ -58,6 +65,8 @@ public class TierManager {
   private final Map<String, Integer> seqDir2TierLevel = new HashMap<>();
   /** unSeq file folder's rawFsPath path -> tier level */
   private final Map<String, Integer> unSeqDir2TierLevel = new HashMap<>();
+  /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
+  private long[] tierDiskTotalSpace;
 
   private TierManager() {
     try {
@@ -78,10 +87,26 @@ public class TierManager {
 
   public void resetFolders() {
     String[][] tierDirs = config.getTierDataDirs();
+    for (int i = 0; i < tierDirs.length; ++i) {
+      for (int j = 0; j < tierDirs[i].length; ++j) {
+        if (FSUtils.isLocal(tierDirs[i][j])) {
+          try {
+            tierDirs[i][j] = new File(tierDirs[i][j]).getCanonicalPath();
+          } catch (IOException e) {
+            logger.error("Fail to get canonical path of data dir {}", tierDirs[i][j], e);
+          }
+        }
+      }
+    }
+
     for (int tierLevel = 0; tierLevel < tierDirs.length; ++tierLevel) {
       List<String> seqDirs =
           Arrays.stream(tierDirs[tierLevel])
-              .map(v -> v + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME)
+              .map(
+                  v ->
+                      FSFactoryProducer.getFSFactory()
+                          .getFile(v, IoTDBConstant.SEQUENCE_FLODER_NAME)
+                          .getPath())
               .collect(Collectors.toList());
       mkDataDirs(seqDirs);
       try {
@@ -95,7 +120,11 @@ public class TierManager {
 
       List<String> unSeqDirs =
           Arrays.stream(tierDirs[tierLevel])
-              .map(v -> v + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+              .map(
+                  v ->
+                      FSFactoryProducer.getFSFactory()
+                          .getFile(v, IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+                          .getPath())
               .collect(Collectors.toList());
       mkDataDirs(unSeqDirs);
       try {
@@ -107,6 +136,8 @@ public class TierManager {
         unSeqDir2TierLevel.put(dir, tierLevel);
       }
     }
+
+    tierDiskTotalSpace = getTierDiskSpace(DiskSpaceType.TOTAL);
   }
 
   private void mkDataDirs(List<String> folders) {
@@ -121,13 +152,11 @@ public class TierManager {
     }
   }
 
-  public String getNextFolderForSequenceFile(int tierLevel) throws DiskSpaceInsufficientException {
-    return seqTiers.get(tierLevel).getNextFolder();
-  }
-
-  public String getNextFolderForUnSequenceFile(int tierLevel)
+  public String getNextFolderForTsFile(int tierLevel, boolean sequence)
       throws DiskSpaceInsufficientException {
-    return unSeqTiers.get(tierLevel).getNextFolder();
+    return sequence
+        ? seqTiers.get(tierLevel).getNextFolder()
+        : unSeqTiers.get(tierLevel).getNextFolder();
   }
 
   public List<String> getAllFilesFolders() {
@@ -160,6 +189,88 @@ public class TierManager {
 
   public int getTiersNum() {
     return seqTiers.size();
+  }
+
+  public int getFileTierLevel(File file) {
+    String filePath;
+    try {
+      filePath = file.getCanonicalPath();
+    } catch (IOException e) {
+      logger.error("Fail to get canonical path of data dir {}", file, e);
+      filePath = file.getPath();
+    }
+
+    for (Map.Entry<String, Integer> entry : seqDir2TierLevel.entrySet()) {
+      if (filePath.startsWith(entry.getKey())) {
+        return entry.getValue();
+      }
+    }
+    for (Map.Entry<String, Integer> entry : unSeqDir2TierLevel.entrySet()) {
+      if (filePath.startsWith(entry.getKey())) {
+        return entry.getValue();
+      }
+    }
+    throw new RuntimeException(String.format("%s is not a legal TsFile path", file));
+  }
+
+  public long[] getTierDiskTotalSpace() {
+    return Arrays.copyOf(tierDiskTotalSpace, tierDiskTotalSpace.length);
+  }
+
+  public long[] getTierDiskUsableSpace() {
+    return getTierDiskSpace(DiskSpaceType.USABLE);
+  }
+
+  private long[] getTierDiskSpace(DiskSpaceType type) {
+    String[][] tierDirs = config.getTierDataDirs();
+    long[] tierDiskSpace = new long[tierDirs.length];
+    for (int tierLevel = 0; tierLevel < tierDirs.length; ++tierLevel) {
+      Set<FileStore> tierFileStores = new HashSet<>();
+      for (String dir : tierDirs[tierLevel]) {
+        if (!FSUtils.isLocal(dir)) {
+          tierDiskSpace[tierLevel] = Long.MAX_VALUE;
+          break;
+        }
+        // get the FileStore of each local dir
+        Path path = Paths.get(dir);
+        FileStore fileStore = null;
+        try {
+          fileStore = Files.getFileStore(path);
+        } catch (IOException e) {
+          // check parent if path is not exists
+          path = path.getParent();
+          try {
+            fileStore = Files.getFileStore(path);
+          } catch (IOException innerException) {
+            logger.error("Failed to get storage path of {}, because", dir, innerException);
+          }
+        }
+        // update space info
+        if (fileStore != null && !tierFileStores.contains(fileStore)) {
+          tierFileStores.add(fileStore);
+          try {
+            switch (type) {
+              case TOTAL:
+                tierDiskSpace[tierLevel] += fileStore.getTotalSpace();
+                break;
+              case USABLE:
+                tierDiskSpace[tierLevel] += fileStore.getUsableSpace();
+                break;
+              default:
+                break;
+            }
+          } catch (IOException e) {
+            logger.error("Failed to statistic the size of {}, because", fileStore, e);
+          }
+        }
+      }
+    }
+    return tierDiskSpace;
+  }
+
+  private enum DiskSpaceType {
+    TOTAL,
+    USABLE,
   }
 
   public static TierManager getInstance() {

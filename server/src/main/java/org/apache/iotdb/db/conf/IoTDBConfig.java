@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -1105,6 +1106,12 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
+  private String objectStorageName = "aws_s3";
+  private String objectStorageBucket = "iotdb";
+  private String objectStorageEndpoiont = "yourEndpoint";
+  private String objectStorageAccessKey = "yourAccessKey";
+  private String objectStorageAccessSecret = "yourAccessSecret";
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -1211,17 +1218,18 @@ public class IoTDBConfig {
   private void formulateDataDirs(String[][] tierDataDirs) {
     for (int i = 0; i < tierDataDirs.length; i++) {
       for (int j = 0; j < tierDataDirs[i].length; j++) {
-        switch (FSUtils.getFSType(tierDataDirs[i][j])) {
-          case HDFS:
-            tierDataDirs[i][j] = getHdfsDir() + File.separatorChar + tierDataDirs[i][j];
-            break;
-          case OBJECT_STORAGE:
-            // TODO(zhm) 对象存储路径配置
-            break;
-          case LOCAL:
-          default:
-            tierDataDirs[i][j] = addDataHomeDir(tierDataDirs[i][j]);
-            break;
+        if (tierDataDirs[i][j].equals("object_storage")) {
+          tierDataDirs[i][j] = FSUtils.getOSDefaultPath(objectStorageBucket, dataNodeId);
+        } else {
+          switch (FSUtils.getFSType(tierDataDirs[i][j])) {
+            case HDFS:
+              tierDataDirs[i][j] = getHdfsDir() + File.separatorChar + tierDataDirs[i][j];
+              break;
+            case LOCAL:
+            default:
+              tierDataDirs[i][j] = addDataHomeDir(tierDataDirs[i][j]);
+              break;
+          }
         }
       }
     }
@@ -1230,7 +1238,7 @@ public class IoTDBConfig {
   void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
     // format data directories
     formulateDataDirs(tierDataDirs);
-    // make sure old data directories not removed, TODO(zhm) 层级关系是否可以变化，当前实现仅支持在最后添加层级
+    // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
       HashSet<String> newDirs = new HashSet<>(Arrays.asList(tierDataDirs[i]));
       for (String oldDir : this.tierDataDirs[i]) {
@@ -1243,7 +1251,7 @@ public class IoTDBConfig {
       }
     }
     this.tierDataDirs = tierDataDirs;
-    //    TierManager.getInstance().updateFileFolders();
+    TierManager.getInstance().resetFolders();
   }
 
   // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
@@ -1313,6 +1321,7 @@ public class IoTDBConfig {
   }
 
   public void setTierDataDirs(String[][] tierDataDirs) {
+    formulateDataDirs(tierDataDirs);
     this.tierDataDirs = tierDataDirs;
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
@@ -3809,5 +3818,25 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public String getObjectStorageName() {
+    return objectStorageName;
+  }
+
+  public String getObjectStorageBucket() {
+    return objectStorageBucket;
+  }
+
+  public String getObjectStorageEndpoiont() {
+    return objectStorageEndpoiont;
+  }
+
+  public String getObjectStorageAccessKey() {
+    return objectStorageAccessKey;
+  }
+
+  public String getObjectStorageAccessSecret() {
+    return objectStorageAccessSecret;
   }
 }
