@@ -23,7 +23,6 @@ import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -51,28 +50,21 @@ public class PipeProcessorSubtask extends PipeSubtask {
   }
 
   @Override
-  protected synchronized void executeForAWhile() throws Exception {
+  protected synchronized boolean executeOnce() throws Exception {
     final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
     // record the last event for retry when exception occurs
     lastEvent = event;
     if (event == null) {
-      return;
+      return false;
     }
 
     try {
-      switch (event.getType()) {
-        case TABLET_INSERTION:
-          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-          break;
-        case TSFILE_INSERTION:
-          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-          break;
-        case DELETION:
-          pipeProcessor.process((DeletionEvent) event, outputEventCollector);
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              "Unsupported event type: " + event.getClass().getName());
+      if (event instanceof TabletInsertionEvent) {
+        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+      } else if (event instanceof TsFileInsertionEvent) {
+        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+      } else {
+        pipeProcessor.process(event, outputEventCollector);
       }
 
       releaseLastEvent();
@@ -82,6 +74,8 @@ public class PipeProcessorSubtask extends PipeSubtask {
           "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
     }
+
+    return true;
   }
 
   @Override
