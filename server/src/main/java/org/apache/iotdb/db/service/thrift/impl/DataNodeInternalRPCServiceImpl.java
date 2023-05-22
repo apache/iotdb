@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -422,6 +423,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     DataNodeSchemaCache.getInstance().takeWriteLock();
     try {
       DataNodeSchemaCache.getInstance().invalidateAll();
+      ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       DataNodeSchemaCache.getInstance().releaseWriteLock();
@@ -801,8 +803,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus pushPipeMeta(TPushPipeMetaReq req) throws TException {
-    return null;
+  public TSStatus pushPipeMeta(TPushPipeMetaReq req) {
+    final List<PipeMeta> pipeMetas = new ArrayList<>();
+    for (ByteBuffer byteBuffer : req.getPipeMetas()) {
+      pipeMetas.add(PipeMeta.deserialize(byteBuffer));
+    }
+    PipeAgent.task().handlePipeMetaChanges(pipeMetas);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private TSStatus executeInternalSchemaTask(
@@ -1005,14 +1012,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     if (req.getSchemaRegionIds() != null) {
       spaceQuotaManager.updateSpaceQuotaUsage(req.getSpaceQuotaUsage());
-      resp.setDeviceNum(schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
-      resp.setTimeSeriesNum(
+      resp.setRegionDeviceNumMap(
+          schemaEngine.countDeviceNumBySchemaRegion(req.getSchemaRegionIds()));
+      resp.setRegionTimeSeriesNumMap(
           schemaEngine.countTimeSeriesNumBySchemaRegion(req.getSchemaRegionIds()));
     }
     if (req.getDataRegionIds() != null) {
       spaceQuotaManager.setDataRegionIds(req.getDataRegionIds());
       resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
+    // Update schema quota if necessary
+    SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
     return resp;
   }
 
@@ -1170,7 +1180,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.parse(status));
+      final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+      commonConfig.setNodeStatus(NodeStatus.parse(status));
+      if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
+        PipeAgent.runtime().stop();
+      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

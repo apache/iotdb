@@ -18,24 +18,30 @@
  */
 package org.apache.iotdb.util;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParametersFactory;
 
 import net.jcip.annotations.NotThreadSafe;
 import org.apache.commons.lang3.StringUtils;
+import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * This class define multiple modes for schema engine. All IT class extends AbstractSchemaIT will be
  * run in both Memory and Schema_File modes. In Schema_File mode, there are three kinds of test
  * environment: full memory, partial memory and non memory.
  *
- * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link AbstractSchemaIT#setUp}
- * before test env initialization and call {@link AbstractSchemaIT#tearDown} after test env
- * cleaning.
+ * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link
+ * AbstractSchemaIT#setUpEnvironment} before test env initialization and call {@link
+ * AbstractSchemaIT#tearDownEnvironment} after test env cleaning.
  */
 @RunWith(Parameterized.class)
 @NotThreadSafe
@@ -43,6 +49,11 @@ import java.util.Arrays;
 public abstract class AbstractSchemaIT {
 
   protected SchemaTestMode schemaTestMode;
+
+  protected static final List<SchemaTestMode> schemaTestModes =
+      Arrays.asList(SchemaTestMode.Memory, SchemaTestMode.SchemaFile);
+
+  private static int mode = 0;
 
   @Parameterized.Parameters(name = "SchemaEngineMode={0}")
   public static Iterable<SchemaTestMode> data() {
@@ -53,7 +64,13 @@ public abstract class AbstractSchemaIT {
     this.schemaTestMode = schemaTestMode;
   }
 
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void beforeClass() {
+    mode = 0;
+  }
+
+  protected static SchemaTestMode setUpEnvironment() throws Exception {
+    SchemaTestMode schemaTestMode = schemaTestModes.get(mode++);
     switch (schemaTestMode) {
       case Memory:
         EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Memory");
@@ -63,9 +80,28 @@ public abstract class AbstractSchemaIT {
         allocateMemoryForSchemaRegion(4000);
         break;
     }
+    return schemaTestMode;
   }
 
-  public void tearDown() throws Exception {}
+  protected static void tearDownEnvironment() throws Exception {}
+
+  protected static void clearSchema() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("DELETE DATABASE root.**");
+      } catch (Exception e) {
+        // If database is null, it will throw exception. Do nothing.
+      }
+      // delete all template
+      try (ResultSet resultSet = statement.executeQuery("SHOW SCHEMA TEMPLATES")) {
+        while (resultSet.next()) {
+          statement.execute(
+              "DROP SCHEMA TEMPLATE " + resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
+        }
+      }
+    }
+  }
 
   /**
    * Set memory allocated to the SchemaRegion. There is no guarantee that the memory allocated to
@@ -74,7 +110,7 @@ public abstract class AbstractSchemaIT {
    *
    * @param allocateMemoryForSchemaRegion bytes
    */
-  protected void allocateMemoryForSchemaRegion(int allocateMemoryForSchemaRegion) {
+  protected static void allocateMemoryForSchemaRegion(int allocateMemoryForSchemaRegion) {
     int schemaAllMemory = 25742540;
     int sumProportion = schemaAllMemory / allocateMemoryForSchemaRegion;
     int[] proportion =

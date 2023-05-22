@@ -69,6 +69,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.deleteAfterLoad = deleteAfterLoad;
   }
 
+  public boolean isTsFileEmpty() {
+    return resource.getDevices().isEmpty();
+  }
+
   public boolean needDecodeTsFile(
       Function<List<Pair<String, TTimePartitionSlot>>, List<TRegionReplicaSet>> partitionFetcher)
       throws IOException {

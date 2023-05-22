@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -44,18 +45,26 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
     super(schemaTestMode);
   }
 
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
+  }
+
   @Before
   public void setUp() throws Exception {
-    super.setUp();
-    EnvFactory.getEnv().initClusterEnvironment();
-
     prepareTemplate();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    clearSchema();
   }
 
   private void prepareTemplate() throws SQLException {
@@ -78,11 +87,8 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg4");
 
-      String insertSql = "insert into root.sg%d.d1(time, s1, s2) values(%d, %d, %d)";
-      for (int i = 1; i <= 4; i++) {
-        for (int j = 1; j <= 4; j++) {
-          statement.execute(String.format(insertSql, j, i, i, i));
-        }
+      for (int j = 1; j <= 4; j++) {
+        statement.execute(String.format("create timeseries of schema template on root.sg%d.d1", j));
       }
     }
   }
@@ -265,6 +271,28 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Assert.assertEquals(1, resultSetMetaData.getColumnCount());
         Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testPathNotSetAndUsingTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database root.db.factory0");
+      statement.execute("create database root.db.factory1");
+      statement.execute("create database root.db.factory2");
+
+      statement.execute("set schema template t1 to root.db.factory0");
+      statement.execute("set schema template t1 to root.db.factory1");
+
+      try {
+        statement.execute("deactivate schema template from root.db.**");
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Target schema Template is not activated on any path matched by given path pattern"));
       }
     }
   }

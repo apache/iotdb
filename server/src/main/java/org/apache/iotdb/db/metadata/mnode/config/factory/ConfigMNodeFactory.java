@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode.config.factory;
 
+import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -77,5 +78,11 @@ public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   @Override
   public IConfigMNode createInternalMNode(IConfigMNode parent, String name) {
     return new ConfigBasicInternalMNode(parent, name);
+  }
+
+  @Override
+  public IMeasurementMNode<IConfigMNode> createLogicalViewMNode(
+      IDeviceMNode<IConfigMNode> parent, String name, IMeasurementInfo measurementInfo) {
+    throw new UnsupportedOperationException();
   }
 }

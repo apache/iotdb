@@ -128,6 +128,10 @@ public class RegionRouteCache {
     this.regionPriority.set(regionPriority);
   }
 
+  public boolean isRegionGroupUnready() {
+    return unReadyLeaderId == leaderId.get() || unReadyRegionPriority.equals(regionPriority.get());
+  }
+
   public int getLeaderId() {
     return leaderId.get();
   }
