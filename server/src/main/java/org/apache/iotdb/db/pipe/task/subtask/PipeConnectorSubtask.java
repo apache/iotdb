@@ -68,16 +68,12 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
 
     try {
-      switch (event.getType()) {
-        case TABLET_INSERTION:
-          outputPipeConnector.transfer((TabletInsertionEvent) event);
-          break;
-        case TSFILE_INSERTION:
-          outputPipeConnector.transfer((TsFileInsertionEvent) event);
-          break;
-        default:
-          outputPipeConnector.transfer(event);
-          break;
+      if (event instanceof TabletInsertionEvent) {
+        outputPipeConnector.transfer((TabletInsertionEvent) event);
+      } else if (event instanceof TsFileInsertionEvent) {
+        outputPipeConnector.transfer((TsFileInsertionEvent) event);
+      } else {
+        outputPipeConnector.transfer(event);
       }
 
       releaseLastEvent();
