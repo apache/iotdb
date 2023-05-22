@@ -124,6 +124,22 @@ public class OSFileChannelTest {
   }
 
   @Test
+  public void testByteBufferBiggerThanFileSize() throws Exception {
+    int fileSize = 550;
+    int byteBufferSize = 600;
+    prepareOSFile(fileSize);
+    try (OSFileChannel channel = new OSFileChannel(testFile, cache)) {
+      ByteBuffer dst = ByteBuffer.allocate(byteBufferSize);
+      assertEquals(fileSize, channel.read(dst));
+      assertEquals(byteBufferSize, dst.limit());
+      dst.flip();
+      for (int i = 0; i < fileSize; ++i) {
+        assertEquals((byte) i, dst.get());
+      }
+    }
+  }
+
+  @Test
   public void testReadByPosition() throws Exception {
     int size = 550;
     prepareOSFile(size);
