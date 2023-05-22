@@ -23,9 +23,6 @@ import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -48,21 +45,7 @@ public class PipeEventCollector implements EventCollector {
   }
 
   @Override
-  public void collectTabletInsertionEvent(TabletInsertionEvent event) {
-    collect(event);
-  }
-
-  @Override
-  public void collectTsFileInsertionEvent(TsFileInsertionEvent event) {
-    collect(event);
-  }
-
-  @Override
-  public void collectDeletionEvent(DeletionEvent event) {
-    collect(event);
-  }
-
-  private synchronized void collect(Event event) {
+  public synchronized void collect(Event event) {
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
     }

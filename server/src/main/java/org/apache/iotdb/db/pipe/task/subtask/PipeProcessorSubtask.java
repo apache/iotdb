@@ -23,7 +23,6 @@ import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -67,12 +66,9 @@ public class PipeProcessorSubtask extends PipeSubtask {
         case TSFILE_INSERTION:
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           break;
-        case DELETION:
-          pipeProcessor.process((DeletionEvent) event, outputEventCollector);
-          break;
         default:
-          throw new UnsupportedOperationException(
-              "Unsupported event type: " + event.getClass().getName());
+          pipeProcessor.process(event, outputEventCollector);
+          break;
       }
 
       releaseLastEvent();
