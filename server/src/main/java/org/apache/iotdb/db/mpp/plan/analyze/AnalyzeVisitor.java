@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -341,6 +342,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         analyzeInto(analysis, queryStatement, outputExpressions);
       }
+      analysis.setOutputExpressions(outputExpressions);
 
       analyzeGroupByTime(analysis, queryStatement);
 
@@ -525,7 +527,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           Pair<Expression, Boolean> replaceResult =
               replaceLogicalViewVisitor.replaceViewInThisExpression(expression);
           if (replaceResult.right) {
-            // some part of the expression is replaced by view expression. Record is name as alias.
+            // some part of the expression is replaced by view expression. Record its name as alias.
             oldExpressionAlias = expression.getExpressionString();
 
             List<Expression> expressionWithoutWildcard =
@@ -3123,6 +3125,51 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setWhereExpression(whereExpression);
   }
 
+  /**
+   * Compute how many paths exist, get the schema tree and the number of existed paths.
+   *
+   * @param pathList the path you want to check
+   * @param context the context of your analyzer
+   * @return a pair of ISchemaTree, and the number of exist paths.
+   */
+  private Pair<ISchemaTree, Integer> fetchSchemaOfPathsAndCount(List<PartialPath> pathList, MPPQueryContext context){
+    PathPatternTree pathPatternTree = new PathPatternTree();
+    for(PartialPath path : pathList){
+      pathPatternTree.appendPathPattern(path);
+    }
+    ISchemaTree schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
+
+    // search each path, make sure they all exist.
+    int numOfExistPaths = 0;
+    for(PartialPath path : pathList){
+      Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path);
+      numOfExistPaths += pathPair.left.size() > 0 ? 1 : 0;
+    }
+    return new Pair<>(schemaTree, numOfExistPaths);
+  }
+
+  /**
+   * @param pathList the paths you want to check
+   * @param schemaTree the given schema tree
+   * @return if all paths you give can be found in schema tree, return a pair of view paths and null;
+   * else return view paths and the non-exist path.
+   */
+  private Pair<List<PartialPath>, PartialPath> findAllViewsInPaths(List<PartialPath> pathList, ISchemaTree schemaTree){
+    List<PartialPath> result = new ArrayList<>();
+    for(PartialPath path : pathList){
+      Pair<List<MeasurementPath>, Integer> measurementPathList = schemaTree.searchMeasurementPaths(path);
+      if(measurementPathList.left.size() <= 0){
+        return new Pair<>(result, path);
+      }
+      for(MeasurementPath measurementPath: measurementPathList.left){
+        if(measurementPath.getMeasurementSchema().isLogicalView()){
+          result.add(measurementPath);
+        }
+      }
+    }
+    return new Pair<>(result, null);
+  }
+
   // create Logical View
   @Override
   public Analysis visitCreateLogicalView(
@@ -3137,24 +3184,71 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new RuntimeException(checkResult.right);
     }
 
-    Analysis queryAnalysis = null;
+    boolean hasViewInSource = false;
+    boolean sourceInSelectNotExist = false;
     if (createLogicalViewStatement.getQueryStatement() != null) {
-      // analysis query statement
-      //      AnalyzeVisitor queryVisitor = new AnalyzeVisitor(this.partitionFetcher,
-      // this.schemaFetcher);
-      //      queryAnalysis =
-      // queryVisitor.visitQuery(createLogicalViewStatement.getQueryStatement(), null);
-      this.visitQuery(createLogicalViewStatement.getQueryStatement(), null);
+      Analysis queryAnalysis = this.visitQuery(createLogicalViewStatement.getQueryStatement(), context);
       // get all expression from resultColumns
-      List<ResultColumn> resultColumns =
-          createLogicalViewStatement.getQueryStatement().getSelectComponent().getResultColumns();
+      List<Pair<Expression, String>> outputExpressions = queryAnalysis.getOutputExpressions();
+      if(queryAnalysis.isFailed()){
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailMessage(queryAnalysis.getFailMessage());
+        return analysis;
+      }
+      if(outputExpressions == null){
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailMessage("The result columns in select is empty. " +
+          "Please check the query you used to create view");
+        return analysis;
+      }
       List<Expression> expressionList = new ArrayList<>();
-      for (ResultColumn resultCol : resultColumns) {
-        expressionList.add(resultCol.getExpression());
+      for (Pair<Expression, String> thisPair : outputExpressions) {
+        expressionList.add(thisPair.left);
       }
       createLogicalViewStatement.setSourceExpressions(expressionList);
+      hasViewInSource = queryAnalysis.hasViewsInQuery();
     }
     analysis.setStatement(createLogicalViewStatement);
+
+    // make sure there is no view in source
+    List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
+    List<PartialPath> pathsNeedCheck = new ArrayList<>();
+    for(Expression expression : sourceExpressionList){
+      if(expression instanceof TimeSeriesOperand){
+        pathsNeedCheck.add(((TimeSeriesOperand) expression).getPath());
+      }
+    }
+    Pair<ISchemaTree, Integer> schemaOfNeedToCheck = fetchSchemaOfPathsAndCount(pathsNeedCheck, context);
+    if(schemaOfNeedToCheck.right != pathsNeedCheck.size()){
+      //some source paths is not exist
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailMessage(
+        "Some paths do not exist so you can not create a logical view based on them."
+      );
+      return analysis;
+    }
+    Pair<List<PartialPath>, PartialPath> viewInSourceCheckResult
+      = findAllViewsInPaths(pathsNeedCheck, schemaOfNeedToCheck.left);
+    if(viewInSourceCheckResult.right != null){
+      //some source paths is not exist
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailMessage(
+        "Path "+viewInSourceCheckResult.right.toString()+
+          " does not exist so you can not create a logical view based on them."
+      );
+      return analysis;
+    }
+    if(viewInSourceCheckResult.left.size() > 0){
+      hasViewInSource = true;
+    }
+    if(hasViewInSource){
+      //some source paths is logical view
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailMessage(
+        "You can not create a logical view based on existing views."
+      );
+      return analysis;
+    }
 
     // set schema partition info, this info will be used to split logical plan node.
     PathPatternTree patternTree = new PathPatternTree();

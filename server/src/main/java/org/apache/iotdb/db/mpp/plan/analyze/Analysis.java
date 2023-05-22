@@ -666,4 +666,27 @@ public class Analysis {
   public void setDeviceToSortItems(Map<String, List<SortItem>> deviceToSortItems) {
     this.deviceToSortItems = deviceToSortItems;
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Logical View Analysis
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  private boolean hasViewsInQuery = false;
+
+  public void setHasViewsInQuery(boolean hasViewsInQuery) {
+    this.hasViewsInQuery = hasViewsInQuery;
+  }
+
+  public boolean hasViewsInQuery(){
+    return this.hasViewsInQuery;
+  }
+
+  private List<Pair<Expression, String>> outputExpressions = null;
+
+  public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions){
+    this.outputExpressions = outputExpressions;
+  }
+
+  public List<Pair<Expression, String>> getOutputExpressions(){
+    return this.outputExpressions;
+  }
 }

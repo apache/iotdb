@@ -51,7 +51,7 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
 
   private GetSourcePathsVisitor getSourcePathsVisitor = null;
 
-  private boolean hadProcessedAggregationFunction = false;
+  private boolean hasProcessedAggregationFunction = false;
 
   /** The paths that are new added, which should be re-fetched. */
   private List<PartialPath> newAddedPathList = null;
@@ -107,11 +107,11 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
   }
 
   public boolean getHadProcessedAggregationFunction() {
-    return this.hadProcessedAggregationFunction;
+    return this.hasProcessedAggregationFunction;
   }
 
   public void resetHadProcessedAggregationFunction() {
-    this.hadProcessedAggregationFunction = false;
+    this.hasProcessedAggregationFunction = false;
   }
 
   @Override
@@ -162,7 +162,7 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
     }
     functionExpression.setExpressions(replacedChildren);
     if (functionExpression.isBuiltInAggregationFunctionExpression()) {
-      this.hadProcessedAggregationFunction = true;
+      this.hasProcessedAggregationFunction = true;
     }
     return functionExpression;
   }
