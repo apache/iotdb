@@ -56,11 +56,11 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
     LOGGER.info("StartPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    return env.getConfigManager()
+    env.getConfigManager()
         .getPipeManager()
         .getPipeTaskCoordinator()
         .getPipeTaskInfo()

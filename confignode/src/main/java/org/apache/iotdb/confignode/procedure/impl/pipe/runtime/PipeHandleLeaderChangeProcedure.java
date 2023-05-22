@@ -65,11 +65,10 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromValidateTask");
 
     // nothing needs to be checked
-    return true;
   }
 
   @Override

@@ -25,6 +25,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileGenerator;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -132,6 +133,8 @@ public class IOTDBLoadTsFileIT {
 
       statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
       statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
+    } catch (IoTDBSQLException e) {
+      LOGGER.info(String.format("delete storage group message : %s", e.getMessage()));
     }
   }
 
@@ -561,6 +564,21 @@ public class IOTDBLoadTsFileIT {
         } else {
           Assert.fail("This ResultSet is empty.");
         }
+      }
+    }
+  }
+
+  @Test
+  public void testLoadWithEmptyTsFile() throws Exception {
+    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {}
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
+
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+        Assert.assertFalse(resultSet.next());
       }
     }
   }

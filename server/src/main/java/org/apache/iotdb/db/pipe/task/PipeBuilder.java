@@ -47,14 +47,14 @@ public class PipeBuilder {
     final Map<TConsensusGroupId, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
 
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
-    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdPipeTaskMeta :
+    for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupIdToTaskMetaMap().entrySet()) {
       consensusGroupIdToPipeTaskMap.put(
-          consensusGroupIdPipeTaskMeta.getKey(),
+          consensusGroupIdToPipeTaskMeta.getKey(),
           new PipeTaskBuilder(
                   pipeName,
-                  Integer.toString(consensusGroupIdPipeTaskMeta.getValue().getRegionLeader()),
-                  // TODO: consensusGroupIdPipeTaskMeta.getValue().getProgressIndex() is not used
+                  Integer.toString(consensusGroupIdToPipeTaskMeta.getKey().getId()),
+                  // TODO: consensusGroupIdToPipeTaskMeta.getValue().getProgressIndex() is not used
                   collectorParameters,
                   processorParameters,
                   connectorParameters)

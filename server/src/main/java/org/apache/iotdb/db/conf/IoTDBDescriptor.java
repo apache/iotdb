@@ -370,7 +370,8 @@ public class IoTDBDescriptor {
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
-    conf.setDataDirs(properties.getProperty("dn_data_dirs", conf.getDataDirs()[0]).split(","));
+    conf.setDataDirs(
+        properties.getProperty("dn_data_dirs", String.join(",", conf.getDataDirs())).split(","));
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 

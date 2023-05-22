@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -107,11 +106,26 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public boolean hasWildcard() {
     for (String node : nodes) {
-      if (ONE_LEVEL_PATH_WILDCARD.equals(node) || MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
+      // *, ** , d*, *d*
+      if (PathPatternUtil.hasWildcard(node)) {
         return true;
       }
     }
     return false;
+  }
+
+  // e.g. root.db.d.s, root.db.d.*, root.db.d.s*, not include patterns like root.db.d.**
+  public boolean hasExplicitDevice() {
+    if (nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      return false;
+    }
+    for (int i = 0; i < nodes.length - 1; i++) {
+      // *, ** , d*, *d*
+      if (PathPatternUtil.hasWildcard(nodes[i])) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -325,8 +339,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     if (patternNode.equals(MULTI_LEVEL_PATH_WILDCARD)) {
       isMatch = matchPath(pathNodes, pathIndex + 1, patternIndex + 1, true, pathIsPrefix);
     } else {
-      if (patternNode.contains(ONE_LEVEL_PATH_WILDCARD)) {
-        if (Pattern.matches(patternNode.replace("*", ".*"), pathNode)) {
+      if (PathPatternUtil.hasWildcard(patternNode)) {
+        if (PathPatternUtil.isNodeMatch(patternNode, pathNode)) {
           isMatch = matchPath(pathNodes, pathIndex + 1, patternIndex + 1, false, pathIsPrefix);
         }
       } else {
@@ -362,6 +376,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       }
       if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
         continue;
+      }
+      if (PathPatternUtil.hasWildcard(nodes[i])) {
+        if (PathPatternUtil.isNodeMatch(nodes[i], rNodes[i])) {
+          continue;
+        } else {
+          return false;
+        }
       }
       if (!nodes[i].equals(rNodes[i])) {
         return false;
@@ -417,7 +438,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
         } else {
           // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
           if (!rNodes[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
-              && (lNodes[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
+              && ((PathPatternUtil.hasWildcard(lNodes[i - 1])
+                      && PathPatternUtil.isNodeMatch(lNodes[i - 1], rNodes[j - 1]))
                   || lNodes[i - 1].equals(rNodes[j - 1]))) {
             // if nodes1[i-1] includes rNodes[j-1], dp[i][j] = dp[i-1][j-1]
             newDp[j] |= dp[j - 1];
@@ -447,7 +469,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
         return checkOverlapWithMultiLevelWildcard(nodes, rNodes);
       }
       // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
-      if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD) || rNodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
+      if ((PathPatternUtil.hasWildcard(nodes[i])
+              && PathPatternUtil.isNodeMatch(nodes[i], rNodes[i]))
+          || (PathPatternUtil.hasWildcard(rNodes[i])
+              && PathPatternUtil.isNodeMatch(rNodes[i], nodes[i]))) {
         continue;
       }
       if (!nodes[i].equals(rNodes[i])) {
@@ -482,8 +507,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
         return true;
       } else if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
         rNodesIndex++;
-      } else if (nodes[i].contains(ONE_LEVEL_PATH_WILDCARD)) {
-        if (!Pattern.compile(nodes[i].replace("*", ".*")).matcher(rNodes[rNodesIndex]).matches()) {
+      } else if (PathPatternUtil.hasWildcard(nodes[i])) {
+        if (!PathPatternUtil.isNodeMatch(nodes[i], rNodes[rNodesIndex])) {
           return false;
         } else {
           rNodesIndex++;
@@ -530,8 +555,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
           }
         } else {
           // if without MULTI_LEVEL_PATH_WILDCARD, scan and check
-          if (nodes1[i - 1].equals(ONE_LEVEL_PATH_WILDCARD)
-              || nodes2[j - 1].equals(ONE_LEVEL_PATH_WILDCARD)
+          if ((PathPatternUtil.hasWildcard(nodes1[i - 1])
+                  && PathPatternUtil.isNodeMatch(nodes1[i - 1], nodes2[j - 1]))
+              || (PathPatternUtil.hasWildcard(nodes2[j - 1])
+                  && PathPatternUtil.isNodeMatch(nodes2[j - 1], nodes1[i - 1]))
               || nodes1[i - 1].equals(nodes2[j - 1])) {
             // if nodes1[i-1] and nodes[2] is matched, dp[i][j] = dp[i-1][j-1]
             dp[i][j] |= dp[i - 1][j - 1];

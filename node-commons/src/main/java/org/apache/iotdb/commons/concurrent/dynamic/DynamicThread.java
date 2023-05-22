@@ -36,9 +36,9 @@ public abstract class DynamicThread implements Runnable {
   private long idleTimeSum;
   private long runningTimeSum;
   // TODO: add configuration for the values
-  private double maximumIdleRatio = 0.8;
-  private double minimumIdleRatio = 0.2;
-  private long minimumRunningTime = 10_000_000_000L;
+  private double maximumIdleRatio = 0.5;
+  private double minimumIdleRatio = 0.1;
+  private long minimumRunningTimeNS = 10_000_000_000L;
 
   public DynamicThread(DynamicThreadGroup threadGroup) {
     this.threadGroup = threadGroup;
@@ -79,7 +79,7 @@ public abstract class DynamicThread implements Runnable {
     }
 
     double idleRatio = idleRatio();
-    if (idleRatio < minimumIdleRatio && runningTimeSum > minimumRunningTime) {
+    if (idleRatio < minimumIdleRatio && runningTimeSum > minimumRunningTimeNS) {
       // Thread too busy, try adding a new thread
       if (threadGroup.addThread()) {
         logger.info("Thread too busy (idle ratio={}), try adding a new thread", idleRatio);
@@ -87,7 +87,7 @@ public abstract class DynamicThread implements Runnable {
         idleTimeSum = 0;
       }
       return false;
-    } else if (idleRatio > maximumIdleRatio && runningTimeSum > minimumRunningTime) {
+    } else if (idleRatio > maximumIdleRatio && runningTimeSum > minimumRunningTimeNS) {
       // Thread too idle, exit if there is still enough threads
       int afterCnt = threadGroup.getThreadCnt().decrementAndGet();
       if (afterCnt >= threadGroup.getMinThreadCnt()) {
