@@ -39,6 +39,8 @@ import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,6 +49,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 class PipeLauncher {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeLauncher.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -147,7 +151,7 @@ class PipeLauncher {
     }
   }
 
-  public static synchronized void launchPipeTaskAgent() throws StartupException {
+  public static synchronized void launchPipeTaskAgent() {
     try (final ConfigNodeClient configNodeClient =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetAllPipeInfoResp getAllPipeInfoResp = configNodeClient.getAllPipeInfo();
@@ -161,10 +165,11 @@ class PipeLauncher {
               getAllPipeInfoResp.getAllPipeInfo().stream()
                   .map(PipeMeta::deserialize)
                   .collect(Collectors.toList()));
-    } catch (StartupException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new StartupException(e);
+    } catch (Throwable throwable) {
+      LOGGER.info(
+          "Failed to get pipe task meta from config node. Ignore the exception, "
+              + "because config node may not be ready yet, and meta will be pushed by config node later.",
+          throwable);
     }
   }
 }
