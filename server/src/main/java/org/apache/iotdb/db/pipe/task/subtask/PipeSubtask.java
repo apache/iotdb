@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -47,6 +48,8 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   private final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
 
+  private PipeSubtaskScheduler subtaskScheduler;
+
   protected static final int MAX_RETRY_TIMES = 5;
   private final AtomicInteger retryCount = new AtomicInteger(0);
   protected Throwable lastFailedCause;
@@ -60,14 +63,25 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   public void bindExecutors(
       ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-      ExecutorService subtaskCallbackListeningExecutor) {
+      ExecutorService subtaskCallbackListeningExecutor,
+      PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
+    this.subtaskScheduler = subtaskScheduler;
   }
 
   @Override
   public Void call() throws Exception {
-    executeOnce();
+    // if the scheduler allows to schedule, then try to consume an event
+    while (subtaskScheduler.schedule()) {
+      // if the event is consumed successfully, then continue to consume the next event
+      // otherwise, stop consuming
+      if (!executeOnce()) {
+        break;
+      }
+    }
+    // reset the scheduler to make sure that the scheduler can schedule again
+    subtaskScheduler.reset();
 
     // wait for the callable to be decorated by Futures.addCallback in the executorService
     // to make sure that the callback can be submitted again on success or failure.
@@ -131,8 +145,12 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     shouldStopSubmittingSelf.set(false);
   }
 
-  public void disallowSubmittingSelf() {
-    shouldStopSubmittingSelf.set(true);
+  /**
+   * @return true if the shouldStopSubmittingSelf state is changed from false to true, false
+   *     otherwise
+   */
+  public boolean disallowSubmittingSelf() {
+    return !shouldStopSubmittingSelf.getAndSet(true);
   }
 
   public boolean isSubmittingSelf() {
