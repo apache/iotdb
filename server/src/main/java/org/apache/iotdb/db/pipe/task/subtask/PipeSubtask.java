@@ -67,7 +67,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   @Override
   public Void call() throws Exception {
-    executeForAWhile();
+    executeOnce();
 
     // wait for the callable to be decorated by Futures.addCallback in the executorService
     // to make sure that the callback can be submitted again on success or failure.
@@ -76,7 +76,13 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     return null;
   }
 
-  protected abstract void executeForAWhile() throws Exception;
+  /**
+   * try to consume an event by the pipe plugin.
+   *
+   * @return true if the event is consumed successfully, false if no more event can be consumed
+   * @throws Exception if any error occurs when consuming the event
+   */
+  protected abstract boolean executeOnce() throws Exception;
 
   @Override
   public void onSuccess(Void result) {

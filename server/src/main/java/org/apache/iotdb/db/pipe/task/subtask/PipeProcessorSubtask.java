@@ -50,12 +50,12 @@ public class PipeProcessorSubtask extends PipeSubtask {
   }
 
   @Override
-  protected synchronized void executeForAWhile() throws Exception {
+  protected synchronized boolean executeOnce() throws Exception {
     final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
     // record the last event for retry when exception occurs
     lastEvent = event;
     if (event == null) {
-      return;
+      return false;
     }
 
     try {
@@ -74,6 +74,8 @@ public class PipeProcessorSubtask extends PipeSubtask {
           "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
     }
+
+    return true;
   }
 
   @Override

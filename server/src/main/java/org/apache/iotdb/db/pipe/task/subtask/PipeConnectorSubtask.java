@@ -51,7 +51,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   // TODO: for a while
   @Override
-  protected synchronized void executeForAWhile() {
+  protected synchronized boolean executeOnce() {
     try {
       // TODO: reduce the frequency of heartbeat
       outputPipeConnector.heartbeat();
@@ -64,7 +64,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     // record this event for retrying on connection failure or other exceptions
     lastEvent = event;
     if (event == null) {
-      return;
+      return false;
     }
 
     try {
@@ -85,6 +85,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
           "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
           e);
     }
+
+    return true;
   }
 
   @Override
