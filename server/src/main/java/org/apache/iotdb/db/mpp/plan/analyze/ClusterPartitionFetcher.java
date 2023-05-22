@@ -35,12 +35,12 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -300,19 +300,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   public ModelInformation getModelInformation(String modelId) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowModelReq showModelReq = new TShowModelReq();
-      showModelReq.setModelId(modelId);
-      TShowModelResp showModelResp = client.showModel(showModelReq);
-      if (showModelResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (showModelResp.modelInfoList.size() > 0) {
-          return ModelInformation.deserialize(showModelResp.modelInfoList.get(0));
+      TGetModelInfoResp getModelInfoResp = client.getModelInfo(new TGetModelInfoReq(modelId));
+      if (getModelInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (getModelInfoResp.modelInfo != null) {
+          return ModelInformation.deserialize(getModelInfoResp.modelInfo);
         } else {
           return null;
         }
       } else {
         throw new StatementAnalyzeException(
             "An error occurred when executing getModelInformation():"
-                + showModelResp.getStatus().getMessage());
+                + getModelInfoResp.getStatus().getMessage());
       }
     } catch (ClientManagerException | TException e) {
       throw new StatementAnalyzeException(

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter.model;
 
-import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.commons.model.ForecastModeInformation;
 import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -37,18 +37,22 @@ import static org.apache.iotdb.db.constant.SqlConstant.PREDICT_LENGTH;
 
 public class ForecastModelInferenceDescriptor extends ModelInferenceDescriptor {
 
-  private List<TSDataType> inputTypeList;
-  private List<Integer> predictIndexList;
+  private final List<TSDataType> inputTypeList;
+  private final List<Integer> predictIndexList;
 
-  private int modelInputLength;
-  private int modelPredictLength;
+  private final int modelInputLength;
+  private final int modelPredictLength;
   private int expectedPredictLength;
 
   private LinkedHashMap<String, String> outputAttributes;
 
   public ForecastModelInferenceDescriptor(
-      ModelInferenceFunction functionType, ModelInformation modelInformation) {
+      ModelInferenceFunction functionType, ForecastModeInformation modelInformation) {
     super(functionType, modelInformation);
+    this.inputTypeList = modelInformation.getInputTypeList();
+    this.predictIndexList = modelInformation.getPredictIndexList();
+    this.modelInputLength = modelInformation.getInputLength();
+    this.expectedPredictLength = this.modelPredictLength = modelInformation.getPredictLength();
   }
 
   public ForecastModelInferenceDescriptor(ByteBuffer buffer) {
@@ -72,16 +76,8 @@ public class ForecastModelInferenceDescriptor extends ModelInferenceDescriptor {
     return predictIndexList;
   }
 
-  public void setPredictIndexList(List<Integer> predictIndexList) {
-    this.predictIndexList = predictIndexList;
-  }
-
   public List<TSDataType> getInputTypeList() {
     return inputTypeList;
-  }
-
-  public void setInputTypeList(List<TSDataType> inputTypeList) {
-    this.inputTypeList = inputTypeList;
   }
 
   public int getModelInputLength() {
@@ -94,6 +90,10 @@ public class ForecastModelInferenceDescriptor extends ModelInferenceDescriptor {
 
   public int getExpectedPredictLength() {
     return expectedPredictLength;
+  }
+
+  public void setExpectedPredictLength(int expectedPredictLength) {
+    this.expectedPredictLength = expectedPredictLength;
   }
 
   @Override

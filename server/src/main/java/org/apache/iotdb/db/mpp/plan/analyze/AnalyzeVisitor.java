@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.model.ForecastModeInformation;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -383,8 +384,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         ModelInferenceFunction.valueOf(modelInferenceExpression.getFunctionName().toUpperCase());
     switch (functionType) {
       case FORECAST:
-        ModelInferenceDescriptor modelInferenceDescriptor =
-            new ForecastModelInferenceDescriptor(functionType, modelInformation);
+        ForecastModelInferenceDescriptor modelInferenceDescriptor =
+            new ForecastModelInferenceDescriptor(
+                functionType, (ForecastModeInformation) modelInformation);
+        Map<String, String> modelInferenceAttributes =
+            modelInferenceExpression.getFunctionAttributes();
+        if (modelInferenceAttributes.containsKey("predict_length")) {
+          modelInferenceDescriptor.setExpectedPredictLength(
+              Integer.parseInt(modelInferenceAttributes.get("predict_length")));
+        }
         analysis.setModelInferenceDescriptor(modelInferenceDescriptor);
 
         List<ResultColumn> newResultColumns = new ArrayList<>();

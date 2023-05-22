@@ -81,6 +81,7 @@ public class TsBlockBuilder {
     res.timeColumnBuilder =
         new TimeColumnBuilder(
             res.tsBlockBuilderStatus.createColumnBuilderStatus(), DEFAULT_INITIAL_EXPECTED_ENTRIES);
+    res.valueColumnBuilders = new ColumnBuilder[0];
     return res;
   }
 
@@ -285,9 +286,6 @@ public class TsBlockBuilder {
   }
 
   public TsBlock build() {
-    if (valueColumnBuilders.length == 0) {
-      return new TsBlock(declaredPositions);
-    }
     TimeColumn timeColumn = (TimeColumn) timeColumnBuilder.build();
     if (timeColumn.getPositionCount() != declaredPositions) {
       throw new IllegalStateException(

@@ -1929,6 +1929,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     Expression whereExpression = analysis.getWhereExpression();
     String queryFilter = whereExpression == null ? null : whereExpression.toString();
 
+    Map<String, String> modelConfigs = createModelStatement.getAttributes();
+    if (!modelConfigs.containsKey("input_type_list")) {
+      String inputTypeListStr = analysis.getRespDatasetHeader().getRespDataTypeList().toString();
+      modelConfigs.put(
+          "input_type_list", inputTypeListStr.substring(1, inputTypeListStr.length() - 1));
+    }
+    if (!modelConfigs.containsKey("predict_index_list")) {
+      StringBuilder predictIndexListStr = new StringBuilder("0");
+      for (int i = 1; i < analysis.getRespDatasetHeader().getOutputValueColumnCount(); i++) {
+        predictIndexListStr.append(",").append(i);
+      }
+      modelConfigs.put("predict_index_list", predictIndexListStr.toString());
+    }
+
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -1939,7 +1953,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       createModelReq.setIsAuto(createModelStatement.isAuto());
       createModelReq.setQueryExpressions(queryExpressions);
       createModelReq.setQueryFilter(queryFilter);
-      createModelReq.setModelConfigs(createModelStatement.getAttributes());
+      createModelReq.setModelConfigs(modelConfigs);
       final TSStatus executionStatus = client.createModel(createModelReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(
