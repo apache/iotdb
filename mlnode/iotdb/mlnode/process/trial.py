@@ -22,12 +22,10 @@ from typing import Dict, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn.modules import loss
-from torch.optim import Optimizer
 from torch.utils.data import DataLoader, Dataset
 
 from iotdb.mlnode.algorithm.metric import all_metrics, build_metrics
-from iotdb.mlnode.client import client_manager, DataNodeClient, ConfigNodeClient
+from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState

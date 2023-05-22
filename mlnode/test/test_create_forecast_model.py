@@ -16,6 +16,7 @@
 # under the License.
 #
 import torch
+
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.exception import BadConfigValueError

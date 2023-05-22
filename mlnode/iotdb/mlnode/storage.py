@@ -19,12 +19,11 @@
 import json
 import os
 import shutil
+import threading
 from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
-import threading
-
 from pylru import lrucache
 
 from iotdb.mlnode.config import descriptor

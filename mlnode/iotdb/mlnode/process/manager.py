@@ -17,13 +17,15 @@
 #
 
 import multiprocessing as mp
-import pandas as pd
-
 from typing import Dict, Union
+
+import pandas as pd
 from torch.utils.data import Dataset
+
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.process.task import ForecastingSingleTrainingTask, ForecastingTuningTrainingTask, \
-    ForecastingInferenceTask
+from iotdb.mlnode.process.task import (ForecastingInferenceTask,
+                                       ForecastingSingleTrainingTask,
+                                       ForecastingTuningTrainingTask)
 
 
 class TaskManager(object):
@@ -102,6 +104,5 @@ class TaskManager(object):
         read_pipe, send_pipe = mp.Pipe()
         if task is not None:
             self.__training_process_pool.apply_async(task, args=(send_pipe,))
-            logger.info(f'Forecasting process submitted successfully')
-            # task(send_pipe)
+            logger.info('Forecasting process submitted successfully')
         return read_pipe.recv()

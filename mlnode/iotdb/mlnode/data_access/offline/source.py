@@ -15,10 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from typing import List
+
 import numpy as np
 import pandas as pd
-
-from typing import List
 
 from iotdb.mlnode.client import client_manager
 

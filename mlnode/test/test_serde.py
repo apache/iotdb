@@ -18,8 +18,9 @@
 
 import numpy as np
 import pandas as pd
-from iotdb.mlnode.serde import convert_to_df
 from pandas.testing import assert_frame_equal
+
+from iotdb.mlnode.serde import convert_to_df
 
 device_id = "root.wt1"
 
