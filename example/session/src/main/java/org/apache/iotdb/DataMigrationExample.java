@@ -26,7 +26,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -60,17 +59,16 @@ public class DataMigrationExample {
 
     ExecutorService executorService = Executors.newFixedThreadPool(2 * CONCURRENCY + 1);
 
-    String path = "root.rn.**";
+    String path = "root";
 
     if (args.length != 0) {
       path = args[0];
     }
 
     readerPool = new SessionPool("127.0.0.1", 6667, "root", "root", CONCURRENCY);
-    writerPool = new SessionPool("127.0.0.1", 6669, "root", "root", CONCURRENCY);
+    writerPool = new SessionPool("127.0.0.1", 6668, "root", "root", CONCURRENCY);
 
-    SessionDataSetWrapper deviceDataSet =
-        readerPool.executeQueryStatement("count devices " + path);
+    SessionDataSetWrapper deviceDataSet = readerPool.executeQueryStatement("count devices " + path);
     DataIterator deviceIter = deviceDataSet.iterator();
     int total;
     if (deviceIter.next()) {
@@ -89,10 +87,7 @@ public class DataMigrationExample {
     int count = 0;
     while (deviceIter.next()) {
       count++;
-      Future future =
-          executorService.submit(
-              new LoadThread(
-                  count, deviceIter.getString("Device")));
+      Future future = executorService.submit(new LoadThread(count, deviceIter.getString("Device")));
       futureList.add(future);
     }
     readerPool.closeResultSet(deviceDataSet);
@@ -123,44 +118,47 @@ public class DataMigrationExample {
       SessionDataSetWrapper dataSet = null;
 
       try {
-        dataSet =
-            readerPool.executeQueryStatement(
-                String.format("select * from %s", device));
+        dataSet = readerPool.executeQueryStatement(String.format("select * from %s", device));
         DataIterator dataIter = dataSet.iterator();
-        List<String>columnNameList = dataIter.getColumnNameList();
-        List<String>columnTypeList = dataIter.getColumnTypeList();
+        List<String> columnNameList = dataIter.getColumnNameList();
+        List<String> columnTypeList = dataIter.getColumnTypeList();
         List<MeasurementSchema> schemaList = new ArrayList<>();
-        for(int j=1;j<columnNameList.size();j++){
+        for (int j = 1; j < columnNameList.size(); j++) {
           PartialPath currentPath = new PartialPath(columnNameList.get(j));
-            schemaList.add(new MeasurementSchema(currentPath.getMeasurement(), TSDataType.valueOf(columnTypeList.get(j))));
+          schemaList.add(
+              new MeasurementSchema(
+                  currentPath.getMeasurement(), TSDataType.valueOf(columnTypeList.get(j))));
         }
         tablet = new Tablet(device, schemaList, 300000);
         while (dataIter.next()) {
           int row = tablet.rowSize++;
           tablet.timestamps[row] = dataIter.getLong(1);
-          for(int j=0;j<schemaList.size();++j){
-            switch(schemaList.get(j).getType()){
+          for (int j = 0; j < schemaList.size(); ++j) {
+            switch (schemaList.get(j).getType()) {
               case BOOLEAN:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row,  dataIter.getBoolean(j+2));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(), row, dataIter.getBoolean(j + 2));
                 break;
               case INT32:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row,  dataIter.getInt(j+2));
+                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getInt(j + 2));
                 break;
               case INT64:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row,  dataIter.getLong(j+2));
+                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getLong(j + 2));
                 break;
               case FLOAT:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row,  dataIter.getFloat(j+2));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(), row, dataIter.getFloat(j + 2));
                 break;
               case DOUBLE:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row,  dataIter.getDouble(j+2));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(), row, dataIter.getDouble(j + 2));
                 break;
               case TEXT:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row,  dataIter.getString(j+2));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(), row, dataIter.getString(j + 2));
                 break;
               default:
-                System.out.println(
-                        "Migration of this type of data is not supported");
+                System.out.println("Migration of this type of data is not supported");
             }
           }
           if (tablet.rowSize == tablet.getMaxRowNumber()) {
