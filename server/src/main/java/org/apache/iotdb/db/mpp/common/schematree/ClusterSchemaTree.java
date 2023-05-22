@@ -241,6 +241,13 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
   }
 
+  @Override
+  public void mergeSchemaTree(ISchemaTree schemaTree) {
+    if (schemaTree instanceof ClusterSchemaTree) {
+      this.mergeSchemaTree((ClusterSchemaTree) schemaTree);
+    }
+  }
+
   public void mergeSchemaTree(ClusterSchemaTree schemaTree) {
     traverseAndMerge(this.root, null, schemaTree.root);
   }

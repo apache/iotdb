@@ -676,17 +676,17 @@ public class Analysis {
     this.hasViewsInQuery = hasViewsInQuery;
   }
 
-  public boolean hasViewsInQuery(){
+  public boolean hasViewsInQuery() {
     return this.hasViewsInQuery;
   }
 
   private List<Pair<Expression, String>> outputExpressions = null;
 
-  public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions){
+  public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {
     this.outputExpressions = outputExpressions;
   }
 
-  public List<Pair<Expression, String>> getOutputExpressions(){
+  public List<Pair<Expression, String>> getOutputExpressions() {
     return this.outputExpressions;
   }
 }

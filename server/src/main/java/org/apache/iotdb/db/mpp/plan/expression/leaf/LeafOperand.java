@@ -46,4 +46,9 @@ public abstract class LeafOperand extends Expression {
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
     return true;
   }
+
+  @Override
+  public String getStringWithLogicalViewInternal() {
+    return this.getExpressionString();
+  }
 }

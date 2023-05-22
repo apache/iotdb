@@ -114,6 +114,31 @@ public class InExpression extends UnaryExpression {
   }
 
   @Override
+  public String getStringWithLogicalViewInternal() {
+    StringBuilder stringBuilder = new StringBuilder();
+    if (expression instanceof FunctionExpression
+        || expression instanceof ConstantOperand
+        || expression instanceof TimeSeriesOperand) {
+      stringBuilder.append(expression.getStringWithLogicalView()).append(" IN (");
+    } else {
+      stringBuilder
+          .append('(')
+          .append(expression.getStringWithLogicalView())
+          .append(')')
+          .append(" IN (");
+    }
+    Iterator<String> iterator = values.iterator();
+    if (iterator.hasNext()) {
+      stringBuilder.append(iterator.next());
+    }
+    while (iterator.hasNext()) {
+      stringBuilder.append(',').append(iterator.next());
+    }
+    stringBuilder.append(')');
+    return stringBuilder.toString();
+  }
+
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitInExpression(this, context);
   }

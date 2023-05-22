@@ -371,4 +371,23 @@ public abstract class Expression extends StatementNode {
       return current;
     }
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // For analyzing logical view
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected String stringWithLogicalView = null;
+
+  public void setStringWithLogicalView(String stringWithLogicalView) {
+    this.stringWithLogicalView = stringWithLogicalView;
+  }
+
+  public String getStringWithLogicalView() {
+    if (this.stringWithLogicalView == null) {
+      return this.getStringWithLogicalViewInternal();
+    }
+    return this.stringWithLogicalView;
+  }
+
+  public abstract String getStringWithLogicalViewInternal();
 }

@@ -66,4 +66,6 @@ public interface ISchemaTree {
   Set<String> getDatabases();
 
   boolean isEmpty();
+
+  void mergeSchemaTree(ISchemaTree schemaTree);
 }
