@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.process.ml;
 
 import org.apache.iotdb.db.client.MLNodeClient;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ModelInferenceProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -152,7 +153,10 @@ public class ForecastOperator implements ProcessOperator {
         }
 
         finished = true;
-        return new TsBlockSerde().deserialize(forecastResp.bufferForForecastResult());
+        TsBlock resultTsBlock =
+            new TsBlockSerde().deserialize(forecastResp.bufferForForecastResult());
+        resultTsBlock = modifyTimeColumn(resultTsBlock);
+        return resultTsBlock;
       } catch (InterruptedException e) {
         LOGGER.warn(
             "{}: interrupted when processing write operation future with exception {}", this, e);
@@ -162,6 +166,21 @@ public class ForecastOperator implements ProcessOperator {
         throw new ModelInferenceProcessException(e.getMessage());
       }
     }
+  }
+
+  private TsBlock modifyTimeColumn(TsBlock resultTsBlock) {
+    long delta =
+        IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision().equals("ms")
+            ? 1_000_000L
+            : 1_000L;
+
+    TsBlockBuilder newTsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
+    TimeColumnBuilder timeColumnBuilder = newTsBlockBuilder.getTimeColumnBuilder();
+    for (int i = 0; i < resultTsBlock.getPositionCount(); i++) {
+      timeColumnBuilder.writeLong(resultTsBlock.getTimeByIndex(i) / delta);
+      newTsBlockBuilder.declarePosition();
+    }
+    return newTsBlockBuilder.build().appendValueColumns(resultTsBlock.getValueColumns());
   }
 
   private void appendTsBlockToBuilder(TsBlock inputTsBlock) {

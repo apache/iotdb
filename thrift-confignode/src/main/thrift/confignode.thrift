@@ -731,6 +731,10 @@ struct TShowTrailReq {
   2: optional string trailId
 }
 
+struct TGetModelInfoReq {
+  1: required string modelId
+}
+
 struct TShowTrailResp {
   1: required common.TSStatus status
   2: required list<binary> trailInfoList
@@ -746,6 +750,11 @@ struct TUpdateModelStateReq {
   1: required string modelId
   2: required common.TrainingState state
   3: optional string bestTrailId
+}
+
+struct TGetModelInfoResp {
+  1: required common.TSStatus status
+  2: required binary modelInfo
 }
 
 // ====================================================
@@ -1373,6 +1382,11 @@ service IConfigNodeRPCService {
    * @return SUCCESS_STATUS if the model was removed successfully
    */
   common.TSStatus updateModelState(TUpdateModelStateReq req)
+
+   /**
+   * Return the model info by model_id
+   */
+  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   // ======================================================
   // Quota

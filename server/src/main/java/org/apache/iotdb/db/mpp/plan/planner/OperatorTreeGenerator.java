@@ -1678,6 +1678,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 + (long) outputColumnNum * DoubleColumn.SIZE_IN_BYTES_PER_POSITION)
             * expectedPredictLength;
 
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
     return new ForecastOperator(
         operatorContext,
         child,

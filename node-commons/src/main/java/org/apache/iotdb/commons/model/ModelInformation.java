@@ -39,7 +39,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.commons.model.TrailInformation.MODEL_PATH;
 
-public class ModelInformation {
+public abstract class ModelInformation {
 
   private final String modelId;
   private final ModelTask modelTask;
@@ -55,8 +55,8 @@ public class ModelInformation {
   private final Map<String, TrailInformation> trailMap;
 
   public ModelInformation(
-      String modelId,
       ModelTask modelTask,
+      String modelId,
       String modelType,
       boolean isAuto,
       List<String> queryExpressions,
@@ -71,9 +71,10 @@ public class ModelInformation {
     this.trailMap = new HashMap<>();
   }
 
-  public ModelInformation(ByteBuffer buffer) {
+  public ModelInformation(ModelTask modelTask, ByteBuffer buffer) {
+    this.modelTask = modelTask;
+
     this.modelId = ReadWriteIOUtils.readString(buffer);
-    this.modelTask = ModelTask.findByValue(ReadWriteIOUtils.readInt(buffer));
     this.modelType = ReadWriteIOUtils.readString(buffer);
 
     int listSize = ReadWriteIOUtils.readInt(buffer);
@@ -103,9 +104,10 @@ public class ModelInformation {
     }
   }
 
-  public ModelInformation(InputStream stream) throws IOException {
+  public ModelInformation(ModelTask modelTask, InputStream stream) throws IOException {
+    this.modelTask = modelTask;
+
     this.modelId = ReadWriteIOUtils.readString(stream);
-    this.modelTask = ModelTask.findByValue(ReadWriteIOUtils.readInt(stream));
     this.modelType = ReadWriteIOUtils.readString(stream);
 
     int listSize = ReadWriteIOUtils.readInt(stream);
@@ -200,8 +202,9 @@ public class ModelInformation {
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(modelTask.ordinal(), stream);
+
+    ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(modelType, stream);
     ReadWriteIOUtils.write(queryExpressions.size(), stream);
     for (String queryExpression : queryExpressions) {
@@ -232,8 +235,9 @@ public class ModelInformation {
   }
 
   public void serialize(FileOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(modelTask.ordinal(), stream);
+
+    ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(modelType, stream);
 
     ReadWriteIOUtils.write(queryExpressions.size(), stream);
@@ -264,12 +268,32 @@ public class ModelInformation {
     }
   }
 
-  public static ModelInformation deserialize(InputStream stream) throws IOException {
-    return new ModelInformation(stream);
+  public static ModelInformation deserialize(ByteBuffer buffer) {
+    ModelTask modelTask = ModelTask.findByValue(ReadWriteIOUtils.readInt(buffer));
+    if (modelTask == null) {
+      throw new IllegalArgumentException();
+    }
+
+    switch (modelTask) {
+      case FORECAST:
+        return new ForecastModeInformation(buffer);
+      default:
+        throw new IllegalArgumentException("Invalid task type: " + modelTask);
+    }
   }
 
-  public static ModelInformation deserialize(ByteBuffer buffer) {
-    return new ModelInformation(buffer);
+  public static ModelInformation deserialize(InputStream stream) throws IOException {
+    ModelTask modelTask = ModelTask.findByValue(ReadWriteIOUtils.readInt(stream));
+    if (modelTask == null) {
+      throw new IllegalArgumentException();
+    }
+
+    switch (modelTask) {
+      case FORECAST:
+        return new ForecastModeInformation(stream);
+      default:
+        throw new IllegalArgumentException("Invalid task type: " + modelTask);
+    }
   }
 
   public ByteBuffer serializeShowModelResult() throws IOException {
