@@ -230,7 +230,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       queryStatement.semanticCheck();
 
       // concat path and construct path pattern tree
-      PathPatternTree patternTree = new PathPatternTree();
+      PathPatternTree patternTree = new PathPatternTree(queryStatement.useWildcard());
       queryStatement =
           (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
       analysis.setStatement(queryStatement);
