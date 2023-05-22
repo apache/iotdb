@@ -17,24 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.db.pipe.config;
 
-import org.apache.iotdb.db.pipe.task.subtask.PipeAssignerSubtask;
+public class PipeProcessorConstant {
 
-import org.junit.Before;
-import org.mockito.Mockito;
+  public static final String PROCESSOR_KEY = "processor";
 
-public class PipeAssignerSubtaskExecutorTest extends PipeSubtaskExecutorTest {
-
-  @Before
-  public void setUp() throws Exception {
-    executor = new PipeAssignerSubtaskExecutor();
-
-    subtask =
-        Mockito.spy(
-            new PipeAssignerSubtask("PipeAssignerSubtaskExecutorTest") {
-              @Override
-              public void executeForAWhile() {}
-            });
+  private PipeProcessorConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }

@@ -55,7 +55,8 @@ public class TimeSeriesSchemaCache {
         new DualKeyCacheBuilder<>();
     dualKeyCache =
         dualKeyCacheBuilder
-            .cacheEvictionPolicy(DualKeyCachePolicy.LRU)
+            .cacheEvictionPolicy(
+                DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
             .memoryCapacity(config.getAllocateMemoryForSchemaCache())
             .firstKeySizeComputer(PartialPath::estimateSize)
             .secondKeySizeComputer(s -> 32 + 2 * s.length())

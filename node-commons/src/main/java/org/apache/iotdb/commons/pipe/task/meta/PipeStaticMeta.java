@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class PipeStaticMeta {
 
@@ -159,7 +160,8 @@ public class PipeStaticMeta {
 
   @Override
   public int hashCode() {
-    return pipeName.hashCode();
+    return Objects.hash(
+        pipeName, creationTime, collectorParameters, processorParameters, connectorParameters);
   }
 
   @Override
