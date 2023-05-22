@@ -140,6 +140,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
 import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.UNSEQUENCE_TSFILE;
@@ -680,6 +681,8 @@ public class DataRegion implements IDataRegionForQuery {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
       throws IOException, DataRegionException {
+    // represents local TsFile and remote TsFile on Object Storage
+    Set<String> tsFilePathSet = new HashSet<>();
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -704,9 +707,24 @@ public class DataRegion implements IDataRegionForQuery {
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
 
-            Collections.addAll(
-                tsFiles,
-                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
+            File[] tsFilesInThisFolder =
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX);
+            File[] resourceFilesInThisFolder =
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), RESOURCE_SUFFIX);
+            for (File f : tsFilesInThisFolder) {
+              tsFilePathSet.add(f.getCanonicalPath());
+            }
+
+            Collections.addAll(tsFiles, tsFilesInThisFolder);
+            for (File f : resourceFilesInThisFolder) {
+              String tsFilePath =
+                  f.getCanonicalPath()
+                      .substring(0, f.getCanonicalPath().length() - RESOURCE_SUFFIX.length());
+              if (!tsFilePathSet.contains(tsFilePath)) {
+                tsFiles.add(fsFactory.getFile(tsFilePath));
+              }
+            }
+
           } else {
             // collect old TsFiles for upgrading
             Collections.addAll(

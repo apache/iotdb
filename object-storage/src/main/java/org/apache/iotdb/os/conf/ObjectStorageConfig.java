@@ -50,6 +50,10 @@ public class ObjectStorageConfig {
     return cacheDirs;
   }
 
+  public String getBucketName() {
+    return AWSS3Config.getBucketName();
+  }
+
   public void setCacheDirs(String[] cacheDirs) {
     this.cacheDirs = cacheDirs;
   }

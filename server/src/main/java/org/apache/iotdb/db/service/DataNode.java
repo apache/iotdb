@@ -85,8 +85,10 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
+import org.apache.iotdb.os.HybridFileInputFactoryDecorator;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.apache.thrift.TException;
@@ -393,6 +395,7 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when register success */
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
       config.setDataNodeId(dataNodeID);
+      configOSStorage(dataNodeID);
       IoTDBStartCheck.getInstance()
           .serializeClusterNameAndDataNodeId(config.getClusterName(), dataNodeID);
 
@@ -405,6 +408,11 @@ public class DataNode implements DataNodeMBean {
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
       throw new StartupException("Cannot register to the cluster.");
     }
+  }
+
+  private void configOSStorage(int dataNodeID) {
+    FSFactoryProducer.setFileInputFactory(new HybridFileInputFactoryDecorator(dataNodeID));
+    // recover OS cache
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {
