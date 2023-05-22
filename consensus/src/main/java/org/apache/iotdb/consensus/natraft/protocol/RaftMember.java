@@ -1407,6 +1407,7 @@ public class RaftMember {
         readOnly,
         heartbeatThread.getLastHeartbeatReceivedTime(),
         prevLastLogIndex,
-        logManager.getAppliedIndex());
+        logManager.getAppliedIndex(),
+        requestEntryAllocator.toString());
   }
 }

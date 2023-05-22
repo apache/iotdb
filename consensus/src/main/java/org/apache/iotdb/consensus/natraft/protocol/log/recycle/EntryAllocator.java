@@ -24,6 +24,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 public class EntryAllocator<T extends Entry> {
@@ -31,6 +32,11 @@ public class EntryAllocator<T extends Entry> {
   private Supplier<T> entryFactory;
   private BlockingQueue<T> recyclingEntries;
   private Supplier<Long> safeIndexProvider;
+  private AtomicLong allocatorSize = new AtomicLong();
+  private AtomicLong allocatorGetCnt = new AtomicLong();
+  private AtomicLong allocatorGetMissCnt = new AtomicLong();
+  private AtomicLong allocatorRecycleCnt = new AtomicLong();
+  private AtomicLong allocatorRecycleMissCnt = new AtomicLong();
 
   public EntryAllocator(
       RaftConfig config, Supplier<T> entryFactory, Supplier<Long> safeIndexProvider) {
@@ -41,20 +47,33 @@ public class EntryAllocator<T extends Entry> {
   }
 
   public T Allocate() {
+    allocatorGetCnt.incrementAndGet();
     T entry = entryPool.poll();
     if (entry == null) {
       entry = entryFactory.get();
+      allocatorGetMissCnt.incrementAndGet();
+    } else {
+      allocatorSize.addAndGet(-entry.estimateSize());
     }
     return entry;
   }
 
   public void recycle(T entry) {
     Long safeIndex = safeIndexProvider.get();
+    allocatorRecycleCnt.incrementAndGet();
     if (entry.getCurrLogIndex() <= safeIndex) {
       entry.recycle();
-      entryPool.offer(entry);
+      if (entryPool.offer(entry)) {
+        allocatorSize.addAndGet(entry.estimateSize());
+      } else {
+        allocatorRecycleMissCnt.incrementAndGet();
+      }
     } else {
-      recyclingEntries.offer(entry);
+      if (recyclingEntries.offer(entry)) {
+        allocatorSize.addAndGet(entry.estimateSize());
+      } else {
+        allocatorRecycleMissCnt.incrementAndGet();
+      }
     }
 
     checkRecyclingEntries();
@@ -74,5 +93,39 @@ public class EntryAllocator<T extends Entry> {
         break;
       }
     }
+  }
+
+  public long getAllocatorSize() {
+    return allocatorSize.get();
+  }
+
+  public int cachedEntryNum() {
+    return entryPool.size() + recyclingEntries.size();
+  }
+
+  public double allocateHitRatio() {
+    return 1.0 - allocatorGetMissCnt.get() * 1.0 / allocatorGetCnt.get();
+  }
+
+  public double recycleHitRatio() {
+    return 1.0 - allocatorRecycleMissCnt.get() * 1.0 / allocatorRecycleCnt.get();
+  }
+
+  @Override
+  public String toString() {
+    return "EntryAllocator{"
+        + "size="
+        + getAllocatorSize()
+        + ","
+        + "entryNum="
+        + cachedEntryNum()
+        + ","
+        + "allocateRatio="
+        + allocateHitRatio()
+        + ","
+        + "recycleRatio="
+        + recycleHitRatio()
+        + ","
+        + "}";
   }
 }

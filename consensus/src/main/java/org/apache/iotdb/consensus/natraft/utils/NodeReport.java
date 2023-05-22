@@ -72,6 +72,7 @@ public class NodeReport {
     long lastHeartbeatReceivedTime;
     long prevLastLogIndex;
     long maxAppliedLogIndex;
+    String allocatorReport;
 
     public RaftMemberReport(
         RaftRole character,
@@ -85,7 +86,8 @@ public class NodeReport {
         boolean isReadOnly,
         long lastHeartbeatReceivedTime,
         long prevLastLogIndex,
-        long maxAppliedLogIndex) {
+        long maxAppliedLogIndex,
+        String allocatorReport) {
       this.character = character;
       this.leader = leader;
       this.term = term;
@@ -98,6 +100,7 @@ public class NodeReport {
       this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
       this.prevLastLogIndex = prevLastLogIndex;
       this.maxAppliedLogIndex = maxAppliedLogIndex;
+      this.allocatorReport = allocatorReport;
     }
 
     @Override
@@ -126,6 +129,8 @@ public class NodeReport {
           + ", lastHeartbeat="
           + (System.currentTimeMillis() - lastHeartbeatReceivedTime)
           + "ms ago"
+          + ", "
+          + allocatorReport
           + ", logIncrement="
           + (lastLogIndex - prevLastLogIndex)
           + '}';
