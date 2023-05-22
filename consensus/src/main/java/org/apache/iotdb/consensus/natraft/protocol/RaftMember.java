@@ -256,7 +256,7 @@ public class RaftMember {
   }
 
   public void recycleEntry(Entry entry) {
-    if (entry instanceof RequestEntry) {
+    if (isLeader() && entry instanceof RequestEntry) {
       requestEntryAllocator.recycle(((RequestEntry) entry));
     }
   }
