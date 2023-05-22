@@ -22,17 +22,22 @@ package org.apache.iotdb.db.mpp.metric;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.utils.MetricInfo;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
 
 public class DataExchangeCountMetricSet implements IMetricSet {
-  public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
+  private static final DataExchangeCountMetricSet INSTANCE = new DataExchangeCountMetricSet();
 
+  private DataExchangeCountMetricSet() {
+    // empty constructor
+  }
+
+  // region data block
   public static final String CALLER = "caller";
   public static final String SERVER = "server";
   private static final String SEND_NEW_DATA_BLOCK_NUM = "send_new_data_block_num";
@@ -49,76 +54,118 @@ public class DataExchangeCountMetricSet implements IMetricSet {
   public static final String GET_DATA_BLOCK_NUM_CALLER = GET_DATA_BLOCK_NUM + "_" + CALLER;
   public static final String GET_DATA_BLOCK_NUM_SERVER = GET_DATA_BLOCK_NUM + "_" + SERVER;
 
-  static {
-    metricInfoMap.put(
-        SEND_NEW_DATA_BLOCK_NUM_CALLER,
-        new MetricInfo(
-            MetricType.HISTOGRAM,
-            Metric.DATA_EXCHANGE_COUNT.toString(),
-            Tag.NAME.toString(),
-            SEND_NEW_DATA_BLOCK_NUM,
-            Tag.TYPE.toString(),
-            CALLER));
-    metricInfoMap.put(
-        SEND_NEW_DATA_BLOCK_NUM_SERVER,
-        new MetricInfo(
-            MetricType.HISTOGRAM,
-            Metric.DATA_EXCHANGE_COUNT.toString(),
-            Tag.NAME.toString(),
-            SEND_NEW_DATA_BLOCK_NUM,
-            Tag.TYPE.toString(),
-            SERVER));
-    metricInfoMap.put(
-        ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER,
-        new MetricInfo(
-            MetricType.HISTOGRAM,
-            Metric.DATA_EXCHANGE_COUNT.toString(),
-            Tag.NAME.toString(),
-            ON_ACKNOWLEDGE_DATA_BLOCK_NUM,
-            Tag.TYPE.toString(),
-            CALLER));
-    metricInfoMap.put(
-        ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER,
-        new MetricInfo(
-            MetricType.HISTOGRAM,
-            Metric.DATA_EXCHANGE_COUNT.toString(),
-            Tag.NAME.toString(),
-            ON_ACKNOWLEDGE_DATA_BLOCK_NUM,
-            Tag.TYPE.toString(),
-            SERVER));
-    metricInfoMap.put(
-        GET_DATA_BLOCK_NUM_CALLER,
-        new MetricInfo(
-            MetricType.HISTOGRAM,
-            Metric.DATA_EXCHANGE_COUNT.toString(),
-            Tag.NAME.toString(),
-            GET_DATA_BLOCK_NUM,
-            Tag.TYPE.toString(),
-            CALLER));
-    metricInfoMap.put(
-        GET_DATA_BLOCK_NUM_SERVER,
-        new MetricInfo(
-            MetricType.HISTOGRAM,
-            Metric.DATA_EXCHANGE_COUNT.toString(),
-            Tag.NAME.toString(),
-            GET_DATA_BLOCK_NUM,
-            Tag.TYPE.toString(),
-            SERVER));
-  }
+  private Histogram sendNewDataBlockNumCallerHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram sendNewDataBlockNumServerHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram onAcknowledgeDataBlockNumCallerHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram onAcknowledgeDataBlockNumServerHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram getDataBlockNumCallerHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram getDataBlockNumServerHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    for (MetricInfo metricInfo : metricInfoMap.values()) {
-      metricService.getOrCreateHistogram(
-          metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
-    }
+    sendNewDataBlockNumCallerHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.DATA_EXCHANGE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            SEND_NEW_DATA_BLOCK_NUM,
+            Tag.TYPE.toString(),
+            CALLER);
+    sendNewDataBlockNumServerHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.DATA_EXCHANGE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            SEND_NEW_DATA_BLOCK_NUM,
+            Tag.TYPE.toString(),
+            SERVER);
+    onAcknowledgeDataBlockNumCallerHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.DATA_EXCHANGE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            ON_ACKNOWLEDGE_DATA_BLOCK_NUM,
+            Tag.TYPE.toString(),
+            CALLER);
+    onAcknowledgeDataBlockNumServerHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.DATA_EXCHANGE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            ON_ACKNOWLEDGE_DATA_BLOCK_NUM,
+            Tag.TYPE.toString(),
+            SERVER);
+    getDataBlockNumCallerHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.DATA_EXCHANGE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            GET_DATA_BLOCK_NUM,
+            Tag.TYPE.toString(),
+            CALLER);
+    getDataBlockNumServerHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.DATA_EXCHANGE_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            GET_DATA_BLOCK_NUM,
+            Tag.TYPE.toString(),
+            SERVER);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    for (MetricInfo metricInfo : metricInfoMap.values()) {
-      metricService.remove(
-          MetricType.HISTOGRAM, Metric.DATA_EXCHANGE_COUNT.toString(), metricInfo.getTagsInArray());
+    sendNewDataBlockNumCallerHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    sendNewDataBlockNumServerHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    onAcknowledgeDataBlockNumCallerHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    onAcknowledgeDataBlockNumServerHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    getDataBlockNumCallerHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    getDataBlockNumServerHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    Arrays.asList(SEND_NEW_DATA_BLOCK_NUM, ON_ACKNOWLEDGE_DATA_BLOCK_NUM, GET_DATA_BLOCK_NUM)
+        .forEach(
+            name ->
+                Arrays.asList(CALLER, SERVER)
+                    .forEach(
+                        caller ->
+                            metricService.remove(
+                                MetricType.HISTOGRAM,
+                                Metric.DATA_EXCHANGE_COUNT.toString(),
+                                Tag.NAME.toString(),
+                                name,
+                                Tag.TYPE.toString(),
+                                caller)));
+  }
+
+  public void recordDataBlockNum(String type, int num) {
+    switch (type) {
+      case SEND_NEW_DATA_BLOCK_NUM_CALLER:
+        sendNewDataBlockNumCallerHistogram.update(num);
+        break;
+      case SEND_NEW_DATA_BLOCK_NUM_SERVER:
+        sendNewDataBlockNumServerHistogram.update(num);
+        break;
+      case ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER:
+        onAcknowledgeDataBlockNumCallerHistogram.update(num);
+        break;
+      case ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER:
+        onAcknowledgeDataBlockNumServerHistogram.update(num);
+        break;
+      case GET_DATA_BLOCK_NUM_CALLER:
+        getDataBlockNumCallerHistogram.update(num);
+        break;
+      case GET_DATA_BLOCK_NUM_SERVER:
+        getDataBlockNumServerHistogram.update(num);
+        break;
+      default:
+        break;
     }
+  }
+
+  public static DataExchangeCountMetricSet getInstance() {
+    return INSTANCE;
   }
 }

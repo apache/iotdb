@@ -51,10 +51,10 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(QueryPlanCostMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(SeriesScanCostMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(QueryExecutionMetricSet.getInstance());
-    MetricService.getInstance().addMetricSet(new QueryResourceMetricSet());
-    MetricService.getInstance().addMetricSet(new DataExchangeCostMetricSet());
-    MetricService.getInstance().addMetricSet(new DataExchangeCountMetricSet());
-    MetricService.getInstance().addMetricSet(new DriverSchedulerMetricSet());
+    MetricService.getInstance().addMetricSet(QueryResourceMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(DataExchangeCostMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(DataExchangeCountMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(DriverSchedulerMetricSet.getInstance());
 
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());

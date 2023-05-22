@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.metric;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
@@ -48,37 +47,6 @@ public class QueryMetricsManager {
         MetricLevel.IMPORTANT,
         Tag.NAME.toString(),
         operatorType);
-  }
-
-  public void recordQueryResourceNum(String type, int count) {
-    metricService.histogram(
-        count, Metric.QUERY_RESOURCE.toString(), MetricLevel.IMPORTANT, Tag.TYPE.toString(), type);
-  }
-
-  public void recordDataExchangeCost(String stage, long costTimeInNanos) {
-    MetricInfo metricInfo = DataExchangeCostMetricSet.metricInfoMap.get(stage);
-    metricService.timer(
-        costTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        metricInfo.getName(),
-        MetricLevel.IMPORTANT,
-        metricInfo.getTagsInArray());
-  }
-
-  public void recordDataBlockNum(String type, int num) {
-    MetricInfo metricInfo = DataExchangeCountMetricSet.metricInfoMap.get(type);
-    metricService.histogram(
-        num, metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
-  }
-
-  public void recordTaskQueueTime(String name, long queueTimeInNanos) {
-    metricService.timer(
-        queueTimeInNanos,
-        TimeUnit.NANOSECONDS,
-        Metric.DRIVER_SCHEDULER.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        name);
   }
 
   public static QueryMetricsManager getInstance() {
