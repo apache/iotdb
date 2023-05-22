@@ -43,6 +43,14 @@ public class PathPatternTree {
 
   private List<PartialPath> pathPatternList;
 
+  // set the default value to TRUE to ensure correctness
+  private boolean useWildcard = true;
+
+  public PathPatternTree(boolean useWildcard) {
+    this();
+    this.useWildcard = useWildcard;
+  }
+
   public PathPatternTree() {
     this.root = new PathPatternNode<>(IoTDBConstant.PATH_ROOT, VoidSerializer.getInstance());
     this.pathPatternList = new LinkedList<>();
@@ -77,18 +85,22 @@ public class PathPatternTree {
 
   /** Add a pathPattern (may contain wildcards) to pathPatternList. */
   public void appendPathPattern(PartialPath pathPattern) {
-    boolean isExist = false;
-    for (PartialPath path : pathPatternList) {
-      if (path.include(pathPattern)) {
-        // path already exists in pathPatternList
-        isExist = true;
-        break;
+    if (useWildcard) {
+      boolean isExist = false;
+      for (PartialPath path : pathPatternList) {
+        if (path.include(pathPattern)) {
+          // path already exists in pathPatternList
+          isExist = true;
+          break;
+        }
       }
-    }
-    if (!isExist) {
-      // remove duplicate path in pathPatternList
-      pathPatternList.removeIf(pathPattern::include);
-      pathPatternList.add(pathPattern);
+      if (!isExist) {
+        // remove duplicate path in pathPatternList
+        pathPatternList.removeIf(pathPattern::include);
+        pathPatternList.add(pathPattern);
+      }
+    } else {
+      appendBranchWithoutPrune(root, pathPattern.getNodes(), 0);
     }
   }
 

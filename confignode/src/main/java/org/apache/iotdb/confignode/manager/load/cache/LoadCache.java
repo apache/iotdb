@@ -539,10 +539,7 @@ public class LoadCache {
       regionGroupIds.forEach(
           regionGroupId -> {
             if (!regionRouteCacheMap.containsKey(regionGroupId)
-                || regionRouteCacheMap.get(regionGroupId).getLeaderId()
-                    == RegionRouteCache.unReadyLeaderId
-                || RegionRouteCache.unReadyRegionPriority.equals(
-                    regionRouteCacheMap.get(regionGroupId).getRegionPriority())) {
+                || regionRouteCacheMap.get(regionGroupId).isRegionGroupUnready()) {
               allRegionLeaderElected.set(false);
             }
           });
@@ -559,7 +556,7 @@ public class LoadCache {
     }
 
     LOGGER.warn(
-        "[RegionElection] The leader of RegionGroups: {} is not elected after 10 heartbeat interval. Some function might fail.",
+        "[RegionElection] The leader or priority of RegionGroups: {} is not determined after 10 heartbeat interval. Some function might fail.",
         regionGroupIds);
   }
 
@@ -595,5 +592,9 @@ public class LoadCache {
    */
   public void removeRegionRouteCache(TConsensusGroupId regionGroupId) {
     regionRouteCacheMap.remove(regionGroupId);
+  }
+
+  public boolean existUnreadyRegionGroup() {
+    return regionRouteCacheMap.values().stream().anyMatch(RegionRouteCache::isRegionGroupUnready);
   }
 }

@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -31,10 +30,12 @@ import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskStat
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -46,7 +47,8 @@ import java.util.List;
  * <p>This class extends AbstractNodeProcedure to make sure that pipe task procedures can be
  * executed in sequence and node procedures can be locked when a pipe task procedure is running.
  */
-abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<OperatePipeTaskState> {
+public abstract class AbstractOperatePipeProcedureV2
+    extends AbstractNodeProcedure<OperatePipeTaskState> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperatePipeProcedureV2.class);
@@ -56,25 +58,25 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
   // only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
-  abstract PipeTaskOperation getOperation();
+  protected abstract PipeTaskOperation getOperation();
 
   /**
    * Execute at state VALIDATE_TASK
    *
    * @return true if procedure can finish directly
    */
-  abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
-      throws PipeException, PipeSinkException;
+  protected abstract void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
 
   /** Execute at state CALCULATE_INFO_FOR_TASK */
-  abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException;
+  protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
+      throws PipeException;
 
   /** Execute at state WRITE_CONFIG_NODE_CONSENSUS */
-  abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  protected abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException;
 
   /** Execute at state OPERATE_ON_DATA_NODES */
-  abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException;
 
   @Override
@@ -84,10 +86,7 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
       switch (state) {
         case VALIDATE_TASK:
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
-          if (!executeFromValidateTask(env)) {
-            env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-            return Flow.NO_MORE_STATE;
-          }
+          executeFromValidateTask(env);
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
         case CALCULATE_INFO_FOR_TASK:
@@ -103,7 +102,7 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
       }
-    } catch (PipeException | PipeSinkException | IOException e) {
+    } catch (Exception e) {
       if (isRollbackSupported(state)) {
         LOGGER.error("Fail in OperatePipeProcedure", e);
         setFailure(new ProcedureException(e.getMessage()));
@@ -199,5 +198,17 @@ abstract class AbstractOperatePipeProcedureV2 extends AbstractNodeProcedure<Oper
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeManagementException("Failed to push pipe meta list to data nodes");
     }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(isRollbackFromOperateOnDataNodesSuccessful, stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
   }
 }

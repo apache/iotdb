@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,6 +120,8 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                   "Unsupported event type %s for Hybrid Realtime Collector %s",
                   collectEvent.getEvent().getType(), this));
       }
+
+      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
@@ -138,7 +142,15 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                 (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)) {
-      return event.getEvent();
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
+        return event.getEvent();
+      } else {
+        // if the event's reference count can not be increased, it means the data represented by
+        // this event is not reliable anymore. but the data represented by this event
+        // has been carried by the following tsfile event, so we can just discard this event.
+        event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+        return null;
+      }
     }
     // if the state is USING_TSFILE, discard the event and poll the next one.
     return null;
@@ -160,7 +172,20 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
             });
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
-      return event.getEvent();
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
+        return event.getEvent();
+      } else {
+        // if the event's reference count can not be increased, it means the data represented by
+        // this event is not reliable anymore. the data has been lost. we simply discard this event
+        // and report the exception to PipeRuntimeAgent.
+        final String errorMessage =
+            String.format(
+                "TsFile Event %s can not be supplied because the reference count can not be increased, "
+                    + "the data represented by this event is lost",
+                event.getEvent());
+        PipeAgent.runtime().report(new PipeRuntimeNonCriticalException(errorMessage));
+        return null;
+      }
     }
     // if the state is USING_TABLET, discard the event and poll the next one.
     return null;

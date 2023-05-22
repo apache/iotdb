@@ -267,6 +267,23 @@ public class IoTDBAlignedDataDeletionIT {
   }
 
   @Test
+  public void testDeleteAfterColumnExtended() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("insert into root.vehicle.d0(time,s0) aligned values (10,310)");
+      statement.execute("insert into root.vehicle.d0(time,s3) aligned values (10,'text')");
+      statement.execute("insert into root.vehicle.d0(time,s4) aligned values (10,true)");
+
+      try {
+        statement.execute("DELETE FROM root.vehicle.d0.s3");
+      } catch (SQLException e) {
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
   public void testFullDeleteWithoutWhereClause() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

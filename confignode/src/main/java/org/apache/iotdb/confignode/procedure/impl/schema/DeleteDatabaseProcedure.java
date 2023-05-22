@@ -91,7 +91,7 @@ public class DeleteDatabaseProcedure
         case PRE_DELETE_DATABASE:
           LOG.info(
               "[DeleteDatabaseProcedure] Pre delete database: {}", deleteDatabaseSchema.getName());
-          env.preDelete(
+          env.preDeleteDatabase(
               PreDeleteDatabasePlan.PreDeleteType.EXECUTE, deleteDatabaseSchema.getName());
           setNextState(DeleteStorageGroupState.INVALIDATE_CACHE);
           break;
@@ -148,7 +148,8 @@ public class DeleteDatabaseProcedure
           }
 
           // Delete DatabasePartitionTable
-          final TSStatus deleteConfigResult = env.deleteConfig(deleteDatabaseSchema.getName());
+          final TSStatus deleteConfigResult =
+              env.deleteDatabaseConfig(deleteDatabaseSchema.getName());
 
           // Delete Database metrics
           PartitionMetrics.unbindDatabasePartitionMetrics(deleteDatabaseSchema.getName());
@@ -235,7 +236,8 @@ public class DeleteDatabaseProcedure
       case INVALIDATE_CACHE:
         LOG.info(
             "[DeleteDatabaseProcedure] Rollback to preDeleted: {}", deleteDatabaseSchema.getName());
-        env.preDelete(PreDeleteDatabasePlan.PreDeleteType.ROLLBACK, deleteDatabaseSchema.getName());
+        env.preDeleteDatabase(
+            PreDeleteDatabasePlan.PreDeleteType.ROLLBACK, deleteDatabaseSchema.getName());
         break;
       default:
         break;

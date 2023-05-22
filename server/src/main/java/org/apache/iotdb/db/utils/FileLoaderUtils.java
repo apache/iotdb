@@ -101,7 +101,7 @@ public class FileLoaderUtils {
         resource.updateEndTime(device, chunkMetadata.getEndTime());
       }
     }
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
     return resource;
   }
 

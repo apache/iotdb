@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.Collections;
@@ -36,10 +37,19 @@ public class ShowDevicesStatement extends ShowStatement {
 
   private final PartialPath pathPattern;
   private boolean hasSgCol;
+  private SchemaFilter schemaFilter;
 
   public ShowDevicesStatement(PartialPath pathPattern) {
     super();
     this.pathPattern = pathPattern;
+  }
+
+  public SchemaFilter getSchemaFilter() {
+    return schemaFilter;
+  }
+
+  public void setSchemaFilter(SchemaFilter schemaFilter) {
+    this.schemaFilter = schemaFilter;
   }
 
   public PartialPath getPathPattern() {

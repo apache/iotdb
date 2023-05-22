@@ -52,7 +52,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   // TODO: for a while
   @Override
-  protected void executeForAWhile() {
+  protected synchronized void executeForAWhile() {
     try {
       // TODO: reduce the frequency of heartbeat
       outputPipeConnector.heartbeat();
@@ -61,21 +61,32 @@ public class PipeConnectorSubtask extends PipeSubtask {
           "PipeConnector: failed to connect to the target system.", e);
     }
 
-    final Event event = inputPendingQueue.poll();
+    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.poll();
+    // record this event for retrying on connection failure or other exceptions
+    lastEvent = event;
     if (event == null) {
       return;
     }
 
     try {
-      if (event instanceof TabletInsertionEvent) {
-        outputPipeConnector.transfer((TabletInsertionEvent) event);
-      } else if (event instanceof TsFileInsertionEvent) {
-        outputPipeConnector.transfer((TsFileInsertionEvent) event);
-      } else if (event instanceof DeletionEvent) {
-        outputPipeConnector.transfer((DeletionEvent) event);
-      } else {
-        throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
+      switch (event.getType()) {
+        case TABLET_INSERTION:
+          outputPipeConnector.transfer((TabletInsertionEvent) event);
+          break;
+        case TSFILE_INSERTION:
+          outputPipeConnector.transfer((TsFileInsertionEvent) event);
+          break;
+        case DELETION:
+          outputPipeConnector.transfer((DeletionEvent) event);
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              "Unsupported event type: " + event.getClass().getName());
       }
+
+      releaseLastEvent();
+    } catch (PipeConnectionException e) {
+      throw e;
     } catch (Exception e) {
       e.printStackTrace();
       throw new PipeException(
@@ -115,7 +126,13 @@ public class PipeConnectorSubtask extends PipeSubtask {
             MAX_RETRY_TIMES,
             taskID);
         lastFailedCause = throwable;
+
         PipeAgent.runtime().report(this);
+
+        // although the pipe task will be stopped, we still don't release the last event here
+        // because we need to keep it for the next retry. if user wants to restart the task,
+        // the last event will be processed again. the last event will be released when the task
+        // is dropped or the process is running normally.
         return;
       }
     }
@@ -125,9 +142,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  public void close() {
+  // synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
+  // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
+  // resource leak because of the lastEvent is not released.
+  public synchronized void close() {
     try {
       outputPipeConnector.close();
+
+      // should be called after outputPipeConnector.close()
+      super.close();
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.info(

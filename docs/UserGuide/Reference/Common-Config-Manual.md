@@ -911,12 +911,12 @@ Different configuration parameters take effect in the following three ways:
 
 * target\_compaction\_file\_size
 
-|    Name     | target\_compaction\_file\_size               |
-| :---------: | :------------------------------------------- |
-| Description | The target file is in inner space compaction |
-|    Type     | Int64                                        |
-|   Default   | 1073741824                                   |
-|  Effective  | After restart system                         |
+|    Name     | target\_compaction\_file\_size                 |
+| :---------: |:-----------------------------------------------|
+| Description | The target file size in compaction |
+|    Type     | Int64                                          |
+|   Default   | 2147483648                                     |
+|  Effective  | After restart system                           |
 
 * target\_chunk\_size
 
@@ -1487,6 +1487,44 @@ Different configuration parameters take effect in the following three ways:
 |    Default    | 5                             |
 | Effective | hot-load                  |
 
+### IOTConsensus Configuration
+
+* data_region_iot_max_log_entries_num_per_batch
+
+|    Name     | data_region_iot_max_log_entries_num_per_batch                     |
+| :---------: | :------------------------------------------------ |
+| Description | The maximum log entries num in IoTConsensus Batch |
+|    Type     | int32                                             |
+|   Default   | 1024                                              |
+|  Effective  | After restarting system                           |
+
+* data_region_iot_max_size_per_batch
+
+|    Name     | data_region_iot_max_size_per_batch                     |
+| :---------: | :------------------------------------- |
+| Description | The maximum size in IoTConsensus Batch |
+|    Type     | int32                                  |
+|   Default   | 16MB                                   |
+|  Effective  | After restarting system                |
+
+* data_region_iot_max_pending_batches_num
+
+|    Name     | data_region_iot_max_pending_batches_num                         |
+| :---------: | :---------------------------------------------- |
+| Description | The maximum pending batches num in IoTConsensus |
+|    Type     | int32                                           |
+|   Default   | 12                                              |
+|  Effective  | After restarting system                         |
+
+* data_region_iot_max_memory_ratio_for_queue
+
+|    Name     | data_region_iot_max_memory_ratio_for_queue                         |
+| :---------: | :------------------------------------------------- |
+| Description | The maximum memory ratio for queue in IoTConsensus |
+|    Type     | double                                             |
+|   Default   | 0.6                                                |
+|  Effective  | After restarting system                            |
+
 ### RatisConsensus Configuration
 
 * config\_node\_ratis\_log\_appender\_buffer\_size\_max
@@ -1624,6 +1662,24 @@ Different configuration parameters take effect in the following three ways:
 |   Type   | int32                                      |
 |  Default   | 4MB                                        |
 | Effective | After restarting system                                       |
+
+* data_region_ratis_grpc_leader_outstanding_appends_max
+
+|    Name     | data_region_ratis_grpc_leader_outstanding_appends_max |
+| :---------: | :---------------------------------------------------- |
+| Description | data region grpc pipeline concurrency threshold       |
+|    Type     | int32                                                 |
+|   Default   | 128                                                   |
+|  Effective  | After restarting system                               |
+
+* data_region_ratis_log_force_sync_num
+
+|    Name     | data_region_ratis_log_force_sync_num |
+| :---------: | :----------------------------------- |
+| Description | data region fsync threshold          |
+|    Type     | int32                                |
+|   Default   | 128                                  |
+|  Effective  | After restarting system              |
 
 * config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
 
