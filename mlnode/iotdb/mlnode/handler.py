@@ -16,19 +16,19 @@
 # under the License.
 #
 
+from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_forecast_dataset
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.parser import parse_training_request, parse_forecast_request
+from iotdb.mlnode.parser import parse_forecast_request, parse_training_request
 from iotdb.mlnode.process.manager import TaskManager
+from iotdb.mlnode.serde import convert_to_binary
 from iotdb.mlnode.storage import model_storage
 from iotdb.mlnode.util import get_status
-from iotdb.mlnode.config import descriptor
 from iotdb.thrift.mlnode import IMLNodeRPCService
 from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
                                         TDeleteModelReq, TForecastReq,
                                         TForecastResp)
-from iotdb.mlnode.serde import convert_to_binary
 
 
 class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):

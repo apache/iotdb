@@ -16,7 +16,7 @@
 # under the License.
 #
 from abc import abstractmethod
-from typing import List, Dict
+from typing import Dict, List
 
 import numpy as np
 

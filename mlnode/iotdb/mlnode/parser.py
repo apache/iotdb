@@ -24,8 +24,8 @@ from typing import Dict, List, Tuple
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
 from iotdb.mlnode.exception import MissingConfigError, WrongTypeConfigError
-from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TForecastReq
 from iotdb.mlnode.serde import convert_to_df
+from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TForecastReq
 
 
 class _ConfigParser(argparse.ArgumentParser):
@@ -222,7 +222,7 @@ def parse_forecast_request(req: TForecastReq):
     ts_dataset = req.inputData
     pred_len = req.predictLength
 
-    data = convert_to_df(column_name_list, column_type_list, None, ts_dataset)
+    data = convert_to_df(column_name_list, column_type_list, None, [ts_dataset])
     time_stamp, data = data[data.columns[0:1]], data[data.columns[1:]]
     full_data = (data, time_stamp)
     return model_path, full_data, pred_len

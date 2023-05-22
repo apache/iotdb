@@ -17,10 +17,10 @@
 #
 
 import math
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
-from typing import Dict, Tuple
 
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.exception import BadConfigValueError

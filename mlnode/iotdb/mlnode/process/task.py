@@ -17,25 +17,23 @@
 #
 
 import os
-import pandas as pd
-import numpy as np
-
 from abc import abstractmethod
+from multiprocessing.connection import Connection
 from typing import Dict, Tuple
 
+import numpy as np
 import optuna
+import pandas as pd
 import torch
-from torch import nn
 from torch.utils.data import Dataset
-from multiprocessing.connection import Connection
 
-from iotdb.mlnode.log import logger
-from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
-from iotdb.thrift.common.ttypes import TrainingState
+from iotdb.mlnode.log import logger
+from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.storage import model_storage
+from iotdb.thrift.common.ttypes import TrainingState
 
 
 class ForestingTrainingObjective:
@@ -229,7 +227,7 @@ class ForecastingInferenceTask(_BasicInferenceTask):
             task_configs: Dict,
             model_configs: Dict,
             pid_info: Dict,
-            data:Tuple,
+            data: Tuple,
             model_path: str
     ):
         super().__init__(task_configs, model_configs, pid_info, data, model_path)
@@ -247,17 +245,14 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         current_pred_len = 0
         while current_pred_len < self.pred_len:
             current_data = full_data[:, -self.input_len:, :]
-            # current_data_stamp = timefeatures.time_features(full_data_stamp.iloc[-self.input_len:, :])[None, :] # batch
             current_data = torch.Tensor(current_data)
             output_data = self.model(current_data).detach().numpy()
             full_data = np.concatenate([full_data, output_data], axis=1)
-            # full_data_stamp = pd.concat([full_data_stamp, self.generate_future_mark(full_data_stamp, self.pred_len)])
             current_pred_len += self.model_pred_len
         full_data_stamp = self.generate_future_mark(full_data_stamp, self.pred_len)
-        # ret_data = np.concatenate([full_data_stamp, full_data[0, -self.pred_len:, :]], axis=1)
-        # ret_data = ret_data[-
-        ret_data = pd.concat([pd.DataFrame(full_data_stamp.astype(np.int64)), pd.DataFrame(full_data[0, -self.pred_len:, :])], axis=1)
-        # ret_data = pd.DataFrame(ret_data)
+        ret_data = pd.concat(
+            [pd.DataFrame(full_data_stamp.astype(np.int64)),
+             pd.DataFrame(full_data[0, -self.pred_len:, :]).astype(np.double)], axis=1)
         ret_data.columns = list(np.arange(0, C + 1))
         pipe.send(ret_data)
 
@@ -284,12 +279,9 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         data = data[None, :]  # add batch dim
         return data, data_stamp
 
-    def generate_future_mark(self, data_stamp:pd.DataFrame, future_len: int) -> pd.DatetimeIndex:
+    def generate_future_mark(self, data_stamp: pd.DataFrame, future_len: int) -> pd.DatetimeIndex:
         time_deltas = data_stamp.diff().dropna()
         mean_timedelta = time_deltas.mean()[0]
         extrapolated_timestamp = pd.date_range(data_stamp.values[0][0], periods=future_len,
                                                freq=mean_timedelta)
         return extrapolated_timestamp[:, None]
-
-if __name__ == '__main__':
-    pass
