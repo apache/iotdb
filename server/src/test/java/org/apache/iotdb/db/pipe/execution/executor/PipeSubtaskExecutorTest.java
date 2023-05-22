@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.executor;
+package org.apache.iotdb.db.pipe.execution.executor;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 
 import org.junit.After;

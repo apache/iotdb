@@ -49,7 +49,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
     this.outputPipeConnector = outputPipeConnector;
   }
 
-  // TODO: for a while
   @Override
   protected synchronized boolean executeOnce() {
     try {
