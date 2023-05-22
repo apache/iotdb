@@ -21,11 +21,9 @@ package org.apache.iotdb.confignode.manager.load.subscriber;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.manager.load.balancer.router.RegionRouteMap;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class RouteChangeEvent {
 
@@ -34,34 +32,11 @@ public class RouteChangeEvent {
   // Map<RegionGroupId, Pair<old Priority, new Priority>>
   private final Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> priorityMap;
 
-  public RouteChangeEvent(RegionRouteMap preRouteMap, RegionRouteMap currentRouteMap) {
-    this.leaderMap = new ConcurrentHashMap<>();
-    this.priorityMap = new ConcurrentHashMap<>();
-
-    preRouteMap
-        .getRegionLeaderMap()
-        .forEach(
-            (regionGroupId, oldLeader) -> {
-              Integer newLeader = currentRouteMap.getRegionLeaderMap().get(regionGroupId);
-              if (newLeader != null && !newLeader.equals(oldLeader)) {
-                leaderMap.put(regionGroupId, new Pair<>(oldLeader, newLeader));
-              }
-            });
-
-    preRouteMap
-        .getRegionPriorityMap()
-        .forEach(
-            (regionGroupId, oldPriority) -> {
-              TRegionReplicaSet newPriority =
-                  currentRouteMap.getRegionPriorityMap().get(regionGroupId);
-              if (newPriority != null && !newPriority.equals(oldPriority)) {
-                priorityMap.put(regionGroupId, new Pair<>(oldPriority, newPriority));
-              }
-            });
-  }
-
-  public boolean isNeedBroadcast() {
-    return !leaderMap.isEmpty() || !priorityMap.isEmpty();
+  public RouteChangeEvent(
+      Map<TConsensusGroupId, Pair<Integer, Integer>> leaderMap,
+      Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>> priorityMap) {
+    this.leaderMap = leaderMap;
+    this.priorityMap = priorityMap;
   }
 
   public Map<TConsensusGroupId, Pair<Integer, Integer>> getLeaderMap() {

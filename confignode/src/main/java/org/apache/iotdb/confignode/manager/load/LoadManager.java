@@ -88,6 +88,7 @@ public class LoadManager {
         new StatisticsService(configManager, routeBalancer, loadCache, loadPublisher);
 
     loadPublisher.register(statisticsService);
+    loadPublisher.register(configManager.getPipeManager().getPipeRuntimeCoordinator());
   }
 
   /**
@@ -129,49 +130,12 @@ public class LoadManager {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
-  /** @return Map<RegionGroupId, DataNodeId where the leader resides> */
-  public Map<TConsensusGroupId, Integer> getLatestRegionLeaderMap() {
-    return routeBalancer.getLatestRegionLeaderMap();
-  }
-
-  /**
-   * Get the number of RegionGroup-leaders in the specified DataNode.
-   *
-   * @param dataNodeId The specified DataNode
-   * @param type SchemaRegion or DataRegion
-   * @return The number of RegionGroup-leaders
-   */
-  public int getRegionGroupLeaderCount(int dataNodeId, TConsensusGroupType type) {
-    AtomicInteger result = new AtomicInteger(0);
-    routeBalancer
-        .getLatestRegionLeaderMap()
-        .forEach(
-            ((consensusGroupId, leaderId) -> {
-              if (dataNodeId == leaderId && type.equals(consensusGroupId.getType())) {
-                result.getAndIncrement();
-              }
-            }));
-    return result.get();
-  }
-
-  /**
-   * Generate an optimal real-time read/write requests routing policy.
-   *
-   * @return Map<TConsensusGroupId, TRegionReplicaSet>, The routing policy of read/write requests
-   *     for each Region is based on the order in the TRegionReplicaSet. The replica with higher
-   *     sorting result have higher priority.
-   */
-  public Map<TConsensusGroupId, TRegionReplicaSet> getLatestRegionRouteMap() {
-    return routeBalancer.getLatestRegionPriorityMap();
-  }
-
   public void broadcastLatestRegionRouteMap() {
     statisticsService.broadcastLatestRegionRouteMap();
   }
 
   public void startLoadServices() {
     loadCache.initHeartbeatCache(configManager);
-    routeBalancer.initRegionRouteMap();
     heartbeatService.startHeartbeatService();
     statisticsService.startLoadStatisticsService();
   }
@@ -180,10 +144,6 @@ public class LoadManager {
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     loadCache.clearHeartbeatCache();
-  }
-
-  public RouteBalancer getRouteBalancer() {
-    return routeBalancer;
   }
 
   /**
@@ -357,5 +317,81 @@ public class LoadManager {
   /** Remove the specified RegionGroup's cache. */
   public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
     loadCache.removeRegionGroupCache(consensusGroupId);
+  }
+
+  /**
+   * Get the latest RegionLeaderMap.
+   *
+   * @return Map<RegionGroupId, leaderId>
+   */
+  public Map<TConsensusGroupId, Integer> getRegionLeaderMap() {
+    return loadCache.getRegionLeaderMap();
+  }
+
+  /**
+   * Get the latest RegionPriorityMap.
+   *
+   * @return Map<RegionGroupId, RegionPriority>.
+   */
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
+    return loadCache.getRegionPriorityMap();
+  }
+
+  /**
+   * Get the number of RegionGroup-leaders in the specified DataNode.
+   *
+   * @param dataNodeId The specified DataNode
+   * @param type SchemaRegion or DataRegion
+   * @return The number of RegionGroup-leaders
+   */
+  public int getRegionGroupLeaderCount(int dataNodeId, TConsensusGroupType type) {
+    AtomicInteger result = new AtomicInteger(0);
+    getRegionLeaderMap()
+        .forEach(
+            ((consensusGroupId, leaderId) -> {
+              if (dataNodeId == leaderId && type.equals(consensusGroupId.getType())) {
+                result.getAndIncrement();
+              }
+            }));
+    return result.get();
+  }
+
+  /**
+   * Wait for the specified RegionGroups to finish leader election
+   *
+   * @param regionGroupIds Specified RegionGroupIds
+   */
+  public void waitForLeaderElection(List<TConsensusGroupId> regionGroupIds) {
+    loadCache.waitForLeaderElection(regionGroupIds);
+  }
+
+  /**
+   * Force update the specified RegionGroup's leader.
+   *
+   * @param regionGroupId Specified RegionGroupId
+   * @param leaderId Leader DataNodeId
+   */
+  public void forceUpdateRegionLeader(TConsensusGroupId regionGroupId, int leaderId) {
+    loadCache.forceUpdateRegionLeader(regionGroupId, leaderId);
+  }
+
+  /**
+   * Force update the specified RegionGroup's priority.
+   *
+   * @param regionGroupId Specified RegionGroupId
+   * @param regionPriority Region route priority
+   */
+  public void forceUpdateRegionPriority(
+      TConsensusGroupId regionGroupId, TRegionReplicaSet regionPriority) {
+    loadCache.forceUpdateRegionPriority(regionGroupId, regionPriority);
+  }
+
+  /**
+   * Remove the specified RegionGroup's route cache.
+   *
+   * @param regionGroupId Specified RegionGroupId
+   */
+  public void removeRegionRouteCache(TConsensusGroupId regionGroupId) {
+    loadCache.removeRegionRouteCache(regionGroupId);
   }
 }

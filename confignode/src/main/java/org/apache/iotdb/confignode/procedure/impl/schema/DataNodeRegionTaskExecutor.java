@@ -70,7 +70,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
         executeOnAllReplicaset
             ? getAllReplicaDataNodeRegionGroupMap(targetSchemaRegionGroup)
             : getLeaderDataNodeRegionGroupMap(
-                env.getConfigManager().getLoadManager().getLatestRegionLeaderMap(),
+                env.getConfigManager().getLoadManager().getRegionLeaderMap(),
                 targetSchemaRegionGroup);
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
       AsyncClientHandler<Q, R> clientHandler = prepareRequestHandler(dataNodeConsensusGroupIdMap);
@@ -143,7 +143,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
     Map<TDataNodeLocation, List<TConsensusGroupId>> availableDataNodeLocation = new HashMap<>();
 
     Map<TConsensusGroupId, Integer> leaderMap =
-        env.getConfigManager().getLoadManager().getLatestRegionLeaderMap();
+        env.getConfigManager().getLoadManager().getRegionLeaderMap();
     for (List<TConsensusGroupId> consensusGroupIdList :
         failedDataNodeConsensusGroupIdMap.values()) {
       for (TConsensusGroupId consensusGroupId : consensusGroupIdList) {

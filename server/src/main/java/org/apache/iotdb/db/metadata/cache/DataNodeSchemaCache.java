@@ -68,11 +68,13 @@ public class DataNodeSchemaCache {
     MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
   }
 
-  public double getHitRate() {
-    return (deviceUsingTemplateSchemaCache.getHitCount() + timeSeriesSchemaCache.getHitCount())
-        * 1.0
-        / (deviceUsingTemplateSchemaCache.getRequestCount()
-            + timeSeriesSchemaCache.getRequestCount());
+  public long getHitCount() {
+    return deviceUsingTemplateSchemaCache.getHitCount() + timeSeriesSchemaCache.getHitCount();
+  }
+
+  public long getRequestCount() {
+    return deviceUsingTemplateSchemaCache.getRequestCount()
+        + timeSeriesSchemaCache.getRequestCount();
   }
 
   public static DataNodeSchemaCache getInstance() {
@@ -113,11 +115,15 @@ public class DataNodeSchemaCache {
 
   public ClusterSchemaTree get(PartialPath fullPath) {
     ClusterSchemaTree clusterSchemaTree = deviceUsingTemplateSchemaCache.get(fullPath);
-    if (clusterSchemaTree == null) {
+    if (clusterSchemaTree == null || clusterSchemaTree.isEmpty()) {
       return timeSeriesSchemaCache.get(fullPath);
     } else {
       return clusterSchemaTree;
     }
+  }
+
+  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath path) {
+    return deviceUsingTemplateSchemaCache.getMatchedSchemaWithTemplate(path);
   }
 
   public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {

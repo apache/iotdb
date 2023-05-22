@@ -810,6 +810,10 @@ VERSION
     : V E R S I O N
     ;
 
+VIEW
+    : V I E W
+    ;
+
 WATERMARK_EMBEDDING
     : W A T E R M A R K '_' E M B E D D I N G
     ;

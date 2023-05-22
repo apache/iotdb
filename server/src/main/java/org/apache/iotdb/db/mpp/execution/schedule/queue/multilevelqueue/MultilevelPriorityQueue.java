@@ -157,10 +157,10 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
     checkArgument(driverTask != null, "driverTask is null");
     for (PriorityQueue<DriverTask> level : levelWaitingSplits) {
       if (level.remove(driverTask)) {
-        break;
+        return driverTask;
       }
     }
-    return driverTask;
+    return null;
   }
 
   @Override

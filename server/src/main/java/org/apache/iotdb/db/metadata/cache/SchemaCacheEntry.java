@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContaine
 import org.apache.iotdb.db.metadata.cache.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
@@ -31,7 +32,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
   private final String storageGroup;
 
-  private final MeasurementSchema measurementSchema;
+  private final IMeasurementSchema iMeasurementSchema;
 
   private final Map<String, String> tagMap;
   private final boolean isAligned;
@@ -40,25 +41,25 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
   SchemaCacheEntry(
       String storageGroup,
-      MeasurementSchema measurementSchema,
+      IMeasurementSchema iMeasurementSchema,
       Map<String, String> tagMap,
       boolean isAligned) {
     this.storageGroup = storageGroup.intern();
-    this.measurementSchema = measurementSchema;
+    this.iMeasurementSchema = iMeasurementSchema;
     this.isAligned = isAligned;
     this.tagMap = tagMap;
   }
 
   public String getSchemaEntryId() {
-    return measurementSchema.getMeasurementId();
+    return iMeasurementSchema.getMeasurementId();
   }
 
   public String getStorageGroup() {
     return storageGroup;
   }
 
-  public MeasurementSchema getMeasurementSchema() {
-    return measurementSchema;
+  public IMeasurementSchema getIMeasurementSchema() {
+    return iMeasurementSchema;
   }
 
   public Map<String, String> getTagMap() {
@@ -66,7 +67,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   }
 
   public TSDataType getTsDataType() {
-    return measurementSchema.getType();
+    return iMeasurementSchema.getType();
   }
 
   public boolean isAligned() {
@@ -108,21 +109,34 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
    */
   public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
     // each char takes 2B in Java
-    return 100 + 2 * schemaCacheEntry.getMeasurementSchema().getMeasurementId().length();
+    return 100 + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length();
   }
 
   @Override
   public String getName() {
-    return measurementSchema.getMeasurementId();
+    return iMeasurementSchema.getMeasurementId();
   }
 
   @Override
-  public MeasurementSchema getSchema() {
-    return measurementSchema;
+  public IMeasurementSchema getSchema() {
+    return iMeasurementSchema;
+  }
+
+  @Override
+  public MeasurementSchema getSchemaAsMeasurementSchema() {
+    if (this.iMeasurementSchema instanceof MeasurementSchema) {
+      return (MeasurementSchema) this.getSchema();
+    }
+    return null;
   }
 
   @Override
   public String getAlias() {
     return null;
+  }
+
+  @Override
+  public boolean isLogicalView() {
+    return this.iMeasurementSchema.isLogicalView();
   }
 }

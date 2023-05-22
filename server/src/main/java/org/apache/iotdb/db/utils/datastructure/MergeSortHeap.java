@@ -26,9 +26,9 @@ public class MergeSortHeap {
   private final MergeSortKey[] heap;
   private int heapSize;
 
-  private final Comparator<MergeSortKey> comparator;
+  private final Comparator<SortKey> comparator;
 
-  public MergeSortHeap(int childNum, Comparator<MergeSortKey> comparator) {
+  public MergeSortHeap(int childNum, Comparator<SortKey> comparator) {
     this.heap = new MergeSortKey[childNum];
     this.heapSize = 0;
     this.comparator = comparator;

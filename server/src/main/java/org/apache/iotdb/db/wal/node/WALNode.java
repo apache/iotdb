@@ -45,6 +45,7 @@ import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.buffer.WALSignalEntry;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
+import org.apache.iotdb.db.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
@@ -93,7 +94,7 @@ public class WALNode implements IWALNode {
   /** directory to store this node's files */
   private final File logDirectory;
   /** wal buffer */
-  private final IWALBuffer buffer;
+  private final WALBuffer buffer;
   /** manage checkpoints */
   private final CheckpointManager checkpointManager;
   /**
@@ -148,6 +149,9 @@ public class WALNode implements IWALNode {
 
   private WALFlushListener log(WALEntry walEntry) {
     buffer.write(walEntry);
+    // set handler for pipe
+    walEntry.getWalFlushListener().getWalPipeHandler().setMemTableId(walEntry.getMemTableId());
+    walEntry.getWalFlushListener().getWalPipeHandler().setWalNode(this);
     return walEntry.getWalFlushListener();
   }
 
@@ -183,6 +187,18 @@ public class WALNode implements IWALNode {
     checkpointManager.makeCreateMemTableCP(memTableInfo);
   }
 
+  // region methods for pipe
+  /** Pin the wal files of the given memory table */
+  public void pinMemTable(long memTableId) throws MemTablePinException {
+    checkpointManager.pinMemTable(memTableId);
+  }
+
+  /** Unpin the wal files of the given memory table */
+  public void unpinMemTable(long memTableId) throws MemTablePinException {
+    checkpointManager.unpinMemTable(memTableId);
+  }
+  // endregion
+
   // region Task to delete outdated .wal files
   /** Delete outdated .wal files */
   public void deleteOutdatedFiles() {
@@ -197,6 +213,8 @@ public class WALNode implements IWALNode {
     private static final int MAX_RECURSION_TIME = 5;
     /** .wal files whose version ids are less than first valid version id should be deleted */
     private long firstValidVersionId;
+    /** the effective information ratio */
+    private double effectiveInfoRatio;
     /** recursion time of calling deletion */
     private int recursionTime = 0;
 
@@ -232,7 +250,7 @@ public class WALNode implements IWALNode {
       if (totalCost == 0) {
         return;
       }
-      double effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
+      effectiveInfoRatio = (double) costOfActiveMemTables / totalCost;
       WRITING_METRICS.recordWALNodeEffectiveInfoRatio(identifier, effectiveInfoRatio);
       logger.debug(
           "Effective information ratio is {}, active memTables cost is {}, flushed memTables cost is {}",
@@ -243,7 +261,7 @@ public class WALNode implements IWALNode {
       // update first valid version id by snapshotting or flushing memTable,
       // then delete old .wal files again
       if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()) {
-        logger.info(
+        logger.debug(
             "Effective information ratio {} (active memTables cost is {}, flushed memTables cost is {}) of wal node-{} is below wal min effective info ratio {}, some memTables will be snapshot or flushed.",
             effectiveInfoRatio,
             costOfActiveMemTables,
@@ -306,8 +324,8 @@ public class WALNode implements IWALNode {
           totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
         }
       }
-      WALManager.getInstance().subtractTotalDiskUsage(deletedFilesSize);
-      WALManager.getInstance().subtractTotalFileNum(deletedFilesNum);
+      buffer.subtractDiskUsage(deletedFilesSize);
+      buffer.subtractFileNum(deletedFilesNum);
       logger.debug(
           "Successfully delete {} outdated wal files for wal node-{}.",
           deletedFilesNum,
@@ -328,12 +346,21 @@ public class WALNode implements IWALNode {
     /**
      * Snapshot or flush one memTable,
      *
-     * @return true if snapshot or flushed
+     * @return true if snapshot or flush is executed successfully
      */
     private boolean snapshotOrFlushMemTable() {
       // find oldest memTable
       MemTableInfo oldestMemTableInfo = checkpointManager.getOldestMemTableInfo();
       if (oldestMemTableInfo == null) {
+        return false;
+      }
+      if (oldestMemTableInfo.isPinned()) {
+        logger.info(
+            "MemTable-{} is pinned and effective information ratio {} of wal node-{} is below wal min effective info ratio {}.",
+            oldestMemTableInfo.getMemTableId(),
+            effectiveInfoRatio,
+            identifier,
+            config.getWalMinEffectiveInfoRatio());
         return false;
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
@@ -376,10 +403,12 @@ public class WALNode implements IWALNode {
             dataRegion.submitAFlushTask(
                 TsFileUtils.getTimePartition(tsFile), TsFileUtils.isSequence(tsFile), memTable);
         logger.info(
-            "WAL node-{} flushes memTable-{} to TsFile {}, memTable size is {}.",
+            "WAL node-{} flushes memTable-{} to TsFile {} because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
             identifier,
             memTable.getMemTableId(),
             tsFile,
+            effectiveInfoRatio,
+            config.getWalMinEffectiveInfoRatio(),
             memTable.getTVListsRamCost());
       }
 
@@ -444,9 +473,11 @@ public class WALNode implements IWALNode {
             logger.error("Fail to snapshot memTable of {}", tsFile, flushListener.getCause());
           }
           logger.info(
-              "WAL node-{} snapshots memTable-{} to wal files, memTable size is {}.",
+              "WAL node-{} snapshots memTable-{} to wal files because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
               identifier,
               memTable.getMemTableId(),
+              effectiveInfoRatio,
+              config.getWalMinEffectiveInfoRatio(),
               memTable.getTVListsRamCost());
         }
       } finally {
@@ -743,10 +774,14 @@ public class WALNode implements IWALNode {
   }
 
   @Override
+  public long getCurrentWALFileVersion() {
+    return buffer.getCurrentWALFileVersion();
+  }
+
+  @Override
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();
   }
-
   // endregion
 
   @Override
@@ -757,6 +792,11 @@ public class WALNode implements IWALNode {
 
   public File getLogDirectory() {
     return logDirectory;
+  }
+
+  /** Get the .wal file starts with the specified version id */
+  public File getWALFile(long versionId) {
+    return WALFileUtils.getWALFile(logDirectory, versionId);
   }
 
   /** Return true when all wal entries all consumed and flushed */
@@ -776,8 +816,21 @@ public class WALNode implements IWALNode {
     }
   }
 
+  public long getDiskUsage() {
+    return buffer.getDiskUsage();
+  }
+
+  public long getFileNum() {
+    return buffer.getFileNum();
+  }
+
   @TestOnly
   long getCurrentLogVersion() {
     return buffer.getCurrentWALFileVersion();
+  }
+
+  @TestOnly
+  CheckpointManager getCheckpointManager() {
+    return checkpointManager;
   }
 }

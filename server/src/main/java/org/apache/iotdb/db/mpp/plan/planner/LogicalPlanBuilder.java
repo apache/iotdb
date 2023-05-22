@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -87,9 +88,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -549,10 +550,10 @@ public class LogicalPlanBuilder {
       sortItemList = new ArrayList<>();
     }
     if (!queryStatement.isOrderByDevice()) {
-      sortItemList.add(new SortItem(SortKey.DEVICE, Ordering.ASC));
+      sortItemList.add(new SortItem(OrderByKey.DEVICE, Ordering.ASC));
     }
     if (!queryStatement.isOrderByTime()) {
-      sortItemList.add(new SortItem(SortKey.TIME, Ordering.ASC));
+      sortItemList.add(new SortItem(OrderByKey.TIME, Ordering.ASC));
     }
 
     OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
@@ -981,34 +982,41 @@ public class LogicalPlanBuilder {
   /** Meta Query* */
   public LogicalPlanBuilder planTimeSeriesSchemaSource(
       PartialPath pathPattern,
-      String key,
-      String value,
+      SchemaFilter schemaFilter,
       long limit,
       long offset,
       boolean orderByHeat,
-      boolean contains,
       boolean prefixPath,
       Map<Integer, Template> templateMap) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
             pathPattern,
-            key,
-            value,
+            schemaFilter,
             limit,
             offset,
             orderByHeat,
-            contains,
             prefixPath,
             templateMap);
     return this;
   }
 
   public LogicalPlanBuilder planDeviceSchemaSource(
-      PartialPath pathPattern, long limit, long offset, boolean prefixPath, boolean hasSgCol) {
+      PartialPath pathPattern,
+      long limit,
+      long offset,
+      boolean prefixPath,
+      boolean hasSgCol,
+      SchemaFilter schemaFilter) {
     this.root =
         new DevicesSchemaScanNode(
-            context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
+            context.getQueryId().genPlanNodeId(),
+            pathPattern,
+            limit,
+            offset,
+            prefixPath,
+            hasSgCol,
+            schemaFilter);
     return this;
   }
 
@@ -1082,38 +1090,23 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planTimeSeriesCountSource(
       PartialPath partialPath,
       boolean prefixPath,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     this.root =
         new TimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
             partialPath,
             prefixPath,
-            key,
-            value,
-            isContains,
+            schemaFilter,
             templateMap);
     return this;
   }
 
   public LogicalPlanBuilder planLevelTimeSeriesCountSource(
-      PartialPath partialPath,
-      boolean prefixPath,
-      int level,
-      String key,
-      String value,
-      boolean isContains) {
+      PartialPath partialPath, boolean prefixPath, int level, SchemaFilter schemaFilter) {
     this.root =
         new LevelTimeSeriesCountNode(
-            context.getQueryId().genPlanNodeId(),
-            partialPath,
-            prefixPath,
-            level,
-            key,
-            value,
-            isContains);
+            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level, schemaFilter);
     return this;
   }
 

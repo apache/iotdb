@@ -43,14 +43,14 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
-        l -> (long) timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio(),
+        l -> timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio() * 100.0d,
         Tag.NAME.toString(),
         "timeSeriesMeta");
     metricService.createAutoGauge(
         Metric.CACHE_HIT.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
-        TimeSeriesMetadataCache::calculateBloomFilterHitRatio,
+        l -> timeSeriesMetadataCache.calculateBloomFilterHitRatio() * 100.0d,
         Tag.NAME.toString(),
         "bloomFilter");
   }

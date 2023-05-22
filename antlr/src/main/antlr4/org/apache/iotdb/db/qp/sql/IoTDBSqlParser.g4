@@ -63,6 +63,8 @@ ddlStatement
     | createModel | dropModel | showModels | showTrails
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
+    // View
+    | createLogicalView
     ;
 
 dmlStatement
@@ -178,12 +180,12 @@ aliasClause
 
 // ---- Show Devices
 showDevices
-    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? rowPaginationClause?
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? rowPaginationClause?
     ;
 
 // ---- Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? tagWhereClause? rowPaginationClause?
+    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? rowPaginationClause?
     ;
 
 // ---- Show Child Paths
@@ -203,7 +205,7 @@ countDevices
 
 // ---- Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? tagWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
+    : COUNT TIMESERIES prefixPath? timeseriesWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
     ;
 
 // ---- Count Nodes
@@ -211,8 +213,34 @@ countNodes
     : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
     ;
 
-tagWhereClause
-    : WHERE (attributePair | containsExpression)
+// ---- Timeseries Where Clause
+devicesWhereClause
+    : WHERE deviceContainsExpression
+    ;
+
+deviceContainsExpression
+    : DEVICE OPERATOR_CONTAINS value=STRING_LITERAL
+    ;
+
+// ---- Timeseries Where Clause
+timeseriesWhereClause
+    : WHERE (timeseriesContainsExpression | columnEqualsExpression | tagEqualsExpression | tagContainsExpression)
+    ;
+
+timeseriesContainsExpression
+    : TIMESERIES OPERATOR_CONTAINS value=STRING_LITERAL
+    ;
+
+columnEqualsExpression
+    : attributeKey operator_eq attributeValue
+    ;
+
+tagEqualsExpression
+    : TAGS LR_BRACKET key=attributeKey RR_BRACKET operator_eq value=attributeValue
+    ;
+
+tagContainsExpression
+    : TAGS LR_BRACKET name=attributeKey RR_BRACKET OPERATOR_CONTAINS value=STRING_LITERAL
     ;
 
 
@@ -220,7 +248,7 @@ tagWhereClause
 // ---- Create Schema Template
 createSchemaTemplate
     : CREATE SCHEMA TEMPLATE templateName=identifier
-    ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    ALIGNED? (LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET)?
     ;
 
 templateMeasurementClause
@@ -528,6 +556,26 @@ showModels
 // ---- Show Trails
 showTrails
     : SHOW TRAILS modelId=identifier
+    ;
+
+// Create Logical View
+createLogicalView
+    : CREATE VIEW viewTargetPaths AS viewSourcePaths
+    ;
+
+viewSuffixPaths
+    : nodeNameWithoutWildcard (DOT nodeNameWithoutWildcard)*
+    ;
+
+viewTargetPaths
+    : fullPath (COMMA fullPath)*
+    | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
+    ;
+
+viewSourcePaths
+    : fullPath (COMMA fullPath)*
+    | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
+    | selectClause fromClause
     ;
 
 /**
@@ -1121,11 +1169,6 @@ scalarFunctionExpression
     | REPLACE LR_BRACKET text=expression COMMA from=STRING_LITERAL COMMA to=STRING_LITERAL RR_BRACKET
     | SUBSTRING subStringExpression
     | ROUND LR_BRACKET input=expression (COMMA places=constant)? RR_BRACKET
-    ;
-
-
-containsExpression
-    : name=attributeKey OPERATOR_CONTAINS value=attributeValue
     ;
 
 operator_eq

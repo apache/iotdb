@@ -99,6 +99,7 @@ public class IoTDBOrderByIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getDataNodeCommonConfig().setSortBufferSize(1024 * 1024L);
     EnvFactory.getEnv().initClusterEnvironment();
     insertData();
   }
@@ -201,7 +202,7 @@ public class IoTDBOrderByIT {
 
   @Test
   public void orderByTest2() {
-    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum";
+    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum,time";
     int[] ans = {13, 11, 10, 3, 1, 5, 4, 7, 9, 8, 2, 12, 0, 6, 14};
     testNormalOrderBy(sql, ans);
   }
@@ -229,7 +230,8 @@ public class IoTDBOrderByIT {
 
   @Test
   public void orderByTest6() {
-    String sql = "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum desc";
+    String sql =
+        "select num,bigNum,floatNum,str,bool from root.sg.d order by bigNum desc, time asc";
     int[] ans = {6, 14, 0, 12, 2, 8, 9, 7, 4, 5, 1, 3, 10, 11, 13};
     testNormalOrderBy(sql, ans);
   }
@@ -1220,5 +1222,31 @@ public class IoTDBOrderByIT {
         "select num, top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2') from root.sg.d order by top_k(num, 'k'='2'), bottom_k(bigNum, 'k'='2')";
     int[] ans = {12, 14, 13, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     orderByUDFTest(sql, ans);
+  }
+
+  @Test
+  public void errorTest1() {
+    String sql = "select num from root.sg.d order by avg(bigNum)";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        fail();
+      }
+    } catch (Exception e) {
+      assertEquals("701: Raw data and aggregation hybrid query is not supported.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void errorTest2() {
+    String sql = "select avg(num) from root.sg.d order by bigNum";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        fail();
+      }
+    } catch (Exception e) {
+      assertEquals("701: Raw data and aggregation hybrid query is not supported.", e.getMessage());
+    }
   }
 }

@@ -162,15 +162,17 @@ class AutoCreateSchemaExecutor {
     }
   }
 
+  // used for insert record or tablet
   void autoExtendTemplate(
       String templateName, List<String> measurementList, List<TSDataType> dataTypeList) {
     internalExtendTemplate(templateName, measurementList, dataTypeList, null, null);
   }
 
+  // used for insert records or tablets
   void autoExtendTemplate(Map<String, TemplateExtendInfo> templateExtendInfoMap) {
     TemplateExtendInfo templateExtendInfo;
     for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
-      templateExtendInfo = entry.getValue();
+      templateExtendInfo = entry.getValue().deduplicate();
       internalExtendTemplate(
           entry.getKey(),
           templateExtendInfo.getMeasurements(),
@@ -225,6 +227,7 @@ class AutoCreateSchemaExecutor {
     }
   }
 
+  // used for load TsFile
   void autoCreateMissingMeasurements(
       ClusterSchemaTree schemaTree,
       List<PartialPath> devicePathList,
@@ -346,6 +349,7 @@ class AutoCreateSchemaExecutor {
 
     if (!templateExtendInfoMap.isEmpty()) {
       for (TemplateExtendInfo templateExtendInfo : templateExtendInfoMap.values()) {
+        templateExtendInfo = templateExtendInfo.deduplicate();
         internalExtendTemplate(
             templateExtendInfo.getTemplateName(),
             templateExtendInfo.getMeasurements(),
@@ -573,7 +577,9 @@ class AutoCreateSchemaExecutor {
                 compressionTypeList,
                 TemplateAlterOperationType.EXTEND_TEMPLATE));
     TSStatus status = executionResult.status;
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode()
+            != TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
       throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
     }
   }

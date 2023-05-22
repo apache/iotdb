@@ -30,6 +30,7 @@ import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.wal.io.WALMetaData;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -139,7 +140,7 @@ public class WALBuffer extends AbstractWALBuffer {
   /** This info class traverses some extra info from serializeThread to syncBufferThread */
   private static class SerializeInfo {
     final WALMetaData metaData = new WALMetaData();
-    final List<WALFlushListener> fsyncListeners = new LinkedList<>();
+    final List<WALFlushListener> fsyncListeners = new ArrayList<>();
     WALFlushListener rollWALFileWriterListener = null;
   }
 
@@ -182,7 +183,13 @@ public class WALBuffer extends AbstractWALBuffer {
         WALEntry walEntry = null;
         try {
           // for better fsync performance, wait a while to enlarge write batch
-          walEntry = walEntries.poll(config.getFsyncWalDelayInMs(), TimeUnit.MILLISECONDS);
+          if (config.getWalMode().equals(WALMode.ASYNC)) {
+            walEntry =
+                walEntries.poll(config.getWalAsyncModeFsyncDelayInMs(), TimeUnit.MILLISECONDS);
+          } else {
+            walEntry =
+                walEntries.poll(config.getWalSyncModeFsyncDelayInMs(), TimeUnit.MILLISECONDS);
+          }
         } catch (InterruptedException e) {
           logger.warn(
               "Interrupted when waiting for taking WALEntry from blocking queue to serialize.");
@@ -215,19 +222,12 @@ public class WALBuffer extends AbstractWALBuffer {
         return handleSignalEntry((WALSignalEntry) walEntry);
       }
 
-      boolean success = handleInfoEntry(walEntry);
-      if (success) {
-        info.fsyncListeners.add(walEntry.getWalFlushListener());
-      }
+      handleInfoEntry(walEntry);
       return false;
     }
 
-    /**
-     * Handle a normal WALEntry.
-     *
-     * @return true if serialization is successful.
-     */
-    private boolean handleInfoEntry(WALEntry walEntry) {
+    /** Handle a normal WALEntry. */
+    private void handleInfoEntry(WALEntry walEntry) {
       int size = byteBufferView.position();
       try {
         long start = System.nanoTime();
@@ -238,9 +238,9 @@ public class WALBuffer extends AbstractWALBuffer {
         logger.error(
             "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);
         walEntry.getWalFlushListener().fail(e);
-        return false;
+        return;
       }
-      // update search index
+      // parse search index
       long searchIndex = DEFAULT_SEARCH_INDEX;
       if (walEntry.getType().needSearch()) {
         if (walEntry.getType() == WALEntryType.DELETE_DATA_NODE) {
@@ -253,9 +253,11 @@ public class WALBuffer extends AbstractWALBuffer {
           currentFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
         }
       }
+      // update related info
       totalSize += size;
       info.metaData.add(size, searchIndex);
-      return true;
+      walEntry.getWalFlushListener().getWalPipeHandler().setSize(size);
+      info.fsyncListeners.add(walEntry.getWalFlushListener());
     }
 
     /**
@@ -432,8 +434,11 @@ public class WALBuffer extends AbstractWALBuffer {
     @Override
     public void run() {
       long start = System.nanoTime();
+      long walFileVersionId = currentWALFileVersion;
+      long position = currentWALFileWriter.size();
       currentWALFileWriter.updateFileStatus(fileStatus);
 
+      // calculate buffer used ratio
       double usedRatio = (double) syncingBuffer.position() / syncingBuffer.capacity();
       WRITING_METRICS.recordWALBufferUsedRatio(usedRatio);
       logger.debug(
@@ -490,6 +495,10 @@ public class WALBuffer extends AbstractWALBuffer {
       if (forceSuccess) {
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
+          if (fsyncListener.getWalPipeHandler() != null) {
+            fsyncListener.getWalPipeHandler().setEntryPosition(walFileVersionId, position);
+            position += fsyncListener.getWalPipeHandler().getSize();
+          }
         }
       }
       WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());

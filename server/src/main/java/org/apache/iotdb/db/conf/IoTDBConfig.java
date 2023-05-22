@@ -184,14 +184,20 @@ public class IoTDBConfig {
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
 
-  /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private volatile long fsyncWalDelayInMs = 1000;
+  /**
+   * Duration a wal flush operation will wait before calling fsync in the async mode. Unit:
+   * millisecond
+   */
+  private volatile long walAsyncModeFsyncDelayInMs = 1_000;
+
+  /**
+   * Duration a wal flush operation will wait before calling fsync in the sync mode. Unit:
+   * millisecond
+   */
+  private volatile long walSyncModeFsyncDelayInMs = 3;
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
-
-  /** Buffer entry size of each wal buffer. Unit: byte */
-  private int walBufferEntrySize = 16 * 1024;
 
   /** Blocking queue capacity of each wal buffer */
   private int walBufferQueueCapacity = 500;
@@ -313,6 +319,10 @@ public class IoTDBConfig {
 
   private String schemaRegionConsensusDir = consensusDir + File.separator + "schema_region";
 
+  /** temp result directory for sortOperator */
+  private String sortTmpDir =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
 
@@ -410,6 +420,9 @@ public class IoTDBConfig {
   /** Enable the service for MLNode */
   private boolean enableMLNodeService = false;
 
+  /** The buffer for sort operation */
+  private long sortBufferSize = 1024 * 1024L;
+
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
@@ -451,8 +464,8 @@ public class IoTDBConfig {
 
   private double chunkMetadataSizeProportion = 0.1;
 
-  /** The target tsfile size in compaction, 1 GB by default */
-  private long targetCompactionFileSize = 1073741824L;
+  /** The target tsfile size in compaction, 2 GB by default */
+  private long targetCompactionFileSize = 2147483648L;
 
   /** The target chunk size in compaction. */
   private long targetChunkSize = 1048576L;
@@ -539,6 +552,10 @@ public class IoTDBConfig {
 
   /** Memory allocated proportion for time partition info */
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
+
+  /** Memory allocated proportion for wal pipe cache */
+  private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
+
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
    * it if its estimated memory exceeds current free memory
@@ -1008,6 +1025,9 @@ public class IoTDBConfig {
   /** Memory allocated for LastCache */
   private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
 
+  /** Policy of DataNodeSchemaCache eviction */
+  private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -1028,11 +1048,15 @@ public class IoTDBConfig {
   private boolean dataRatisConsensusLogUnsafeFlushEnable = false;
   private boolean schemaRatisConsensusLogUnsafeFlushEnable = false;
 
+  private int dataRatisConsensusLogForceSyncNum = 128;
+
   private long dataRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRatisConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   private long dataRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
   private long schemaRatisConsensusGrpcFlowControlWindow = 4 * 1024 * 1024L;
+
+  private int dataRatisConsensusGrpcLeaderOutstandingAppendsMax = 128;
 
   private long dataRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
   private long schemaRatisConsensusLeaderElectionTimeoutMinMs = 2000L;
@@ -1065,6 +1089,12 @@ public class IoTDBConfig {
   /** whether to enable the audit log * */
   private boolean enableAuditLog = false;
 
+  /** This configuration parameter sets the level at which the time series limit is applied.* */
+  private String clusterSchemaLimitLevel = "timeseries";
+
+  /** This configuration parameter sets the maximum number of schema allowed in the cluster.* */
+  private long clusterSchemaLimitThreshold = -1;
+
   /** Output location of audit logs * */
   private List<AuditLogStorage> auditLogStorage =
       Arrays.asList(AuditLogStorage.IOTDB, AuditLogStorage.LOGGER);
@@ -1078,6 +1108,12 @@ public class IoTDBConfig {
 
   // customizedProperties, this should be empty by default.
   private Properties customizedProperties = new Properties();
+
+  // IoTConsensus Config
+  private int maxLogEntriesNumPerBatch = 1024;
+  private int maxSizePerBatch = 16 * 1024 * 1024;
+  private int maxPendingBatchesNum = 12;
+  private double maxMemoryRatioForQueue = 0.6;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
@@ -1093,6 +1129,38 @@ public class IoTDBConfig {
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
   IoTDBConfig() {}
+
+  public int getMaxLogEntriesNumPerBatch() {
+    return maxLogEntriesNumPerBatch;
+  }
+
+  public int getMaxSizePerBatch() {
+    return maxSizePerBatch;
+  }
+
+  public int getMaxPendingBatchesNum() {
+    return maxPendingBatchesNum;
+  }
+
+  public double getMaxMemoryRatioForQueue() {
+    return maxMemoryRatioForQueue;
+  }
+
+  public void setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
+    this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
+  }
+
+  public void setMaxSizePerBatch(int maxSizePerBatch) {
+    this.maxSizePerBatch = maxSizePerBatch;
+  }
+
+  public void setMaxPendingBatchesNum(int maxPendingBatchesNum) {
+    this.maxPendingBatchesNum = maxPendingBatchesNum;
+  }
+
+  public void setMaxMemoryRatioForQueue(double maxMemoryRatioForQueue) {
+    this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
+  }
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -1714,12 +1782,20 @@ public class IoTDBConfig {
     this.maxWalNodesNum = maxWalNodesNum;
   }
 
-  public long getFsyncWalDelayInMs() {
-    return fsyncWalDelayInMs;
+  public long getWalAsyncModeFsyncDelayInMs() {
+    return walAsyncModeFsyncDelayInMs;
   }
 
-  void setFsyncWalDelayInMs(long fsyncWalDelayInMs) {
-    this.fsyncWalDelayInMs = fsyncWalDelayInMs;
+  void setWalAsyncModeFsyncDelayInMs(long walAsyncModeFsyncDelayInMs) {
+    this.walAsyncModeFsyncDelayInMs = walAsyncModeFsyncDelayInMs;
+  }
+
+  public long getWalSyncModeFsyncDelayInMs() {
+    return walSyncModeFsyncDelayInMs;
+  }
+
+  public void setWalSyncModeFsyncDelayInMs(long walSyncModeFsyncDelayInMs) {
+    this.walSyncModeFsyncDelayInMs = walSyncModeFsyncDelayInMs;
   }
 
   public int getWalBufferSize() {
@@ -1728,14 +1804,6 @@ public class IoTDBConfig {
 
   public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
-  }
-
-  public int getWalBufferEntrySize() {
-    return walBufferEntrySize;
-  }
-
-  void setWalBufferEntrySize(int walBufferEntrySize) {
-    this.walBufferEntrySize = walBufferEntrySize;
   }
 
   public int getWalBufferQueueCapacity() {
@@ -1854,10 +1922,6 @@ public class IoTDBConfig {
     return allocateMemoryForSchema;
   }
 
-  public long getAllocateMemoryForConsensus() {
-    return allocateMemoryForConsensus;
-  }
-
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
 
@@ -1866,8 +1930,13 @@ public class IoTDBConfig {
     this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
   }
 
+  public long getAllocateMemoryForConsensus() {
+    return allocateMemoryForConsensus;
+  }
+
   public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
     this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+    this.allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
   }
 
   public long getAllocateMemoryForRead() {
@@ -2132,6 +2201,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
     this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
+  }
+
+  public long getAllocateMemoryForWALPipeCache() {
+    return allocateMemoryForWALPipeCache;
+  }
+
+  public void setAllocateMemoryForWALPipeCache(long allocateMemoryForWALPipeCache) {
+    this.allocateMemoryForWALPipeCache = allocateMemoryForWALPipeCache;
   }
 
   public boolean isEnableQueryMemoryEstimation() {
@@ -3304,6 +3381,14 @@ public class IoTDBConfig {
     this.allocateMemoryForLastCache = allocateMemoryForLastCache;
   }
 
+  public String getDataNodeSchemaCacheEvictionPolicy() {
+    return dataNodeSchemaCacheEvictionPolicy;
+  }
+
+  public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
+    this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
+  }
+
   public String getReadConsistencyLevel() {
     return readConsistencyLevel;
   }
@@ -3451,6 +3536,14 @@ public class IoTDBConfig {
     this.dataRatisConsensusLogUnsafeFlushEnable = dataRatisConsensusLogUnsafeFlushEnable;
   }
 
+  public int getDataRatisConsensusLogForceSyncNum() {
+    return dataRatisConsensusLogForceSyncNum;
+  }
+
+  public void setDataRatisConsensusLogForceSyncNum(int dataRatisConsensusLogForceSyncNum) {
+    this.dataRatisConsensusLogForceSyncNum = dataRatisConsensusLogForceSyncNum;
+  }
+
   public long getDataRatisConsensusLogSegmentSizeMax() {
     return dataRatisConsensusLogSegmentSizeMax;
   }
@@ -3466,6 +3559,16 @@ public class IoTDBConfig {
   public void setDataRatisConsensusGrpcFlowControlWindow(
       long dataRatisConsensusGrpcFlowControlWindow) {
     this.dataRatisConsensusGrpcFlowControlWindow = dataRatisConsensusGrpcFlowControlWindow;
+  }
+
+  public int getDataRatisConsensusGrpcLeaderOutstandingAppendsMax() {
+    return dataRatisConsensusGrpcLeaderOutstandingAppendsMax;
+  }
+
+  public void setDataRatisConsensusGrpcLeaderOutstandingAppendsMax(
+      int dataRatisConsensusGrpcLeaderOutstandingAppendsMax) {
+    this.dataRatisConsensusGrpcLeaderOutstandingAppendsMax =
+        dataRatisConsensusGrpcLeaderOutstandingAppendsMax;
   }
 
   public long getDataRatisConsensusLeaderElectionTimeoutMinMs() {
@@ -3773,5 +3876,37 @@ public class IoTDBConfig {
 
   public void setRateLimiterType(String rateLimiterType) {
     RateLimiterType = rateLimiterType;
+  }
+
+  public void setSortBufferSize(long sortBufferSize) {
+    this.sortBufferSize = sortBufferSize;
+  }
+
+  public long getSortBufferSize() {
+    return sortBufferSize;
+  }
+
+  public void setSortTmpDir(String sortTmpDir) {
+    this.sortTmpDir = sortTmpDir;
+  }
+
+  public String getSortTmpDir() {
+    return sortTmpDir;
+  }
+
+  public String getClusterSchemaLimitLevel() {
+    return clusterSchemaLimitLevel;
+  }
+
+  public void setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    this.clusterSchemaLimitLevel = clusterSchemaLimitLevel;
+  }
+
+  public long getClusterSchemaLimitThreshold() {
+    return clusterSchemaLimitThreshold;
+  }
+
+  public void setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    this.clusterSchemaLimitThreshold = clusterSchemaLimitThreshold;
   }
 }
