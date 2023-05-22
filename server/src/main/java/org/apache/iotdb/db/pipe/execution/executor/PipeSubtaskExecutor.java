@@ -58,7 +58,7 @@ public abstract class PipeSubtaskExecutor {
 
   /////////////////////// subtask management ///////////////////////
 
-  public final void register(PipeSubtask subtask) {
+  public final synchronized void register(PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
       LOGGER.warn("The subtask {} is already registered.", subtask.getTaskID());
       return;
