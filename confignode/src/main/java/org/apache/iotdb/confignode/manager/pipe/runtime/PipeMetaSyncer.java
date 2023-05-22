@@ -37,10 +37,11 @@ public class PipeMetaSyncer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeMetaSyncer.class);
 
+  private static final ScheduledExecutorService SYNC_EXECUTOR =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.PIPE_META_SYNC_SERVICE.getName());
   // TODO: make this configurable
-  private static final long INITIAL_SYNC_DELAY_MINUTES = 1;
   private static final long SYNC_INTERVAL_MINUTES = 3;
-  private static ScheduledExecutorService syncExecutor;
 
   private final ConfigManager configManager;
 
@@ -51,37 +52,11 @@ public class PipeMetaSyncer {
   }
 
   public synchronized void start() {
-    stop();
-
-    // 1. wait for consensus layer ready
-    while (configManager.getConsensusManager() == null) {
-      try {
-        LOGGER.info("consensus layer is not ready, sleep 1s...");
-        TimeUnit.SECONDS.sleep(1);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn("unexpected interruption during waiting for consensus layer ready.");
-      }
-    }
-
-    // 2. start sync executor
-    if (syncExecutor == null) {
-      syncExecutor =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              ThreadName.PIPE_META_SYNC_SERVICE.getName());
-      LOGGER.info("syncExecutor is started successfully.");
-    }
-
-    // 3. start meta sync task
     if (metaSyncFuture == null) {
       metaSyncFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-              syncExecutor,
-              this::sync,
-              INITIAL_SYNC_DELAY_MINUTES,
-              SYNC_INTERVAL_MINUTES,
-              TimeUnit.MINUTES);
-      LOGGER.info("metaSyncFuture is submitted successfully.");
+              SYNC_EXECUTOR, this::sync, 0, SYNC_INTERVAL_MINUTES, TimeUnit.MINUTES);
+      LOGGER.info("PipeMetaSyncer is started successfully.");
     }
   }
 
@@ -99,17 +74,7 @@ public class PipeMetaSyncer {
     if (metaSyncFuture != null) {
       metaSyncFuture.cancel(false);
       metaSyncFuture = null;
-      LOGGER.info("metaSyncFuture is cancelled successfully.");
-    }
-
-    try {
-      if (syncExecutor != null) {
-        syncExecutor.shutdown();
-        syncExecutor = null;
-        LOGGER.info("syncExecutor is shutdown successfully.");
-      }
-    } catch (Throwable t) {
-      LOGGER.error("Failed to shutdown syncExecutor", t);
+      LOGGER.info("PipeMetaSyncer is stopped successfully.");
     }
   }
 }
