@@ -249,8 +249,8 @@ public class TTLTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
-    File seqDir = new File(TierManager.getInstance().getNextFolderForSequenceFile(0), sg1);
-    File unseqDir = new File(TierManager.getInstance().getNextFolderForUnSequenceFile(0), sg1);
+    File seqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, true), sg1);
+    File unseqDir = new File(TierManager.getInstance().getNextFolderForTsFile(0, false), sg1);
 
     List<File> seqFiles = new ArrayList<>();
     for (File directory : seqDir.listFiles()) {
