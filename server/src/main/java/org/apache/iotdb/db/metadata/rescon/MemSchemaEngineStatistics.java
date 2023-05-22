@@ -20,10 +20,13 @@ package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to record the global statistics of SchemaEngine in Memory mode */
@@ -39,7 +42,11 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   private final AtomicLong totalSeriesNumber = new AtomicLong(0);
 
+  private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
+
   private volatile boolean allowToCreateNewSeries = true;
+
+  private final Object allowToCreateNewSeriesLock = new Object();
 
   @Override
   public boolean isAllowToCreateNewSeries() {
@@ -64,30 +71,57 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
   public void requestMemory(long size) {
     memoryUsage.addAndGet(size);
     if (memoryUsage.get() >= memoryCapacity) {
-      logger.warn("Current series memory {} is too large...", memoryUsage);
-      allowToCreateNewSeries = false;
+      synchronized (allowToCreateNewSeriesLock) {
+        if (allowToCreateNewSeries && memoryUsage.get() >= memoryCapacity) {
+          logger.warn("Current series memory {} is too large...", memoryUsage);
+          allowToCreateNewSeries = false;
+        }
+      }
     }
   }
 
   public void releaseMemory(long size) {
     memoryUsage.addAndGet(-size);
-    if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
-      logger.info(
-          "Current series memory {} come back to normal level, total series number is {}.",
-          memoryUsage,
-          totalSeriesNumber);
-      allowToCreateNewSeries = true;
+    if (memoryUsage.get() < memoryCapacity) {
+      synchronized (allowToCreateNewSeriesLock) {
+        if (!allowToCreateNewSeries && memoryUsage.get() < memoryCapacity) {
+          logger.info(
+              "Current series memory {} come back to normal level, total series number is {}.",
+              memoryUsage,
+              totalSeriesNumber);
+          allowToCreateNewSeries = true;
+        }
+      }
     }
   }
 
   @Override
   public long getTotalSeriesNumber() {
-    return totalSeriesNumber.get();
+    return totalSeriesNumber.get() + getTemplateSeriesNumber();
   }
 
   @Override
   public int getSchemaRegionNumber() {
     return SchemaEngine.getInstance().getSchemaRegionNumber();
+  }
+
+  @Override
+  public long getTemplateSeriesNumber() {
+    ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
+    return templateUsage.entrySet().stream()
+        .mapToLong(
+            i ->
+                (long) clusterTemplateManager.getTemplate(i.getKey()).getMeasurementNumber()
+                    * i.getValue())
+        .sum();
+  }
+
+  public void activateTemplate(int templateId) {
+    templateUsage.compute(templateId, (k, v) -> (v == null) ? 1 : v + 1);
+  }
+
+  public void deactivateTemplate(int templateId, int cnt) {
+    templateUsage.compute(templateId, (k, v) -> (v == null || v <= cnt) ? null : v - cnt);
   }
 
   public void addTimeseries(long addedNum) {

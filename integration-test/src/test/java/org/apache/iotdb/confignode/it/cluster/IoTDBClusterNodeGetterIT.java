@@ -162,8 +162,8 @@ public class IoTDBClusterNodeGetterIT {
           expectedParameters.getSchemaReplicationFactor(),
           clusterParameters.getSchemaReplicationFactor());
       Assert.assertEquals(
-          expectedParameters.getDataRegionPerProcessor(),
-          clusterParameters.getDataRegionPerProcessor(),
+          expectedParameters.getDataRegionPerDataNode(),
+          clusterParameters.getDataRegionPerDataNode(),
           0.01);
       Assert.assertEquals(
           expectedParameters.getSchemaRegionPerDataNode(),

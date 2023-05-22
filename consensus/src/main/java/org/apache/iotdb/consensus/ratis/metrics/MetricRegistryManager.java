@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.consensus.ratis.metrics;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.metrics.AbstractMetricService;
-import org.apache.iotdb.metrics.DoNothingMetricService;
 
 import org.apache.ratis.metrics.MetricRegistries;
 import org.apache.ratis.metrics.MetricRegistryInfo;
@@ -36,9 +36,7 @@ public class MetricRegistryManager extends MetricRegistries {
   /** Using RefCountingMap here because of potential duplicate MetricRegistryInfos */
   private final RefCountingMap<MetricRegistryInfo, RatisMetricRegistry> registries;
   /** TODO: enable ratis metrics after verifying its correctness and efficiency */
-  private final AbstractMetricService service = new DoNothingMetricService();
-
-  private String consensusGroupType;
+  private final AbstractMetricService service = MetricService.getInstance();
 
   public MetricRegistryManager() {
     this.registries = new RefCountingMap<>();
@@ -55,8 +53,7 @@ public class MetricRegistryManager extends MetricRegistries {
   @Override
   public RatisMetricRegistry create(MetricRegistryInfo metricRegistryInfo) {
     return registries.put(
-        metricRegistryInfo,
-        () -> new IoTDBMetricRegistry(metricRegistryInfo, service, consensusGroupType));
+        metricRegistryInfo, () -> new IoTDBMetricRegistry(metricRegistryInfo, service));
   }
 
   @Override
@@ -97,9 +94,5 @@ public class MetricRegistryManager extends MetricRegistries {
     // We shall disable the Console reporter since we already have one in MetricService
     throw new UnsupportedOperationException(
         "Console Reporter is disabled from RatisMetricRegistries");
-  }
-
-  public void setConsensusGroupType(String consensusGroupType) {
-    this.consensusGroupType = consensusGroupType;
   }
 }

@@ -76,7 +76,6 @@ export const Docsearch = defineComponent({
         const tag = branchRex.exec(path)![1];
         return `rel/${tag.replace('.x', '')}`;
       }
-      console.log('branch', branch);
       return branch;
     };
 

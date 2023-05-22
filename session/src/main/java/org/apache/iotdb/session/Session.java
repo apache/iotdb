@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
@@ -3337,6 +3338,23 @@ public class Session implements ISession {
     TSDropSchemaTemplateReq request = new TSDropSchemaTemplateReq();
     request.setTemplateName(templateName);
     return request;
+  }
+
+  /**
+   * Create timeseries represented by schema template under given device paths.
+   *
+   * @param devicePathList the target device paths used for timeseries creation
+   */
+  @Override
+  public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    if (devicePathList == null || devicePathList.contains(null)) {
+      throw new StatementExecutionException(
+          "Given device path list should not be  or contains null.");
+    }
+    TCreateTimeseriesUsingSchemaTemplateReq request = new TCreateTimeseriesUsingSchemaTemplateReq();
+    request.setDevicePathList(devicePathList);
+    defaultSessionConnection.createTimeseriesUsingSchemaTemplate(request);
   }
 
   /**

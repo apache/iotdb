@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -72,7 +71,6 @@ public class DataRegionConsensusImpl {
                           new TEndPoint(
                               conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
                       .setStorageDir(conf.getDataRegionConsensusDir())
-                      .setConsensusGroupType(TConsensusGroupType.DataRegion)
                       .setIoTConsensusConfig(
                           IoTConsensusConfig.newBuilder()
                               .setRpc(
@@ -99,6 +97,11 @@ public class DataRegionConsensusImpl {
                                       .setWalThrottleThreshold(conf.getThrottleThreshold())
                                       .setAllocateMemoryForConsensus(
                                           conf.getAllocateMemoryForConsensus())
+                                      .setMaxLogEntriesNumPerBatch(
+                                          conf.getMaxLogEntriesNumPerBatch())
+                                      .setMaxSizePerBatch(conf.getMaxSizePerBatch())
+                                      .setMaxPendingBatchesNum(conf.getMaxPendingBatchesNum())
+                                      .setMaxMemoryRatioForQueue(conf.getMaxMemoryRatioForQueue())
                                       .build())
                               .build())
                       .setRatisConfig(
@@ -116,6 +119,7 @@ public class DataRegionConsensusImpl {
                                   RatisConfig.Log.newBuilder()
                                       .setUnsafeFlushEnabled(
                                           conf.isDataRatisConsensusLogUnsafeFlushEnable())
+                                      .setForceSyncNum(conf.getDataRatisConsensusLogForceSyncNum())
                                       .setSegmentSizeMax(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusLogSegmentSizeMax()))
@@ -127,6 +131,9 @@ public class DataRegionConsensusImpl {
                                       .setFlowControlWindow(
                                           SizeInBytes.valueOf(
                                               conf.getDataRatisConsensusGrpcFlowControlWindow()))
+                                      .setLeaderOutstandingAppendsMax(
+                                          conf
+                                              .getDataRatisConsensusGrpcLeaderOutstandingAppendsMax())
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()

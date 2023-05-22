@@ -22,22 +22,22 @@ package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class DeleteStorageGroupTask implements IConfigTask {
 
-  private final DeleteStorageGroupStatement deleteStorageGroupStatement;
+  private final DeleteDatabaseStatement deleteDatabaseStatement;
 
-  public DeleteStorageGroupTask(DeleteStorageGroupStatement deleteStorageGroupStatement) {
-    this.deleteStorageGroupStatement = deleteStorageGroupStatement;
+  public DeleteStorageGroupTask(DeleteDatabaseStatement deleteDatabaseStatement) {
+    this.deleteDatabaseStatement = deleteDatabaseStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.deleteStorageGroup(deleteStorageGroupStatement);
+    return configTaskExecutor.deleteDatabase(deleteDatabaseStatement);
   }
 }

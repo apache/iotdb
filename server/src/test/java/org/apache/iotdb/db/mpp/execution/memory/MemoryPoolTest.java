@@ -36,6 +36,7 @@ public class MemoryPoolTest {
   @Before
   public void before() {
     pool = new MemoryPool("test", 1024L, 512L);
+    pool.registerPlanNodeIdToQueryMemoryMap(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID);
   }
 
   @Test

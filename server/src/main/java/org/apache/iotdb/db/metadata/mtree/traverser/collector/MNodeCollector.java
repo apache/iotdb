@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.basic.MNodeTraverser;
 
@@ -31,17 +31,17 @@ import org.apache.iotdb.db.metadata.mtree.traverser.basic.MNodeTraverser;
  * will not be processed more than once. If a level is not given, the current node is processed.
  */
 // TODO: set R to IMNodeInfo
-public abstract class MNodeCollector<R> extends MNodeTraverser<R> {
+public abstract class MNodeCollector<R, N extends IMNode<N>> extends MNodeTraverser<R, N> {
 
   protected MNodeCollector(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
-  protected final R transferToResult(IMNode node) {
+  protected final R transferToResult(N node) {
     return collectMNode(node);
   }
 
-  protected abstract R collectMNode(IMNode node);
+  protected abstract R collectMNode(N node);
 }

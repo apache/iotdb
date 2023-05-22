@@ -74,6 +74,11 @@ public class StubSink implements ISink {
   }
 
   @Override
+  public boolean isClosed() {
+    return closed;
+  }
+
+  @Override
   public boolean isAborted() {
     return closed;
   }

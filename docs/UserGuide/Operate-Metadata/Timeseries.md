@@ -140,6 +140,51 @@ It costs 0.004s
 show timeseries root.ln.** limit 10 offset 10
 ```
 
+* SHOW TIMESERIES WHERE TIMESERIES contains 'containStr'
+
+  The query result set is filtered by string fuzzy matching based on the names of the timeseries. For example:
+
+```
+show timeseries root.ln.** where timeseries contains 'wf01.wt'
+```
+
+The result is shown below:
+
+```
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+|                     timeseries|   alias|     database|dataType|encoding|compression|                                       tags|                                              attributes|deadband|deadband parameters|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
+|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|    null|               null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+Total line number = 2
+It costs 0.016s
+```
+
+* SHOW TIMESERIES WHERE DataType=type
+
+  The query result set is filtered by data type. For example:
+
+```
+show timeseries root.ln.** where dataType=FLOAT
+```
+
+The result is shown below:
+
+```
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+|                     timeseries|   alias|     database|dataType|encoding|compression|                                       tags|                                              attributes|deadband|deadband parameters|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
+|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|    null|               null|
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+Total line number = 3
+It costs 0.016s
+
+```
+
+
 * SHOW LATEST TIMESERIES
 
   all the returned timeseries information should be sorted in descending order of the last timestamp of timeseries
@@ -151,15 +196,23 @@ It is worth noting that when the queried path does not exist, the system will re
 ## Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries matching the path. SQL statements are as follows:
+* `WHERE` condition could be used to fuzzy match a time series name with the following syntax: `COUNT TIMESERIES <Path> WHERE TIMESERIES contains 'containStr'`.
+* `WHERE` condition could be used to filter result by data type with the syntax: `COUNT TIMESERIES <Path> WHERE DataType=<DataType>'`.
+* `WHERE` condition could be used to filter result by tags with the syntax: `COUNT TIMESERIES <Path> WHERE TAGS(key)='value'` or `COUNT TIMESERIES <Path> WHERE TAGS(key) contains 'value'`.
+* `LEVEL` could be defined to show count the number of timeseries of each node at the given level in current Metadata Tree. This could be used to query the number of sensors under each device. The grammar is: `COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`.
+
 
 ```
 IoTDB > COUNT TIMESERIES root.**
 IoTDB > COUNT TIMESERIES root.ln.**
 IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+IoTDB > COUNT TIMESERIES root.** WHERE TIMESERIES contains 'sgcc' 
+IoTDB > COUNT TIMESERIES root.** WHERE DATATYPE = INT64
+IoTDB > COUNT TIMESERIES root.** WHERE TAGS(unit) contains 'c' 
+IoTDB > COUNT TIMESERIES root.** WHERE TAGS(unit) = 'c' 
+IoTDB > COUNT TIMESERIES root.** WHERE TIMESERIES contains 'sgcc' group by level = 1
 ```
-
-Besides, `LEVEL` could be defined to show count the number of timeseries of each node at the given level in current Metadata Tree. This could be used to query the number of sensors under each device. The grammar is: `COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`.
 
 For example, if there are several timeseries (use `show timeseries` to show all timeseries):
 
@@ -181,7 +234,7 @@ It costs 0.004s
 
 Then the Metadata Tree will be as below:
 
-<center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
+<center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
 As can be seen, `root` is considered as `LEVEL=0`. So when you enter statements such as:
 
 ```
@@ -250,30 +303,30 @@ We can update the tag information after creating it as following:
 ```
 ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
 ```
-* reset the tag/attribute value
+* Reset the tag/attribute value
 ```
 ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
 ```
-* delete the existing tag/attribute
+* Delete the existing tag/attribute
 ```
 ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
 ```
-* add new tags
+* Add new tags
 ```
 ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
 ```
-* add new attributes
+* Add new attributes
 ```
 ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
-* upsert alias, tags and attributes
+* Upsert alias, tags and attributes
 > add alias or a new key-value if the alias or key doesn't exist, otherwise, update the old one with new value.
 ```
 ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
-* show timeseries using tags
+* Show timeseries using tags. Use TAGS(tagKey) to identify the tags used as filter key
 ```
-SHOW TIMESERIES (<`PathPattern`>)? WhereClause
+SHOW TIMESERIES (<`PathPattern`>)? timeseriesWhereClause
 ```
 
 returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
@@ -281,8 +334,8 @@ returns all the timeseries information that satisfy the where condition and matc
 ```
 ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
 ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln.** where unit=c
-show timeseries root.ln.** where description contains 'test1'
+show timeseries root.ln.** where TAGS(unit)='c'
+show timeseries root.ln.** where TAGS(description) contains 'test1'
 ```
 
 The results are shown below respectly:
@@ -308,16 +361,16 @@ It costs 0.004s
 - count timeseries using tags
 
 ```
-COUNT TIMESERIES (<`PathPattern`>)? WhereClause
-COUNT TIMESERIES (<`PathPattern`>)? WhereClause GROUP BY LEVEL=<INTEGER>
+COUNT TIMESERIES (<`PathPattern`>)? timeseriesWhereClause
+COUNT TIMESERIES (<`PathPattern`>)? timeseriesWhereClause GROUP BY LEVEL=<INTEGER>
 ```
 
 returns all the number of timeseries that satisfy the where condition and match the pathPattern. SQL statements are as follows:
 
 ```
 count timeseries
-count timeseries root.** where unit = c
-count timeseries root.** where unit = c group by level = 2
+count timeseries root.** where TAGS(unit)='c'
+count timeseries root.** where TAGS(unit)='c' group by level = 2
 ```
 
 The results are shown below respectly :
@@ -331,7 +384,7 @@ IoTDB> count timeseries
 +-----------------+
 Total line number = 1
 It costs 0.019s
-IoTDB> count timeseries root.** where unit = c
+IoTDB> count timeseries root.** where TAGS(unit)='c'
 +-----------------+
 |count(timeseries)|
 +-----------------+
@@ -339,7 +392,7 @@ IoTDB> count timeseries root.** where unit = c
 +-----------------+
 Total line number = 1
 It costs 0.020s
-IoTDB> count timeseries root.** where unit = c group by level = 2
+IoTDB> count timeseries root.** where TAGS(unit)='c' group by level = 2
 +--------------+-----------------+
 |        column|count(timeseries)|
 +--------------+-----------------+
@@ -374,7 +427,7 @@ IoTDB> show timeseries
 Support query：
 
 ```
-IoTDB> show timeseries where tag1='v1'
+IoTDB> show timeseries where TAGS(tag1)='v1'
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+--------+-------------------+
 |    timeseries|alias|     database|dataType|encoding|compression|                     tags|                 attributes|deadband|deadband parameters|
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+--------+-------------------+

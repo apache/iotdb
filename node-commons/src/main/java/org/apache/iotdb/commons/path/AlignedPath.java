@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -37,6 +38,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -110,6 +112,19 @@ public class AlignedPath extends PartialPath {
     super(vectorPath);
     measurementList = new ArrayList<>();
     schemaList = new ArrayList<>();
+  }
+
+  /**
+   * This method is used by last query. Comparator<Binary> and Comparator<String> behaves
+   * differently and that is why we use Comparator<Binary> here.
+   *
+   * @param comparator
+   */
+  public void sortMeasurement(Comparator<Binary> comparator) {
+    measurementList.sort(Comparator.comparing(Binary::new, comparator));
+    schemaList.sort(
+        Comparator.comparing(
+            iMeasurementSchema -> new Binary(iMeasurementSchema.getMeasurementId()), comparator));
   }
 
   @Override

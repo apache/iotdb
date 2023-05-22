@@ -45,11 +45,11 @@ DBeaver is a SQL client software application and a database administration tool.
 2. Start DBeaver
 3. Open Driver Manager
 
-   ![](/img/UserGuide/Ecosystem-Integration/DBeaver/01.png)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/01.png)
 
 4. Create a new driver type for IoTDB
 
-   ![](/img/UserGuide/Ecosystem-Integration/DBeaver/02.png)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/02.png)
 
 5. Download [Sources](https://iotdb.apache.org/Download/)，unzip it and compile jdbc driver by the following command
 
@@ -58,15 +58,15 @@ DBeaver is a SQL client software application and a database administration tool.
    ```
 6. Find and add a lib named `apache-iotdb-jdbc-{version}-jar-with-dependencies.jar`, which should be under `jdbc/target/`, then select `Find Class`.
 
-   ![](/img/UserGuide/Ecosystem-Integration/DBeaver/03.png)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/03.png)
 
 8. Edit the driver Settings
 
-   ![](/img/UserGuide/Ecosystem-Integration/DBeaver/05.png)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/05.png)
 
 9. Open New DataBase Connection and select iotdb
 
-   ![](/img/UserGuide/Ecosystem-Integration/DBeaver/06.png) 
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/06.png) 
 
 10. Edit JDBC Connection Settings
 
@@ -75,12 +75,12 @@ DBeaver is a SQL client software application and a database administration tool.
    Username: root
    Password: root
    ```
-   ![](/img/UserGuide/Ecosystem-Integration/DBeaver/07.png)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/07.png)
 
 11. Test Connection
 
-   ![](/img/UserGuide/Ecosystem-Integration/DBeaver/08.png)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/08.png)
 
 12. Enjoy IoTDB with DBeaver
 
-   ![](/img/UserGuide/Ecosystem-Integration/DBeaver/09.png)
+   ![](https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/DBeaver/09.png)

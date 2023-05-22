@@ -113,12 +113,12 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -148,7 +148,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return finished || (finished = !hasNextWithTimer());
   }
 

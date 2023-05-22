@@ -71,12 +71,12 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
-  protected boolean calculateNextAggregationResult() {
+  protected boolean calculateNextAggregationResult() throws Exception {
     if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
       // move to next time window
       curTimeRange = timeRangeIterator.nextTimeRange();

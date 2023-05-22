@@ -71,7 +71,7 @@ public class RegionGroup {
   }
 
   public TRegionReplicaSet getReplicaSet() {
-    return replicaSet;
+    return replicaSet.deepCopy();
   }
 
   /** @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count> */
@@ -91,6 +91,17 @@ public class RegionGroup {
 
   public long getTimeSlotCount() {
     return totalTimeSlotCount.get();
+  }
+
+  /**
+   * Check if the RegionGroup belongs to the specified DataNode.
+   *
+   * @param dataNodeId The specified DataNodeId.
+   * @return True if the RegionGroup belongs to the specified DataNode.
+   */
+  public boolean belongsToDataNode(int dataNodeId) {
+    return replicaSet.getDataNodeLocations().stream()
+        .anyMatch(dataNodeLocation -> dataNodeLocation.getDataNodeId() == dataNodeId);
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

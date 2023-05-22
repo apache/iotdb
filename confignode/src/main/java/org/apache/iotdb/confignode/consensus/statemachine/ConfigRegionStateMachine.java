@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.writelog.io.SingleFileLogReader;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -76,7 +77,7 @@ public class ConfigRegionStateMachine
   private int endIndex;
 
   private static final String CURRENT_FILE_DIR =
-      CONF.getConsensusDir() + File.separator + "simple" + File.separator + "current";
+      ConsensusManager.getConfigRegionDir() + File.separator + "current";
   private static final String PROGRESS_FILE_PATH =
       CURRENT_FILE_DIR + File.separator + "log_inprogress_";
   private static final String FILE_PATH = CURRENT_FILE_DIR + File.separator + "log_";
@@ -203,15 +204,12 @@ public class ConfigRegionStateMachine
           newLeaderId,
           currentNodeTEndPoint);
 
-      // Always initiate all kinds of HeartbeatCache first
-      configManager.getLoadManager().initHeartbeatCache();
+      // Always start load services first
+      configManager.getLoadManager().startLoadServices();
 
       // Start leader scheduling services
       configManager.getProcedureManager().shiftExecutor(true);
-      configManager.getLoadManager().startLoadStatisticsService();
-      configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
       configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
-      configManager.getNodeManager().startHeartbeatService();
       configManager.getPartitionManager().startRegionCleaner();
 
       // we do cq recovery async for two reasons:
@@ -220,6 +218,7 @@ public class ConfigRegionStateMachine
       // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
       // initialized after notifyLeaderChanged finished
       threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
+      configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync();
     } else {
       LOGGER.info(
           "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
@@ -228,13 +227,13 @@ public class ConfigRegionStateMachine
           newLeaderId);
 
       // Stop leader scheduling services
+      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
+      configManager.getLoadManager().stopLoadServices();
       configManager.getProcedureManager().shiftExecutor(false);
-      configManager.getLoadManager().stopLoadStatisticsService();
-      configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
-      configManager.getNodeManager().stopHeartbeatService();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
+      configManager.getClusterSchemaManager().clearSchemaQuotaCache();
     }
   }
 
@@ -364,7 +363,11 @@ public class ConfigRegionStateMachine
   private void createLogFile(int endIndex) {
     simpleLogFile = SystemFileFactory.INSTANCE.getFile(PROGRESS_FILE_PATH + endIndex);
     try {
-      simpleLogFile.createNewFile();
+      if (!simpleLogFile.createNewFile()) {
+        LOGGER.warn(
+            "ConfigNode SimpleConsensusFile has existed，filePath:{}",
+            simpleLogFile.getAbsolutePath());
+      }
       simpleLogWriter = new LogWriter(simpleLogFile, false);
       LOGGER.info("Create ConfigNode SimpleConsensusFile: {}", simpleLogFile.getAbsolutePath());
     } catch (Exception e) {

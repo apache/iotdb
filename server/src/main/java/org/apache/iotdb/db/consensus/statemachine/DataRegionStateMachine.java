@@ -37,7 +37,6 @@ import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -181,7 +180,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
 
     InsertNode result;
-    if (insertNodes.get(0) instanceof InsertTabletNode) { // merge to InsertMultiTabletsNode
+    // merge to InsertMultiTabletsNode
+    if (insertNodes.get(0) instanceof InsertTabletNode) {
       List<Integer> index = new ArrayList<>(size);
       List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
       int i = 0;
@@ -238,12 +238,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public TSStatus write(IConsensusRequest request) {
     try {
-      PlanNode planNode = (PlanNode) request;
-      if (planNode.getMetricTime() != 0) {
-        PerformanceOverviewMetricsManager.getInstance()
-            .recordScheduleConsensusCost(System.nanoTime() - planNode.getMetricTime());
-      }
-      return write(planNode);
+      return write((PlanNode) request);
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

@@ -20,24 +20,26 @@ package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
+import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.db.exception.metadata.cache.MNodeNotCachedException;
-import org.apache.iotdb.db.metadata.mnode.AboveDatabaseMNode;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
-import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
-import org.apache.iotdb.db.metadata.mnode.iterator.AbstractTraverserIterator;
-import org.apache.iotdb.db.metadata.mnode.iterator.CachedTraverserIterator;
-import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.mem.estimator.MNodeSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.mem.iterator.AbstractTraverserIterator;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.schemafile.iterator.CachedTraverserIterator;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import org.slf4j.Logger;
@@ -50,24 +52,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
+import static org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer.getCachedMNodeContainer;
 
-public class CachedMTreeStore implements IMTreeStore {
+public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
 
   private static final Logger logger = LoggerFactory.getLogger(CachedMTreeStore.class);
 
   private final MemManager memManager;
-
   private final ICacheManager cacheManager;
-
   private ISchemaFile file;
-
-  private IMNode root;
-
+  private ICachedMNode root;
   private final Runnable flushCallback;
-
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
   private final CachedSchemaRegionStatistics regionStatistics;
-
+  private final DataNodeSchemaQuotaManager quotaManager = DataNodeSchemaQuotaManager.getInstance();
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
   public CachedMTreeStore(
@@ -88,14 +86,14 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IMNode generatePrefix(PartialPath storageGroupPath) {
+  public ICachedMNode generatePrefix(PartialPath storageGroupPath) {
     String[] nodes = storageGroupPath.getNodes();
     // nodes[0] must be root
-    IMNode res = new AboveDatabaseMNode(null, nodes[0]);
-    IMNode cur = res;
-    IMNode child;
+    ICachedMNode res = nodeFactory.createAboveDatabaseMNode(null, nodes[0]);
+    ICachedMNode cur = res;
+    ICachedMNode child;
     for (int i = 1; i < nodes.length - 1; i++) {
-      child = new AboveDatabaseMNode(cur, nodes[i]);
+      child = nodeFactory.createAboveDatabaseMNode(cur, nodes[i]);
       cur.addChild(nodes[i], child);
       cur = child;
     }
@@ -105,22 +103,22 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IMNode getRoot() {
+  public ICachedMNode getRoot() {
     return root;
   }
 
   @Override
-  public boolean hasChild(IMNode parent, String name) throws MetadataException {
+  public boolean hasChild(ICachedMNode parent, String name) throws MetadataException {
     return hasChild(parent, name, true);
   }
 
-  protected final boolean hasChild(IMNode parent, String name, boolean needLock)
+  protected final boolean hasChild(ICachedMNode parent, String name, boolean needLock)
       throws MetadataException {
     if (needLock) {
       lock.threadReadLock();
     }
     try {
-      IMNode child = getChild(parent, name, needLock);
+      ICachedMNode child = getChild(parent, name, needLock);
       if (child == null) {
         return false;
       } else {
@@ -147,17 +145,17 @@ public class CachedMTreeStore implements IMTreeStore {
    * @throws MetadataException
    */
   @Override
-  public IMNode getChild(IMNode parent, String name) throws MetadataException {
+  public ICachedMNode getChild(ICachedMNode parent, String name) throws MetadataException {
     return getChild(parent, name, true);
   }
 
-  protected final IMNode getChild(IMNode parent, String name, boolean needLock)
+  protected final ICachedMNode getChild(ICachedMNode parent, String name, boolean needLock)
       throws MetadataException {
     if (needLock) {
       lock.threadReadLock();
     }
     try {
-      IMNode node = parent.getChild(name);
+      ICachedMNode node = parent.getChild(name);
       if (node == null) {
         node = loadChildFromDisk(parent, name);
       } else {
@@ -168,7 +166,7 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       }
       if (node != null && node.isMeasurement()) {
-        processAlias(parent.getAsEntityMNode(), node.getAsMeasurementMNode());
+        processAlias(parent.getAsDeviceMNode(), node.getAsMeasurementMNode());
       }
 
       return node;
@@ -179,8 +177,9 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  private IMNode loadChildFromDisk(IMNode parent, String name) throws MetadataException {
-    IMNode node = null;
+  private ICachedMNode loadChildFromDisk(ICachedMNode parent, String name)
+      throws MetadataException {
+    ICachedMNode node = null;
     if (!getCachedMNodeContainer(parent).isVolatile()) {
       try {
         node = file.getChildNode(parent, name);
@@ -194,9 +193,9 @@ public class CachedMTreeStore implements IMTreeStore {
     return node;
   }
 
-  private IMNode loadChildFromDiskToParent(IMNode parent, IMNode node) {
+  private ICachedMNode loadChildFromDiskToParent(ICachedMNode parent, ICachedMNode node) {
     synchronized (parent) {
-      IMNode nodeAlreadyLoaded = parent.getChild(node.getName());
+      ICachedMNode nodeAlreadyLoaded = parent.getChild(node.getName());
       if (nodeAlreadyLoaded != null) {
         try {
           cacheManager.updateCacheStatusAfterMemoryRead(nodeAlreadyLoaded);
@@ -212,7 +211,8 @@ public class CachedMTreeStore implements IMTreeStore {
     }
   }
 
-  private void processAlias(IEntityMNode parent, IMeasurementMNode node) {
+  private void processAlias(
+      IDeviceMNode<ICachedMNode> parent, IMeasurementMNode<ICachedMNode> node) {
     String alias = node.getAlias();
     if (alias != null) {
       parent.addAlias(alias, node);
@@ -221,11 +221,12 @@ public class CachedMTreeStore implements IMTreeStore {
 
   // getChildrenIterator will take readLock, must call iterator.close() after usage
   @Override
-  public IMNodeIterator getChildrenIterator(IMNode parent) throws MetadataException {
+  public IMNodeIterator<ICachedMNode> getChildrenIterator(ICachedMNode parent)
+      throws MetadataException {
     return getChildrenIterator(parent, true);
   }
 
-  final IMNodeIterator getChildrenIterator(IMNode parent, boolean needLock)
+  final IMNodeIterator<ICachedMNode> getChildrenIterator(ICachedMNode parent, boolean needLock)
       throws MetadataException {
     try {
       return new CachedMNodeIterator(parent, needLock);
@@ -235,21 +236,21 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IMNodeIterator getTraverserIterator(
-      IMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
+  public IMNodeIterator<ICachedMNode> getTraverserIterator(
+      ICachedMNode parent, Map<Integer, Template> templateMap, boolean skipPreDeletedSchema)
       throws MetadataException {
     return getTraverserIterator(this, parent, templateMap, skipPreDeletedSchema);
   }
 
-  final IMNodeIterator getTraverserIterator(
-      IMTreeStore store,
-      IMNode parent,
+  final IMNodeIterator<ICachedMNode> getTraverserIterator(
+      IMTreeStore<ICachedMNode> store,
+      ICachedMNode parent,
       Map<Integer, Template> templateMap,
       boolean skipPreDeletedSchema)
       throws MetadataException {
-    if (parent.isEntity()) {
-      AbstractTraverserIterator iterator =
-          new CachedTraverserIterator(store, parent.getAsEntityMNode(), templateMap);
+    if (parent.isDevice()) {
+      AbstractTraverserIterator<ICachedMNode> iterator =
+          new CachedTraverserIterator(store, parent.getAsDeviceMNode(), templateMap, nodeFactory);
       iterator.setSkipPreDeletedSchema(skipPreDeletedSchema);
       return iterator;
     } else {
@@ -259,7 +260,7 @@ public class CachedMTreeStore implements IMTreeStore {
 
   // must pin parent first
   @Override
-  public IMNode addChild(IMNode parent, String childName, IMNode child) {
+  public ICachedMNode addChild(ICachedMNode parent, String childName, ICachedMNode child) {
     lock.threadReadLock();
     try {
       child.setParent(parent);
@@ -283,10 +284,10 @@ public class CachedMTreeStore implements IMTreeStore {
    * @throws MetadataException
    */
   @Override
-  public void deleteChild(IMNode parent, String childName) throws MetadataException {
+  public void deleteChild(ICachedMNode parent, String childName) throws MetadataException {
     lock.writeLock();
     try {
-      IMNode deletedMNode = getChild(parent, childName, false);
+      ICachedMNode deletedMNode = getChild(parent, childName, false);
       ICachedMNodeContainer container = getCachedMNodeContainer(parent);
       if (!container.isVolatile() && !container.hasChildInNewChildBuffer(childName)) {
         // the container has been persisted and this child is not a new child, which means the child
@@ -312,11 +313,11 @@ public class CachedMTreeStore implements IMTreeStore {
    * @param node the modified node
    */
   @Override
-  public void updateMNode(IMNode node) {
+  public void updateMNode(ICachedMNode node) {
     updateMNode(node, true);
   }
 
-  final void updateMNode(IMNode node, boolean needLock) {
+  final void updateMNode(ICachedMNode node, boolean needLock) {
     if (needLock) {
       lock.threadReadLock();
     }
@@ -330,42 +331,45 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IEntityMNode setToEntity(IMNode node) {
-    IEntityMNode result = MNodeUtils.setToEntity(node);
+  public IDeviceMNode<ICachedMNode> setToEntity(ICachedMNode node) {
+    IDeviceMNode<ICachedMNode> result = MNodeUtils.setToEntity(node, nodeFactory);
     if (result != node) {
-      memManager.updatePinnedSize(IMNodeSizeEstimator.getEntityNodeBaseSize());
+      regionStatistics.addDevice();
+      memManager.updatePinnedSize(result.estimateSize() - node.estimateSize());
     }
-    updateMNode(result);
+    updateMNode(result.getAsMNode());
     return result;
   }
 
   @Override
-  public IMNode setToInternal(IEntityMNode entityMNode) {
-    IMNode result = MNodeUtils.setToInternal(entityMNode);
+  public ICachedMNode setToInternal(IDeviceMNode<ICachedMNode> entityMNode) {
+    ICachedMNode result = MNodeUtils.setToInternal(entityMNode, nodeFactory);
     if (result != entityMNode) {
-      memManager.updatePinnedSize(-IMNodeSizeEstimator.getEntityNodeBaseSize());
+      regionStatistics.deleteDevice();
+      memManager.updatePinnedSize(result.estimateSize() - entityMNode.estimateSize());
     }
     updateMNode(result);
     return result;
   }
 
   @Override
-  public void setAlias(IMeasurementMNode measurementMNode, String alias) throws MetadataException {
+  public void setAlias(IMeasurementMNode<ICachedMNode> measurementMNode, String alias)
+      throws MetadataException {
     String existingAlias = measurementMNode.getAlias();
     if (existingAlias == null && alias == null) {
       return;
     }
 
     measurementMNode.setAlias(alias);
-    updateMNode(measurementMNode);
+    updateMNode(measurementMNode.getAsMNode());
 
     if (existingAlias != null && alias != null) {
       memManager.updatePinnedSize(alias.length() - existingAlias.length());
     } else if (alias == null) {
       memManager.updatePinnedSize(
-          -(IMNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
+          -(MNodeSizeEstimator.getAliasBaseSize() + existingAlias.length()));
     } else {
-      memManager.updatePinnedSize(IMNodeSizeEstimator.getAliasBaseSize() + alias.length());
+      memManager.updatePinnedSize(MNodeSizeEstimator.getAliasBaseSize() + alias.length());
     }
   }
 
@@ -378,11 +382,11 @@ public class CachedMTreeStore implements IMTreeStore {
    * @param node
    */
   @Override
-  public void pin(IMNode node) throws MetadataException {
+  public void pin(ICachedMNode node) throws MetadataException {
     pin(node, true);
   }
 
-  final void pin(IMNode node, boolean needLock) throws MetadataException {
+  final void pin(ICachedMNode node, boolean needLock) throws MetadataException {
     if (needLock) {
       lock.threadReadLock();
     }
@@ -404,11 +408,11 @@ public class CachedMTreeStore implements IMTreeStore {
    * @param node
    */
   @Override
-  public void unPin(IMNode node) {
+  public void unPin(ICachedMNode node) {
     unPin(node, true);
   }
 
-  final void unPin(IMNode node, boolean needLock) {
+  final void unPin(ICachedMNode node, boolean needLock) {
     if (needLock) {
       lock.threadReadLock();
     }
@@ -424,12 +428,12 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public void unPinPath(IMNode node) {
+  public void unPinPath(ICachedMNode node) {
     unPinPath(node, true);
   }
 
-  public void unPinPath(IMNode node, boolean needLock) {
-    while (!node.isStorageGroup()) {
+  public void unPinPath(ICachedMNode node, boolean needLock) {
+    while (!node.isDatabase()) {
       unPin(node, needLock);
       node = node.getParent();
     }
@@ -444,7 +448,7 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
-  public IMTreeStore getWithReentrantReadLock() {
+  public IMTreeStore<ICachedMNode> getWithReentrantReadLock() {
     return new ReentrantReadOnlyCachedMTreeStore(this);
   }
 
@@ -539,10 +543,11 @@ public class CachedMTreeStore implements IMTreeStore {
   /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
   public void flushVolatileNodes() {
     try {
-      IStorageGroupMNode updatedStorageGroupMNode = cacheManager.collectUpdatedStorageGroupMNodes();
+      IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =
+          cacheManager.collectUpdatedStorageGroupMNodes();
       if (updatedStorageGroupMNode != null) {
         try {
-          file.updateStorageGroupNode(updatedStorageGroupMNode);
+          file.updateDatabaseNode(updatedStorageGroupMNode);
         } catch (IOException e) {
           logger.error(
               "IOException occurred during updating StorageGroupMNode {}",
@@ -551,8 +556,8 @@ public class CachedMTreeStore implements IMTreeStore {
           return;
         }
       }
-      List<IMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
-      for (IMNode volatileNode : nodesToPersist) {
+      List<ICachedMNode> nodesToPersist = cacheManager.collectVolatileMNodes();
+      for (ICachedMNode volatileNode : nodesToPersist) {
         try {
           file.writeMNode(volatileNode);
         } catch (MetadataException | IOException e) {
@@ -580,15 +585,16 @@ public class CachedMTreeStore implements IMTreeStore {
    * Since any node R/W operation may change the memory status, thus it should be controlled during
    * iterating child nodes.
    */
-  private class CachedMNodeIterator implements IMNodeIterator {
-    IMNode parent;
-    Iterator<IMNode> iterator;
-    Iterator<IMNode> bufferIterator;
+  private class CachedMNodeIterator implements IMNodeIterator<ICachedMNode> {
+    ICachedMNode parent;
+    Iterator<ICachedMNode> iterator;
+    Iterator<ICachedMNode> bufferIterator;
     boolean isIteratingDisk;
-    IMNode nextNode;
+    ICachedMNode nextNode;
     boolean isLocked;
 
-    CachedMNodeIterator(IMNode parent, boolean needLock) throws MetadataException, IOException {
+    CachedMNodeIterator(ICachedMNode parent, boolean needLock)
+        throws MetadataException, IOException {
       if (needLock) {
         lock.threadReadLock();
       }
@@ -631,17 +637,17 @@ public class CachedMTreeStore implements IMTreeStore {
 
     // must invoke hasNext() first
     @Override
-    public IMNode next() {
+    public ICachedMNode next() {
       if (nextNode == null && !hasNext()) {
         throw new NoSuchElementException();
       }
-      IMNode result = nextNode;
+      ICachedMNode result = nextNode;
       nextNode = null;
       return result;
     }
 
     private void readNext() throws MetadataException {
-      IMNode node = null;
+      ICachedMNode node = null;
       if (isIteratingDisk) {
         ICachedMNodeContainer container = getCachedMNodeContainer(parent);
         if (iterator.hasNext()) {
@@ -656,7 +662,7 @@ public class CachedMTreeStore implements IMTreeStore {
           }
         }
         if (node != null) {
-          IMNode nodeInMem = parent.getChild(node.getName());
+          ICachedMNode nodeInMem = parent.getChild(node.getName());
           if (nodeInMem != null) {
             // this branch means the node load from disk is in cache, thus use the instance in
             // cache

@@ -18,13 +18,22 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
-public abstract class MeasurementTraverser<R> extends Traverser<R> {
+import org.apache.commons.lang.StringUtils;
+
+public abstract class MeasurementTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
+
+  private final MeasurementFilterVisitor filterVisitor = new MeasurementFilterVisitor();
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -36,28 +45,56 @@ public abstract class MeasurementTraverser<R> extends Traverser<R> {
    * @throws MetadataException path does not meet the expected rules
    */
   public MeasurementTraverser(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean acceptFullMatchedNode(IMNode node) {
-    return node.isMeasurement();
+  protected boolean mayTargetNodeType(N node) {
+    return node.isMeasurement() && filterVisitor.process(schemaFilter, node);
   }
 
   @Override
-  protected boolean acceptInternalMatchedNode(IMNode node) {
+  protected boolean acceptFullMatchedNode(N node) {
+    return node.isMeasurement() && filterVisitor.process(schemaFilter, node);
+  }
+
+  @Override
+  protected boolean acceptInternalMatchedNode(N node) {
     return false;
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
     return !node.isMeasurement();
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     return !node.isMeasurement();
+  }
+
+  class MeasurementFilterVisitor extends SchemaFilterVisitor<Boolean, N> {
+    @Override
+    public Boolean visitNode(SchemaFilter filter, N node) {
+      return true;
+    }
+
+    @Override
+    public Boolean visitPathContainsFilter(PathContainsFilter pathContainsFilter, N node) {
+      if (pathContainsFilter.getContainString() == null) {
+        return true;
+      }
+      return StringUtils.join(
+              getFullPathFromRootToNode(node.getAsMNode()), IoTDBConstant.PATH_SEPARATOR)
+          .toLowerCase()
+          .contains(pathContainsFilter.getContainString());
+    }
+
+    @Override
+    public Boolean visitDataTypeFilter(DataTypeFilter dataTypeFilter, N node) {
+      return node.getAsMeasurementMNode().getSchema().getType() == dataTypeFilter.getDataType();
+    }
   }
 }

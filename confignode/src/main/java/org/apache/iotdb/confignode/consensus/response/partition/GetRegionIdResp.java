@@ -51,7 +51,7 @@ public class GetRegionIdResp implements DataSet {
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.dataRegionIdList = dataRegionIdList;
+      resp.setDataRegionIdList(dataRegionIdList);
     }
 
     return resp;

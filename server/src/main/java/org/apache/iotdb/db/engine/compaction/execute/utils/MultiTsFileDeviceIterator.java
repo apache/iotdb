@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -197,7 +198,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         }
       }
     }
-    schemaMap.remove("");
     return schemaMap;
   }
 
@@ -247,7 +247,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
       getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
-        timeseriesMetadataOffsetMap = new HashMap<>();
+        timeseriesMetadataOffsetMap = new LinkedHashMap<>();
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       if (!deviceIteratorMap.containsKey(resource)
           || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
@@ -359,7 +359,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (modification.getDevice().equals(currentDevice.left)) {
         for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
           IChunkMetadata chunkMetadata = valueChunkMetadataList.get(i);
-          if (modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
+          if (chunkMetadata != null
+              && modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
             modificationForCurDevice.get(i).add(modification);
           }
         }
@@ -377,6 +378,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
+  /*
+  NonAligned measurement iterator.
+   */
   public class MeasurementIterator {
     private Map<TsFileResource, TsFileSequenceReader> readerMap;
     private String device;
@@ -429,6 +433,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         if (chunkMetadataListMap.size() == 0) {
           if (chunkMetadataIteratorMap.get(resource).hasNext()) {
             chunkMetadataListMap = chunkMetadataIteratorMap.get(resource).next();
+            if (chunkMetadataListMap.containsKey("")) {
+              // encounter deleted aligned series, then remove it
+              chunkMetadataListMap.remove("");
+            }
             chunkMetadataCacheMap.put(reader, chunkMetadataListMap);
           } else {
             continue;

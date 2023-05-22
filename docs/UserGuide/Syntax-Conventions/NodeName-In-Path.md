@@ -66,7 +66,7 @@ When node name is not wildcard, it is a identifier, which means the constraints 
 create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
 
 # Node name is a real number.
-create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
+create timeseries root.sg.`111`.a with datatype=FLOAT,encoding=PLAIN;
 ```
 
 After executing above statments, execute "show timeseries"，below is the result：

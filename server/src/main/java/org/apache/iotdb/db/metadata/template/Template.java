@@ -34,9 +34,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Template implements Serializable {
 
@@ -48,7 +48,7 @@ public class Template implements Serializable {
   private transient int rehashCode;
 
   public Template() {
-    schemaMap = new HashMap<>();
+    schemaMap = new ConcurrentHashMap<>();
   }
 
   public Template(
@@ -70,7 +70,7 @@ public class Template implements Serializable {
       boolean isAligned)
       throws IllegalPathException {
     this.isDirectAligned = isAligned;
-    this.schemaMap = new HashMap<>();
+    this.schemaMap = new ConcurrentHashMap<>();
     this.name = name;
     for (int i = 0; i < measurements.size(); i++) {
       IMeasurementSchema schema =
@@ -112,6 +112,10 @@ public class Template implements Serializable {
     return isDirectAligned;
   }
 
+  public int getMeasurementNumber() {
+    return schemaMap.size();
+  }
+
   // region construct template tree
 
   private IMeasurementSchema constructSchema(
@@ -141,6 +145,14 @@ public class Template implements Serializable {
           constructSchema(measurements[i], dataTypes[i], encodings[i], compressors[i]);
       schemaMap.put(measurements[i], schema);
     }
+  }
+
+  public void addMeasurement(
+      String measurement,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressionType) {
+    schemaMap.put(measurement, constructSchema(measurement, dataType, encoding, compressionType));
   }
 
   // endregion
@@ -182,7 +194,7 @@ public class Template implements Serializable {
     name = ReadWriteIOUtils.readString(buffer);
     isDirectAligned = ReadWriteIOUtils.readBool(buffer);
     int schemaSize = ReadWriteIOUtils.readInt(buffer);
-    schemaMap = new HashMap<>(schemaSize);
+    schemaMap = new ConcurrentHashMap<>(schemaSize);
     for (int i = 0; i < schemaSize; i++) {
       String schemaName = ReadWriteIOUtils.readString(buffer);
       byte flag = ReadWriteIOUtils.readByte(buffer);

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -84,11 +83,6 @@ public class SessionWindow implements IWindow {
     // update the last time of session window
     timeValue = ascending ? Math.max(timeValue, currentTime) : Math.min(timeValue, currentTime);
     setLastTsBlockTime(timeValue);
-  }
-
-  @Override
-  public boolean hasFinalResult(Accumulator accumulator) {
-    return accumulator.hasFinalResult();
   }
 
   @Override

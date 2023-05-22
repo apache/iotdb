@@ -51,11 +51,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
-import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
+import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -326,10 +326,10 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering)),
-                  null,
-                  null));
+                      new SortItem(OrderByKey.TIME, timeOrdering),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering)),
+                  Arrays.asList(-1, 0),
+                  Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -342,7 +342,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByTime1() {
+  public void testOrderByTime1() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -385,11 +385,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime2() {
+  public void testOrderByTime2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -432,11 +433,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime3() {
+  public void testOrderByTime3() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -479,11 +481,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
   @Test
-  public void testOrderByTime4() {
+  public void testOrderByTime4() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -526,6 +529,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 1500);
   }
 
@@ -790,10 +794,10 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering)),
-                  null,
-                  null));
+                      new SortItem(OrderByKey.TIME, timeOrdering),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering)),
+                  Arrays.asList(-1, 0),
+                  Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator1
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -804,10 +808,10 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering)),
-                  null,
-                  null));
+                      new SortItem(OrderByKey.TIME, timeOrdering),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering)),
+                  Arrays.asList(-1, 0),
+                  Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator2
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -819,10 +823,10 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.TIME, timeOrdering),
-                      new SortItem(SortKey.DEVICE, deviceOrdering)),
-                  null,
-                  null));
+                      new SortItem(OrderByKey.TIME, timeOrdering),
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering)),
+                  Arrays.asList(-1, 0),
+                  Arrays.asList(TSDataType.INT64, TSDataType.TEXT)));
       mergeSortOperator
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -835,7 +839,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByTime1_2() {
+  public void testOrderByTime1_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -874,15 +878,17 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime2_2() {
+  public void testOrderByTime2_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
     int count = 0;
+
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
@@ -917,11 +923,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime3_2() {
+  public void testOrderByTime3_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -960,11 +967,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByTime4_2() {
+  public void testOrderByTime4_2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest2(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -1003,6 +1011,7 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
   // ------------------------------------------------------------------------------------------------
@@ -1258,10 +1267,10 @@ public class MergeSortOperatorTest {
               tsDataTypes,
               MergeSortComparator.getComparator(
                   Arrays.asList(
-                      new SortItem(SortKey.DEVICE, deviceOrdering),
-                      new SortItem(SortKey.TIME, timeOrdering)),
-                  null,
-                  null));
+                      new SortItem(OrderByKey.DEVICE, deviceOrdering),
+                      new SortItem(OrderByKey.TIME, timeOrdering)),
+                  Arrays.asList(0, -1),
+                  Arrays.asList(TSDataType.TEXT, TSDataType.INT64)));
       mergeSortOperator
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -1274,7 +1283,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByDevice1() {
+  public void testOrderByDevice1() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.ASC, Ordering.ASC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -1322,11 +1331,12 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByDevice2() {
+  public void testOrderByDevice2() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.ASC, Ordering.DESC);
     long lastTime = -1;
     int checkDevice = 0;
@@ -1374,15 +1384,17 @@ public class MergeSortOperatorTest {
         }
       }
     }
+
     assertEquals(count, 2000);
   }
 
   @Test
-  public void testOrderByDevice3() {
+  public void testOrderByDevice3() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.DESC, Ordering.ASC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
     int count = 0;
+
     while (mergeSortOperator.isBlocked().isDone() && mergeSortOperator.hasNext()) {
       TsBlock tsBlock = mergeSortOperator.next();
       if (tsBlock == null) continue;
@@ -1430,7 +1442,7 @@ public class MergeSortOperatorTest {
   }
 
   @Test
-  public void testOrderByDevice4() {
+  public void testOrderByDevice4() throws Exception {
     MergeSortOperator mergeSortOperator = mergeSortOperatorTest3(Ordering.DESC, Ordering.DESC);
     long lastTime = Long.MAX_VALUE;
     int checkDevice = 0;
@@ -1493,7 +1505,7 @@ public class MergeSortOperatorTest {
   //                        ShowQueriesOperator      ShowQueriesOperator
   // ------------------------------------------------------------------------------------------------
   @Test
-  public void mergeSortWithSortOperatorTest() {
+  public void mergeSortWithSortOperatorTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
@@ -1521,11 +1533,11 @@ public class MergeSortOperatorTest {
 
       List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
       List<TSDataType> dataTypes = DatasetHeaderFactory.getShowQueriesHeader().getRespDataTypes();
-      Comparator<MergeSortKey> comparator =
+      Comparator<SortKey> comparator =
           MergeSortComparator.getComparator(
               Arrays.asList(
-                  new SortItem(SortKey.TIME, Ordering.ASC),
-                  new SortItem(SortKey.DATANODEID, Ordering.DESC)),
+                  new SortItem(OrderByKey.TIME, Ordering.ASC),
+                  new SortItem(OrderByKey.DATANODEID, Ordering.DESC)),
               ImmutableList.of(-1, 1),
               ImmutableList.of(TSDataType.INT64, TSDataType.INT32));
 
@@ -1549,13 +1561,20 @@ public class MergeSortOperatorTest {
       ShowQueriesOperator showQueriesOperator2 =
           new ShowQueriesOperator(operatorContexts.get(1), planNodeId1, coordinator2);
       SortOperator sortOperator1 =
-          new SortOperator(operatorContexts.get(2), showQueriesOperator1, dataTypes, comparator);
+          new SortOperator(
+              operatorContexts.get(2), showQueriesOperator1, dataTypes, "", comparator);
       SortOperator sortOperator2 =
-          new SortOperator(operatorContexts.get(3), showQueriesOperator2, dataTypes, comparator);
+          new SortOperator(
+              operatorContexts.get(3), showQueriesOperator2, dataTypes, "", comparator);
       Operator root =
           new MergeSortOperator(
               operatorContexts.get(4),
-              ImmutableList.of(sortOperator1, sortOperator2),
+              new ArrayList<Operator>() {
+                {
+                  add(sortOperator1);
+                  add(sortOperator2);
+                }
+              },
               dataTypes,
               comparator);
       root.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
@@ -1639,10 +1658,13 @@ public class MergeSortOperatorTest {
     public void start() {}
 
     @Override
-    public void stop() {}
+    public void stop(Throwable t) {}
 
     @Override
     public void stopAndCleanup() {}
+
+    @Override
+    public void stopAndCleanup(Throwable t) {}
 
     @Override
     public void cancel() {}

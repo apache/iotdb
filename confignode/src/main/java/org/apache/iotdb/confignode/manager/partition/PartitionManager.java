@@ -26,17 +26,18 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
@@ -46,12 +47,13 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
 import org.apache.iotdb.confignode.consensus.response.partition.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetRegionIdResp;
 import org.apache.iotdb.confignode.consensus.response.partition.GetSeriesSlotListResp;
@@ -62,18 +64,20 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.partition.heartbeat.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionMaintainType;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -87,7 +91,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -100,7 +103,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
@@ -127,15 +129,11 @@ public class PartitionManager {
   private final ScheduledExecutorService regionMaintainer;
   private Future<?> currentRegionMaintainerFuture;
 
-  // Map<RegionId, RegionGroupCache>
-  private final Map<TConsensusGroupId, RegionGroupCache> regionGroupCacheMap;
-
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionMaintainer =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Maintainer");
-    this.regionGroupCacheMap = new ConcurrentHashMap<>();
     setSeriesPartitionExecutor();
   }
 
@@ -180,6 +178,20 @@ public class PartitionManager {
    *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public SchemaPartitionResp getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
+    // Check if the related Databases exist
+    for (String database : req.getPartitionSlotsMap().keySet()) {
+      if (!isDatabaseExist(database)) {
+        return new SchemaPartitionResp(
+            new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                .setMessage(
+                    String.format(
+                        "Create SchemaPartition failed because the database: %s is not exists",
+                        database)),
+            false,
+            null);
+      }
+    }
+
     // After all the SchemaPartitions are allocated,
     // all the read requests about SchemaPartitionTable are parallel.
     SchemaPartitionResp resp = (SchemaPartitionResp) getSchemaPartition(req);
@@ -243,7 +255,16 @@ public class PartitionManager {
       }
     }
 
-    return (SchemaPartitionResp) getSchemaPartition(req);
+    resp = (SchemaPartitionResp) getSchemaPartition(req);
+    if (!resp.isAllPartitionsExist()) {
+      LOGGER.error(
+          "Lacked some SchemaPartition allocation result in the response of getOrCreateDataPartition method");
+      resp.setStatus(
+          new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode())
+              .setMessage("Lacked some SchemaPartition allocation result in the response"));
+      return resp;
+    }
+    return resp;
   }
 
   /**
@@ -256,6 +277,20 @@ public class PartitionManager {
    *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataPartitionResp getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
+    // Check if the related Databases exist
+    for (String database : req.getPartitionSlotsMap().keySet()) {
+      if (!isDatabaseExist(database)) {
+        return new DataPartitionResp(
+            new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                .setMessage(
+                    String.format(
+                        "Create DataPartition failed because the database: %s is not exists",
+                        database)),
+            false,
+            null);
+      }
+    }
+
     // After all the DataPartitions are allocated,
     // all the read requests about DataPartitionTable are parallel.
     DataPartitionResp resp = (DataPartitionResp) getDataPartition(req);
@@ -322,10 +357,10 @@ public class PartitionManager {
     resp = (DataPartitionResp) getDataPartition(req);
     if (!resp.isAllPartitionsExist()) {
       LOGGER.error(
-          "Lacked some data partition allocation result in the response of getOrCreateDataPartition method");
+          "Lacked some DataPartition allocation result in the response of getOrCreateDataPartition method");
       resp.setStatus(
-          new TSStatus(TSStatusCode.LACK_DATA_PARTITION_ALLOCATION.getStatusCode())
-              .setMessage("Lacked some data partition allocation result in the response"));
+          new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode())
+              .setMessage("Lacked some DataPartition allocation result in the response"));
       return resp;
     }
     return resp;
@@ -555,10 +590,32 @@ public class PartitionManager {
    * Only leader use this interface.
    *
    * @param database The specified Database
-   * @return All Regions' RegionReplicaSet of the specified StorageGroup
+   * @return All Regions' RegionReplicaSet of the specified Database
    */
   public List<TRegionReplicaSet> getAllReplicaSets(String database) {
     return partitionInfo.getAllReplicaSets(database);
+  }
+
+  /**
+   * Get all RegionGroups currently owned by the specified Database
+   *
+   * @param dataNodeId The specified dataNodeId
+   * @return Deep copy of all RegionGroups' RegionReplicaSet with the specified dataNodeId
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(int dataNodeId) {
+    return partitionInfo.getAllReplicaSets(dataNodeId);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param regionGroupIds The specified RegionGroupIds
+   * @return All Regions' RegionReplicaSet of the specified Database
+   */
+  public List<TRegionReplicaSet> getReplicaSets(
+      String database, List<TConsensusGroupId> regionGroupIds) {
+    return partitionInfo.getReplicaSets(database, regionGroupIds);
   }
 
   /**
@@ -589,8 +646,33 @@ public class PartitionManager {
     return partitionInfo.getRegionGroupCount(database, type);
   }
 
-  public boolean isDatabaseExisted(String database) {
+  /**
+   * Check if the specified Database exists.
+   *
+   * @param database The specified Database
+   * @return True if the DatabaseSchema is exists and the Database is not pre-deleted
+   */
+  public boolean isDatabaseExist(String database) {
     return partitionInfo.isDatabaseExisted(database);
+  }
+
+  /**
+   * Filter the un-exist Databases.
+   *
+   * @param databases the Databases to check
+   * @return List of PartialPath the Databases that not exist
+   */
+  public List<PartialPath> filterUnExistDatabases(List<PartialPath> databases) {
+    List<PartialPath> unExistDatabases = new ArrayList<>();
+    if (databases == null) {
+      return unExistDatabases;
+    }
+    for (PartialPath database : databases) {
+      if (!isDatabaseExist(database.getFullPath())) {
+        unExistDatabases.add(database);
+      }
+    }
+    return unExistDatabases;
   }
 
   /**
@@ -608,22 +690,22 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param type SchemaRegion or DataRegion
    * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
    * @throws NoAvailableRegionGroupException When all RegionGroups within the specified StorageGroup
    *     are unavailable currently
    */
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionGroupSlotsCounter(
-      String storageGroup, TConsensusGroupType type) throws NoAvailableRegionGroupException {
+      String database, TConsensusGroupType type) throws NoAvailableRegionGroupException {
     // Collect static data
     List<Pair<Long, TConsensusGroupId>> regionGroupSlotsCounter =
-        partitionInfo.getRegionGroupSlotsCounter(storageGroup, type);
+        partitionInfo.getRegionGroupSlotsCounter(database, type);
 
     // Filter RegionGroups that have Disabled status
     List<Pair<Long, TConsensusGroupId>> result = new ArrayList<>();
     for (Pair<Long, TConsensusGroupId> slotsCounter : regionGroupSlotsCounter) {
-      RegionGroupStatus status = getRegionGroupStatus(slotsCounter.getRight());
+      RegionGroupStatus status = getLoadManager().getRegionGroupStatus(slotsCounter.getRight());
       if (!RegionGroupStatus.Disabled.equals(status)) {
         result.add(slotsCounter);
       }
@@ -633,6 +715,9 @@ public class PartitionManager {
       throw new NoAvailableRegionGroupException(type);
     }
 
+    Map<TConsensusGroupId, RegionGroupStatus> regionGroupStatusMap =
+        getLoadManager()
+            .getRegionGroupStatus(result.stream().map(Pair::getRight).collect(Collectors.toList()));
     result.sort(
         (o1, o2) -> {
           // Use the number of partitions as the first priority
@@ -642,11 +727,21 @@ public class PartitionManager {
             return 1;
           } else {
             // Use RegionGroup status as second priority, Running > Available > Discouraged
-            return getRegionGroupStatus(o1.getRight())
-                .compareTo(getRegionGroupStatus(o2.getRight()));
+            return regionGroupStatusMap
+                .get(o1.getRight())
+                .compare(regionGroupStatusMap.get(o2.getRight()));
           }
         });
     return result;
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @return Integer set of all schema region id
+   */
+  public Set<Integer> getAllSchemaPartition() {
+    return partitionInfo.getAllSchemaPartition();
   }
 
   /**
@@ -672,11 +767,15 @@ public class PartitionManager {
     return schemaNodeManagementResp;
   }
 
-  public void preDeleteStorageGroup(
-      String storageGroup, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
+  public void preDeleteDatabase(
+      String database, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
     final PreDeleteDatabasePlan preDeleteDatabasePlan =
-        new PreDeleteDatabasePlan(storageGroup, preDeleteType);
+        new PreDeleteDatabasePlan(database, preDeleteType);
     getConsensusManager().write(preDeleteDatabasePlan);
+  }
+
+  public boolean isDatabasePreDeleted(String database) {
+    return partitionInfo.isDatabasePreDeleted(database);
   }
 
   /**
@@ -695,13 +794,14 @@ public class PartitionManager {
         (RegionInfoListResp) getConsensusManager().read(req).getDataset();
 
     // Get cached result
-    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getLatestRegionLeaderMap();
+    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getRegionLeaderMap();
     regionInfoListResp
         .getRegionInfoList()
         .forEach(
             regionInfo -> {
               regionInfo.setStatus(
-                  getRegionStatus(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId())
+                  getLoadManager()
+                      .getRegionStatus(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId())
                       .getStatus());
 
               String regionType =
@@ -716,44 +816,71 @@ public class PartitionManager {
   }
 
   /**
+   * Check if the specified RegionGroup exists.
+   *
+   * @param regionGroupId The specified RegionGroup
+   */
+  public boolean isRegionGroupExists(TConsensusGroupId regionGroupId) {
+    return partitionInfo.isRegionGroupExisted(regionGroupId);
+  }
+
+  /**
    * update region location
    *
    * @param req UpdateRegionLocationReq
    * @return TSStatus
    */
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    // Remove heartbeat cache if exists
-    if (regionGroupCacheMap.containsKey(req.getRegionId())) {
-      regionGroupCacheMap
-          .get(req.getRegionId())
-          .removeCacheIfExists(req.getOldNode().getDataNodeId());
-    }
-
     return getConsensusManager().write(req).getStatus();
   }
 
   public GetRegionIdResp getRegionId(TGetRegionIdReq req) {
-    GetRegionIdPlan plan =
-        new GetRegionIdPlan(
-            req.getDatabase(),
-            req.getType(),
-            req.isSetSeriesSlotId()
-                ? req.getSeriesSlotId()
-                : executor.getSeriesPartitionSlot(req.getDeviceId()),
-            req.isSetTimeSlotId()
-                ? req.getTimeSlotId()
-                : (req.isSetTimeStamp()
-                    ? new TTimePartitionSlot(
-                        req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval())
-                    : null));
+    GetRegionIdPlan plan = new GetRegionIdPlan(req.getType());
+    if (req.isSetDatabase()) {
+      plan.setDatabase(req.getDatabase());
+    } else {
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+    }
+    if (req.isSetTimeStamp()) {
+      plan.setTimeSlotId(
+          new TTimePartitionSlot(
+              req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval()));
+    }
     return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }
 
-  public GetTimeSlotListResp getTimeSlotList(GetTimeSlotListPlan plan) {
+  public GetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
+    long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
+    long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
+    GetTimeSlotListPlan plan = new GetTimeSlotListPlan(startTime, endTime);
+    if (req.isSetDatabase()) {
+      plan.setDatabase(req.getDatabase());
+    } else if (req.isSetDevice()) {
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+    } else {
+      plan.setRegionId(
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
+    }
     return (GetTimeSlotListResp) getConsensusManager().read(plan).getDataset();
   }
 
-  public GetSeriesSlotListResp getSeriesSlotList(GetSeriesSlotListPlan plan) {
+  public CountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) {
+    long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
+    long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
+    CountTimeSlotListPlan plan = new CountTimeSlotListPlan(startTime, endTime);
+    if (req.isSetDatabase()) {
+      plan.setDatabase(req.getDatabase());
+    } else if (req.isSetDevice()) {
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+    } else {
+      plan.setRegionId(
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
+    }
+    return (CountTimeSlotListResp) getConsensusManager().read(plan).getDataset();
+  }
+
+  public GetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
+    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase(), req.getType());
     return (GetSeriesSlotListResp) getConsensusManager().read(plan).getDataset();
   }
 
@@ -1001,108 +1128,32 @@ public class PartitionManager {
         /* Stop the RegionCleaner service */
         currentRegionMaintainerFuture.cancel(false);
         currentRegionMaintainerFuture = null;
-        regionGroupCacheMap.clear();
         LOGGER.info("RegionCleaner is stopped successfully.");
       }
     }
   }
 
-  public Map<TConsensusGroupId, RegionGroupCache> getRegionGroupCacheMap() {
-    return regionGroupCacheMap;
-  }
-
-  public void removeRegionGroupCache(TConsensusGroupId consensusGroupId) {
-    regionGroupCacheMap.remove(consensusGroupId);
-  }
-
   /**
-   * Filter the RegionGroups in the specified StorageGroup through the RegionGroupStatus
+   * Filter the RegionGroups in the specified Database through the RegionGroupStatus
    *
-   * @param storageGroup The specified StorageGroup
+   * @param database The specified Database
    * @param status The specified RegionGroupStatus
-   * @return Filtered RegionGroups with the specific RegionGroupStatus
+   * @return Filtered RegionGroups with the specified RegionGroupStatus
    */
   public List<TRegionReplicaSet> filterRegionGroupThroughStatus(
-      String storageGroup, RegionGroupStatus... status) {
-    return getAllReplicaSets(storageGroup).stream()
-        .filter(
-            regionReplicaSet -> {
-              TConsensusGroupId regionGroupId = regionReplicaSet.getRegionId();
-              return regionGroupCacheMap.containsKey(regionGroupId)
-                  && Arrays.stream(status)
-                      .anyMatch(
-                          s ->
-                              s.equals(
-                                  regionGroupCacheMap
-                                      .get(regionGroupId)
-                                      .getStatistics()
-                                      .getRegionGroupStatus()));
-            })
-        .collect(Collectors.toList());
+      String database, RegionGroupStatus... status) {
+    List<TConsensusGroupId> matchedRegionGroups =
+        getLoadManager().filterRegionGroupThroughStatus(status);
+    return getReplicaSets(database, matchedRegionGroups);
   }
 
-  /**
-   * Count the number of cluster Regions with specified RegionStatus
-   *
-   * @param type The specified RegionGroupType
-   * @param status The specified statues
-   * @return The number of cluster Regions with specified RegionStatus
-   */
-  public int countRegionWithSpecifiedStatus(TConsensusGroupType type, RegionStatus... status) {
-    AtomicInteger result = new AtomicInteger(0);
-    regionGroupCacheMap.forEach(
-        (regionGroupId, regionGroupCache) -> {
-          if (type.equals(regionGroupId.getType())) {
-            regionGroupCache
-                .getStatistics()
-                .getRegionStatisticsMap()
-                .values()
-                .forEach(
-                    regionStatistics -> {
-                      if (Arrays.stream(status)
-                          .anyMatch(s -> s.equals(regionStatistics.getRegionStatus()))) {
-                        result.getAndIncrement();
-                      }
-                    });
-          }
-        });
-    return result.get();
+  public void getSchemaRegionIds(
+      List<String> databases, Map<String, List<Integer>> schemaRegionIds) {
+    partitionInfo.getSchemaRegionIds(databases, schemaRegionIds);
   }
 
-  /**
-   * Safely get RegionStatus.
-   *
-   * @param consensusGroupId Specified RegionGroupId
-   * @param dataNodeId Specified RegionReplicaId
-   * @return Corresponding RegionStatus if cache exists, Unknown otherwise
-   */
-  public RegionStatus getRegionStatus(TConsensusGroupId consensusGroupId, int dataNodeId) {
-    return regionGroupCacheMap.containsKey(consensusGroupId)
-        ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionStatus(dataNodeId)
-        : RegionStatus.Unknown;
-  }
-
-  /**
-   * Safely get RegionGroupStatus.
-   *
-   * @param consensusGroupId Specified RegionGroupId
-   * @return Corresponding RegionGroupStatus if cache exists, Disabled otherwise
-   */
-  public RegionGroupStatus getRegionGroupStatus(TConsensusGroupId consensusGroupId) {
-    return regionGroupCacheMap.containsKey(consensusGroupId)
-        ? regionGroupCacheMap.get(consensusGroupId).getStatistics().getRegionGroupStatus()
-        : RegionGroupStatus.Disabled;
-  }
-
-  /** Initialize the regionGroupCacheMap when the ConfigNode-Leader is switched. */
-  public void initRegionGroupHeartbeatCache() {
-    regionGroupCacheMap.clear();
-    getAllReplicaSets()
-        .forEach(
-            regionReplicaSet ->
-                regionGroupCacheMap.put(
-                    regionReplicaSet.getRegionId(),
-                    new RegionGroupCache(regionReplicaSet.getRegionId())));
+  public void getDataRegionIds(List<String> databases, Map<String, List<Integer>> dataRegionIds) {
+    partitionInfo.getDataRegionIds(databases, dataRegionIds);
   }
 
   public ScheduledExecutorService getRegionMaintainer() {

@@ -26,9 +26,18 @@ import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
@@ -100,16 +109,43 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_PIPE_PROCEDURE:
         procedure = new DropPipeProcedure();
         break;
+      case CREATE_PIPE_PROCEDURE_V2:
+        procedure = new CreatePipeProcedureV2();
+        break;
+      case START_PIPE_PROCEDURE_V2:
+        procedure = new StartPipeProcedureV2();
+        break;
+      case STOP_PIPE_PROCEDURE_V2:
+        procedure = new StopPipeProcedureV2();
+        break;
+      case DROP_PIPE_PROCEDURE_V2:
+        procedure = new DropPipeProcedureV2();
+        break;
+      case PIPE_HANDLE_LEADER_CHANGE_PROCEDURE:
+        procedure = new PipeHandleLeaderChangeProcedure();
+        break;
+      case PIPE_META_SYNC_PROCEDURE:
+        procedure = new PipeMetaSyncProcedure();
+        break;
       case CREATE_CQ_PROCEDURE:
         procedure =
             new CreateCQProcedure(
                 ConfigNode.getInstance().getConfigManager().getCQManager().getExecutor());
+        break;
+      case SET_TEMPLATE_PROCEDURE:
+        procedure = new SetTemplateProcedure();
         break;
       case DEACTIVATE_TEMPLATE_PROCEDURE:
         procedure = new DeactivateTemplateProcedure();
         break;
       case UNSET_TEMPLATE_PROCEDURE:
         procedure = new UnsetTemplateProcedure();
+        break;
+      case CREATE_PIPE_PLUGIN_PROCEDURE:
+        procedure = new CreatePipePluginProcedure();
+        break;
+      case DROP_PIPE_PLUGIN_PROCEDURE:
+        procedure = new DropPipePluginProcedure();
         break;
       case CREATE_MODEL_PROCEDURE:
         procedure = new CreateModelProcedure();
@@ -154,10 +190,32 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_PIPE_PROCEDURE;
     } else if (procedure instanceof CreateCQProcedure) {
       return ProcedureType.CREATE_CQ_PROCEDURE;
+    } else if (procedure instanceof SetTemplateProcedure) {
+      return ProcedureType.SET_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof DeactivateTemplateProcedure) {
       return ProcedureType.DEACTIVATE_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof UnsetTemplateProcedure) {
       return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
+    } else if (procedure instanceof CreatePipePluginProcedure) {
+      return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
+    } else if (procedure instanceof DropPipePluginProcedure) {
+      return ProcedureType.DROP_PIPE_PLUGIN_PROCEDURE;
+    } else if (procedure instanceof CreateModelProcedure) {
+      return ProcedureType.CREATE_MODEL_PROCEDURE;
+    } else if (procedure instanceof DropModelProcedure) {
+      return ProcedureType.DROP_MODEL_PROCEDURE;
+    } else if (procedure instanceof CreatePipeProcedureV2) {
+      return ProcedureType.CREATE_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof StartPipeProcedureV2) {
+      return ProcedureType.START_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof StopPipeProcedureV2) {
+      return ProcedureType.STOP_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof DropPipeProcedureV2) {
+      return ProcedureType.DROP_PIPE_PROCEDURE_V2;
+    } else if (procedure instanceof PipeHandleLeaderChangeProcedure) {
+      return ProcedureType.PIPE_HANDLE_LEADER_CHANGE_PROCEDURE;
+    } else if (procedure instanceof PipeMetaSyncProcedure) {
+      return ProcedureType.PIPE_META_SYNC_PROCEDURE;
     }
     return null;
   }

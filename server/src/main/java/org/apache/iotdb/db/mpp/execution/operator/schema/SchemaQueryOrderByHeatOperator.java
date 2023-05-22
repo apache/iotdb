@@ -70,7 +70,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -187,7 +187,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return resultTsBlockList == null || currentIndex < resultTsBlockList.size();
   }
 
@@ -199,7 +199,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 

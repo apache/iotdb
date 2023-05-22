@@ -92,7 +92,7 @@ public class HorizontallyConcatOperatorTest {
   }
 
   @Test
-  public void batchTest1() {
+  public void batchTest1() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {

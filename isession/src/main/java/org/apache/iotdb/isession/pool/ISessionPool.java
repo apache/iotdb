@@ -394,6 +394,9 @@ public interface ISessionPool {
   void dropSchemaTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException;
 
+  void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
+      throws StatementExecutionException, IoTDBConnectionException;
+
   SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException;
 

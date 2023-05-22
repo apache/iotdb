@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.library.anomaly;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.anomaly.util.WindowDetect;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -54,7 +52,6 @@ public class UDTFTwoSidedFilter implements UDTF {
         .setOutputDataType(parameters.getDataType(0));
     this.len = parameters.getDoubleOrDefault("len", 5);
     this.threshold = parameters.getDoubleOrDefault("threshold", 0.4);
-    TSDataType dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
   }
 
   @Override

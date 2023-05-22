@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public abstract class SerializableTVList extends BatchData implements SerializableList {
 
-  public static SerializableTVList newSerializableTVList(TSDataType dataType, long queryId) {
+  public static SerializableTVList newSerializableTVList(TSDataType dataType, String queryId) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
     switch (dataType) {
       case INT32:

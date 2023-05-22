@@ -22,9 +22,10 @@ package org.apache.iotdb.pipe.api;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.event.deletion.DeletionEvent;
-import org.apache.iotdb.pipe.api.event.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 /**
  * PipeConnector
@@ -62,7 +63,7 @@ import org.apache.iotdb.pipe.api.event.insertion.TsFileInsertionEvent;
  * will be called to create a new connection with the sink when the method {@link
  * PipeConnector#heartbeat()} throws exceptions.
  */
-public interface PipeConnector extends AutoCloseable {
+public interface PipeConnector extends PipePlugin {
 
   /**
    * This method is mainly used to validate {@link PipeParameters} and it is executed before {@link
@@ -114,6 +115,7 @@ public interface PipeConnector extends AutoCloseable {
    * This method is used to transfer the TabletInsertionEvent.
    *
    * @param tabletInsertionEvent TabletInsertionEvent to be transferred
+   * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
   void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception;
@@ -122,6 +124,7 @@ public interface PipeConnector extends AutoCloseable {
    * This method is used to transfer the TsFileInsertionEvent.
    *
    * @param tsFileInsertionEvent TsFileInsertionEvent to be transferred
+   * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
   void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception;
@@ -130,6 +133,7 @@ public interface PipeConnector extends AutoCloseable {
    * This method is used to transfer the DeletionEvent.
    *
    * @param deletionEvent DeletionEvent to be transferred
+   * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
   void transfer(DeletionEvent deletionEvent) throws Exception;

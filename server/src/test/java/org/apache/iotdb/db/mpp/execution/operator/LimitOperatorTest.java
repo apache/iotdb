@@ -86,7 +86,7 @@ public class LimitOperatorTest {
   }
 
   @Test
-  public void batchTest() {
+  public void batchTest() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {

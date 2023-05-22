@@ -112,7 +112,7 @@ public class TSFileConfig implements Serializable {
   private double freqEncodingSNR = 40;
   /** Default block size for FREQ encoding is 1024. */
   private int freqEncodingBlockSize = 1024;
-  /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
+  /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY, ZSTD or LZ4. */
   private CompressionType compressor = CompressionType.SNAPPY;
   /** Line count threshold for checking page memory occupied size. */
   private int pageCheckSizeThreshold = 100;
@@ -474,5 +474,9 @@ public class TSFileConfig implements Serializable {
 
   public void setCustomizedProperties(Properties customizedProperties) {
     this.customizedProperties = customizedProperties;
+  }
+
+  public String getSprintzPredictScheme() {
+    return "fire";
   }
 }

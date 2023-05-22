@@ -21,7 +21,7 @@
 
 ## REST API写入
 
-参考 [insertTablet](../API/RestService.md#inserttablet)
+参考 [insertTablet (v1)](../API/RestServiceV1.md#inserttablet) or [insertTablet (v2)](../API/RestServiceV2.md#inserttablet)
 
 示例如下：
 ```JSON

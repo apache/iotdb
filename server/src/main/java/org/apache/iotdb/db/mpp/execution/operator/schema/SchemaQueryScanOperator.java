@@ -126,7 +126,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -146,7 +146,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (schemaReader == null) {
       schemaReader = createSchemaReader();
     }
@@ -154,7 +154,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 
@@ -183,7 +183,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
       database =
           ((SchemaDriverContext) operatorContext.getDriverContext())
               .getSchemaRegion()
-              .getStorageGroupFullPath();
+              .getDatabaseFullPath();
     }
     return database;
   }

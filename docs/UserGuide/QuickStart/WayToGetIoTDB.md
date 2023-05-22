@@ -25,7 +25,7 @@ IoTDB provides you three installation methods, you can refer to the following su
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
-* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/Dockerfile
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker
 
 ### Prerequisites
 
@@ -35,9 +35,9 @@ To use IoTDB, you need to have:
 2. Maven >= 3.6 (Optional)
 3. Set the max open files num as 65535 to avoid "too many open files" problem.
 
-> Note: If you don't have maven installed, you should replace 'mvn' in the following commands with 'mvnw' or 'mvnw.cmd'.
-
-### Installation from binary files
+>Note: If you don't have maven installed, you should replace 'mvn' in the following commands with 'mvnw' or 'mvnw.cmd'.
+>
+>### Installation from binary files
 
 You can download the binary file from:
 [Download page](https://iotdb.apache.org/Download/)
@@ -90,7 +90,7 @@ Add environments of docker to update the configurations of Apache IoTDB.
 #### Have a try
 ```shell
 # get IoTDB official image
-docker pull apache/iotdb:1.0.0-standalone
+docker pull apache/iotdb:1.1.0-standalone
 # create docker bridge network
 docker network create --driver=bridge --subnet=172.18.0.0/16 --gateway=172.18.0.1 iotdb
 # create docker container
@@ -100,11 +100,17 @@ docker run -d --name iotdb-service \
               --ip 172.18.0.6 \
               -p 6667:6667 \
               -e cn_internal_address=iotdb-service \
-              -e cn_target_config_node_list=iotdb-service:22277 \
+              -e cn_target_config_node_list=iotdb-service:10710 \
+              -e cn_internal_port=10710 \
+              -e cn_consensus_port=10720 \
               -e dn_rpc_address=iotdb-service \
               -e dn_internal_address=iotdb-service \
-              -e dn_target_config_node_list=iotdb-service:22277 \
-              apache/iotdb:1.0.0-standalone              
+              -e dn_target_config_node_list=iotdb-service:10710 \
+              -e dn_mpp_data_exchange_port=10740 \
+              -e dn_schema_region_consensus_port=10750 \
+              -e dn_data_region_consensus_port=10760 \
+              -e dn_rpc_port=6667 \
+              apache/iotdb:1.1.0-standalone              
 # execute SQL
 docker exec -ti iotdb-service /iotdb/sbin/start-cli.sh -h iotdb-service
 ```
@@ -115,21 +121,27 @@ $IOTDB_HOME/sbin/start-cli.sh -h <IP Address/hostname> -p 6667
 ```
 Notice：The confignode service would fail when restarting this container if the IP Adress of the container has been changed.
 ```yaml
-# docker-compose-1c1d.yml
+# docker-compose-standalone.yml
 version: "3"
 services:
   iotdb-service:
-    image: apache/iotdb:1.0.0-standalone
+    image: apache/iotdb:1.1.0-standalone
     hostname: iotdb-service
     container_name: iotdb-service
     ports:
       - "6667:6667"
     environment:
       - cn_internal_address=iotdb-service
-      - cn_target_config_node_list=iotdb-service:22277
+      - cn_internal_port=10710
+      - cn_consensus_port=10720
+      - cn_target_config_node_list=iotdb-service:10710
       - dn_rpc_address=iotdb-service
       - dn_internal_address=iotdb-service
-      - dn_target_config_node_list=iotdb-service:22277
+      - dn_rpc_port=6667
+      - dn_mpp_data_exchange_port=10740
+      - dn_schema_region_consensus_port=10750
+      - dn_data_region_consensus_port=10760
+      - dn_target_config_node_list=iotdb-service:10710
     volumes:
         - ./data:/iotdb/data
         - ./logs:/iotdb/logs
@@ -151,14 +163,13 @@ Here is the docker-compose file of iotdb-2, as the sample:
 version: "3"
 services:
   iotdb-confignode:
-    image: apache/iotdb:1.0.0-confignode
+    image: apache/iotdb:1.1.0-confignode
     container_name: iotdb-confignode
-    ports:
-      - "22277:22277"
-      - "22278:22278"
     environment:
       - cn_internal_address=iotdb-2
-      - cn_target_config_node_list=iotdb-1:22277
+      - cn_target_config_node_list=iotdb-1:10710
+      - cn_internal_port=10710
+      - cn_consensus_port=10720
       - schema_replication_factor=3
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
       - config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
@@ -171,19 +182,17 @@ services:
     network_mode: "host"
 
   iotdb-datanode:
-    image: apache/iotdb:1.0.0-datanode
+    image: apache/iotdb:1.1.0-datanode
     container_name: iotdb-datanode
-    ports:
-      - "6667:6667"
-      - "8777:8777"
-      - "9003:9003"
-      - "50010:50010"
-      - "40010:40010"
     environment:
       - dn_rpc_address=iotdb-2
       - dn_internal_address=iotdb-2
-      - dn_target_config_node_list=iotdb-1:22277
+      - dn_target_config_node_list=iotdb-1:10710
       - data_replication_factor=3
+      - dn_rpc_port=6667
+      - dn_mpp_data_exchange_port=10740
+      - dn_schema_region_consensus_port=10750
+      - dn_data_region_consensus_port=10760
       - data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
        - schema_replication_factor=3
       - schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
@@ -195,7 +204,7 @@ services:
     network_mode: "host"
 ```
 Notice：
-1. The `dn_target_config_node_list` of three nodes must the same and it is the first starting node of `iotdb-1` with the cn_internal_port of 22277。
+1. The `dn_target_config_node_list` of three nodes must the same and it is the first starting node of `iotdb-1` with the cn_internal_port of 10710。
 2. In this docker-compose file，`iotdb-2` should be replace with the real IP or hostname of each node to generate docker compose files in the other nodes.
 3. The services would talk with each other, so they need map the /etc/hosts file or add the `extra_hosts` to the docker compose file.
 4. We must start the IoTDB services of `iotdb-1` first at the first time of starting.

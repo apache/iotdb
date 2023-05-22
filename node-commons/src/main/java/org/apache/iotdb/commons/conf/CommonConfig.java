@@ -116,7 +116,11 @@ public class CommonConfig {
   /** Status of current system. */
   private volatile NodeStatus status = NodeStatus.Running;
 
+  private volatile boolean isStopping = false;
+
   private volatile String statusReason = null;
+
+  private final int TTimePartitionSlotTransmitLimit = 1000;
 
   /** Disk Monitor */
   private double diskSpaceWarningThreshold = 0.05;
@@ -359,5 +363,17 @@ public class CommonConfig {
 
   public void setTargetMLNodeEndPoint(TEndPoint targetMLNodeEndPoint) {
     this.targetMLNodeEndPoint = targetMLNodeEndPoint;
+  }
+
+  public int getTTimePartitionSlotTransmitLimit() {
+    return TTimePartitionSlotTransmitLimit;
+  }
+
+  public boolean isStopping() {
+    return isStopping;
+  }
+
+  public void setStopping(boolean stopping) {
+    isStopping = stopping;
   }
 }

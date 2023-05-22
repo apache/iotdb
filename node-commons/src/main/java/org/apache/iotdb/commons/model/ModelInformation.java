@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TrainingState;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nullable;
+
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -44,13 +46,13 @@ public class ModelInformation {
   private final String modelType;
 
   private final List<String> queryExpressions;
-  private final String queryFilter;
+  @Nullable private String queryFilter;
 
   private final boolean isAuto;
   private TrainingState trainingState;
 
-  private String bestTrailId;
-  private Map<String, TrailInformation> trailMap;
+  @Nullable private String bestTrailId;
+  private final Map<String, TrailInformation> trailMap;
 
   public ModelInformation(
       String modelId,
@@ -58,13 +60,15 @@ public class ModelInformation {
       String modelType,
       boolean isAuto,
       List<String> queryExpressions,
-      String queryFilter) {
+      @Nullable String queryFilter) {
     this.modelId = modelId;
     this.modelTask = modelTask;
     this.modelType = modelType;
     this.isAuto = isAuto;
+    this.trainingState = TrainingState.PENDING;
     this.queryExpressions = queryExpressions;
     this.queryFilter = queryFilter;
+    this.trailMap = new HashMap<>();
   }
 
   public ModelInformation(ByteBuffer buffer) {
@@ -78,10 +82,18 @@ public class ModelInformation {
       this.queryExpressions.add(ReadWriteIOUtils.readString(buffer));
     }
 
-    this.queryFilter = ReadWriteIOUtils.readString(buffer);
+    byte isNull = ReadWriteIOUtils.readByte(buffer);
+    if (isNull == 1) {
+      this.queryFilter = ReadWriteIOUtils.readString(buffer);
+    }
+
     this.isAuto = ReadWriteIOUtils.readBool(buffer);
     this.trainingState = TrainingState.findByValue(ReadWriteIOUtils.readInt(buffer));
-    this.bestTrailId = ReadWriteIOUtils.readString(buffer);
+
+    isNull = ReadWriteIOUtils.readByte(buffer);
+    if (isNull == 1) {
+      this.bestTrailId = ReadWriteIOUtils.readString(buffer);
+    }
 
     int mapSize = ReadWriteIOUtils.readInt(buffer);
     this.trailMap = new HashMap<>();
@@ -102,10 +114,18 @@ public class ModelInformation {
       this.queryExpressions.add(ReadWriteIOUtils.readString(stream));
     }
 
-    this.queryFilter = ReadWriteIOUtils.readString(stream);
+    byte isNull = ReadWriteIOUtils.readByte(stream);
+    if (isNull == 1) {
+      this.queryFilter = ReadWriteIOUtils.readString(stream);
+    }
+
     this.isAuto = ReadWriteIOUtils.readBool(stream);
     this.trainingState = TrainingState.findByValue(ReadWriteIOUtils.readInt(stream));
-    this.bestTrailId = ReadWriteIOUtils.readString(stream);
+
+    isNull = ReadWriteIOUtils.readByte(stream);
+    if (isNull == 1) {
+      this.bestTrailId = ReadWriteIOUtils.readString(stream);
+    }
 
     int mapSize = ReadWriteIOUtils.readInt(stream);
     this.trailMap = new HashMap<>();
@@ -127,6 +147,7 @@ public class ModelInformation {
     return queryExpressions;
   }
 
+  @Nullable
   public String getQueryFilter() {
     return queryFilter;
   }
@@ -173,10 +194,24 @@ public class ModelInformation {
     for (String queryExpression : queryExpressions) {
       ReadWriteIOUtils.write(queryExpression, stream);
     }
-    ReadWriteIOUtils.write(queryFilter, stream);
+
+    if (queryFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(queryFilter, stream);
+    }
+
     ReadWriteIOUtils.write(isAuto, stream);
     ReadWriteIOUtils.write(trainingState.ordinal(), stream);
-    ReadWriteIOUtils.write(bestTrailId, stream);
+
+    if (bestTrailId == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(bestTrailId, stream);
+    }
+
     ReadWriteIOUtils.write(trailMap.size(), stream);
     for (TrailInformation trailInformation : trailMap.values()) {
       trailInformation.serialize(stream);
@@ -193,10 +228,22 @@ public class ModelInformation {
       ReadWriteIOUtils.write(queryExpression, stream);
     }
 
-    ReadWriteIOUtils.write(queryFilter, stream);
+    if (queryFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(queryFilter, stream);
+    }
+
     ReadWriteIOUtils.write(isAuto, stream);
     ReadWriteIOUtils.write(trainingState.ordinal(), stream);
-    ReadWriteIOUtils.write(bestTrailId, stream);
+
+    if (bestTrailId == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(bestTrailId, stream);
+    }
 
     ReadWriteIOUtils.write(trailMap.size(), stream);
     for (TrailInformation trailInformation : trailMap.values()) {
@@ -221,9 +268,21 @@ public class ModelInformation {
     ReadWriteIOUtils.write(Arrays.toString(queryExpressions.toArray(new String[0])), stream);
     ReadWriteIOUtils.write(trainingState.toString(), stream);
 
-    TrailInformation bestTrail = trailMap.get(bestTrailId);
-    ReadWriteIOUtils.write(bestTrail.getModelHyperparameter().toString(), stream);
-    ReadWriteIOUtils.write(bestTrail.getModelPath(), stream);
+    if (bestTrailId != null) {
+      TrailInformation bestTrail = trailMap.get(bestTrailId);
+      ReadWriteIOUtils.write(bestTrail.getModelPath(), stream);
+
+      List<String> modelHyperparameterList = bestTrail.getModelHyperparameter().toStringList();
+      ReadWriteIOUtils.write(modelHyperparameterList.size(), stream);
+      for (String hyperparameter : modelHyperparameterList) {
+        ReadWriteIOUtils.write(hyperparameter, stream);
+      }
+    } else {
+      ReadWriteIOUtils.write("UNKNOWN", stream);
+
+      ReadWriteIOUtils.write(1, stream);
+      ReadWriteIOUtils.write("UNKNOWN", stream);
+    }
     return ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size());
   }
 }

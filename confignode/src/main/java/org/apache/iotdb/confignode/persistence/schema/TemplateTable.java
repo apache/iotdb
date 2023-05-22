@@ -23,7 +23,13 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -46,11 +52,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+
 public class TemplateTable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TemplateTable.class);
 
-  // StorageGroup read write lock
   private final ReentrantReadWriteLock templateReadWriteLock;
 
   private final AtomicInteger templateIdGenerator;
@@ -126,6 +133,45 @@ public class TemplateTable {
         throw new UndefinedTemplateException(templateName);
       }
       templateIdMap.remove(temp.getId());
+    } finally {
+      templateReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void extendTemplate(TemplateExtendInfo templateExtendInfo) throws MetadataException {
+    templateReadWriteLock.writeLock().lock();
+    try {
+      Template template = templateMap.get(templateExtendInfo.getTemplateName());
+      List<String> measurementList = templateExtendInfo.getMeasurements();
+      List<TSDataType> dataTypeList = templateExtendInfo.getDataTypes();
+      List<TSEncoding> encodingList = templateExtendInfo.getEncodings();
+      List<CompressionType> compressionTypeList = templateExtendInfo.getCompressors();
+
+      IMeasurementSchema measurementSchema;
+      for (int i = 0; i < measurementList.size(); i++) {
+        measurementSchema = template.getSchema(measurementList.get(i));
+        if (measurementSchema == null) {
+          template.addMeasurement(
+              measurementList.get(i),
+              dataTypeList.get(i),
+              encodingList == null ? getDefaultEncoding(dataTypeList.get(i)) : encodingList.get(i),
+              compressionTypeList == null
+                  ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                  : compressionTypeList.get(i));
+        } else {
+          if (!measurementSchema.getType().equals(dataTypeList.get(i))
+              || (encodingList != null
+                  && !measurementSchema.getEncodingType().equals(encodingList.get(i)))
+              || (compressionTypeList != null
+                  && !measurementSchema.getCompressor().equals(compressionTypeList.get(i)))) {
+            throw new MetadataException(
+                String.format(
+                    "Schema of measurement %s is not compatible with existing measurement in template %s",
+                    measurementList.get(i), template.getName()));
+          }
+        }
+      }
+
     } finally {
       templateReadWriteLock.writeLock().unlock();
     }

@@ -21,19 +21,16 @@ package org.apache.iotdb.confignode.procedure.impl.model;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TrainingState;
 import org.apache.iotdb.commons.model.exception.ModelManagementException;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.model.DropModelState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.client.MLNodeClient;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
@@ -53,7 +50,7 @@ import java.util.Optional;
 public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DropModelProcedure.class);
-  private static final int RETRY_THRESHOLD = 5;
+  private static final int RETRY_THRESHOLD = 1;
 
   private String modelId;
 
@@ -87,25 +84,6 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
           break;
 
         case VALIDATED:
-          LOGGER.info("Change state of model [{}] to DROPPING", modelId);
-
-          ConsensusWriteResponse response =
-              env.getConfigManager()
-                  .getConsensusManager()
-                  .write(
-                      new UpdateModelStatePlan(
-                          new TUpdateModelStateReq(modelId, TrainingState.DROPPING)));
-          if (!response.isSuccessful()) {
-            throw new ModelManagementException(
-                String.format(
-                    "Failed to drop model [%s], fail to modify model state: %s",
-                    modelId, response.getErrorMessage()));
-          }
-
-          setNextState(DropModelState.CONFIG_NODE_DROPPING);
-          break;
-
-        case CONFIG_NODE_DROPPING:
           LOGGER.info("Start to drop model metrics [{}] on Data Nodes", modelId);
 
           Optional<TDataNodeLocation> targetDataNode =
@@ -153,7 +131,8 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
         case ML_NODE_DROPPED:
           LOGGER.info("Start to drop model [{}] on Config Nodes", modelId);
 
-          response = env.getConfigManager().getConsensusManager().write(new DropModelPlan(modelId));
+          ConsensusWriteResponse response =
+              env.getConfigManager().getConsensusManager().write(new DropModelPlan(modelId));
           if (!response.isSuccessful()) {
             throw new ModelManagementException(
                 String.format(
@@ -177,7 +156,9 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
-                  String.format("Fail to drop model [%s] at STATE [%s]", modelId, state)));
+                  String.format(
+                      "Fail to drop model [%s] at STATE [%s], %s",
+                      modelId, state, e.getMessage())));
         }
       }
     }

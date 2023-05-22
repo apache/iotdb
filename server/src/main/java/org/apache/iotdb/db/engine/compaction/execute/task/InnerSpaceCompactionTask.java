@@ -59,6 +59,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected int sumOfCompactionCount;
   protected long maxFileVersion;
   protected int maxCompactionCount;
+  private File logFile;
 
   protected TsFileResourceList tsFileResourceList;
   protected List<TsFileResource> targetTsFileList;
@@ -102,9 +103,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void doCompaction() {
+  protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
-      return;
+      return true;
     }
     long startTime = System.currentTimeMillis();
     // get resource of target file
@@ -116,154 +117,155 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         sequence ? "Sequence" : "Unsequence",
         selectedTsFileResourceList.size(),
         selectedFileSize / 1024 / 1024);
+    boolean isSuccess = true;
+
     try {
       targetTsFileResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(
               selectedTsFileResourceList, sequence);
-    } catch (IOException e) {
-      LOGGER.error("Failed to get target file for {}", selectedTsFileResourceList, e);
-      return;
-    }
-    File logFile =
-        new File(
-            dataDirectory
-                + File.separator
-                + targetTsFileResource.getTsFile().getName()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
-      // Here is tmpTargetFile, which is xxx.target
-      targetTsFileList = new ArrayList<>(Collections.singletonList(targetTsFileResource));
-      compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
-      compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
+      logFile =
+          new File(
+              dataDirectory
+                  + File.separator
+                  + targetTsFileResource.getTsFile().getName()
+                  + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+      try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
+        // Here is tmpTargetFile, which is xxx.target
+        targetTsFileList = new ArrayList<>(Collections.singletonList(targetTsFileResource));
+        compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
+        compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
 
-      LOGGER.info(
-          "{}-{} [Compaction] compaction with {}",
-          storageGroupName,
-          dataRegionId,
-          selectedTsFileResourceList);
+        LOGGER.info(
+            "{}-{} [Compaction] compaction with {}",
+            storageGroupName,
+            dataRegionId,
+            selectedTsFileResourceList);
 
-      // carry out the compaction
-      performer.setSourceFiles(selectedTsFileResourceList);
-      // As elements in targetFiles may be removed in ReadPointCompactionPerformer, we should use a
-      // mutable list instead of Collections.singletonList()
-      performer.setTargetFiles(targetTsFileList);
-      performer.setSummary(summary);
-      performer.perform();
+        // carry out the compaction
+        performer.setSourceFiles(selectedTsFileResourceList);
+        // As elements in targetFiles may be removed in ReadPointCompactionPerformer, we should use
+        // a
+        // mutable list instead of Collections.singletonList()
+        performer.setTargetFiles(targetTsFileList);
+        performer.setSummary(summary);
+        performer.perform();
 
-      CompactionUtils.moveTargetFile(targetTsFileList, true, storageGroupName + "-" + dataRegionId);
+        CompactionUtils.moveTargetFile(
+            targetTsFileList, true, storageGroupName + "-" + dataRegionId);
 
-      LOGGER.info(
-          "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
-          storageGroupName,
-          dataRegionId);
-      CompactionUtils.combineModsInInnerCompaction(
-          selectedTsFileResourceList, targetTsFileResource);
+        LOGGER.info(
+            "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
+            storageGroupName,
+            dataRegionId);
+        CompactionUtils.combineModsInInnerCompaction(
+            selectedTsFileResourceList, targetTsFileResource);
 
-      if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
-        throw new InterruptedException(
-            String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
+        if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
+          throw new InterruptedException(
+              String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
+        }
+
+        // replace the old files with new file, the new is in same position as the old
+        if (sequence) {
+          tsFileManager.replace(
+              selectedTsFileResourceList,
+              Collections.emptyList(),
+              targetTsFileList,
+              timePartition,
+              true);
+        } else {
+          tsFileManager.replace(
+              Collections.emptyList(),
+              selectedTsFileResourceList,
+              targetTsFileList,
+              timePartition,
+              false);
+        }
+
+        if (targetTsFileResource.isDeleted()) {
+          compactionLogger.logFile(targetTsFileResource, CompactionLogger.STR_DELETED_TARGET_FILES);
+        }
+
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
+            && !CompactionUtils.validateTsFileResources(
+                tsFileManager, storageGroupName, timePartition)) {
+          LOGGER.error(
+              "Failed to pass compaction validation, source files is: {}, target files is {}",
+              selectedTsFileResourceList,
+              targetTsFileList);
+          throw new RuntimeException("Failed to pass compaction validation");
+        }
+
+        LOGGER.info(
+            "{}-{} [Compaction] Compacted target files, try to get the write lock of source files",
+            storageGroupName,
+            dataRegionId);
+
+        // release the read lock of all source files, and get the write lock of them to delete them
+        for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+          selectedTsFileResourceList.get(i).readUnlock();
+          isHoldingReadLock[i] = false;
+          selectedTsFileResourceList.get(i).writeLock();
+          isHoldingWriteLock[i] = true;
+        }
+
+        if (targetTsFileResource.getTsFile().exists()
+            && targetTsFileResource.getTsFile().length()
+                < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
+          // the file size is smaller than magic string and version number
+          throw new TsFileNotCompleteException(
+              String.format(
+                  "target file %s is smaller than magic string and version number size",
+                  targetTsFileResource));
+        }
+
+        LOGGER.info(
+            "{}-{} [Compaction] compaction finish, start to delete old files",
+            storageGroupName,
+            dataRegionId);
+        // delete the old files
+        long totalSizeOfDeletedFile = 0L;
+        for (TsFileResource resource : selectedTsFileResourceList) {
+          totalSizeOfDeletedFile += resource.getTsFileSize();
+        }
+        CompactionUtils.deleteTsFilesInDisk(
+            selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
+        CompactionUtils.deleteModificationForSourceFile(
+            selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
+
+        // inner space compaction task has only one target file
+        if (!targetTsFileResource.isDeleted()) {
+          TsFileMetricManager.getInstance()
+              .addFile(targetTsFileResource.getTsFile().length(), sequence);
+
+          // set target resource to CLOSED, so that it can be selected to compact
+          targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+        } else {
+          // target resource is empty after compaction, then delete it
+          targetTsFileResource.remove();
+        }
+        TsFileMetricManager.getInstance()
+            .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
+
+        CompactionMetricsManager.getInstance().updateSummary(summary);
+
+        double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
+        LOGGER.info(
+            "{}-{} [Compaction] {} InnerSpaceCompaction task finishes successfully, target file is {},"
+                + "time cost is {} s, compaction speed is {} MB/s, {}",
+            storageGroupName,
+            dataRegionId,
+            sequence ? "Sequence" : "Unsequence",
+            targetTsFileResource.getTsFile().getName(),
+            costTime,
+            selectedFileSize / 1024.0d / 1024.0d / costTime,
+            summary);
       }
-
-      // replace the old files with new file, the new is in same position as the old
-      if (sequence) {
-        tsFileManager.replace(
-            selectedTsFileResourceList,
-            Collections.emptyList(),
-            targetTsFileList,
-            timePartition,
-            true);
-      } else {
-        tsFileManager.replace(
-            Collections.emptyList(),
-            selectedTsFileResourceList,
-            targetTsFileList,
-            timePartition,
-            false);
-      }
-
-      if (targetTsFileResource.isDeleted()) {
-        compactionLogger.logFile(targetTsFileResource, CompactionLogger.STR_DELETED_TARGET_FILES);
-      }
-
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
-          && !CompactionUtils.validateTsFileResources(
-              tsFileManager, storageGroupName, timePartition)) {
-        LOGGER.error(
-            "Failed to pass compaction validation, source files is: {}, target files is {}",
-            selectedTsFileResourceList,
-            targetTsFileList);
-        throw new RuntimeException("Failed to pass compaction validation");
-      }
-
-      LOGGER.info(
-          "{}-{} [Compaction] Compacted target files, try to get the write lock of source files",
-          storageGroupName,
-          dataRegionId);
-
-      // release the read lock of all source files, and get the write lock of them to delete them
-      for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
-        selectedTsFileResourceList.get(i).readUnlock();
-        isHoldingReadLock[i] = false;
-        selectedTsFileResourceList.get(i).writeLock();
-        isHoldingWriteLock[i] = true;
-      }
-
-      if (targetTsFileResource.getTsFile().exists()
-          && targetTsFileResource.getTsFile().length()
-              < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
-        // the file size is smaller than magic string and version number
-        throw new TsFileNotCompleteException(
-            String.format(
-                "target file %s is smaller than magic string and version number size",
-                targetTsFileResource));
-      }
-
-      LOGGER.info(
-          "{}-{} [Compaction] compaction finish, start to delete old files",
-          storageGroupName,
-          dataRegionId);
-      // delete the old files
-      long totalSizeOfDeletedFile = 0L;
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        totalSizeOfDeletedFile += resource.getTsFileSize();
-      }
-      CompactionUtils.deleteTsFilesInDisk(
-          selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
-      CompactionUtils.deleteModificationForSourceFile(
-          selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
-
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
-
-      // inner space compaction task has only one target file
-      if (!targetTsFileResource.isDeleted()) {
-        TsFileMetricManager.getInstance()
-            .addFile(targetTsFileResource.getTsFile().length(), sequence);
-
-        // set target resource to CLOSED, so that it can be selected to compact
-        targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-      } else {
-        // target resource is empty after compaction, then delete it
-        targetTsFileResource.remove();
-      }
-      TsFileMetricManager.getInstance()
-          .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
-
-      CompactionMetricsManager.getInstance().updateSummary(summary);
-
-      double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
-      LOGGER.info(
-          "{}-{} [Compaction] {} InnerSpaceCompaction task finishes successfully, target file is {},"
-              + "time cost is {} s, compaction speed is {} MB/s, {}",
-          storageGroupName,
-          dataRegionId,
-          sequence ? "Sequence" : "Unsequence",
-          targetTsFileResource.getTsFile().getName(),
-          costTime,
-          selectedFileSize / 1024.0d / 1024.0d / costTime,
-          summary);
     } catch (Throwable throwable) {
+      isSuccess = false;
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
@@ -303,6 +305,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     } finally {
       releaseFileLocksAndResetMergingStatus();
+      return isSuccess;
     }
   }
 
@@ -397,7 +400,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
   /**
@@ -415,7 +418,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
       try {
         if (!resource.isDeleted()) {
-          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);
+          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.NORMAL);
         }
       } catch (Throwable e) {
         LOGGER.error("Exception occurs when resetting resource status", e);

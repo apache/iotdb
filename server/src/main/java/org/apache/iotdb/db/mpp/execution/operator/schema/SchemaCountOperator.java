@@ -69,22 +69,27 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
     isFinished = true;
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
     long count = 0;
-    if (schemaReader == null) {
-      schemaReader = createSchemaReader();
-    }
-    while (schemaReader.hasNext()) {
-      schemaReader.next();
-      count++;
-    }
-    if (!schemaReader.isSuccess()) {
-      throw new RuntimeException(schemaReader.getFailure());
+    ISchemaRegion schemaRegion = getSchemaRegion();
+    if (schemaSource.hasSchemaStatistic(schemaRegion)) {
+      count = schemaSource.getSchemaStatistic(schemaRegion);
+    } else {
+      if (schemaReader == null) {
+        schemaReader = createSchemaReader();
+      }
+      while (schemaReader.hasNext()) {
+        schemaReader.next();
+        count++;
+      }
+      if (!schemaReader.isSuccess()) {
+        throw new RuntimeException(schemaReader.getFailure());
+      }
     }
 
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
@@ -94,12 +99,12 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !isFinished;
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return isFinished;
   }
 

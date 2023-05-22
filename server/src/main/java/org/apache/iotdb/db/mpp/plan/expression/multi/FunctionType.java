@@ -22,6 +22,6 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 /** */
 public enum FunctionType {
   AGGREGATION_FUNCTION,
-  BUILT_IN_FUNCTION,
+  BUILT_IN_SCALAR_FUNCTION,
   UDF
 }

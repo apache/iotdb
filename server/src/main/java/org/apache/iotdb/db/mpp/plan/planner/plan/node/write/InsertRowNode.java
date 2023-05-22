@@ -19,42 +19,27 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -62,13 +47,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaValidation {
-
-  private static final Logger logger = LoggerFactory.getLogger(InsertRowNode.class);
+public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private static final byte TYPE_RAW_STRING = -1;
 
@@ -83,6 +65,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     super(id);
   }
 
+  @TestOnly
   public InsertRowNode(
       PlanNodeId id,
       PartialPath devicePath,
@@ -98,6 +81,23 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     this.isNeedInferType = isNeedInferType;
   }
 
+  public InsertRowNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      MeasurementSchema[] measurementSchemas,
+      long time,
+      Object[] values,
+      boolean isNeedInferType) {
+    super(id, devicePath, isAligned, measurements, dataTypes);
+    this.measurementSchemas = measurementSchemas;
+    this.time = time;
+    this.values = values;
+    this.isNeedInferType = isNeedInferType;
+  }
+
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(time);
@@ -105,6 +105,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
         analysis
             .getDataPartitionInfo()
             .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlot);
+    // collect redirectInfo
+    analysis.setRedirectNodeList(
+        Collections.singletonList(
+            dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()));
     return Collections.singletonList(this);
   }
 
@@ -153,16 +157,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     }
   }
 
-  @Override
-  public TSEncoding getEncoding(int index) {
-    return null;
-  }
-
-  @Override
-  public CompressionType getCompressionType(int index) {
-    return null;
-  }
-
   public Object[] getValues() {
     return values;
   }
@@ -193,81 +187,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
   }
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
-      logger.warn(
-          "Inserting to {}.{} : Cast from {} to {}",
-          devicePath,
-          measurements[columnIndex],
-          dataTypes[columnIndex],
-          dataType);
-      values[columnIndex] =
-          CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
-      dataTypes[columnIndex] = dataType;
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * transfer String[] values to specific data types when isNeedInferType is true. <br>
-   * Notice: measurementSchemas must be initialized before calling this method
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void transferType() throws QueryProcessException {
-
-    for (int i = 0; i < measurementSchemas.length; i++) {
-      // null when time series doesn't exist
-      if (measurementSchemas[i] == null) {
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          throw new QueryProcessException(
-              new PathNotExistException(
-                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
-        } else {
-          markFailedMeasurement(
-              i,
-              new QueryProcessException(
-                  new PathNotExistException(
-                      devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
-        }
-        continue;
-      }
-      // parse string value to specific type
-      dataTypes[i] = measurementSchemas[i].getType();
-      try {
-        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
-      } catch (Exception e) {
-        logger.warn(
-            "data type of {}.{} is not consistent, registered type {}, inserting timestamp {}, value {}",
-            devicePath,
-            measurements[i],
-            dataTypes[i],
-            time,
-            values[i]);
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          throw e;
-        } else {
-          markFailedMeasurement(i, e);
-        }
-      }
-    }
-    isNeedInferType = false;
-  }
-
-  @Override
-  public void markFailedMeasurement(int index, Exception cause) {
+  public void markFailedMeasurement(int index) {
     if (measurements[index] == null) {
       return;
     }
-
-    if (failedMeasurementIndex2Info == null) {
-      failedMeasurementIndex2Info = new HashMap<>();
-    }
-
-    FailedMeasurementInfo failedMeasurementInfo =
-        new FailedMeasurementInfo(measurements[index], dataTypes[index], values[index], cause);
-    failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
-
     measurements[index] = null;
     dataTypes[index] = null;
     values[index] = null;
@@ -521,11 +444,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
   @Override
   public long getMinTime() {
     return getTime();
-  }
-
-  @Override
-  public Object getFirstValueOfIndex(int index) {
-    return values[index];
   }
 
   // region serialize & deserialize methods for WAL
@@ -805,50 +723,5 @@ public class InsertRowNode extends InsertNode implements WALEntryValue, ISchemaV
     }
     Object value = values[columnIndex];
     return new TimeValuePair(time, TsPrimitiveType.getByType(dataTypes[columnIndex], value));
-  }
-
-  @Override
-  public void validateDeviceSchema(boolean isAligned) {
-    if (this.isAligned != isAligned) {
-      throw new SemanticException(
-          new AlignedTimeseriesException(
-              String.format(
-                  "timeseries under this device are%s aligned, " + "please use %s interface",
-                  isAligned ? "" : " not", isAligned ? "aligned" : "non-aligned"),
-              devicePath.getFullPath()));
-    }
-  }
-
-  @Override
-  public ISchemaValidation getSchemaValidation() {
-    return this;
-  }
-
-  @Override
-  public void updateAfterSchemaValidation() throws QueryProcessException {
-    if (isNeedInferType) {
-      transferType();
-    }
-  }
-
-  @Override
-  public void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
-    if (measurementSchemas == null) {
-      measurementSchemas = new MeasurementSchema[measurements.length];
-    }
-    if (measurementSchemaInfo == null) {
-      measurementSchemas[index] = null;
-    } else {
-      measurementSchemas[index] = measurementSchemaInfo.getSchema();
-    }
-    if (isNeedInferType) {
-      return;
-    }
-
-    try {
-      selfCheckDataTypes(index);
-    } catch (DataTypeMismatchException | PathNotExistException e) {
-      throw new SemanticException(e);
-    }
   }
 }

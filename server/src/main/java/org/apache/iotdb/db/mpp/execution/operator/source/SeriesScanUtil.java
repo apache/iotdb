@@ -288,17 +288,15 @@ public class SeriesScanUtil {
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
       Filter queryFilter = scanOptions.getQueryFilter();
-      if (queryFilter != null) {
-        if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
-          skipCurrentChunk();
-        }
-        // TODO implement allSatisfied interface for filter, then we can still skip offset.
-      } else {
-        long rowCount = firstChunkMetadata.getStatistics().getCount();
+      Statistics statistics = firstChunkMetadata.getStatistics();
+      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+        long rowCount = statistics.getCount();
         if (paginationController.hasCurOffset(rowCount)) {
           skipCurrentChunk();
           paginationController.consumeOffset(rowCount);
         }
+      } else if (!queryFilter.satisfy(statistics)) {
+        skipCurrentChunk();
       }
     }
   }
@@ -636,8 +634,16 @@ public class SeriesScanUtil {
       if (queryFilter != null) {
         firstPageReader.setFilter(queryFilter);
       }
-      firstPageReader.setLimitOffset(paginationController);
-      TsBlock tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
+      TsBlock tsBlock;
+      if (orderUtils.getAscending()) {
+        firstPageReader.setLimitOffset(paginationController);
+        tsBlock = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
+      } else {
+        tsBlock =
+            paginationController.applyTsBlock(
+                firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending()));
+      }
+
       firstPageReader = null;
 
       return tsBlock;
@@ -1033,17 +1039,15 @@ public class SeriesScanUtil {
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
       Filter queryFilter = scanOptions.getQueryFilter();
-      if (queryFilter != null) {
-        if (!queryFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
-          skipCurrentFile();
-        }
-        // TODO implement allSatisfied interface for filter, then we can still skip offset.
-      } else {
-        long rowCount = firstTimeSeriesMetadata.getStatistics().getCount();
+      Statistics statistics = firstTimeSeriesMetadata.getStatistics();
+      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+        long rowCount = statistics.getCount();
         if (paginationController.hasCurOffset(rowCount)) {
           skipCurrentFile();
           paginationController.consumeOffset(rowCount);
         }
+      } else if (!queryFilter.satisfy(statistics)) {
+        skipCurrentFile();
       }
     }
   }

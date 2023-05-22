@@ -81,7 +81,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
     while (System.nanoTime() - start < maxRuntime && !tsBlockBuilder.isFull()) {
@@ -145,12 +145,12 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return !isEmpty(readyChildIndex) || children.get(readyChildIndex).hasNextWithTimer();
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !this.hasNextWithTimer();
   }
 
@@ -176,7 +176,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  protected TsBlock getNextTsBlock(int childIndex) {
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     consumedIndices[childIndex] = 0;
     return children.get(childIndex).nextWithTimer();
   }

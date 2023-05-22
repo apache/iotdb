@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -100,7 +99,6 @@ public class RatisConsensusTest {
                       .setThisNode(peers.get(i).getEndpoint())
                       .setRatisConfig(config)
                       .setStorageDir(peersStorage.get(i).getAbsolutePath())
-                      .setConsensusGroupType(TConsensusGroupType.DataRegion)
                       .build(),
                   groupId -> stateMachines.get(finalI))
               .orElseThrow(

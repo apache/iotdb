@@ -155,6 +155,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.getTimeSlotListColumnHeaders, true);
   }
 
+  public static DatasetHeader getCountTimeSlotListHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.countTimeSlotListColumnHeaders, true);
+  }
+
   public static DatasetHeader getSelectIntoHeader(boolean isAlignByDevice) {
     return isAlignByDevice
         ? new DatasetHeader(ColumnHeaderConstant.selectIntoAlignByDeviceColumnHeaders, true)
@@ -167,5 +171,21 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowQueriesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showQueriesColumnHeaders, false);
+  }
+
+  public static DatasetHeader getShowSpaceQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showSpaceQuotaColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowThrottleQuotaHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showThrottleQuotaColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowModelsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showModelsColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowTrailsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showTrailsColumnHeaders, true);
   }
 }

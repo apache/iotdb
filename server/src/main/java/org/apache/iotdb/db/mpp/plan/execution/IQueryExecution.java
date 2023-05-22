@@ -31,9 +31,11 @@ public interface IQueryExecution {
 
   void start();
 
-  void stop();
+  void stop(Throwable t);
 
   void stopAndCleanup();
+
+  void stopAndCleanup(Throwable t);
 
   void cancel();
 
@@ -57,6 +59,7 @@ public interface IQueryExecution {
 
   void recordExecutionTime(long executionTime);
 
+  /** @return cost time in ns */
   long getTotalExecutionTime();
 
   Optional<String> getExecuteSQL();

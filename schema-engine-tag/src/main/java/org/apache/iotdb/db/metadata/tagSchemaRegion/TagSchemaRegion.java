@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -37,7 +38,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SHA256DeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.metric.ISchemaRegionMetric;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
@@ -45,6 +45,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
@@ -87,7 +88,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   // when a path ends with ".**", it represents batch processing
   private final String TAIL = ".**";
 
-  private final IStorageGroupMNode storageGroupMNode;
+  private final IDatabaseMNode storageGroupMNode;
   private final String storageGroupFullPath;
   private final SchemaRegionId schemaRegionId;
   private final String schemaRegionDirPath;
@@ -103,7 +104,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   public TagSchemaRegion(
       PartialPath storageGroup,
       SchemaRegionId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode,
+      IDatabaseMNode storageGroupMNode,
       ISeriesNumerMonitor seriesNumerMonitor)
       throws MetadataException {
     storageGroupFullPath = storageGroup.getFullPath();
@@ -172,7 +173,7 @@ public class TagSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public String getStorageGroupFullPath() {
+  public String getDatabaseFullPath() {
     return storageGroupFullPath;
   }
 
@@ -295,6 +296,11 @@ public class TagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("checkMeasurementExistence");
   }
 
+  @Override
+  public void checkSchemaQuota(PartialPath devicePath, int timeSeriesNum) {
+    throw new UnsupportedOperationException();
+  }
+
   private void filterExistingMeasurements(
       ICreateAlignedTimeSeriesPlan plan, Set<String> measurementSet) {
     List<String> measurements = plan.getMeasurements();
@@ -340,6 +346,12 @@ public class TagSchemaRegion implements ISchemaRegion {
   @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
     throw new UnsupportedOperationException("deleteTimeseriesInBlackList");
+  }
+
+  @Override
+  public void createLogicalView(ICreateLogicalViewPlan createLogicalViewPlan)
+      throws MetadataException {
+    throw new UnsupportedOperationException("createLogicalView is unsupported.");
   }
 
   private List<String> getDevicePaths(List<IDeviceID> deviceIDS) {

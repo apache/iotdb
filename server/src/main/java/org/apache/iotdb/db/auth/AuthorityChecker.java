@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.mpp.metric.PerformanceOverviewMetricsManager;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -48,6 +48,9 @@ public class AuthorityChecker {
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
   private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
 
   private AuthorityChecker() {
     // empty constructor
@@ -77,13 +80,13 @@ public class AuthorityChecker {
       return true;
     }
 
-    List<String> allPath = new ArrayList<>();
+    List<PartialPath> allPath = new ArrayList<>();
     if (paths != null && !paths.isEmpty()) {
       for (PartialPath path : paths) {
-        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath());
+        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path);
       }
     } else {
-      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
+      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE_PATH);
     }
 
     TSStatus status = authorizerManager.checkPath(username, allPath, permission);
@@ -93,8 +96,8 @@ public class AuthorityChecker {
   private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
     try {
-      String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath();
-      if (authorizerManager.checkUserPrivileges(username, fullPath, permission)) {
+      PartialPath newPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path;
+      if (authorizerManager.checkUserPrivileges(username, newPath, permission)) {
         return true;
       }
     } catch (AuthException e) {
@@ -122,7 +125,7 @@ public class AuthorityChecker {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      PerformanceOverviewMetricsManager.getInstance().recordAuthCost(System.nanoTime() - startTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -243,6 +246,16 @@ public class AuthorityChecker {
         return PrivilegeType.DROP_PIPEPLUGIN.ordinal();
       case SHOW_PIPEPLUGINS:
         return PrivilegeType.SHOW_PIPEPLUGINS.ordinal();
+      case CREATE_PIPE:
+        return PrivilegeType.CREATE_PIPE.ordinal();
+      case START_PIPE:
+        return PrivilegeType.START_PIPE.ordinal();
+      case STOP_PIPE:
+        return PrivilegeType.STOP_PIPE.ordinal();
+      case DROP_PIPE:
+        return PrivilegeType.DROP_PIPE.ordinal();
+      case SHOW_PIPES:
+        return PrivilegeType.SHOW_PIPES.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

@@ -32,7 +32,9 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -48,6 +50,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -90,6 +93,8 @@ public class SeriesScanLimitOffsetPushDownTest {
   public static void setUp() throws IOException, WriteProcessException, IllegalPathException {
     List<PartialPath> writtenPaths = Collections.singletonList(new PartialPath(TEST_PATH));
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.PLAIN);
+    List<CompressionType> compressionTypes = Arrays.asList(CompressionType.UNCOMPRESSED);
 
     // prepare file 1
     File seqFile1 = new File(TestConstant.getTestTsFilePath(TEST_DATABASE, 0, 0, 1));
@@ -103,7 +108,8 @@ public class SeriesScanLimitOffsetPushDownTest {
       List<TimeRange> pages = new ArrayList<>();
       // prepare f1-c1-p1
       pages.add(new TimeRange(0L, 9L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, false)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, false)) {
         writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -112,7 +118,7 @@ public class SeriesScanLimitOffsetPushDownTest {
       seqFileResource1.updateEndTime(TEST_DEVICE, 9);
       tsFileIOWriter.endFile();
     }
-    seqFileResource1.setStatus(TsFileResourceStatus.CLOSED);
+    seqFileResource1.setStatus(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource1);
 
     // prepare file 2
@@ -124,7 +130,8 @@ public class SeriesScanLimitOffsetPushDownTest {
       List<TimeRange> pages = new ArrayList<>();
       // prepare f2-c1-p1
       pages.add(new TimeRange(10L, 19L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, false)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, false)) {
         writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -134,7 +141,8 @@ public class SeriesScanLimitOffsetPushDownTest {
       pages.clear();
       // prepare f2-c2-p1
       pages.add(new TimeRange(20L, 29L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, false)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, false)) {
         writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -143,7 +151,7 @@ public class SeriesScanLimitOffsetPushDownTest {
       seqFileResource2.updateEndTime(TEST_DEVICE, 29);
       tsFileIOWriter.endFile();
     }
-    seqFileResource2.setStatus(TsFileResourceStatus.CLOSED);
+    seqFileResource2.setStatus(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource2);
 
     // prepare file 3
@@ -157,7 +165,8 @@ public class SeriesScanLimitOffsetPushDownTest {
       pages.add(new TimeRange(30L, 39L));
       // prepare f3-c1-p2
       pages.add(new TimeRange(40L, 49L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, false)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, false)) {
         writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -167,7 +176,8 @@ public class SeriesScanLimitOffsetPushDownTest {
       pages.clear();
       // prepare f3-c2-p1
       pages.add(new TimeRange(50L, 59L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, false)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, false)) {
         writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -176,7 +186,7 @@ public class SeriesScanLimitOffsetPushDownTest {
       seqFileResource3.updateEndTime(TEST_DEVICE, 59);
       tsFileIOWriter.endFile();
     }
-    seqFileResource3.setStatus(TsFileResourceStatus.CLOSED);
+    seqFileResource3.setStatus(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource3);
 
     // prepare file 4
@@ -190,7 +200,8 @@ public class SeriesScanLimitOffsetPushDownTest {
       pages.add(new TimeRange(50L, 59L));
       // prepare f4-c1-p2
       pages.add(new TimeRange(60L, 69L));
-      for (IChunkWriter iChunkWriter : createChunkWriter(writtenPaths, dataTypes, false)) {
+      for (IChunkWriter iChunkWriter :
+          createChunkWriter(writtenPaths, dataTypes, encodings, compressionTypes, false)) {
         writeNonAlignedChunk((ChunkWriterImpl) iChunkWriter, tsFileIOWriter, pages, true);
       }
       tsFileIOWriter.endChunkGroup();
@@ -199,7 +210,7 @@ public class SeriesScanLimitOffsetPushDownTest {
       unseqFileResource4.updateEndTime(TEST_DEVICE, 69);
       tsFileIOWriter.endFile();
     }
-    unseqFileResource4.setStatus(TsFileResourceStatus.CLOSED);
+    unseqFileResource4.setStatus(TsFileResourceStatus.NORMAL);
     unSeqResources.add(unseqFileResource4);
   }
 
@@ -230,7 +241,8 @@ public class SeriesScanLimitOffsetPushDownTest {
     EnvironmentUtils.cleanAllDir();
   }
 
-  private SeriesScanUtil getSeriesScanUtil(long limit, long offset) throws IllegalPathException {
+  private SeriesScanUtil getSeriesScanUtil(long limit, long offset, Ordering scanOrder)
+      throws IllegalPathException {
     MeasurementPath scanPath = new MeasurementPath(TEST_PATH, TSDataType.INT32);
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
@@ -240,7 +252,7 @@ public class SeriesScanLimitOffsetPushDownTest {
     SeriesScanUtil seriesScanUtil =
         new SeriesScanUtil(
             scanPath,
-            Ordering.ASC,
+            scanOrder,
             scanOptionsBuilder.build(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT);
     seriesScanUtil.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
@@ -249,7 +261,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipFile() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 10);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 10, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -269,7 +281,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipChunk() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 20);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 20, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -289,7 +301,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipPage() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 30);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(5, 30, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -309,7 +321,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipPoint1() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 45);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 45, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -341,7 +353,7 @@ public class SeriesScanLimitOffsetPushDownTest {
 
   @Test
   public void testSkipPoint2() throws IllegalPathException, IOException {
-    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 55);
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 55, Ordering.ASC);
 
     Assert.assertTrue(seriesScanUtil.hasNextFile());
     Assert.assertTrue(seriesScanUtil.hasNextChunk());
@@ -359,6 +371,74 @@ public class SeriesScanLimitOffsetPushDownTest {
     Assert.assertEquals(5, tsBlock.getPositionCount());
     for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
       Assert.assertEquals(expectedTime++, tsBlock.getTimeByIndex(i));
+    }
+
+    Assert.assertFalse(seriesScanUtil.hasNextPage());
+    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    Assert.assertFalse(seriesScanUtil.hasNextFile());
+  }
+
+  @Test
+  public void testSkipPointDesc1() throws IllegalPathException, IOException {
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 5, Ordering.DESC);
+
+    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+
+    TsBlock tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
+
+    long expectedTime = 64;
+    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+      Assert.assertEquals(expectedTime--, tsBlock.getTimeByIndex(i));
+    }
+
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+    tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
+
+    expectedTime = 59;
+    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+      Assert.assertEquals(expectedTime--, tsBlock.getTimeByIndex(i));
+    }
+
+    Assert.assertFalse(seriesScanUtil.hasNextPage());
+    Assert.assertFalse(seriesScanUtil.hasNextChunk());
+    Assert.assertFalse(seriesScanUtil.hasNextFile());
+  }
+
+  @Test
+  public void testSkipPointDesc2() throws IllegalPathException, IOException {
+    SeriesScanUtil seriesScanUtil = getSeriesScanUtil(10, 25, Ordering.DESC);
+
+    Assert.assertTrue(seriesScanUtil.hasNextFile());
+    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+
+    TsBlock tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(0, tsBlock.getPositionCount());
+
+    Assert.assertFalse(seriesScanUtil.hasNextPage());
+
+    Assert.assertTrue(seriesScanUtil.hasNextChunk());
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+
+    tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
+
+    long expectedTime = 44;
+    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+      Assert.assertEquals(expectedTime--, tsBlock.getTimeByIndex(i));
+    }
+
+    Assert.assertTrue(seriesScanUtil.hasNextPage());
+    tsBlock = seriesScanUtil.nextPage();
+    Assert.assertEquals(5, tsBlock.getPositionCount());
+
+    expectedTime = 39;
+    for (int i = 0, size = tsBlock.getPositionCount(); i < size; i++) {
+      Assert.assertEquals(expectedTime--, tsBlock.getTimeByIndex(i));
     }
 
     Assert.assertFalse(seriesScanUtil.hasNextPage());

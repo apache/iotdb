@@ -59,6 +59,8 @@ public enum ConfigPhysicalPlanType {
   GetTimeSlotList((short) 308),
   PollSpecificRegionMaintainTask((short) 309),
 
+  CountTimeSlotList((short) 310),
+
   /** Partition */
   GetSchemaPartition((short) 400),
   CreateSchemaPartition((short) 401),
@@ -113,16 +115,27 @@ public enum ConfigPhysicalPlanType {
   RollbackUnsetTemplate((short) 809),
   UnsetTemplate((short) 810),
   DropSchemaTemplate((short) 811),
+  PreSetSchemaTemplate((short) 812),
+  CommitSetSchemaTemplate((short) 813),
+  ExtendSchemaTemplate((short) 814),
 
-  /** Sync */
-  CreatePipeSink((short) 900),
-  DropPipeSink((short) 901),
-  GetPipeSink((short) 902),
-  PreCreatePipe((short) 903),
-  SetPipeStatus((short) 904),
-  DropPipe((short) 905),
-  ShowPipe((short) 906),
-  RecordPipeMessage((short) 907),
+  /** Deprecated types for sync, restored them for upgrade */
+  @Deprecated
+  CreatePipeSinkV1((short) 900),
+  @Deprecated
+  DropPipeSinkV1((short) 901),
+  @Deprecated
+  GetPipeSinkV1((short) 902),
+  @Deprecated
+  PreCreatePipeV1((short) 903),
+  @Deprecated
+  SetPipeStatusV1((short) 904),
+  @Deprecated
+  DropPipeV1((short) 905),
+  @Deprecated
+  ShowPipeV1((short) 906),
+  @Deprecated
+  RecordPipeMessageV1((short) 907),
 
   /** Trigger */
   AddTriggerInTable((short) 1000),
@@ -148,7 +161,28 @@ public enum ConfigPhysicalPlanType {
   UpdateModelState((short) 1202),
   DropModel((short) 1203),
   ShowModel((short) 1204),
-  ShowTrail((short) 1205);
+  ShowTrail((short) 1205),
+
+  /** Pipe Plugin */
+  CreatePipePlugin((short) 1300),
+  DropPipePlugin((short) 1301),
+  GetPipePluginTable((short) 1302),
+  GetPipePluginJar((short) 1303),
+
+  /** Quota */
+  setSpaceQuota((short) 1400),
+  setThrottleQuota((short) 1401),
+
+  /** Pipe Task */
+  CreatePipeV2((short) 1500),
+  /** START PIPE & STOP PIPE */
+  SetPipeStatusV2((short) 1501),
+  DropPipeV2((short) 1502),
+  ShowPipeV2((short) 1503),
+
+  /** Pipe Runtime */
+  PipeHandleLeaderChange((short) 1600),
+  ;
 
   private final short planType;
 

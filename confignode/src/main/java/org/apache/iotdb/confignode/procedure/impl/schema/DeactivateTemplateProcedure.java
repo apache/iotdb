@@ -59,6 +59,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class DeactivateTemplateProcedure
@@ -137,35 +139,41 @@ public class DeactivateTemplateProcedure
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
-    DeactivateTemplateRegionTask<TSStatus> constructBlackListTask =
-        new DeactivateTemplateRegionTask<TSStatus>(
-            "construct schema black list", env, targetSchemaRegionGroup) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            // construct request and send
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-
-            AsyncClientHandler<TConstructSchemaBlackListWithTemplateReq, TSStatus> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+    List<TSStatus> successResult = new ArrayList<>();
+    DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>
+        constructBlackListTask =
+            new DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>(
+                "construct schema black list",
+                env,
+                targetSchemaRegionGroup,
+                DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+                ((dataNodeLocation, consensusGroupIdList) ->
                     new TConstructSchemaBlackListWithTemplateReq(
-                        consensusGroupIdList, dataNodeRequest),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                    });
-            return clientHandler.getResponseMap();
-          }
-        };
+                        consensusGroupIdList, dataNodeRequest))) {
+              @Override
+              protected List<TConsensusGroupId> processResponseOfOneDataNode(
+                  TDataNodeLocation dataNodeLocation,
+                  List<TConsensusGroupId> consensusGroupIdList,
+                  TSStatus response) {
+                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+                if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  successResult.add(response);
+                } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+                  List<TSStatus> subStatusList = response.getSubStatus();
+                  for (int i = 0; i < subStatusList.size(); i++) {
+                    if (subStatusList.get(i).getCode()
+                        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                      successResult.add(subStatusList.get(i));
+                    } else {
+                      failedRegionList.add(consensusGroupIdList.get(i));
+                    }
+                  }
+                } else {
+                  failedRegionList.addAll(consensusGroupIdList);
+                }
+                return failedRegionList;
+              }
+            };
     constructBlackListTask.execute();
 
     if (isFailed()) {
@@ -173,10 +181,8 @@ public class DeactivateTemplateProcedure
     }
 
     long preDeletedNum = 0;
-    for (List<TSStatus> respList : constructBlackListTask.getResponseMap().values()) {
-      for (TSStatus resp : respList) {
-        preDeletedNum += Long.parseLong(resp.getMessage());
-      }
+    for (TSStatus resp : successResult) {
+      preDeletedNum += Long.parseLong(resp.getMessage());
     }
     return preDeletedNum;
   }
@@ -214,66 +220,29 @@ public class DeactivateTemplateProcedure
       return;
     }
 
-    DeactivateTemplateRegionTask<TSStatus> deleteDataTask =
-        new DeactivateTemplateRegionTask<TSStatus>(
-            "delete data", env, relatedDataRegionGroup, true) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TDeleteDataForDeleteSchemaReq, TSStatus> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
-                    new TDeleteDataForDeleteSchemaReq(
-                        new ArrayList<>(consensusGroupIdList), timeSeriesPatternTreeBytes),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                    });
-            return clientHandler.getResponseMap();
-          }
-        };
+    DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
+        new DeactivateTemplateRegionTaskExecutor<>(
+            "delete data",
+            env,
+            relatedDataRegionGroup,
+            true,
+            DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TDeleteDataForDeleteSchemaReq(
+                    new ArrayList<>(consensusGroupIdList), timeSeriesPatternTreeBytes)));
     deleteDataTask.execute();
     setNextState(DeactivateTemplateState.DEACTIVATE_TEMPLATE);
   }
 
   private void deactivateTemplate(ConfigNodeProcedureEnv env) {
-    DeactivateTemplateRegionTask<TSStatus> deleteTimeSeriesTask =
-        new DeactivateTemplateRegionTask<TSStatus>(
+    DeactivateTemplateRegionTaskExecutor<TDeactivateTemplateReq> deleteTimeSeriesTask =
+        new DeactivateTemplateRegionTaskExecutor<>(
             "deactivate template schema",
             env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree)) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TDeactivateTemplateReq, TSStatus> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.DEACTIVATE_TEMPLATE,
-                    new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                    });
-            return clientHandler.getResponseMap();
-          }
-        };
+            env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
+            DataNodeRequestType.DEACTIVATE_TEMPLATE,
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -281,35 +250,16 @@ public class DeactivateTemplateProcedure
   protected void rollbackState(
       ConfigNodeProcedureEnv env, DeactivateTemplateState deactivateTemplateState)
       throws IOException, InterruptedException, ProcedureException {
-    DeactivateTemplateRegionTask<TSStatus> rollbackStateTask =
-        new DeactivateTemplateRegionTask<TSStatus>(
-            "roll back schema black list",
-            env,
-            env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree)) {
-          @Override
-          protected Map<Integer, TSStatus> sendRequest(
-              TDataNodeLocation dataNodeLocation, List<TConsensusGroupId> consensusGroupIdList) {
-            Map<Integer, TDataNodeLocation> dataNodeLocationMap = new HashMap<>();
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-            AsyncClientHandler<TRollbackSchemaBlackListWithTemplateReq, TSStatus> clientHandler =
-                new AsyncClientHandler<>(
-                    DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+    DeactivateTemplateRegionTaskExecutor<TRollbackSchemaBlackListWithTemplateReq>
+        rollbackStateTask =
+            new DeactivateTemplateRegionTaskExecutor<>(
+                "roll back schema black list",
+                env,
+                env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
+                DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+                ((dataNodeLocation, consensusGroupIdList) ->
                     new TRollbackSchemaBlackListWithTemplateReq(
-                        consensusGroupIdList, dataNodeRequest),
-                    dataNodeLocationMap);
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(clientHandler);
-            clientHandler
-                .getResponseMap()
-                .forEach(
-                    (k, v) -> {
-                      if (v.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        saveDataNodeResponse(k, v);
-                      }
-                    });
-            return clientHandler.getResponseMap();
-          }
-        };
+                        consensusGroupIdList, dataNodeRequest)));
     rollbackStateTask.execute();
   }
 
@@ -441,54 +391,70 @@ public class DeactivateTemplateProcedure
     return Objects.hash(queryId, templateSetInfo);
   }
 
-  private abstract class DeactivateTemplateRegionTask<T> extends DataNodeRegionTask<T> {
+  private class DeactivateTemplateRegionTaskExecutor<Q>
+      extends DataNodeRegionTaskExecutor<Q, TSStatus> {
 
     private final String taskName;
 
-    DeactivateTemplateRegionTask(
-        String taskName,
-        ConfigNodeProcedureEnv env,
-        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup) {
-      super(env, targetSchemaRegionGroup, false);
-      this.taskName = taskName;
-    }
-
-    DeactivateTemplateRegionTask(
+    DeactivateTemplateRegionTaskExecutor(
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        boolean executeOnAllReplicaset) {
-      super(env, targetSchemaRegionGroup, executeOnAllReplicaset);
+        DataNodeRequestType dataNodeRequestType,
+        BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
+      this.taskName = taskName;
+    }
+
+    DeactivateTemplateRegionTaskExecutor(
+        String taskName,
+        ConfigNodeProcedureEnv env,
+        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
+        boolean executeOnAllReplicaset,
+        DataNodeRequestType dataNodeRequestType,
+        BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
+      super(
+          env,
+          targetSchemaRegionGroup,
+          executeOnAllReplicaset,
+          dataNodeRequestType,
+          dataNodeRequestGenerator);
       this.taskName = taskName;
     }
 
     @Override
-    protected boolean hasFailure() {
-      return isFailed();
+    protected List<TConsensusGroupId> processResponseOfOneDataNode(
+        TDataNodeLocation dataNodeLocation,
+        List<TConsensusGroupId> consensusGroupIdList,
+        TSStatus response) {
+      List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return failedRegionList;
+      }
+
+      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        List<TSStatus> subStatus = response.getSubStatus();
+        for (int i = 0; i < subStatus.size(); i++) {
+          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            failedRegionList.add(consensusGroupIdList.get(i));
+          }
+        }
+      } else {
+        failedRegionList.addAll(consensusGroupIdList);
+      }
+      return failedRegionList;
     }
 
     @Override
-    protected void onExecutionFailure(TDataNodeLocation dataNodeLocation) {
-      LOGGER.error(
-          "Failed to execute [{}] of deactivate template {} on {}",
-          taskName,
-          requestMessage,
-          dataNodeLocation);
+    protected void onAllReplicasetFailure(
+        TConsensusGroupId consensusGroupId, Set<TDataNodeLocation> dataNodeLocationSet) {
       setFailure(
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Deactivate template of %s failed when [%s]", requestMessage, taskName))));
-    }
-
-    @Override
-    protected void onAllReplicasetFailure(TConsensusGroupId consensusGroupId) {
-      setFailure(
-          new ProcedureException(
-              new MetadataException(
-                  String.format(
-                      "Deactivate template of %s failed when [%s] because all replicaset of schemaRegion %s failed.",
-                      requestMessage, taskName, consensusGroupId.id))));
+                      "Deactivate template of %s failed when [%s] because all replicaset of schemaRegion %s failed. %s",
+                      requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
+      interruptTask();
     }
   }
 }

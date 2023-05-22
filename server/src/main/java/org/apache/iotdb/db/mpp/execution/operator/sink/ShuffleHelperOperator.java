@@ -59,13 +59,20 @@ public class ShuffleHelperOperator implements Operator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     int currentIndex = downStreamChannelIndex.getCurrentIndex();
-    if (children.get(currentIndex).hasNext()) {
+    boolean currentChannelClosed = sinkHandle.isChannelClosed(currentIndex);
+    if (!currentChannelClosed && children.get(currentIndex).hasNext()) {
       return true;
+    } else if (currentChannelClosed) {
+      // we close the child directly. The child could be an ExchangeOperator which is the downstream
+      // of an ISinkChannel of a pipeline driver.
+      closeCurrentChild(currentIndex);
+    } else {
+      // current channel has no more data
+      closeCurrentChild(currentIndex);
+      sinkHandle.setNoMoreTsBlocksOfOneChannel(currentIndex);
     }
-    // current channel have no more data
-    sinkHandle.setNoMoreTsBlocksOfOneChannel(currentIndex);
     unfinishedChildren.remove(currentIndex);
     currentIndex = (currentIndex + 1) % children.size();
     downStreamChannelIndex.setCurrentIndex(currentIndex);
@@ -78,8 +85,13 @@ public class ShuffleHelperOperator implements Operator {
     return true;
   }
 
+  private void closeCurrentChild(int index) throws Exception {
+    children.get(index).close();
+    children.set(index, null);
+  }
+
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (needToReturnNull) {
       needToReturnNull = false;
       return null;
@@ -89,12 +101,21 @@ public class ShuffleHelperOperator implements Operator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return children.get(downStreamChannelIndex.getCurrentIndex()).isBlocked();
+    int steps = 0;
+    int currentIndex = downStreamChannelIndex.getCurrentIndex();
+    // skip closed children
+    while (children.get(currentIndex) == null && steps < children.size()) {
+      currentIndex = (currentIndex + 1) % children.size();
+      steps++;
+    }
+    downStreamChannelIndex.setCurrentIndex(currentIndex);
+    Operator child = children.get(currentIndex);
+    return child == null ? NOT_BLOCKED : child.isBlocked();
   }
 
   @Override
-  public boolean isFinished() {
-    return unfinishedChildren.isEmpty();
+  public boolean isFinished() throws Exception {
+    return unfinishedChildren.isEmpty() || sinkHandle.isClosed();
   }
 
   @Override
@@ -105,7 +126,9 @@ public class ShuffleHelperOperator implements Operator {
   @Override
   public void close() throws Exception {
     for (Operator child : children) {
-      child.close();
+      if (child != null) {
+        child.close();
+      }
     }
   }
 

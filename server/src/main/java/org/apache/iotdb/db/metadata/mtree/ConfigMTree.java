@@ -24,18 +24,18 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.DatabaseNotSetException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
-import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
+import org.apache.iotdb.db.metadata.mnode.config.IConfigMNode;
+import org.apache.iotdb.db.metadata.mnode.config.factory.ConfigMNodeFactory;
+import org.apache.iotdb.db.metadata.mtree.store.ConfigMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.DatabaseCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveDBCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.DatabaseCounter;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
@@ -74,12 +74,14 @@ public class ConfigMTree {
 
   private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
 
-  private IMNode root;
+  private IConfigMNode root;
   // this store is only used for traverser invoking
-  private MemMTreeStore store;
+  private final ConfigMTreeStore store;
+
+  private final IMNodeFactory<IConfigMNode> nodeFactory = ConfigMNodeFactory.getInstance();
 
   public ConfigMTree() throws MetadataException {
-    store = new MemMTreeStore(new PartialPath(PATH_ROOT), false);
+    store = new ConfigMTreeStore(nodeFactory);
     root = store.getRoot();
   }
 
@@ -99,56 +101,56 @@ public class ConfigMTree {
    */
   public void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    MetaFormatUtils.checkStorageGroup(path.getFullPath());
+    MetaFormatUtils.checkDatabase(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    IMNode cur = root;
+    IConfigMNode cur = root;
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      IMNode temp = cur.getChild(nodeNames[i]);
+      IConfigMNode temp = store.getChild(cur, nodeNames[i]);
       if (temp == null) {
-        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
-      } else if (temp.isStorageGroup()) {
+        store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
+      } else if (temp.isDatabase()) {
         // before create database, check whether the database already exists
-        throw new StorageGroupAlreadySetException(temp.getFullPath());
+        throw new DatabaseAlreadySetException(temp.getFullPath());
       }
-      cur = cur.getChild(nodeNames[i]);
+      cur = store.getChild(cur, nodeNames[i]);
       i++;
     }
 
     // synchronize check and add, we need addChild operation be atomic.
     // only write operations on mtree will be synchronized
     synchronized (this) {
-      if (cur.hasChild(nodeNames[i])) {
+      if (store.hasChild(cur, nodeNames[i])) {
         // node b has child sg
-        if (cur.getChild(nodeNames[i]).isStorageGroup()) {
-          throw new StorageGroupAlreadySetException(path.getFullPath());
+        if (store.getChild(cur, nodeNames[i]).isDatabase()) {
+          throw new DatabaseAlreadySetException(path.getFullPath());
         } else {
-          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+          throw new DatabaseAlreadySetException(path.getFullPath(), true);
         }
       } else {
-        IStorageGroupMNode storageGroupMNode =
-            new StorageGroupMNode(
-                cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+        IDatabaseMNode<IConfigMNode> databaseMNode =
+            nodeFactory.createDatabaseMNode(cur, nodeNames[i]);
+        databaseMNode.setDataTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
 
-        IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
+        IConfigMNode result = store.addChild(cur, nodeNames[i], databaseMNode.getAsMNode());
 
-        if (result != storageGroupMNode) {
-          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+        if (result != databaseMNode) {
+          throw new DatabaseAlreadySetException(path.getFullPath(), true);
         }
       }
     }
   }
 
   /** Delete a database */
-  public void deleteStorageGroup(PartialPath path) throws MetadataException {
-    IStorageGroupMNode storageGroupMNode = getStorageGroupNodeByStorageGroupPath(path);
-    IMNode cur = storageGroupMNode.getParent();
+  public void deleteDatabase(PartialPath path) throws MetadataException {
+    IDatabaseMNode<IConfigMNode> databaseMNode = getDatabaseNodeByDatabasePath(path);
+    IConfigMNode cur = databaseMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the database node sg1
-    cur.deleteChild(storageGroupMNode.getName());
+    store.deleteChild(cur, databaseMNode.getName());
 
     // delete node a while retain root.a.sg2
     while (cur.getParent() != null && cur.getChildren().size() == 0) {
@@ -167,9 +169,8 @@ public class ConfigMTree {
    * @param pathPattern a path pattern or a full path
    * @return a list contains all databases related to given path
    */
-  public List<PartialPath> getBelongedStorageGroups(PartialPath pathPattern)
-      throws MetadataException {
-    return collectStorageGroups(pathPattern, false, true);
+  public List<PartialPath> getBelongedDatabases(PartialPath pathPattern) throws MetadataException {
+    return collectDatabases(pathPattern, false, true);
   }
 
   /**
@@ -181,19 +182,21 @@ public class ConfigMTree {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return a list contains all database names under given path pattern
    */
-  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
+  public List<PartialPath> getMatchedDatabases(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return collectStorageGroups(pathPattern, isPrefixMatch, false);
+    return collectDatabases(pathPattern, isPrefixMatch, false);
   }
 
-  private List<PartialPath> collectStorageGroups(
+  private List<PartialPath> collectDatabases(
       PartialPath pathPattern, boolean isPrefixMatch, boolean collectInternal)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
-    try (DatabaseCollector<List<PartialPath>> collector =
-        new DatabaseCollector<List<PartialPath>>(root, pathPattern, store, isPrefixMatch) {
+    try (DatabaseCollector<?, ?> collector =
+        new DatabaseCollector<List<PartialPath>, IConfigMNode>(
+            root, pathPattern, store, isPrefixMatch) {
+
           @Override
-          protected void collectDatabase(IStorageGroupMNode node) {
+          protected void collectDatabase(IDatabaseMNode<IConfigMNode> node) {
             result.add(node.getPartialPath());
           }
         }) {
@@ -208,13 +211,13 @@ public class ConfigMTree {
    *
    * @return a list contains all distinct databases
    */
-  public List<PartialPath> getAllStorageGroupPaths() {
+  public List<PartialPath> getAllDatabasePaths() {
     List<PartialPath> res = new ArrayList<>();
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
+    Deque<IConfigMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
-      IMNode current = nodeStack.pop();
-      if (current.isStorageGroup()) {
+      IConfigMNode current = nodeStack.pop();
+      if (current.isDatabase()) {
         res.add(current.getPartialPath());
       } else {
         nodeStack.addAll(current.getChildren().values());
@@ -230,9 +233,10 @@ public class ConfigMTree {
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getDatabaseNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    try (DatabaseCounter counter = new DatabaseCounter(root, pathPattern, store, isPrefixMatch)) {
+    try (DatabaseCounter<IConfigMNode> counter =
+        new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch)) {
       return (int) counter.count();
     }
   }
@@ -240,31 +244,31 @@ public class ConfigMTree {
   /**
    * E.g., root.sg is database given [root, sg], if the give path is not a database, throw exception
    */
-  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath storageGroupPath)
+  public IDatabaseMNode<IConfigMNode> getDatabaseNodeByDatabasePath(PartialPath databasePath)
       throws MetadataException {
-    String[] nodes = storageGroupPath.getNodes();
+    String[] nodes = databasePath.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(storageGroupPath.getFullPath());
+      throw new IllegalPathException(databasePath.getFullPath());
     }
-    IMNode cur = root;
+    IConfigMNode cur = root;
     for (int i = 1; i < nodes.length - 1; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
-        throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+        throw new DatabaseNotSetException(databasePath.getFullPath());
       }
-      if (cur.isStorageGroup()) {
-        throw new StorageGroupAlreadySetException(cur.getFullPath());
+      if (cur.isDatabase()) {
+        throw new DatabaseAlreadySetException(cur.getFullPath());
       }
     }
 
     cur = cur.getChild(nodes[nodes.length - 1]);
     if (cur == null) {
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+      throw new DatabaseNotSetException(databasePath.getFullPath());
     }
-    if (cur.isStorageGroup()) {
-      return cur.getAsStorageGroupMNode();
+    if (cur.isDatabase()) {
+      return cur.getAsDatabaseMNode();
     } else {
-      throw new StorageGroupAlreadySetException(storageGroupPath.getFullPath(), true);
+      throw new DatabaseAlreadySetException(databasePath.getFullPath(), true);
     }
   }
 
@@ -273,22 +277,23 @@ public class ConfigMTree {
    * device], return the MNode of root.sg Get database node, the give path don't need to be database
    * path.
    */
-  public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+  public IDatabaseMNode<IConfigMNode> getDatabaseNodeByPath(PartialPath path)
+      throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    IMNode cur = root;
+    IConfigMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
         break;
       }
-      if (cur.isStorageGroup()) {
-        return cur.getAsStorageGroupMNode();
+      if (cur.isDatabase()) {
+        return cur.getAsDatabaseMNode();
       }
     }
-    throw new StorageGroupNotSetException(path.getFullPath());
+    throw new DatabaseNotSetException(path.getFullPath());
   }
 
   /**
@@ -297,18 +302,18 @@ public class ConfigMTree {
    *
    * @param path a full path or a prefix path
    */
-  public boolean isStorageGroupAlreadySet(PartialPath path) {
+  public boolean isDatabaseAlreadySet(PartialPath path) {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
+    IConfigMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return false;
     }
     for (int i = 1; i < nodeNames.length; i++) {
-      if (!cur.hasChild(nodeNames[i])) {
+      if (!store.hasChild(cur, nodeNames[i])) {
         return false;
       }
-      cur = cur.getChild(nodeNames[i]);
-      if (cur.isStorageGroup()) {
+      cur = store.getChild(cur, nodeNames[i]);
+      if (cur.isDatabase()) {
         return true;
       }
     }
@@ -321,42 +326,43 @@ public class ConfigMTree {
    *
    * @param path a full path or a prefix path
    */
-  public void checkStorageGroupAlreadySet(PartialPath path) throws StorageGroupAlreadySetException {
+  public void checkDatabaseAlreadySet(PartialPath path) throws DatabaseAlreadySetException {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
+    IConfigMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return;
     }
     for (int i = 1; i < nodeNames.length; i++) {
-      if (!cur.hasChild(nodeNames[i])) {
+      if (!store.hasChild(cur, nodeNames[i])) {
         return;
       }
-      cur = cur.getChild(nodeNames[i]);
-      if (cur.isStorageGroup()) {
-        throw new StorageGroupAlreadySetException(cur.getFullPath());
+      cur = store.getChild(cur, nodeNames[i]);
+      if (cur.isDatabase()) {
+        throw new DatabaseAlreadySetException(cur.getFullPath());
       }
     }
-    throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+    throw new DatabaseAlreadySetException(path.getFullPath(), true);
   }
 
   // endregion
 
   // region MTree Node Management
 
-  public IMNode getNodeWithAutoCreate(PartialPath path) throws StorageGroupNotSetException {
+  public IConfigMNode getNodeWithAutoCreate(PartialPath path) throws DatabaseNotSetException {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
-    IMNode child;
+    IConfigMNode cur = root;
+    IConfigMNode child;
     boolean hasStorageGroup = false;
     for (int i = 1; i < nodeNames.length; i++) {
-      child = cur.getChild(nodeNames[i]);
+      child = store.getChild(cur, nodeNames[i]);
       if (child == null) {
         if (hasStorageGroup) {
-          child = cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+          child =
+              store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
         } else {
-          throw new StorageGroupNotSetException(path.getFullPath());
+          throw new DatabaseNotSetException(path.getFullPath());
         }
-      } else if (child.isStorageGroup()) {
+      } else if (child.isDatabase()) {
         hasStorageGroup = true;
       }
 
@@ -372,10 +378,10 @@ public class ConfigMTree {
   public Pair<List<PartialPath>, Set<PartialPath>> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
-    try (MNodeAboveSGCollector<?> collector =
-        new MNodeAboveSGCollector<Void>(root, pathPattern, store, isPrefixMatch) {
+    try (MNodeAboveDBCollector<Void, IConfigMNode> collector =
+        new MNodeAboveDBCollector<Void, IConfigMNode>(root, pathPattern, store, isPrefixMatch) {
           @Override
-          protected Void collectMNode(IMNode node) {
+          protected Void collectMNode(IConfigMNode node) {
             result.add(getPartialPathFromRootToNode(node));
             return null;
           }
@@ -383,7 +389,7 @@ public class ConfigMTree {
 
       collector.setTargetLevel(nodeLevel);
       collector.traverse();
-      return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
+      return new Pair<>(result, collector.getInvolvedDatabaseMNodes());
     }
   }
 
@@ -403,11 +409,11 @@ public class ConfigMTree {
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
       PartialPath pathPattern) throws MetadataException {
     Set<TSchemaNode> result = new TreeSet<>();
-    try (MNodeAboveSGCollector<?> collector =
-        new MNodeAboveSGCollector<Void>(
+    try (MNodeAboveDBCollector<Void, IConfigMNode> collector =
+        new MNodeAboveDBCollector<Void, IConfigMNode>(
             root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
           @Override
-          protected Void collectMNode(IMNode node) {
+          protected Void collectMNode(IConfigMNode node) {
             result.add(
                 new TSchemaNode(
                     getPartialPathFromRootToNode(node).getFullPath(),
@@ -416,7 +422,7 @@ public class ConfigMTree {
           }
         }) {
       collector.traverse();
-      return new Pair<>(result, collector.getInvolvedStorageGroupMNodes());
+      return new Pair<>(result, collector.getInvolvedDatabaseMNodes());
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }
@@ -432,8 +438,8 @@ public class ConfigMTree {
    */
   public void checkTemplateOnPath(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
-    IMNode child;
+    IConfigMNode cur = root;
+    IConfigMNode child;
 
     if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
       throw new MetadataException("Template already exists on " + cur.getFullPath());
@@ -457,12 +463,12 @@ public class ConfigMTree {
   }
 
   // traverse  all the  descendant of the given path node
-  private void checkTemplateOnSubtree(IMNode node) throws MetadataException {
+  private void checkTemplateOnSubtree(IConfigMNode node) throws MetadataException {
     if (node.isMeasurement()) {
       return;
     }
-    IMNode child;
-    IMNodeIterator iterator = store.getChildrenIterator(node);
+    IConfigMNode child;
+    IMNodeIterator<IConfigMNode> iterator = store.getChildrenIterator(node);
     while (iterator.hasNext()) {
       child = iterator.next();
 
@@ -479,10 +485,11 @@ public class ConfigMTree {
   public List<String> getPathsSetOnTemplate(int templateId, boolean filterPreUnset)
       throws MetadataException {
     List<String> resSet = new ArrayList<>();
-    try (MNodeCollector<?> collector =
-        new MNodeCollector<Void>(root, new PartialPath(ALL_RESULT_NODES), store, false) {
+    try (MNodeCollector<Void, IConfigMNode> collector =
+        new MNodeCollector<Void, IConfigMNode>(
+            root, new PartialPath(ALL_RESULT_NODES), store, false) {
           @Override
-          protected boolean acceptFullMatchedNode(IMNode node) {
+          protected boolean acceptFullMatchedNode(IConfigMNode node) {
             if (super.acceptFullMatchedNode(node)) {
               // if node not set template, go on traversing
               if (node.getSchemaTemplateId() != NON_TEMPLATE) {
@@ -498,20 +505,20 @@ public class ConfigMTree {
           }
 
           @Override
-          protected Void collectMNode(IMNode node) {
+          protected Void collectMNode(IConfigMNode node) {
             resSet.add(node.getFullPath());
             return null;
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return (node.getSchemaTemplateId() == NON_TEMPLATE)
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return (node.getSchemaTemplateId() == NON_TEMPLATE)
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
@@ -526,37 +533,39 @@ public class ConfigMTree {
   public Map<Integer, Set<PartialPath>> getTemplateSetInfo(PartialPath pathPattern)
       throws MetadataException {
     Map<Integer, Set<PartialPath>> result = new HashMap<>();
-    try (MNodeCollector<?> collector =
-        new MNodeCollector<Void>(root, pathPattern, store, false) {
+    try (MNodeCollector<Void, IConfigMNode> collector =
+        new MNodeCollector<Void, IConfigMNode>(root, pathPattern, store, false) {
           @Override
-          protected boolean acceptFullMatchedNode(IMNode node) {
+          protected boolean acceptFullMatchedNode(IConfigMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)
                 || super.acceptFullMatchedNode(node);
           }
 
           @Override
-          protected boolean acceptInternalMatchedNode(IMNode node) {
+          protected boolean acceptInternalMatchedNode(IConfigMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)
                 || super.acceptInternalMatchedNode(node);
           }
 
           @Override
-          protected Void collectMNode(IMNode node) {
-            result
-                .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
-                .add(getPartialPathFromRootToNode(node));
+          protected Void collectMNode(IConfigMNode node) {
+            if (node.getSchemaTemplateId() != NON_TEMPLATE && !node.isSchemaTemplatePreUnset()) {
+              result
+                  .computeIfAbsent(node.getSchemaTemplateId(), k -> new HashSet<>())
+                  .add(getPartialPathFromRootToNode(node));
+            }
             return null;
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+          protected boolean shouldVisitSubtreeOfFullMatchedNode(IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return (node.getSchemaTemplateId() == NON_TEMPLATE)
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
           }
 
           @Override
-          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+          protected boolean shouldVisitSubtreeOfInternalMatchedNode(IConfigMNode node) {
             // descendants of the node cannot set another template, exit from this branch
             return (node.getSchemaTemplateId() == NON_TEMPLATE)
                 && super.shouldVisitSubtreeOfFullMatchedNode(node);
@@ -565,6 +574,10 @@ public class ConfigMTree {
       collector.traverse();
     }
     return result;
+  }
+
+  public void setTemplate(int templateId, PartialPath templateSetPath) throws MetadataException {
+    getNodeWithAutoCreate(templateSetPath).setSchemaTemplateId(templateId);
   }
 
   public void preUnsetTemplate(int templateId, PartialPath path) throws MetadataException {
@@ -579,9 +592,10 @@ public class ConfigMTree {
     getNodeSetTemplate(templateId, path).unsetSchemaTemplate();
   }
 
-  private IMNode getNodeSetTemplate(int templateId, PartialPath path) throws MetadataException {
+  private IConfigMNode getNodeSetTemplate(int templateId, PartialPath path)
+      throws MetadataException {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
+    IConfigMNode cur = root;
     for (int i = 1; i < nodeNames.length; i++) {
       cur = cur.getChild(nodeNames[i]);
       if (cur == null) {
@@ -600,10 +614,10 @@ public class ConfigMTree {
   // region Serialization and Deserialization
 
   public void serialize(OutputStream outputStream) throws IOException {
-    serializeInternalNode((InternalMNode) this.root, outputStream);
+    serializeConfigBasicMNode(this.root, outputStream);
   }
 
-  private void serializeInternalNode(InternalMNode node, OutputStream outputStream)
+  private void serializeConfigBasicMNode(IConfigMNode node, OutputStream outputStream)
       throws IOException {
     serializeChildren(node, outputStream);
 
@@ -613,42 +627,46 @@ public class ConfigMTree {
     ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
   }
 
-  private void serializeChildren(InternalMNode node, OutputStream outputStream) throws IOException {
-    for (IMNode child : node.getChildren().values()) {
-      if (child.isStorageGroup()) {
-        serializeStorageGroupNode((StorageGroupMNode) child, outputStream);
+  private void serializeChildren(IConfigMNode node, OutputStream outputStream) throws IOException {
+    for (IConfigMNode child : node.getChildren().values()) {
+      if (child.isDatabase()) {
+        serializeDatabaseNode(child.getAsDatabaseMNode(), outputStream);
       } else {
-        serializeInternalNode((InternalMNode) child, outputStream);
+        serializeConfigBasicMNode(child, outputStream);
       }
     }
   }
 
-  private void serializeStorageGroupNode(
-      StorageGroupMNode storageGroupNode, OutputStream outputStream) throws IOException {
-    serializeChildren(storageGroupNode, outputStream);
+  private void serializeDatabaseNode(
+      IDatabaseMNode<IConfigMNode> storageGroupNode, OutputStream outputStream) throws IOException {
+    serializeChildren(storageGroupNode.getAsMNode(), outputStream);
 
     ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
     ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
-    ReadWriteIOUtils.write(storageGroupNode.getSchemaTemplateId(), outputStream);
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(
-        storageGroupNode.getStorageGroupSchema(), outputStream);
+    ReadWriteIOUtils.write(storageGroupNode.getAsMNode().getSchemaTemplateId(), outputStream);
+    ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(
+        storageGroupNode.getAsMNode().getDatabaseSchema(), outputStream);
   }
 
   public void deserialize(InputStream inputStream) throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
-    if (type != STORAGE_GROUP_MNODE_TYPE) {
-      logger.error("Wrong node type. Cannot deserialize MTreeAboveSG from given buffer");
-      return;
-    }
 
-    StorageGroupMNode storageGroupMNode = deserializeStorageGroupMNode(inputStream);
-    InternalMNode internalMNode;
-
-    Stack<InternalMNode> stack = new Stack<>();
-    stack.push(storageGroupMNode);
-
-    String name = storageGroupMNode.getName();
+    String name = null;
     int childNum = 0;
+    Stack<Pair<IConfigMNode, Boolean>> stack = new Stack<>();
+    IConfigMNode databaseMNode;
+    IConfigMNode internalMNode;
+
+    if (type == STORAGE_GROUP_MNODE_TYPE) {
+      databaseMNode = deserializeDatabaseMNode(inputStream);
+      name = databaseMNode.getName();
+      stack.push(new Pair<>(databaseMNode, true));
+    } else {
+      internalMNode = deserializeInternalMNode(inputStream);
+      childNum = ReadWriteIOUtils.readInt(inputStream);
+      name = internalMNode.getName();
+      stack.push(new Pair<>(internalMNode, false));
+    }
 
     while (!PATH_ROOT.equals(name)) {
       type = ReadWriteIOUtils.readByte(inputStream);
@@ -656,41 +674,47 @@ public class ConfigMTree {
         case INTERNAL_MNODE_TYPE:
           internalMNode = deserializeInternalMNode(inputStream);
           childNum = ReadWriteIOUtils.readInt(inputStream);
+          boolean hasDB = false;
           while (childNum > 0) {
-            internalMNode.addChild(stack.pop());
+            hasDB = stack.peek().right;
+            internalMNode.addChild(stack.pop().left);
             childNum--;
           }
-          stack.push(internalMNode);
+          stack.push(new Pair<>(internalMNode, hasDB));
           name = internalMNode.getName();
           break;
         case STORAGE_GROUP_MNODE_TYPE:
-          storageGroupMNode = deserializeStorageGroupMNode(inputStream);
+          databaseMNode = deserializeDatabaseMNode(inputStream).getAsMNode();
           childNum = 0;
-          stack.push(storageGroupMNode);
-          name = storageGroupMNode.getName();
+          while (!stack.isEmpty() && !stack.peek().right) {
+            databaseMNode.addChild(stack.pop().left);
+          }
+          stack.push(new Pair<>(databaseMNode, true));
+          name = databaseMNode.getName();
           break;
         default:
           logger.error("Unrecognized node type. Cannot deserialize MTreeAboveSG from given buffer");
           return;
       }
     }
-    this.root = stack.peek();
+    this.root = stack.peek().left;
   }
 
-  private InternalMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
-    InternalMNode internalMNode = new InternalMNode(null, ReadWriteIOUtils.readString(inputStream));
-    internalMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
-    return internalMNode;
+  private IConfigMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
+    IConfigMNode basicMNode =
+        nodeFactory.createInternalMNode(null, ReadWriteIOUtils.readString(inputStream));
+    basicMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
+    return basicMNode;
   }
 
-  private StorageGroupMNode deserializeStorageGroupMNode(InputStream inputStream)
-      throws IOException {
-    StorageGroupMNode storageGroupMNode =
-        new StorageGroupMNode(null, ReadWriteIOUtils.readString(inputStream));
-    storageGroupMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
-    storageGroupMNode.setStorageGroupSchema(
-        ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(inputStream));
-    return storageGroupMNode;
+  private IConfigMNode deserializeDatabaseMNode(InputStream inputStream) throws IOException {
+    IDatabaseMNode<IConfigMNode> databaseMNode =
+        nodeFactory.createDatabaseMNode(null, ReadWriteIOUtils.readString(inputStream));
+    databaseMNode.getAsMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
+    databaseMNode
+        .getAsMNode()
+        .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
+    return databaseMNode.getAsMNode();
   }
 
   // endregion

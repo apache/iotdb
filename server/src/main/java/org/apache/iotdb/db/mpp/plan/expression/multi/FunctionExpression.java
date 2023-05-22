@@ -22,11 +22,12 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinFunction;
+import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
@@ -102,8 +103,8 @@ public class FunctionExpression extends Expression {
     final String functionName = this.functionName.toLowerCase();
     if (BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName)) {
       functionType = FunctionType.AGGREGATION_FUNCTION;
-    } else if (BuiltinFunction.getNativeFunctionNames().contains(functionName)) {
-      functionType = FunctionType.BUILT_IN_FUNCTION;
+    } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(functionName)) {
+      functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
     } else {
       functionType = FunctionType.UDF;
     }
@@ -117,11 +118,11 @@ public class FunctionExpression extends Expression {
     return functionType == FunctionType.AGGREGATION_FUNCTION;
   }
 
-  public Boolean isBuiltInFunction() {
+  public Boolean isBuiltInScalarFunction() {
     if (functionType == null) {
       initializeFunctionType();
     }
-    return functionType == FunctionType.BUILT_IN_FUNCTION;
+    return functionType == FunctionType.BUILT_IN_SCALAR_FUNCTION;
   }
 
   @Override
@@ -211,8 +212,7 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    if (isBuiltInAggregationFunctionExpression()
-        || (isBuiltInFunction() && BuiltinFunction.isMappable(functionName))) {
+    if (isBuiltInAggregationFunctionExpression() || isBuiltInScalarFunction()) {
       return true;
     }
     return new UDTFInformationInferrer(functionName)
@@ -263,31 +263,42 @@ public class FunctionExpression extends Expression {
         }
       }
       if (!functionAttributes.isEmpty()) {
-        if (!expressions.isEmpty()) {
-          builder.append(", ");
-        }
-        Iterator<Entry<String, String>> iterator = functionAttributes.entrySet().iterator();
-        Entry<String, String> entry = iterator.next();
-        builder
-            .append("\"")
-            .append(entry.getKey())
-            .append("\"=\"")
-            .append(entry.getValue())
-            .append("\"");
-        while (iterator.hasNext()) {
-          entry = iterator.next();
-          builder
-              .append(", ")
-              .append("\"")
-              .append(entry.getKey())
-              .append("\"=\"")
-              .append(entry.getValue())
-              .append("\"");
+        // Some built-in scalar functions may have different header.
+        if (BuiltinScalarFunction.contains(functionName)) {
+          BuiltInScalarFunctionHelperFactory.createHelper(functionName)
+              .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
+        } else {
+          appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
         }
       }
       parametersString = builder.toString();
     }
     return parametersString;
+  }
+
+  public static void appendAttributes(
+      boolean hasExpression, StringBuilder builder, Map<String, String> functionAttributes) {
+    if (hasExpression) {
+      builder.append(", ");
+    }
+    Iterator<Entry<String, String>> iterator = functionAttributes.entrySet().iterator();
+    Entry<String, String> entry = iterator.next();
+    builder
+        .append("\"")
+        .append(entry.getKey())
+        .append("\"=\"")
+        .append(entry.getValue())
+        .append("\"");
+    while (iterator.hasNext()) {
+      entry = iterator.next();
+      builder
+          .append(", ")
+          .append("\"")
+          .append(entry.getKey())
+          .append("\"=\"")
+          .append(entry.getValue())
+          .append("\"");
+    }
   }
 
   @Override

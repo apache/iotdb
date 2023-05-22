@@ -32,7 +32,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 
 import org.apache.commons.compress.utils.Sets;
 import org.junit.Test;
@@ -42,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER;
 import static org.junit.Assert.assertEquals;
 
 public class SeriesAggregationScanNodeSerdeTest {
@@ -62,7 +62,8 @@ public class SeriesAggregationScanNodeSerdeTest {
             new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
             aggregationDescriptorList,
             Ordering.ASC,
-            new In<>(Sets.newHashSet("s1", "s2"), VALUE_FILTER, true),
+            TimeFilter.gt(100L),
+            ValueFilter.in(Sets.newHashSet("s1", "s2")),
             groupByTimeParameter,
             null);
 

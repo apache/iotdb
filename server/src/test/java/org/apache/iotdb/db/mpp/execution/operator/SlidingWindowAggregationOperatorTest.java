@@ -133,7 +133,7 @@ public class SlidingWindowAggregationOperatorTest {
   }
 
   @Test
-  public void slidingWindowAggregationTest() throws IllegalPathException {
+  public void slidingWindowAggregationTest() throws Exception {
     String[] retArray =
         new String[] {
           "0,100,20049.5,2004950.0,20099,0,99,20000,20099,20000",
@@ -175,6 +175,7 @@ public class SlidingWindowAggregationOperatorTest {
         count--;
       }
     }
+
     Assert.assertEquals(0, count);
   }
 

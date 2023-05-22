@@ -20,10 +20,10 @@ package org.apache.iotdb.db.audit;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -63,6 +63,9 @@ public class AuditLogger {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
+  private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
+      DataNodeDevicePathCache.getInstance();
+
   private AuditLogger() {
     // empty constructor
   }
@@ -72,7 +75,8 @@ public class AuditLogger {
       String log, String address, String username)
       throws IoTDBConnectionException, IllegalPathException, QueryProcessException {
     InsertRowStatement insertStatement = new InsertRowStatement();
-    insertStatement.setDevicePath(new PartialPath(String.format(AUDIT_LOG_DEVICE, username)));
+    insertStatement.setDevicePath(
+        DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, username)));
     insertStatement.setTime(DateTimeUtils.currentTime());
     insertStatement.setMeasurements(new String[] {LOG, USERNAME, ADDRESS});
     insertStatement.setAligned(false);
@@ -219,6 +223,7 @@ public class AuditLogger {
       case UDAF:
       case UDTF:
       case SHOW:
+      case SHOW_PIPES:
       case SHOW_MERGE_STATUS:
       case KILL:
       case TRACING:

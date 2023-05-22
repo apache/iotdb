@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL;
 
@@ -46,6 +47,8 @@ public class LocalSinkChannel implements ISinkChannel {
   private volatile ListenableFuture<Void> blocked;
   private boolean aborted = false;
   private boolean closed = false;
+
+  private boolean invokedOnFinished = false;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
 
@@ -83,6 +86,9 @@ public class LocalSinkChannel implements ISinkChannel {
   @Override
   public synchronized ListenableFuture<?> isFull() {
     checkState();
+    if (closed) {
+      return immediateVoidFuture();
+    }
     return nonCancellationPropagating(blocked);
   }
 
@@ -102,7 +108,10 @@ public class LocalSinkChannel implements ISinkChannel {
     synchronized (queue) {
       if (isFinished()) {
         synchronized (this) {
-          sinkListener.onFinish(this);
+          if (!invokedOnFinished) {
+            sinkListener.onFinish(this);
+            invokedOnFinished = true;
+          }
         }
       }
     }
@@ -115,6 +124,9 @@ public class LocalSinkChannel implements ISinkChannel {
       Validate.notNull(tsBlock, "tsBlocks is null");
       synchronized (this) {
         checkState();
+        if (closed) {
+          return;
+        }
         if (!blocked.isDone()) {
           throw new IllegalStateException("Sink handle is blocked.");
         }
@@ -181,7 +193,10 @@ public class LocalSinkChannel implements ISinkChannel {
         }
         closed = true;
         queue.close();
-        sinkListener.onFinish(this);
+        if (!invokedOnFinished) {
+          sinkListener.onFinish(this);
+          invokedOnFinished = true;
+        }
       }
     }
     LOGGER.debug("[EndCloseLocalSinkChannel]");
@@ -194,8 +209,6 @@ public class LocalSinkChannel implements ISinkChannel {
   private void checkState() {
     if (aborted) {
       throw new IllegalStateException("LocalSinkChannel is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("LocalSinkChannel is closed.");
     }
   }
 
@@ -222,6 +235,13 @@ public class LocalSinkChannel implements ISinkChannel {
   public int getNumOfBufferedTsBlocks() {
     synchronized (queue) {
       return queue.getNumOfBufferedTsBlocks();
+    }
+  }
+
+  @Override
+  public boolean isClosed() {
+    synchronized (queue) {
+      return queue.isClosed();
     }
   }
 

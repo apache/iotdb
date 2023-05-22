@@ -58,7 +58,28 @@ session.close()
 * 初始化 Session
 
 ```python
-session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
+session = Session(
+    ip="127.0.0.1",
+    port="6667",
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8",
+    enable_redirection=True
+)
+```
+
+* 初始化可连接多节点的 Session
+
+```python
+session = Session.init_from_node_urls(
+    node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8",
+    enable_redirection=True
+)
 ```
 
 * 开启 Session，并决定是否开启 RPC 压缩
@@ -291,23 +312,20 @@ session.execute_statement(sql)
 
 #### 元数据模版接口
 ##### 构建元数据模版
-1. 首先构建Template类
-2. 添加子节点，可以选择InternalNode或MeasurementNode
+1. 首先构建 Template 类
+2. 添加子节点 MeasurementNode
 3. 调用创建元数据模版接口
 
 ```python
 template = Template(name=template_name, share_time=True)
 
-i_node_gps = InternalNode(name="GPS", share_time=False)
-i_node_v = InternalNode(name="vehicle", share_time=True)
 m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+m_node_y = MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+m_node_z = MeasurementNode("z", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
 
-i_node_gps.add_child(m_node_x)
-i_node_v.add_child(m_node_x)
-
-template.add_template(i_node_gps)
-template.add_template(i_node_v)
 template.add_template(m_node_x)
+template.add_template(m_node_y)
+template.add_template(m_node_z)
 
 session.create_schema_template(template)
 ```
@@ -506,7 +524,7 @@ SQLAlchemy 中的元数据有：
 
 下图更加清晰的展示了二者的映射关系：
 
-![sqlalchemy-to-iotdb](/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+![sqlalchemy-to-iotdb](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
 
 ##### 数据类型映射
 | IoTDB 中的数据类型 | SQLAlchemy 中的数据类型 |

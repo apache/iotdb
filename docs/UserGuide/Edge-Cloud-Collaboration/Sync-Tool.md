@@ -31,7 +31,7 @@ You can use SQL commands to start or close a synchronization task at the sender,
 
 ## 2.Model definition
 
-![pipe2.png](/img/UserGuide/System-Tools/Sync-Tool/pipe2.png?raw=true)
+![pipe2.png](https://alioss.timecho.com/docs/img/UserGuide/System-Tools/Sync-Tool/pipe2.png?raw=true)
 
 Two machines A and B, which are installed with iotdb, we want to continuously synchronize the data from A to B. To better describe this process, we introduce the following concepts.
 

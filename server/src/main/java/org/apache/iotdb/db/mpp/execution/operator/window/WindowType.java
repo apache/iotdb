@@ -23,7 +23,8 @@ public enum WindowType {
   TIME_WINDOW((byte) 0),
   VARIATION_WINDOW((byte) 1),
   CONDITION_WINDOW((byte) 2),
-  SESSION_WINDOW((byte) 3);
+  SESSION_WINDOW((byte) 3),
+  COUNT_WINDOW((byte) 4);
 
   private final byte type;
 

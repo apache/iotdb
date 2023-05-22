@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManager;
@@ -28,7 +29,6 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -36,7 +36,6 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.Utils.MemorizedFileSizeCalc;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -50,6 +49,9 @@ import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
+import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
+import org.apache.iotdb.consensus.ratis.utils.RatisLogMonitor;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -93,7 +95,7 @@ import java.util.stream.Collectors;
 /** A multi-raft consensus implementation based on Apache Ratis. */
 class RatisConsensus implements IConsensus {
 
-  private final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
+  private static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
   /** the unique net communication endpoint */
   private final RaftPeer myself;
@@ -118,12 +120,14 @@ class RatisConsensus implements IConsensus {
 
   private final ExecutorService addExecutor;
   private final ScheduledExecutorService diskGuardian;
+  private final long triggerSnapshotThreshold;
 
   private final RatisConfig config;
 
-  private final ConcurrentHashMap<File, MemorizedFileSizeCalc> calcMap = new ConcurrentHashMap<>();
+  private final RatisLogMonitor monitor = new RatisLogMonitor();
 
   private final RatisMetricSet ratisMetricSet;
+  private TConsensusGroupType consensusGroupType = null;
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
@@ -135,14 +139,14 @@ class RatisConsensus implements IConsensus {
         properties, Collections.singletonList(new File(config.getStorageDir())));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
+    Utils.initRatisConfig(properties, config.getRatisConfig());
+    this.config = config.getRatisConfig();
+    this.ratisMetricSet = new RatisMetricSet();
+
+    this.triggerSnapshotThreshold = this.config.getImpl().getTriggerSnapshotFileSize();
     addExecutor = IoTDBThreadPoolFactory.newCachedThreadPool("ratis-add");
     diskGuardian =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("ratis-bg-disk-guardian");
-
-    Utils.initRatisConfig(properties, config.getRatisConfig());
-    this.config = config.getRatisConfig();
-
-    this.ratisMetricSet = new RatisMetricSet(config.getConsensusGroupType());
 
     clientManager =
         new IClientManager.Factory<RaftGroup, RatisClient>()
@@ -235,7 +239,6 @@ class RatisConsensus implements IConsensus {
   @Override
   public ConsensusWriteResponse write(
       ConsensusGroupId consensusGroupId, IConsensusRequest IConsensusRequest) {
-
     // pre-condition: group exists and myself server serves this group
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
     RaftGroup raftGroup = getGroupInfo(raftGroupId);
@@ -244,7 +247,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // current Peer is group leader and in ReadOnly State
-    if (isLeader(consensusGroupId) && CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (isLeader(consensusGroupId) && Utils.rejectWrite()) {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {
@@ -259,6 +262,8 @@ class RatisConsensus implements IConsensus {
     // 1. first try the local server
     RaftClientRequest clientRequest =
         buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
+
+    long writeToRatisStartTime = System.nanoTime();
     RaftClientReply localServerReply;
     RaftPeer suggestedLeader = null;
     if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
@@ -275,6 +280,13 @@ class RatisConsensus implements IConsensus {
         }
       } catch (IOException e) {
         return failedWrite(new RatisRequestFailedException(e));
+      } finally {
+        if (consensusGroupType == null) {
+          consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(raftGroupId.toString());
+        }
+        // statistic the time of write locally
+        RatisMetricsManager.getInstance()
+            .recordWriteLocallyCost(System.nanoTime() - writeToRatisStartTime, consensusGroupType);
       }
     }
 
@@ -294,13 +306,18 @@ class RatisConsensus implements IConsensus {
       if (client != null) {
         client.returnSelf();
       }
+      if (consensusGroupType == null) {
+        consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(raftGroupId.toString());
+      }
+      // statistic the time of write remotely
+      RatisMetricsManager.getInstance()
+          .recordWriteRemotelyCost(System.nanoTime() - writeToRatisStartTime, consensusGroupType);
     }
 
     if (suggestedLeader != null) {
       TEndPoint leaderEndPoint = Utils.fromRaftPeerAddressToTEndPoint(suggestedLeader.getAddress());
       writeResult.setRedirectNode(new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
     }
-
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
   }
 
@@ -319,7 +336,14 @@ class RatisConsensus implements IConsensus {
       RequestMessage message = new RequestMessage(IConsensusRequest);
       RaftClientRequest clientRequest =
           buildRawRequest(groupId, message, RaftClientRequest.staleReadRequestType(-1));
+      long readRatisStartTime = System.nanoTime();
       reply = server.submitClientRequest(clientRequest);
+      if (consensusGroupType == null) {
+        consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
+      }
+      // statistic the time of submit read request
+      RatisMetricsManager.getInstance()
+          .recordReadRequestCost(System.nanoTime() - readRatisStartTime, consensusGroupType);
       if (!reply.isSuccess()) {
         return failedRead(new RatisRequestFailedException(reply.getException()));
       }
@@ -330,7 +354,6 @@ class RatisConsensus implements IConsensus {
     Message ret = reply.getMessage();
     ResponseMessage readResponseMessage = (ResponseMessage) ret;
     DataSet dataSet = (DataSet) readResponseMessage.getContentHolder();
-
     return ConsensusReadResponse.newBuilder().setDataSet(dataSet).build();
   }
 
@@ -702,18 +725,24 @@ class RatisConsensus implements IConsensus {
         continue;
       }
 
-      final long currentDirLength =
-          calcMap.computeIfAbsent(currentDir, MemorizedFileSizeCalc::new).getTotalFolderSize();
-      final long triggerSnapshotFileSize = config.getImpl().getTriggerSnapshotFileSize();
+      final long currentDirLength = monitor.updateAndGetDirectorySize(currentDir);
 
-      if (currentDirLength >= triggerSnapshotFileSize) {
-        ConsensusGenericResponse consensusGenericResponse =
+      if (currentDirLength >= triggerSnapshotThreshold) {
+        final int filesCount = monitor.getFilesUnder(currentDir).size();
+        logger.info(
+            "{}: take snapshot for region {}, current dir size {}, {} files to be purged",
+            this,
+            raftGroupId,
+            currentDirLength,
+            filesCount);
+
+        final ConsensusGenericResponse consensusGenericResponse =
             triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
         if (consensusGenericResponse.isSuccess()) {
           logger.info("Raft group {} took snapshot successfully", raftGroupId);
         } else {
           logger.warn(
-              "Raft group {} failed to take snapshot due to {}",
+              "Raft group {} failed to take snapshot due to",
               raftGroupId,
               consensusGenericResponse.getException());
         }

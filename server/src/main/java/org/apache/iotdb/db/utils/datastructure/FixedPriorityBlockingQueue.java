@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import com.google.common.collect.MinMaxPriorityQueue;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -186,5 +187,14 @@ public class FixedPriorityBlockingQueue<T> {
   @Override
   public String toString() {
     return queue.toString();
+  }
+
+  public List<T> getAllElementAsList() {
+    this.lock.lock();
+    try {
+      return new ArrayList<>(queue);
+    } finally {
+      this.lock.unlock();
+    }
   }
 }

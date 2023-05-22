@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -38,12 +40,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,14 +74,17 @@ public class Analysis {
 
   private ISchemaTree schemaTree;
 
+  private List<TEndPoint> redirectNodeList;
+
   // map from output column name (for every node) to its datatype
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes = new LinkedHashMap<>();
 
   private boolean finishQueryAfterAnalyze;
 
-  // potential fail message when finishQueryAfterAnalyze is true. If failMessage is NULL, means no
+  // potential fail status when finishQueryAfterAnalyze is true. If failStatus is NULL, means no
   // fail.
-  private String failMessage;
+
+  private TSStatus failStatus;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY TIME)
@@ -137,6 +144,12 @@ public class Analysis {
   // expression of group by that need to be calculated
   private Map<String, Expression> deviceToGroupByExpression;
 
+  // expression of order by that need to be calculated
+  private Map<String, Set<Expression>> deviceToOrderByExpressions;
+
+  // the sortItems used in order by push down of align  by device
+  private Map<String, List<SortItem>> deviceToSortItems;
+
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceViewInputIndexesMap;
@@ -161,6 +174,15 @@ public class Analysis {
   private Set<Expression> selectExpressions;
 
   private Expression havingExpression;
+
+  // The expressions in order by clause
+  // In align by device orderByExpression is the deviceView of expression which doesn't have
+  // device-prefix
+  // for example, in device root.sg1.d1, [root.sg1.d1.s1] is expression and [s1] is the device-view
+  // one.
+  private Set<Expression> orderByExpressions;
+
+  private boolean orderByExpressionInDeviceView = false;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -198,6 +220,9 @@ public class Analysis {
 
   // template and paths set template
   private Pair<Template, List<PartialPath>> templateSetInfo;
+
+  // devicePath -> <template, paths set template>
+  private Map<PartialPath, Pair<Template, PartialPath>> deviceTemplateSetInfoMap;
 
   // potential template used in timeseries query or fetch
   private Map<Integer, Template> relatedTemplateInfo;
@@ -255,6 +280,21 @@ public class Analysis {
 
   public void setSchemaTree(ISchemaTree schemaTree) {
     this.schemaTree = schemaTree;
+  }
+
+  public List<TEndPoint> getRedirectNodeList() {
+    return redirectNodeList;
+  }
+
+  public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
+    this.redirectNodeList = redirectNodeList;
+  }
+
+  public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
+    if (redirectNodeList == null) {
+      redirectNodeList = new ArrayList<>();
+    }
+    redirectNodeList.add(endPoint);
   }
 
   public Filter getGlobalTimeFilter() {
@@ -369,15 +409,15 @@ public class Analysis {
   }
 
   public boolean isFailed() {
-    return failMessage != null;
+    return failStatus != null;
   }
 
-  public String getFailMessage() {
-    return failMessage;
+  public TSStatus getFailStatus() {
+    return this.failStatus;
   }
 
-  public void setFailMessage(String failMessage) {
-    this.failMessage = failMessage;
+  public void setFailStatus(TSStatus status) {
+    this.failStatus = status;
   }
 
   public void setDeviceViewInputIndexesMap(Map<String, List<Integer>> deviceViewInputIndexesMap) {
@@ -494,6 +534,15 @@ public class Analysis {
     this.templateSetInfo = templateSetInfo;
   }
 
+  public Map<PartialPath, Pair<Template, PartialPath>> getDeviceTemplateSetInfoMap() {
+    return deviceTemplateSetInfoMap;
+  }
+
+  public void setDeviceTemplateSetInfoMap(
+      Map<PartialPath, Pair<Template, PartialPath>> deviceTemplateSetInfoMap) {
+    this.deviceTemplateSetInfoMap = deviceTemplateSetInfoMap;
+  }
+
   public Map<Integer, Template> getRelatedTemplateInfo() {
     return relatedTemplateInfo;
   }
@@ -585,5 +634,38 @@ public class Analysis {
 
   public Map<NodeRef<Expression>, TSDataType> getExpressionTypes() {
     return expressionTypes;
+  }
+
+  public void setOrderByExpressions(Set<Expression> orderByExpressions) {
+    this.orderByExpressions = orderByExpressions;
+  }
+
+  public Set<Expression> getOrderByExpressions() {
+    return orderByExpressions;
+  }
+
+  public Map<String, Set<Expression>> getDeviceToOrderByExpressions() {
+    return deviceToOrderByExpressions;
+  }
+
+  public void setDeviceToOrderByExpressions(
+      Map<String, Set<Expression>> deviceToOrderByExpressions) {
+    this.deviceToOrderByExpressions = deviceToOrderByExpressions;
+  }
+
+  public void setOrderByExpressionInDeviceView(boolean orderByExpressionInDeviceView) {
+    this.orderByExpressionInDeviceView = orderByExpressionInDeviceView;
+  }
+
+  public boolean isOrderByExpressionInDeviceView() {
+    return orderByExpressionInDeviceView;
+  }
+
+  public Map<String, List<SortItem>> getDeviceToSortItems() {
+    return deviceToSortItems;
+  }
+
+  public void setDeviceToSortItems(Map<String, List<SortItem>> deviceToSortItems) {
+    this.deviceToSortItems = deviceToSortItems;
   }
 }

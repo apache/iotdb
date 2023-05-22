@@ -32,7 +32,7 @@ import java.util.function.Function;
  */
 public class DualKeyCacheBuilder<FK, SK, V> {
 
-  private LRUCacheEntryManager<FK, SK, V> cacheEntryManager;
+  private DualKeyCachePolicy policy;
 
   private long memoryCapacity;
 
@@ -44,6 +44,15 @@ public class DualKeyCacheBuilder<FK, SK, V> {
 
   /** Initiate and return a dual key cache instance. */
   public IDualKeyCache<FK, SK, V> build() {
+    ICacheEntryManager<FK, SK, V, ?> cacheEntryManager = null;
+    switch (policy) {
+      case LRU:
+        cacheEntryManager = new LRUCacheEntryManager<>();
+        break;
+      case FIFO:
+        cacheEntryManager = new FIFOCacheEntryManager<>();
+        break;
+    }
     return new DualKeyCacheImpl<>(
         cacheEntryManager,
         new CacheSizeComputerImpl<>(firstKeySizeComputer, secondKeySizeComputer, valueSizeComputer),
@@ -52,11 +61,8 @@ public class DualKeyCacheBuilder<FK, SK, V> {
 
   /** Define the cache eviction policy of dual key cache. */
   public DualKeyCacheBuilder<FK, SK, V> cacheEvictionPolicy(DualKeyCachePolicy policy) {
-    if (policy == DualKeyCachePolicy.LRU) {
-      this.cacheEntryManager = new LRUCacheEntryManager<>();
-      return this;
-    }
-    throw new IllegalStateException();
+    this.policy = policy;
+    return this;
   }
 
   /** Define the memory capacity of dual key cache. */

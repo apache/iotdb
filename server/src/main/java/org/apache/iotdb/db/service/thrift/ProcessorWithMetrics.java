@@ -48,7 +48,7 @@ public class ProcessorWithMetrics extends Processor {
   @Override
   public void process(TProtocol in, TProtocol out) throws TException {
     TMessage msg = in.readMessageBegin();
-    long startTime = System.currentTimeMillis();
+    long startTime = System.nanoTime();
     ProcessFunction fn = (ProcessFunction) getProcessMapView().get(msg.name);
     if (fn == null) {
       TProtocolUtil.skip(in, TType.STRUCT);
@@ -63,13 +63,13 @@ public class ProcessorWithMetrics extends Processor {
     } else {
       fn.process(msg.seqid, in, out, iface);
     }
-    long cost = System.currentTimeMillis() - startTime;
+    long cost = System.nanoTime() - startTime;
     MetricService.getInstance()
         .timer(
             cost,
-            TimeUnit.MILLISECONDS,
+            TimeUnit.NANOSECONDS,
             Metric.ENTRY.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             Tag.NAME.toString(),
             msg.name);
   }

@@ -105,8 +105,8 @@ Apache NiFi 包含以下功能：
 3. `tsName` 和 `dataType` 这两项必须被设置。
 4. 当数据插入IoTDB时，Prefix属性会被添加到 tsName以作为插入的字段名。
 5. 支持的 `dataTypes` 有：`INT32`， `INT64`， `FLOAT`， `DOUBLE`， `BOOLEAN`， `TEXT`。
-6. 支持的 `encoding` 有： `PLAIN`， `DICTIONARY`， `RLE`， `DIFF`， `TS_2DIFF`， `BITMAP`， `GORILLA_V1`， `REGULAR`， `GORILLA`。
-7. 支持的 `compressionType` 有： `UNCOMPRESSED`， `SNAPPY`， `GZIP`， `LZO`， `SDT`， `PAA`， `PLA`， `LZ4`。
+6. 支持的 `encoding` 有： `PLAIN`， `DICTIONARY`， `RLE`， `DIFF`， `TS_2DIFF`， `BITMAP`， `GORILLA_V1`， `REGULAR`， `GORILLA`， `CHIMP`， `SPRINTZ`， `RLBE`。
+7. 支持的 `compressionType` 有： `UNCOMPRESSED`， `SNAPPY`， `GZIP`， `LZO`， `SDT`， `PAA`， `PLA`， `LZ4`， `ZSTD`， `LZMA2`。
 
 ### Relationships
 

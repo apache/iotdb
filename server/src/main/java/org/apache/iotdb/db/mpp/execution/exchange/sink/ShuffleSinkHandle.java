@@ -32,6 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
 
@@ -39,7 +41,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ShuffleSinkHandle.class);
 
-  /** Each ISinkHandle in the list matches one downStream ISourceHandle */
+  /** Each ISinkChannel in the list matches one downStream ISourceHandle */
   private final List<ISinkChannel> downStreamChannelList;
 
   private final boolean[] hasSetNoMoreTsBlocks;
@@ -58,11 +60,13 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private final MPPDataExchangeManager.SinkListener sinkListener;
 
-  private boolean aborted = false;
+  private volatile boolean aborted = false;
 
-  private boolean closed = false;
+  private volatile boolean closed = false;
 
   private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+
+  private final Lock lock = new ReentrantLock();
 
   /** max bytes this ShuffleSinkHandle can reserve. */
   private long maxBytesCanReserve =
@@ -84,8 +88,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
     this.hasSetNoMoreTsBlocks = new boolean[channelNum];
     this.channelOpened = new boolean[channelNum];
-    // open first channel
-    tryOpenChannel(0);
   }
 
   @Override
@@ -99,21 +101,25 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized ListenableFuture<?> isFull() {
+    int currentIndex = downStreamChannelIndex.getCurrentIndex();
+    // try open channel
+    tryOpenChannel(currentIndex);
     // It is safe to use currentChannel.isFull() to judge whether we can send a TsBlock only when
     // downStreamChannelIndex will not be changed between we call isFull() and send() of
     // ShuffleSinkHandle
-    ISinkChannel currentChannel =
-        downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
-    return currentChannel.isFull();
+    return downStreamChannelList.get(currentIndex).isFull();
   }
 
   @Override
   public synchronized void send(TsBlock tsBlock) {
     long startTime = System.nanoTime();
     try {
+      checkState();
+      if (closed) {
+        return;
+      }
       ISinkChannel currentChannel =
           downStreamChannelList.get(downStreamChannelIndex.getCurrentIndex());
-      checkState();
       currentChannel.send(tsBlock);
     } finally {
       switchChannelIfNecessary();
@@ -123,22 +129,45 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized void setNoMoreTsBlocks() {
-    for (int i = 0; i < downStreamChannelList.size(); i++) {
-      if (!hasSetNoMoreTsBlocks[i]) {
-        downStreamChannelList.get(i).setNoMoreTsBlocks();
-        hasSetNoMoreTsBlocks[i] = true;
-      }
+  public void setNoMoreTsBlocks() {
+    if (closed || aborted) {
+      return;
     }
-    sinkListener.onEndOfBlocks(this);
+    try {
+      lock.lock();
+      for (int i = 0; i < downStreamChannelList.size(); i++) {
+        if (!hasSetNoMoreTsBlocks[i]) {
+          downStreamChannelList.get(i).setNoMoreTsBlocks();
+          hasSetNoMoreTsBlocks[i] = true;
+        }
+      }
+      sinkListener.onEndOfBlocks(this);
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
-  public synchronized void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
-    if (!hasSetNoMoreTsBlocks[channelIndex]) {
-      downStreamChannelList.get(channelIndex).setNoMoreTsBlocks();
-      hasSetNoMoreTsBlocks[channelIndex] = true;
+  public void setNoMoreTsBlocksOfOneChannel(int channelIndex) {
+    if (closed || aborted) {
+      // if this ShuffleSinkHandle has been closed, Driver.close() will attempt to setNoMoreTsBlocks
+      // for all the channels
+      return;
     }
+    try {
+      lock.lock();
+      if (!hasSetNoMoreTsBlocks[channelIndex]) {
+        downStreamChannelList.get(channelIndex).setNoMoreTsBlocks();
+        hasSetNoMoreTsBlocks[channelIndex] = true;
+      }
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  @Override
+  public boolean isClosed() {
+    return closed;
   }
 
   @Override
@@ -157,37 +186,57 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized void abort() {
-    if (aborted) {
+  public void abort() {
+    if (aborted || closed) {
       return;
     }
+    aborted = true;
     LOGGER.debug("[StartAbortShuffleSinkHandle]");
+    boolean meetError = false;
+    Exception firstException = null;
     for (ISink channel : downStreamChannelList) {
       try {
         channel.abort();
       } catch (Exception e) {
-        LOGGER.warn("Error occurred when try to abort channel.");
+        if (!meetError) {
+          firstException = e;
+          meetError = true;
+        }
       }
     }
-    aborted = true;
+    if (meetError) {
+      LOGGER.warn("Error occurred when try to abort channel.", firstException);
+    }
     sinkListener.onAborted(this);
     LOGGER.debug("[EndAbortShuffleSinkHandle]");
   }
 
+  // Add synchronized on this method may lead to Dead Lock
+  // It is possible that when LocalSinkChannel revokes this close method and try to get Lock
+  // ShuffleSinkHandle while synchronized methods of ShuffleSinkHandle
+  // Lock ShuffleSinkHandle and wait to lock LocalSinkChannel
   @Override
-  public synchronized void close() {
-    if (closed) {
+  public void close() {
+    if (closed || aborted) {
       return;
     }
+    closed = true;
     LOGGER.debug("[StartCloseShuffleSinkHandle]");
+    boolean meetError = false;
+    Exception firstException = null;
     for (ISink channel : downStreamChannelList) {
       try {
         channel.close();
       } catch (Exception e) {
-        LOGGER.warn("Error occurred when try to abort channel.");
+        if (!meetError) {
+          firstException = e;
+          meetError = true;
+        }
       }
     }
-    closed = true;
+    if (meetError) {
+      LOGGER.warn("Error occurred when try to close channel.", firstException);
+    }
     sinkListener.onFinish(this);
     LOGGER.debug("[EndCloseShuffleSinkHandle]");
   }
@@ -202,14 +251,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private void checkState() {
     if (aborted) {
       throw new IllegalStateException("ShuffleSinkHandle is aborted.");
-    } else if (closed) {
-      throw new IllegalStateException("ShuffleSinkHandle is closed.");
     }
   }
 
   private void switchChannelIfNecessary() {
     shuffleStrategy.shuffle();
-    tryOpenChannel(downStreamChannelIndex.getCurrentIndex());
   }
 
   public void tryOpenChannel(int channelIndex) {
@@ -217,6 +263,11 @@ public class ShuffleSinkHandle implements ISinkHandle {
       downStreamChannelList.get(channelIndex).open();
       channelOpened[channelIndex] = true;
     }
+  }
+
+  @Override
+  public boolean isChannelClosed(int index) {
+    return downStreamChannelList.get(index).isClosed();
   }
 
   // region ============ Shuffle Related ============
@@ -265,7 +316,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
     private boolean satisfy(int channelIndex) {
       // downStreamChannel is always an ISinkChannel
       ISinkChannel channel = downStreamChannelList.get(channelIndex);
-      if (channel.isNoMoreTsBlocks()) {
+      if (channel.isNoMoreTsBlocks() || channel.isClosed()) {
         return false;
       }
       return channel.getBufferRetainedSizeInBytes() <= channelMemoryThreshold

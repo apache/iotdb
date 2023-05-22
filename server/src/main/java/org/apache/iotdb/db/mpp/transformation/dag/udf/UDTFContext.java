@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.udf;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -43,13 +44,15 @@ public class UDTFContext {
     }
   }
 
-  public void finalizeUDFExecutors(long queryId) {
+  public void finalizeUDFExecutors(String queryId) {
     try {
       for (UDTFExecutor executor : expressionName2Executor.values()) {
         executor.beforeDestroy();
       }
     } finally {
       UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
+      // close and delete UDF temp files
+      TemporaryQueryDataFileService.getInstance().deregister(queryId);
     }
   }
 

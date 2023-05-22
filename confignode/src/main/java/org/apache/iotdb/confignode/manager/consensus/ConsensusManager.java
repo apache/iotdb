@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
@@ -48,6 +47,7 @@ import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,10 +62,11 @@ public class ConsensusManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final int SEED_CONFIG_NODE_ID = 0;
+  /** There is only one ConfigNodeGroup */
+  public static final ConsensusGroupId DEFAULT_CONSENSUS_GROUP_ID =
+      new ConfigRegionId(CONF.getConfigRegionId());
 
   private final IManager configManager;
-
-  private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine)
@@ -80,18 +81,16 @@ public class ConsensusManager {
 
   /** ConsensusLayer local implementation. */
   private void setConsensusLayer(ConfigRegionStateMachine stateMachine) throws IOException {
-    // There is only one ConfigNodeGroup
-    consensusGroupId = new ConfigRegionId(CONF.getConfigRegionId());
 
     if (SIMPLE_CONSENSUS.equals(CONF.getConfigNodeConsensusProtocolClass())) {
+      upgrade();
       consensusImpl =
           ConsensusFactory.getConsensusImpl(
                   SIMPLE_CONSENSUS,
                   ConsensusConfig.newBuilder()
                       .setThisNode(
                           new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))
-                      .setStorageDir("target" + java.io.File.separator + "simple")
-                      .setConsensusGroupType(TConsensusGroupType.ConfigRegion)
+                      .setStorageDir(CONF.getConsensusDir())
                       .build(),
                   gid -> stateMachine)
               .orElseThrow(
@@ -180,7 +179,6 @@ public class ConsensusManager {
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())
-                      .setConsensusGroupType(TConsensusGroupType.ConfigRegion)
                       .build(),
                   gid -> stateMachine)
               .orElseThrow(
@@ -217,6 +215,23 @@ public class ConsensusManager {
   }
 
   /**
+   * In version 1.1, we fixed a 1.0 SimpleConsensus bug that incorrectly set the consensus
+   * directory. For backward compatibility, we added this function, which we may remove in version
+   * 2.x
+   */
+  private void upgrade() {
+    File consensusDir = new File(CONF.getConsensusDir());
+    if (consensusDir.exists()) {
+      File oldWalDir = new File(consensusDir, "simple");
+      if (oldWalDir.exists() && !oldWalDir.renameTo(new File(getConfigRegionDir()))) {
+        LOGGER.warn(
+            "upgrade ConfigNode consensus wal dir for SimpleConsensus from version/1.0 to version/1.1 failed, "
+                + "you maybe need to rename the simple dir to 0_0 manually.");
+      }
+    }
+  }
+
+  /**
    * Create peer in new node to build consensus group.
    *
    * @param configNodeLocations All registered ConfigNodes
@@ -228,11 +243,11 @@ public class ConsensusManager {
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
       peerList.add(
           new Peer(
-              consensusGroupId,
+              DEFAULT_CONSENSUS_GROUP_ID,
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
     }
-    consensusImpl.createPeer(consensusGroupId, peerList);
+    consensusImpl.createPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
   }
 
   /**
@@ -245,9 +260,9 @@ public class ConsensusManager {
     boolean result =
         consensusImpl
             .addPeer(
-                consensusGroupId,
+                DEFAULT_CONSENSUS_GROUP_ID,
                 new Peer(
-                    consensusGroupId,
+                    DEFAULT_CONSENSUS_GROUP_ID,
                     configNodeLocation.getConfigNodeId(),
                     configNodeLocation.getConsensusEndPoint()))
             .isSuccess();
@@ -267,9 +282,9 @@ public class ConsensusManager {
   public boolean removeConfigNodePeer(TConfigNodeLocation configNodeLocation) {
     return consensusImpl
         .removePeer(
-            consensusGroupId,
+            DEFAULT_CONSENSUS_GROUP_ID,
             new Peer(
-                consensusGroupId,
+                DEFAULT_CONSENSUS_GROUP_ID,
                 configNodeLocation.getConfigNodeId(),
                 configNodeLocation.getConsensusEndPoint()))
         .isSuccess();
@@ -277,22 +292,22 @@ public class ConsensusManager {
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusWriteResponse write(ConfigPhysicalPlan plan) {
-    return consensusImpl.write(consensusGroupId, plan);
+    return consensusImpl.write(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
   public ConsensusReadResponse read(ConfigPhysicalPlan plan) {
-    return consensusImpl.read(consensusGroupId, plan);
+    return consensusImpl.read(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 
   public boolean isLeader() {
-    return consensusImpl.isLeader(consensusGroupId);
+    return consensusImpl.isLeader(DEFAULT_CONSENSUS_GROUP_ID);
   }
 
   /** @return ConfigNode-leader's location if leader exists, null otherwise. */
   public TConfigNodeLocation getLeader() {
     for (int retry = 0; retry < 50; retry++) {
-      Peer leaderPeer = consensusImpl.getLeader(consensusGroupId);
+      Peer leaderPeer = consensusImpl.getLeader(DEFAULT_CONSENSUS_GROUP_ID);
       if (leaderPeer != null) {
         List<TConfigNodeLocation> registeredConfigNodes =
             getNodeManager().getRegisteredConfigNodes();
@@ -341,7 +356,15 @@ public class ConsensusManager {
   }
 
   public ConsensusGroupId getConsensusGroupId() {
-    return consensusGroupId;
+    return DEFAULT_CONSENSUS_GROUP_ID;
+  }
+
+  public static String getConfigRegionDir() {
+    return CONF.getConsensusDir()
+        + File.separator
+        + ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID.getType().getValue()
+        + "_"
+        + ConsensusManager.DEFAULT_CONSENSUS_GROUP_ID.getId();
   }
 
   public IConsensus getConsensusImpl() {

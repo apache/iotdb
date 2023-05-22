@@ -104,7 +104,7 @@ IoTDB provides three installation methods, you can refer to the following sugges
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
-* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/tree/master/docker/src/main
+* Using Docker：The path to the dockerfile is [here](https://github.com/apache/iotdb/tree/master/docker/src/main)
 
 
 Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
@@ -401,6 +401,6 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 ### Slack
 
-* https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
+* [Slack channel](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
 
 see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!

@@ -29,7 +29,8 @@ RUN apt update \
 COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
-  && mv apache-iotdb-${version}-server-bin iotdb
+  && mv ${target} iotdb
+#  && mv apache-iotdb-${version}-server-bin iotdb
 
 ENV IOTDB_HOME=/iotdb VERSION=${version}
 WORKDIR ${IOTDB_HOME}/sbin
@@ -41,8 +42,8 @@ RUN chmod +x *.sh && dos2unix *.sh \
   && dos2unix ${IOTDB_HOME}/conf/*.sh
 
 EXPOSE 6667
-EXPOSE 8777
-EXPOSE 9003
+EXPOSE 10740
+EXPOSE 10730
 VOLUME $IOTDB_HOME/data
 VOLUME $IOTDB_HOME/logs
 

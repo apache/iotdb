@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -195,7 +194,7 @@ public class DeviceViewOperatorTest {
         }
       }
       assertEquals(1000, count);
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }

@@ -24,12 +24,15 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -43,18 +46,14 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.DatabaseSchemaPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetDataReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.storagegroup.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlan;
-import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
@@ -67,6 +66,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -74,6 +74,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
@@ -125,7 +127,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -148,10 +149,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
@@ -396,13 +400,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus deleteDatabase(TDeleteDatabaseReq tDeleteReq) {
     String prefixPath = tDeleteReq.getPrefixPath();
-    return configManager.deleteStorageGroups(Collections.singletonList(prefixPath));
+    return configManager.deleteDatabases(Collections.singletonList(prefixPath));
   }
 
   @Override
   public TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq) {
     List<String> prefixList = tDeleteReq.getPrefixPathList();
-    return configManager.deleteStorageGroups(prefixList);
+    return configManager.deleteDatabases(prefixList);
   }
 
   @Override
@@ -432,7 +436,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern) {
     CountDatabaseResp countDatabaseResp =
         (CountDatabaseResp)
-            configManager.countMatchedStorageGroups(new CountDatabasePlan(storageGroupPathPattern));
+            configManager.countMatchedDatabases(new CountDatabasePlan(storageGroupPathPattern));
 
     TCountDatabaseResp resp = new TCountDatabaseResp();
     countDatabaseResp.convertToRPCCountStorageGroupResp(resp);
@@ -443,8 +447,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern) {
     DatabaseSchemaResp databaseSchemaResp =
         (DatabaseSchemaResp)
-            configManager.getMatchedStorageGroupSchemas(
-                new GetDatabasePlan(storageGroupPathPattern));
+            configManager.getMatchedDatabaseSchemas(new GetDatabasePlan(storageGroupPathPattern));
 
     return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
   }
@@ -501,7 +504,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
-              req.getNodeNameList());
+              AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
     }
@@ -524,7 +527,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
-              req.getNodeNameList());
+              AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
     }
@@ -541,8 +544,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) {
-    return configManager.checkUserPrivileges(
-        req.getUsername(), req.getPaths(), req.getPermission());
+    List<PartialPath> partialPaths =
+        AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
+    return configManager.checkUserPrivileges(req.getUsername(), partialPaths, req.getPermission());
   }
 
   @Override
@@ -710,6 +714,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) {
+    return configManager.getPipePluginJar(req);
+  }
+
+  @Override
   public TSStatus merge() throws TException {
     return configManager.merge();
   }
@@ -718,7 +727,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSStatus flush(TFlushReq req) throws TException {
     if (req.storageGroups != null) {
       List<PartialPath> noExistSg =
-          configManager.checkStorageGroupExist(PartialPath.fromStringList(req.storageGroups));
+          configManager
+              .getPartitionManager()
+              .filterUnExistDatabases(PartialPath.fromStringList(req.storageGroups));
       if (!noExistSg.isEmpty()) {
         StringBuilder sb = new StringBuilder();
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
@@ -793,7 +804,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) {
-    return configManager.showStorageGroup(new GetDatabasePlan(storageGroupPathPattern));
+    return configManager.showDatabase(new GetDatabasePlan(storageGroupPathPattern));
   }
 
   @Override
@@ -837,23 +848,34 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) throws TException {
+    return configManager.alterSchemaTemplate(req);
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     return configManager.deleteTimeSeries(req);
   }
 
   @Override
+  @Deprecated
   public TSStatus createPipeSink(TPipeSinkInfo req) {
-    return configManager.createPipeSink(new CreatePipeSinkPlan(req));
+    // To be deleted
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
+  @Deprecated
   public TSStatus dropPipeSink(TDropPipeSinkReq req) {
-    return configManager.dropPipeSink(new DropPipeSinkPlan(req.getPipeSinkName()));
+    // To be deleted
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
+  @Deprecated
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) {
-    return configManager.getPipeSink(req);
+    // To be deleted
+    return new TGetPipeSinkResp();
   }
 
   @Override
@@ -887,32 +909,28 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
-    return configManager.recordPipeMessage(req);
-  }
-
-  @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) {
-    if (req.isSetTimeSlotId() && req.getType() != TConsensusGroupType.DataRegion) {
-      return new TGetRegionIdResp(new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
+    if (req.isSetTimeStamp() && req.getType() != TConsensusGroupType.DataRegion) {
+      TSStatus status = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
+      status.setMessage("Only data region can set time");
+      return new TGetRegionIdResp(status);
     }
     return configManager.getRegionId(req);
   }
 
   @Override
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
-    long startTime = req.isSetStartTime() ? req.getStartTime() : Long.MIN_VALUE;
-    long endTime = req.isSetEndTime() ? req.getEndTime() : Long.MAX_VALUE;
-    GetTimeSlotListPlan plan =
-        new GetTimeSlotListPlan(req.getDatabase(), req.getSeriesSlotId(), startTime, endTime);
-    return configManager.getTimeSlotList(plan);
+    return configManager.getTimeSlotList(req);
+  }
+
+  @Override
+  public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) {
+    return configManager.countTimeSlotList(req);
   }
 
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
-    TConsensusGroupType type = req.isSetType() ? req.getType() : TConsensusGroupType.ConfigRegion;
-    GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase(), type);
-    return configManager.getSeriesSlotList(plan);
+    return configManager.getSeriesSlotList(req);
   }
 
   @Override
@@ -936,32 +954,62 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus createModel(TCreateModelReq req) throws TException {
+  public TSStatus createModel(TCreateModelReq req) {
     return configManager.createModel(req);
   }
 
   @Override
-  public TSStatus dropModel(TDropModelReq req) throws TException {
+  public TSStatus dropModel(TDropModelReq req) {
     return configManager.dropModel(req);
   }
 
   @Override
-  public TShowModelResp showModel(TShowModelReq req) throws TException {
+  public TShowModelResp showModel(TShowModelReq req) {
     return configManager.showModel(req);
   }
 
   @Override
-  public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
+  public TShowTrailResp showTrail(TShowTrailReq req) {
     return configManager.showTrail(req);
   }
 
   @Override
-  public TSStatus updateModelInfo(TUpdateModelInfoReq req) throws TException {
+  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
     return configManager.updateModelInfo(req);
   }
 
   @Override
-  public TSStatus updateModelState(TUpdateModelStateReq req) throws TException {
+  public TSStatus updateModelState(TUpdateModelStateReq req) {
     return configManager.updateModelState(req);
+  }
+
+  @Override
+  public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
+    return configManager.setSpaceQuota(req);
+  }
+
+  @Override
+  public TSpaceQuotaResp showSpaceQuota(List<String> databases) {
+    return configManager.showSpaceQuota(databases);
+  }
+
+  @Override
+  public TSpaceQuotaResp getSpaceQuota() {
+    return configManager.getSpaceQuota();
+  }
+
+  @Override
+  public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) throws TException {
+    return configManager.setThrottleQuota(req);
+  }
+
+  @Override
+  public TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req) {
+    return configManager.showThrottleQuota(req);
+  }
+
+  @Override
+  public TThrottleQuotaResp getThrottleQuota() {
+    return configManager.getThrottleQuota();
   }
 }

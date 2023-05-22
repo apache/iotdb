@@ -180,10 +180,10 @@ export default {
   },
   methods: {
     addRoutes1() {
-      window.location.href = '/zh//Download/';
+      window.location.href = '/zh/Download/';
     },
     addRoutes2() {
-      window.location.href = '/zh//UserGuide/Master/QuickStart/QuickStart.html';
+      window.location.href = '/zh/UserGuide/Master/QuickStart/QuickStart.html';
     },
   },
 };

@@ -21,7 +21,7 @@
 
 # REST API Write
 
-Refer to [insertTablet](../API/RestService.md#inserttablet)
+Refer to [insertTablet (v1)](../API/RestServiceV1.md#inserttablet) or [insertTablet (v2)](../API/RestServiceV2.md#inserttablet)
 
 Example：
 

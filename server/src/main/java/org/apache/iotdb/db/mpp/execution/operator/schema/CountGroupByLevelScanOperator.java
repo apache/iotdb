@@ -80,7 +80,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -88,7 +88,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (schemaReader == null) {
       schemaReader = createTimeSeriesReader();
     }
@@ -140,7 +140,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !hasNextWithTimer();
   }
 

@@ -156,10 +156,13 @@ public class MetricConfig {
   }
 
   /** Update rpc address and rpc port of monitored node. */
-  public void updateRpcInstance(String clusterName, int nodeId, NodeType nodeType) {
+  public void updateRpcInstance(String clusterName, NodeType nodeType) {
     this.clusterName = clusterName;
-    this.nodeId = nodeId;
     this.nodeType = nodeType;
+  }
+
+  public void setNodeId(int nodeId) {
+    this.nodeId = nodeId;
   }
 
   /** Copy properties from another metric config. */

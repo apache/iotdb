@@ -23,6 +23,7 @@ options { tokenVocab=SqlLexer; }
 
 identifier
      : keyWords
+     | DURATION_LITERAL
      | ID
      | QUOTED_ID
      ;
@@ -43,12 +44,14 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
+    | AUTO
     | BEFORE
     | BEGIN
     | BLOCKED
     | BOUNDARY
     | BY
     | CACHE
+    | CAST
     | CHILD
     | CLEAR
     | CLUSTER
@@ -73,12 +76,14 @@ keyWords
     | DESC
     | DESCRIBE
     | DEVICE
+    | DEVICEID
     | DEVICES
     | DETAILS
     | DISABLE
     | DISCARD
     | DROP
     | ELAPSEDTIME
+    | ELSE
     | END
     | ENDTIME
     | EVERY
@@ -114,6 +119,8 @@ keyWords
     | LOCK
     | MERGE
     | METADATA
+    | MODEL
+    | MODELS
     | NODES
     | NONE
     | NOW
@@ -137,12 +144,14 @@ keyWords
     | PREVIOUS
     | PREVIOUSUNTILLAST
     | PRIVILEGES
+    | PRIVILEGE_VALUE
     | PROCESSLIST
     | PROPERTY
     | PRUNE
     | QUERIES
     | QUERY
     | QUERYID
+    | QUOTA
     | RANGE
     | READONLY
     | REGEXP
@@ -152,8 +161,10 @@ keyWords
     | RENAME
     | RESAMPLE
     | RESOURCE
+    | REPLACE
     | REVOKE
     | ROLE
+    | ROUND
     | RUNNING
     | SCHEMA
     | SELECT
@@ -165,6 +176,7 @@ keyWords
     | SHOW
     | SLIMIT
     | SOFFSET
+    | SPACE
     | STORAGE
     | START
     | STARTTIME
@@ -172,10 +184,13 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSTRING
     | SYSTEM
     | TAGS
     | TASK
     | TEMPLATE
+    | THEN
+    | THROTTLE
     | TIMEOUT
     | TIMESERIES
     | TIMESLOTID
@@ -183,6 +198,7 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
+    | TRAILS
     | TRIGGER
     | TRIGGERS
     | TTL
@@ -198,9 +214,10 @@ keyWords
     | VARIATION
     | VERIFY
     | VERSION
+    | VIEW
+    | WHEN
     | WHERE
     | WITH
     | WITHOUT
     | WRITABLE
-    | PRIVILEGE_VALUE
     ;

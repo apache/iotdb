@@ -99,6 +99,7 @@ public class ColumnHeaderConstant {
   // column names for show pipe plugins statement
   public static final String PLUGIN_NAME = "PluginName";
   public static final String PLUGIN_TYPE = "PluginType";
+  public static final String PLUGIN_JAR = "PluginJar";
 
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
@@ -114,7 +115,7 @@ public class ColumnHeaderConstant {
   public static final String SERIES_SLOT_EXECUTOR_CLASS = "SeriesSlotExecutorClass";
   public static final String DEFAULT_TTL = "DefaultTTL(ms)";
   public static final String SCHEMA_REGION_PER_DATA_NODE = "SchemaRegionPerDataNode";
-  public static final String DATA_REGION_PER_PROCESSOR = "DataRegionPerProcessor";
+  public static final String DATA_REGION_PER_DATA_NODE = "DataRegionPerDataNode";
   public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
   public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
 
@@ -124,8 +125,11 @@ public class ColumnHeaderConstant {
   public static final String DATA_NODE_ID = "DataNodeId";
   public static final String TIME_SLOT_NUM = "TimeSlotNum";
   public static final String SERIES_SLOT_ID = "SeriesSlotId";
-  public static final String TIME_SLOT_ID = "TimeSlotId";
+  public static final String TIME_PARTITION = "TimePartition";
+  public static final String COUNT_TIME_PARTITION = "count(timePartition)";
+  public static final String START_TIME = "StartTime";
   public static final String ROLE = "Role";
+  public static final String CREATE_TIME = "CreateTime";
 
   // column names for show datanodes
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
@@ -138,9 +142,12 @@ public class ColumnHeaderConstant {
   public static final String NAME = "Name";
 
   // column names for show pipe
-  public static final String CREATE_TIME = "CreateTime";
-  public static final String REMOTE = "Remote";
-  public static final String MESSAGE = "Message";
+  public static final String ID = "ID";
+  public static final String CREATION_TIME = "CreationTime";
+  public static final String PIPE_COLLECTOR = "PipeCollector";
+  public static final String PIPE_PROCESSOR = "PipeProcessor";
+  public static final String PIPE_CONNECTOR = "PipeConnector";
+  public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
 
   // column names for select into
   public static final String SOURCE_DEVICE = "SourceDevice";
@@ -156,6 +163,27 @@ public class ColumnHeaderConstant {
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
+
+  // column names for show space quota
+  public static final String QUOTA_TYPE = "QuotaType";
+  public static final String LIMIT = "Limit";
+  public static final String USED = "Used";
+
+  // column names for show throttle quota
+  public static final String USER = "User";
+  public static final String READ_WRITE = "Read/Write";
+
+  // column names for show models/trails
+  public static final String MODEL_ID = "ModelId";
+  public static final String TRAIL_ID = "TrailId";
+  public static final String MODEL_TASK = "ModelTask";
+  public static final String MODEL_TYPE = "ModelType";
+  public static final String QUERY_BODY = "QueryBody";
+  public static final String HYPERPARAMETER = "Hyperparameter";
+  public static final String MODEL_PATH = "ModelPath";
+
+  // column names for views (eg. logical view)
+  public static final String VIEW_TYPE = "ViewType";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -174,7 +202,8 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TAGS, TSDataType.TEXT),
           new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
           new ColumnHeader(DEADBAND, TSDataType.TEXT),
-          new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT));
+          new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT),
+          new ColumnHeader(VIEW_TYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
       ImmutableList.of(
@@ -333,7 +362,8 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(PLUGIN_NAME, TSDataType.TEXT),
           new ColumnHeader(PLUGIN_TYPE, TSDataType.TEXT),
-          new ColumnHeader(CLASS_NAME, TSDataType.TEXT));
+          new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
+          new ColumnHeader(PLUGIN_JAR, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showSchemaTemplateHeaders =
       ImmutableList.of(new ColumnHeader(TEMPLATE_NAME, TSDataType.TEXT));
@@ -349,13 +379,13 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showPipeColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(CREATE_TIME, TSDataType.TEXT),
-          new ColumnHeader(NAME, TSDataType.TEXT),
-          new ColumnHeader(ROLE, TSDataType.TEXT),
-          new ColumnHeader(REMOTE, TSDataType.TEXT),
-          new ColumnHeader(STATUS, TSDataType.TEXT),
-          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
-          new ColumnHeader(MESSAGE, TSDataType.TEXT));
+          new ColumnHeader(ID, TSDataType.TEXT),
+          new ColumnHeader(CREATION_TIME, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader(PIPE_COLLECTOR, TSDataType.TEXT),
+          new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
+          new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
+          new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> selectIntoColumnHeaders =
       ImmutableList.of(
@@ -374,7 +404,12 @@ public class ColumnHeaderConstant {
       ImmutableList.of(new ColumnHeader(REGION_ID, TSDataType.INT32));
 
   public static final List<ColumnHeader> getTimeSlotListColumnHeaders =
-      ImmutableList.of(new ColumnHeader(TIME_SLOT_ID, TSDataType.INT64));
+      ImmutableList.of(
+          new ColumnHeader(TIME_PARTITION, TSDataType.INT64),
+          new ColumnHeader(START_TIME, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> countTimeSlotListColumnHeaders =
+      ImmutableList.of(new ColumnHeader(COUNT_TIME_PARTITION, TSDataType.INT64));
 
   public static final List<ColumnHeader> getSeriesSlotListColumnHeaders =
       ImmutableList.of(new ColumnHeader(SERIES_SLOT_ID, TSDataType.INT32));
@@ -391,4 +426,34 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
           new ColumnHeader(STATEMENT, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(LIMIT, TSDataType.TEXT),
+          new ColumnHeader(USED, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showThrottleQuotaColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(USER, TSDataType.TEXT),
+          new ColumnHeader(QUOTA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(LIMIT, TSDataType.TEXT),
+          new ColumnHeader(READ_WRITE, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showModelsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(MODEL_ID, TSDataType.TEXT),
+          new ColumnHeader(MODEL_TASK, TSDataType.TEXT),
+          new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
+          new ColumnHeader(QUERY_BODY, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
+          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTrailsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TRAIL_ID, TSDataType.TEXT),
+          new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
+          new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
 }

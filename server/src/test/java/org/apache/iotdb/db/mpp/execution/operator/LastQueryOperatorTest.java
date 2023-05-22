@@ -90,7 +90,7 @@ public class LastQueryOperatorTest {
   }
 
   @Test
-  public void testLastQueryOperator1() {
+  public void testLastQueryOperator1() throws Exception {
     try {
       List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =
@@ -341,7 +341,7 @@ public class LastQueryOperatorTest {
         }
       }
 
-    } catch (IllegalPathException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }

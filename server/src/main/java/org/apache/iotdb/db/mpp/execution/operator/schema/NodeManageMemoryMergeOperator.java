@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeType;
+import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -74,7 +74,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (isReadingMemory) {
       isReadingMemory = false;
       return transferToTsBlock(data);
@@ -125,7 +125,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return isReadingMemory || child.hasNextWithTimer();
   }
 
@@ -135,7 +135,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !isReadingMemory && child.isFinished();
   }
 

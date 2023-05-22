@@ -27,10 +27,10 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
-import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -72,10 +72,9 @@ public class PartitionMetrics implements IMetricSet {
       metricService.createAutoGauge(
           Metric.REGION_NUM.toString(),
           MetricLevel.CORE,
-          getPartitionManager(),
-          partitionManager ->
-              partitionManager.countRegionWithSpecifiedStatus(
-                  TConsensusGroupType.SchemaRegion, status),
+          getLoadManager(),
+          loadManager ->
+              loadManager.countRegionWithSpecifiedStatus(TConsensusGroupType.SchemaRegion, status),
           Tag.TYPE.toString(),
           TConsensusGroupType.SchemaRegion.toString(),
           Tag.STATUS.toString(),
@@ -85,10 +84,9 @@ public class PartitionMetrics implements IMetricSet {
       metricService.createAutoGauge(
           Metric.REGION_NUM.toString(),
           MetricLevel.CORE,
-          getPartitionManager(),
-          partitionManager ->
-              partitionManager.countRegionWithSpecifiedStatus(
-                  TConsensusGroupType.DataRegion, status),
+          getLoadManager(),
+          loadManager ->
+              loadManager.countRegionWithSpecifiedStatus(TConsensusGroupType.DataRegion, status),
           Tag.TYPE.toString(),
           TConsensusGroupType.DataRegion.toString(),
           Tag.STATUS.toString(),
@@ -330,8 +328,8 @@ public class PartitionMetrics implements IMetricSet {
     return configManager.getClusterSchemaManager();
   }
 
-  private PartitionManager getPartitionManager() {
-    return configManager.getPartitionManager();
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 
   @Override

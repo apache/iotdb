@@ -40,8 +40,12 @@ public class DataDriver extends Driver {
 
   private boolean init;
 
-  public DataDriver(Operator root, DriverContext driverContext) {
+  // Unit : Byte
+  private final long estimatedMemorySize;
+
+  public DataDriver(Operator root, DriverContext driverContext, long estimatedMemorySize) {
     super(root, driverContext);
+    this.estimatedMemorySize = estimatedMemorySize;
   }
 
   @Override
@@ -71,6 +75,12 @@ public class DataDriver extends Driver {
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
         QueryDataSource dataSource = initQueryDataSource();
+        if (dataSource == null) {
+          // if this driver is being initialized, meanwhile the whole FI was aborted or cancelled
+          // for some reasons, we may get null QueryDataSource here.
+          // And it's safe for us to throw this exception here in such case.
+          throw new IllegalStateException("QueryDataSource should never be null!");
+        }
         sourceOperators.forEach(
             sourceOperator -> {
               // construct QueryDataSource for source operator
@@ -100,5 +110,10 @@ public class DataDriver extends Driver {
    */
   private QueryDataSource initQueryDataSource() throws QueryProcessException {
     return ((DataDriverContext) driverContext).getSharedQueryDataSource();
+  }
+
+  @Override
+  public long getEstimatedMemorySize() {
+    return estimatedMemorySize;
   }
 }

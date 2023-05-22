@@ -94,12 +94,12 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
@@ -135,7 +135,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return !this.hasNextWithTimer();
   }
 

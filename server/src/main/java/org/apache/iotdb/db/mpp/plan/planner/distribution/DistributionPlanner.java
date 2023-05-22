@@ -40,7 +40,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import org.apache.commons.lang3.Validate;
@@ -103,11 +102,32 @@ public class DistributionPlanner {
       return;
     }
 
+    if (analysis.isVirtualSource()) {
+      adjustUpStreamHelper(root, context);
+      return;
+    }
+
     final boolean needShuffleSinkNode =
         analysis.getStatement() instanceof QueryStatement
             && needShuffleSinkNode((QueryStatement) analysis.getStatement(), context);
 
     adjustUpStreamHelper(root, new HashMap<>(), needShuffleSinkNode, context);
+  }
+
+  private void adjustUpStreamHelper(PlanNode root, NodeGroupContext context) {
+    for (PlanNode child : root.getChildren()) {
+      adjustUpStreamHelper(child, context);
+      if (child instanceof ExchangeNode) {
+        ExchangeNode exchangeNode = (ExchangeNode) child;
+        MultiChildrenSinkNode newChild =
+            new IdentitySinkNode(context.queryContext.getQueryId().genPlanNodeId());
+        newChild.addChild(exchangeNode.getChild());
+        newChild.addDownStreamChannelLocation(
+            new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
+        exchangeNode.setChild(newChild);
+        exchangeNode.setIndexOfUpstreamSinkHandle(newChild.getCurrentLastIndex());
+      }
+    }
   }
 
   private void adjustUpStreamHelper(
@@ -143,8 +163,8 @@ public class DistributionPlanner {
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
     return nodeGroupContext.isAlignByDevice()
         && orderByComponent != null
-        && !(orderByComponent.getSortItemList().isEmpty()
-            || orderByComponent.getSortItemList().get(0).getSortKey().equals(SortKey.DEVICE));
+        && (!orderByComponent.getSortItemList().isEmpty()
+            && (orderByComponent.isBasedOnTime() && !queryStatement.hasOrderByExpression()));
   }
 
   public PlanNode optimize(PlanNode rootWithExchange) {

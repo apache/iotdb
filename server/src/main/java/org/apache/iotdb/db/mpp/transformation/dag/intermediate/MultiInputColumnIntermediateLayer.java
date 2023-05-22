@@ -64,7 +64,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
   public MultiInputColumnIntermediateLayer(
       Expression expression,
-      long queryId,
+      String queryId,
       float memoryBudgetInMB,
       List<LayerPointReader> parentLayerPointReaders) {
     super(expression, queryId, memoryBudgetInMB);
@@ -165,7 +165,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   }
 
   @Override
-  public YieldableState canYieldNextRowInObjects() throws IOException {
+  public YieldableState canYieldNextRowInObjects() throws Exception {
     if (cachedRow != null) {
       return YieldableState.YIELDABLE;
     }
@@ -301,7 +301,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private boolean currentNull = false;
 
       @Override
-      public YieldableState yield() throws IOException {
+      public YieldableState yield() throws Exception {
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
@@ -384,7 +384,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private int beginIndex = -slidingStep;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
@@ -517,7 +517,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private int nextIndexBegin = 0;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (rowRecordList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
             final YieldableState yieldableState =
@@ -694,7 +694,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private int nextIndexEnd = 1;
 
       @Override
-      public YieldableState yield() throws IOException, QueryProcessException {
+      public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (rowRecordList.size() == 0) {
             final YieldableState yieldableState =

@@ -19,10 +19,9 @@
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.EntityMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
+import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
@@ -42,6 +41,8 @@ import java.nio.ByteBuffer;
 
 public class SchemaPageTest {
 
+  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
@@ -56,11 +57,11 @@ public class SchemaPageTest {
   public void flatTreeInsert() throws IOException, MetadataException {
     ISchemaPage page =
         ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
-    IMNode root = virtualFlatMTree(15);
+    ICachedMNode root = virtualFlatMTree(15);
     for (int i = 0; i < 7; i++) {
       page.getAsSegmentedPage().allocNewSegment(SchemaFileConfig.SEG_SIZE_LST[0]);
       int cnt = 0;
-      for (IMNode child : root.getChildren().values()) {
+      for (ICachedMNode child : root.getChildren().values()) {
         cnt++;
         try {
           page.getAsSegmentedPage()
@@ -104,16 +105,17 @@ public class SchemaPageTest {
     Assert.assertEquals(256, (int) nPage.getAsInternalPage().getRecordByKey("aab"));
   }
 
-  private IMNode virtualFlatMTree(int childSize) {
-    IMNode internalNode = new EntityMNode(null, "vRoot1");
+  private ICachedMNode virtualFlatMTree(int childSize) {
+    ICachedMNode internalNode = nodeFactory.createDeviceMNode(null, "vRoot1").getAsMNode();
 
     for (int idx = 0; idx < childSize; idx++) {
       String measurementId = "mid" + idx;
       IMeasurementSchema schema = new MeasurementSchema(measurementId, TSDataType.FLOAT);
-      IMeasurementMNode mNode =
-          MeasurementMNode.getMeasurementMNode(
-              internalNode.getAsEntityMNode(), measurementId, schema, measurementId + "als");
-      internalNode.addChild(mNode);
+      internalNode.addChild(
+          nodeFactory
+              .createMeasurementMNode(
+                  internalNode.getAsDeviceMNode(), measurementId, schema, measurementId + "als")
+              .getAsMNode());
     }
     return internalNode;
   }

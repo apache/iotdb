@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.execution.operator.process.join;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.AbstractConsumeAllOperator;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -46,8 +45,6 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
   private final int[] inputIndex;
 
-  private final int outputColumnCount;
-
   private final TsBlockBuilder tsBlockBuilder;
 
   private boolean finished;
@@ -58,12 +55,11 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
     checkArgument(
         !children.isEmpty(), "child size of VerticallyConcatOperator should be larger than 0");
     this.inputIndex = new int[this.inputOperatorsCount];
-    this.outputColumnCount = dataTypes.size();
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (!prepareInput()) {
       return null;
     }
@@ -106,26 +102,24 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
-    return !isEmpty(readyChildIndex) || children.get(readyChildIndex).hasNextWithTimer();
+    return !isEmpty(readyChildIndex)
+        || (children.get(readyChildIndex) != null
+            && children.get(readyChildIndex).hasNextWithTimer());
   }
 
   @Override
-  public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
-  }
-
-  @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }
-    return finished = isEmpty(readyChildIndex) && !children.get(readyChildIndex).hasNextWithTimer();
+    return finished =
+        isEmpty(readyChildIndex)
+            && (children.get(readyChildIndex) == null
+                || !children.get(readyChildIndex).hasNextWithTimer());
   }
 
   @Override
@@ -145,9 +139,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateMaxReturnSize() {
-    // time + all value columns
-    return (1L + outputColumnCount)
-        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    return children.stream().mapToLong(Operator::calculateMaxReturnSize).sum();
   }
 
   @Override
@@ -173,7 +165,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  protected TsBlock getNextTsBlock(int childIndex) {
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     inputIndex[childIndex] = 0;
     return children.get(childIndex).nextWithTimer();
   }

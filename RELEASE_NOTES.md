@@ -19,6 +19,79 @@
 
 -->
 
+# Apache IoTDB 1.1.0
+
+## New Features
+
+* [IOTDB-4572] support order by time in align by device
+* [IOTDB-4816] Support Show Queries command
+* [IOTDB-4817] Support kill query command
+* [IOTDB-5077] Support new command formats in  SHOW REGIONS
+* [IOTDB-5108] Support region migration
+* [IOTDB-5202] Support show regions with specific database
+* [IOTDB-5282] Add SQL show variables, which can display the current cluster variables
+* [IOTDB-5341] Support GROUP BY VARIATION in aggregation query
+* [IOTDB-5372] Support data type cast in SELECT INTO
+* [IOTDB-5382] Support DIFF as built-in scalar function in IoTDB
+* [IOTDB-5393] Show Region creation time when execute show regions
+* [IOTDB-5456] Implement COUNT_IF built-in aggregation function
+* [IOTDB-5515] Support GROUP BY CONDITION in aggregation query
+* [IOTDB-5555] Enable modify dn_rpc_port and dn_rpc_address in datanode-engine.properties 
+* Support docker deployment 
+* Rename SeriesSlotId to SeriesSlotNum in show regions
+
+## Improvements
+
+* [IOTDB-4497] Improve NodeStatus definition
+* [IOTDB-5066] Upgraded the GetSlots SQLs
+* [IOTDB-5161] Add output type check for WHERE & HAVING clause and refuse expressions whose return type are not boolean exist in WHERE & HAVING clause
+* [IOTDB-5185] Fixed that old snapshot is not deleted in IoTConsensus
+* [IOTDB-5287] Added status “Discouraged” to RegionGroup
+* [IOTDB-5449] Wait for query resource while the query queue is full instead of throwing exception directly 
+* change STARTUP_RETRY_INTERVAL_IN_MS from 30s to 3s
+
+## Bug Fixes
+
+* [IOTDB-4684] Fix devices with the same name but different alignment properties are compacted into the wrong alignment property
+* [IOTDB-5061] Add initialize state check when create snapshot
+* [IOTDB-5090] Fix the NPE when executing stop-datanode.sh
+* [IOTDB-5112] Fixed IoTConsensus synchronization stuck under low load or during restart
+* [IOTDB-5126] Fix that show-regions show IP rather than hostname even though the hostname is used when registering
+* [IOTDB-5165] Fix fail to pass compaction validation when resources degrade to FileTimeIndex
+* [IOTDB-5170] Fix the problem that datanode is closed when executing stop-confignode.bat on Windows platform
+* [IOTDB-5199] Fix NPE in StorageExector inLoading process
+* [IOTDB-5216] Fix order by timeseries doesn't take effect in aligned last query
+* [IOTDB-5228] NPE if the file does not exist while creating TsFileSequenceReader instance
+* [IOTDB-5240] Fix schema template timeseries read/write error after restart
+* [IOTDB-5245] Fix data is incomplete in last query
+* [IOTDB-5277] Fix DataNode restart failure when SchemaRegion loading snapshot
+* [IOTDB-5278] Fix JDBC Driver cannot connect to the dbeaver
+* [IOTDB-5285] Fix TimePartition error when restarting with different time partition configuration
+* [IOTDB-5269] Fix wrong data of devices ought to be deleted after executing `delete from` sql
+* [IOTDB-5324] Fix wal cann't be deleted in destDataNode after region migration when data_replication_factor is 1 in IoTConsensus
+* [IOTDB-5389] Cause DataNode startup to fail when wal_mode is disabled in IoTConsensus
+* [IOTDB-5414] Fix timeseries with alias deleted success but can still be queried by alias
+* [IOTDB-5426] Cannot trigger flush for sequence file when timed flush enabled
+* [IOTDB-5441] Fix NPE while fetch schema that is not in template used by related device
+* [IOTDB-5469] Fix get schema info failure after creating template with backquote characters successfully
+* [IOTDB-5474] Fix count nodes using level bug
+* [IOTDB-5480] IoTConsensus sync lag may be negative under single copy
+* [IOTDB-5488] Support set system to readonly on local
+* [IOTDB-5492] Skip broken tsfile when recovering system
+* [IOTDB-5512] Fixed IoTConsensus may repeatedly send some log when restarting
+* [IOTDB-5516] Fix creating timeseries failure after dropping all databases
+* [IOTDB-5526] Fix deleting timeseries failure when it belongs to a device activating template
+* [IOTDB-5548] Fix dropping template failure when using pure number as template name
+* [IOTDB-5592] Fix unexpected error while using full path(starting with root) in having/where clause
+* [IOTDB-5620] Fix flush stuck when there is a lot of time partitions in each DataRegion
+* [IOTDB-5639] Fix file not found exception in cross space compaction selector
+* [IOTDB-5657] Fix LIMIT&OFFSET does not take effect in last query
+* [IOTDB-5684] Fix log folder generation when using ConfigNode's Simple consensus protocol
+* [IOTDB-5685] Fix error msg of failing to create a timeseries on an existing path when ReadOnly state
+* [IOTDB-5686] Fix devices with the same name but different alignment properties meets error in inner seq compaction
+* [IOTDB-5700] Clean temporary files created by UDF query after it finishes 
+* Add SHOW_CQ privilege
+
 # Apache IoTDB 1.0.0
 
 ## New Features

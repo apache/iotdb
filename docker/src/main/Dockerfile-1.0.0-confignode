@@ -39,8 +39,8 @@ COPY DockerCompose/entrypoint.sh .
 RUN chmod +x *.sh && dos2unix *.sh \
   && dos2unix ${IOTDB_HOME}/conf/*.sh
 
-EXPOSE 22277
-EXPOSE 22278
+EXPOSE 10710
+EXPOSE 10720
 VOLUME ${IOTDB_HOME}/data
 VOLUME ${IOTDB_HOME}/logs
 

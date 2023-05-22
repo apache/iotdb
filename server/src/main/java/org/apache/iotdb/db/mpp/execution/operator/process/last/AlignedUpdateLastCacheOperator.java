@@ -50,7 +50,7 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     TsBlock res = child.nextWithTimer();
     if (res == null) {
       return null;

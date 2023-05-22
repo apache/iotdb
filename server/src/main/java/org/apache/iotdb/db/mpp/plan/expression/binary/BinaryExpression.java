@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.common.NodeRef;
@@ -115,7 +114,7 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public final String getExpressionStringInternal() {
+  public String getExpressionStringInternal() {
     StringBuilder builder = new StringBuilder();
     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(leftExpression.getExpressionString()).append(")");

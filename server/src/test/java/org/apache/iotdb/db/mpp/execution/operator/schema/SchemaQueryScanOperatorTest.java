@@ -64,7 +64,7 @@ public class SchemaQueryScanOperatorTest {
   private static final String META_SCAN_OPERATOR_TEST_SG = "root.MetaScanOperatorTest";
 
   @Test
-  public void testDeviceSchemaScan() {
+  public void testDeviceSchemaScan() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -82,7 +82,7 @@ public class SchemaQueryScanOperatorTest {
               1, planNodeId, SchemaQueryScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
+      Mockito.when(schemaRegion.getDatabaseFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
       IDeviceSchemaInfo deviceSchemaInfo = Mockito.mock(IDeviceSchemaInfo.class);
       Mockito.when(deviceSchemaInfo.getFullPath())
           .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0");
@@ -90,7 +90,7 @@ public class SchemaQueryScanOperatorTest {
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
-          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true);
+          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true, null);
       SchemaOperatorTestUtil.mockGetSchemaReader(
           deviceSchemaSource,
           Collections.singletonList(deviceSchemaInfo).iterator(),
@@ -156,7 +156,7 @@ public class SchemaQueryScanOperatorTest {
   }
 
   @Test
-  public void testTimeSeriesSchemaScan() {
+  public void testTimeSeriesSchemaScan() throws Exception {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -190,13 +190,13 @@ public class SchemaQueryScanOperatorTest {
       }
 
       ISchemaRegion schemaRegion = Mockito.mock(ISchemaRegion.class);
-      Mockito.when(schemaRegion.getStorageGroupFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
+      Mockito.when(schemaRegion.getDatabaseFullPath()).thenReturn(META_SCAN_OPERATOR_TEST_SG);
 
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<ITimeSeriesSchemaInfo> timeSeriesSchemaSource =
           SchemaSourceFactory.getTimeSeriesSchemaSource(
-              partialPath, false, 10, 0, null, null, false, Collections.emptyMap());
+              partialPath, false, 10, 0, null, Collections.emptyMap());
       SchemaOperatorTestUtil.mockGetSchemaReader(
           timeSeriesSchemaSource, showTimeSeriesResults.iterator(), schemaRegion, true);
 

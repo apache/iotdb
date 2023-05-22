@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.execution.driver;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -28,8 +30,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class DriverContext {
 
@@ -39,9 +39,18 @@ public class DriverContext {
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
   private ISink sink;
   private final RuleBasedTimeSliceAllocator timeSliceAllocator;
+
   private int dependencyDriverIndex = -1;
+  private ExchangeOperator downstreamOperator;
 
   private final AtomicBoolean finished = new AtomicBoolean();
+  private boolean mayHaveTmpFile = false;
+
+  @TestOnly
+  public DriverContext() {
+    this.fragmentInstanceContext = null;
+    this.timeSliceAllocator = null;
+  }
 
   public DriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
     this.fragmentInstanceContext = fragmentInstanceContext;
@@ -51,14 +60,6 @@ public class DriverContext {
 
   public OperatorContext addOperatorContext(
       int operatorId, PlanNodeId planNodeId, String operatorType) {
-    checkArgument(operatorId >= 0, "operatorId is negative");
-
-    for (OperatorContext operatorContext : operatorContexts) {
-      checkArgument(
-          operatorId != operatorContext.getOperatorId(),
-          "A context already exists for operatorId %s",
-          operatorId);
-    }
 
     OperatorContext operatorContext =
         new OperatorContext(operatorId, planNodeId, operatorType, this);
@@ -76,6 +77,14 @@ public class DriverContext {
 
   public int getDependencyDriverIndex() {
     return dependencyDriverIndex;
+  }
+
+  public void setDownstreamOperator(ExchangeOperator downstreamOperator) {
+    this.downstreamOperator = downstreamOperator;
+  }
+
+  public ExchangeOperator getDownstreamOperator() {
+    return downstreamOperator;
   }
 
   public void setSink(ISink sink) {
@@ -129,5 +138,13 @@ public class DriverContext {
 
   public boolean isDone() {
     return finished.get();
+  }
+
+  public void setHaveTmpFile(boolean mayHaveTmpFile) {
+    this.mayHaveTmpFile = mayHaveTmpFile;
+  }
+
+  public boolean mayHaveTmpFile() {
+    return mayHaveTmpFile;
   }
 }

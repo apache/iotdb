@@ -42,9 +42,11 @@ import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.ProcessMetrics;
 import org.apache.iotdb.db.service.metrics.SystemMetrics;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -68,6 +70,8 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static final int INIT_NON_SEED_CONFIG_NODE_ID = -1;
 
+  private static final String CONFIGURATION = "IoTDB configuration: {}";
+
   private final String mbeanName =
       String.format(
           "%s:%s=%s",
@@ -82,9 +86,9 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public static void main(String[] args) {
     LOGGER.info(
-        ConfigNodeConstant.GLOBAL_NAME
-            + " environment variables: "
-            + ConfigNodeConfig.getEnvironmentVariables());
+        "{} environment variables: {}",
+        ConfigNodeConstant.GLOBAL_NAME,
+        ConfigNodeConfig.getEnvironmentVariables());
     new ConfigNodeCommandLine().doMain(args);
   }
 
@@ -114,7 +118,11 @@ public class ConfigNode implements ConfigNodeMBean {
         }
 
         configManager.initConsensusManager();
+        setUpMetricService();
+        // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
+        // that the external service is not provided until ConfigNode is fully available
         setUpRPCService();
+        LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
         LOGGER.info(
             "{} has successfully restarted and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
@@ -144,11 +152,12 @@ public class ConfigNode implements ConfigNodeMBean {
                     SEED_CONFIG_NODE_ID,
                     new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
                     new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
-        // We always set up Seed-ConfigNode's RPC service lastly to ensure that
-        // the external service is not provided until Seed-ConfigNode is fully initialized
+        setUpMetricService();
+        // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
+        // that the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
         // The initial startup of Seed-ConfigNode finished
-
+        LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
         LOGGER.info(
             "{} has successfully started and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
@@ -163,11 +172,13 @@ public class ConfigNode implements ConfigNodeMBean {
       sendRegisterConfigNodeRequest();
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
+      LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
       LOGGER.info(
           "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.",
           ConfigNodeConstant.GLOBAL_NAME,
           CONF.getConfigNodeId(),
           CONF.getClusterName());
+      setUpMetricService();
 
       boolean isJoinedCluster = false;
       for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
@@ -184,6 +195,7 @@ public class ConfigNode implements ConfigNodeMBean {
           TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
         } catch (InterruptedException e) {
           LOGGER.warn("Waiting leader's scheduling is interrupted.");
+          Thread.currentThread().interrupt();
         }
       }
 
@@ -205,11 +217,16 @@ public class ConfigNode implements ConfigNodeMBean {
     }
   }
 
-  private void setUpInternalServices() throws StartupException, IOException {
+  private void setUpInternalServices() throws StartupException {
     // Setup JMXService
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
+    LOGGER.info("Successfully setup internal services.");
+  }
+
+  private void setUpMetricService() throws StartupException {
+    MetricConfigDescriptor.getInstance().getMetricConfig().setNodeId(CONF.getConfigNodeId());
     registerManager.register(MetricService.getInstance());
     // bind predefined metric sets
     MetricService.getInstance().addMetricSet(new JvmMetrics());
@@ -217,8 +234,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(false));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
-
-    LOGGER.info("Successfully setup internal services.");
+    MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
   }
 
   private void initConfigManager() {
@@ -233,7 +249,7 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
-  /** Register Non-seed ConfigNode when first startup */
+  /** Register Non-seed ConfigNode when first startup. */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
@@ -284,6 +300,7 @@ public class ConfigNode implements ConfigNodeMBean {
       try {
         TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new StartupException("Register ConfigNode failed!");
       }
     }
@@ -293,7 +310,7 @@ public class ConfigNode implements ConfigNodeMBean {
     stop();
   }
 
-  private void sendRestartConfigNodeRequest() throws IOException, StartupException {
+  private void sendRestartConfigNodeRequest() throws StartupException {
     TConfigNodeRestartReq req =
         new TConfigNodeRestartReq(
             CONF.getClusterName(),
@@ -329,7 +346,8 @@ public class ConfigNode implements ConfigNodeMBean {
       try {
         TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
-        throw new StartupException("Register ConfigNode failed!");
+        Thread.currentThread().interrupt();
+        throw new StartupException("Register ConfigNode failed! ");
       }
     }
   }
@@ -343,7 +361,7 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(configNodeRPCService);
   }
 
-  /** Deactivating ConfigNode internal services */
+  /** Deactivating ConfigNode internal services. */
   public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();

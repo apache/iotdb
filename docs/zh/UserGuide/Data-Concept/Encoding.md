@@ -63,24 +63,35 @@ GORILLA 编码是一种无损编码，它比较适合编码前后值比较接近
 
 ZigZag编码将有符号整型映射到无符号整型，适合比较小的整数。
 
-* CHIMP
+* CHIMP 编码
 
 CHIMP 是一种无损编码。它是一种新的流式浮点数据压缩算法，可以节省存储空间。这个编码适用于前后值比较接近的数值序列，对波动小和随机噪声少的序列数据更加友好。
 
 使用限制：如果对 INT32 类型数据使用 CHIMP 编码，需要确保数据点中没有 `Integer.MIN_VALUE`。 如果对 INT64 类型数据使用 CHIMP 编码，需要确保数据点中没有 `Long.MIN_VALUE`。
 
+* SPRINTZ 编码
+
+SPRINTZ编码是一种无损编码，将原始时序数据分别进行预测、Zigzag编码、位填充和游程编码。SPRINTZ编码适合差分值的绝对值较小（即波动较小）的时序数据，不适合差分值较大（即波动较大）的时序数据。
+
+* RLBE 编码
+
+RLBE编码是一种无损编码，将差分编码，位填充编码，游程长度，斐波那契编码和拼接等编码思想结合到一起。RLBE编码适合递增且递增值较小的时序数据，不适合波动较大的时序数据。
+
+
+
+
 ### 数据类型与编码的对应关系
 
 前文介绍的五种编码适用于不同的数据类型，若对应关系错误，则无法正确创建时间序列。数据类型与支持其编码的编码方式对应关系总结如下表所示。
 
-| 数据类型 | 支持的编码                                  |
-|-:-:------|-:-:-----------------------------------------|
-| BOOLEAN  | PLAIN, RLE                                  |
-| INT32    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
-| INT64    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG |
-| FLOAT    | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
-| DOUBLE   | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ         |
-| TEXT     | PLAIN, DICTIONARY                           |
+| 数据类型 |                        支持的编码                        |
+|:---------:|:-----------------------------------------------------------------:|
+| BOOLEAN   |                            PLAIN, RLE                             |
+| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| FLOAT     |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
+| DOUBLE    |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
+| TEXT      |                         PLAIN, DICTIONARY                         |
 
 当用户输入的数据类型与编码方式不对应时，系统会提示错误。如下所示，二阶差分编码不支持布尔类型：
 

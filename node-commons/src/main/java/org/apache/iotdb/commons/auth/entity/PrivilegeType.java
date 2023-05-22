@@ -60,6 +60,11 @@ public enum PrivilegeType {
   CREATE_PIPEPLUGIN,
   DROP_PIPEPLUGIN,
   SHOW_PIPEPLUGINS,
+  CREATE_PIPE,
+  START_PIPE,
+  STOP_PIPE,
+  DROP_PIPE,
+  SHOW_PIPES,
   ;
 
   private static final int PRIVILEGE_COUNT = values().length;

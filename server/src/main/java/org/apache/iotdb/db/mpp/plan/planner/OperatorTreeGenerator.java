@@ -124,6 +124,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOp
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.mpp.execution.operator.window.ConditionWindowParameter;
+import org.apache.iotdb.db.mpp.execution.operator.window.CountWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.SessionWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.mpp.execution.operator.window.VariationWindowParameter;
@@ -190,6 +191,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregatio
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByCountParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupBySessionParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -199,9 +201,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.statistics.StatisticsManager;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
@@ -221,6 +223,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -286,7 +289,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
     if (valueFilter != null) {
-      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+      seriesScanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
     seriesScanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
@@ -328,7 +331,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       seriesScanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
     }
     if (valueFilter != null) {
-      seriesScanOptionsBuilder.withGlobalTimeFilter(valueFilter.copy());
+      seriesScanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
     seriesScanOptionsBuilder.withLimit(node.getLimit());
     seriesScanOptionsBuilder.withOffset(node.getOffset());
@@ -386,11 +389,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
+    Filter valueFilter = node.getValueFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
     if (timeFilter != null) {
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+    if (valueFilter != null) {
+      scanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
 
     SeriesAggregationScanOperator aggregateScanOperator =
@@ -459,10 +466,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     Filter timeFilter = node.getTimeFilter();
+    Filter valueFilter = node.getValueFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
     if (timeFilter != null) {
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
+    }
+    if (valueFilter != null) {
+      scanOptionsBuilder.withQueryFilter(valueFilter.copy());
     }
 
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
@@ -543,9 +554,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isPrefixPath(),
             node.getLimit(),
             node.getOffset(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
+            node.getSchemaFilter(),
             node.getTemplateMap()));
   }
 
@@ -568,7 +577,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isPrefixPath(),
             node.getLimit(),
             node.getOffset(),
-            node.isHasSgCol()));
+            node.isHasSgCol(),
+            node.getSchemaFilter()));
   }
 
   @Override
@@ -635,12 +645,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPlanNodeId(),
         operatorContext,
         SchemaSourceFactory.getTimeSeriesSchemaSource(
-            node.getPath(),
-            node.isPrefixPath(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
-            node.getTemplateMap()));
+            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), node.getTemplateMap()));
   }
 
   @Override
@@ -659,12 +664,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         node.getLevel(),
         SchemaSourceFactory.getTimeSeriesSchemaSource(
-            node.getPath(),
-            node.isPrefixPath(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
-            null));
+            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), null));
   }
 
   @Override
@@ -788,7 +788,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     TimeSelector selector = null;
     TimeComparator timeComparator = null;
     for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
-      if (sortItem.getSortKey() == SortKey.TIME) {
+      if (Objects.equals(sortItem.getSortKey(), OrderByKey.TIME)) {
         Ordering ordering = sortItem.getOrdering();
         if (ordering == Ordering.ASC) {
           selector = new TimeSelector(node.getChildren().size() << 1, true);
@@ -844,15 +844,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       List<TSDataType> sortItemDataTypeList) {
     sortItemList.forEach(
         sortItem -> {
-          if (sortItem.getSortKey() == SortKey.TIME) {
+          if (sortItem.getSortKey().equals(OrderByKey.TIME)) {
             sortItemIndexList.add(-1);
             sortItemDataTypeList.add(TSDataType.INT64);
           } else {
             for (int i = 0; i < outputColumnNames.size(); i++) {
-              if (sortItem.getSortKey().toString().equalsIgnoreCase(outputColumnNames.get(i))) {
+              if (sortItem.getSortKey().equalsIgnoreCase(outputColumnNames.get(i))) {
                 sortItemIndexList.add(i);
                 sortItemDataTypeList.add(dataTypes.get(i));
                 break;
+              }
+              // there is no related column in outputColumnNames
+              if (i == outputColumnNames.size() - 1) {
+                sortItemIndexList.add(-2);
+                sortItemDataTypeList.add(null);
               }
             }
           }
@@ -1502,6 +1507,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     ((GroupBySessionParameter) groupByParameter).getTimeInterval(),
                     node.isOutputEndTime());
             break;
+          case COUNT_WINDOW:
+            Expression groupByCountExpression = node.getGroupByExpression();
+            if (groupByCountExpression == null) {
+              throw new IllegalArgumentException("groupByCountExpression can't be null");
+            }
+            windowParameter =
+                new CountWindowParameter(
+                    ((GroupByCountParameter) groupByParameter).getCountNumber(),
+                    layout
+                        .get(groupByCountExpression.getExpressionString())
+                        .get(0)
+                        .getValueColumnIndex(),
+                    node.isOutputEndTime(),
+                    ((GroupByCountParameter) groupByParameter).isIgnoreNull());
+            break;
           default:
             throw new IllegalArgumentException("Unsupported window type");
         }
@@ -1577,7 +1597,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                DeviceViewIntoOperator.class.getSimpleName());
+                SortOperator.class.getSimpleName());
+
     List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     List<SortItem> sortItemList = node.getOrderByParameter().getSortItemList();
@@ -1591,10 +1612,23 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         sortItemList,
         sortItemIndexList,
         sortItemDataTypeList);
+
+    String filePrefix =
+        IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+            + File.separator
+            + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
+            + File.separator
+            + operatorContext.getDriverContext().getPipelineId()
+            + File.separator;
+
+    context.getDriverContext().setHaveTmpFile(true);
+    context.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
+
     return new SortOperator(
         operatorContext,
         child,
         dataTypes,
+        filePrefix,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
@@ -1622,10 +1656,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap =
         intoPathDescriptor.getTargetPathToDataTypeMap();
-
-    int rowLimit =
-        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
-    long maxStatementSize = calculateStatementSizePerLine(targetPathToDataTypeMap) * rowLimit;
+    long statementSizePerLine = calculateStatementSizePerLine(targetPathToDataTypeMap);
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
@@ -1639,7 +1670,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         intoPathDescriptor.getSourceTargetPathPairList(),
         sourceColumnToInputLocationMap,
         FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
-        maxStatementSize);
+        statementSizePerLine);
   }
 
   @Override
@@ -1680,10 +1711,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           calculateStatementSizePerLine(deviceToTargetPathDataTypeMap.get(sourceDevice));
     }
 
-    int rowLimit =
-        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
-    long maxStatementSize = statementSizePerLine * rowLimit;
-
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new DeviceViewIntoOperator(
         operatorContext,
@@ -1695,7 +1722,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         deviceViewIntoPathDescriptor.getDeviceToSourceTargetPathPairListMap(),
         sourceColumnToInputLocationMap,
         FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
-        maxStatementSize);
+        statementSizePerLine);
   }
 
   private Map<String, InputLocation> constructSourceColumnToInputLocationMap(PlanNode node) {
@@ -2184,7 +2211,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
     checkArgument(
         sortItemList.isEmpty()
-            || (sortItemList.size() == 1 && sortItemList.get(0).getSortKey() == SortKey.TIMESERIES),
+            || (sortItemList.size() == 1
+                && Objects.equals(sortItemList.get(0).getSortKey(), OrderByKey.TIMESERIES)),
         "Last query only support order by timeseries asc/desc");
 
     context.setLastQueryTimeFilter(node.getTimeFilter());
@@ -2501,7 +2529,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             // Attention, there is no parent node, use first child node instead
             subContext.getDriverContext(), childNode.getPlanNodeId().getId());
     subContext.setISink(localSinkChannel);
-    subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
+    subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext(), 0);
 
     ExchangeOperator sourceOperator =
         new ExchangeOperator(
@@ -2558,7 +2586,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   // Attention, there is no parent node, use first child node instead
                   context.getDriverContext(), childNode.getPlanNodeId().getId());
           subContext.setISink(localSinkChannel);
-          subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext());
+          subContext.addPipelineDriverFactory(childOperation, subContext.getDriverContext(), 0);
 
           // OneByOneChild may be divided into more than dop pipelines, but the number of running
           // actually is dop
@@ -2570,8 +2598,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           if (sumOfChildPipelines > dopForChild) {
             // Update dependencyPipeId, after which finishes we can submit curChildPipeline
             while (sumOfChildPipelines > dopForChild) {
-              dependencyPipeId = context.getPipelineNumber() - sumOfChildPipelines;
               sumOfChildPipelines -= childPipelineNums.get(dependencyChildNode);
+              // The dependency pipeline must be a parent pipeline rather than a child pipeline
+              dependencyPipeId = context.getPipelineNumber() - sumOfChildPipelines - 1;
               sumOfChildExchangeNums -= childExchangeNums.get(dependencyChildNode);
               dependencyChildNode++;
             }
@@ -2596,6 +2625,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                       context.getDriverContext()),
                   childNode.getPlanNodeId(),
                   childOperation.calculateMaxReturnSize());
+          context.getCurrentPipelineDriverFactory().setDownstreamOperator(sourceOperator);
           context
               .getTimeSliceAllocator()
               .recordExecutionWeight(sourceOperator.getOperatorContext(), 1);

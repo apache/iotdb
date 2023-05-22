@@ -29,18 +29,42 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipePluginMeta {
-  private String pluginName;
-  private String className;
-  private String pluginType;
-  private String jarName;
-  private String jarMD5;
 
-  private PipePluginMeta() {}
+  private final String pluginName;
+  private final String className;
 
-  public PipePluginMeta(String pluginName, String className, String pluginType) {
-    this.pluginName = pluginName;
-    this.className = className;
-    this.pluginType = pluginType;
+  // jarName and jarMD5 are used to identify the jar file.
+  // they could be null if the plugin is built-in. they should be both null or both not null.
+  private final boolean isBuiltin;
+  private final String jarName;
+  private final String jarMD5;
+
+  public PipePluginMeta(
+      String pluginName, String className, boolean isBuiltin, String jarName, String jarMD5) {
+    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.className = Objects.requireNonNull(className);
+
+    this.isBuiltin = isBuiltin;
+    if (isBuiltin) {
+      this.jarName = jarName;
+      this.jarMD5 = jarMD5;
+    } else {
+      this.jarName = Objects.requireNonNull(jarName);
+      this.jarMD5 = Objects.requireNonNull(jarMD5);
+    }
+  }
+
+  public PipePluginMeta(String pluginName, String className) {
+    this.pluginName = Objects.requireNonNull(pluginName).toUpperCase();
+    this.className = Objects.requireNonNull(className);
+
+    this.isBuiltin = true;
+    this.jarName = null;
+    this.jarMD5 = null;
+  }
+
+  public boolean isBuiltin() {
+    return isBuiltin;
   }
 
   public String getPluginName() {
@@ -51,36 +75,12 @@ public class PipePluginMeta {
     return className;
   }
 
-  public String getPluginType() {
-    return pluginType;
-  }
-
   public String getJarName() {
     return jarName;
   }
 
   public String getJarMD5() {
     return jarMD5;
-  }
-
-  public void setPluginName(String pluginName) {
-    this.pluginName = pluginName.toUpperCase();
-  }
-
-  public void setClassName(String className) {
-    this.className = className;
-  }
-
-  public void setPluginType(String pluginType) {
-    this.pluginType = pluginType;
-  }
-
-  public void setJarName(String jarName) {
-    this.jarName = jarName;
-  }
-
-  public void setJarMD5(String jarMD5) {
-    this.jarMD5 = jarMD5;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -93,19 +93,18 @@ public class PipePluginMeta {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(pluginName, outputStream);
     ReadWriteIOUtils.write(className, outputStream);
-    ReadWriteIOUtils.write(pluginType, outputStream);
+    ReadWriteIOUtils.write(isBuiltin, outputStream);
     ReadWriteIOUtils.write(jarName, outputStream);
     ReadWriteIOUtils.write(jarMD5, outputStream);
   }
 
-  public static PipePluginMeta deserialize(ByteBuffer buffer) {
-    PipePluginMeta pipePluginMeta = new PipePluginMeta();
-    pipePluginMeta.setPluginName(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
-    pipePluginMeta.setClassName(ReadWriteIOUtils.readString(buffer));
-    pipePluginMeta.setPluginType(ReadWriteIOUtils.readString(buffer));
-    pipePluginMeta.setJarName(ReadWriteIOUtils.readString(buffer));
-    pipePluginMeta.setJarMD5(ReadWriteIOUtils.readString(buffer));
-    return pipePluginMeta;
+  public static PipePluginMeta deserialize(ByteBuffer byteBuffer) {
+    final String pluginName = ReadWriteIOUtils.readString(byteBuffer);
+    final String className = ReadWriteIOUtils.readString(byteBuffer);
+    final boolean isBuiltin = ReadWriteIOUtils.readBool(byteBuffer);
+    final String jarName = ReadWriteIOUtils.readString(byteBuffer);
+    final String jarMD5 = ReadWriteIOUtils.readString(byteBuffer);
+    return new PipePluginMeta(pluginName, className, isBuiltin, jarName, jarMD5);
   }
 
   public static PipePluginMeta deserialize(InputStream inputStream) throws IOException {
@@ -114,23 +113,43 @@ public class PipePluginMeta {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
+  public boolean equals(Object obj) {
+    if (this == obj) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipePluginMeta that = (PipePluginMeta) o;
-    return Objects.equals(pluginName, that.pluginName)
-        && Objects.equals(className, that.className)
-        && Objects.equals(pluginType, that.pluginType)
+    PipePluginMeta that = (PipePluginMeta) obj;
+    return pluginName.equals(that.pluginName)
+        && className.equals(that.className)
+        && isBuiltin == that.isBuiltin
         && Objects.equals(jarName, that.jarName)
         && Objects.equals(jarMD5, that.jarMD5);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(pluginName);
+    return pluginName.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return "PipePluginMeta{"
+        + "pluginName='"
+        + pluginName
+        + '\''
+        + ", className='"
+        + className
+        + '\''
+        + ", isBuiltin="
+        + isBuiltin
+        + ", jarName='"
+        + jarName
+        + '\''
+        + ", jarMD5='"
+        + jarMD5
+        + '\''
+        + '}';
   }
 }

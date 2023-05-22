@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
-import org.apache.iotdb.db.mpp.aggregation.Accumulator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
@@ -64,11 +63,6 @@ public class ConditionWindow implements IWindow {
       startTime = Math.min(startTime, currentTime);
       endTime = Math.max(endTime, currentTime);
     }
-  }
-
-  @Override
-  public boolean hasFinalResult(Accumulator accumulator) {
-    return accumulator.hasFinalResult();
   }
 
   @Override

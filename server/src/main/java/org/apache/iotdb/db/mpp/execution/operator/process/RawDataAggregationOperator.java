@@ -73,19 +73,19 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     this.resultTsBlockBuilder = windowManager.createResultTsBlockBuilder(aggregators);
   }
 
-  private boolean hasMoreData() {
+  private boolean hasMoreData() throws Exception {
     return !(inputTsBlock == null || inputTsBlock.isEmpty())
         || child.hasNextWithTimer()
         || hasCachedDataInAggregator;
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     return windowManager.hasNext(hasMoreData());
   }
 
   @Override
-  protected boolean calculateNextAggregationResult() {
+  protected boolean calculateNextAggregationResult() throws Exception {
 
     // if needSkip is true, just get the tsBlock directly.
     while (needSkip || !calculateFromRawData()) {
@@ -107,7 +107,8 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         if (windowManager.notInitializedLastTimeWindow()) {
           initWindowAndAggregators();
         }
-        // If the window is not initialized, it just returns to avoid invoking updateResultTsBlock()
+        // If the window is not initialized, it just returns to avoid invoking
+        // updateResultTsBlock()
         // but if it's skipping the last window, just break and keep skipping.
         if (needSkip || windowManager.isCurWindowInit()) break;
         return false;

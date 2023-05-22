@@ -28,6 +28,9 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
+import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -137,6 +140,7 @@ public class TypeInferenceUtils {
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.EXTREME:
+      case SqlConstant.MODE:
         return dataType;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -168,6 +172,7 @@ public class TypeInferenceUtils {
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.LAST_VALUE:
       case SqlConstant.TIME_DURATION:
+      case SqlConstant.MODE:
         return;
       case SqlConstant.COUNT_IF:
         if (dataType != TSDataType.BOOLEAN) {
@@ -204,6 +209,7 @@ public class TypeInferenceUtils {
       case SqlConstant.FIRST_VALUE:
       case SqlConstant.LAST_VALUE:
       case SqlConstant.TIME_DURATION:
+      case SqlConstant.MODE:
         return;
       case SqlConstant.COUNT_IF:
         Expression keepExpression = inputExpressions.get(1);
@@ -244,37 +250,19 @@ public class TypeInferenceUtils {
     }
   }
 
-  public static TSDataType getBuiltInFunctionDataType(String funcName, TSDataType dataType) {
-    if (funcName == null) {
-      throw new IllegalArgumentException("ScalarFunction Name must not be null");
+  public static TSDataType getBuiltInScalarFunctionDataType(
+      FunctionExpression functionExpression, TSDataType dataType) {
+    String functionName = functionExpression.getFunctionName();
+    if (functionName == null) {
+      throw new IllegalArgumentException("ScalarFunction Name must not be null.");
     }
-    verifyIsBuiltInFunctionDataTypeMatched(funcName, dataType);
-
-    switch (funcName.toLowerCase()) {
-      case SqlConstant.DIFF:
-        return TSDataType.DOUBLE;
-      default:
-        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
+    BuiltInScalarFunctionHelper helper =
+        BuiltInScalarFunctionHelperFactory.createHelper(functionName);
+    // check input data type first if it is not a NullOperand
+    if (dataType != null) {
+      helper.checkBuiltInScalarFunctionInputDataType(dataType);
     }
-  }
-
-  private static void verifyIsBuiltInFunctionDataTypeMatched(String funcName, TSDataType dataType) {
-    // input is NullOperand, needn't check
-    if (dataType == null) {
-      return;
-    }
-    switch (funcName.toLowerCase()) {
-      case SqlConstant.DIFF:
-        if (dataType.isNumeric()) {
-          return;
-        }
-        throw new SemanticException(
-            String.format(
-                "Input series of Scalar function [%s] only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]",
-                funcName));
-      default:
-        throw new IllegalArgumentException("Invalid Scalar function: " + funcName);
-    }
+    return helper.getBuiltInScalarFunctionReturnType(functionExpression);
   }
 
   public static boolean canAutoCast(TSDataType fromType, TSDataType toType) {

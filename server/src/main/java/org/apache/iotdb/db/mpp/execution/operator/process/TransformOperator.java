@@ -77,6 +77,8 @@ public class TransformOperator implements ProcessOperator {
   protected TimeSelector timeHeap;
   protected boolean[] shouldIterateReadersToNextValid;
 
+  private final String udtfQueryId;
+
   public TransformOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
@@ -91,6 +93,9 @@ public class TransformOperator implements ProcessOperator {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
+    // use DriverTaskID().getFullId() to ensure that udtfQueryId for each TransformOperator is
+    // unique
+    this.udtfQueryId = operatorContext.getDriverContext().getDriverTaskID().getFullId();
 
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
@@ -103,7 +108,7 @@ public class TransformOperator implements ProcessOperator {
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
     inputLayer =
         new QueryDataSetInputLayer(
-            operatorContext.getOperatorId(),
+            udtfQueryId,
             udfReaderMemoryBudgetInMB,
             new TsBlockInputDataSet(inputOperator, inputDataTypes));
   }
@@ -120,11 +125,11 @@ public class TransformOperator implements ProcessOperator {
     UDFManagementService.getInstance().acquireLock();
     try {
       // This statement must be surrounded by the registration lock.
-      UDFClassLoaderManager.getInstance().initializeUDFQuery(operatorContext.getOperatorId());
+      UDFClassLoaderManager.getInstance().initializeUDFQuery(udtfQueryId);
       // UDF executors will be initialized at the same time
       transformers =
           new EvaluationDAGBuilder(
-                  operatorContext.getOperatorId(),
+                  udtfQueryId,
                   inputLayer,
                   inputLocations,
                   outputExpressions,
@@ -140,8 +145,7 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  protected YieldableState iterateAllColumnsToNextValid()
-      throws QueryProcessException, IOException {
+  protected YieldableState iterateAllColumnsToNextValid() throws Exception {
     for (int i = 0, n = shouldIterateReadersToNextValid.length; i < n; ++i) {
       if (shouldIterateReadersToNextValid[i]) {
         final YieldableState yieldableState = iterateReaderToNextValid(transformers[i]);
@@ -154,8 +158,7 @@ public class TransformOperator implements ProcessOperator {
     return YieldableState.YIELDABLE;
   }
 
-  protected YieldableState iterateReaderToNextValid(LayerPointReader reader)
-      throws QueryProcessException, IOException {
+  protected YieldableState iterateReaderToNextValid(LayerPointReader reader) throws Exception {
     // Since a constant operand is not allowed to be a result column, the reader will not be
     // a ConstantLayerPointReader.
     // If keepNull is false, we must iterate the reader until a non-null row is returned.
@@ -172,7 +175,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @Override
-  public final boolean hasNext() {
+  public final boolean hasNext() throws Exception {
     if (!timeHeap.isEmpty()) {
       return true;
     }
@@ -188,7 +191,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
 
     try {
       YieldableState yieldableState = iterateAllColumnsToNextValid();
@@ -255,7 +258,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   protected boolean collectReaderAppendIsNull(LayerPointReader reader, long currentTime)
-      throws QueryProcessException, IOException {
+      throws Exception {
     final YieldableState yieldableState = reader.yield();
 
     if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
@@ -275,7 +278,7 @@ public class TransformOperator implements ProcessOperator {
 
   protected YieldableState collectDataPoint(
       LayerPointReader reader, ColumnBuilder writer, long currentTime, int readerIndex)
-      throws QueryProcessException, IOException {
+      throws Exception {
     final YieldableState yieldableState = reader.yield();
     if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
       writer.appendNull();
@@ -326,7 +329,7 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    udtfContext.finalizeUDFExecutors(operatorContext.getOperatorId());
+    udtfContext.finalizeUDFExecutors(udtfQueryId);
     inputOperator.close();
   }
 
@@ -336,7 +339,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     // call hasNext first, or data of inputOperator could be missing
     boolean flag = !hasNextWithTimer();
     return timeHeap.isEmpty() && (flag || inputOperator.isFinished());

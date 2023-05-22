@@ -84,7 +84,7 @@ public class ModelInfo implements SnapshotProcessor {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
     }
-    return null;
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus dropModel(DropModelPlan plan) {
@@ -122,7 +122,17 @@ public class ModelInfo implements SnapshotProcessor {
   public TrailTableResp showTrail(ShowTrailPlan plan) {
     acquireModelTableLock();
     try {
-      ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
+      String modelId = plan.getModelId();
+      ModelInformation modelInformation = modelTable.getModelInformationById(modelId);
+      if (modelInformation == null) {
+        return new TrailTableResp(
+            new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                .setMessage(
+                    String.format(
+                        "Failed to show trails of model [%s], this model has not been created.",
+                        modelId)));
+      }
+
       TrailTableResp trailTableResp =
           new TrailTableResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       if (plan.isSetTrailId()) {

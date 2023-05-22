@@ -323,6 +323,7 @@ struct TSRawDataQueryReq {
   7: optional bool enableRedirectQuery
   8: optional bool jdbcQuery
   9: optional i64 timeout
+  10: optional bool legalPathNodes
 }
 
 struct TSLastDataQueryReq {
@@ -334,6 +335,7 @@ struct TSLastDataQueryReq {
   6: optional bool enableRedirectQuery
   7: optional bool jdbcQuery
   8: optional i64 timeout
+  9: optional bool legalPathNodes
 }
 
 struct TSAggregationQueryReq {
@@ -347,6 +349,7 @@ struct TSAggregationQueryReq {
   8: optional i64 slidingStep
   9: optional i32 fetchSize
   10: optional i64 timeout
+  11: optional bool legalPathNodes
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -371,8 +374,9 @@ struct ServerProperties {
   7: optional i32 watermarkParamMarkRate;
   8: optional i32 watermarkParamMaxRightBit;
   9: optional i32 thriftMaxFrameSize;
-  10:optional bool isReadOnly;
-  11:optional string buildInfo;
+  10: optional bool isReadOnly;
+  11: optional string buildInfo;
+  12: optional string logo;
 }
 
 struct TSSetSchemaTemplateReq {
@@ -429,6 +433,11 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
+struct TCreateTimeseriesUsingSchemaTemplateReq{
+  1: required i64 sessionId
+  2: required list<string> devicePathList
+}
+
 // The sender and receiver need to check some info to confirm validity
 struct TSyncIdentityInfo{
   // Sender needs to tell receiver its identity.
@@ -444,6 +453,17 @@ struct TSyncTransportMetaInfo{
   1:required string fileName
   // The start index of the file slice in sending.
   2:required i64 startIndex
+}
+
+struct TPipeTransferReq {
+  1:required i8 version
+  2:required i16 type
+  3:required binary body
+}
+
+struct TPipeTransferResp {
+  1:required common.TSStatus status
+  2:optional binary body
 }
 
 struct TSBackupConfigurationResp {
@@ -578,11 +598,15 @@ service IClientRPCService {
 
   common.TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 
+  common.TSStatus createTimeseriesUsingSchemaTemplate(1:TCreateTimeseriesUsingSchemaTemplateReq req);
+
   common.TSStatus handshake(TSyncIdentityInfo info);
 
   common.TSStatus sendPipeData(1:binary buff);
 
   common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+
+  TPipeTransferResp pipeTransfer(TPipeTransferReq req);
 
   TSBackupConfigurationResp getBackupConfiguration();
 

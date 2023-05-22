@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -93,6 +94,8 @@ public class IoTConsensusServerImpl {
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
   private static final Pattern SNAPSHOT_INDEX_PATTEN = Pattern.compile(".*[^\\d](?=(\\d+))");
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
   private final Peer thisNode;
   private final IStateMachine stateMachine;
@@ -135,9 +138,12 @@ public class IoTConsensusServerImpl {
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
     reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
-    long currentSearchIndex = reader.getCurrentSearchIndex();
+    this.searchIndex = new AtomicLong(reader.getCurrentSearchIndex());
+    // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
+    // update wal with its syncIndex recovered from the consensus layer when initializing.
+    // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
+    // the restart and Leader migration occurs
     checkAndUpdateSafeDeletedSearchIndex();
-    this.searchIndex = new AtomicLong(currentSearchIndex);
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.metrics = new IoTConsensusServerMetrics(this);
   }
@@ -213,7 +219,7 @@ public class IoTConsensusServerImpl {
           .update(writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
-      if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
+      if (indexedConsensusRequest.getSearchIndex() % 10000 == 0) {
         logger.info(
             "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
             thisNode.getGroupId(),
@@ -221,7 +227,10 @@ public class IoTConsensusServerImpl {
             indexedConsensusRequest.getSearchIndex());
       }
       IConsensusRequest planNode = stateMachine.deserializeRequest(indexedConsensusRequest);
+      long startWriteTime = System.nanoTime();
       TSStatus result = stateMachine.write(planNode);
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(System.nanoTime() - startWriteTime);
+
       long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine
       MetricService.getInstance()
@@ -811,12 +820,14 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * only one configuration means single replica, then we can set safelyDeletedSearchIndex to
-   * Long.MAX_VALUE.
+   * If there is only one replica, set it to Long.MAX_VALUE.、 If there are multiple replicas, get
+   * the latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
    */
   public void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.size() == 1) {
       reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    } else {
+      reader.setSafelyDeletedSearchIndex(getCurrentSafelyDeletedSearchIndex());
     }
   }
 

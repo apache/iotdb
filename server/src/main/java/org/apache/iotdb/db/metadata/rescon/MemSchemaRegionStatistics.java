@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.rescon;
 
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.Template;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to record statistics within the SchemaRegion in Memory mode */
@@ -27,6 +32,8 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   private final int schemaRegionId;
   private final AtomicLong memoryUsage = new AtomicLong(0);
   private final AtomicLong seriesNumber = new AtomicLong(0);
+  private final AtomicLong devicesNumber = new AtomicLong(0);
+  private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
 
   private long mLogLength = 0;
 
@@ -52,7 +59,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   @Override
   public long getSeriesNumber() {
-    return seriesNumber.get();
+    return seriesNumber.get() + getTemplateSeriesNumber();
   }
 
   public void addTimeseries(long addedNum) {
@@ -63,6 +70,46 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   public void deleteTimeseries(long deletedNum) {
     seriesNumber.addAndGet(-deletedNum);
     schemaEngineStatistics.deleteTimeseries(deletedNum);
+  }
+
+  @Override
+  public long getDevicesNumber() {
+    return devicesNumber.get();
+  }
+
+  public void addDevice() {
+    devicesNumber.incrementAndGet();
+  }
+
+  public void deleteDevice() {
+    devicesNumber.decrementAndGet();
+  }
+
+  @Override
+  public int getTemplateActivatedNumber() {
+    return templateUsage.size();
+  }
+
+  @Override
+  public long getTemplateSeriesNumber() {
+    ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
+    return templateUsage.entrySet().stream()
+        .mapToLong(
+            i -> {
+              Template t = clusterTemplateManager.getTemplate(i.getKey());
+              return t == null ? 0 : (long) t.getMeasurementNumber() * i.getValue();
+            })
+        .sum();
+  }
+
+  public void activateTemplate(int templateId) {
+    templateUsage.compute(templateId, (k, v) -> (v == null) ? 1 : v + 1);
+    schemaEngineStatistics.activateTemplate(templateId);
+  }
+
+  public void deactivateTemplate(int templateId) {
+    templateUsage.compute(templateId, (k, v) -> (v == null || v == 1) ? null : v - 1);
+    schemaEngineStatistics.deactivateTemplate(templateId, 1);
   }
 
   @Override
@@ -99,5 +146,9 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     schemaEngineStatistics.deleteTimeseries(seriesNumber.get());
     memoryUsage.getAndSet(0);
     seriesNumber.getAndSet(0);
+    devicesNumber.getAndSet(0);
+    templateUsage.forEach(
+        (templateId, cnt) -> schemaEngineStatistics.deactivateTemplate(templateId, cnt));
+    templateUsage.clear();
   }
 }

@@ -16,6 +16,7 @@
 # under the License.
 #
 import logging
+import random
 import struct
 import time
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
@@ -24,6 +25,7 @@ from thrift.transport import TSocket, TTransport
 from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
+from .thrift.common.ttypes import TEndPoint, TSStatus
 from .thrift.rpc.IClientRPCService import (
     Client,
     TSCreateTimeseriesReq,
@@ -54,17 +56,8 @@ from .thrift.rpc.ttypes import (
     TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
 )
-# for debug
-# from IoTDBConstants import *
-# from SessionDataSet import SessionDataSet
-#
-# from thrift.protocol import TBinaryProtocol, TCompactProtocol
-# from thrift.transport import TSocket, TTransport
-#
-# from iotdb.rpc.IClientRPCService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
-#      TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, TSFetchResultsReq, TSCloseOperationReq, \
-#      TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq
-# from iotdb.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
+from .utils.IoTDBConnectionException import IoTDBConnectionException
+
 from .utils.IoTDBConstants import TSDataType
 
 logger = logging.getLogger("IoTDB")
@@ -72,11 +65,13 @@ logger = logging.getLogger("IoTDB")
 
 class Session(object):
     SUCCESS_STATUS = 200
+    MULTIPLE_ERROR = 302
     REDIRECTION_RECOMMEND = 400
     DEFAULT_FETCH_SIZE = 10000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
     DEFAULT_ZONE_ID = time.strftime("%z")
+    RETRY_NUM = 3
 
     def __init__(
         self,
@@ -86,37 +81,98 @@ class Session(object):
         password=DEFAULT_PASSWORD,
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
+        enable_redirection=True,
     ):
         self.__host = host
         self.__port = port
+        self.__hosts = None
+        self.__ports = None
+        self.__default_endpoint = TEndPoint(self.__host, self.__port)
         self.__user = user
         self.__password = password
         self.__fetch_size = fetch_size
         self.__is_close = True
-        self.__transport = None
         self.__client = None
+        self.__default_connection = None
         self.protocol_version = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
         self.__session_id = None
         self.__statement_id = None
         self.__zone_id = zone_id
+        self.__enable_rpc_compression = None
+        self.__enable_redirection = enable_redirection
+        self.__device_id_to_endpoint = None
+        self.__endpoint_to_connection = None
+
+    @classmethod
+    def init_from_node_urls(
+        cls,
+        node_urls,
+        user=DEFAULT_USER,
+        password=DEFAULT_PASSWORD,
+        fetch_size=DEFAULT_FETCH_SIZE,
+        zone_id=DEFAULT_ZONE_ID,
+        enable_redirection=True,
+    ):
+        if node_urls is None:
+            raise RuntimeError("node urls is empty")
+        session = Session(
+            None, None, user, password, fetch_size, zone_id, enable_redirection
+        )
+        session.__hosts = []
+        session.__ports = []
+        for node_url in node_urls:
+            split = node_url.split(":")
+            session.__hosts.append(split[0])
+            session.__ports.append(int(split[1]))
+        session.__host = session.__hosts[0]
+        session.__port = session.__ports[0]
+        session.__default_endpoint = TEndPoint(session.__host, session.__port)
+        return session
 
     def open(self, enable_rpc_compression=False):
         if not self.__is_close:
             return
-        self.__transport = TTransport.TFramedTransport(
-            TSocket.TSocket(self.__host, self.__port)
+        self.__enable_rpc_compression = enable_rpc_compression
+        if self.__hosts is None:
+            self.__default_connection = self.init_connection(self.__default_endpoint)
+        else:
+            for i in range(0, len(self.__hosts)):
+                self.__default_endpoint = TEndPoint(self.__hosts[i], self.__ports[i])
+                try:
+                    self.__default_connection = self.init_connection(
+                        self.__default_endpoint
+                    )
+                except Exception:
+                    if not self.reconnect():
+                        raise IoTDBConnectionException(
+                            "Cluster has no nodes to connect"
+                        ) from None
+                break
+        self.__client = self.__default_connection.client
+        self.__session_id = self.__default_connection.session_id
+        self.__statement_id = self.__default_connection.statement_id
+        self.__is_close = False
+        if self.__enable_redirection:
+            self.__device_id_to_endpoint = {}
+            self.__endpoint_to_connection = {
+                str(self.__default_endpoint): self.__default_connection
+            }
+
+    def init_connection(self, endpoint):
+        transport = TTransport.TFramedTransport(
+            TSocket.TSocket(endpoint.ip, endpoint.port)
         )
 
-        if not self.__transport.isOpen():
+        if not transport.isOpen():
             try:
-                self.__transport.open()
+                transport.open()
             except TTransport.TTransportException as e:
-                logger.exception("TTransportException!", exc_info=e)
+                raise IoTDBConnectionException(e) from None
 
-        if enable_rpc_compression:
-            self.__client = Client(TCompactProtocol.TCompactProtocol(self.__transport))
+        if self.__enable_rpc_compression:
+            client = Client(TCompactProtocol.TCompactProtocol(transport))
         else:
-            self.__client = Client(TBinaryProtocol.TBinaryProtocol(self.__transport))
+            client = Client(TBinaryProtocol.TBinaryProtocol(transport))
 
         open_req = TSOpenSessionReq(
             client_protocol=self.protocol_version,
@@ -127,7 +183,8 @@ class Session(object):
         )
 
         try:
-            open_resp = self.__client.openSession(open_req)
+            open_resp = client.openSession(open_req)
+            Session.verify_success(open_resp.status)
 
             if self.protocol_version != open_resp.serverProtocolVersion:
                 logger.exception(
@@ -139,19 +196,24 @@ class Session(object):
                 if open_resp.serverProtocolVersion == 0:
                     raise TTransport.TException(message="Protocol not supported.")
 
-            self.__session_id = open_resp.sessionId
-            self.__statement_id = self.__client.requestStatementId(self.__session_id)
+            session_id = open_resp.sessionId
+            statement_id = client.requestStatementId(session_id)
 
         except Exception as e:
-            self.__transport.close()
-            logger.exception("session closed because: ", exc_info=e)
+            transport.close()
+            raise IoTDBConnectionException(e) from None
 
         if self.__zone_id is not None:
-            self.set_time_zone(self.__zone_id)
+            request = TSSetTimeZoneReq(session_id, self.__zone_id)
+            try:
+                client.setTimeZone(request)
+            except TTransport.TException as e:
+                raise IoTDBConnectionException(
+                    "Could not set time zone because: ", e
+                ) from None
         else:
             self.__zone_id = self.get_time_zone()
-
-        self.__is_close = False
+        return SessionConnection(client, transport, session_id, statement_id)
 
     def is_open(self):
         return not self.__is_close
@@ -159,30 +221,36 @@ class Session(object):
     def close(self):
         if self.__is_close:
             return
-        req = TSCloseSessionReq(self.__session_id)
         try:
-            self.__client.closeSession(req)
-        except TTransport.TException as e:
-            logger.exception(
-                "Error occurs when closing session at server. Maybe server is down. Error message: ",
-                exc_info=e,
-            )
+            if self.__enable_redirection:
+                for connection in self.__endpoint_to_connection.values():
+                    req = TSCloseSessionReq(connection.session_id)
+                    connection.close_connection(req)
+            else:
+                req = TSCloseSessionReq(self.__session_id)
+                self.__default_connection.close_connection(req)
         finally:
             self.__is_close = True
-            if self.__transport is not None:
-                self.__transport.close()
 
     def set_storage_group(self, group_name):
         """
         create one database
         :param group_name: String, database name (starts from root)
         """
-        status = self.__client.setStorageGroup(self.__session_id, group_name)
-        logger.debug(
-            "setting database {} message: {}".format(group_name, status.message)
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(
+                self.__client.setStorageGroup(self.__session_id, group_name)
+            )
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.setStorageGroup(self.__session_id, group_name)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_storage_group(self, storage_group):
         """
@@ -197,14 +265,22 @@ class Session(object):
         delete multiple databases.
         :param storage_group_lst: List, paths of the target databases.
         """
-        status = self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
-        logger.debug(
-            "delete database(s) {} message: {}".format(
-                storage_group_lst, status.message
+        try:
+            return Session.verify_success(
+                self.__client.deleteStorageGroups(self.__session_id, storage_group_lst)
             )
-        )
-
-        return Session.verify_success(status)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.deleteStorageGroups(
+                            self.__session_id, storage_group_lst
+                        )
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def create_time_series(
         self,
@@ -242,12 +318,19 @@ class Session(object):
             attributes,
             alias,
         )
-        status = self.__client.createTimeseries(request)
-        logger.debug(
-            "creating time series {} message: {}".format(ts_path, status.message)
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.createTimeseries(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.createTimeseries(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def create_aligned_time_series(
         self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
@@ -272,14 +355,21 @@ class Session(object):
             encoding_lst,
             compressor_lst,
         )
-        status = self.__client.createAlignedTimeseries(request)
-        logger.debug(
-            "creating aligned time series of device {} message: {}".format(
-                measurements_lst, status.message
+        try:
+            return Session.verify_success(
+                self.__client.createAlignedTimeseries(request)
             )
-        )
-
-        return Session.verify_success(status)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.createAlignedTimeseries(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def create_multi_time_series(
         self,
@@ -318,28 +408,39 @@ class Session(object):
             attributes_lst,
             alias_lst,
         )
-        status = self.__client.createMultiTimeseries(request)
-        logger.debug(
-            "creating multiple time series {} message: {}".format(
-                ts_path_lst, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.createMultiTimeseries(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.createMultiTimeseries(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_time_series(self, paths_list):
         """
         delete multiple time series, including data and schema
         :param paths_list: List of time series path, which should be complete (starts from root)
         """
-        status = self.__client.deleteTimeseries(self.__session_id, paths_list)
-        logger.debug(
-            "deleting multiple time series {} message: {}".format(
-                paths_list, status.message
+        try:
+            return Session.verify_success(
+                self.__client.deleteTimeseries(self.__session_id, paths_list)
             )
-        )
-
-        return Session.verify_success(status)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.deleteTimeseries(self.__session_id, paths_list)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def check_time_series_exists(self, path):
         """
@@ -358,14 +459,20 @@ class Session(object):
         :param paths_list: time series list that the data in.
         :param end_time: data with time stamp less than or equal to time will be deleted.
         """
-        request = TSDeleteDataReq(self.__session_id, paths_list, -9223372036854775808, end_time)
+        request = TSDeleteDataReq(
+            self.__session_id, paths_list, -9223372036854775808, end_time
+        )
         try:
-            status = self.__client.deleteData(request)
-            logger.debug(
-                "delete data from {}, message: {}".format(paths_list, status.message)
-            )
+            return Session.verify_success(self.__client.deleteData(request))
         except TTransport.TException as e:
-            logger.exception("data deletion fails because: ", e)
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.deleteData(request))
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_data_in_range(self, paths_list, start_time, end_time):
         """
@@ -376,12 +483,16 @@ class Session(object):
         """
         request = TSDeleteDataReq(self.__session_id, paths_list, start_time, end_time)
         try:
-            status = self.__client.deleteData(request)
-            logger.debug(
-                "delete data from {}, message: {}".format(paths_list, status.message)
-            )
+            return Session.verify_success(self.__client.deleteData(request))
         except TTransport.TException as e:
-            logger.exception("data deletion fails because: ", e)
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.deleteData(request))
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
         """special case for inserting one row of String (TEXT) value"""
@@ -389,18 +500,28 @@ class Session(object):
             string_values = [string_values]
         if type(measurements) == str:
             measurements = [measurements]
-        data_types = [TSDataType.TEXT.value for _ in string_values]
         request = self.gen_insert_str_record_req(
-            device_id, timestamp, measurements, data_types, string_values
+            device_id, timestamp, measurements, string_values
         )
-        status = self.__client.insertStringRecord(request)
-        logger.debug(
-            "insert one record to device {} message: {}".format(
-                device_id, status.message
+        try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertStringRecord(request)
             )
-        )
-
-        return Session.verify_success(status)
+        except RedirectException as e:
+            return self.handle_redirection(device_id, e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertStringRecord(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_str_record(
         self, device_id, timestamp, measurements, string_values
@@ -410,18 +531,28 @@ class Session(object):
             string_values = [string_values]
         if type(measurements) == str:
             measurements = [measurements]
-        data_types = [TSDataType.TEXT.value for _ in string_values]
         request = self.gen_insert_str_record_req(
-            device_id, timestamp, measurements, data_types, string_values, True
+            device_id, timestamp, measurements, string_values, True
         )
-        status = self.__client.insertStringRecord(request)
-        logger.debug(
-            "insert one record to device {} message: {}".format(
-                device_id, status.message
+        try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertStringRecord(request)
             )
-        )
-
-        return Session.verify_success(status)
+        except RedirectException as e:
+            return self.handle_redirection(device_id, e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertStringRecord(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_record(self, device_id, timestamp, measurements, data_types, values):
         """
@@ -439,17 +570,26 @@ class Session(object):
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
-        status = self.__client.insertRecord(request)
-        logger.debug(
-            "insert one record to device {} message: {}".format(
-                device_id, status.message
+        try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertRecord(request)
             )
-        )
-
-        return Session.verify_success(status)
+        except RedirectException as e:
+            return self.handle_redirection(device_id, e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertRecord(request))
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_records(
-        self, device_ids, times, measurements_lst, types_lst, values_lst
+        self, device_ids: list, times, measurements_lst, types_lst, values_lst
     ):
         """
         insert multiple rows of data, records are independent to each other, in other words, there's no relationship
@@ -464,17 +604,60 @@ class Session(object):
         for types in types_lst:
             data_types = [data_type.value for data_type in types]
             type_values_lst.append(data_types)
-        request = self.gen_insert_records_req(
-            device_ids, times, measurements_lst, type_values_lst, values_lst
-        )
-        status = self.__client.insertRecords(request)
-        logger.debug(
-            "insert multiple records to devices {} message: {}".format(
-                device_ids, status.message
-            )
-        )
+        if self.__enable_redirection:
+            request_group = {}
+            for i in range(len(device_ids)):
+                connection = self.get_connection(device_ids[i])
+                request = request_group.setdefault(
+                    connection.client,
+                    TSInsertRecordsReq(connection.session_id, [], [], [], []),
+                )
+                request.prefixPaths.append(device_ids[i])
+                request.timestamps.append(times[i])
+                request.measurementsList.append(measurements_lst[i])
+                request.valuesList.append(
+                    Session.value_to_bytes(type_values_lst[i], values_lst[i])
+                )
+            for client, request in request_group.items():
+                try:
+                    Session.verify_success_with_redirection_for_multi_devices(
+                        client.insertRecords(request), request.prefixPaths
+                    )
+                except RedirectException as e:
+                    for device, endpoint in e.device_to_endpoint.items():
+                        self.handle_redirection(device, endpoint)
+                except TTransport.TException as e:
+                    if self.reconnect():
+                        try:
+                            request.sessionId = self.__session_id
+                            Session.verify_success(self.__client.insertRecords(request))
+                        except TTransport.TException as e1:
+                            raise IoTDBConnectionException(e1) from None
+                    else:
+                        raise IoTDBConnectionException(
+                            self.connection_error_msg()
+                        ) from None
 
-        return Session.verify_success(status)
+            return 0
+        else:
+            request = self.gen_insert_records_req(
+                device_ids, times, measurements_lst, type_values_lst, values_lst
+            )
+            try:
+                return Session.verify_success(self.__client.insertRecords(request))
+            except TTransport.TException as e:
+                if self.reconnect():
+                    try:
+                        request.sessionId = self.__session_id
+                        return Session.verify_success(
+                            self.__client.insertRecords(request)
+                        )
+                    except TTransport.TException as e1:
+                        raise IoTDBConnectionException(e1) from None
+                else:
+                    raise IoTDBConnectionException(
+                        self.connection_error_msg()
+                    ) from None
 
     def insert_aligned_record(
         self, device_id, timestamp, measurements, data_types, values
@@ -494,14 +677,23 @@ class Session(object):
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values, True
         )
-        status = self.__client.insertRecord(request)
-        logger.debug(
-            "insert one record to device {} message: {}".format(
-                device_id, status.message
+        try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertRecord(request)
             )
-        )
-
-        return Session.verify_success(status)
+        except RedirectException as e:
+            return self.handle_redirection(device_id, e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertRecord(request))
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_records(
         self, device_ids, times, measurements_lst, types_lst, values_lst
@@ -519,17 +711,60 @@ class Session(object):
         for types in types_lst:
             data_types = [data_type.value for data_type in types]
             type_values_lst.append(data_types)
-        request = self.gen_insert_records_req(
-            device_ids, times, measurements_lst, type_values_lst, values_lst, True
-        )
-        status = self.__client.insertRecords(request)
-        logger.debug(
-            "insert multiple records to devices {} message: {}".format(
-                device_ids, status.message
-            )
-        )
+        if self.__enable_redirection:
+            request_group = {}
+            for i in range(len(device_ids)):
+                connection = self.get_connection(device_ids[i])
+                request = request_group.setdefault(
+                    connection.client,
+                    TSInsertRecordsReq(connection.session_id, [], [], [], [], True),
+                )
+                request.prefixPaths.append(device_ids[i])
+                request.timestamps.append(times[i])
+                request.measurementsList.append(measurements_lst[i])
+                request.valuesList.append(
+                    Session.value_to_bytes(type_values_lst[i], values_lst[i])
+                )
+            for client, request in request_group.items():
+                try:
+                    Session.verify_success_with_redirection_for_multi_devices(
+                        client.insertRecords(request), request.prefixPaths
+                    )
+                except RedirectException as e:
+                    for device, endpoint in e.device_to_endpoint.items():
+                        self.handle_redirection(device, endpoint)
+                except TTransport.TException as e:
+                    if self.reconnect():
+                        try:
+                            request.sessionId = self.__session_id
+                            Session.verify_success(self.__client.insertRecords(request))
+                        except TTransport.TException as e1:
+                            raise IoTDBConnectionException(e1) from None
+                    else:
+                        raise IoTDBConnectionException(
+                            self.connection_error_msg()
+                        ) from None
 
-        return Session.verify_success(status)
+            return 0
+        else:
+            request = self.gen_insert_records_req(
+                device_ids, times, measurements_lst, type_values_lst, values_lst, True
+            )
+            try:
+                return Session.verify_success(self.__client.insertRecords(request))
+            except TTransport.TException as e:
+                if self.reconnect():
+                    try:
+                        request.sessionId = self.__session_id
+                        return Session.verify_success(
+                            self.__client.insertRecords(request)
+                        )
+                    except TTransport.TException as e1:
+                        raise IoTDBConnectionException(e1) from None
+                else:
+                    raise IoTDBConnectionException(
+                        self.connection_error_msg()
+                    ) from None
 
     def test_insert_record(
         self, device_id, timestamp, measurements, data_types, values
@@ -547,14 +782,18 @@ class Session(object):
         request = self.gen_insert_record_req(
             device_id, timestamp, measurements, data_types, values
         )
-        status = self.__client.testInsertRecord(request)
-        logger.debug(
-            "testing! insert one record to device {} message: {}".format(
-                device_id, status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.testInsertRecord(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.testInsertRecord(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def test_insert_records(
         self, device_ids, times, measurements_lst, types_lst, values_lst
@@ -575,12 +814,18 @@ class Session(object):
         request = self.gen_insert_records_req(
             device_ids, times, measurements_lst, type_values_lst, values_lst
         )
-        status = self.__client.testInsertRecords(request)
-        logger.debug(
-            "testing! insert multiple records, message: {}".format(status.message)
-        )
-
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.testInsertRecords(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    return Session.verify_success(
+                        self.__client.testInsertRecords(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_record_req(
         self, device_id, timestamp, measurements, data_types, values, is_aligned=False
@@ -600,11 +845,11 @@ class Session(object):
         )
 
     def gen_insert_str_record_req(
-        self, device_id, timestamp, measurements, data_types, values, is_aligned=False
+        self, device_id, timestamp, measurements, values, is_aligned=False
     ):
-        if (len(values) != len(data_types)) or (len(values) != len(measurements)):
+        if len(values) != len(measurements):
             raise RuntimeError(
-                "length of data types does not equal to length of values!"
+                "length of measurements does not equal to length of values!"
             )
         return TSInsertStringRecordReq(
             self.__session_id, device_id, measurements, values, timestamp, is_aligned
@@ -661,24 +906,87 @@ class Session(object):
                 The tablet itself is sorted (see docs of Tablet.py)
         :param tablet: a tablet specified above
         """
-        status = self.__client.insertTablet(self.gen_insert_tablet_req(tablet))
-        logger.debug(
-            "insert one tablet to device {} message: {}".format(
-                tablet.get_device_id(), status.message
+        request = self.gen_insert_tablet_req(tablet)
+        try:
+            connection = self.get_connection(tablet.get_device_id())
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertTablet(request)
             )
-        )
-
-        return Session.verify_success(status)
+        except RedirectException as e:
+            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertTablet(request))
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_tablets(self, tablet_lst):
         """
         insert multiple tablets, tablets are independent to each other
         :param tablet_lst: List of tablets
         """
-        status = self.__client.insertTablets(self.gen_insert_tablets_req(tablet_lst))
-        logger.debug("insert multiple tablets, message: {}".format(status.message))
+        if self.__enable_redirection:
+            request_group = {}
+            for i in range(len(tablet_lst)):
+                connection = self.get_connection(tablet_lst[i].get_device_id())
+                request = request_group.setdefault(
+                    connection.client,
+                    TSInsertTabletsReq(
+                        connection.session_id, [], [], [], [], [], [], False
+                    ),
+                )
+                request.prefixPaths.append(tablet_lst[i].get_device_id())
+                request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
+                request.measurementsList.append(tablet_lst[i].get_measurements())
+                request.valuesList.append(tablet_lst[i].get_binary_values())
+                request.sizeList.append(tablet_lst[i].get_row_number())
+                data_type_values = [
+                    data_type.value for data_type in tablet_lst[i].get_data_types()
+                ]
+                request.typesList.append(data_type_values)
+            for client, request in request_group.items():
+                try:
+                    Session.verify_success_with_redirection_for_multi_devices(
+                        client.insertTablets(request), request.prefixPaths
+                    )
+                except RedirectException as e:
+                    for device, endpoint in e.device_to_endpoint.items():
+                        self.handle_redirection(device, endpoint)
+                except TTransport.TException as e:
+                    if self.reconnect():
+                        try:
+                            request.sessionId = self.__session_id
+                            Session.verify_success(self.__client.insertTablets(request))
+                        except TTransport.TException as e1:
+                            raise IoTDBConnectionException(e1) from None
+                    else:
+                        raise IoTDBConnectionException(
+                            self.connection_error_msg()
+                        ) from None
 
-        return Session.verify_success(status)
+            return 0
+        else:
+            request = self.gen_insert_tablets_req(tablet_lst)
+            try:
+                return Session.verify_success(self.__client.insertTablets(request))
+            except TTransport.TException as e:
+                if self.reconnect():
+                    try:
+                        request.sessionId = self.__session_id
+                        return Session.verify_success(
+                            self.__client.insertTablets(request)
+                        )
+                    except TTransport.TException as e1:
+                        raise IoTDBConnectionException(e1) from None
+                else:
+                    raise IoTDBConnectionException(
+                        self.connection_error_msg()
+                    ) from None
 
     def insert_aligned_tablet(self, tablet):
         """
@@ -692,26 +1000,87 @@ class Session(object):
                 The tablet itself is sorted (see docs of Tablet.py)
         :param tablet: a tablet specified above
         """
-        status = self.__client.insertTablet(self.gen_insert_tablet_req(tablet, True))
-        logger.debug(
-            "insert one tablet to device {} message: {}".format(
-                tablet.get_device_id(), status.message
+        request = self.gen_insert_tablet_req(tablet, True)
+        try:
+            connection = self.get_connection(tablet.get_device_id())
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertTablet(request)
             )
-        )
-
-        return Session.verify_success(status)
+        except RedirectException as e:
+            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertTablet(request))
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_tablets(self, tablet_lst):
         """
         insert multiple aligned tablets, tablets are independent to each other
         :param tablet_lst: List of tablets
         """
-        status = self.__client.insertTablets(
-            self.gen_insert_tablets_req(tablet_lst, True)
-        )
-        logger.debug("insert multiple tablets, message: {}".format(status.message))
+        if self.__enable_redirection:
+            request_group = {}
+            for i in range(len(tablet_lst)):
+                connection = self.get_connection(tablet_lst[i].get_device_id())
+                request = request_group.setdefault(
+                    connection.client,
+                    TSInsertTabletsReq(
+                        connection.session_id, [], [], [], [], [], [], True
+                    ),
+                )
+                request.prefixPaths.append(tablet_lst[i].get_device_id())
+                request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
+                request.measurementsList.append(tablet_lst[i].get_measurements())
+                request.valuesList.append(tablet_lst[i].get_binary_values())
+                request.sizeList.append(tablet_lst[i].get_row_number())
+                data_type_values = [
+                    data_type.value for data_type in tablet_lst[i].get_data_types()
+                ]
+                request.typesList.append(data_type_values)
+            for client, request in request_group.items():
+                try:
+                    Session.verify_success_with_redirection_for_multi_devices(
+                        client.insertTablets(request), request.prefixPaths
+                    )
+                except RedirectException as e:
+                    for device, endpoint in e.device_to_endpoint.items():
+                        self.handle_redirection(device, endpoint)
+                except TTransport.TException as e:
+                    if self.reconnect():
+                        try:
+                            request.sessionId = self.__session_id
+                            Session.verify_success(self.__client.insertTablets(request))
+                        except TTransport.TException as e1:
+                            raise IoTDBConnectionException(e1) from None
+                    else:
+                        raise IoTDBConnectionException(
+                            self.connection_error_msg()
+                        ) from None
 
-        return Session.verify_success(status)
+            return 0
+        else:
+            request = self.gen_insert_tablets_req(tablet_lst, True)
+            try:
+                return Session.verify_success(self.__client.insertTablets(request))
+            except TTransport.TException as e:
+                if self.reconnect():
+                    try:
+                        request.sessionId = self.__session_id
+                        return Session.verify_success(
+                            self.__client.insertTablets(request)
+                        )
+                    except TTransport.TException as e1:
+                        raise IoTDBConnectionException(e1) from None
+                else:
+                    raise IoTDBConnectionException(
+                        self.connection_error_msg()
+                    ) from None
 
     def insert_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
@@ -742,7 +1111,6 @@ class Session(object):
         :param measurements_list: measurements list
         :param types_list: types list
         :param values_list: values list
-        :param have_sorted: have these list been sorted by timestamp
         """
         # check parameter
         size = len(times_list)
@@ -764,12 +1132,25 @@ class Session(object):
         request = self.gen_insert_records_of_one_device_request(
             device_id, times_list, measurements_list, values_list, types_list
         )
-
-        # send request
-        status = self.__client.insertRecordsOfOneDevice(request)
-        logger.debug("insert records of one device, message: {}".format(status.message))
-
-        return Session.verify_success(status)
+        try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertRecordsOfOneDevice(request)
+            )
+        except RedirectException as e:
+            return self.handle_redirection(device_id, e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertRecordsOfOneDevice(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
@@ -823,10 +1204,25 @@ class Session(object):
         )
 
         # send request
-        status = self.__client.insertRecordsOfOneDevice(request)
-        logger.debug("insert records of one device, message: {}".format(status.message))
-
-        return Session.verify_success(status)
+        try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertRecordsOfOneDevice(request)
+            )
+        except RedirectException as e:
+            return self.handle_redirection(device_id, e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertRecordsOfOneDevice(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_records_of_one_device_request(
         self,
@@ -864,14 +1260,20 @@ class Session(object):
          should be used to test other time cost in client
         :param tablet: a tablet of data
         """
-        status = self.__client.testInsertTablet(self.gen_insert_tablet_req(tablet))
-        logger.debug(
-            "testing! insert one tablet to device {} message: {}".format(
-                tablet.get_device_id(), status.message
-            )
-        )
-
-        return Session.verify_success(status)
+        request = self.gen_insert_tablet_req(tablet)
+        try:
+            return Session.verify_success(self.__client.testInsertTablet(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.testInsertTablet(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def test_insert_tablets(self, tablet_list):
         """
@@ -879,14 +1281,20 @@ class Session(object):
          should be used to test other time cost in client
         :param tablet_list: List of tablets
         """
-        status = self.__client.testInsertTablets(
-            self.gen_insert_tablets_req(tablet_list)
-        )
-        logger.debug(
-            "testing! insert multiple tablets, message: {}".format(status.message)
-        )
-
-        return Session.verify_success(status)
+        request = self.gen_insert_tablets_req(tablet_list)
+        try:
+            return Session.verify_success(self.__client.testInsertTablets(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.testInsertTablets(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def gen_insert_tablet_req(self, tablet, is_aligned=False):
         data_type_values = [data_type.value for data_type in tablet.get_data_types()]
@@ -933,12 +1341,26 @@ class Session(object):
         """
         execute query sql statement and returns SessionDataSet
         :param sql: String, query sql statement
-        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        :param timeout:
+        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py):
         """
         request = TSExecuteStatementReq(
             self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
         )
-        resp = self.__client.executeQueryStatement(request)
+        try:
+            resp = self.__client.executeQueryStatement(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeQueryStatement(request)
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+
+        Session.verify_success(resp.status)
         return SessionDataSet(
             sql,
             resp.columns,
@@ -960,13 +1382,52 @@ class Session(object):
         request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id)
         try:
             resp = self.__client.executeUpdateStatement(request)
-            status = resp.status
-            logger.debug(
-                "execute non-query statement {} message: {}".format(sql, status.message)
-            )
-            return Session.verify_success(status)
         except TTransport.TException as e:
-            raise RuntimeError("execution of non-query statement fails because: ", e)
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeUpdateStatement(request)
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+
+        return Session.verify_success(resp.status)
+
+    def execute_statement(self, sql: str, timeout=0):
+        request = TSExecuteStatementReq(
+            self.__session_id, sql, self.__statement_id, timeout
+        )
+        try:
+            resp = self.__client.executeStatement(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeStatement(request)
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+
+        Session.verify_success(resp.status)
+        if resp.columns:
+            return SessionDataSet(
+                sql,
+                resp.columns,
+                resp.dataTypeList,
+                resp.columnNameIndexMap,
+                resp.queryId,
+                self.__client,
+                self.__statement_id,
+                self.__session_id,
+                resp.queryDataSet,
+                resp.ignoreTimeStamp,
+            )
+        else:
+            return None
 
     @staticmethod
     def value_to_bytes(data_types, values):
@@ -999,7 +1460,10 @@ class Session(object):
                 values_tobe_packed.append(bytes([TSDataType.DOUBLE.value]))
                 values_tobe_packed.append(value)
             elif data_type == TSDataType.TEXT.value:
-                value_bytes = bytes(value, "utf-8")
+                if isinstance(value, str):
+                    value_bytes = bytes(value, "utf-8")
+                else:
+                    value_bytes = value
                 format_str_list.append("c")
                 format_str_list.append("i")
                 format_str_list.append(str(len(value_bytes)))
@@ -1018,7 +1482,9 @@ class Session(object):
         try:
             resp = self.__client.getTimeZone(self.__session_id)
         except TTransport.TException as e:
-            raise RuntimeError("Could not get time zone because: ", e)
+            raise IoTDBConnectionException(
+                "Could not get time zone because: ", e
+            ) from None
         return resp.timeZone
 
     def set_time_zone(self, zone_id):
@@ -1031,7 +1497,9 @@ class Session(object):
                 )
             )
         except TTransport.TException as e:
-            raise RuntimeError("Could not set time zone because: ", e)
+            raise IoTDBConnectionException(
+                "Could not set time zone because: ", e
+            ) from None
         self.__zone_id = zone_id
 
     @staticmethod
@@ -1042,16 +1510,58 @@ class Session(object):
         return True
 
     @staticmethod
-    def verify_success(status):
+    def verify_success(status: TSStatus):
         """
         verify success of operation
         :param status: execution result status
         """
-        if status.code == Session.SUCCESS_STATUS or status.code == Session.REDIRECTION_RECOMMEND:
+        if status.code == Session.MULTIPLE_ERROR:
+            Session.verify_success_by_list(status.subStatus)
+            return 0
+        if (
+            status.code == Session.SUCCESS_STATUS
+            or status.code == Session.REDIRECTION_RECOMMEND
+        ):
             return 0
 
-        logger.error("error status is %s", status)
-        return -1
+        raise RuntimeError(str(status.code) + ": " + status.message)
+
+    @staticmethod
+    def verify_success_by_list(status_list: list):
+        """
+        verify success of operation
+        :param status_list: execution result status
+        """
+        message = str(Session.MULTIPLE_ERROR) + ": "
+        for status in status_list:
+            if (
+                status.code != Session.SUCCESS_STATUS
+                and status.code != Session.REDIRECTION_RECOMMEND
+            ):
+                message += status.message + "; "
+        raise RuntimeError(message)
+
+    @staticmethod
+    def verify_success_with_redirection(status: TSStatus):
+        Session.verify_success(status)
+        if status.redirectNode is not None:
+            raise RedirectException(status.redirectNode)
+        return 0
+
+    @staticmethod
+    def verify_success_with_redirection_for_multi_devices(
+        status: TSStatus, devices: list
+    ):
+        Session.verify_success(status)
+        if (
+            status.code == Session.MULTIPLE_ERROR
+            or status.code == Session.REDIRECTION_RECOMMEND
+        ):
+            device_to_endpoint = {}
+            for i in range(len(status.subStatus)):
+                if status.subStatus[i].redirectNode is not None:
+                    device_to_endpoint[devices[i]] = status.subStatus[i].redirectNode
+            raise RedirectException(device_to_endpoint)
 
     def execute_raw_data_query(
         self, paths: list, start_time: int, end_time: int
@@ -1072,7 +1582,19 @@ class Session(object):
             statementId=self.__statement_id,
             enableRedirectQuery=False,
         )
-        resp = self.__client.executeRawDataQuery(request)
+        try:
+            resp = self.__client.executeRawDataQuery(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeRawDataQuery(request)
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+        Session.verify_success(resp.status)
         return SessionDataSet(
             "",
             resp.columns,
@@ -1101,8 +1623,19 @@ class Session(object):
             self.__statement_id,
             enableRedirectQuery=False,
         )
-
-        resp = self.__client.executeLastDataQuery(request)
+        try:
+            resp = self.__client.executeLastDataQuery(request)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    request.statementId = self.__statement_id
+                    resp = self.__client.executeLastDataQuery(request)
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+        Session.verify_success(resp.status)
         return SessionDataSet(
             "",
             resp.columns,
@@ -1141,12 +1674,25 @@ class Session(object):
         request = self.gen_insert_string_records_of_one_device_request(
             device_id, times, measurements_list, values_list, have_sorted, False
         )
-        status = self.__client.insertStringRecordsOfOneDevice(request)
-        logger.debug(
-            "insert one device {} message: {}".format(device_id, status.message)
-        )
-
-        return Session.verify_success(status)
+        try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertStringRecordsOfOneDevice(request)
+            )
+        except RedirectException as e:
+            return self.handle_redirection(device_id, e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertStringRecordsOfOneDevice(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_aligned_string_records_of_one_device(
         self,
@@ -1163,12 +1709,105 @@ class Session(object):
         request = self.gen_insert_string_records_of_one_device_request(
             device_id, times, measurements_list, values, have_sorted, True
         )
-        status = self.__client.insertStringRecordsOfOneDevice(request)
-        logger.debug(
-            "insert one device {} message: {}".format(device_id, status.message)
-        )
+        try:
+            connection = self.get_connection(device_id)
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertStringRecordsOfOneDevice(request)
+            )
+        except RedirectException as e:
+            return self.handle_redirection(device_id, e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.insertStringRecordsOfOneDevice(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
-        return Session.verify_success(status)
+    def reconnect(self):
+        if self.__hosts is None:
+            return False
+        connected = False
+        for i in range(1, self.RETRY_NUM + 1):
+            if (
+                self.__default_connection is not None
+                and self.__default_connection.transport is not None
+            ):
+                self.__default_connection.transport.close()
+            curr_host_index = random.randint(0, len(self.__hosts))
+            try_host_num = 0
+            for j in range(curr_host_index, len(self.__hosts)):
+                if try_host_num == len(self.__hosts):
+                    break
+                self.__default_endpoint = TEndPoint(self.__hosts[j], self.__ports[j])
+                if j == len(self.__hosts) - 1:
+                    j = -1
+                try_host_num += 1
+                try:
+                    self.__default_connection = self.init_connection(
+                        self.__default_endpoint
+                    )
+                    self.__client = self.__default_connection.client
+                    self.__session_id = self.__default_connection.session_id
+                    self.__statement_id = self.__default_connection.statement_id
+                    connected = True
+                    if self.__enable_redirection:
+                        self.__endpoint_to_connection = {
+                            str(self.__default_endpoint): self.__default_connection
+                        }
+                except IoTDBConnectionException:
+                    pass
+                break
+            if connected:
+                break
+        return connected
+
+    def connection_error_msg(self):
+        if self.__hosts is None:
+            msg = "Could not connect to [('%s', %s)]" % (self.__host, self.__port)
+        else:
+            node_list = []
+            for i in range(len(self.__hosts)):
+                node_list.append("('%s', %s)" % (self.__hosts[i], self.__ports[i]))
+            msg = "Could not connect to any of [%s]" % ", ".join(node_list)
+        return msg
+
+    def get_connection(self, device_id):
+        if (
+            self.__enable_redirection
+            and len(self.__device_id_to_endpoint) != 0
+            and device_id in self.__device_id_to_endpoint
+        ):
+            endpoint = self.__device_id_to_endpoint[device_id]
+            if str(endpoint) in self.__endpoint_to_connection:
+                return self.__endpoint_to_connection[str(endpoint)]
+        return self.__default_connection
+
+    def handle_redirection(self, device_id, endpoint: TEndPoint):
+        if self.__enable_redirection:
+            if endpoint.ip == "0.0.0.0":
+                return 0
+            if (
+                device_id not in self.__device_id_to_endpoint
+                or self.__device_id_to_endpoint[device_id] != endpoint
+            ):
+                self.__device_id_to_endpoint[device_id] = endpoint
+            if str(endpoint) in self.__endpoint_to_connection:
+                connection = self.__endpoint_to_connection[str(endpoint)]
+            else:
+                try:
+                    connection = self.init_connection(endpoint)
+                except Exception:
+                    connection = None
+                self.__endpoint_to_connection[str(endpoint)] = connection
+            if connection is None:
+                self.__device_id_to_endpoint.pop(device_id)
+        return 0
 
     def gen_insert_string_records_of_one_device_request(
         self,
@@ -1207,13 +1846,19 @@ class Session(object):
         request = TSCreateSchemaTemplateReq(
             self.__session_id, template.get_name(), bytes_array
         )
-        status = self.__client.createSchemaTemplate(request)
-        logger.debug(
-            "create one template {} template name: {}".format(
-                self.__session_id, template.get_name()
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.createSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.createSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def drop_schema_template(self, template_name: str):
         """
@@ -1221,44 +1866,19 @@ class Session(object):
         :param template_name: template name
         """
         request = TSDropSchemaTemplateReq(self.__session_id, template_name)
-        status = self.__client.dropSchemaTemplate(request)
-        logger.debug(
-            "drop one template {} template name: {}".format(
-                self.__session_id, template_name
-            )
-        )
-        return Session.verify_success(status)
-
-    def execute_statement(self, sql: str, timeout=0):
-        request = TSExecuteStatementReq(
-            self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
-        )
         try:
-            resp = self.__client.executeStatement(request)
-            status = resp.status
-            logger.debug("execute statement {} message: {}".format(sql, status.message))
-            if Session.verify_success(status) == 0:
-                if resp.columns:
-                    return SessionDataSet(
-                        sql,
-                        resp.columns,
-                        resp.dataTypeList,
-                        resp.columnNameIndexMap,
-                        resp.queryId,
-                        self.__client,
-                        self.__statement_id,
-                        self.__session_id,
-                        resp.queryDataSet,
-                        resp.ignoreTimeStamp,
-                    )
-                else:
-                    return None
-            else:
-                raise RuntimeError(
-                    "execution of statement fails because: {}", status.message
-                )
+            return Session.verify_success(self.__client.dropSchemaTemplate(request))
         except TTransport.TException as e:
-            raise RuntimeError("execution of statement fails because: ", e)
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.dropSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def add_measurements_in_template(
         self,
@@ -1270,9 +1890,10 @@ class Session(object):
         is_aligned: bool = False,
     ):
         """
-        add measurements in the template, the template must already create. This function adds some measurements node.
+        add measurements in the template, the template must already create. This function adds some measurements' node.
         :param template_name: template name, string list, like ["name_x", "name_y", "name_z"]
-        :param measurements_path: when ths is_aligned is True, recommend the name like a.b, like [python.x, python.y, iotdb.z]
+        :param measurements_path: when ths is_aligned is True, recommend the name like a.b,
+        like [python.x, python.y, iotdb.z]
         :param data_types: using TSDataType(see IoTDBConstants.py)
         :param encodings: using TSEncoding(see IoTDBConstants.py)
         :param compressors: using Compressor(see IoTDBConstants.py)
@@ -1287,13 +1908,19 @@ class Session(object):
             list(map(lambda x: x.value, encodings)),
             list(map(lambda x: x.value, compressors)),
         )
-        status = self.__client.appendSchemaTemplate(request)
-        logger.debug(
-            "append unaligned template {} template name: {}".format(
-                self.__session_id, template_name
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.appendSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.appendSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_node_in_template(self, template_name: str, path: str):
         """
@@ -1302,13 +1929,19 @@ class Session(object):
         :param path: measurements path
         """
         request = TSPruneSchemaTemplateReq(self.__session_id, template_name, path)
-        status = self.__client.pruneSchemaTemplate(request)
-        logger.debug(
-            "append unaligned template {} template name: {}".format(
-                self.__session_id, template_name
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.pruneSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.pruneSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def set_schema_template(self, template_name, prefix_path):
         """
@@ -1317,13 +1950,19 @@ class Session(object):
         :param prefix_path: prefix path
         """
         request = TSSetSchemaTemplateReq(self.__session_id, template_name, prefix_path)
-        status = self.__client.setSchemaTemplate(request)
-        logger.debug(
-            "set schema template to path{} template name: {}, path:{}".format(
-                self.__session_id, template_name, prefix_path
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.setSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.setSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def unset_schema_template(self, template_name, prefix_path):
         """
@@ -1335,13 +1974,19 @@ class Session(object):
         request = TSUnsetSchemaTemplateReq(
             self.__session_id, prefix_path, template_name
         )
-        status = self.__client.unsetSchemaTemplate(request)
-        logger.debug(
-            "set schema template to path{} template name: {}, path:{}".format(
-                self.__session_id, template_name, prefix_path
-            )
-        )
-        return Session.verify_success(status)
+        try:
+            return Session.verify_success(self.__client.unsetSchemaTemplate(request))
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(
+                        self.__client.unsetSchemaTemplate(request)
+                    )
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def count_measurements_in_template(self, template_name: str):
         """
@@ -1353,13 +1998,20 @@ class Session(object):
             template_name,
             TemplateQueryType.COUNT_MEASUREMENTS.value,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "count measurements template {}, template name is {}, count is {}".format(
-                self.__session_id, template_name, response.measurements
-            )
-        )
-        return response.count
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            return response.count
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.count
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def is_measurement_in_template(self, template_name: str, path: str):
         """
@@ -1373,13 +2025,21 @@ class Session(object):
             TemplateQueryType.IS_MEASUREMENT.value,
             path,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "judge the path is measurement or not in template {}, template name is {}, result is {}".format(
-                self.__session_id, template_name, response.result
-            )
-        )
-        return response.result
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.result
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.result
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def is_path_exist_in_template(self, template_name: str, path: str):
         """
@@ -1390,19 +2050,27 @@ class Session(object):
         request = TSQueryTemplateReq(
             self.__session_id, template_name, TemplateQueryType.PATH_EXIST.value, path
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "judge the path is in template or not {}, template name is {}, result is {}".format(
-                self.__session_id, template_name, response.result
-            )
-        )
-        return response.result
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.result
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.result
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_measurements_in_template(self, template_name: str, pattern: str = ""):
         """
         show all measurements under the pattern in template
         :param template_name: template name
-        :param pattern: parent path, if default, show all measurements
+        :param pattern: parent path, if defaulted, show all measurements
         """
         request = TSQueryTemplateReq(
             self.__session_id,
@@ -1410,13 +2078,21 @@ class Session(object):
             TemplateQueryType.SHOW_MEASUREMENTS.value,
             pattern,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "show measurements in template {}, template name is {}, result is {}".format(
-                self.__session_id, template_name, response.measurements
-            )
-        )
-        return response.measurements
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.measurements
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.measurements
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_all_templates(self):
         """
@@ -1427,13 +2103,21 @@ class Session(object):
             "",
             TemplateQueryType.SHOW_TEMPLATES.value,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "show all template {}, measurements is {}".format(
-                self.__session_id, response.measurements
-            )
-        )
-        return response.measurements
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.measurements
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.measurements
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_paths_template_set_on(self, template_name):
         """
@@ -1443,13 +2127,21 @@ class Session(object):
         request = TSQueryTemplateReq(
             self.__session_id, template_name, TemplateQueryType.SHOW_SET_TEMPLATES.value
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "show paths template set {}, on {}".format(
-                self.__session_id, response.measurements
-            )
-        )
-        return response.measurements
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.measurements
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.measurements
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_paths_template_using_on(self, template_name):
         """
@@ -1461,10 +2153,53 @@ class Session(object):
             template_name,
             TemplateQueryType.SHOW_USING_TEMPLATES.value,
         )
-        response = self.__client.querySchemaTemplate(request)
-        logger.debug(
-            "show paths template using {}, on {}".format(
-                self.__session_id, response.measurements
-            )
-        )
-        return response.measurements
+        try:
+            response = self.__client.querySchemaTemplate(request)
+            Session.verify_success(response.status)
+            return response.measurements
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    response = self.__client.querySchemaTemplate(request)
+                    Session.verify_success(response.status)
+                    return response.measurements
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+
+
+class SessionConnection(object):
+    def __init__(
+        self,
+        client,
+        transport,
+        session_id,
+        statement_id,
+    ):
+        self.client = client
+        self.transport = transport
+        self.session_id = session_id
+        self.statement_id = statement_id
+
+    def close_connection(self, req):
+        try:
+            self.client.closeSession(req)
+        except TTransport.TException as e:
+            raise IoTDBConnectionException(
+                "Error occurs when closing session at server. Maybe server is down. Error message: ",
+                e,
+            ) from None
+        finally:
+            if self.transport is not None:
+                self.transport.close()
+
+
+class RedirectException(Exception):
+    def __init__(self, redirect_info):
+        Exception.__init__(self)
+        if isinstance(redirect_info, TEndPoint):
+            self.redirect_node = redirect_info
+        else:
+            self.device_to_endpoint = redirect_info

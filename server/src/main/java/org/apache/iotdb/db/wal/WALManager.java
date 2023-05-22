@@ -212,12 +212,12 @@ public class WALManager implements IService {
     return totalFileNum.get();
   }
 
-  public void addTotalFileNum(long size) {
-    totalFileNum.accumulateAndGet(size, Long::sum);
+  public void addTotalFileNum(long num) {
+    totalFileNum.accumulateAndGet(num, Long::sum);
   }
 
-  public void subtractTotalFileNum(long size) {
-    totalFileNum.accumulateAndGet(size, (x, y) -> x - y);
+  public void subtractTotalFileNum(long num) {
+    totalFileNum.accumulateAndGet(num, (x, y) -> x - y);
   }
 
   @Override

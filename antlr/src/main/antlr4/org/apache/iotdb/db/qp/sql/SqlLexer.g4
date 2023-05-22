@@ -85,6 +85,10 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
+AUTO
+    : A U T O
+    ;
+
 BEFORE
     : B E F O R E
     ;
@@ -109,6 +113,10 @@ CACHE
     : C A C H E
     ;
 
+CAST
+    : C A S T
+    ;
+
 CHILD
     : C H I L D
     ;
@@ -121,8 +129,8 @@ CLUSTER
     : C L U S T E R
     ;
 
-VARIABLES
-    : V A R I A B L E S
+COLLECTOR
+    : C O L L E C T O R
     ;
 
 CONCAT
@@ -141,16 +149,20 @@ CONFIGURATION
     : C O N F I G U R A T I O N
     ;
 
+CONNECTOR
+    : C O N N E C T O R
+    ;
+
 CONTINUOUS
     : C O N T I N U O U S
     ;
 
-COUNT
-    : C O U N T
-    ;
-
 CONTAIN
     : C O N T A I N
+    ;
+
+COUNT
+    : C O U N T
     ;
 
 CQ
@@ -214,10 +226,6 @@ DEVICE
     : D E V I C E
     ;
 
-DEVICEID
-    : D E V I C E I D
-    ;
-
 DEVICES
     : D E V I C E S
     ;
@@ -260,6 +268,10 @@ FILL
 
 FILE
     : F I L E
+    ;
+
+FIRST
+    : F I R S T
     ;
 
 FLUSH
@@ -382,6 +394,14 @@ MIGRATE
     : M I G R A T E
     ;
 
+MODEL
+    : M O D E L
+    ;
+
+MODELS
+    : M O D E L S
+    ;
+
 NODEID
     : N O D E I D
     ;
@@ -396,6 +416,10 @@ NONE
 
 NOW
     : N O W
+    ;
+
+NULLS
+    : N U L L S
     ;
 
 OF
@@ -482,6 +506,10 @@ PROCESSLIST
     : P R O C E S S L I S T
     ;
 
+PROCESSOR
+    : P R O C E S S O R
+    ;
+
 PROPERTY
     : P R O P E R T Y
     ;
@@ -500,6 +528,10 @@ QUERY
 
 QUERYID
     : Q U E R Y I D
+    ;
+
+QUOTA
+    : Q U O T A
     ;
 
 RANGE
@@ -542,6 +574,10 @@ RESOURCE
     : R E S O U R C E
     ;
 
+REPLACE
+    : R E P L A C E
+    ;
+
 REVOKE
     : R E V O K E
     ;
@@ -552,6 +588,10 @@ ROLE
 
 ROOT
     : R O O T
+    ;
+
+ROUND
+    : R O U N D
     ;
 
 RUNNING
@@ -598,6 +638,10 @@ SOFFSET
     : S O F F S E T
     ;
 
+SPACE
+    : S P A C E
+    ;
+
 STORAGE
     : S T O R A G E
     ;
@@ -626,6 +670,10 @@ STOP
     : S T O P
     ;
 
+SUBSTRING
+    : S U B S T R I N G
+    ;
+
 SYSTEM
     : S Y S T E M
     ;
@@ -646,6 +694,10 @@ TEMPLATES
     : T E M P L A T E S
     ;
 
+THROTTLE
+    : T H R O T T L E
+    ;
+
 TIME
     : T I M E
     ;
@@ -660,6 +712,10 @@ TIMESERIES
 
 TIMESLOTID
     : T I M E S L O T I D
+    ;
+
+TIMEPARTITION
+    : T I M E P A R T I T I O N
     ;
 
 TIMESTAMP
@@ -680,6 +736,10 @@ TOP
 
 TRACING
     : T R A C I N G
+    ;
+
+TRAILS
+    : T R A I L S
     ;
 
 TRIGGER
@@ -718,6 +778,10 @@ URI
     : U R I
     ;
 
+USED
+    : U S E D
+    ;
+
 USER
     : U S E R
     ;
@@ -730,6 +794,10 @@ VALUES
     : V A L U E S
     ;
 
+VARIABLES
+    : V A R I A B L E S
+    ;
+
 VARIATION
     : V A R I A T I O N
     ;
@@ -740,6 +808,10 @@ VERIFY
 
 VERSION
     : V E R S I O N
+    ;
+
+VIEW
+    : V I E W
     ;
 
 WATERMARK_EMBEDDING
@@ -762,6 +834,21 @@ WRITABLE
     : W R I T A B L E
     ;
 
+CASE
+    : C A S E
+    ;
+
+WHEN
+    : W H E N
+    ;
+
+THEN
+    : T H E N
+    ;
+
+ELSE
+    : E L S E
+    ;
 
 // Privileges Keywords
 

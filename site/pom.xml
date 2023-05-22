@@ -347,6 +347,18 @@
                                 </configuration>
                             </execution>
                             <!-- Install all project dependencies -->
+                            <!-- Install pnpm -->
+                            <execution>
+                                <id>npm install pnpm</id>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <phase>compile</phase>
+                                <!-- Optional configuration which provides for running any npm command -->
+                                <configuration>
+                                    <arguments>install -g pnpm</arguments>
+                                </configuration>
+                            </execution>
                             <execution>
                                 <id>npm install</id>
                                 <goals>

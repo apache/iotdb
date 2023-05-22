@@ -19,6 +19,8 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -127,10 +129,10 @@ public class IOUtils {
    */
   public static PathPrivilege readPathPrivilege(
       DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
-      throws IOException {
+      throws IOException, IllegalPathException {
     String path = IOUtils.readString(inputStream, encoding, strBufferLocal);
     int privilegeNum = inputStream.readInt();
-    PathPrivilege pathPrivilege = new PathPrivilege(path);
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath(path));
     for (int i = 0; i < privilegeNum; i++) {
       pathPrivilege.getPrivileges().add(inputStream.readInt());
     }
@@ -153,7 +155,7 @@ public class IOUtils {
       String encoding,
       ThreadLocal<ByteBuffer> encodingBufferLocal)
       throws IOException {
-    writeString(outputStream, pathPrivilege.getPath(), encoding, encodingBufferLocal);
+    writeString(outputStream, pathPrivilege.getPath().getFullPath(), encoding, encodingBufferLocal);
     writeInt(outputStream, pathPrivilege.getPrivileges().size(), encodingBufferLocal);
     for (Integer i : pathPrivilege.getPrivileges()) {
       writeInt(outputStream, i, encodingBufferLocal);

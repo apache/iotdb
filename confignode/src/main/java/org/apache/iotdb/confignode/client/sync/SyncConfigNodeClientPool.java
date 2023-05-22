@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -137,6 +138,7 @@ public class SyncConfigNodeClientPool {
       TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
+      Thread.currentThread().interrupt();
     }
   }
 

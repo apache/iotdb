@@ -107,16 +107,14 @@ public class SizeTieredCompactionSelector
       if (currentName.getInnerCompactionCnt() != level) {
         // meet files of another level
         if (selectedFileList.size() > 1) {
-          if (!addOneTaskToQueue(taskPriorityQueue, selectedFileList, selectedFileSize)) {
-            return false;
-          }
+          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
           shouldContinueToSearch = false;
         }
         selectedFileList = new ArrayList<>();
         selectedFileSize = 0L;
         continue;
       }
-      if (currentFile.getStatus() != TsFileResourceStatus.CLOSED) {
+      if (currentFile.getStatus() != TsFileResourceStatus.NORMAL) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;
@@ -134,9 +132,7 @@ public class SizeTieredCompactionSelector
           || selectedFileList.size() >= config.getMaxInnerCompactionCandidateFileNum()) {
         // submit the task
         if (selectedFileList.size() > 1) {
-          if (!addOneTaskToQueue(taskPriorityQueue, selectedFileList, selectedFileSize)) {
-            return false;
-          }
+          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
           shouldContinueToSearch = false;
         }
         selectedFileList = new ArrayList<>();
@@ -147,23 +143,10 @@ public class SizeTieredCompactionSelector
     // if next time partition exists
     // submit a merge task even it does not meet the requirement for file num or file size
     if (hasNextTimePartition && selectedFileList.size() > 1) {
-      addOneTaskToQueue(taskPriorityQueue, selectedFileList, selectedFileSize);
+      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
       shouldContinueToSearch = false;
     }
     return shouldContinueToSearch;
-  }
-
-  private boolean addOneTaskToQueue(
-      PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue,
-      List<TsFileResource> selectedFileList,
-      long selectedFileSize) {
-    if (CompactionTaskManager.getInstance().getCompactionCandidateTaskCount()
-            + taskPriorityQueue.size()
-        < config.getCandidateCompactionTaskQueueSize()) {
-      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-      return true;
-    }
-    return false;
   }
 
   /**
@@ -223,9 +206,11 @@ public class SizeTieredCompactionSelector
         TsFileNameGenerator.TsFileName fileNameOfO2 =
             TsFileNameGenerator.getTsFileName(resourceOfO2.getTsFile().getName());
         if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
+          // the higher the inner compaction count, the higher the priority is
           return fileNameOfO2.getInnerCompactionCnt() - fileNameOfO1.getInnerCompactionCnt();
         }
-        return (int) (fileNameOfO1.getVersion() - fileNameOfO2.getVersion());
+        // the larger the version number, the higher the priority is
+        return (int) (fileNameOfO2.getVersion() - fileNameOfO1.getVersion());
       } catch (IOException e) {
         return 0;
       }

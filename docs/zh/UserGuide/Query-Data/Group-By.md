@@ -33,7 +33,7 @@
 
 下图中指出了这三个参数的含义：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
 
 接下来，我们给出几个典型例子：
 
@@ -599,7 +599,7 @@ group by variation(controlExpression[,delta][,ignoreNull=true/false])
 
 下图为差值分段的一个分段方式示意图，与组中第一个数据的控制列值的差值在delta内的控制列对应的点属于相同的分组。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/GroupBy/groupByVariation.jpeg" alt="groupByVariation">
 
 #### 使用注意事项
 1. `controlExpression`的结果应该为唯一值，如果使用通配符拼接后出现多列，则报错。
@@ -772,7 +772,7 @@ group by session(timeInterval)
 
 下图为`group by session`下的一个分组示意图
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="/img/UserGuide/Process-Data/GroupBy/groupBySession.jpeg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Process-Data/GroupBy/groupBySession.jpeg">
 
 #### 使用注意事项
 1. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
@@ -836,4 +836,70 @@ select __endTime,sum(hardware) from root.ln.wf02.wt01 group by session(50s) havi
 |1970-01-01T08:05:20.000+08:00|root.ln.wf02.wt01|1970-01-01T08:05:20.000+08:00|        550.0|
 |1970-01-02T08:08:01.000+08:00|root.ln.wf02.wt01|1970-01-02T08:08:05.000+08:00|       1650.0|
 +-----------------------------+-----------------+-----------------------------+-------------+
+```
+## 点数分段聚合
+`GROUP BY COUNT`可以根据点数分组进行聚合运算，将连续的指定数量数据点分为一组，即按照固定的点数进行分组。
+其语法定义如下：
+```sql
+group by count(controlExpression, size[,ignoreNull=true/false])
+```
+* controlExpression
+
+计数参照的对象，可以是结果集的任意列或是列的表达式
+
+* size
+
+一个组中数据点的数量，每`size`个数据点会被分到同一个组
+
+* ignoreNull=true/false
+
+是否忽略`controlExpression`为null的数据点，当ignoreNull为true时，在计数时会跳过`controlExpression`结果为null的数据点
+
+### 使用注意事项
+1. 对于一个分组，默认Time列输出分组的开始时间，查询时可以使用select `__endTime`的方式来使得结果输出分组的结束时间。
+2. 与`ALIGN BY DEVICE`搭配使用时会对每个device进行单独的分组操作。
+3. 当前暂不支持与`GROUP BY LEVEL`搭配使用。
+4. 当一个分组内最终的点数不满足`size`的数量时，不会输出该分组的结果
+
+对于下面的原始数据，给出几个查询样例。
+```
++-----------------------------+-----------+-----------------------+
+|                         Time|root.sg.soc|root.sg.charging_status|
++-----------------------------+-----------+-----------------------+
+|1970-01-01T08:00:00.001+08:00|       14.0|                      1|                                   
+|1970-01-01T08:00:00.002+08:00|       16.0|                      1|                                 
+|1970-01-01T08:00:00.003+08:00|       16.0|                      0|                                   
+|1970-01-01T08:00:00.004+08:00|       16.0|                      0|                                   
+|1970-01-01T08:00:00.005+08:00|       18.0|                      1|                                   
+|1970-01-01T08:00:00.006+08:00|       24.0|                      1|                                   
+|1970-01-01T08:00:00.007+08:00|       36.0|                      1|                                   
+|1970-01-01T08:00:00.008+08:00|       36.0|                   null|                                   
+|1970-01-01T08:00:00.009+08:00|       45.0|                      1|                                   
+|1970-01-01T08:00:00.010+08:00|       60.0|                      1|
++-----------------------------+-----------+-----------------------+
+```
+sql语句如下
+```sql
+select count(charging_stauts), first_value(soc) from root.sg group by count(charging_status,5) 
+```
+得到如下结果，其中由于第二个1970-01-01T08:00:00.006+08:00到1970-01-01T08:00:00.010+08:00的窗口中包含四个点，不符合`size = 5`的条件，因此不被输出
+```
++-----------------------------+-----------------------------+--------------------------------------+
+|                         Time|                    __endTime|first_value(root.sg.beijing.car01.soc)|
++-----------------------------+-----------------------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|1970-01-01T08:00:00.005+08:00|                                  14.0|
++-----------------------------+-----------------------------+--------------------------------------+
+```
+而当使用ignoreNull将null值也考虑进来时，可以得到两个点计数为5的窗口，sql如下
+```sql
+select count(charging_stauts), first_value(soc) from root.sg group by count(charging_status,5,ignoreNull=false) 
+```
+得到如下结果
+```
++-----------------------------+-----------------------------+--------------------------------------+
+|                         Time|                    __endTime|first_value(root.sg.beijing.car01.soc)|
++-----------------------------+-----------------------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|1970-01-01T08:00:00.005+08:00|                                  14.0|
+|1970-01-01T08:00:00.006+08:00|1970-01-01T08:00:00.010+08:00|                                  24.0|
++-----------------------------+-----------------------------+--------------------------------------+
 ```

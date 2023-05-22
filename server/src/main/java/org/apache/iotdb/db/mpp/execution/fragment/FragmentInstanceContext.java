@@ -55,13 +55,15 @@ public class FragmentInstanceContext extends QueryContext {
 
   private IDataRegionForQuery dataRegion;
   private Filter timeFilter;
-  List<PartialPath> sourcePaths;
+  private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
   /** closed tsfile used in this fragment instance */
   private Set<TsFileResource> closedFilePaths;
   /** unClosed tsfile used in this fragment instance */
   private Set<TsFileResource> unClosedFilePaths;
+  /** check if there is tmp file to be deleted */
+  private boolean mayHaveTmpFile = false;
 
   private final long createNanos = System.nanoTime();
 
@@ -354,14 +356,33 @@ public class FragmentInstanceContext extends QueryContext {
    * All file paths used by this fragment instance must be cleared and thus the usage reference must
    * be decreased.
    */
-  protected void releaseResource() {
-    for (TsFileResource tsFile : closedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+  protected synchronized void releaseResource() {
+    // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
+    if (closedFilePaths != null) {
+      for (TsFileResource tsFile : closedFilePaths) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+      }
+      closedFilePaths = null;
     }
-    closedFilePaths = null;
-    for (TsFileResource tsFile : unClosedFilePaths) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+
+    if (unClosedFilePaths != null) {
+      for (TsFileResource tsFile : unClosedFilePaths) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+      }
+      unClosedFilePaths = null;
     }
-    unClosedFilePaths = null;
+
+    dataRegion = null;
+    timeFilter = null;
+    sourcePaths = null;
+    sharedQueryDataSource = null;
+  }
+
+  public void setMayHaveTmpFile(boolean mayHaveTmpFile) {
+    this.mayHaveTmpFile = mayHaveTmpFile;
+  }
+
+  public boolean mayHaveTmpFile() {
+    return mayHaveTmpFile;
   }
 }

@@ -67,6 +67,8 @@ public class IoTDBClusterNodeErrorStartUpIT {
   private static final String TEST_CLUSTER_NAME = "defaultCluster";
   private static final String ERROR_CLUSTER_NAME = "errorCluster";
 
+  private static final int START_RETRY_NUM = 10;
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
@@ -295,6 +297,51 @@ public class IoTDBClusterNodeErrorStartUpIT {
                   EnvFactory.getEnv().getConfigNodeWrapper(1),
                   EnvFactory.getEnv().getDataNodeWrapper(0)),
               Arrays.asList(NodeStatus.Running, NodeStatus.Running));
+    }
+  }
+
+  @Test
+  public void testIllegalNodeStartUp()
+      throws IOException, ClientManagerException, InterruptedException, TException {
+    ConfigNodeWrapper portConflictConfigNodeWrapper =
+        EnvFactory.getEnv().generateRandomConfigNodeWrapper();
+    DataNodeWrapper portConflictDataNodeWrapper =
+        EnvFactory.getEnv().generateRandomDataNodeWrapper();
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      TShowClusterResp showClusterResp = client.showCluster();
+      int beforeStartConfigNodes = showClusterResp.getConfigNodeListSize();
+      int beforeStartDataNodes = showClusterResp.getDataNodeListSize();
+      // set ConfigNode port repeat
+      portConflictConfigNodeWrapper.setConsensusPort(portConflictConfigNodeWrapper.getPort());
+      portConflictConfigNodeWrapper.changeConfig(
+          (MppBaseConfig) EnvFactory.getEnv().getConfig().getConfigNodeConfig(),
+          (MppCommonConfig) EnvFactory.getEnv().getConfig().getConfigNodeCommonConfig(),
+          null);
+      portConflictConfigNodeWrapper.start();
+      int afterStartConfigNodes;
+      for (int i = 0; i < START_RETRY_NUM; ++i) {
+        showClusterResp = client.showCluster();
+        afterStartConfigNodes = showClusterResp.getConfigNodeListSize();
+        Assert.assertEquals(beforeStartConfigNodes, afterStartConfigNodes);
+        Thread.sleep(1000);
+      }
+
+      // set datanode port repeat
+      portConflictDataNodeWrapper.setMppDataExchangePort(
+          portConflictDataNodeWrapper.getDataRegionConsensusPort());
+      portConflictDataNodeWrapper.changeConfig(
+          (MppBaseConfig) EnvFactory.getEnv().getConfig().getDataNodeConfig(),
+          (MppCommonConfig) EnvFactory.getEnv().getConfig().getDataNodeCommonConfig(),
+          null);
+      portConflictDataNodeWrapper.start();
+      int afterStartDataNodes;
+      for (int i = 0; i < START_RETRY_NUM; ++i) {
+        showClusterResp = client.showCluster();
+        afterStartDataNodes = showClusterResp.getDataNodeListSize();
+        Assert.assertEquals(beforeStartDataNodes, afterStartDataNodes);
+        Thread.sleep(1000);
+      }
     }
   }
 }

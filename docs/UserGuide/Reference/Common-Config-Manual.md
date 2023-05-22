@@ -781,6 +781,15 @@ Different configuration parameters take effect in the following three ways:
 |Default| 5000                                                                    |
 |Effective| After restarting system                                                 |
 
+* 0.13\_data\_insert\_adapt
+
+|Name| 0.13\_data\_insert\_adapt                                             |
+|:---:|:----------------------------------------------------------------------|
+|Description| if using v0.13 client to insert data, set this configuration to true. |
+|Type| Boolean                                                               |
+|Default| false                                                                 |
+|Effective| After restarting system                                               |
+
 * upgrade\_thread\_count
 
 |   Name    | upgrade\_thread\_count                                                                            |
@@ -788,7 +797,16 @@ Different configuration parameters take effect in the following three ways:
 |Description| When there exists old version(v2) TsFile, how many thread will be set up to perform upgrade tasks |
 |   Type    | Int32                                                                                             |
 |  Default  | 1                                                                                                 |
-| Effective | After restarting system                                                                           |                                                                        |
+| Effective | After restarting system                                                                           |
+
+* device\_path\_cache\_size
+
+|   Name    | device\_path\_cache\_size                                                                                                 |
+|:---------:|:--------------------------------------------------------------------------------------------------------------------------|
+|Description| The max size of the device path cache. This cache is for avoiding initialize duplicated device id object in write process |
+|   Type    | Int32                                                                                                                     |
+|  Default  | 500000                                                                                                                    |
+| Effective | After restarting system                                                                                                   |
 
 * insert\_multi\_tablet\_enable\_multithreading\_column\_threshold
 
@@ -893,12 +911,12 @@ Different configuration parameters take effect in the following three ways:
 
 * target\_compaction\_file\_size
 
-|    Name     | target\_compaction\_file\_size               |
-| :---------: | :------------------------------------------- |
-| Description | The target file is in inner space compaction |
-|    Type     | Int64                                        |
-|   Default   | 1073741824                                   |
-|  Effective  | After restart system                         |
+|    Name     | target\_compaction\_file\_size                 |
+| :---------: |:-----------------------------------------------|
+| Description | The target file size in compaction |
+|    Type     | Int64                                          |
+|   Default   | 2147483648                                     |
+|  Effective  | After restart system                           |
 
 * target\_chunk\_size
 
@@ -1055,14 +1073,23 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 0                                                                                                                                      |
 |  Effective  | After restart system                                                                                                                   |
 
-* fsync\_wal\_delay\_in\_ms
+* wal\_async\_mode\_fsync\_delay\_in\_ms
 
-|    Name     | fsync\_wal\_delay\_in\_ms                                     |
-|:-----------:|:--------------------------------------------------------------|
-| Description | Duration a wal flush operation will wait before calling fsync |
-|    Type     | int32                                                         |
-|   Default   | 3                                                             |
-|  Effective  | hot-load                                                      |
+|    Name     | wal\_async\_mode\_fsync\_delay\_in\_ms                                          |
+|:-----------:|:--------------------------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync in the async mode |
+|    Type     | int32                                                                           |
+|   Default   | 1000                                                                            |
+|  Effective  | hot-load                                                                        |
+
+* wal\_sync\_mode\_fsync\_delay\_in\_ms
+
+|    Name     | wal\_sync\_mode\_fsync\_delay\_in\_ms                                          |
+|:-----------:|:-------------------------------------------------------------------------------|
+| Description | Duration a wal flush operation will wait before calling fsync in the sync mode |
+|    Type     | int32                                                                          |
+|   Default   | 3                                                                              |
+|  Effective  | hot-load                                                                       |
 
 * wal\_buffer\_size\_in\_byte
 
@@ -1070,7 +1097,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-----------------------------|
 | Description | Buffer size of each wal node |
 |    Type     | int32                        |
-|   Default   | 16777216                     |
+|   Default   | 33554432                     |
 |  Effective  | After restart system         |
 
 * wal\_buffer\_queue\_capacity
@@ -1079,7 +1106,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-------------------------------------------|
 | Description | Blocking queue capacity of each wal buffer |
 |    Type     | int32                                      |
-|   Default   | 50                                         |
+|   Default   | 500                                        |
 |  Effective  | After restart system                       |
 
 * wal\_file\_size\_threshold\_in\_byte
@@ -1088,7 +1115,7 @@ Different configuration parameters take effect in the following three ways:
 |:-----------:|:-------------------------------------|
 | Description | Size threshold of each wal file      |
 |    Type     | int32                                |
-|   Default   | 10485760                             |
+|   Default   | 31457280                             |
 |  Effective  | hot-load                             |
 
 * wal\_min\_effective\_info\_ratio
@@ -1212,12 +1239,12 @@ Different configuration parameters take effect in the following three ways:
 
 * compressor
 
-|    Name     | compressor                                    |
-| :---------: | :-------------------------------------------- |
-| Description | Data compression method                       |
-|    Type     | Enum String : “UNCOMPRESSED”, “SNAPPY”, "LZ4" |
-|   Default   | SNAPPY                                        |
-|  Effective  | hot-load                                       |
+|    Name     | compressor                                                     |
+|:-----------:|:---------------------------------------------------------------|
+| Description | Data compression method                                        |
+|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
+|   Default   | SNAPPY                                                         |
+|  Effective  | hot-load                                                       |
 
 * bloomFilterErrorRate
 
@@ -1392,6 +1419,16 @@ Different configuration parameters take effect in the following three ways:
 
 ### SELECT-INTO
 
+* into\_operation\_buffer\_size\_in\_byte
+
+|    Name     | into\_operation\_buffer\_size\_in\_byte                                                                                            |
+| :---------: | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Description | When the select-into statement is executed, the maximum memory occupied by the data to be written (unit: Byte) |
+|    Type     | int64                                                        |
+|   Default   | 100MB                                                        |
+|  Effective  | hot-load                                                      |
+
+
 * select\_into\_insert\_tablet\_plan\_row\_limit
 
 |    Name     | select\_into\_insert\_tablet\_plan\_row\_limit                                                                                            |
@@ -1449,6 +1486,44 @@ Different configuration parameters take effect in the following three ways:
 |     Type     | int32                           |
 |    Default    | 5                             |
 | Effective | hot-load                  |
+
+### IOTConsensus Configuration
+
+* data_region_iot_max_log_entries_num_per_batch
+
+|    Name     | data_region_iot_max_log_entries_num_per_batch                     |
+| :---------: | :------------------------------------------------ |
+| Description | The maximum log entries num in IoTConsensus Batch |
+|    Type     | int32                                             |
+|   Default   | 1024                                              |
+|  Effective  | After restarting system                           |
+
+* data_region_iot_max_size_per_batch
+
+|    Name     | data_region_iot_max_size_per_batch                     |
+| :---------: | :------------------------------------- |
+| Description | The maximum size in IoTConsensus Batch |
+|    Type     | int32                                  |
+|   Default   | 16MB                                   |
+|  Effective  | After restarting system                |
+
+* data_region_iot_max_pending_batches_num
+
+|    Name     | data_region_iot_max_pending_batches_num                         |
+| :---------: | :---------------------------------------------- |
+| Description | The maximum pending batches num in IoTConsensus |
+|    Type     | int32                                           |
+|   Default   | 12                                              |
+|  Effective  | After restarting system                         |
+
+* data_region_iot_max_memory_ratio_for_queue
+
+|    Name     | data_region_iot_max_memory_ratio_for_queue                         |
+| :---------: | :------------------------------------------------- |
+| Description | The maximum memory ratio for queue in IoTConsensus |
+|    Type     | double                                             |
+|   Default   | 0.6                                                |
+|  Effective  | After restarting system                            |
 
 ### RatisConsensus Configuration
 
@@ -1587,6 +1662,24 @@ Different configuration parameters take effect in the following three ways:
 |   Type   | int32                                      |
 |  Default   | 4MB                                        |
 | Effective | After restarting system                                       |
+
+* data_region_ratis_grpc_leader_outstanding_appends_max
+
+|    Name     | data_region_ratis_grpc_leader_outstanding_appends_max |
+| :---------: | :---------------------------------------------------- |
+| Description | data region grpc pipeline concurrency threshold       |
+|    Type     | int32                                                 |
+|   Default   | 128                                                   |
+|  Effective  | After restarting system                               |
+
+* data_region_ratis_log_force_sync_num
+
+|    Name     | data_region_ratis_log_force_sync_num |
+| :---------: | :----------------------------------- |
+| Description | data region fsync threshold          |
+|    Type     | int32                                |
+|   Default   | 128                                  |
+|  Effective  | After restarting system              |
 
 * config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
 

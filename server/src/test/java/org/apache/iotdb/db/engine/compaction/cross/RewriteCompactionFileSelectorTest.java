@@ -67,6 +67,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   public void setUp() throws IOException, MetadataException, WriteProcessException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
   }
 
   @After
@@ -147,7 +148,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     unseqResources.add(largeUnseqTsFileResource);
-    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -198,7 +199,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
     unseqResources.add(largeUnseqTsFileResource);
-    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -248,7 +249,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource largeUnseqTsFileResource = new TsFileResource(file);
-    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    largeUnseqTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     largeUnseqTsFileResource.setMinPlanIndex(10);
     largeUnseqTsFileResource.setMaxPlanIndex(10);
     largeUnseqTsFileResource.setVersion(10);
@@ -287,7 +288,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                         + 0
                         + ".tsfile"));
         TsFileResource fileResource = new TsFileResource(file);
-        fileResource.setStatus(TsFileResourceStatus.CLOSED);
+        fileResource.setStatus(TsFileResourceStatus.NORMAL);
         prepareFile(fileResource, i, 1, 0);
         seqList.add(fileResource);
       }
@@ -306,7 +307,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                         + 0
                         + ".tsfile"));
         TsFileResource fileResource = new TsFileResource(file);
-        fileResource.setStatus(TsFileResourceStatus.CLOSED);
+        fileResource.setStatus(TsFileResourceStatus.NORMAL);
         unseqList.add(fileResource);
       }
       prepareFile(unseqList.get(0), 0, 1, 10);
@@ -370,7 +371,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       prepareFile(fileResource, i, 1, i);
       seqList.add(fileResource);
     }
@@ -389,7 +390,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       prepareFile(fileResource, i, 1, i);
       unseqList.add(fileResource);
     }
@@ -443,7 +444,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       prepareFile(fileResource, i, 1, i);
       seqList.add(fileResource);
     }
@@ -462,7 +463,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       prepareFile(fileResource, i, 10, i);
       unseqList.add(fileResource);
     }
@@ -515,7 +516,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       prepareFile(fileResource, i, 1, i);
       seqList.add(fileResource);
     }
@@ -534,7 +535,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       unseqList.add(fileResource);
     }
     prepareFile(unseqList.get(0), 7, 3, 7);
@@ -589,7 +590,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       prepareFile(fileResource, i, 1, i);
       seqList.add(fileResource);
     }
@@ -608,7 +609,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       unseqList.add(fileResource);
     }
     prepareFile(unseqList.get(0), 7, 3, 7);
@@ -667,7 +668,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
       if (i - 11 != 3) {
-        fileResource.setStatus(TsFileResourceStatus.CLOSED);
+        fileResource.setStatus(TsFileResourceStatus.NORMAL);
       }
       prepareFile(fileResource, i, 1, i);
       seqList.add(fileResource);
@@ -687,7 +688,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                       + 0
                       + ".tsfile"));
       TsFileResource fileResource = new TsFileResource(file);
-      fileResource.setStatus(TsFileResourceStatus.CLOSED);
+      fileResource.setStatus(TsFileResourceStatus.NORMAL);
       unseqList.add(fileResource);
     }
     prepareFile(unseqList.get(0), 7, 3, 7);
@@ -738,7 +739,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource firstTsFileResource = new TsFileResource(firstFile);
-    firstTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    firstTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     firstTsFileResource.setMinPlanIndex(1);
     firstTsFileResource.setMaxPlanIndex(1);
     firstTsFileResource.setVersion(1);
@@ -791,7 +792,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource secondTsFileResource = new TsFileResource(secondFile);
-    secondTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    secondTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     secondTsFileResource.setMinPlanIndex(2);
     secondTsFileResource.setMaxPlanIndex(2);
     secondTsFileResource.setVersion(2);
@@ -837,7 +838,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource thirdTsFileResource = new TsFileResource(thirdFile);
-    thirdTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    thirdTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     thirdTsFileResource.setMinPlanIndex(3);
     thirdTsFileResource.setMaxPlanIndex(3);
     thirdTsFileResource.setVersion(3);
@@ -883,7 +884,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
                     + 0
                     + ".tsfile"));
     TsFileResource fourthTsFileResource = new TsFileResource(fourthFile);
-    fourthTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    fourthTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     fourthTsFileResource.setMinPlanIndex(4);
     fourthTsFileResource.setMaxPlanIndex(4);
     fourthTsFileResource.setVersion(4);
@@ -1061,5 +1062,18 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     if (fail.get()) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void testFirstZeroLevelUnseqFileIsLarge() {
+    IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(1);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(unseqResources.get(5).getTsFileSize());
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    List<CrossCompactionTaskResource> selected =
+        selector.selectCrossSpaceTask(seqResources, unseqResources.subList(5, 6));
+    Assert.assertEquals(1, selected.size());
   }
 }

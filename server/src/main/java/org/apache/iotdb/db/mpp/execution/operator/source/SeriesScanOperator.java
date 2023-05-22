@@ -129,7 +129,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -139,7 +139,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (retainedTsBlock != null) {
       return true;
     }
@@ -184,7 +184,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     return finished;
   }
 

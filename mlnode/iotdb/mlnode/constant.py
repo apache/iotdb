@@ -15,7 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from enum import Enum
 
 MLNODE_CONF_DIRECTORY_NAME = "conf"
 MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
 MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
+
+MLNODE_MODEL_STORAGE_DIRECTORY_NAME = "models"
+
+
+class TSStatusCode(Enum):
+    SUCCESS_STATUS = 200
+    REDIRECTION_RECOMMEND = 400
+    MLNODE_INTERNAL_ERROR = 1510
+
+    def get_status_code(self) -> int:
+        return self.value

@@ -35,7 +35,7 @@ public interface IUDFInputDataSet {
   boolean hasNextRowInObjects() throws IOException;
 
   /** Whether the data set has next row. */
-  default YieldableState canYieldNextRowInObjects() throws IOException {
+  default YieldableState canYieldNextRowInObjects() throws Exception {
     return hasNextRowInObjects()
         ? YieldableState.YIELDABLE
         : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;

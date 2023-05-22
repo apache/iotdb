@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -136,7 +135,6 @@ public class SchemaRegionConsensusImpl {
                                       .build())
                               .build())
                       .setStorageDir(conf.getSchemaRegionConsensusDir())
-                      .setConsensusGroupType(TConsensusGroupType.SchemaRegion)
                       .build(),
                   gid ->
                       new SchemaRegionStateMachine(

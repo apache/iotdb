@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.engine.compaction.execute.utils.executor.readchunk;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
@@ -115,7 +113,7 @@ public class AlignedSeriesCompactionExecutor {
             continue;
           }
           measurementSet.add(chunkMetadata.getMeasurementUid());
-          Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetadata);
+          Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
           ChunkHeader header = chunk.getHeader();
           schemaSet.add(
               new MeasurementSchema(
@@ -132,7 +130,6 @@ public class AlignedSeriesCompactionExecutor {
   }
 
   public void execute() throws IOException {
-    long originTempFileSize = writer.getPos();
     while (readerAndChunkMetadataList.size() > 0) {
       Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
@@ -163,10 +160,6 @@ public class AlignedSeriesCompactionExecutor {
       chunkWriter.writeToFileWriter(writer);
     }
     writer.checkMetadataSizeAndMayFlush();
-
-    // update temporal file metrics
-    TsFileMetricManager.getInstance()
-        .addCompactionTempFileSize(true, true, writer.getPos() - originTempFileSize);
   }
 
   private void compactOneAlignedChunk(AlignedChunkReader chunkReader, int notNullChunkNum)

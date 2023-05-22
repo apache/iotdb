@@ -103,7 +103,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     boolean hasReadyChild = false;
     List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       ListenableFuture<?> blocked = children.get(i).isBlocked();
@@ -120,7 +120,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public TsBlock next() {
+  public TsBlock next() throws Exception {
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
@@ -177,14 +177,14 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
         }
       }
       tsBlockBuilder.declarePosition();
-    } while (currentTime < currentEndTime && !timeSelector.isEmpty());
+    } while (comparator.canContinue(currentTime, currentEndTime) && !timeSelector.isEmpty());
 
     resultTsBlock = tsBlockBuilder.build();
     return checkTsBlockSizeAndGetResult();
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws Exception {
     if (finished) {
       return false;
     }
@@ -200,6 +200,8 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
         } else {
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
+          children.get(i).close();
+          children.set(i, null);
         }
       }
     }
@@ -207,7 +209,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  public boolean isFinished() {
+  public boolean isFinished() throws Exception {
     if (finished) {
       return true;
     }
@@ -269,10 +271,10 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
    *     some children is blocked or return null.
    */
   @Override
-  protected boolean prepareInput() {
+  protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i)) {
+      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
         continue;
       }
       if (canCallNext[i]) {
@@ -287,7 +289,10 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
         } else {
           noMoreTsBlocks[i] = true;
           inputTsBlocks[i] = null;
+          children.get(i).close();
+          children.set(i, null);
         }
+
       } else {
         allReady = false;
       }
@@ -301,7 +306,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
-  protected TsBlock getNextTsBlock(int childIndex) {
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
     inputIndex[childIndex] = 0;
     return children.get(childIndex).nextWithTimer();
   }

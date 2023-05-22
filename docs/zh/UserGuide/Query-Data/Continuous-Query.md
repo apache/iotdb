@@ -76,19 +76,19 @@ END
 
 ##### `<start_time_offset>`等于`<every_interval>`
 
-![1](/img/UserGuide/Process-Data/Continuous-Query/pic1.png?raw=true)
+![1](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic1.png?raw=true)
 
 ##### `<start_time_offset>`大于`<every_interval>`
 
-![2](/img/UserGuide/Process-Data/Continuous-Query/pic2.png?raw=true)
+![2](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic2.png?raw=true)
 
 ##### `<start_time_offset>`小于`<every_interval>`
 
-![3](/img/UserGuide/Process-Data/Continuous-Query/pic3.png?raw=true)
+![3](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic3.png?raw=true)
 
 ##### `<every_interval>`不为0
 
-![4](/img/UserGuide/Process-Data/Continuous-Query/pic4.png?raw=true)
+![4](https://alioss.timecho.com/docs/img/UserGuide/Process-Data/Continuous-Query/pic4.png?raw=true)
 
 - `TIMEOUT POLICY` 指定了我们如何处理“前一个时间窗口还未执行完时，下一个窗口的执行时间已经到达的场景，默认值是`BLOCKED`.
     - `BLOCKED`意味着即使下一个窗口的执行时间已经到达，我们依旧需要阻塞等待前一个时间窗口的查询执行完再开始执行下一个窗口。如果使用`BLOCKED`策略，所有的时间窗口都将会被依此执行，但是如果遇到执行查询的时间长于周期性间隔时，连续查询的结果会迟于最新的时间窗口范围。

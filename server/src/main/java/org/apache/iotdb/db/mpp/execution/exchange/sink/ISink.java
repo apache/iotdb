@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
+import org.apache.iotdb.db.mpp.execution.driver.Driver;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -77,6 +78,9 @@ public interface ISink {
    * <p>Should only be called in normal case.
    */
   void close();
+
+  /** Return true if this ISink has been closed. Used in {@link Driver#isFinishedInternal()} */
+  boolean isClosed();
 
   /** Set max bytes this ISink can reserve from memory pool */
   void setMaxBytesCanReserve(long maxBytesCanReserve);

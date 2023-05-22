@@ -22,11 +22,12 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -44,16 +45,21 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
     super(schemaTestMode);
   }
 
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
     EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    clearSchema();
   }
 
   @Test
@@ -315,7 +321,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
       }
       assertEquals(ret2.length, count);
 
-      try (ResultSet rs = statement.executeQuery("show timeseries where 'tag1'='v1'")) {
+      try (ResultSet rs = statement.executeQuery("show timeseries where TAGS(tag1)='v1'")) {
         assertFalse(rs.next());
       }
     } catch (Exception e) {
@@ -370,7 +376,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
       assertEquals(ret.length, count);
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3'='v3', 'tag4'='v4'");
-      resultSet = statement.executeQuery("show timeseries where 'tag3'='v3'");
+      resultSet = statement.executeQuery("show timeseries where TAGS(tag3)='v3'");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -534,7 +540,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
 
       statement.execute(
           "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS('tag3'='v3', 'tag2'='newV2')");
-      resultSet = statement.executeQuery("show timeseries where 'tag3'='v3'");
+      resultSet = statement.executeQuery("show timeseries where TAGS(tag3)='v3'");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -565,7 +571,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
       statement.execute(
           "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS('tag1'='newV1', 'tag3'='newV3') "
               + "ATTRIBUTES('attr1'='newA1', 'attr3'='v3')");
-      resultSet = statement.executeQuery("show timeseries where 'tag3'='newV3'");
+      resultSet = statement.executeQuery("show timeseries where TAGS(tag3)='newV3'");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -590,7 +596,7 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
         }
         assertEquals(ret3.length, count);
 
-        resultSet = statement.executeQuery("show timeseries where 'tag3'='v3'");
+        resultSet = statement.executeQuery("show timeseries where TAGS(tag3)='v3'");
         assertFalse(resultSet.next());
       } finally {
         resultSet.close();

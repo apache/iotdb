@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
@@ -30,11 +30,11 @@ import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
  * MNodeTraverser finds the node of the specified level on the path and process it. The same node
  * will not be processed more than once. If a level is not given, the current node is processed.
  */
-public abstract class MNodeTraverser<R> extends Traverser<R> {
+public abstract class MNodeTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
 
   // Level query option started from 0. For example, level of root.sg.d1.s1 is 3.
   protected int targetLevel = -1;
-  protected IMNode lastVisitNode = null;
+  protected N lastVisitNode = null;
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -45,14 +45,18 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
    * @param isPrefixMatch prefix match or not
    * @throws MetadataException path does not meet the expected rules
    */
-  public MNodeTraverser(
-      IMNode startNode, PartialPath path, IMTreeStore store, boolean isPrefixMatch)
+  public MNodeTraverser(N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch);
   }
 
   @Override
-  protected boolean acceptFullMatchedNode(IMNode node) {
+  protected boolean mayTargetNodeType(N node) {
+    return true;
+  }
+
+  @Override
+  protected boolean acceptFullMatchedNode(N node) {
     if (targetLevel >= 0) {
       if (getSizeOfAncestor() > targetLevel) {
         return getAncestorNodeByLevel(targetLevel) != lastVisitNode;
@@ -67,17 +71,17 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
   }
 
   @Override
-  protected boolean acceptInternalMatchedNode(IMNode node) {
+  protected boolean acceptInternalMatchedNode(N node) {
     return false;
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
     return !node.isMeasurement();
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(IMNode node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
     return !node.isMeasurement();
   }
 
@@ -86,7 +90,7 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
   }
 
   @Override
-  protected final R generateResult(IMNode nextMatchedNode) {
+  protected final R generateResult(N nextMatchedNode) {
     if (targetLevel >= 0) {
       if (getLevelOfNextMatchedNode() == targetLevel) {
         lastVisitNode = nextMatchedNode;
@@ -99,5 +103,5 @@ public abstract class MNodeTraverser<R> extends Traverser<R> {
     }
   }
 
-  protected abstract R transferToResult(IMNode node);
+  protected abstract R transferToResult(N node);
 }

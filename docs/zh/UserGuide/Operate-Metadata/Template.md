@@ -55,6 +55,8 @@ IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT 
 
 **推荐将模板挂载在 database 节点上，不建议将模板挂载到 database 上层的节点上。**
 
+**模板挂载路径下禁止创建普通序列，已创建了普通序列的前缀路径上不允许挂载模板。**
+
 挂载元数据模板的 SQL 语句如下所示：
 
 ```shell
@@ -68,15 +70,15 @@ IoTDB> set schema template t1 to root.sg1.d1
 **注意**：在插入数据之前或系统未开启自动注册序列功能，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列即激活模板：
 
 ```shell
-IoTDB> create timeseries of schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d1
 ```
 
 **示例：** 执行以下语句
 ```shell
 IoTDB> set schema template t1 to root.sg1.d1
 IoTDB> set schema template t2 to root.sg1.d2
-IoTDB> create timeseries of schema template on root.sg1.d1
-IoTDB> create timeseries of schema template on root.sg1.d2
+IoTDB> create timeseries using schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d2
 ```
 
 查看此时的时间序列：
@@ -224,3 +226,15 @@ IoTDB> drop schema template t1
 ```
 
 **注意**：不支持删除已经挂载的模板，需在删除操作前保证该模板卸载成功。
+
+### 修改元数据模板
+
+在需要新增物理量的场景中，可以通过修改元数据模板来给所有已激活该模板的设备新增物理量。
+
+修改元数据模板的 SQL 语句如下所示：
+
+```shell
+IoTDB> alter schema template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
+```
+
+**向已挂载模板的路径下的设备中写入数据，若写入请求中的物理量不在模板中，将自动扩展模板。**

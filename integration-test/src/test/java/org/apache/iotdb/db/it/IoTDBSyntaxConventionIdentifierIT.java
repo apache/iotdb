@@ -163,7 +163,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "`-0001`",
       "`++1`",
       "`+-1`",
-      "`--1`"
+      "`--1`",
+      "123w",
+      "123d",
+      "123h"
     };
 
     String[] resultTimeseries = {
@@ -187,7 +190,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "root.sg1.d1.`-0001`",
       "root.sg1.d1.`++1`",
       "root.sg1.d1.`+-1`",
-      "root.sg1.d1.`--1`"
+      "root.sg1.d1.`--1`",
+      "root.sg1.d1.123w",
+      "root.sg1.d1.123d",
+      "root.sg1.d1.123h"
     };
 
     String[] selectNodeNames = {
@@ -211,7 +217,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "`-0001`",
       "`++1`",
       "`+-1`",
-      "`--1`"
+      "`--1`",
+      "123w",
+      "123d",
+      "123h"
     };
 
     String[] suffixInResultColumns = {
@@ -235,7 +244,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "`-0001`",
       "`++1`",
       "`+-1`",
-      "`--1`"
+      "`--1`",
+      "123w",
+      "123d",
+      "123h"
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1046,6 +1058,46 @@ public class IoTDBSyntaxConventionIdentifierIT {
       } catch (Exception ignored) {
       }
 
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testNodeNameWithWildcard() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.device_123.s1 INT32");
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_123")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_*")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*_123")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*123")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*_12*")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*12*")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.*e*")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       fail();

@@ -21,14 +21,17 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.GetSeriesSlotListStatement;
@@ -37,9 +40,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DeactivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTemplateStatement;
@@ -49,14 +54,18 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StartPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.StopPipeStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -66,14 +75,11 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> alterDatabase(DatabaseSchemaStatement databaseSchemaStatement);
 
-  SettableFuture<ConfigTaskResult> showStorageGroup(
-      ShowStorageGroupStatement showStorageGroupStatement);
+  SettableFuture<ConfigTaskResult> showDatabase(ShowDatabaseStatement showDatabaseStatement);
 
-  SettableFuture<ConfigTaskResult> countStorageGroup(
-      CountStorageGroupStatement countStorageGroupStatement);
+  SettableFuture<ConfigTaskResult> countDatabase(CountDatabaseStatement countDatabaseStatement);
 
-  SettableFuture<ConfigTaskResult> deleteStorageGroup(
-      DeleteStorageGroupStatement deleteStorageGroupStatement);
+  SettableFuture<ConfigTaskResult> deleteDatabase(DeleteDatabaseStatement deleteDatabaseStatement);
 
   SettableFuture<ConfigTaskResult> createFunction(CreateFunctionStatement createFunctionStatement);
 
@@ -129,7 +135,7 @@ public interface IConfigTaskExecutor {
       ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement);
 
   SettableFuture<ConfigTaskResult> setSchemaTemplate(
-      SetSchemaTemplateStatement setSchemaTemplateStatement);
+      String queryId, SetSchemaTemplateStatement setSchemaTemplateStatement);
 
   SettableFuture<ConfigTaskResult> showPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement);
@@ -142,6 +148,9 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> dropSchemaTemplate(
       DropSchemaTemplateStatement dropSchemaTemplateStatement);
+
+  SettableFuture<ConfigTaskResult> alterSchemaTemplate(
+      String queryId, AlterSchemaTemplateStatement alterSchemaTemplateStatement);
 
   SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
 
@@ -170,6 +179,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> getTimeSlotList(
       GetTimeSlotListStatement getTimeSlotListStatement);
 
+  SettableFuture<ConfigTaskResult> countTimeSlotList(
+      CountTimeSlotListStatement countTimeSlotListStatement);
+
   SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionStatement migrateRegionStatement);
 
   SettableFuture<ConfigTaskResult> createContinuousQuery(
@@ -178,4 +190,26 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> dropContinuousQuery(String cqId);
 
   SettableFuture<ConfigTaskResult> showContinuousQueries();
+
+  SettableFuture<ConfigTaskResult> setSpaceQuota(SetSpaceQuotaStatement setSpaceQuotaStatement);
+
+  SettableFuture<ConfigTaskResult> showSpaceQuota(ShowSpaceQuotaStatement showSpaceQuotaStatement);
+
+  TSpaceQuotaResp getSpaceQuota();
+
+  SettableFuture<ConfigTaskResult> setThrottleQuota(
+      SetThrottleQuotaStatement setThrottleQuotaStatement);
+
+  SettableFuture<ConfigTaskResult> showThrottleQuota(
+      ShowThrottleQuotaStatement showThrottleQuotaStatement);
+
+  TThrottleQuotaResp getThrottleQuota();
+
+  SettableFuture<ConfigTaskResult> createModel(CreateModelStatement createModelStatement);
+
+  SettableFuture<ConfigTaskResult> dropModel(String modelId);
+
+  SettableFuture<ConfigTaskResult> showModels();
+
+  SettableFuture<ConfigTaskResult> showTrails(String modelId);
 }

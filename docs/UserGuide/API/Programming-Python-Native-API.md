@@ -57,7 +57,28 @@ session.close()
 * Initialize a Session
 
 ```python
-session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
+session = Session(
+    ip="127.0.0.1",
+    port="6667",
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8",
+    enable_redirection=True
+)
+```
+
+* Initialize a Session to connect multiple nodes
+
+```python
+session = Session.init_from_node_urls(
+    node_urls=["127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"],
+    user="root",
+    password="root",
+    fetch_size=1024,
+    zone_id="UTC+8",
+    enable_redirection=True
+)
 ```
 
 * Open a session, with a parameter to specify whether to enable RPC compression
@@ -297,22 +318,19 @@ session.execute_statement(sql)
 #### Create Schema Template
 The step for creating a metadata template is as follows
 1. Create the template class
-2. Adding child Node，InternalNode and MeasurementNode can be chose
+2. Adding MeasurementNode
 3. Execute create schema template function
 
 ```python
 template = Template(name=template_name, share_time=True)
 
-i_node_gps = InternalNode(name="GPS", share_time=False)
-i_node_v = InternalNode(name="vehicle", share_time=True)
 m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+m_node_y = MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
+m_node_z = MeasurementNode("z", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
 
-i_node_gps.add_child(m_node_x)
-i_node_v.add_child(m_node_x)
-
-template.add_template(i_node_gps)
-template.add_template(i_node_v)
 template.add_template(m_node_x)
+template.add_template(m_node_y)
+template.add_template(m_node_z)
 
 session.create_schema_template(template)
 ```
@@ -513,7 +531,7 @@ The mapping relationship between them is：
 
 The following figure shows the relationship between the two more intuitively:
 
-![sqlalchemy-to-iotdb](/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
+![sqlalchemy-to-iotdb](https://alioss.timecho.com/docs/img/UserGuide/API/IoTDB-SQLAlchemy/sqlalchemy-to-iotdb.png?raw=true)
 
 #### Data type mapping
 | data type in IoTDB | data type in SQLAlchemy |

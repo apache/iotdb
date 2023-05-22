@@ -180,6 +180,11 @@ public class MeasurementSchema
   }
 
   @Override
+  public MeasurementSchemaType getSchemaType() {
+    return MeasurementSchemaType.MEASUREMENT_SCHEMA;
+  }
+
+  @Override
   public String getMeasurementId() {
     return measurementId;
   }
@@ -350,6 +355,11 @@ public class MeasurementSchema
   }
 
   @Override
+  public boolean isLogicalView() {
+    return false;
+  }
+
+  @Override
   public int partialSerializeTo(ByteBuffer buffer) {
     int byteLen = 0;
 
@@ -427,5 +437,13 @@ public class MeasurementSchema
   @Override
   public boolean containsSubMeasurement(String measurementId) {
     return this.measurementId.equals(measurementId);
+  }
+
+  public void setEncoding(byte encoding) {
+    this.encoding = encoding;
+  }
+
+  public void setCompressor(byte compressor) {
+    this.compressor = compressor;
   }
 }
