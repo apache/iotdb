@@ -251,4 +251,29 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setWriteMemoryProportion(String writeMemoryProportion) {
     return this;
   }
+
+  @Override
+  public CommonConfig setQuotaEnable(boolean quotaEnable) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setSortBufferSize(long sortBufferSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
+    return this;
+  }
 }

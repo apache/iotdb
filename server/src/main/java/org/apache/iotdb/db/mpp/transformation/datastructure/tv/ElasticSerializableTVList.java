@@ -38,14 +38,14 @@ import java.util.List;
 public class ElasticSerializableTVList implements PointCollector {
 
   public static ElasticSerializableTVList newElasticSerializableTVList(
-      TSDataType dataType, long queryId, float memoryLimitInMB, int cacheSize) {
+      TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
     return dataType.equals(TSDataType.TEXT)
         ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
         : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
   }
 
   protected TSDataType dataType;
-  protected long queryId;
+  protected String queryId;
   protected float memoryLimitInMB;
   protected int internalTVListCapacity;
   protected int cacheSize;
@@ -62,7 +62,7 @@ public class ElasticSerializableTVList implements PointCollector {
   protected int evictionUpperBound;
 
   protected ElasticSerializableTVList(
-      TSDataType dataType, long queryId, float memoryLimitInMB, int cacheSize) {
+      TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
     this.dataType = dataType;
     this.queryId = queryId;
     this.memoryLimitInMB = memoryLimitInMB;
@@ -83,7 +83,7 @@ public class ElasticSerializableTVList implements PointCollector {
 
   protected ElasticSerializableTVList(
       TSDataType dataType,
-      long queryId,
+      String queryId,
       float memoryLimitInMB,
       int internalTVListCapacity,
       int cacheSize) {

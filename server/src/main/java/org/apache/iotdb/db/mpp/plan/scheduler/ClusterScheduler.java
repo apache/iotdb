@@ -154,7 +154,7 @@ public class ClusterScheduler implements IScheduler {
   }
 
   @Override
-  public void stop() {
+  public void stop(Throwable t) {
     // TODO: It seems that it is unnecessary to check whether they are null or not. Is it a best
     // practice ?
     dispatcher.abort();
@@ -163,7 +163,7 @@ public class ClusterScheduler implements IScheduler {
     }
     // TODO: (xingtanzjr) handle the exception when the termination cannot succeed
     if (queryTerminator != null) {
-      queryTerminator.terminate();
+      queryTerminator.terminate(t);
     }
   }
 

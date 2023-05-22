@@ -181,6 +181,7 @@ export const zhSidebar = sidebar({
         { text: '采样函数', link: 'Sample' },
         { text: '时间序列处理', link: 'Time-Series' },
         { text: 'Lambda 表达式', link: 'Lambda' },
+        { text: '条件表达式', link: 'Conditional' },
 
         // IoTDB-Quality
         { text: '数据画像', link: 'Data-Profiling' },

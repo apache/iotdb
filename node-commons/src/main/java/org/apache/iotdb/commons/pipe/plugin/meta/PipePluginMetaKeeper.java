@@ -19,34 +19,94 @@
 
 package org.apache.iotdb.commons.pipe.plugin.meta;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class PipePluginMetaKeeper {
 
-  protected final Map<String, PipePluginMeta> pipeNameToPipeMetaMap;
+  protected final Map<String, PipePluginMeta> pipePluginNameToMetaMap = new ConcurrentHashMap<>();
 
-  public PipePluginMetaKeeper() {
-    pipeNameToPipeMetaMap = new ConcurrentHashMap<>();
+  protected void loadBuiltInPlugins() {
+    for (final BuiltinPipePlugin builtinPipePlugin : BuiltinPipePlugin.values()) {
+      addPipePluginMeta(
+          builtinPipePlugin.getPipePluginName(),
+          new PipePluginMeta(
+              builtinPipePlugin.getPipePluginName(), builtinPipePlugin.getClassName()));
+    }
   }
 
   public void addPipePluginMeta(String pluginName, PipePluginMeta pipePluginMeta) {
-    pipeNameToPipeMetaMap.put(pluginName.toUpperCase(), pipePluginMeta);
+    pipePluginNameToMetaMap.put(pluginName.toUpperCase(), pipePluginMeta);
   }
 
   public void removePipePluginMeta(String pluginName) {
-    pipeNameToPipeMetaMap.remove(pluginName.toUpperCase());
+    pipePluginNameToMetaMap.remove(pluginName.toUpperCase());
   }
 
   public PipePluginMeta getPipePluginMeta(String pluginName) {
-    return pipeNameToPipeMetaMap.get(pluginName.toUpperCase());
+    return pipePluginNameToMetaMap.get(pluginName.toUpperCase());
   }
 
   public PipePluginMeta[] getAllPipePluginMeta() {
-    return pipeNameToPipeMetaMap.values().toArray(new PipePluginMeta[0]);
+    return pipePluginNameToMetaMap.values().toArray(new PipePluginMeta[0]);
   }
 
   public boolean containsPipePlugin(String pluginName) {
-    return pipeNameToPipeMetaMap.containsKey(pluginName.toUpperCase());
+    return pipePluginNameToMetaMap.containsKey(pluginName.toUpperCase());
+  }
+
+  protected void processTakeSnapshot(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(
+        (int)
+            pipePluginNameToMetaMap.values().stream()
+                .filter(pipePluginMeta -> !pipePluginMeta.isBuiltin())
+                .count(),
+        outputStream);
+
+    for (PipePluginMeta pipePluginMeta : pipePluginNameToMetaMap.values()) {
+      if (pipePluginMeta.isBuiltin()) {
+        continue;
+      }
+      ReadWriteIOUtils.write(pipePluginMeta.serialize(), outputStream);
+    }
+  }
+
+  protected void processLoadSnapshot(InputStream inputStream) throws IOException {
+    pipePluginNameToMetaMap.forEach(
+        (pluginName, pluginMeta) -> {
+          if (!pluginMeta.isBuiltin()) {
+            pipePluginNameToMetaMap.remove(pluginName);
+          }
+        });
+
+    final int pipePluginMetaSize = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < pipePluginMetaSize; i++) {
+      final PipePluginMeta pipePluginMeta = PipePluginMeta.deserialize(inputStream);
+      addPipePluginMeta(pipePluginMeta.getPluginName().toUpperCase(), pipePluginMeta);
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PipePluginMetaKeeper that = (PipePluginMetaKeeper) o;
+    return pipePluginNameToMetaMap.equals(that.pipePluginNameToMetaMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipePluginNameToMetaMap);
   }
 }

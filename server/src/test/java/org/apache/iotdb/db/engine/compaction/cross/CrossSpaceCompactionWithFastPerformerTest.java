@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -429,14 +430,14 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.CLOSED);
+              targetResource.setStatus(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -733,14 +734,14 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.CLOSED);
+              targetResource.setStatus(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -1036,14 +1037,14 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     new AtomicInteger(0),
                     0,
                     0);
-            compactionTask.start();
+            Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
               TsFileResource targetResource =
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.CLOSED);
+              targetResource.setStatus(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);

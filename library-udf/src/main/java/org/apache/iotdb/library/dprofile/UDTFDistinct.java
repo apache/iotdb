@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
@@ -52,7 +50,7 @@ public class UDTFDistinct implements UDTF {
   private DoubleHashSet doubleSet;
   private BooleanHashSet booleanSet;
   private HashSet<String> stringSet;
-  private TSDataType dataType;
+  private Type dataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -68,7 +66,7 @@ public class UDTFDistinct implements UDTF {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(parameters.getDataType(0));
-    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    dataType = parameters.getDataType(0);
     switch (dataType) {
       case INT32:
         intSet = new IntHashSet();

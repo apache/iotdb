@@ -212,7 +212,6 @@
         <dependency>
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -222,7 +221,10 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>node-commons</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.lmax</groupId>
+            <artifactId>disruptor</artifactId>
         </dependency>
     </dependencies>
     <build>

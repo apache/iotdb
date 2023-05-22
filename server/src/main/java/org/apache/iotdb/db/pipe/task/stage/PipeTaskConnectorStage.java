@@ -19,13 +19,47 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.callable.PipeConnectorSubtask;
+import org.apache.iotdb.db.pipe.core.connector.manager.PipeConnectorSubtaskManager;
+import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskConnectorStage extends PipeTaskStage {
 
-  protected PipeTaskConnectorStage(
-      PipeConnectorSubtaskExecutor executor, PipeConnectorSubtask subtask) {
-    super(executor, subtask);
+  protected final PipeParameters pipeConnectorParameters;
+
+  protected String connectorSubtaskId = null;
+
+  public PipeTaskConnectorStage(PipeParameters pipeConnectorParameters) {
+    this.pipeConnectorParameters = pipeConnectorParameters;
+    connectorSubtaskId =
+        PipeConnectorSubtaskManager.instance()
+            .register(
+                PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
+                pipeConnectorParameters); // TODO: should split to create
+  }
+
+  @Override
+  public void createSubtask() throws PipeException {}
+
+  @Override
+  public void startSubtask() throws PipeException {
+    PipeConnectorSubtaskManager.instance().start(connectorSubtaskId);
+  }
+
+  @Override
+  public void stopSubtask() throws PipeException {
+    PipeConnectorSubtaskManager.instance().stop(connectorSubtaskId);
+  }
+
+  @Override
+  public void dropSubtask() throws PipeException {
+    PipeConnectorSubtaskManager.instance().deregister(connectorSubtaskId);
+  }
+
+  public ListenableBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
+    return PipeConnectorSubtaskManager.instance().getPipeConnectorPendingQueue(connectorSubtaskId);
   }
 }

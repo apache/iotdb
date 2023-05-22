@@ -79,6 +79,9 @@ struct TRatisConfig {
 
   27: required i64 schemaRegionRatisLogMax
   28: required i64 dataRegionRatisLogMax
+
+  29: required i32 dataRegionGrpcLeaderOutstandingAppendsMax
+  30: required i32 dataRegionLogForceSyncNum
 }
 
 struct TCQConfig {
@@ -232,12 +235,10 @@ struct TDataPartitionTableResp {
 }
 
 struct TGetRegionIdReq {
-    1: required string database
-    2: required common.TConsensusGroupType type
-    3: optional common.TSeriesPartitionSlot seriesSlotId
-    4: optional string deviceId
-    5: optional common.TTimePartitionSlot timeSlotId
-    6: optional i64 timeStamp
+    1: required common.TConsensusGroupType type
+    2: optional string database
+    3: optional string device
+    4: optional i64 timeStamp
 }
 
 struct TGetRegionIdResp {
@@ -246,10 +247,11 @@ struct TGetRegionIdResp {
 }
 
 struct TGetTimeSlotListReq {
-    1: required string database
-    2: required common.TSeriesPartitionSlot seriesSlotId
-    3: optional i64 startTime
-    4: optional i64 endTime
+    1: optional string database
+    3: optional string device
+    4: optional i64 regionId
+    5: optional i64 startTime
+    6: optional i64 endTime
 }
 
 struct TGetTimeSlotListResp {
@@ -257,9 +259,22 @@ struct TGetTimeSlotListResp {
     2: optional list<common.TTimePartitionSlot> timeSlotList
 }
 
+struct TCountTimeSlotListReq {
+    1: optional string database
+    3: optional string device
+    4: optional i64 regionId
+    5: optional i64 startTime
+    6: optional i64 endTime
+}
+
+struct TCountTimeSlotListResp {
+    1: required common.TSStatus status
+    2: optional i64 count
+}
+
 struct TGetSeriesSlotListReq {
     1: required string database
-    2: optional common.TConsensusGroupType type
+    2: required common.TConsensusGroupType type
 }
 
 struct TGetSeriesSlotListResp {
@@ -281,7 +296,7 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required list<string> nodeNameList
+  7: required binary nodeNameList
 }
 
 struct TAuthorizerResp {
@@ -315,7 +330,7 @@ struct TLoginReq {
 
 struct TCheckUserPrivilegesReq {
   1: required string username
-  2: required list<string> paths
+  2: required binary paths
   3: required i32 permission
 }
 
@@ -559,6 +574,11 @@ struct TCreateSchemaTemplateReq {
   2: required binary serializedTemplate
 }
 
+struct TAlterSchemaTemplateReq {
+  1: required string queryId
+  2: required binary templateAlterInfo
+}
+
 struct TGetAllTemplatesResp {
   1: required common.TSStatus status
   2: optional list<binary> templateList
@@ -570,8 +590,9 @@ struct TGetTemplateResp {
 }
 
 struct TSetSchemaTemplateReq {
-  1: required string name
-  2: required string path
+  1: required string queryId
+  2: required string name
+  3: required string path
 }
 
 struct TGetPathsSetTemplatesResp {
@@ -579,11 +600,7 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
-// SYNC
-struct TRecordPipeMessageReq{
-  1: required string pipeName
-  2: required binary message
-}
+// Pipe
 
 struct TShowPipeInfo {
   1: required string id
@@ -597,7 +614,7 @@ struct TShowPipeInfo {
 
 struct TGetAllPipeInfoResp{
   1: required common.TSStatus status
-  2: optional list<binary> allPipeInfo
+  2: required list<binary> allPipeInfo
 }
 
 struct TCreatePipeReq {
@@ -1231,6 +1248,8 @@ service IConfigNodeRPCService {
    */
   common.TSStatus dropSchemaTemplate(string req)
 
+  common.TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req)
+
   /**
    * Generate a set of DeleteTimeSeriesProcedure to delete some specific TimeSeries
    *
@@ -1271,9 +1290,6 @@ service IConfigNodeRPCService {
   /* Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo();
 
-  /* Get all pipe information. It is used for DataNode registration and restart*/
-  common.TSStatus recordPipeMessage(TRecordPipeMessageReq req);
-
   // ======================================================
   // TestTools
   // ======================================================
@@ -1283,6 +1299,8 @@ service IConfigNodeRPCService {
 
   /** Get a specific SeriesSlot's TimeSlots by start time and end time */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req)
+
+  TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req)
 
   /** Get the given database's assigned SeriesSlots */
   TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req)

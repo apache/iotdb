@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -70,7 +72,7 @@ public class AuthorInfoTest {
   }
 
   @Test
-  public void permissionTest() throws TException, AuthException {
+  public void permissionTest() throws TException, AuthException, IllegalPathException {
 
     TSStatus status;
 
@@ -98,8 +100,8 @@ public class AuthorInfoTest {
     privilege.add("root.** : CREATE_USER");
     privilege.add("root.** : CREATE_USER");
 
-    List<String> paths = new ArrayList<>();
-    paths.add("root.ln");
+    List<PartialPath> paths = new ArrayList<>();
+    paths.add(new PartialPath("root.ln"));
 
     cleanUserAndRole();
 
@@ -205,8 +207,8 @@ public class AuthorInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant user
-    List<String> nodeNameList = new ArrayList<>();
-    nodeNameList.add("root.ln.**");
+    List<PartialPath> nodeNameList = new ArrayList<>();
+    nodeNameList.add(new PartialPath("root.ln.**"));
     authorPlan =
         new AuthorPlan(
             ConfigPhysicalPlanType.GrantUser, "user0", "", "", "", privilegeList, nodeNameList);
@@ -279,7 +281,7 @@ public class AuthorInfoTest {
             "",
             "",
             new HashSet<>(),
-            Collections.singletonList("root.**"));
+            Collections.singletonList(new PartialPath("root.**")));
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -328,7 +330,7 @@ public class AuthorInfoTest {
             "",
             "",
             new HashSet<>(),
-            Collections.singletonList("root.**"));
+            Collections.singletonList(new PartialPath("root.**")));
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -505,7 +507,7 @@ public class AuthorInfoTest {
   }
 
   @Test
-  public void testMultPathsPermission() throws TException, AuthException {
+  public void testMultPathsPermission() throws TException, AuthException, IllegalPathException {
     TSStatus status;
 
     AuthorPlan authorPlan;
@@ -530,13 +532,13 @@ public class AuthorInfoTest {
     allPrivilege.addAll(rolePrivilege);
     Collections.sort(allPrivilege);
 
-    List<String> userPaths = new ArrayList<>();
-    userPaths.add("root.ln.**");
-    userPaths.add("root.sg.**");
+    List<PartialPath> userPaths = new ArrayList<>();
+    userPaths.add(new PartialPath("root.ln.**"));
+    userPaths.add(new PartialPath("root.sg.**"));
 
-    List<String> rolePaths = new ArrayList<>();
-    rolePaths.add("root.role_1.**");
-    rolePaths.add("root.abc.**");
+    List<PartialPath> rolePaths = new ArrayList<>();
+    rolePaths.add(new PartialPath("root.role_1.**"));
+    rolePaths.add(new PartialPath("root.abc.**"));
 
     cleanUserAndRole();
 

@@ -19,62 +19,113 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public abstract class PipeTaskStage {
 
-  protected final PipeSubtaskExecutor executor;
-  protected final PipeSubtask subtask;
-
-  protected PipeTaskStage(PipeSubtaskExecutor executor, PipeSubtask subtask) {
-    this.executor = executor;
-    this.subtask = subtask;
-  }
+  protected PipeStatus status = null;
+  protected boolean hasBeenExternallyStopped = false;
 
   /**
    * Create a pipe task stage.
    *
    * @throws PipeException if failed to create a pipe task stage.
    */
-  public final void create() throws PipeException {
-    executor.register(subtask);
+  public synchronized void create() {
+    if (status != null) {
+      if (status == PipeStatus.RUNNING) {
+        throw new PipeException("The PipeTaskStage has been started");
+      }
+      if (status == PipeStatus.DROPPED) {
+        throw new PipeException("The PipeTaskStage has been dropped");
+      }
+      // status == PipeStatus.STOPPED
+      if (hasBeenExternallyStopped) {
+        throw new PipeException("The PipeTaskStage has been externally stopped");
+      }
+      // otherwise, do nothing to allow retry strategy
+      return;
+    }
+
+    // status == null, register the subtask
+    createSubtask();
+
+    status = PipeStatus.STOPPED;
   }
+
+  protected abstract void createSubtask() throws PipeException;
 
   /**
    * Start a pipe task stage.
    *
    * @throws PipeException if failed to start a pipe task stage.
    */
-  public final void start() throws PipeException {
-    executor.start(subtask.getTaskID());
+  public synchronized void start() {
+    if (status == null) {
+      throw new PipeException("The PipeTaskStage has not been created");
+    }
+    if (status == PipeStatus.RUNNING) {
+      // do nothing to allow retry strategy
+      return;
+    }
+    if (status == PipeStatus.DROPPED) {
+      throw new PipeException("The PipeTaskStage has been dropped");
+    }
+
+    // status == PipeStatus.STOPPED, start the subtask
+    startSubtask();
+
+    status = PipeStatus.RUNNING;
   }
+
+  protected abstract void startSubtask() throws PipeException;
 
   /**
    * Stop a pipe task stage.
    *
    * @throws PipeException if failed to stop a pipe task stage.
    */
-  public final void stop() throws PipeException {
-    executor.stop(subtask.getTaskID());
+  public synchronized void stop() {
+    if (status == null) {
+      throw new PipeException("The PipeTaskStage has not been created");
+    }
+    if (status == PipeStatus.STOPPED) {
+      // do nothing to allow retry strategy
+      return;
+    }
+    if (status == PipeStatus.DROPPED) {
+      throw new PipeException("The PipeTaskStage has been dropped");
+    }
+
+    // status == PipeStatus.RUNNING, stop the connector
+    stopSubtask();
+
+    status = PipeStatus.STOPPED;
+    hasBeenExternallyStopped = true;
   }
+
+  protected abstract void stopSubtask() throws PipeException;
 
   /**
    * Drop a pipe task stage.
    *
    * @throws PipeException if failed to drop a pipe task stage.
    */
-  public final void drop() throws PipeException {
-    executor.deregister(subtask.getTaskID());
+  public synchronized void drop() {
+    if (status == null) {
+      throw new PipeException("The PipeTaskStage has not been created");
+    }
+    if (status == PipeStatus.DROPPED) {
+      // do nothing to allow retry strategy
+      return;
+    }
+
+    // status == PipeStatus.RUNNING or PipeStatus.STOPPED, drop the connector
+    dropSubtask();
+
+    status = PipeStatus.DROPPED;
   }
 
-  /**
-   * Get the pipe subtask.
-   *
-   * @return the pipe subtask.
-   */
-  public final PipeSubtask getSubtask() {
-    return subtask;
-  }
+  protected abstract void dropSubtask() throws PipeException;
 }

@@ -36,7 +36,7 @@ import java.util.Map;
 
 public class EvaluationDAGBuilder {
 
-  private final long queryId;
+  private final String queryId;
 
   private final QueryDataSetInputLayer inputLayer;
   private final Map<String, List<InputLocation>> inputLocations;
@@ -57,7 +57,7 @@ public class EvaluationDAGBuilder {
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
 
   public EvaluationDAGBuilder(
-      long queryId,
+      String queryId,
       QueryDataSetInputLayer inputLayer,
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,

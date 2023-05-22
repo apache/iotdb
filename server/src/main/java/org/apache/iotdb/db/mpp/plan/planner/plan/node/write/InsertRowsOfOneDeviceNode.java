@@ -23,9 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -40,15 +38,15 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsertNode {
+public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   /**
    * Suppose there is an InsertRowsOfOneDeviceNode, which contains 5 InsertRowNodes,
@@ -144,11 +142,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    return false;
-  }
-
-  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> result = new ArrayList<>();
 
@@ -170,6 +163,12 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
 
       tmpMap.add(insertRowNode);
       tmpIndexMap.add(insertRowNodeIndexList.get(i));
+
+      if (i == insertRowNodeList.size() - 1) {
+        analysis.setRedirectNodeList(
+            Collections.singletonList(
+                dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()));
+      }
     }
 
     for (Map.Entry<TRegionReplicaSet, List<InsertRowNode>> entry : splitMap.entrySet()) {
@@ -285,34 +284,12 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
-  public List<ISchemaValidation> getSchemaValidationList() {
-    return insertRowNodeList.stream()
-        .map(InsertRowNode::getSchemaValidation)
-        .collect(Collectors.toList());
-  }
-
-  @Override
-  public void updateAfterSchemaValidation() throws QueryProcessException {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.updateAfterSchemaValidation();
-      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
-        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
-      }
-    }
-  }
-
-  @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRowsOfOneDevice(this, context);
   }
 
   @Override
   public long getMinTime() {
-    throw new NotImplementedException();
-  }
-
-  @Override
-  public Object getFirstValueOfIndex(int index) {
     throw new NotImplementedException();
   }
 }

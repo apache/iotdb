@@ -24,9 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.manager.node.heartbeat.BaseNodeCache;
-import org.apache.iotdb.confignode.manager.node.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.node.heartbeat.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.junit.Assert;
@@ -61,7 +61,7 @@ public class LeaderPriorityBalancerTest {
     long currentTimeMillis = System.currentTimeMillis();
     Map<Integer, BaseNodeCache> nodeCacheMap = new HashMap<>();
     for (int i = 0; i < 6; i++) {
-      nodeCacheMap.put(i, new DataNodeHeartbeatCache());
+      nodeCacheMap.put(i, new DataNodeHeartbeatCache(i));
       if (i != 2 && i != 5) {
         nodeCacheMap
             .get(i)

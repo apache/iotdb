@@ -65,7 +65,6 @@ import org.junit.Assert;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -83,6 +82,9 @@ public class AbstractCompactionTest {
   private int pageSize = 0;
   protected static String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
   private TSDataType dataType;
+
+  protected int maxDeviceNum = 25;
+  protected int maxMeasurementNum = 25;
 
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -314,7 +316,7 @@ public class AbstractCompactionTest {
             startTime + pointNum * i + timeInterval * i + pointNum - 1);
       }
       resource.updatePlanIndexes(fileVersion);
-      resource.setStatus(TsFileResourceStatus.CLOSED);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
       resource.serialize();
       if (isSeq) {
         seqResources.add(resource);
@@ -342,7 +344,7 @@ public class AbstractCompactionTest {
     }
 
     resource.updatePlanIndexes(fileVersion);
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
     resource.serialize();
     if (isSeq) {
       seqResources.add(resource);
@@ -469,6 +471,7 @@ public class AbstractCompactionTest {
   protected void validateTargetDatas(
       Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
       throws IOException {
+    Map<PartialPath, List<TimeValuePair>> tmpSourceDatas = new HashMap<>();
     for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
       IDataBlockReader tsBlockReader =
           new SeriesDataBlockReader(
@@ -476,9 +479,10 @@ public class AbstractCompactionTest {
               FragmentInstanceContext.createFragmentInstanceContextForCompaction(
                   EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
               tsFileManager.getTsFileList(true),
-              Collections.emptyList(),
+              tsFileManager.getTsFileList(false),
               true);
       List<TimeValuePair> timeseriesData = entry.getValue();
+      tmpSourceDatas.put(entry.getKey(), new ArrayList<>(timeseriesData));
       while (tsBlockReader.hasNextBatch()) {
         TsBlock block = tsBlockReader.nextBatch();
         IBatchDataIterator iterator = block.getTsBlockAlignedRowIterator();
@@ -495,6 +499,7 @@ public class AbstractCompactionTest {
         fail();
       }
     }
+    sourceDatas.putAll(tmpSourceDatas);
   }
 
   protected void generateModsFile(
@@ -583,7 +588,7 @@ public class AbstractCompactionTest {
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.updatePlanIndexes(fileVersion++);
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
     return resource;
   }
 

@@ -208,16 +208,16 @@ public class Coordinator {
     return queryIdGenerator.createNextQueryId();
   }
 
-  public void cleanupQueryExecution(Long queryId) {
+  public void cleanupQueryExecution(Long queryId, Throwable t) {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
       try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
         LOGGER.debug("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup();
+        queryExecution.stopAndCleanup(t);
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
-          if (costTime >= CONFIG.getSlowQueryThreshold()) {
+          if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, sql is {}",
                 costTime,
@@ -226,6 +226,10 @@ public class Coordinator {
         }
       }
     }
+  }
+
+  public void cleanupQueryExecution(Long queryId) {
+    cleanupQueryExecution(queryId, null);
   }
 
   public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>

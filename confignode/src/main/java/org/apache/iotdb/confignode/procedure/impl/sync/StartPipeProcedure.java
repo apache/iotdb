@@ -18,35 +18,24 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.sync.PipeException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
-import org.apache.iotdb.commons.sync.pipe.SyncOperation;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.state.sync.OperatePipeState;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class StartPipeProcedure extends AbstractOperatePipeProcedure {
-  private static final Logger LOGGER = LoggerFactory.getLogger(StartPipeProcedure.class);
+// Empty procedure for old sync, used only for compatibility
+public class StartPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
 
   private String pipeName;
   private PipeInfo pipeInfo;
@@ -56,119 +45,20 @@ public class StartPipeProcedure extends AbstractOperatePipeProcedure {
     super();
   }
 
-  public StartPipeProcedure(String pipeName) throws PipeException {
-    super();
-    this.pipeName = pipeName;
-  }
-
-  @TestOnly
-  public void setPipeInfo(PipeInfo pipeInfo) {
-    this.pipeInfo = pipeInfo;
-  }
-
-  @TestOnly
-  public void setExecutedDataNodeIds(Set<Integer> executedDataNodeIds) {
-    this.executedDataNodeIds = executedDataNodeIds;
+  @Override
+  protected Procedure<ConfigNodeProcedureEnv>[] execute(
+      ConfigNodeProcedureEnv configNodeProcedureEnv)
+      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+    return new Procedure[0];
   }
 
   @Override
-  boolean executeCheckCanSkip(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to start PIPE [{}]", pipeName);
-    pipeInfo = env.getConfigManager().getSyncManager().getPipeInfo(pipeName);
-    if (pipeInfo.getStatus().equals(PipeStatus.DROP)) {
-      throw new PipeException(
-          String.format("PIPE [%s] has been dropped and cannot be started again.", pipeName));
-    }
-    return pipeInfo.getStatus().equals(PipeStatus.RUNNING);
-  }
+  protected void rollback(ConfigNodeProcedureEnv configNodeProcedureEnv)
+      throws IOException, InterruptedException, ProcedureException {}
 
   @Override
-  void executePreOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to pre-start PIPE [{}] on Config Nodes", pipeName);
-    TSStatus status =
-        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.PARTIAL_START);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(status.getMessage());
-    }
-  }
-
-  @Override
-  void executeOperatePipeOnDataNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to broadcast start PIPE [{}] on Data Nodes", pipeName);
-    Map<Integer, TSStatus> responseMap =
-        env.getConfigManager()
-            .getSyncManager()
-            .operatePipeOnDataNodes(pipeName, SyncOperation.START_PIPE);
-    TSStatus status = RpcUtils.squashResponseStatusList(new ArrayList<>(responseMap.values()));
-    executedDataNodeIds.addAll(responseMap.keySet());
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format(
-              "Fail to start PIPE [%s] because %s.",
-              pipeName,
-              StringUtils.join(
-                  responseMap.values().stream()
-                      .filter(i -> i.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                      .map(TSStatus::getMessage)
-                      .toArray(),
-                  ", ")));
-    }
-  }
-
-  @Override
-  void executeOperatePipeOnConfigNode(ConfigNodeProcedureEnv env) throws PipeException {
-    LOGGER.info("Start to start PIPE [{}] on Config Nodes", pipeName);
-    TSStatus status =
-        env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.RUNNING);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(status.getMessage());
-    }
-  }
-
-  @Override
-  SyncOperation getOperation() {
-    return SyncOperation.START_PIPE;
-  }
-
-  @Override
-  protected boolean isRollbackSupported(OperatePipeState state) {
-    switch (state) {
-      case OPERATE_CHECK:
-      case PRE_OPERATE_PIPE_CONFIGNODE:
-      case OPERATE_PIPE_DATANODE:
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, OperatePipeState state)
-      throws IOException, InterruptedException, ProcedureException {
-    LOGGER.info("Roll back StartPipeProcedure at STATE [{}]", state);
-    switch (state) {
-      case OPERATE_CHECK:
-        env.getConfigManager().getSyncManager().unlockSyncMetadata();
-        break;
-      case PRE_OPERATE_PIPE_CONFIGNODE:
-        TSStatus status =
-            env.getConfigManager().getSyncManager().setPipeStatus(pipeName, PipeStatus.STOP);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new ProcedureException(
-              String.format(
-                  "Failed to start pipe and failed to roll back because %s. Please execute [STOP PIPE %s] manually.",
-                  status.getMessage(), pipeName));
-        }
-        break;
-      case OPERATE_PIPE_DATANODE:
-        env.getConfigManager()
-            .getSyncManager()
-            .operatePipeOnDataNodesForRollback(
-                pipeName, pipeInfo.getCreateTime(), SyncOperation.STOP_PIPE, executedDataNodeIds);
-        break;
-      default:
-        LOGGER.error("Unsupported roll back STATE [{}]", state);
-    }
+  protected boolean abort(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    return false;
   }
 
   @Override

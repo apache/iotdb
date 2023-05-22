@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
@@ -33,14 +34,16 @@ public class SchemaSourceFactory {
   private SchemaSourceFactory() {};
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
+      PartialPath pathPattern) {
+    return new TimeSeriesSchemaSource(pathPattern, false, 0, 0, null, null);
+  }
+
+  public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
       PartialPath pathPattern,
       boolean isPrefixMatch,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
-    return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, 0, 0, key, value, isContains, templateMap);
+    return new TimeSeriesSchemaSource(pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap);
   }
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
@@ -48,22 +51,25 @@ public class SchemaSourceFactory {
       boolean isPrefixMatch,
       long limit,
       long offset,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, limit, offset, key, value, isContains, templateMap);
+        pathPattern, isPrefixMatch, limit, offset, schemaFilter, templateMap);
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getDeviceSchemaSource(
       PartialPath pathPattern, boolean isPrefixPath) {
-    return new DeviceSchemaSource(pathPattern, isPrefixPath, 0, 0, false);
+    return new DeviceSchemaSource(pathPattern, isPrefixPath, 0, 0, false, null);
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getDeviceSchemaSource(
-      PartialPath pathPattern, boolean isPrefixPath, long limit, long offset, boolean hasSgCol) {
-    return new DeviceSchemaSource(pathPattern, isPrefixPath, limit, offset, hasSgCol);
+      PartialPath pathPattern,
+      boolean isPrefixPath,
+      long limit,
+      long offset,
+      boolean hasSgCol,
+      SchemaFilter schemaFilter) {
+    return new DeviceSchemaSource(pathPattern, isPrefixPath, limit, offset, hasSgCol, schemaFilter);
   }
 
   public static ISchemaSource<INodeSchemaInfo> getNodeSchemaSource(

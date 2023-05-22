@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
-import org.apache.iotdb.db.pipe.core.processor.PipeProcessorPluginRuntimeWrapper;
-import org.apache.iotdb.db.pipe.task.callable.PipeProcessorSubtask;
+import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
+import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
+import org.apache.iotdb.pipe.api.PipeProcessor;
+import org.apache.iotdb.pipe.api.collector.EventCollector;
 
 import org.junit.Before;
 import org.mockito.Mockito;
@@ -36,9 +38,9 @@ public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
     subtask =
         Mockito.spy(
             new PipeProcessorSubtask(
-                "PipeProcessorSubtaskExecutorTest", mock(PipeProcessorPluginRuntimeWrapper.class)) {
-              @Override
-              public void executeForAWhile() {}
-            });
+                "PipeProcessorSubtaskExecutorTest",
+                mock(EventSupplier.class),
+                mock(PipeProcessor.class),
+                mock(EventCollector.class)));
   }
 }

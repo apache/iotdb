@@ -35,9 +35,10 @@ public class ColumnEncoderFactory {
   }
 
   public static ColumnEncoder get(ColumnEncoding columnEncoding) {
-    if (!encodingToEncoder.containsKey(columnEncoding)) {
+    ColumnEncoder res = encodingToEncoder.get(columnEncoding);
+    if (res == null) {
       throw new IllegalArgumentException("Unsupported column encoding: " + columnEncoding);
     }
-    return encodingToEncoder.get(columnEncoding);
+    return res;
   }
 }

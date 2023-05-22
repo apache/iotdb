@@ -19,14 +19,55 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
-import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.db.service.ResourcesInformationHolder;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeRuntimeAgent {
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class PipeRuntimeAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
+
+  private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
+
+  public synchronized void launchPipePluginAgent(
+      ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+    PipeLauncher.launchPipePluginAgent(resourcesInformationHolder);
+  }
+
+  @Override
+  public synchronized void start() throws StartupException {
+    PipeLauncher.launchPipeTaskAgent();
+
+    isShutdown.set(false);
+  }
+
+  @Override
+  public synchronized void stop() {
+    if (isShutdown.get()) {
+      return;
+    }
+    isShutdown.set(true);
+
+    PipeAgent.task().dropAllPipeTasks();
+  }
+
+  public boolean isShutdown() {
+    return isShutdown.get();
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.PIPE_RUNTIME_AGENT;
+  }
 
   public void report(PipeSubtask subtask) {
     // TODO: terminate the task by the given taskID
@@ -36,18 +77,7 @@ public class PipeRuntimeAgent {
         subtask.getLastFailedCause());
   }
 
-  /////////////////////////  Singleton Instance Holder  /////////////////////////
-
-  private PipeRuntimeAgent() {}
-
-  private static class PipeRuntimeAgentHolder {
-    private static PipeRuntimeAgent INSTANCE = null;
-  }
-
-  public static PipeRuntimeAgent setupAndGetInstance() {
-    if (PipeRuntimeAgentHolder.INSTANCE == null) {
-      PipeRuntimeAgentHolder.INSTANCE = new PipeRuntimeAgent();
-    }
-    return PipeRuntimeAgentHolder.INSTANCE;
+  public void report(PipeRuntimeException pipeRuntimeException) {
+    // TODO: complete this method
   }
 }

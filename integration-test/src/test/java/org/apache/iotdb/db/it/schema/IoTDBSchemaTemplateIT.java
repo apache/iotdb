@@ -21,13 +21,16 @@ package org.apache.iotdb.db.it.schema;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -38,29 +41,54 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.Assert.fail;
+
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@Category({ClusterIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
   public IoTDBSchemaTemplateIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
+  }
+
   @Before
   public void setUp() throws Exception {
-    super.setUp();
-    EnvFactory.getEnv().initClusterEnvironment();
-
     prepareTemplate();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    clearSchema();
+  }
+
+  private void prepareTemplate() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // create database
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.sg2");
+      statement.execute("CREATE DATABASE root.sg3");
+
+      // create schema template
+      statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+      statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
+    }
   }
 
   @Test
@@ -72,7 +100,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       try {
         statement.execute(
             "CREATE SCHEMA TEMPLATE str1 (s1 TEXT encoding=GORILLA compressor=SNAPPY, s2 INT32)");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         System.out.println(e.getMessage());
         Assert.assertEquals(
@@ -84,7 +112,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       try {
         statement.execute(
             "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
@@ -99,7 +127,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // test drop template which has been set
       try {
         statement.execute("DROP SCHEMA TEMPLATE t1");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.METADATA_ERROR.getStatusCode()
@@ -163,7 +191,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       try {
         statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
@@ -180,7 +208,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       try {
         statement.execute(
             "CREATE SCHEMA TEMPLATE t1 (s1 INT64 encoding=RLE compressor=SNAPPY, s2 INT32)");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.METADATA_ERROR.getStatusCode() + ": Duplicated template name: t1",
@@ -244,7 +272,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       try {
         statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
-        Assert.fail();
+        fail();
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode() + ": Template is in use on root.sg1.d1",
@@ -319,7 +347,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2.d2");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3.d1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3.d2");
-      statement.execute("INSERT INTO root.sg3.d2.verify(time, show) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.sg3.d2.verify(time, show) ALIGNED VALUES (1, 1)");
 
       try (ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t1")) {
         String resultRecord;
@@ -372,7 +400,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Assert.assertEquals(0, expectedResultSet.size());
 
       ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t2");
-      Assert.assertFalse(resultSet.next());
+      Assert.assertTrue(resultSet.next());
     }
   }
 
@@ -401,21 +429,6 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       while (resultSet.next()) {
         Assert.assertEquals(2L, resultSet.getLong("COUNT(root.test.sg_satosg.s1)"));
       }
-    }
-  }
-
-  private void prepareTemplate() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      // create database
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE DATABASE root.sg2");
-      statement.execute("CREATE DATABASE root.sg3");
-
-      // create schema template
-      statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
-      statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
-      statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
     }
   }
 
@@ -572,6 +585,190 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
         Assert.assertFalse(resultSet.next());
       }
+    }
+  }
+
+  @Test
+  public void testTemplateSetAndTimeSeriesExistenceCheck() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // set schema template
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+      // show paths set schema template
+      String[] expectedResult = new String[] {"root.sg1.d1"};
+      Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+      try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+        String resultRecord;
+        while (resultSet.next()) {
+          resultRecord = resultSet.getString(1);
+          Assert.assertTrue(expectedResultSet.contains(resultRecord));
+          expectedResultSet.remove(resultRecord);
+        }
+      }
+      Assert.assertEquals(0, expectedResultSet.size());
+
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s INT32");
+        fail();
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            "516: Cannot create timeseries [root.sg1.d1.s] since schema template [t1] already set on path [root.sg1.d1].",
+            e.getMessage());
+      }
+
+      // unset schema template
+      statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
+      try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s INT32");
+
+      try {
+        statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            "516: Cannot set schema template [t1] to path [root.sg1.d1] since there's timeseries under path [root.sg1.d1].",
+            e.getMessage());
+      }
+
+      statement.execute("DELETE TIMESERIES root.sg1.d1.s");
+
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+      expectedResult = new String[] {"root.sg1.d1"};
+      expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+      try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
+        String resultRecord;
+        while (resultSet.next()) {
+          resultRecord = resultSet.getString(1);
+          Assert.assertTrue(expectedResultSet.contains(resultRecord));
+          expectedResultSet.remove(resultRecord);
+        }
+      }
+      Assert.assertEquals(0, expectedResultSet.size());
+
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d2.tmp.m");
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d2 INT32");
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            "516: Cannot create timeseries [root.sg1.d2] since schema template [t1] already set on path [root.sg1.d2.tmp.m].",
+            e.getMessage());
+      }
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d2.s(tmp) INT32");
+      } catch (SQLException e) {
+        Assert.assertEquals(
+            "516: Cannot create timeseries [root.sg1.d2.s] since schema template [t1] already set on path [root.sg1.d2.tmp.m].",
+            e.getMessage());
+      }
+      statement.execute("CREATE TIMESERIES root.sg1.d2.s INT32");
+    }
+  }
+
+  @Test
+  public void testShowTemplateSeriesWithFuzzyQuery() throws Exception {
+    // test create schema template repeatedly
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // set schema template
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1");
+      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg2");
+      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg3");
+      // activate schema template
+      statement.execute("create timeseries using schema template on root.sg1.d1");
+      statement.execute("create timeseries using schema template on root.sg2.d2");
+      statement.execute("create timeseries using schema template on root.sg3.d3");
+
+      Set<String> expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
+                  "root.sg2.d2.s1,INT64,RLE,SNAPPY",
+                  "root.sg2.d2.s2,DOUBLE,GORILLA,SNAPPY",
+                  "root.sg3.d3.s1,INT64,RLE,SNAPPY"));
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
+      expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY"));
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d1.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
+    }
+  }
+
+  @Test
+  public void testEmptySchemaTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // create empty schema template
+      statement.execute("create schema template e_t");
+      // set schema template
+      statement.execute("SET SCHEMA TEMPLATE e_t TO root.sg1");
+      try (ResultSet resultSet = statement.executeQuery("show nodes in schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute("alter schema template e_t add(s1 int32)");
+      statement.execute("insert into root.sg1.d(time, s2, s3) values(1, 1, 1)");
+
+      Set<String> expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d.s1,INT32,RLE,SNAPPY",
+                  "root.sg1.d.s2,FLOAT,GORILLA,SNAPPY",
+                  "root.sg1.d.s3,FLOAT,GORILLA,SNAPPY"));
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
     }
   }
 }

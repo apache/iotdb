@@ -64,7 +64,12 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
-      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {}
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
+    for (ISchemaComputationWithAutoCreation computation : schemaComputationWithAutoCreationList) {
+      computation.computeMeasurement(
+          0, new SchemaMeasurementNode("s", new MeasurementSchema("s", TSDataType.INT32)));
+    }
+  }
 
   /**
    * Generate the following tree: root.sg.d1.s1, root.sg.d1.s2(status) root.sg.d2.s1,
@@ -128,7 +133,13 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
-  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath) {
+    return null;
+  }
+
+  @Override
+  public Pair<Template, PartialPath> checkTemplateSetAndPreSetInfo(
+      PartialPath timeSeriesPath, String alias) {
     return null;
   }
 
@@ -141,7 +152,4 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
     return null;
   }
-
-  @Override
-  public void invalidAllCache() {}
 }

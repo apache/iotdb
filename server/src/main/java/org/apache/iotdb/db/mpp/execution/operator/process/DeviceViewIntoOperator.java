@@ -49,6 +49,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
   private final Map<String, Boolean> targetDeviceToAlignedMap;
   private final Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap;
 
+  private final int deviceColumnIndex;
   private String currentDevice;
 
   private final TsBlockBuilder resultTsBlockBuilder;
@@ -64,14 +65,14 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       Map<String, List<Pair<String, PartialPath>>> deviceToSourceTargetPathPairListMap,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
-      long maxStatementSize) {
+      long statementSizePerLine) {
     super(
         operatorContext,
         child,
         inputColumnTypes,
         sourceColumnToInputLocationMap,
         intoOperationExecutor,
-        maxStatementSize);
+        statementSizePerLine);
     this.deviceToTargetPathSourceInputLocationMap = deviceToTargetPathSourceInputLocationMap;
     this.deviceToTargetPathDataTypeMap = deviceToTargetPathDataTypeMap;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
@@ -82,6 +83,9 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+
+    this.deviceColumnIndex =
+        sourceColumnToInputLocationMap.get(ColumnHeaderConstant.DEVICE).getValueColumnIndex();
   }
 
   @Override
@@ -90,7 +94,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       return true;
     }
 
-    String device = String.valueOf(inputTsBlock.getValueColumns()[0].getBinary(0));
+    String device = String.valueOf(inputTsBlock.getValueColumns()[deviceColumnIndex].getBinary(0));
     if (!Objects.equals(device, currentDevice)) {
       InsertMultiTabletsStatement insertMultiTabletsStatement =
           constructInsertMultiTabletsStatement(false);
@@ -148,7 +152,8 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
         targetPathToSourceInputLocationMap,
         targetPathToDataTypeMap,
         targetDeviceToAlignedMap,
-        typeConvertors);
+        typeConvertors,
+        maxRowNumberInStatement);
   }
 
   private void updateResultTsBlock() {

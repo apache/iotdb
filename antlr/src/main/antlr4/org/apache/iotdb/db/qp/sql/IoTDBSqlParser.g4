@@ -45,21 +45,26 @@ ddlStatement
     | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
     | showSchemaTemplates | showNodesInSchemaTemplate | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | setSchemaTemplate | unsetSchemaTemplate
+    | alterSchemaTemplate
     // TTL
     | setTTL | unsetTTL | showTTL | showAllTTL
     // Function
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // Pipe Plugin
+    | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
-    | getRegionId | getTimeSlotList | getSeriesSlotList | migrateRegion
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
     // ML Model
     | createModel | dropModel | showModels | showTrails
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
+    // View
+    | createLogicalView
     ;
 
 dmlStatement
@@ -175,12 +180,12 @@ aliasClause
 
 // ---- Show Devices
 showDevices
-    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? rowPaginationClause?
+    : SHOW DEVICES prefixPath? (WITH (STORAGE GROUP | DATABASE))? devicesWhereClause? rowPaginationClause?
     ;
 
 // ---- Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? tagWhereClause? rowPaginationClause?
+    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? rowPaginationClause?
     ;
 
 // ---- Show Child Paths
@@ -200,7 +205,7 @@ countDevices
 
 // ---- Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? tagWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
+    : COUNT TIMESERIES prefixPath? timeseriesWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
     ;
 
 // ---- Count Nodes
@@ -208,8 +213,34 @@ countNodes
     : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
     ;
 
-tagWhereClause
-    : WHERE (attributePair | containsExpression)
+// ---- Timeseries Where Clause
+devicesWhereClause
+    : WHERE deviceContainsExpression
+    ;
+
+deviceContainsExpression
+    : DEVICE OPERATOR_CONTAINS value=STRING_LITERAL
+    ;
+
+// ---- Timeseries Where Clause
+timeseriesWhereClause
+    : WHERE (timeseriesContainsExpression | columnEqualsExpression | tagEqualsExpression | tagContainsExpression)
+    ;
+
+timeseriesContainsExpression
+    : TIMESERIES OPERATOR_CONTAINS value=STRING_LITERAL
+    ;
+
+columnEqualsExpression
+    : attributeKey operator_eq attributeValue
+    ;
+
+tagEqualsExpression
+    : TAGS LR_BRACKET key=attributeKey RR_BRACKET operator_eq value=attributeValue
+    ;
+
+tagContainsExpression
+    : TAGS LR_BRACKET name=attributeKey RR_BRACKET OPERATOR_CONTAINS value=STRING_LITERAL
     ;
 
 
@@ -217,7 +248,7 @@ tagWhereClause
 // ---- Create Schema Template
 createSchemaTemplate
     : CREATE SCHEMA TEMPLATE templateName=identifier
-    ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    ALIGNED? (LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET)?
     ;
 
 templateMeasurementClause
@@ -267,6 +298,10 @@ setSchemaTemplate
 // ---- Unset Schema Template
 unsetSchemaTemplate
     : UNSET SCHEMA TEMPLATE templateName=identifier FROM prefixPath
+    ;
+
+alterSchemaTemplate
+    : ALTER SCHEMA TEMPLATE templateName=identifier ADD LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
 
@@ -447,22 +482,35 @@ showConfigNodes
 
 // ---- Get Region Id
 getRegionId
-    : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq
-        seriesSlot=INTEGER_LITERAL|DEVICEID operator_eq deviceId=prefixPath) (OPERATOR_AND (TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL|
-        TIMESTAMP operator_eq timeStamp=INTEGER_LITERAL))?
+    : SHOW (DATA|SCHEMA) REGIONID WHERE (DATABASE operator_eq database=prefixPath
+        |DEVICE operator_eq device=prefixPath)
+        (OPERATOR_AND (TIMESTAMP|TIME) operator_eq time = timeValue)?
     ;
 
 // ---- Get Time Slot List
 getTimeSlotList
-    : SHOW TIMESLOTID OF path=prefixPath WHERE SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
+    : SHOW (TIMESLOTID|TIMEPARTITION) WHERE (DEVICE operator_eq device=prefixPath
+        | REGIONID operator_eq regionId=INTEGER_LITERAL
+        | DATABASE operator_eq database=prefixPath )
+        (OPERATOR_AND STARTTIME operator_eq startTime=timeValue)?
+        (OPERATOR_AND ENDTIME operator_eq endTime=timeValue)?
+    ;
+
+// ---- Count Time Slot List
+countTimeSlotList
+    : COUNT (TIMESLOTID|TIMEPARTITION) WHERE (DEVICE operator_eq device=prefixPath
+        | REGIONID operator_eq regionId=INTEGER_LITERAL
+        | DATABASE operator_eq database=prefixPath )
         (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
         (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
     ;
 
 // ---- Get Series Slot List
 getSeriesSlotList
-    : SHOW (DATA|SCHEMA)? SERIESSLOTID OF path=prefixPath
+    : SHOW (DATA|SCHEMA) SERIESSLOTID WHERE DATABASE operator_eq database=prefixPath
     ;
+
+
 
 // ---- Migrate Region
 migrateRegion
@@ -484,7 +532,6 @@ dropPipePlugin
 showPipePlugins
     : SHOW PIPEPLUGINS
     ;
-
 
 // ML Model =========================================================================================
 // ---- Create Model
@@ -509,6 +556,26 @@ showModels
 // ---- Show Trails
 showTrails
     : SHOW TRAILS modelId=identifier
+    ;
+
+// Create Logical View
+createLogicalView
+    : CREATE VIEW viewTargetPaths AS viewSourcePaths
+    ;
+
+viewSuffixPaths
+    : nodeNameWithoutWildcard (DOT nodeNameWithoutWildcard)*
+    ;
+
+viewTargetPaths
+    : fullPath (COMMA fullPath)*
+    | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
+    ;
+
+viewSourcePaths
+    : fullPath (COMMA fullPath)*
+    | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
+    | selectClause fromClause
     ;
 
 /**
@@ -604,6 +671,7 @@ orderByClause
 
 orderByAttributeClause
     : sortKey (DESC | ASC)?
+    | expression (DESC | ASC)? (NULLS (FIRST|LAST))?
     ;
 
 sortKey
@@ -1001,12 +1069,18 @@ intoPath
 
 nodeName
     : wildcard
-    | wildcard? identifier wildcard?
-    | identifier
+    | wildcard nodeNameSlice wildcard?
+    | nodeNameSlice wildcard
+    | nodeNameWithoutWildcard
     ;
 
 nodeNameWithoutWildcard
     : identifier
+    ;
+
+nodeNameSlice
+    : identifier
+    | INTEGER_LITERAL
     ;
 
 nodeNameInIntoPath
@@ -1095,11 +1169,6 @@ scalarFunctionExpression
     | REPLACE LR_BRACKET text=expression COMMA from=STRING_LITERAL COMMA to=STRING_LITERAL RR_BRACKET
     | SUBSTRING subStringExpression
     | ROUND LR_BRACKET input=expression (COMMA places=constant)? RR_BRACKET
-    ;
-
-
-containsExpression
-    : name=attributeKey OPERATOR_CONTAINS value=attributeValue
     ;
 
 operator_eq

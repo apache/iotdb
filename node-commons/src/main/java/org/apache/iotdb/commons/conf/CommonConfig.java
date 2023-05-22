@@ -120,6 +120,8 @@ public class CommonConfig {
 
   private volatile String statusReason = null;
 
+  private final int TTimePartitionSlotTransmitLimit = 1000;
+
   /** Disk Monitor */
   private double diskSpaceWarningThreshold = 0.05;
 
@@ -361,6 +363,10 @@ public class CommonConfig {
 
   public void setTargetMLNodeEndPoint(TEndPoint targetMLNodeEndPoint) {
     this.targetMLNodeEndPoint = targetMLNodeEndPoint;
+  }
+
+  public int getTTimePartitionSlotTransmitLimit() {
+    return TTimePartitionSlotTransmitLimit;
   }
 
   public boolean isStopping() {

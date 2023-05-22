@@ -20,17 +20,14 @@
 
 package org.apache.iotdb.db.metadata.plan.schemaregion.read;
 
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.Map;
 
 public interface IShowTimeSeriesPlan extends IShowSchemaPlan {
 
-  boolean isContains();
-
-  String getKey();
-
-  String getValue();
+  SchemaFilter getSchemaFilter();
 
   Map<Integer, Template> getRelatedTemplate();
 }

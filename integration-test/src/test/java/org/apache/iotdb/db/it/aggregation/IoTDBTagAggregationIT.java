@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it.aggregation;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -40,6 +41,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -85,6 +89,10 @@ public class IoTDBTagAggregationIT {
         "insert into root.case2.d2(time, s1) values(10, 7.7);",
         "insert into root.case2.d1(time, s2) values(10, 6.6);",
         "insert into root.case2.d3(time, s1) values(10, 9.9);",
+        "create timeseries root.test.g_0.tab1.s_0 with datatype=int32;",
+        "create timeseries root.test.g_0.tab1.s_1 with datatype=int32;",
+        "insert into root.test.g_0.tab1(time,s_0,s_1) values (1,1,1);",
+        "alter timeseries root.test.g_0.tab1.s_0 add tags city=beijing;"
       };
 
   protected static final double DELTA = 0.001D;
@@ -579,5 +587,20 @@ public class IoTDBTagAggregationIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+
+    String[] expectedHeader = new String[] {"city", count("s_0"), count("s_1")};
+    String[] retArray = new String[] {"beijing,1,null,", "NULL,null,1,"};
+    resultSetEqualTest(
+        "select count(s_0) ,count(s_1) from root.test.g_0.tab1 group by tags(city)",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void testWithRawInSelect() {
+    assertTestFail(
+        "SELECT s1 FROM root.case2.** GROUP BY TAGS(k1)",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Common queries and aggregated queries are not allowed to appear at the same time");
   }
 }

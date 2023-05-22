@@ -66,10 +66,8 @@ public enum DataNodeRequestType {
   CREATE_PIPE_PLUGIN,
   DROP_PIPE_PLUGIN,
 
-  /** Sync */
-  PRE_CREATE_PIPE,
-  OPERATE_PIPE,
-  ROLLBACK_OPERATE_PIPE,
+  /** Pipe Task */
+  PUSH_PIPE_META,
 
   /** CQ */
   EXECUTE_CQ,
@@ -90,6 +88,7 @@ public enum DataNodeRequestType {
   ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
   DEACTIVATE_TEMPLATE,
   COUNT_PATHS_USING_TEMPLATE,
+  CHECK_TIMESERIES_EXISTENCE,
 
   /** @TODO Need to migrate to 'Node Maintenance' */
   KILL_QUERY_INSTANCE,

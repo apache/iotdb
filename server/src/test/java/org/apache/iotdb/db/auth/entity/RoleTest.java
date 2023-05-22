@@ -20,6 +20,8 @@ package org.apache.iotdb.db.auth.entity;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,11 +31,11 @@ import java.util.Collections;
 public class RoleTest {
 
   @Test
-  public void testRole() {
+  public void testRole() throws IllegalPathException {
     Role role = new Role("role");
-    PathPrivilege pathPrivilege = new PathPrivilege("root.ln");
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     role.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    role.setPrivileges("root.ln", Collections.singleton(1));
+    role.setPrivileges(new PartialPath("root.ln"), Collections.singleton(1));
     Assert.assertEquals(
         "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role.toString());
     Role role1 = new Role("role1");

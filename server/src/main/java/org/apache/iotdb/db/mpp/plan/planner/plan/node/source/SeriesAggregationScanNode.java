@@ -95,32 +95,18 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       List<AggregationDescriptor> aggregationDescriptorList,
       Ordering scanOrder,
       @Nullable Filter timeFilter,
+      @Nullable Filter valueFilter,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
     this(id, seriesPath, aggregationDescriptorList, scanOrder, groupByTimeParameter);
     this.timeFilter = timeFilter;
+    this.valueFilter = valueFilter;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
   @Override
   public Ordering getScanOrder() {
     return scanOrder;
-  }
-
-  @Override
-  @Nullable
-  public Filter getTimeFilter() {
-    return timeFilter;
-  }
-
-  public void setTimeFilter(@Nullable Filter timeFilter) {
-    this.timeFilter = timeFilter;
-  }
-
-  @Override
-  @Nullable
-  public GroupByTimeParameter getGroupByTimeParameter() {
-    return groupByTimeParameter;
   }
 
   public MeasurementPath getSeriesPath() {
@@ -150,6 +136,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         getAggregationDescriptorList(),
         getScanOrder(),
         getTimeFilter(),
+        getValueFilter(),
         getGroupByTimeParameter(),
         getRegionReplicaSet());
   }
@@ -198,6 +185,12 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       timeFilter.serialize(byteBuffer);
     }
+    if (valueFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      valueFilter.serialize(byteBuffer);
+    }
     if (groupByTimeParameter == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
@@ -221,6 +214,12 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       ReadWriteIOUtils.write((byte) 1, stream);
       timeFilter.serialize(stream);
     }
+    if (valueFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      valueFilter.serialize(stream);
+    }
     if (groupByTimeParameter == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
@@ -243,6 +242,11 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       timeFilter = FilterFactory.deserialize(byteBuffer);
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    Filter valueFilter = null;
+    if (isNull == 1) {
+      valueFilter = FilterFactory.deserialize(byteBuffer);
+    }
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
     GroupByTimeParameter groupByTimeParameter = null;
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
@@ -254,6 +258,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
         aggregationDescriptorList,
         scanOrder,
         timeFilter,
+        valueFilter,
         groupByTimeParameter,
         null);
   }
@@ -271,23 +276,12 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     }
     SeriesAggregationScanNode that = (SeriesAggregationScanNode) o;
     return seriesPath.equals(that.seriesPath)
-        && aggregationDescriptorList.equals(that.aggregationDescriptorList)
-        && scanOrder == that.scanOrder
-        && Objects.equals(timeFilter, that.timeFilter)
-        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        super.hashCode(),
-        seriesPath,
-        aggregationDescriptorList,
-        scanOrder,
-        timeFilter,
-        groupByTimeParameter,
-        regionReplicaSet);
+    return Objects.hash(super.hashCode(), seriesPath, regionReplicaSet);
   }
 
   @Override

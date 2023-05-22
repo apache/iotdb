@@ -22,20 +22,17 @@ package org.apache.iotdb.db.pipe.execution.executor;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.pipe.task.callable.PipeSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.NotThreadSafe;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
-@NotThreadSafe
 public abstract class PipeSubtaskExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutor.class);
@@ -61,7 +58,7 @@ public abstract class PipeSubtaskExecutor {
 
   /////////////////////// subtask management ///////////////////////
 
-  public final void register(PipeSubtask subtask) {
+  public final synchronized void register(PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
       LOGGER.warn("The subtask {} is already registered.", subtask.getTaskID());
       return;
@@ -71,7 +68,7 @@ public abstract class PipeSubtaskExecutor {
     subtask.bindExecutors(subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor);
   }
 
-  public final void start(String subTaskID) {
+  public final synchronized void start(String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
       LOGGER.warn("The subtask {} is not registered.", subTaskID);
       return;
@@ -79,7 +76,9 @@ public abstract class PipeSubtaskExecutor {
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
     if (subtask.isSubmittingSelf()) {
-      LOGGER.info("The subtask {} is already running.", subTaskID);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("The subtask {} is already running.", subTaskID);
+      }
     } else {
       subtask.allowSubmittingSelf();
       subtask.submitSelf();
@@ -87,7 +86,7 @@ public abstract class PipeSubtaskExecutor {
     }
   }
 
-  public final void stop(String subTaskID) {
+  public final synchronized void stop(String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
       LOGGER.warn("The subtask {} is not registered.", subTaskID);
       return;
@@ -96,10 +95,18 @@ public abstract class PipeSubtaskExecutor {
     registeredIdSubtaskMapper.get(subTaskID).disallowSubmittingSelf();
   }
 
-  public final void deregister(String subTaskID) {
+  public final synchronized void deregister(String subTaskID) {
     stop(subTaskID);
 
-    registeredIdSubtaskMapper.remove(subTaskID);
+    final PipeSubtask subtask = registeredIdSubtaskMapper.remove(subTaskID);
+
+    if (subtask != null) {
+      try {
+        subtask.close();
+      } catch (Exception e) {
+        LOGGER.error("Failed to close the subtask {}.", subTaskID, e);
+      }
+    }
   }
 
   @TestOnly
@@ -114,7 +121,7 @@ public abstract class PipeSubtaskExecutor {
 
   /////////////////////// executor management  ///////////////////////
 
-  public final void shutdown() {
+  public final synchronized void shutdown() {
     if (isShutdown()) {
       return;
     }

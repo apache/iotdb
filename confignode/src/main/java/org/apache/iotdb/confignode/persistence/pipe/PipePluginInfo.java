@@ -32,7 +32,12 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePip
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
 import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -48,7 +53,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_PROCESSOR;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_COLLECTOR;
 
 public class PipePluginInfo implements SnapshotProcessor {
 
@@ -82,6 +91,7 @@ public class PipePluginInfo implements SnapshotProcessor {
   /////////////////////////////// Validator ///////////////////////////////
 
   public void validateBeforeCreatingPipePlugin(String pluginName, String jarName, String jarMD5) {
+    // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
       throw new PipeManagementException(
           String.format(
@@ -98,46 +108,101 @@ public class PipePluginInfo implements SnapshotProcessor {
   }
 
   public void validateBeforeDroppingPipePlugin(String pluginName) {
-    if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
-      return;
+    if (pipePluginMetaKeeper.containsPipePlugin(pluginName)
+        && pipePluginMetaKeeper.getPipePluginMeta(pluginName).isBuiltin()) {
+      throw new PipeManagementException(
+          String.format(
+              "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin",
+              pluginName));
     }
-
-    throw new PipeManagementException(
-        String.format("Failed to drop PipePlugin [%s], the PipePlugin does not exist", pluginName));
   }
 
   public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(String jarName) {
     return !pipePluginMetaKeeper.containsJar(jarName);
   }
 
+  public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) {
+    final PipeParameters collectorParameters =
+        new PipeParameters(createPipeRequest.getCollectorAttributes());
+    final String collectorPluginName =
+        collectorParameters.getStringOrDefault(
+            PipeCollectorConstant.COLLECTOR_KEY, IOTDB_COLLECTOR.getPipePluginName());
+    if (!pipePluginMetaKeeper.containsPipePlugin(collectorPluginName)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create pipe, the pipe collector plugin %s does not exist",
+              collectorPluginName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
+    }
+
+    final PipeParameters processorParameters =
+        new PipeParameters(createPipeRequest.getProcessorAttributes());
+    final String processorPluginName =
+        processorParameters.getStringOrDefault(
+            PipeProcessorConstant.PROCESSOR_KEY, DO_NOTHING_PROCESSOR.getPipePluginName());
+    if (!pipePluginMetaKeeper.containsPipePlugin(processorPluginName)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create pipe, the pipe processor plugin %s does not exist",
+              processorPluginName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
+    }
+
+    final PipeParameters connectorParameters =
+        new PipeParameters(createPipeRequest.getConnectorAttributes());
+    if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
+      final String exceptionMessage =
+          "Failed to create pipe, the pipe connector plugin is not specified";
+      LOGGER.warn(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
+    }
+    final String connectorPluginName =
+        connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY);
+    if (!pipePluginMetaKeeper.containsPipePlugin(connectorPluginName)) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to create pipe, the pipe connector plugin %s does not exist",
+              connectorPluginName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
+    }
+  }
+
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
 
-  public TSStatus createPipePlugin(CreatePipePluginPlan physicalPlan) {
+  public TSStatus createPipePlugin(CreatePipePluginPlan createPipePluginPlan) {
     try {
-      final PipePluginMeta pipePluginMeta = physicalPlan.getPipePluginMeta();
+      final PipePluginMeta pipePluginMeta = createPipePluginPlan.getPipePluginMeta();
+
+      // try to drop the old pipe plugin if exists to reduce the effect of the inconsistency
+      dropPipePlugin(new DropPipePluginPlan(pipePluginMeta.getPluginName()));
+
       pipePluginMetaKeeper.addPipePluginMeta(pipePluginMeta.getPluginName(), pipePluginMeta);
       pipePluginMetaKeeper.addJarNameAndMd5(
           pipePluginMeta.getJarName(), pipePluginMeta.getJarMD5());
 
-      if (physicalPlan.getJarFile() != null) {
+      if (createPipePluginPlan.getJarFile() != null) {
         pipePluginExecutableManager.saveToInstallDir(
-            ByteBuffer.wrap(physicalPlan.getJarFile().getValues()), pipePluginMeta.getJarName());
+            ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()),
+            pipePluginMeta.getJarName());
       }
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       final String errorMessage =
           String.format(
-              "Failed to add PipePlugin [%s] in PipePlugin_Table on Config Nodes, because of %s",
-              physicalPlan.getPipePluginMeta().getPluginName(), e);
+              "Failed to execute createPipePlugin(%s) on config nodes, because of %s",
+              createPipePluginPlan.getPipePluginMeta().getPluginName(), e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);
     }
   }
 
-  public TSStatus dropPipePlugin(DropPipePluginPlan physicalPlan) {
-    final String pluginName = physicalPlan.getPluginName();
+  public TSStatus dropPipePlugin(DropPipePluginPlan dropPipePluginPlan) {
+    final String pluginName = dropPipePluginPlan.getPluginName();
 
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
       pipePluginMetaKeeper.removeJarNameAndMd5IfPossible(
@@ -154,10 +219,10 @@ public class PipePluginInfo implements SnapshotProcessor {
         Arrays.asList(pipePluginMetaKeeper.getAllPipePluginMeta()));
   }
 
-  public JarResp getPipePluginJar(GetPipePluginJarPlan physicalPlan) {
+  public JarResp getPipePluginJar(GetPipePluginJarPlan getPipePluginJarPlan) {
     try {
       List<ByteBuffer> jarList = new ArrayList<>();
-      for (String jarName : physicalPlan.getJarNames()) {
+      for (String jarName : getPipePluginJarPlan.getJarNames()) {
         jarList.add(
             ExecutableManager.transferToBytebuffer(
                 PipePluginExecutableManager.getInstance()
@@ -185,11 +250,8 @@ public class PipePluginInfo implements SnapshotProcessor {
       return false;
     }
 
-    acquirePipePluginInfoLock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
       pipePluginMetaKeeper.processTakeSnapshot(fileOutputStream);
-    } finally {
-      releasePipePluginInfoLock();
     }
     return true;
   }
@@ -204,11 +266,40 @@ public class PipePluginInfo implements SnapshotProcessor {
       return;
     }
 
-    acquirePipePluginInfoLock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
       pipePluginMetaKeeper.processLoadSnapshot(fileInputStream);
-    } finally {
-      releasePipePluginInfoLock();
     }
+  }
+
+  /////////////////////////////// hashCode & equals ///////////////////////////////
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(pipePluginMetaKeeper, pipePluginExecutableManager);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    PipePluginInfo other = (PipePluginInfo) obj;
+    return Objects.equals(pipePluginExecutableManager, other.pipePluginExecutableManager)
+        && Objects.equals(pipePluginMetaKeeper, other.pipePluginMetaKeeper);
+  }
+
+  @Override
+  public String toString() {
+    return "PipePluginInfo [pipePluginMetaKeeper="
+        + pipePluginMetaKeeper
+        + ", pipePluginExecutableManager="
+        + pipePluginExecutableManager
+        + "]";
   }
 }

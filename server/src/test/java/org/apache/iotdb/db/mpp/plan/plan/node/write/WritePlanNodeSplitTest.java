@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.plan.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -88,6 +90,15 @@ public class WritePlanNodeSplitTest {
     dataPartitionMap = new HashMap<>();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         seriesPartitionSlotMap = new HashMap<>();
+    List<TDataNodeLocation> locationList = new ArrayList<>();
+    locationList.add(
+        new TDataNodeLocation(
+            0,
+            new TEndPoint("127.0.0.1", 6667),
+            new TEndPoint("127.0.0.1", 10730),
+            new TEndPoint("127.0.0.1", 10740),
+            new TEndPoint("127.0.0.1", 10760),
+            new TEndPoint("127.0.0.1", 10750)));
     // sg1 has 5 data regions
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
@@ -99,7 +110,7 @@ public class WritePlanNodeSplitTest {
                 new TRegionReplicaSet(
                     new TConsensusGroupId(
                         TConsensusGroupType.DataRegion, getRegionIdByTime(startTime)),
-                    null)));
+                    locationList)));
       }
 
       seriesPartitionSlotMap.put(new TSeriesPartitionSlot(i), timePartitionSlotMap);
@@ -116,7 +127,7 @@ public class WritePlanNodeSplitTest {
             new TTimePartitionSlot(t * TimePartitionUtils.timePartitionInterval),
             Collections.singletonList(
                 new TRegionReplicaSet(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 99), null)));
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 99), locationList)));
       }
 
       seriesPartitionSlotMap.put(new TSeriesPartitionSlot(i), timePartitionSlotMap);

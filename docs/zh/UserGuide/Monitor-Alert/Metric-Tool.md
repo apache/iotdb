@@ -20,8 +20,7 @@
 -->
 
 # 监控告警
-在 IoTDB 的运行过程中，我们希望对 IoTDB 的状态进行观测，以便于排查系统问题或者及时发现系统潜在的风险，能够**反映系统运行状态的一系列指标
-**就是系统监控指标。
+在 IoTDB 的运行过程中，我们希望对 IoTDB 的状态进行观测，以便于排查系统问题或者及时发现系统潜在的风险，能够**反映系统运行状态的一系列指标**就是系统监控指标。
 
 ## 1. 什么场景下会使用到监控?
 
@@ -287,18 +286,20 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.4. 缓存统计
 
-| Metric    | Tags                               | Type      | Description                                             |
-| --------- | ---------------------------------- | --------- | ------------------------------------------------------- |
-| cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                             |
-| cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                            |
-| cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%                |
+| Metric    | Tags                               | Type      | Description                                   |
+| --------- |------------------------------------| --------- |-----------------------------------------------|
+| cache_hit | name="chunk"                       | AutoGauge | ChunkCache的命中率，单位为%                           |
+| cache_hit | name="schema"                      | AutoGauge | SchemaCache的命中率，单位为%                          |
+| cache_hit | name="timeSeriesMeta"              | AutoGauge | TimeseriesMetadataCache的命中率，单位为%              |
 | cache_hit | name="bloomFilter"                 | AutoGauge | TimeseriesMetadataCache中的bloomFilter的拦截率，单位为% |
-| cache     | name="Database", type="hit"        | Counter   | Database Cache 的命中次数                               |
-| cache     | name="Database", type="all"        | Counter   | Database Cache 的访问次数                               |
-| cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                        |
-| cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                        |
-| cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                          |
-| cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                          |
+| cache     | name="Database", type="hit"        | Counter   | Database Cache 的命中次数                          |
+| cache     | name="Database", type="all"        | Counter   | Database Cache 的访问次数                          |
+| cache     | name="SchemaPartition", type="hit" | Counter   | SchemaPartition Cache 的命中次数                   |
+| cache     | name="SchemaPartition", type="all" | Counter   | SchemaPartition Cache 的访问次数                   |
+| cache     | name="DataPartition", type="hit"   | Counter   | DataPartition Cache 的命中次数                     |
+| cache     | name="DataPartition", type="all"   | Counter   | DataPartition Cache 的访问次数                     |
+| cache     | name="SchemaCache", type="hit"     | Counter   | SchemaCache 的命中次数                             |
+| cache     | name="SchemaCache", type="all"     | Counter   | SchemaCache 的访问次数                             |
 
 #### 4.2.5. 内存统计
 

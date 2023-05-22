@@ -308,7 +308,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 #### 4.2.4. Cache
 
 | Metric    | Tags                               | Type      | Description                                                              |
-| --------- | ---------------------------------- | --------- | ------------------------------------------------------------------------ |
+| --------- |------------------------------------| --------- |--------------------------------------------------------------------------|
 | cache_hit | name="chunk"                       | AutoGauge | The cache hit ratio of ChunkCache, Unit: %                               |
 | cache_hit | name="schema"                      | AutoGauge | The cache hit ratio of SchemaCache, Unit: %                              |
 | cache_hit | name="timeSeriesMeta"              | AutoGauge | The cache hit ratio of TimeseriesMetadataCache, Unit: %                  |
@@ -316,9 +316,11 @@ carefully evaluated. The current Core-level metrics are as follows:
 | cache     | name="Database", type="hit"        | Counter   | The hit number of Database Cache                                         |
 | cache     | name="Database", type="all"        | Counter   | The access number of Database Cache                                      |
 | cache     | name="SchemaPartition", type="hit" | Counter   | The hit number of SchemaPartition Cache                                  |
-| cache     | name="SchemaPartition", type="all" | Counter   | The access number of SSchemaPartition Cache                              |
+| cache     | name="SchemaPartition", type="all" | Counter   | The access number of SchemaPartition Cache                               |
 | cache     | name="DataPartition", type="hit"   | Counter   | The hit number of DataPartition Cache                                    |
-| cache     | name="DataPartition", type="all"   | Counter   | The access number of SDataPartition Cache                                |
+| cache     | name="DataPartition", type="all"   | Counter   | The access number of DataPartition Cache                                 |
+| cache     | name="SchemaCache", type="hit"     | Counter   | The hit number of Schema Cache                                           |
+| cache     | name="SchemaCache", type="all"     | Counter   | The access number of Schema Cache                                        |
 
 #### 4.2.5. Memory
 

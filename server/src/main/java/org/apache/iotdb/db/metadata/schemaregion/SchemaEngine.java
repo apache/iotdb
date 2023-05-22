@@ -30,12 +30,16 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.metadata.metric.SchemaMetricManager;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
+import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.external.api.ISeriesNumerMonitor;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaLimitLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +76,9 @@ public class SchemaEngine {
   private ISeriesNumerMonitor seriesNumerMonitor = null;
 
   private ISchemaEngineStatistics schemaEngineStatistics;
+
+  private final DataNodeSchemaQuotaManager schemaQuotaManager =
+      DataNodeSchemaQuotaManager.getInstance();
 
   private static class SchemaEngineManagerHolder {
 
@@ -254,16 +261,14 @@ public class SchemaEngine {
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      if (schemaRegion.getStorageGroupFullPath().equals(storageGroup.getFullPath())) {
+      if (schemaRegion.getDatabaseFullPath().equals(storageGroup.getFullPath())) {
         return;
       } else {
         throw new MetadataException(
             String.format(
                 "SchemaRegion [%s] is duplicated between [%s] and [%s], "
                     + "and the former one has been recovered.",
-                schemaRegionId,
-                schemaRegion.getStorageGroupFullPath(),
-                storageGroup.getFullPath()));
+                schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup.getFullPath()));
       }
     }
     schemaRegionMap.put(
@@ -317,7 +322,7 @@ public class SchemaEngine {
     schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty
-    File sgDir = new File(config.getSchemaDir(), schemaRegion.getStorageGroupFullPath());
+    File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
     File[] regionDirList =
         sgDir.listFiles(
             (dir, name) -> {
@@ -346,31 +351,80 @@ public class SchemaEngine {
 
   public Map<Integer, Long> countDeviceNumBySchemaRegion(List<Integer> schemaIds) {
     Map<Integer, Long> deviceNum = new HashMap<>();
-    try {
-      for (Map.Entry<SchemaRegionId, ISchemaRegion> entry : schemaRegionMap.entrySet()) {
-        if (schemaIds.contains(entry.getKey().getId())) {
-          deviceNum.put(entry.getKey().getId(), entry.getValue().countDeviceNumBySchemaRegion());
-        }
-      }
-    } catch (MetadataException e) {
-      // no
-    }
+
+    schemaRegionMap.entrySet().stream()
+        .filter(
+            entry ->
+                schemaIds.contains(entry.getKey().getId())
+                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
+        .forEach(
+            entry ->
+                deviceNum.put(
+                    entry.getKey().getId(),
+                    entry.getValue().getSchemaRegionStatistics().getDevicesNumber()));
     return deviceNum;
   }
 
   public Map<Integer, Long> countTimeSeriesNumBySchemaRegion(List<Integer> schemaIds) {
     Map<Integer, Long> timeSeriesNum = new HashMap<>();
-    try {
-      for (Map.Entry<SchemaRegionId, ISchemaRegion> entry : schemaRegionMap.entrySet()) {
-        if (schemaIds.contains(entry.getKey().getId())) {
-          timeSeriesNum.put(
-              entry.getKey().getId(), entry.getValue().countTimeSeriesNumBySchemaRegion());
-        }
-      }
-    } catch (MetadataException e) {
-      // no
-    }
+    schemaRegionMap.entrySet().stream()
+        .filter(
+            entry ->
+                schemaIds.contains(entry.getKey().getId())
+                    && SchemaRegionConsensusImpl.getInstance().isLeader(entry.getKey()))
+        .forEach(
+            entry ->
+                timeSeriesNum.put(
+                    entry.getKey().getId(),
+                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber()));
     return timeSeriesNum;
+  }
+
+  /**
+   * Update total count in schema quota manager and generate local count map response. If limit is
+   * not -1 and deviceNumMap/timeSeriesNumMap is null, fill deviceNumMap/timeSeriesNumMap of the
+   * SchemaRegion whose current node is the leader
+   *
+   * @param totalCount cluster schema usage
+   * @param resp heartbeat response
+   */
+  public void updateAndFillSchemaCountMap(long totalCount, THeartbeatResp resp) {
+    // update DataNodeSchemaQuotaManager
+    schemaQuotaManager.updateRemain(totalCount);
+    if (schemaQuotaManager.getLimit() < 0) {
+      return;
+    }
+    Map<Integer, Long> res = new HashMap<>();
+    switch (schemaQuotaManager.getLevel()) {
+      case TIMESERIES:
+        if (resp.getRegionTimeSeriesNumMap() == null) {
+          schemaRegionMap.values().stream()
+              .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+              .forEach(
+                  i ->
+                      res.put(
+                          i.getSchemaRegionId().getId(),
+                          i.getSchemaRegionStatistics().getSeriesNumber()));
+          resp.setRegionTimeSeriesNumMap(res);
+          resp.setSchemaLimitLevel(TSchemaLimitLevel.TIMESERIES);
+        }
+        break;
+      case DEVICE:
+        if (resp.getRegionDeviceNumMap() == null) {
+          schemaRegionMap.values().stream()
+              .filter(i -> SchemaRegionConsensusImpl.getInstance().isLeader(i.getSchemaRegionId()))
+              .forEach(
+                  i ->
+                      res.put(
+                          i.getSchemaRegionId().getId(),
+                          i.getSchemaRegionStatistics().getDevicesNumber()));
+          resp.setRegionDeviceNumMap(res);
+          resp.setSchemaLimitLevel(TSchemaLimitLevel.DEVICE);
+        }
+        break;
+      default:
+        throw new UnsupportedOperationException();
+    }
   }
 
   @TestOnly

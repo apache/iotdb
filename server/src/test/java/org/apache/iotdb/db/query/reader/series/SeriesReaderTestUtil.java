@@ -113,7 +113,7 @@ public class SeriesReaderTestUtil {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
       tsFileResource.setVersion(i);
@@ -123,7 +123,7 @@ public class SeriesReaderTestUtil {
     for (int i = 0; i < unseqFileNum; i++) {
       File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, i + seqFileNum));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
       tsFileResource.setVersion(i + seqFileNum);
@@ -139,7 +139,7 @@ public class SeriesReaderTestUtil {
 
     File file = new File(TestConstant.getTestTsFilePath(sgName, 0, 0, seqFileNum + unseqFileNum));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setVersion(seqFileNum + unseqFileNum);

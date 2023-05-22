@@ -64,7 +64,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       File mLogFile =
           SystemFileFactory.INSTANCE.getFile(
-              schemaRegion.getStorageGroupFullPath()
+              schemaRegion.getDatabaseFullPath()
                   + File.separator
                   + schemaRegion.getSchemaRegionId().getId(),
               MetadataConstant.METADATA_LOG);
@@ -164,7 +164,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       File mLogFile =
           SystemFileFactory.INSTANCE.getFile(
-              schemaRegion.getStorageGroupFullPath()
+              schemaRegion.getDatabaseFullPath()
                   + File.separator
                   + schemaRegion.getSchemaRegionId().getId(),
               MetadataConstant.METADATA_LOG);

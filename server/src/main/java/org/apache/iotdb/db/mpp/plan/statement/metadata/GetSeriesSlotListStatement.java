@@ -40,25 +40,21 @@ import java.util.List;
  */
 public class GetSeriesSlotListStatement extends Statement implements IConfigStatement {
 
-  private final String storageGroup;
+  private final String database;
+  private final TConsensusGroupType partitionType;
 
-  private TConsensusGroupType partitionType;
-
-  public GetSeriesSlotListStatement(String storageGroup) {
+  public GetSeriesSlotListStatement(String database, TConsensusGroupType partitionType) {
     super();
-    this.storageGroup = storageGroup;
+    this.database = database;
+    this.partitionType = partitionType;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String getDatabase() {
+    return database;
   }
 
   public TConsensusGroupType getPartitionType() {
     return partitionType;
-  }
-
-  public void setPartitionType(TConsensusGroupType partitionType) {
-    this.partitionType = partitionType;
   }
 
   @Override
@@ -74,7 +70,7 @@ public class GetSeriesSlotListStatement extends Statement implements IConfigStat
   @Override
   public List<PartialPath> getPaths() {
     try {
-      return Collections.singletonList(new PartialPath(storageGroup));
+      return Collections.singletonList(new PartialPath(database));
     } catch (IllegalPathException e) {
       return new ArrayList<>();
     }

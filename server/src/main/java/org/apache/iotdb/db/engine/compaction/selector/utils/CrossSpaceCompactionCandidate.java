@@ -73,6 +73,7 @@ public class CrossSpaceCompactionCandidate {
   }
 
   private boolean prepareNextSplit() throws IOException {
+    boolean nextUnseqFileHasOverlap = false;
     TsFileResourceCandidate unseqFile = unseqFiles.get(nextUnseqFileIndex);
     List<TsFileResourceCandidate> ret = new ArrayList<>();
 
@@ -104,6 +105,7 @@ public class CrossSpaceCompactionCandidate {
             ret.add(seqFile);
             seqFile.markAsSelected();
           }
+          nextUnseqFileHasOverlap = true;
           // if this condition is satisfied, all subsequent seq files is unnecessary to check
           break;
         } else if (unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
@@ -111,13 +113,14 @@ public class CrossSpaceCompactionCandidate {
             ret.add(seqFile);
             seqFile.markAsSelected();
           }
+          nextUnseqFileHasOverlap = true;
         }
       }
     }
     // mark candidates in next split as selected even though it may not be added to the final
     // TaskResource
     unseqFile.markAsSelected();
-    nextSplit = new CrossCompactionTaskResourceSplit(unseqFile, ret);
+    nextSplit = new CrossCompactionTaskResourceSplit(unseqFile, ret, nextUnseqFileHasOverlap);
     nextUnseqFileIndex++;
     return true;
   }
@@ -139,7 +142,7 @@ public class CrossSpaceCompactionCandidate {
   private List<TsFileResourceCandidate> filterUnseqResource(List<TsFileResource> unseqResources) {
     List<TsFileResourceCandidate> ret = new ArrayList<>();
     for (TsFileResource resource : unseqResources) {
-      if (resource.getStatus() != TsFileResourceStatus.CLOSED || !resource.getTsFile().exists()) {
+      if (resource.getStatus() != TsFileResourceStatus.NORMAL || !resource.getTsFile().exists()) {
         break;
       } else if (resource.stillLives(ttlLowerBound)) {
         ret.add(new TsFileResourceCandidate(resource));
@@ -152,6 +155,10 @@ public class CrossSpaceCompactionCandidate {
     return seqFiles.stream()
         .map(tsFileResourceCandidate -> tsFileResourceCandidate.resource)
         .collect(Collectors.toList());
+  }
+
+  public List<TsFileResourceCandidate> getSeqFileCandidates() {
+    return seqFiles;
   }
 
   public List<TsFileResourceCandidate> getUnseqFileCandidates() {
@@ -167,17 +174,21 @@ public class CrossSpaceCompactionCandidate {
   public static class CrossCompactionTaskResourceSplit {
     public TsFileResourceCandidate unseqFile;
     public List<TsFileResourceCandidate> seqFiles;
+    public boolean hasOverlap;
 
     public CrossCompactionTaskResourceSplit(
-        TsFileResourceCandidate unseqFile, List<TsFileResourceCandidate> seqFiles) {
+        TsFileResourceCandidate unseqFile,
+        List<TsFileResourceCandidate> seqFiles,
+        boolean hasOverlap) {
       this.unseqFile = unseqFile;
       this.seqFiles = seqFiles;
+      this.hasOverlap = hasOverlap;
     }
   }
 
   public static class TsFileResourceCandidate {
     public TsFileResource resource;
-    protected boolean selected;
+    public boolean selected;
     public boolean isValidCandidate;
     private Map<String, DeviceInfo> deviceInfoMap;
 
@@ -187,7 +198,7 @@ public class CrossSpaceCompactionCandidate {
       // although we do the judgement here, the task should be validated before executing because
       // the status of file may be changed after the task is submitted to queue
       this.isValidCandidate =
-          tsFileResource.getStatus() == TsFileResourceStatus.CLOSED
+          tsFileResource.getStatus() == TsFileResourceStatus.NORMAL
               && tsFileResource.getTsFile().exists();
     }
 

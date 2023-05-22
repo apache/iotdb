@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -248,7 +247,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // current Peer is group leader and in ReadOnly State
-    if (isLeader(consensusGroupId) && CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (isLeader(consensusGroupId) && Utils.rejectWrite()) {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {
