@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -46,9 +47,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final long limit;
   private final long offset;
 
-  private final String key;
-  private final String value;
-  private final boolean isContains;
+  private final SchemaFilter schemaFilter;
 
   private final Map<Integer, Template> templateMap;
 
@@ -57,9 +56,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       boolean isPrefixMatch,
       long limit,
       long offset,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
@@ -67,9 +64,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.limit = limit;
     this.offset = offset;
 
-    this.key = key;
-    this.value = value;
-    this.isContains = isContains;
+    this.schemaFilter = schemaFilter;
 
     this.templateMap = templateMap;
   }
@@ -79,7 +74,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     try {
       return schemaRegion.getTimeSeriesReader(
           SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-              pathPattern, templateMap, isContains, key, value, limit, offset, isPrefixMatch));
+              pathPattern, templateMap, limit, offset, isPrefixMatch, schemaFilter));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
@@ -118,7 +113,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN) && key == null;
+    return pathPattern.equals(ALL_MATCH_PATTERN) && (schemaFilter == null);
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -39,9 +40,7 @@ import java.util.stream.Collectors;
 
 public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
-  private final String key;
-  private final String value;
-  private final boolean isContains;
+  private final SchemaFilter schemaFilter;
 
   private final Map<Integer, Template> templateMap;
 
@@ -49,27 +48,15 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
       PlanNodeId id,
       PartialPath partialPath,
       boolean isPrefixPath,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     super(id, partialPath, isPrefixPath);
-    this.key = key;
-    this.value = value;
-    this.isContains = isContains;
+    this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
   }
 
-  public String getKey() {
-    return key;
-  }
-
-  public String getValue() {
-    return value;
-  }
-
-  public boolean isContains() {
-    return isContains;
+  public SchemaFilter getSchemaFilter() {
+    return schemaFilter;
   }
 
   public Map<Integer, Template> getTemplateMap() {
@@ -78,8 +65,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeSeriesCountNode(
-        getPlanNodeId(), path, isPrefixPath, key, value, isContains, templateMap);
+    return new TimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, schemaFilter, templateMap);
   }
 
   @Override
@@ -94,9 +80,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     PlanNodeType.TIME_SERIES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
-    ReadWriteIOUtils.write(key, byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
-    ReadWriteIOUtils.write(isContains, byteBuffer);
+    SchemaFilter.serialize(schemaFilter, byteBuffer);
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
     for (Template template : templateMap.values()) {
       template.serialize(byteBuffer);
@@ -108,9 +92,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     PlanNodeType.TIME_SERIES_COUNT.serialize(stream);
     ReadWriteIOUtils.write(path.getFullPath(), stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
-    ReadWriteIOUtils.write(key, stream);
-    ReadWriteIOUtils.write(value, stream);
-    ReadWriteIOUtils.write(isContains, stream);
+    SchemaFilter.serialize(schemaFilter, stream);
     ReadWriteIOUtils.write(templateMap.size(), stream);
     for (Template template : templateMap.values()) {
       template.serialize(stream);
@@ -126,9 +108,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
-    String key = ReadWriteIOUtils.readString(buffer);
-    String value = ReadWriteIOUtils.readString(buffer);
-    boolean isContains = ReadWriteIOUtils.readBool(buffer);
+    SchemaFilter schemaFilter = SchemaFilter.deserialize(buffer);
 
     int templateNum = ReadWriteIOUtils.readInt(buffer);
     Map<Integer, Template> templateMap = new HashMap<>();
@@ -140,8 +120,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TimeSeriesCountNode(
-        planNodeId, path, isPrefixPath, key, value, isContains, templateMap);
+    return new TimeSeriesCountNode(planNodeId, path, isPrefixPath, schemaFilter, templateMap);
   }
 
   @Override

@@ -79,6 +79,9 @@ struct TRatisConfig {
 
   27: required i64 schemaRegionRatisLogMax
   28: required i64 dataRegionRatisLogMax
+
+  29: required i32 dataRegionGrpcLeaderOutstandingAppendsMax
+  30: required i32 dataRegionLogForceSyncNum
 }
 
 struct TCQConfig {
@@ -597,11 +600,7 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
-// SYNC
-struct TRecordPipeMessageReq{
-  1: required string pipeName
-  2: required binary message
-}
+// Pipe
 
 struct TShowPipeInfo {
   1: required string id
@@ -1299,9 +1298,6 @@ service IConfigNodeRPCService {
 
   /* Get all pipe information. It is used for DataNode registration and restart*/
   TGetAllPipeInfoResp getAllPipeInfo();
-
-  /* Get all pipe information. It is used for DataNode registration and restart*/
-  common.TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
   // ======================================================
   // TestTools

@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.commons.exception.sync.PipeException;
-import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -66,8 +65,7 @@ public abstract class AbstractOperatePipeProcedureV2
    *
    * @return true if procedure can finish directly
    */
-  protected abstract boolean executeFromValidateTask(ConfigNodeProcedureEnv env)
-      throws PipeException, PipeSinkException;
+  protected abstract void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
 
   /** Execute at state CALCULATE_INFO_FOR_TASK */
   protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
@@ -88,10 +86,7 @@ public abstract class AbstractOperatePipeProcedureV2
       switch (state) {
         case VALIDATE_TASK:
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
-          if (!executeFromValidateTask(env)) {
-            env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-            return Flow.NO_MORE_STATE;
-          }
+          executeFromValidateTask(env);
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
         case CALCULATE_INFO_FOR_TASK:
@@ -107,7 +102,7 @@ public abstract class AbstractOperatePipeProcedureV2
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
       }
-    } catch (PipeException | PipeSinkException | IOException e) {
+    } catch (Exception e) {
       if (isRollbackSupported(state)) {
         LOGGER.error("Fail in OperatePipeProcedure", e);
         setFailure(new ProcedureException(e.getMessage()));
@@ -208,7 +203,7 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
-    stream.writeBoolean(isRollbackFromOperateOnDataNodesSuccessful);
+    ReadWriteIOUtils.write(isRollbackFromOperateOnDataNodesSuccessful, stream);
   }
 
   @Override

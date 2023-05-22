@@ -85,7 +85,7 @@ public class IoTDBSnapshotTest {
         resource.updateEndTime(testSgName + PATH_SEPARATOR + "d" + i, (i + 1) * 100);
       }
       resource.updatePlanIndexes(i);
-      resource.setStatus(TsFileResourceStatus.CLOSED);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
       resource.serialize();
     }
     return resources;

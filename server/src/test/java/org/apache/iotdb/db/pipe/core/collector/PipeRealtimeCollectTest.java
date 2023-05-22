@@ -111,7 +111,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern1);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                   put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion1);
                 }
               }),
@@ -120,7 +120,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern2);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                   put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion1);
                 }
               }),
@@ -129,7 +129,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern1);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                   put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion2);
                 }
               }),
@@ -138,7 +138,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern2);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                   put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion2);
                 }
               }),

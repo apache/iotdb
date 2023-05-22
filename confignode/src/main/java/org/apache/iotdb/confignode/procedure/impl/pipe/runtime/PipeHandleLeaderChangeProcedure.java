@@ -65,11 +65,10 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromValidateTask");
 
     // nothing needs to be checked
-    return true;
   }
 
   @Override
@@ -153,7 +152,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.PIPE_HANDLE_LEADER_CHANGE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    stream.writeInt(dataRegionGroupToOldAndNewLeaderPairMap.size());
+    ReadWriteIOUtils.write(dataRegionGroupToOldAndNewLeaderPairMap.size(), stream);
     for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> entry :
         dataRegionGroupToOldAndNewLeaderPairMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), stream);
@@ -165,7 +164,7 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    final int size = byteBuffer.getInt();
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final int dataRegionGroupId = ReadWriteIOUtils.readInt(byteBuffer);
       final int oldDataRegionLeaderId = ReadWriteIOUtils.readInt(byteBuffer);

@@ -726,4 +726,49 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Assert.assertTrue(expectedResult.isEmpty());
     }
   }
+
+  @Test
+  public void testEmptySchemaTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // create empty schema template
+      statement.execute("create schema template e_t");
+      // set schema template
+      statement.execute("SET SCHEMA TEMPLATE e_t TO root.sg1");
+      try (ResultSet resultSet = statement.executeQuery("show nodes in schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+
+      statement.execute("alter schema template e_t add(s1 int32)");
+      statement.execute("insert into root.sg1.d(time, s2, s3) values(1, 1, 1)");
+
+      Set<String> expectedResult =
+          new HashSet<>(
+              Arrays.asList(
+                  "root.sg1.d.s1,INT32,RLE,SNAPPY",
+                  "root.sg1.d.s2,FLOAT,GORILLA,SNAPPY",
+                  "root.sg1.d.s3,FLOAT,GORILLA,SNAPPY"));
+
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COMPRESSION);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
+    }
+  }
 }

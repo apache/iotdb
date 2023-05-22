@@ -804,8 +804,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus pushPipeMeta(TPushPipeMetaReq req) {
-    List<PipeMeta> pipeMetas = new ArrayList<>();
-    req.getPipeMetas().forEach(byteBuffer -> pipeMetas.add(PipeMeta.deserialize(byteBuffer)));
+    final List<PipeMeta> pipeMetas = new ArrayList<>();
+    for (ByteBuffer byteBuffer : req.getPipeMetas()) {
+      pipeMetas.add(PipeMeta.deserialize(byteBuffer));
+    }
     PipeAgent.task().handlePipeMetaChanges(pipeMetas);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -1178,7 +1180,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setSystemStatus(String status) throws TException {
     try {
-      CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.parse(status));
+      final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
+      commonConfig.setNodeStatus(NodeStatus.parse(status));
+      if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
+        PipeAgent.runtime().stop();
+      }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }

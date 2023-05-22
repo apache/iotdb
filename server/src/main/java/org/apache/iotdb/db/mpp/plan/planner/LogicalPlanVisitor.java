@@ -462,30 +462,38 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitInsertTablet(
       InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     // convert insert statement to insert node
-    return new InsertTabletNode(
-        context.getQueryId().genPlanNodeId(),
-        insertTabletStatement.getDevicePath(),
-        insertTabletStatement.isAligned(),
-        insertTabletStatement.getMeasurements(),
-        insertTabletStatement.getDataTypes(),
-        insertTabletStatement.getTimes(),
-        insertTabletStatement.getBitMaps(),
-        insertTabletStatement.getColumns(),
-        insertTabletStatement.getRowCount());
+    InsertTabletNode insertNode =
+        new InsertTabletNode(
+            context.getQueryId().genPlanNodeId(),
+            insertTabletStatement.getDevicePath(),
+            insertTabletStatement.isAligned(),
+            insertTabletStatement.getMeasurements(),
+            insertTabletStatement.getDataTypes(),
+            insertTabletStatement.getMeasurementSchemas(),
+            insertTabletStatement.getTimes(),
+            insertTabletStatement.getBitMaps(),
+            insertTabletStatement.getColumns(),
+            insertTabletStatement.getRowCount());
+    insertNode.setFailedMeasurementNumber(insertTabletStatement.getFailedMeasurementNumber());
+    return insertNode;
   }
 
   @Override
   public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
     // convert insert statement to insert node
-    return new InsertRowNode(
-        context.getQueryId().genPlanNodeId(),
-        insertRowStatement.getDevicePath(),
-        insertRowStatement.isAligned(),
-        insertRowStatement.getMeasurements(),
-        insertRowStatement.getDataTypes(),
-        insertRowStatement.getTime(),
-        insertRowStatement.getValues(),
-        insertRowStatement.isNeedInferType());
+    InsertRowNode insertNode =
+        new InsertRowNode(
+            context.getQueryId().genPlanNodeId(),
+            insertRowStatement.getDevicePath(),
+            insertRowStatement.isAligned(),
+            insertRowStatement.getMeasurements(),
+            insertRowStatement.getDataTypes(),
+            insertRowStatement.getMeasurementSchemas(),
+            insertRowStatement.getTime(),
+            insertRowStatement.getValues(),
+            insertRowStatement.isNeedInferType());
+    insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
+    return insertNode;
   }
 
   @Override
@@ -519,12 +527,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         planBuilder
             .planTimeSeriesSchemaSource(
                 showTimeSeriesStatement.getPathPattern(),
-                showTimeSeriesStatement.getKey(),
-                showTimeSeriesStatement.getValue(),
+                showTimeSeriesStatement.getSchemaFilter(),
                 limit,
                 offset,
                 showTimeSeriesStatement.isOrderByHeat(),
-                showTimeSeriesStatement.isContains(),
                 showTimeSeriesStatement.isPrefixPath(),
                 analysis.getRelatedTemplateInfo())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
@@ -577,7 +583,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 limit,
                 offset,
                 showDevicesStatement.isPrefixPath(),
-                showDevicesStatement.hasSgCol())
+                showDevicesStatement.hasSgCol(),
+                showDevicesStatement.getSchemaFilter())
             .planSchemaQueryMerge(false);
 
     if (!canPushDownOffsetLimit) {
@@ -608,9 +615,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planTimeSeriesCountSource(
             countTimeSeriesStatement.getPathPattern(),
             countTimeSeriesStatement.isPrefixPath(),
-            countTimeSeriesStatement.getKey(),
-            countTimeSeriesStatement.getValue(),
-            countTimeSeriesStatement.isContains(),
+            countTimeSeriesStatement.getSchemaFilter(),
             analysis.getRelatedTemplateInfo())
         .planCountMerge()
         .getRoot();
@@ -625,9 +630,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countLevelTimeSeriesStatement.getPathPattern(),
             countLevelTimeSeriesStatement.isPrefixPath(),
             countLevelTimeSeriesStatement.getLevel(),
-            countLevelTimeSeriesStatement.getKey(),
-            countLevelTimeSeriesStatement.getValue(),
-            countLevelTimeSeriesStatement.isContains())
+            countLevelTimeSeriesStatement.getSchemaFilter())
         .planCountMerge()
         .getRoot();
   }
@@ -651,17 +654,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
       InsertRowStatement insertRowStatement =
           insertRowsStatement.getInsertRowStatementList().get(i);
-      insertRowsNode.addOneInsertRowNode(
+      InsertRowNode insertRowNode =
           new InsertRowNode(
               insertRowsNode.getPlanNodeId(),
               insertRowStatement.getDevicePath(),
               insertRowStatement.isAligned(),
               insertRowStatement.getMeasurements(),
               insertRowStatement.getDataTypes(),
+              insertRowStatement.getMeasurementSchemas(),
               insertRowStatement.getTime(),
               insertRowStatement.getValues(),
-              insertRowStatement.isNeedInferType()),
-          i);
+              insertRowStatement.isNeedInferType());
+      insertRowNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
+      insertRowsNode.addOneInsertRowNode(insertRowNode, i);
     }
     return insertRowsNode;
   }
@@ -675,18 +680,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
       InsertTabletStatement insertTabletStatement =
           insertMultiTabletsStatement.getInsertTabletStatementList().get(i);
-      insertMultiTabletsNode.addInsertTabletNode(
+      InsertTabletNode insertTabletNode =
           new InsertTabletNode(
               insertMultiTabletsNode.getPlanNodeId(),
               insertTabletStatement.getDevicePath(),
               insertTabletStatement.isAligned(),
               insertTabletStatement.getMeasurements(),
               insertTabletStatement.getDataTypes(),
+              insertTabletStatement.getMeasurementSchemas(),
               insertTabletStatement.getTimes(),
               insertTabletStatement.getBitMaps(),
               insertTabletStatement.getColumns(),
-              insertTabletStatement.getRowCount()),
-          i);
+              insertTabletStatement.getRowCount());
+      insertTabletNode.setFailedMeasurementNumber(
+          insertTabletStatement.getFailedMeasurementNumber());
+      insertMultiTabletsNode.addInsertTabletNode(insertTabletNode, i);
     }
     return insertMultiTabletsNode;
   }
@@ -703,16 +711,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
       InsertRowStatement insertRowStatement =
           insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
-      insertRowNodeList.add(
+      InsertRowNode insertRowNode =
           new InsertRowNode(
               insertRowsOfOneDeviceNode.getPlanNodeId(),
               insertRowStatement.getDevicePath(),
               insertRowStatement.isAligned(),
               insertRowStatement.getMeasurements(),
               insertRowStatement.getDataTypes(),
+              insertRowStatement.getMeasurementSchemas(),
               insertRowStatement.getTime(),
               insertRowStatement.getValues(),
-              insertRowStatement.isNeedInferType()));
+              insertRowStatement.isNeedInferType());
+      insertRowNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
+      insertRowNodeList.add(insertRowNode);
       insertRowNodeIndexList.add(i);
     }
 

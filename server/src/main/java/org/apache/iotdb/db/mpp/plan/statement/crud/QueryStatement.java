@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
@@ -113,6 +114,8 @@ public class QueryStatement extends Statement {
   private boolean isCqQueryBody;
 
   private boolean isOutputEndTime = false;
+
+  private boolean useWildcard = true;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -309,6 +312,24 @@ public class QueryStatement extends Statement {
     return groupByComponent != null && groupByComponent.getWindowType() == WindowType.COUNT_WINDOW;
   }
 
+  private boolean hasAggregationFunction(Expression expression) {
+    if (expression instanceof FunctionExpression) {
+      if (!expression.isBuiltInAggregationFunctionExpression()) {
+        return false;
+      }
+    } else {
+      if (expression instanceof TimeSeriesOperand) {
+        return false;
+      }
+      for (Expression subExpression : expression.getExpressions()) {
+        if (!subExpression.isBuiltInAggregationFunctionExpression()) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   public boolean hasGroupByExpression() {
     return isGroupByVariation() || isGroupByCondition() || isGroupByCount();
   }
@@ -449,6 +470,14 @@ public class QueryStatement extends Statement {
     return rowOffset > 0;
   }
 
+  public void setUseWildcard(boolean useWildcard) {
+    this.useWildcard = useWildcard;
+  }
+
+  public boolean useWildcard() {
+    return useWildcard;
+  }
+
   public boolean isModelInferenceQuery() {
     return selectComponent.hasModelInferenceFunction();
   }
@@ -519,20 +548,8 @@ public class QueryStatement extends Statement {
                 : resultColumn.getExpression().getExpressionString());
       }
       for (Expression expression : getExpressionSortItemList()) {
-        if (expression instanceof FunctionExpression) {
-          if (!expression.isBuiltInAggregationFunctionExpression()) {
-            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
-          }
-        } else {
-          if (expression instanceof TimeSeriesOperand) {
-            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
-          }
-          for (Expression subExpression : expression.getExpressions()) {
-            if (!subExpression.isBuiltInAggregationFunctionExpression()) {
-              throw new SemanticException(
-                  "Raw data and aggregation hybrid query is not supported.");
-            }
-          }
+        if (!hasAggregationFunction(expression)) {
+          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
         }
       }
       if (isGroupByTag()) {
@@ -563,10 +580,8 @@ public class QueryStatement extends Statement {
             "Common queries and aggregated queries are not allowed to appear at the same time");
       }
       for (Expression expression : getExpressionSortItemList()) {
-        for (Expression subExpression : expression.getExpressions()) {
-          if (subExpression.isBuiltInAggregationFunctionExpression()) {
-            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
-          }
+        if (hasAggregationFunction(expression)) {
+          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
         }
       }
     }
@@ -616,6 +631,10 @@ public class QueryStatement extends Statement {
     }
 
     if (isLastQuery()) {
+      if (getSortItemList().size() == 1
+          && !getSortItemList().get(0).getSortKey().equals(OrderByKey.TIMESERIES)) {
+        throw new SemanticException("Last query only support sorting by timeseries now.");
+      }
       if (isAlignByDevice()) {
         throw new SemanticException("Last query doesn't support align by device.");
       }

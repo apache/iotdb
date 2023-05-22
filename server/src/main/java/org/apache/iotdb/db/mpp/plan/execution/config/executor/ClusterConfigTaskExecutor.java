@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -85,7 +86,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
@@ -105,7 +105,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.metadata.template.alter.TemplateAlterOperationUtil;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
@@ -1383,6 +1385,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterSchemaTemplate(
       String queryId, AlterSchemaTemplateStatement alterSchemaTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    if (alterSchemaTemplateStatement
+        .getOperationType()
+        .equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
+      // check duplicate measurement
+      TemplateExtendInfo templateExtendInfo =
+          (TemplateExtendInfo) alterSchemaTemplateStatement.getTemplateAlterInfo();
+      String duplicateMeasurement = templateExtendInfo.getFirstDuplicateMeasurement();
+      if (duplicateMeasurement != null) {
+        future.setException(
+            new MetadataException(
+                String.format(
+                    "Duplicated measurement [%s] in schema template alter request",
+                    duplicateMeasurement)));
+        return future;
+      }
+    }
+
     TAlterSchemaTemplateReq req = new TAlterSchemaTemplateReq();
     req.setQueryId(queryId);
     req.setTemplateAlterInfo(
@@ -1645,8 +1665,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (showPipeStatement.getWhereClause()) {
         tShowPipeReq.setWhereClause(true);
       }
-      TShowPipeResp resp = configNodeClient.showPipe(tShowPipeReq);
-      List<TShowPipeInfo> tShowPipeInfoList = new ArrayList<>();
+      List<TShowPipeInfo> tShowPipeInfoList =
+          configNodeClient.showPipe(tShowPipeReq).getPipeInfoList();
       ShowPipeTask.buildTSBlock(tShowPipeInfoList, future);
     } catch (Exception e) {
       future.setException(e);
