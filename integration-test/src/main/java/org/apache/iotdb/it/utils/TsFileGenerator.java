@@ -129,6 +129,48 @@ public class TsFileGenerator implements AutoCloseable {
     logger.info(String.format("Write %d points into device %s", number, device));
   }
 
+  public void generateData(
+      String device, int number, long timeGap, boolean isAligned, long startTimestamp)
+      throws IOException, WriteProcessException {
+    List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
+    TreeSet<Long> timeSet = device2TimeSet.get(device);
+    Tablet tablet = new Tablet(device, schemas);
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
+    long sensorNum = schemas.size();
+    long startTime = startTimestamp;
+
+    for (long r = 0; r < number; r++) {
+      int row = tablet.rowSize++;
+      startTime += timeGap;
+      timestamps[row] = startTime;
+      timeSet.add(startTime);
+      for (int i = 0; i < sensorNum; i++) {
+        generateDataPoint(values[i], row, schemas.get(i));
+      }
+      // write
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (!isAligned) {
+          writer.write(tablet);
+        } else {
+          writer.writeAligned(tablet);
+        }
+        tablet.reset();
+      }
+    }
+    // write
+    if (tablet.rowSize != 0) {
+      if (!isAligned) {
+        writer.write(tablet);
+      } else {
+        writer.writeAligned(tablet);
+      }
+      tablet.reset();
+    }
+
+    logger.info(String.format("Write %d points into device %s", number, device));
+  }
+
   private void generateDataPoint(Object obj, int row, MeasurementSchema schema) {
     switch (schema.getType()) {
       case INT32:

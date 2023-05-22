@@ -58,7 +58,9 @@ public class DeviceSchemaInfo {
     return measurementSchemaInfoList.stream()
         .map(
             measurementSchemaInfo ->
-                measurementSchemaInfo == null ? null : measurementSchemaInfo.getSchema())
+                measurementSchemaInfo == null
+                    ? null
+                    : measurementSchemaInfo.getSchemaAsMeasurementSchema())
         .collect(Collectors.toList());
   }
 
@@ -83,17 +85,17 @@ public class DeviceSchemaInfo {
           .collect(Collectors.toList());
     }
     List<MeasurementPath> measurementPaths = new ArrayList<>();
-    for (MeasurementSchemaInfo measurementSchemaInfo : measurementSchemaInfoList) {
+    for (IMeasurementSchemaInfo iMeasurementSchemaInfo : measurementSchemaInfoList) {
       MeasurementPath measurementPath =
           new MeasurementPath(
-              devicePath.concatNode(measurementSchemaInfo.getName()),
-              measurementSchemaInfo.getSchema());
+              devicePath.concatNode(iMeasurementSchemaInfo.getName()),
+              iMeasurementSchemaInfo.getSchema());
       measurementPath.setUnderAlignedEntity(isAligned);
-      if (measurements.contains(measurementSchemaInfo.getName())) {
+      if (measurements.contains(iMeasurementSchemaInfo.getName())) {
         measurementPaths.add(measurementPath);
-      } else if (measurementSchemaInfo.getAlias() != null
-          && measurements.contains(measurementSchemaInfo.getAlias())) {
-        measurementPath.setMeasurementAlias(measurementSchemaInfo.getAlias());
+      } else if (iMeasurementSchemaInfo.getAlias() != null
+          && measurements.contains(iMeasurementSchemaInfo.getAlias())) {
+        measurementPath.setMeasurementAlias(iMeasurementSchemaInfo.getAlias());
         measurementPaths.add(measurementPath);
       }
     }

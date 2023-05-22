@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -61,7 +62,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class ClusterTemplateManager implements ITemplateManager {
 
@@ -379,7 +379,7 @@ public class ClusterTemplateManager implements ITemplateManager {
     // and the following logic is equivalent with the above expression
 
     String measurement = pathPattern.getTailNode();
-    if (measurement.contains(ONE_LEVEL_PATH_WILDCARD)) {
+    if (PathPatternUtil.hasWildcard(measurement)) {
       // if measurement is wildcard, e.g. root.sg.d1.**, root.sg.d1.*, root.sg.d1.s*
       return pathPattern.overlapWithFullPathPrefix(pathSetTemplate);
     }
@@ -597,6 +597,42 @@ public class ClusterTemplateManager implements ITemplateManager {
       Template template =
           TemplateInternalRPCUtil.parseUpdateTemplateInfoBytes(ByteBuffer.wrap(templateInfo));
       templateIdMap.put(template.getId(), template);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  public void invalid(String database) {
+    readWriteLock.writeLock().lock();
+    try {
+      for (PartialPath fullPath : pathSetTemplateMap.keySet()) {
+        if (fullPath.startsWith(database)) {
+          int templateId = pathSetTemplateMap.remove(fullPath);
+          templateSetOnPathsMap.get(templateId).remove(fullPath);
+          if (templateSetOnPathsMap.get(templateId).size() == 0
+              && (!templatePreSetOnPathsMap.containsKey(templateId)
+                  || templatePreSetOnPathsMap.get(templateId).size() == 0)) {
+            templateSetOnPathsMap.remove(templateId);
+            templatePreSetOnPathsMap.remove(templateId);
+            Template template = templateIdMap.remove(templateId);
+            templateNameMap.remove(template.getName());
+          }
+        }
+      }
+      for (PartialPath fullPath : pathPreSetTemplateMap.keySet()) {
+        if (fullPath.startsWith(database)) {
+          int templateId = pathPreSetTemplateMap.remove(fullPath);
+          templatePreSetOnPathsMap.get(templateId).remove(fullPath);
+          if ((!templateSetOnPathsMap.containsKey(templateId)
+                  || templateSetOnPathsMap.get(templateId).size() == 0)
+              && templatePreSetOnPathsMap.get(templateId).size() == 0) {
+            templateSetOnPathsMap.remove(templateId);
+            templatePreSetOnPathsMap.remove(templateId);
+            Template template = templateIdMap.remove(templateId);
+            templateNameMap.remove(template.getName());
+          }
+        }
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }

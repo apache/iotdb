@@ -209,7 +209,6 @@ public class ConfigRegionStateMachine
 
       // Start leader scheduling services
       configManager.getProcedureManager().shiftExecutor(true);
-      configManager.getLoadManager().getRouteBalancer().startRouteBalancingService();
       configManager.getRetryFailedTasksThread().startRetryFailedTasksService();
       configManager.getPartitionManager().startRegionCleaner();
 
@@ -219,6 +218,7 @@ public class ConfigRegionStateMachine
       // 2. For correctness: in cq recovery processing, it will use ConsensusManager which may be
       // initialized after notifyLeaderChanged finished
       threadPool.submit(() -> configManager.getCQManager().startCQScheduler());
+      configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync();
     } else {
       LOGGER.info(
           "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
@@ -227,12 +227,13 @@ public class ConfigRegionStateMachine
           newLeaderId);
 
       // Stop leader scheduling services
+      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
       configManager.getLoadManager().stopLoadServices();
       configManager.getProcedureManager().shiftExecutor(false);
-      configManager.getLoadManager().getRouteBalancer().stopRouteBalancingService();
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
       configManager.getPartitionManager().stopRegionCleaner();
       configManager.getCQManager().stopCQScheduler();
+      configManager.getClusterSchemaManager().clearSchemaQuotaCache();
     }
   }
 

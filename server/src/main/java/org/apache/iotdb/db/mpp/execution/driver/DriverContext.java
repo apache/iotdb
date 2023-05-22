@@ -44,6 +44,7 @@ public class DriverContext {
   private ExchangeOperator downstreamOperator;
 
   private final AtomicBoolean finished = new AtomicBoolean();
+  private boolean mayHaveTmpFile = false;
 
   @TestOnly
   public DriverContext() {
@@ -137,5 +138,13 @@ public class DriverContext {
 
   public boolean isDone() {
     return finished.get();
+  }
+
+  public void setHaveTmpFile(boolean mayHaveTmpFile) {
+    this.mayHaveTmpFile = mayHaveTmpFile;
+  }
+
+  public boolean mayHaveTmpFile() {
+    return mayHaveTmpFile;
   }
 }

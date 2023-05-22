@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -33,9 +34,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
@@ -103,9 +101,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     Set<String> measurements = memChunk.getAllMeasurements();
     List<String> columnsToBeRemoved = new ArrayList<>();
     String targetMeasurement = originalPath.getMeasurement();
-    if (targetMeasurement.equals(ONE_LEVEL_PATH_WILDCARD)
-        || targetMeasurement.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+    if (PathPatternUtil.hasWildcard(targetMeasurement)) {
       for (String measurement : measurements) {
+        if (!PathPatternUtil.isNodeMatch(targetMeasurement, measurement)) {
+          continue;
+        }
         Pair<Integer, Boolean> deleteInfo =
             memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, measurement);
         deletedPointsNumber += deleteInfo.left;

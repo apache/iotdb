@@ -113,7 +113,7 @@ IoTDB 涉及到的所有数据目录路径有：data_dirs, multi_dir_strategy, s
 dn_system_dir = $IOTDB_HOME/data/datanode/system
 dn_data_dirs = /data1/datanode/data, /data2/datanode/data, /data3/datanode/data 
 dn_multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
-dn_wal_dir= $IOTDB_HOME/data/datanode/wal
+dn_wal_dirs= $IOTDB_HOME/data/datanode/wal
 ```
 按照上述配置，系统会：
 

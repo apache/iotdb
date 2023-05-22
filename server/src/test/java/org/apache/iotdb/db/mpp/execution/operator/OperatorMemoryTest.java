@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregati
 import org.apache.iotdb.db.mpp.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
@@ -466,6 +468,39 @@ public class OperatorMemoryTest {
   }
 
   @Test
+  public void horizontallyConcatOperatorTest() {
+    long expectedMaxReturnSize = 0;
+    long expectedMaxPeekMemory = 0;
+    long childrenMaxPeekMemory = 0;
+
+    List<Operator> children = new ArrayList<>(4);
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+      children.add(child);
+
+      expectedMaxReturnSize += child.calculateMaxReturnSize();
+      childrenMaxPeekMemory =
+          Math.max(childrenMaxPeekMemory, expectedMaxPeekMemory + child.calculateMaxPeekMemory());
+      expectedMaxPeekMemory += child.calculateMaxReturnSize();
+    }
+
+    expectedMaxPeekMemory =
+        Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
+
+    HorizontallyConcatOperator horizontallyConcatOperator =
+        new HorizontallyConcatOperator(
+            Mockito.mock(OperatorContext.class), children, Collections.emptyList());
+
+    assertEquals(expectedMaxPeekMemory, horizontallyConcatOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, horizontallyConcatOperator.calculateMaxReturnSize());
+    assertEquals(
+        3 * 64 * 1024L, horizontallyConcatOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
   public void sortOperatorTest() {
     Operator child = Mockito.mock(Operator.class);
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
@@ -477,11 +512,18 @@ public class OperatorMemoryTest {
             Mockito.mock(OperatorContext.class),
             child,
             Collections.singletonList(TSDataType.INT32),
+            "",
             null);
 
-    assertEquals(2048 + 512, sortOperator.calculateMaxPeekMemory());
-    assertEquals(1024, sortOperator.calculateMaxReturnSize());
-    assertEquals(512, sortOperator.calculateRetainedSizeAfterCallingNext());
+    assertEquals(
+        2048 + 512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        sortOperator.calculateMaxPeekMemory());
+    assertEquals(
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+        sortOperator.calculateMaxReturnSize());
+    assertEquals(
+        512 + IoTDBDescriptor.getInstance().getConfig().getSortBufferSize(),
+        sortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test

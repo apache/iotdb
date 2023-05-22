@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionInfo;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
@@ -181,13 +182,30 @@ public class SystemInfo {
     this.flushingMemTablesCost -= flushingMemTableCost;
   }
 
-  public void addCompactionMemoryCost(long memoryCost) throws InterruptedException {
+  public void addCompactionMemoryCost(long memoryCost, long timeOutInSecond)
+      throws InterruptedException, CompactionMemoryNotEnoughException {
     if (!config.isEnableCompactionMemControl()) {
       return;
     }
+    if (memoryCost > memorySizeForCompaction) {
+      // required memory cost is greater than the total memory budget for compaction
+      throw new CompactionMemoryNotEnoughException(
+          String.format(
+              "Required memory cost %d bytes is greater than "
+                  + "the total memory budget for compaction %d bytes",
+              memoryCost, memorySizeForCompaction));
+    }
+    long startTime = System.currentTimeMillis();
     long originSize = this.compactionMemoryCost.get();
     while (originSize + memoryCost > memorySizeForCompaction
         || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
+      if (System.currentTimeMillis() - startTime >= timeOutInSecond * 1000L) {
+        throw new CompactionMemoryNotEnoughException(
+            String.format(
+                "Failed to allocate %d bytes memory for compaction after %d seconds, "
+                    + "total memory budget for compaction module is %d bytes, %d bytes is used",
+                memoryCost, timeOutInSecond, memorySizeForCompaction, originSize));
+      }
       Thread.sleep(100);
       originSize = this.compactionMemoryCost.get();
     }

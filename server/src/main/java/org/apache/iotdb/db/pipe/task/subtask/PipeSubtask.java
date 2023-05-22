@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -38,19 +40,18 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
-  private final String taskID;
+  protected final String taskID;
 
   private ListeningExecutorService subtaskWorkerThreadPoolExecutor;
   private ExecutorService subtaskCallbackListeningExecutor;
-
   private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
-
-  private static final int MAX_RETRY_TIMES = 5;
-  private final AtomicInteger retryCount = new AtomicInteger(0);
-
-  private Throwable lastFailedCause;
-
   private final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
+
+  protected static final int MAX_RETRY_TIMES = 5;
+  private final AtomicInteger retryCount = new AtomicInteger(0);
+  protected Throwable lastFailedCause;
+
+  protected Event lastEvent;
 
   public PipeSubtask(String taskID) {
     super();
@@ -95,7 +96,13 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
           retryCount,
           throwable);
       lastFailedCause = throwable;
+
       PipeAgent.runtime().report(this);
+
+      // although the pipe task will be stopped, we still don't release the last event here
+      // because we need to keep it for the next retry. if user wants to restart the task,
+      // the last event will be processed again. the last event will be released when the task
+      // is dropped or the process is running normally.
     }
   }
 
@@ -114,6 +121,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   }
 
   public void allowSubmittingSelf() {
+    retryCount.set(0);
     shouldStopSubmittingSelf.set(false);
   }
 
@@ -123,6 +131,20 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   public boolean isSubmittingSelf() {
     return !shouldStopSubmittingSelf.get();
+  }
+
+  @Override
+  public synchronized void close() {
+    releaseLastEvent();
+  }
+
+  protected void releaseLastEvent() {
+    if (lastEvent != null) {
+      if (lastEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) lastEvent).decreaseReferenceCount(PipeSubtask.class.getName());
+      }
+      lastEvent = null;
+    }
   }
 
   public String getTaskID() {

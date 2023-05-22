@@ -24,17 +24,20 @@ import org.apache.iotdb.db.pipe.task.stage.PipeTaskStage;
 public class PipeTask {
 
   private final String pipeName;
+  private final String dataRegionId;
 
   private final PipeTaskStage collectorStage;
   private final PipeTaskStage processorStage;
   private final PipeTaskStage connectorStage;
 
-  public PipeTask(
+  PipeTask(
       String pipeName,
+      String dataRegionId,
       PipeTaskStage collectorStage,
       PipeTaskStage processorStage,
       PipeTaskStage connectorStage) {
     this.pipeName = pipeName;
+    this.dataRegionId = dataRegionId;
 
     this.collectorStage = collectorStage;
     this.processorStage = processorStage;
@@ -63,6 +66,10 @@ public class PipeTask {
     collectorStage.stop();
     processorStage.stop();
     connectorStage.stop();
+  }
+
+  public String getDataRegionId() {
+    return dataRegionId;
   }
 
   public String getPipeName() {

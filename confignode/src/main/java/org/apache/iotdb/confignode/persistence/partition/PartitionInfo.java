@@ -263,6 +263,11 @@ public class PartitionInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public boolean isDatabasePreDeleted(String database) {
+    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
+    return databasePartitionTable != null && !databasePartitionTable.isNotPreDeleted();
+  }
+
   /**
    * Thread-safely delete StorageGroup
    *
@@ -740,6 +745,19 @@ public class PartitionInfo implements SnapshotProcessor {
   public List<Pair<Long, TConsensusGroupId>> getRegionGroupSlotsCounter(
       String storageGroup, TConsensusGroupType type) {
     return databasePartitionTables.get(storageGroup).getRegionGroupSlotsCounter(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @return Integer set of all schema region id
+   */
+  public Set<Integer> getAllSchemaPartition() {
+    Set<Integer> schemaPartitionSet = new HashSet<>();
+    databasePartitionTables
+        .values()
+        .forEach(i -> schemaPartitionSet.addAll(i.getSchemaRegionIds()));
+    return schemaPartitionSet;
   }
 
   @Override

@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 
 import java.util.Objects;
@@ -29,11 +30,23 @@ public class ShowDevicesPlanImpl extends AbstractShowSchemaPlanImpl implements I
 
   // templateId > -1 means the device should use template with given templateId
   private final int schemaTemplateId;
+  private final SchemaFilter schemaFilter;
 
   ShowDevicesPlanImpl(
-      PartialPath path, long limit, long offset, boolean isPrefixMatch, int schemaTemplateId) {
+      PartialPath path,
+      long limit,
+      long offset,
+      boolean isPrefixMatch,
+      int schemaTemplateId,
+      SchemaFilter schemaFilter) {
     super(path, limit, offset, isPrefixMatch);
     this.schemaTemplateId = schemaTemplateId;
+    this.schemaFilter = schemaFilter;
+  }
+
+  @Override
+  public SchemaFilter getSchemaFilter() {
+    return schemaFilter;
   }
 
   @Override

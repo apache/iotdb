@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -255,25 +256,24 @@ public class CompactionUtils {
   }
 
   public static boolean validateTsFileResources(
-      TsFileManager manager, String storageGroupName, long timePartition) {
+      TsFileManager manager, String storageGroupName, long timePartition) throws IOException {
     List<TsFileResource> resources =
         manager.getOrCreateSequenceListByTimePartition(timePartition).getArrayList();
-    resources.sort(
-        (f1, f2) ->
-            Long.compareUnsigned(
-                Long.parseLong(f1.getTsFile().getName().split("-")[0]),
-                Long.parseLong(f2.getTsFile().getName().split("-")[0])));
+
     // deviceID -> <TsFileResource, last end time>
     Map<String, Pair<TsFileResource, Long>> lastEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
+      DeviceTimeIndex timeIndex;
       if (resource.getTimeIndexType() != 1) {
-        // if time index is not device time index, then skip it
-        continue;
+        // if time index is not device time index, then deserialize it from resource file
+        timeIndex = resource.buildDeviceTimeIndex();
+      } else {
+        timeIndex = (DeviceTimeIndex) resource.getTimeIndex();
       }
-      Set<String> devices = resource.getDevices();
+      Set<String> devices = timeIndex.getDevices();
       for (String device : devices) {
-        long currentStartTime = resource.getStartTime(device);
-        long currentEndTime = resource.getEndTime(device);
+        long currentStartTime = timeIndex.getStartTime(device);
+        long currentEndTime = timeIndex.getEndTime(device);
         Pair<TsFileResource, Long> lastDeviceInfo =
             lastEndTimeMap.computeIfAbsent(device, x -> new Pair<>(null, Long.MIN_VALUE));
         long lastEndTime = lastDeviceInfo.right;

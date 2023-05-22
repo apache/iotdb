@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.template.ITemplateManager;
@@ -91,6 +93,37 @@ public class DeviceUsingTemplateSchemaCache {
     return schemaTree;
   }
 
+  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath path) {
+    PartialPath devicePath = path.getDevicePath();
+    DeviceCacheEntry deviceCacheEntry = cache.getIfPresent(devicePath);
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    if (deviceCacheEntry != null) {
+      Template template = templateManager.getTemplate(deviceCacheEntry.getTemplateId());
+      String measurement = path.getMeasurement();
+      if (PathPatternUtil.hasWildcard(measurement)) {
+        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+          if (PathPatternUtil.isNodeMatch(measurement, entry.getKey())) {
+            schemaTree.appendSingleMeasurement(
+                devicePath.concatNode(entry.getKey()),
+                entry.getValue(),
+                null,
+                null,
+                template.isDirectAligned());
+            schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
+          }
+        }
+      } else {
+        IMeasurementSchema measurementSchema = template.getSchema(measurement);
+        if (measurementSchema != null) {
+          schemaTree.appendSingleMeasurement(
+              path, measurementSchema, null, null, template.isDirectAligned());
+          schemaTree.setDatabases(Collections.singleton(deviceCacheEntry.getDatabase()));
+        }
+      }
+    }
+    return schemaTree;
+  }
+
   /**
    * CONFORM indicates that the provided devicePath had been cached as a template activated path,
    * ensuring that the alignment of the device, as well as the name and schema of every measurement
@@ -130,7 +163,17 @@ public class DeviceUsingTemplateSchemaCache {
             }
 
             @Override
-            public MeasurementSchema getSchema() {
+            public IMeasurementSchema getSchema() {
+              if (isLogicalView()) {
+                return new LogicalViewSchema(
+                    schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+              } else {
+                return this.getSchemaAsMeasurementSchema();
+              }
+            }
+
+            @Override
+            public MeasurementSchema getSchemaAsMeasurementSchema() {
               return new MeasurementSchema(
                   schema.getMeasurementId(),
                   schema.getType(),
@@ -141,6 +184,11 @@ public class DeviceUsingTemplateSchemaCache {
             @Override
             public String getAlias() {
               return null;
+            }
+
+            @Override
+            public boolean isLogicalView() {
+              return schema.isLogicalView();
             }
           });
     }
