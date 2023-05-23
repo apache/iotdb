@@ -54,13 +54,13 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
   private boolean hasProcessedAggregationFunction = false;
 
   /** The paths that are new added, which should be re-fetched. */
-  private List<PartialPath> sourceTimeSeriesPathOfLogicalViewList = null;
+  private List<PartialPath> newAddedPathList = null;
 
   public ReplaceLogicalViewVisitor() {
     this.transformToExpressionVisitor = new TransformToExpressionVisitor();
     this.getSourcePathsVisitor = new GetSourcePathsVisitor();
     this.resetHadProcessedAggregationFunction();
-    this.sourceTimeSeriesPathOfLogicalViewList = new ArrayList<>();
+    this.newAddedPathList = new ArrayList<>();
   }
 
   /**
@@ -85,9 +85,9 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
     // step 3. record paths that appeared in view expression. They should be fetched, then you can
     // use fetched schema
     // to complete new added TimeSeriesOperand.
-    int oldSize = this.sourceTimeSeriesPathOfLogicalViewList.size();
-    Expression result = this.process(expression, this.sourceTimeSeriesPathOfLogicalViewList);
-    int newSize = this.sourceTimeSeriesPathOfLogicalViewList.size();
+    int oldSize = this.newAddedPathList.size();
+    Expression result = this.process(expression, this.newAddedPathList);
+    int newSize = this.newAddedPathList.size();
     if (oldSize != newSize) {
       return new Pair<>(result, true);
     }
@@ -95,7 +95,7 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
   }
 
   public List<PartialPath> getNewAddedPathList() {
-    return this.sourceTimeSeriesPathOfLogicalViewList;
+    return this.newAddedPathList;
   }
 
   private Expression transform(ViewExpression viewExpression) {

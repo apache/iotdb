@@ -444,31 +444,36 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private ISchemaTree findAllViewsInTreeThenReFetchAndMerge(ISchemaTree originSchemaTree) {
-    PathPatternTree patternTree = new PathPatternTree();
-    GetSourcePathsVisitor getSourcePathsVisitor = new GetSourcePathsVisitor();
-    boolean needToReFetch = false;
-    try {
-      Pair<List<MeasurementPath>, Integer> tempPair =
-          originSchemaTree.searchMeasurementPaths(new PartialPath("root.**"));
-      for (MeasurementPath measurementPath : tempPair.left) {
-        if (measurementPath.getMeasurementSchema().isLogicalView()) {
-          LogicalViewSchema logicalViewSchema =
-              (LogicalViewSchema) measurementPath.getMeasurementSchema();
-          ViewExpression viewExpression = logicalViewSchema.getExpression();
-          List<PartialPath> pathsNeedToReFetch =
-              getSourcePathsVisitor.process(viewExpression, null);
-          for (PartialPath path : pathsNeedToReFetch) {
-            patternTree.appendFullPath(path);
-            needToReFetch = true;
+    if (originSchemaTree.hasLogicalViewMeasurement()) {
+      PathPatternTree patternTree = new PathPatternTree();
+      GetSourcePathsVisitor getSourcePathsVisitor = new GetSourcePathsVisitor();
+      boolean needToReFetch = false;
+      try {
+        Pair<List<MeasurementPath>, Integer> tempPair =
+            originSchemaTree.searchMeasurementPaths(new PartialPath("root.**"));
+        for (MeasurementPath measurementPath : tempPair.left) {
+          if (measurementPath.getMeasurementSchema().isLogicalView()) {
+            LogicalViewSchema logicalViewSchema =
+                (LogicalViewSchema) measurementPath.getMeasurementSchema();
+            ViewExpression viewExpression = logicalViewSchema.getExpression();
+            List<PartialPath> pathsNeedToReFetch =
+                getSourcePathsVisitor.process(viewExpression, null);
+            for (PartialPath path : pathsNeedToReFetch) {
+              patternTree.appendFullPath(path);
+              needToReFetch = true;
+            }
           }
         }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-    if (needToReFetch) {
-      ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, null);
-      originSchemaTree.mergeSchemaTree(viewSchemaTree);
+      if (needToReFetch) {
+        ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, null);
+        originSchemaTree.mergeSchemaTree(viewSchemaTree);
+        Set<String> allDatabases = viewSchemaTree.getDatabases();
+        allDatabases.addAll(originSchemaTree.getDatabases());
+        originSchemaTree.setDatabases(allDatabases);
+      }
     }
     return originSchemaTree;
   }

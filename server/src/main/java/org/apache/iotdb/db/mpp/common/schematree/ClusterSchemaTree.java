@@ -56,6 +56,9 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   private final SchemaNode root;
 
+  /** a flag recording whether there is logical view in this schema tree. */
+  private boolean hasLogicalMeasurementPath = false;
+
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
   }
@@ -221,6 +224,7 @@ public class ClusterSchemaTree implements ISchemaTree {
           }
           measurementNode.setTagMap(tagMap);
           child = measurementNode;
+          this.hasLogicalMeasurementPath = true;
         } else if (i == nodes.length - 2) {
           SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
           entityNode.setAligned(isAligned);
@@ -248,7 +252,14 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
   }
 
+  @Override
+  public boolean hasLogicalViewMeasurement() {
+    return this.hasLogicalMeasurementPath;
+  }
+
   public void mergeSchemaTree(ClusterSchemaTree schemaTree) {
+    this.hasLogicalMeasurementPath =
+        this.hasLogicalMeasurementPath || schemaTree.hasLogicalViewMeasurement();
     traverseAndMerge(this.root, null, schemaTree.root);
   }
 
@@ -292,12 +303,16 @@ public class ClusterSchemaTree implements ISchemaTree {
     int childNum;
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
+    boolean hasLogicalView = false;
 
     while (inputStream.available() > 0) {
       nodeType = ReadWriteIOUtils.readByte(inputStream);
       if (nodeType == SCHEMA_MEASUREMENT_NODE) {
         SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);
         stack.push(measurementNode);
+        if (measurementNode.isLogicalView()) {
+          hasLogicalView = true;
+        }
       } else {
         SchemaInternalNode internalNode;
         if (nodeType == SCHEMA_ENTITY_NODE) {
@@ -323,7 +338,9 @@ public class ClusterSchemaTree implements ISchemaTree {
         stack.push(internalNode);
       }
     }
-    return new ClusterSchemaTree(stack.poll());
+    ClusterSchemaTree result = new ClusterSchemaTree(stack.poll());
+    result.hasLogicalMeasurementPath = hasLogicalView;
+    return result;
   }
 
   /**
@@ -354,6 +371,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     return databases;
   }
 
+  @Override
   public void setDatabases(Set<String> databases) {
     this.databases = databases;
   }

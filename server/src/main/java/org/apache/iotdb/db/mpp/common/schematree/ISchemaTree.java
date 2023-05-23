@@ -65,7 +65,12 @@ public interface ISchemaTree {
 
   Set<String> getDatabases();
 
+  void setDatabases(Set<String> databases);
+
   boolean isEmpty();
 
   void mergeSchemaTree(ISchemaTree schemaTree);
+
+  /** @return if there is measurementPath in this schema tree, return true; else return false */
+  boolean hasLogicalViewMeasurement();
 }
