@@ -3216,61 +3216,41 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return new Pair<>(result, null);
   }
 
-  // create Logical View
-  @Override
-  public Analysis visitCreateLogicalView(
-      CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    // TODO: CRTODO: add more analyzing
-    context.setQueryType(QueryType.WRITE);
-
-    boolean hasViewInSource = false;
-    boolean sourceInSelectNotExist = false;
-    if (createLogicalViewStatement.getQueryStatement() != null) {
-      Analysis queryAnalysis =
-          this.visitQuery(createLogicalViewStatement.getQueryStatement(), context);
-      // get all expression from resultColumns
-      List<Pair<Expression, String>> outputExpressions = queryAnalysis.getOutputExpressions();
-      if (queryAnalysis.isFailed()) {
-        analysis.setFinishQueryAfterAnalyze(true);
-        analysis.setFailStatus(queryAnalysis.getFailStatus());
-        return analysis;
-      }
-      if (outputExpressions == null) {
-        analysis.setFinishQueryAfterAnalyze(true);
-        analysis.setFailStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-                "Columns in the query statement is empty. Please check your SQL."));
-        return analysis;
-      }
-      List<Expression> expressionList = new ArrayList<>();
-      for (Pair<Expression, String> thisPair : outputExpressions) {
-        expressionList.add(thisPair.left);
-      }
-      createLogicalViewStatement.setSourceExpressions(expressionList);
-      hasViewInSource = queryAnalysis.hasViewsInQuery();
+  private Pair<List<Expression>, Analysis> analyzeQueryInLogicalViewStatement(
+      Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
+    Analysis queryAnalysis = this.visitQuery(queryStatement, context);
+    // get all expression from resultColumns
+    List<Pair<Expression, String>> outputExpressions = queryAnalysis.getOutputExpressions();
+    if (queryAnalysis.isFailed()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(queryAnalysis.getFailStatus());
+      return new Pair<>(null, analysis);
     }
-    analysis.setStatement(createLogicalViewStatement);
-    // make sure the number of targets and source are matched
-
-    // check target paths; check source expressions.
-    Pair<Boolean, Exception> checkResult = createLogicalViewStatement.checkAll();
-    if (checkResult.left == false) {
-      throw new RuntimeException(checkResult.right);
-    }
-    if (createLogicalViewStatement.getSourceExpressionList().size()
-        != createLogicalViewStatement.getTargetPathList().size()) {
+    if (outputExpressions == null) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "The number of target and source paths are miss matched! Please check your SQL."));
-      return analysis;
+              "Columns in the query statement is empty. Please check your SQL."));
+      return new Pair<>(null, analysis);
     }
+    if (queryAnalysis.hasViewsInQuery()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "Can not create a logical view based on existing views. Check the query in your SQL."));
+      return new Pair<>(null, analysis);
+    }
+    List<Expression> expressionList = new ArrayList<>();
+    for (Pair<Expression, String> thisPair : outputExpressions) {
+      expressionList.add(thisPair.left);
+    }
+    return new Pair<>(expressionList, analysis);
+  }
 
-    // make sure there is no view in source
-    List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
+  private Analysis checkViewsInSource(
+      Analysis analysis, List<Expression> sourceExpressionList, MPPQueryContext context) {
     List<PartialPath> pathsNeedCheck = new ArrayList<>();
     for (Expression expression : sourceExpressionList) {
       if (expression instanceof TimeSeriesOperand) {
@@ -3302,15 +3282,70 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
     if (viewInSourceCheckResult.left.size() > 0) {
-      hasViewInSource = true;
-    }
-    if (hasViewInSource) {
       // some source paths is logical view
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "Can not create a logical view based on existing views."));
+      return analysis;
+    }
+    return analysis;
+  }
+
+  private Analysis checkPathsInCreateLogicalView(
+      Analysis analysis, CreateLogicalViewStatement createLogicalViewStatement) {
+    Pair<Boolean, String> checkResult = createLogicalViewStatement.checkAllPaths();
+    if (!checkResult.left) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.ILLEGAL_PATH.getStatusCode(),
+              "The path " + checkResult.right + " is illegal."));
+      return analysis;
+    }
+    if (createLogicalViewStatement.getSourceExpressionList().size()
+        != createLogicalViewStatement.getTargetPathList().size()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "The number of target and source paths are miss matched! Please check your SQL."));
+      return analysis;
+    }
+    return analysis;
+  }
+
+  // create Logical View
+  @Override
+  public Analysis visitCreateLogicalView(
+      CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    context.setQueryType(QueryType.WRITE);
+
+    // analyze query in statement
+    QueryStatement queryStatement = createLogicalViewStatement.getQueryStatement();
+    if (queryStatement != null) {
+      Pair<List<Expression>, Analysis> queryAnalysisPair =
+          this.analyzeQueryInLogicalViewStatement(analysis, queryStatement, context);
+      if (queryAnalysisPair.right.isFinishQueryAfterAnalyze()) {
+        return analysis;
+      } else if (queryAnalysisPair.left != null) {
+        createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
+      }
+    }
+    analysis.setStatement(createLogicalViewStatement);
+
+    // check target paths; check source expressions.
+    checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
+
+    // make sure there is no view in source
+    List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
+    checkViewsInSource(analysis, sourceExpressionList, context);
+    if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
 
