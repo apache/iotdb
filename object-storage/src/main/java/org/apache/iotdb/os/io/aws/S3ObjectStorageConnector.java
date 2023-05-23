@@ -49,9 +49,9 @@ import java.io.InputStream;
 
 public class S3ObjectStorageConnector implements ObjectStorageConnector {
   private static final String RANGE_FORMAT = "%d-%d";
-  private static final AWSS3Config s3config =
+  private final AWSS3Config s3config =
       (AWSS3Config) ObjectStorageDescriptor.getInstance().getConfig().getProviderConfig();
-  private static final S3Client s3Client =
+  private final S3Client s3Client =
       S3Client.builder()
           .region(Region.of(s3config.getEndpoint()))
           .credentialsProvider(

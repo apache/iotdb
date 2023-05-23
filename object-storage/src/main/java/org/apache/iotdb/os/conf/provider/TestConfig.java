@@ -16,29 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.os.utils;
+package org.apache.iotdb.os.conf.provider;
 
-import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
-import org.apache.iotdb.os.io.ObjectStorageConnector;
-import org.apache.iotdb.os.io.aws.S3ObjectStorageConnector;
-import org.apache.iotdb.os.io.test.TestObjectStorageConnector;
+import java.io.File;
 
-public enum ObjectStorageType {
-  TEST,
-  AWS_S3;
+public class TestConfig extends OSProviderConfig {
+  private String testDir = "target" + File.separator + "test";
 
-  public static ObjectStorageConnector getConnector(ObjectStorageType type) {
-    switch (type) {
-      case AWS_S3:
-        return new S3ObjectStorageConnector();
-      case TEST:
-        return new TestObjectStorageConnector();
-      default:
-        return null;
-    }
+  public String getTestDir() {
+    return testDir;
   }
 
-  public static ObjectStorageConnector getConnector() {
-    return getConnector(ObjectStorageDescriptor.getInstance().getConfig().getOsType());
+  public void setTestDir(String testDir) {
+    this.testDir = testDir;
   }
 }

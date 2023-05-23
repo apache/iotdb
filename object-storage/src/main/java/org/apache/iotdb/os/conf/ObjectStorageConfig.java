@@ -20,10 +20,10 @@ package org.apache.iotdb.os.conf;
 
 import org.apache.iotdb.os.conf.provider.AWSS3Config;
 import org.apache.iotdb.os.conf.provider.OSProviderConfig;
+import org.apache.iotdb.os.conf.provider.TestConfig;
 import org.apache.iotdb.os.utils.ObjectStorageType;
 
 import java.io.File;
-import java.util.Objects;
 
 public class ObjectStorageConfig {
   private ObjectStorageType osType = ObjectStorageType.AWS_S3;
@@ -46,10 +46,12 @@ public class ObjectStorageConfig {
 
   public void setOsType(ObjectStorageType osType) {
     this.osType = osType;
-    if (Objects.requireNonNull(osType) == ObjectStorageType.AWS_S3) {
-      this.providerConfig = new AWSS3Config();
-    } else {
-      this.providerConfig = null;
+    switch (osType) {
+      case AWS_S3:
+        this.providerConfig = new AWSS3Config();
+        break;
+      default:
+        this.providerConfig = new TestConfig();
     }
   }
 
