@@ -31,7 +31,7 @@ public class PathContainsFilter extends SchemaFilter {
   private final String containString;
 
   public PathContainsFilter(String containString) {
-    this.containString = containString;
+    this.containString = containString.toLowerCase();
   }
 
   public PathContainsFilter(ByteBuffer byteBuffer) {

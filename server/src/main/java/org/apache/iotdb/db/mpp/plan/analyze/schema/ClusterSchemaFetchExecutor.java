@@ -91,7 +91,7 @@ class ClusterSchemaFetchExecutor {
    * @param rawPatternTree the pattern tree consisting of the fullPathList
    * @return fetched schema
    */
-  ClusterSchemaTree fetchSchemaOfPreciseMatch(
+  ClusterSchemaTree fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
       List<PartialPath> fullPathList, PathPatternTree rawPatternTree) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(

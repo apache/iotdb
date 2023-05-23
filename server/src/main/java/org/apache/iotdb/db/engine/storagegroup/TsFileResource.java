@@ -461,7 +461,7 @@ public class TsFileResource {
   }
 
   public void close() throws IOException {
-    this.setStatus(TsFileResourceStatus.CLOSED);
+    this.setStatus(TsFileResourceStatus.NORMAL);
     closeWithoutSettingStatus();
   }
 
@@ -482,7 +482,7 @@ public class TsFileResource {
     timeIndex.close();
   }
 
-  TsFileProcessor getProcessor() {
+  public TsFileProcessor getProcessor() {
     return processor;
   }
 
@@ -625,8 +625,8 @@ public class TsFileResource {
 
   public void setStatus(TsFileResourceStatus status) {
     switch (status) {
-      case CLOSED:
-        this.status = TsFileResourceStatus.CLOSED;
+      case NORMAL:
+        this.status = TsFileResourceStatus.NORMAL;
         break;
       case UNCLOSED:
         this.status = TsFileResourceStatus.UNCLOSED;
@@ -645,7 +645,7 @@ public class TsFileResource {
         }
         break;
       case COMPACTION_CANDIDATE:
-        if (this.status == TsFileResourceStatus.CLOSED) {
+        if (this.status == TsFileResourceStatus.NORMAL) {
           this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
         } else {
           throw new RuntimeException(
@@ -1023,24 +1023,31 @@ public class TsFileResource {
   }
 
   /**
-   * Compare the name of TsFiles corresponding to the two {@link TsFileResource}.This method will
-   * first check whether the two names meet the standard naming specifications, and then compare
-   * version of two names.
+   * Compare the creation order of the files and sort them according to the version number from
+   * largest to smallest.This method will first check whether the two names meet the standard naming
+   * specifications, and then compare version of two names. Notice: This method is only used to
+   * compare the creation order of files, which is sorted directly according to version. If you want
+   * to compare the order of the content of the file, you must first sort by timestamp and then by
+   * version.
    *
    * @param o1 a {@link TsFileResource}
    * @param o2 a {@link TsFileResource}
-   * @return -1, if o1 is smaller than o2, 1 if bigger, 0 means o1 equals to o2 or do not meet the
-   *     naming specifications
+   * @return -1, if o1 is smaller than o2, 1 if bigger, 0 means o1 equals to o2
    */
-  public static int compareFileNameByDesc(TsFileResource o1, TsFileResource o2) {
+  public static int compareFileCreationOrderByDesc(TsFileResource o1, TsFileResource o2) {
     try {
       TsFileNameGenerator.TsFileName n1 =
           TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
       TsFileNameGenerator.TsFileName n2 =
           TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
-      return (int) (n2.getVersion() - n1.getVersion());
-    } catch (IOException e) {
+      long versionDiff = n2.getVersion() - n1.getVersion();
+      if (versionDiff != 0) {
+        return versionDiff < 0 ? -1 : 1;
+      }
       return 0;
+    } catch (IOException e) {
+      LOGGER.error("File name may not meet the standard naming specifications.", e);
+      throw new RuntimeException(e.getMessage());
     }
   }
 

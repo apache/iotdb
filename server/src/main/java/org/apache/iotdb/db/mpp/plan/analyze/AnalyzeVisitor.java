@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -33,6 +34,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -97,6 +99,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -142,6 +145,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -211,6 +215,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
 
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+
   public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
@@ -238,7 +245,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       queryStatement.semanticCheck();
 
       // concat path and construct path pattern tree
-      PathPatternTree patternTree = new PathPatternTree();
+      PathPatternTree patternTree = new PathPatternTree(queryStatement.useWildcard());
       queryStatement =
           (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
       analysis.setStatement(queryStatement);
@@ -2108,32 +2115,48 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInsertTablet(
       InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertTabletStatement);
+    validateSchema(analysis, insertTabletStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
     dataPartitionQueryParam.setTimePartitionSlotList(insertTabletStatement.getTimePartitionSlots());
 
-    return getAnalysisForWriting(
-        insertTabletStatement, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForWriting(analysis, Collections.singletonList(dataPartitionQueryParam));
   }
 
   @Override
   public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertRowStatement);
+    validateSchema(analysis, insertRowStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
     dataPartitionQueryParam.setTimePartitionSlotList(
         Collections.singletonList(insertRowStatement.getTimePartitionSlot()));
 
-    return getAnalysisForWriting(
-        insertRowStatement, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForWriting(analysis, Collections.singletonList(dataPartitionQueryParam));
   }
 
   @Override
   public Analysis visitInsertRows(
       InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertRowsStatement);
+    validateSchema(analysis, insertRowsStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
@@ -2151,13 +2174,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
-    return getAnalysisForWriting(insertRowsStatement, dataPartitionQueryParams);
+    return getAnalysisForWriting(analysis, dataPartitionQueryParams);
   }
 
   @Override
   public Analysis visitInsertMultiTablets(
       InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertMultiTabletsStatement);
+    validateSchema(analysis, insertMultiTabletsStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertTabletStatement insertTabletStatement :
@@ -2176,13 +2205,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
-    return getAnalysisForWriting(insertMultiTabletsStatement, dataPartitionQueryParams);
+    return getAnalysisForWriting(analysis, dataPartitionQueryParams);
   }
 
   @Override
   public Analysis visitInsertRowsOfOneDevice(
       InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(insertRowsOfOneDeviceStatement);
+    validateSchema(analysis, insertRowsOfOneDeviceStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDevicePath(
@@ -2190,8 +2225,37 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     dataPartitionQueryParam.setTimePartitionSlotList(
         insertRowsOfOneDeviceStatement.getTimePartitionSlots());
 
-    return getAnalysisForWriting(
-        insertRowsOfOneDeviceStatement, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForWriting(analysis, Collections.singletonList(dataPartitionQueryParam));
+  }
+
+  private void validateSchema(Analysis analysis, InsertBaseStatement insertStatement) {
+    final long startTime = System.nanoTime();
+    try {
+      SchemaValidator.validate(schemaFetcher, insertStatement);
+    } catch (SemanticException e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      if (e.getCause() instanceof IoTDBException) {
+        IoTDBException exception = (IoTDBException) e.getCause();
+        analysis.setFailStatus(
+            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+      } else {
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+      }
+      return;
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
+    }
+    boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
+    String partialInsertMessage;
+    if (hasFailedMeasurement) {
+      partialInsertMessage =
+          String.format(
+              "Fail to insert measurements %s caused by %s",
+              insertStatement.getFailedMeasurements(), insertStatement.getFailedMessages());
+      logger.warn(partialInsertMessage);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
+    }
   }
 
   @Override
@@ -2276,16 +2340,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   /** get analysis according to statement and params */
   private Analysis getAnalysisForWriting(
-      Statement statement, List<DataPartitionQueryParam> dataPartitionQueryParams) {
-    Analysis analysis = new Analysis();
-    analysis.setStatement(statement);
+      Analysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams) {
 
     DataPartition dataPartition =
         partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
     if (dataPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailMessage(
-          "Database not exists and failed to create automatically because enable_auto_create_schema is FALSE.");
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
+              "Database not exists and failed to create automatically "
+                  + "because enable_auto_create_schema is FALSE."));
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;
@@ -2349,7 +2414,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         resource.deserialize();
       }
 
-      resource.setStatus(TsFileResourceStatus.CLOSED);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
       return resource;
     }
   }
@@ -2436,6 +2501,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     return SchemaValidator.validate(
+        schemaFetcher,
         deviceList,
         measurementList,
         dataTypeList,
