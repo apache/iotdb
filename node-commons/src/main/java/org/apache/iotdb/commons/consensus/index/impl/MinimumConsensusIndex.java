@@ -57,4 +57,17 @@ public class MinimumConsensusIndex implements ConsensusIndex {
   public static MinimumConsensusIndex deserializeFrom(InputStream stream) {
     return new MinimumConsensusIndex();
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    return obj != null && getClass() == obj.getClass();
+  }
+
+  @Override
+  public String toString() {
+    return "MinimumConsensusIndex{}";
+  }
 }

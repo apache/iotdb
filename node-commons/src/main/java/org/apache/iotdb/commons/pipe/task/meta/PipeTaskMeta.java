@@ -145,7 +145,7 @@ public class PipeTaskMeta {
       return false;
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
-    return progressIndex.get() == that.progressIndex.get()
+    return progressIndex.get().equals(that.progressIndex.get())
         && regionLeader.get() == that.regionLeader.get()
         && Arrays.equals(exceptionMessages.toArray(), that.exceptionMessages.toArray());
   }

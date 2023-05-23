@@ -83,24 +83,30 @@ public class TsFileResourceConsensusIndexTest {
 
   @Test
   public void testConsensusIndexRecorder() {
-    Assert.assertTrue(tsFileResource.containConsensusIndexRange(new MockConsensusIndex(0)));
+    Assert.assertTrue(
+        new MockConsensusIndex(0).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
 
     indexList.forEach(tsFileResource::updateConsensusIndex);
 
-    Assert.assertTrue(tsFileResource.containConsensusIndexRange(new MockConsensusIndex(-1)));
-    Assert.assertTrue(tsFileResource.containConsensusIndexRange(new MockConsensusIndex(0)));
-    Assert.assertTrue(tsFileResource.containConsensusIndexRange(new MockConsensusIndex(1)));
+    Assert.assertFalse(
+        new MockConsensusIndex(-1).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+    Assert.assertFalse(
+        new MockConsensusIndex(0).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+    Assert.assertFalse(
+        new MockConsensusIndex(1).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+    Assert.assertFalse(
+        new MockConsensusIndex(INDEX_NUM - 1)
+            .isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+
     Assert.assertTrue(
-        tsFileResource.containConsensusIndexRange(new MockConsensusIndex(INDEX_NUM - 1)));
+        new MockConsensusIndex(INDEX_NUM).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+    Assert.assertTrue(
+        new MockConsensusIndex(Integer.MAX_VALUE)
+            .isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
 
     Assert.assertFalse(
-        tsFileResource.containConsensusIndexRange(new MockConsensusIndex(INDEX_NUM)));
-    Assert.assertFalse(
-        tsFileResource.containConsensusIndexRange(new MockConsensusIndex(Integer.MAX_VALUE)));
-
-    Assert.assertTrue(
-        tsFileResource.containConsensusIndexRange(new MockConsensusIndex(1, INDEX_NUM - 1)));
-    Assert.assertTrue(tsFileResource.containConsensusIndexRange(null));
+        new MockConsensusIndex(1, INDEX_NUM - 1)
+            .isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
   }
 
   @Test
@@ -110,7 +116,7 @@ public class TsFileResourceConsensusIndexTest {
 
   public static class MockConsensusIndex implements ConsensusIndex {
     private final int type;
-    private final int val;
+    private int val;
 
     public MockConsensusIndex(int val) {
       this(0, val);
@@ -138,7 +144,20 @@ public class TsFileResourceConsensusIndexTest {
       }
 
       MockConsensusIndex that = (MockConsensusIndex) consensusIndex;
-      return this.type != that.type || this.val > that.val;
+      return this.type == that.type && this.val > that.val;
+    }
+
+    @Override
+    public ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex) {
+      if (!(consensusIndex instanceof MockConsensusIndex)) {
+        throw new IllegalStateException("Mock update error.");
+      }
+
+      MockConsensusIndex that = (MockConsensusIndex) consensusIndex;
+      if (that.type == this.type) {
+        this.val = Math.max(this.val, that.val);
+      }
+      return this;
     }
   }
 }
