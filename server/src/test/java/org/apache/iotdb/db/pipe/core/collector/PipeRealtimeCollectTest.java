@@ -32,7 +32,7 @@ import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDa
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.EventType;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.junit.After;
@@ -163,9 +163,9 @@ public class PipeRealtimeCollectTest {
           Arrays.asList(
               listen(
                   collectors[0],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[1], typ2 -> 1, writeNum));
+              listen(collectors[1], event -> 1, writeNum));
 
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
@@ -199,14 +199,14 @@ public class PipeRealtimeCollectTest {
           Arrays.asList(
               listen(
                   collectors[0],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[1], typ2 -> 1, writeNum),
+              listen(collectors[1], event -> 1, writeNum),
               listen(
                   collectors[2],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[3], typ2 -> 1, writeNum));
+              listen(collectors[3], event -> 1, writeNum));
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
         listenFutures.get(1).get(10, TimeUnit.MINUTES);
@@ -278,9 +278,7 @@ public class PipeRealtimeCollectTest {
   }
 
   private Future<?> listen(
-      PipeRealtimeDataRegionCollector collector,
-      Function<EventType, Integer> weight,
-      int expectNum) {
+      PipeRealtimeDataRegionCollector collector, Function<Event, Integer> weight, int expectNum) {
     return listenerService.submit(
         () -> {
           int eventNum = 0;
@@ -293,7 +291,7 @@ public class PipeRealtimeCollectTest {
                 throw new RuntimeException(e);
               }
               if (event != null) {
-                eventNum += weight.apply(event.getType());
+                eventNum += weight.apply(event);
               }
             }
           } finally {

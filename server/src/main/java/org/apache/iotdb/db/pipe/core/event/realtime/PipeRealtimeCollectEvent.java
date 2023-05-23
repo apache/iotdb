@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumConsensusIndex;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.EventType;
 
 import java.util.Map;
 
@@ -55,11 +54,6 @@ public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
 
   public void gcSchemaInfo() {
     device2Measurements = null;
-  }
-
-  @Override
-  public EventType getType() {
-    return event.getType();
   }
 
   @Override

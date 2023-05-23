@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.execution.executor;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -44,7 +45,8 @@ public abstract class PipeSubtaskExecutor {
 
   private final Map<String, PipeSubtask> registeredIdSubtaskMapper;
 
-  private int corePoolSize;
+  private final int corePoolSize;
+  private int runningSubtaskNumber;
 
   protected PipeSubtaskExecutor(int corePoolSize, ThreadName threadName) {
     subtaskWorkerThreadPoolExecutor =
@@ -54,18 +56,22 @@ public abstract class PipeSubtaskExecutor {
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 
     this.corePoolSize = corePoolSize;
+    runningSubtaskNumber = 0;
   }
 
   /////////////////////// subtask management ///////////////////////
 
-  public final void register(PipeSubtask subtask) {
+  public final synchronized void register(PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
       LOGGER.warn("The subtask {} is already registered.", subtask.getTaskID());
       return;
     }
 
     registeredIdSubtaskMapper.put(subtask.getTaskID(), subtask);
-    subtask.bindExecutors(subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor);
+    subtask.bindExecutors(
+        subtaskWorkerThreadPoolExecutor,
+        subtaskCallbackListeningExecutor,
+        new PipeSubtaskScheduler(this));
   }
 
   public final synchronized void start(String subTaskID) {
@@ -82,6 +88,7 @@ public abstract class PipeSubtaskExecutor {
     } else {
       subtask.allowSubmittingSelf();
       subtask.submitSelf();
+      ++runningSubtaskNumber;
       LOGGER.info("The subtask {} is started to submit self.", subTaskID);
     }
   }
@@ -92,7 +99,9 @@ public abstract class PipeSubtaskExecutor {
       return;
     }
 
-    registeredIdSubtaskMapper.get(subTaskID).disallowSubmittingSelf();
+    if (registeredIdSubtaskMapper.get(subTaskID).disallowSubmittingSelf()) {
+      --runningSubtaskNumber;
+    }
   }
 
   public final synchronized void deregister(String subTaskID) {
@@ -138,12 +147,11 @@ public abstract class PipeSubtaskExecutor {
     return subtaskWorkerThreadPoolExecutor.isShutdown();
   }
 
-  public final void adjustExecutorThreadNumber(int threadNum) {
-    corePoolSize = threadNum;
-    throw new UnsupportedOperationException("Not implemented yet.");
+  public final int getCorePoolSize() {
+    return corePoolSize;
   }
 
-  public final int getExecutorThreadNumber() {
-    return corePoolSize;
+  public final int getRunningSubtaskNumber() {
+    return runningSubtaskNumber;
   }
 }

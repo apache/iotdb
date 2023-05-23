@@ -421,7 +421,7 @@ public class IoTDBConfig {
   private boolean enableMLNodeService = false;
 
   /** The buffer for sort operation */
-  private long sortBufferSize = 50 * 1024 * 1024L;
+  private long sortBufferSize = 1024 * 1024L;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
