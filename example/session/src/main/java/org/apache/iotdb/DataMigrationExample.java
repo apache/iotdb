@@ -59,7 +59,7 @@ public class DataMigrationExample {
 
     ExecutorService executorService = Executors.newFixedThreadPool(2 * CONCURRENCY + 1);
 
-    String path = "root";
+    String path = "root.**";
 
     if (args.length != 0) {
       path = args[0];
@@ -134,6 +134,10 @@ public class DataMigrationExample {
           int row = tablet.rowSize++;
           tablet.timestamps[row] = dataIter.getLong(1);
           for (int j = 0; j < schemaList.size(); ++j) {
+            if (dataIter.isNull(j + 2)) {
+              tablet.addValue(schemaList.get(j).getMeasurementId(), row, null);
+              continue;
+            }
             switch (schemaList.get(j).getType()) {
               case BOOLEAN:
                 tablet.addValue(
