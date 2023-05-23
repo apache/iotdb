@@ -92,6 +92,11 @@ public class TierManager {
       return;
     }
 
+    seqTiers.clear();
+    unSeqTiers.clear();
+    seqDir2TierLevel.clear();
+    unSeqDir2TierLevel.clear();
+
     String[][] tierDirs = config.getTierDataDirs();
     for (int i = 0; i < tierDirs.length; ++i) {
       for (int j = 0; j < tierDirs[i].length; ++j) {

@@ -29,6 +29,10 @@ public class OSTsFileInput implements TsFileInput {
   private OSFile file;
   private OSFileChannel channel;
 
+  public OSTsFileInput(String fileURI) throws IOException {
+    this(new OSFile(fileURI));
+  }
+
   public OSTsFileInput(OSFile file) throws IOException {
     this.file = file;
     this.channel = new OSFileChannel(file);

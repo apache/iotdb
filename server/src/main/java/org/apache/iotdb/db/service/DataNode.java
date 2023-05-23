@@ -459,6 +459,7 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when restart request is accepted */
       storeRuntimeConfigurations(
           dataNodeRestartResp.getConfigNodeList(), dataNodeRestartResp.getRuntimeConfiguration());
+      configOSStorage(config.getDataNodeId());
       logger.info("Restart request to cluster: {} is accepted.", config.getClusterName());
     } else {
       /* Throw exception when restart is rejected */

@@ -67,8 +67,8 @@ public class OSFSFactory implements FSFactory {
       listFilesBySuffix = clazz.getMethod("listFilesBySuffix", String.class, String.class);
       listFilesByPrefix = clazz.getMethod("listFilesByPrefix", String.class, String.class);
       renameTo = clazz.getMethod("renameTo", File.class);
-      renameTo = clazz.getMethod("putFile", File.class);
-      renameTo = clazz.getMethod("copyTo", File.class);
+      putFile = clazz.getMethod("putFile", File.class);
+      copyTo = clazz.getMethod("copyTo", File.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(
           "Failed to get object storage. Please check your dependency of object storage module.",
@@ -211,13 +211,13 @@ public class OSFSFactory implements FSFactory {
     FSType srcType = FSUtils.getFSType(srcFile);
     try {
       if (srcType == FSType.LOCAL) {
-        putFile.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
+        putFile.invoke(destFile, srcFile);
       } else if (srcType == FSType.OBJECT_STORAGE) {
         copyTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
       } else {
         throw new IOException(
             String.format(
-                "Doesn't support move file from %s to %s.", srcType, FSType.OBJECT_STORAGE));
+                "Doesn't support copy file from %s to %s.", srcType, FSType.OBJECT_STORAGE));
       }
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(

@@ -70,18 +70,7 @@ public abstract class MigrationTask implements Runnable {
 
   @Override
   public void run() {
-    if (canMigrate()) {
-      tsFile.setIsMigrating(true);
-      if (!canMigrate()) {
-        tsFile.setIsMigrating(false);
-        return;
-      }
-    } else {
-      return;
-    }
-
     migrate();
-
     tsFile.setIsMigrating(false);
   }
 

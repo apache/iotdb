@@ -50,7 +50,7 @@ public class MigrationTaskManager implements IService {
   private static final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final TierManager tierManager = TierManager.getInstance();
-  private static final long CHECK_INTERVAL_IN_SECONDS = 10 * 60;
+  private static final long CHECK_INTERVAL_IN_SECONDS = 10;
   private static final double TIER_DISK_SPACE_WARN_THRESHOLD =
       commonConfig.getDiskSpaceWarningThreshold() + 0.1;
   private static final double TIER_DISK_SPACE_SAFE_THRESHOLD =
@@ -107,28 +107,30 @@ public class MigrationTaskManager implements IService {
         tsfiles.sort(this::compareMigrationPriority);
         for (TsFileResource tsfile : tsfiles) {
           try {
-            int tierLevel = tsfile.getTierLevel();
+            int currentTier = tsfile.getTierLevel();
+            int nextTier = currentTier + 1;
             // only migrate closed TsFiles not in the last tier
             if (tsfile.getStatus() != TsFileResourceStatus.NORMAL
-                || tierLevel == iotdbConfig.getTierDataDirs().length - 1) {
+                || nextTier == iotdbConfig.getTierDataDirs().length) {
               continue;
             }
             // check tier ttl and disk space
             long tierTTL =
                 DateTimeUtils.convertMilliTimeWithPrecision(
-                    commonConfig.getTierTTLInMs()[tierLevel], iotdbConfig.getTimestampPrecision());
+                    commonConfig.getTierTTLInMs()[currentTier],
+                    iotdbConfig.getTimestampPrecision());
             if (tsfile.stillLives(tierTTL)) {
               submitMigrationTask(
-                  tierLevel,
+                  currentTier,
                   MigrationCause.TTL,
                   tsfile,
-                  tierManager.getNextFolderForTsFile(tierLevel, tsfile.isSeq()));
-            } else if (needMigrationTiers.contains(tierLevel)) {
+                  tierManager.getNextFolderForTsFile(nextTier, tsfile.isSeq()));
+            } else if (needMigrationTiers.contains(currentTier)) {
               submitMigrationTask(
-                  tierLevel,
+                  currentTier,
                   MigrationCause.DISK_SPACE,
                   tsfile,
-                  tierManager.getNextFolderForTsFile(tierLevel, tsfile.isSeq()));
+                  tierManager.getNextFolderForTsFile(nextTier, tsfile.isSeq()));
             }
           } catch (Exception e) {
             logger.error(
@@ -140,6 +142,9 @@ public class MigrationTaskManager implements IService {
 
     private void submitMigrationTask(
         int tierLevel, MigrationCause cause, TsFileResource sourceTsFile, String targetDir) {
+      if (!checkAndMarkMigrate(sourceTsFile)) {
+        return;
+      }
       MigrationTask task = MigrationTask.newTask(cause, sourceTsFile, targetDir);
       workers.submit(task);
       tierDiskUsableSpace[tierLevel] -= sourceTsFile.getTsFileSize();
@@ -149,6 +154,22 @@ public class MigrationTaskManager implements IService {
           needMigrationTiers.remove(tierLevel);
         }
       }
+    }
+
+    private boolean checkAndMarkMigrate(TsFileResource tsFile) {
+      if (canMigrate(tsFile)) {
+        tsFile.setIsMigrating(true);
+        if (!canMigrate(tsFile)) {
+          tsFile.setIsMigrating(false);
+          return false;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    private boolean canMigrate(TsFileResource tsFile) {
+      return tsFile.getStatus() == TsFileResourceStatus.NORMAL;
     }
 
     private int compareMigrationPriority(TsFileResource f1, TsFileResource f2) {

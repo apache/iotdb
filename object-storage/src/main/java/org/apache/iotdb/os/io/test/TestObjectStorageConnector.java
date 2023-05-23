@@ -24,9 +24,18 @@ import org.apache.iotdb.os.exception.ObjectStorageException;
 import org.apache.iotdb.os.fileSystem.OSURI;
 import org.apache.iotdb.os.io.IMetaData;
 import org.apache.iotdb.os.io.ObjectStorageConnector;
+import org.apache.iotdb.os.io.aws.S3MetaData;
+import org.apache.iotdb.os.utils.ObjectStorageConstant;
+
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 
 public class TestObjectStorageConnector implements ObjectStorageConnector {
   private final TestConfig testConfig =
@@ -34,45 +43,88 @@ public class TestObjectStorageConnector implements ObjectStorageConnector {
 
   @Override
   public boolean doesObjectExist(OSURI osUri) throws ObjectStorageException {
-    return false;
+    File file = new File(getDstFilePath(osUri));
+    return file.exists();
   }
 
   @Override
   public IMetaData getMetaData(OSURI osUri) throws ObjectStorageException {
-    return null;
+    File file = new File(getDstFilePath(osUri));
+    return new S3MetaData(file.length(), System.currentTimeMillis());
   }
 
   @Override
   public boolean createNewEmptyObject(OSURI osUri) throws ObjectStorageException {
+    File file = new File(getDstFilePath(osUri));
+    if (!file.exists()) {
+      try {
+        return file.createNewFile();
+      } catch (IOException e) {
+        throw new ObjectStorageException(e);
+      }
+    }
     return false;
   }
 
   @Override
   public boolean delete(OSURI osUri) throws ObjectStorageException {
-    return false;
+    File file = new File(getDstFilePath(osUri));
+    return file.delete();
   }
 
   @Override
   public boolean renameTo(OSURI fromOSUri, OSURI toOSUri) throws ObjectStorageException {
-    return false;
+    File file = new File(getDstFilePath(fromOSUri));
+    return file.renameTo(new File(getDstFilePath(toOSUri)));
   }
 
   @Override
   public InputStream getInputStream(OSURI osUri) throws ObjectStorageException {
-    return null;
+    File file = new File(getDstFilePath(osUri));
+    try {
+      return Channels.newInputStream(FileChannel.open(file.toPath(), StandardOpenOption.READ));
+    } catch (IOException e) {
+      throw new ObjectStorageException(e);
+    }
   }
 
   @Override
   public OSURI[] list(OSURI osUri) throws ObjectStorageException {
-    return new OSURI[0];
+    return null;
   }
 
   @Override
-  public void putLocalFile(OSURI osUri, File lcoalFile) throws ObjectStorageException {}
+  public void putLocalFile(OSURI osUri, File localFile) throws ObjectStorageException {
+    try {
+      File targetFile = new File(getDstFilePath(osUri));
+      if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+        throw new ObjectStorageException(
+            String.format(
+                "[TieredMigration] cannot mkdir for path %s",
+                targetFile.getParentFile().getAbsolutePath()));
+      }
+      FileUtils.copyFile(localFile, targetFile);
+    } catch (IOException e) {
+      throw new ObjectStorageException(e);
+    }
+  }
 
   @Override
   public byte[] getRemoteFile(OSURI osUri, long position, int len) throws ObjectStorageException {
-    return new byte[0];
+    File file = new File(getDstFilePath(osUri));
+    ByteBuffer dst = ByteBuffer.allocate(len);
+    try (FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
+      channel.read(dst, position);
+    } catch (IOException e) {
+      throw new ObjectStorageException(e);
+    }
+    return dst.array();
+  }
+
+  private String getDstFilePath(OSURI osuri) {
+    return testConfig.getTestDir()
+        + File.separator
+        + osuri.getKey().replace(ObjectStorageConstant.FILE_SEPARATOR, File.separator);
   }
 
   @Override

@@ -63,7 +63,13 @@ public class OSFileCache {
   }
 
   public OSFileCacheValue get(OSFileCacheKey key) {
-    return remotePos2LocalCacheFile.get(key);
+    OSFileCacheValue value = remotePos2LocalCacheFile.get(key);
+    // TODO try to simplify the logic here
+    if (!value.getCacheFile().exists()) {
+      logger.info("want {} but file deleted", key);
+      remotePos2LocalCacheFile.invalidate(key);
+    }
+    return value;
   }
 
   /** This method is used by the recover procedure */

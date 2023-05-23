@@ -20,7 +20,7 @@ package org.apache.iotdb.os.conf.provider;
 
 public abstract class OSProviderConfig {
   protected String endpoint;
-  protected String bucketName;
+  protected String bucketName = "iotdb_data";
   protected String accessKeyId;
   protected String accessKeySecret;
 

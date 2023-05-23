@@ -21,7 +21,7 @@ package org.apache.iotdb.os.conf.provider;
 import java.io.File;
 
 public class TestConfig extends OSProviderConfig {
-  private String testDir = "target" + File.separator + "test";
+  private String testDir = "data" + File.separator + "test_s3";
 
   public String getTestDir() {
     return testDir;

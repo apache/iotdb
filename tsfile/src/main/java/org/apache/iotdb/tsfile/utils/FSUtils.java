@@ -102,7 +102,6 @@ public class FSUtils {
     for (int i = 0; i < fsTypes.length; ++i) {
       if (fsPath.startsWith(fsPrefix[i])) {
         type = fsTypes[i];
-        path = fsPath.substring(fsPrefix[i].length());
         break;
       }
     }
@@ -110,31 +109,32 @@ public class FSUtils {
   }
 
   public static String getOSDefaultPath(String bucket, int dataNodeId) {
-    return new FSPath(FSType.OBJECT_STORAGE, fsPrefix[0] + OS_FILE_SEPARATOR + dataNodeId)
+    return new FSPath(FSType.OBJECT_STORAGE, fsPrefix[0] + bucket + OS_FILE_SEPARATOR + dataNodeId)
         .getPath();
   }
 
-//  public static FSPath parseLocalTsFile2OSFile(File lcoalFile, String bucket, int dataNodeId)
-//      throws IOException {
-//    String[] filePathSplits = FilePathUtils.splitTsFilePath(lcoalFile.getCanonicalPath());
-//    return new FSPath(
-//        FSType.OBJECT_STORAGE,
-//        fsPrefix[0]
-//            + bucket
-//            + OS_FILE_SEPARATOR
-//            + dataNodeId
-//            + OS_FILE_SEPARATOR
-//            + String.join(
-//                OS_FILE_SEPARATOR,
-//                Arrays.copyOfRange(
-//                    filePathSplits, filePathSplits.length - 5, filePathSplits.length)));
-//  }
-
-  public static FSPath parseLocalTsFile2OSFile(File lcoalFile, String bucket, int dataNodeId)
+  public static FSPath parseLocalTsFile2OSFile(File localFile, String bucket, int dataNodeId)
       throws IOException {
-    String fileName = lcoalFile.getName();
-    return new FSPath(FSType.LOCAL, "/Users/jinruizhangjinrui/Documents/work/iotdb/data/datanode/s3/" + fileName);
+    String[] filePathSplits = FilePathUtils.splitTsFilePath(localFile.getCanonicalPath());
+    return new FSPath(
+        FSType.OBJECT_STORAGE,
+        fsPrefix[0]
+            + bucket
+            + OS_FILE_SEPARATOR
+            + dataNodeId
+            + OS_FILE_SEPARATOR
+            + String.join(
+                OS_FILE_SEPARATOR,
+                Arrays.copyOfRange(
+                    filePathSplits, filePathSplits.length - 5, filePathSplits.length)));
   }
+
+  //  public static FSPath parseLocalTsFile2OSFile(File lcoalFile, String bucket, int dataNodeId)
+  //      throws IOException {
+  //    String fileName = lcoalFile.getName();
+  //    return new FSPath(FSType.OBJECT_STORAGE,
+  // "os://bucket/Users/jinruizhangjinrui/Documents/work/iotdb/data/datanode/s3/" + fileName);
+  //  }
 
   public static boolean isLocal(String fsPath) {
     return getFSType(fsPath) == FSType.LOCAL;

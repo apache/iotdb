@@ -79,4 +79,8 @@ public class OSFileCacheKey implements Serializable {
     OSFileCacheKey that = (OSFileCacheKey) obj;
     return file.equals(that.file) && startPosition == that.startPosition;
   }
+
+  public String toString() {
+    return file.getName() + "," + startPosition;
+  }
 }
