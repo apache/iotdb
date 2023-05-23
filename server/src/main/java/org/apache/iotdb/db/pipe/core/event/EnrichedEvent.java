@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.core.event;
 
 import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,6 +32,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class EnrichedEvent implements Event {
   private final AtomicInteger referenceCount = new AtomicInteger(0);
+  private PipeTaskMeta pipeTaskMeta;
+
+  public EnrichedEvent() {}
 
   public boolean increaseReferenceCount(String holderMessage) {
     AtomicBoolean success = new AtomicBoolean(true);
@@ -59,6 +63,7 @@ public abstract class EnrichedEvent implements Event {
         count -> {
           if (count == 1) {
             success.set(decreaseResourceReferenceCount(holderMessage));
+            reportProgress();
           }
           return count - 1;
         });
@@ -74,6 +79,12 @@ public abstract class EnrichedEvent implements Event {
    */
   public abstract boolean decreaseResourceReferenceCount(String holderMessage);
 
+  private void reportProgress() {
+    if (pipeTaskMeta != null) {
+      pipeTaskMeta.updateProgressIndex(getConsensusIndex());
+    }
+  }
+
   /**
    * Get the reference count of this event.
    *
@@ -84,4 +95,10 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract ConsensusIndex getConsensusIndex();
+
+  public void reportProgressIndexToPipeTaskMetaWhenFinish(PipeTaskMeta pipeTaskMeta) {
+    this.pipeTaskMeta = pipeTaskMeta;
+  }
+
+  public abstract EnrichedEvent shallowCopySelf();
 }

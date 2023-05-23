@@ -131,6 +131,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
+  public PipeTsFileInsertionEvent shallowCopySelf() {
+    return new PipeTsFileInsertionEvent(this.resource);
+  }
+
+  @Override
   public String toString() {
     return "PipeTsFileInsertionEvent{" + "tsFile=" + tsFile + '}';
   }

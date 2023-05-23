@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.core.collector;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionTsFileCollector;
@@ -46,10 +46,11 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   private int dataRegionId;
 
   public IoTDBDataRegionCollector(
-      ConsensusIndex progressIndex, ListenableUnblockingPendingQueue<Event> collectorPendingQueue) {
+      PipeTaskMeta pipeTaskMeta, ListenableUnblockingPendingQueue<Event> collectorPendingQueue) {
     hasBeenStarted = new AtomicBoolean(false);
-    realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
-    historicalCollector = new PipeHistoricalDataRegionTsFileCollector(progressIndex);
+    realtimeCollector =
+        new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
+    historicalCollector = new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta);
   }
 
   @Override

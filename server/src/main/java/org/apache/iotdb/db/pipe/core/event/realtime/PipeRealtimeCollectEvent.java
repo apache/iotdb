@@ -71,6 +71,12 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
+  public PipeRealtimeCollectEvent shallowCopySelf() {
+    return new PipeRealtimeCollectEvent(
+        event.shallowCopySelf(), this.tsFileEpoch, this.device2Measurements);
+  }
+
+  @Override
   public String toString() {
     return "PipeRealtimeCollectEvent{" + "event=" + event + ", tsFileEpoch=" + tsFileEpoch + '}';
   }

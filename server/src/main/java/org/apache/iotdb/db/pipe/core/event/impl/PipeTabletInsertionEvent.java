@@ -81,6 +81,11 @@ public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletIns
   }
 
   @Override
+  public PipeTabletInsertionEvent shallowCopySelf() {
+    return new PipeTabletInsertionEvent(this.insertNode);
+  }
+
+  @Override
   public String toString() {
     return "PipeTabletInsertionEvent{" + "insertNode=" + insertNode + '}';
   }

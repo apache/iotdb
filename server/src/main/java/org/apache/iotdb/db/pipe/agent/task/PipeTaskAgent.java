@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -151,11 +150,7 @@ public class PipeTaskAgent {
 
       // if task meta does not exist on data node, create a new task
       if (taskMetaOnDataNode == null) {
-        createPipeTask(
-            consensusGroupIdFromConfigNode,
-            pipeStaticMeta,
-            taskMetaFromConfigNode.getProgressIndex(),
-            taskMetaFromConfigNode.getRegionLeader());
+        createPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
         // we keep the new created task's status consistent with the status recorded in data node's
         // pipe runtime meta. please note that the status recorded in data node's pipe runtime meta
         // is not reliable, but we will have a check later to make sure the status is correct.
@@ -171,11 +166,7 @@ public class PipeTaskAgent {
 
       if (regionLeaderFromConfigNode != regionLeaderOnDataNode) {
         dropPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta);
-        createPipeTask(
-            consensusGroupIdFromConfigNode,
-            pipeStaticMeta,
-            taskMetaFromConfigNode.getProgressIndex(),
-            taskMetaFromConfigNode.getRegionLeader());
+        createPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
         // we keep the new created task's status consistent with the status recorded in data node's
         // pipe runtime meta. please note that the status recorded in data node's pipe runtime meta
         // is not reliable, but we will have a check later to make sure the status is correct.
@@ -502,17 +493,18 @@ public class PipeTaskAgent {
   private void createPipeTask(
       TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
-      ConsensusIndex progressIndex,
-      int regionLeader) {
+      PipeTaskMeta pipeTaskMeta) {
     final PipeTask pipeTask =
-        new PipeTaskBuilder(consensusGroupId, progressIndex, pipeStaticMeta).build();
+        new PipeTaskBuilder(consensusGroupId, pipeTaskMeta, pipeStaticMeta).build();
     pipeTask.create();
     pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
         .getConsensusGroupIdToTaskMetaMap()
-        .put(consensusGroupId, new PipeTaskMeta(progressIndex, regionLeader));
+        .put(
+            consensusGroupId,
+            new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getRegionLeader()));
   }
 
   private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
