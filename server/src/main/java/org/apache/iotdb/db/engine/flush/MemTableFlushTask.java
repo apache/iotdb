@@ -304,13 +304,11 @@ public class MemTableFlushTask {
   }
 
   private void cleanSortThread() {
-    metricFlush();
     WRITING_METRICS.recordFlushCost(
         WritingMetrics.FLUSH_STAGE_SORT, allContext.getSortTime().get());
   }
 
   private void cleanEncodingThread() {
-    metricFlush();
     WRITING_METRICS.recordFlushCost(
         WritingMetrics.FLUSH_STAGE_ENCODING, allContext.getEncodingTime().get());
   }
