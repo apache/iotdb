@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
 
 /**
  * SynchronizedSequencer performs sequencing by taking the monitor of a LogManager within the caller
@@ -51,47 +50,30 @@ public class SynchronousSequencer implements LogSequencer {
   public VotingEntry sequence(Entry e) {
     VotingEntry votingEntry = null;
 
-    long startWaitingTime = System.currentTimeMillis();
+    // TODO: control the number of uncommitted entries while not letting the new leader be blocked
     RaftLogManager logManager = member.getLogManager();
-    while (true) {
-      try {
-        logManager.getLock().writeLock().lock();
-        Entry lastEntry = logManager.getLastEntry();
-        long lastIndex = lastEntry.getCurrLogIndex();
-        long lastTerm = lastEntry.getCurrLogTerm();
-        if ((lastEntry.getCurrLogIndex() - logManager.getCommitLogIndex()
-            <= config.getUncommittedRaftLogNumForRejectThreshold())) {
-          // if the log contains a physical plan which is not a LogPlan, assign the same index to
-          // the plan so the state machine can be bridged with the consensus
-          e.setCurrLogTerm(member.getStatus().getTerm().get());
-          e.setCurrLogIndex(lastIndex + 1);
-          e.setPrevTerm(lastTerm);
-          e.setFromThisNode(true);
-          e.createTime = System.nanoTime();
+    try {
+      logManager.getLock().writeLock().lock();
+      Entry lastEntry = logManager.getLastEntry();
+      long lastIndex = lastEntry.getCurrLogIndex();
+      long lastTerm = lastEntry.getCurrLogTerm();
 
-          // logDispatcher will serialize log, and set log size, and we will use the size after it
-          logManager.append(Collections.singletonList(e), true);
+      e.setCurrLogTerm(member.getStatus().getTerm().get());
+      e.setCurrLogIndex(lastIndex + 1);
+      e.setPrevTerm(lastTerm);
+      e.setFromThisNode(true);
+      e.createTime = System.nanoTime();
 
-          votingEntry = LogUtils.buildVotingLog(e, member);
+      // logDispatcher will serialize log, and set log size, and we will use the size after it
+      logManager.append(Collections.singletonList(e), true);
 
-          if (!(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance())) {
-            votingEntry = LogUtils.enqueueEntry(votingEntry, member);
-          }
-          break;
-        }
-      } finally {
-        logManager.getLock().writeLock().unlock();
+      votingEntry = LogUtils.buildVotingLog(e, member);
+
+      if (!(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance())) {
+        votingEntry = LogUtils.enqueueEntry(votingEntry, member);
       }
-
-      try {
-        TimeUnit.MILLISECONDS.sleep(10);
-        if (System.currentTimeMillis() - startWaitingTime
-            > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          return null;
-        }
-      } catch (InterruptedException ex) {
-        Thread.currentThread().interrupt();
-      }
+    } finally {
+      logManager.getLock().writeLock().unlock();
     }
 
     if (config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance()) {

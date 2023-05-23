@@ -39,10 +39,10 @@ public class DispatcherGroup {
   private final Peer peer;
   private final BlockingQueue<VotingEntry> entryQueue;
   private boolean nodeEnabled;
-  private RateLimiter rateLimiter;
+  private volatile RateLimiter rateLimiter;
   private final ExecutorService dispatcherThreadPool;
   private final LogDispatcher logDispatcher;
-  private boolean delayed;
+  private volatile boolean delayed;
   private DynamicThreadGroup dynamicThreadGroup;
   private String name;
 
