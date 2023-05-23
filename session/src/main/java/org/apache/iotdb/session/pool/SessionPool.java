@@ -415,9 +415,6 @@ public class SessionPool implements ISessionPool {
 
         // we have to wait for someone returns a session.
         try {
-          if (logger.isDebugEnabled()) {
-            logger.debug("no more sessions can be created, wait... queue.size={}", queue.size());
-          }
           this.wait(1000);
           long timeOut = Math.min(waitToGetSessionTimeoutInMs, 60_000);
           if (System.currentTimeMillis() - start > timeOut) {
@@ -454,13 +451,6 @@ public class SessionPool implements ISessionPool {
 
     if (shouldCreate) {
       // create a new one.
-      if (logger.isDebugEnabled()) {
-        if (nodeUrls == null) {
-          logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
-        } else {
-          logger.debug("Create a new redirect Session {}, {}, {}", nodeUrls, user, password);
-        }
-      }
 
       session = constructNewSession();
 
@@ -481,9 +471,6 @@ public class SessionPool implements ISessionPool {
           size--;
           // we do not need to notifyAll as any waited thread can continue to work after waked up.
           this.notify();
-          if (logger.isDebugEnabled()) {
-            logger.debug("open session failed, reduce the count and notify others...");
-          }
         }
         throw e;
       }
@@ -581,9 +568,6 @@ public class SessionPool implements ISessionPool {
         size--;
         // we do not need to notifyAll as any waited thread can continue to work after waked up.
         this.notify();
-        if (logger.isDebugEnabled()) {
-          logger.debug("open session failed, reduce the count and notify others...");
-        }
       }
     }
   }
