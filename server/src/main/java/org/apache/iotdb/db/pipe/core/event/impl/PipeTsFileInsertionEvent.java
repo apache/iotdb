@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedEvent {
+public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
@@ -87,7 +87,7 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   }
 
   @Override
-  public boolean increaseReferenceCount(String holderMessage) {
+  public boolean increaseResourceReferenceCount(String holderMessage) {
     try {
       // TODO: increase reference count for mods & resource files
       tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
@@ -103,7 +103,7 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.file().decreaseFileReference(tsFile);
       return true;
@@ -115,11 +115,6 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
           e);
       return false;
     }
-  }
-
-  @Override
-  public int getReferenceCount() {
-    return PipeResourceManager.file().getFileReferenceCount(tsFile);
   }
 
   @Override

@@ -20,12 +20,29 @@
 package org.apache.iotdb.db.pipe.core.event;
 
 import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.pipe.api.event.Event;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * EnrichedEvent is an event that can be enriched with additional runtime information. The
  * additional information mainly includes the reference count of the event.
  */
-public interface EnrichedEvent {
+public abstract class EnrichedEvent implements Event {
+  private final AtomicInteger referenceCount = new AtomicInteger(0);
+
+  public boolean increaseReferenceCount(String holderMessage) {
+    AtomicBoolean success = new AtomicBoolean(true);
+    referenceCount.getAndUpdate(
+        count -> {
+          if (count == 0) {
+            success.set(increaseResourceReferenceCount(holderMessage));
+          }
+          return count + 1;
+        });
+    return success.get();
+  }
 
   /**
    * Increase the reference count of this event.
@@ -34,7 +51,19 @@ public interface EnrichedEvent {
    * @return true if the reference count is increased successfully, false if the event is not
    *     controlled by the invoker, which means the data stored in the event is not safe to use
    */
-  boolean increaseReferenceCount(String holderMessage);
+  public abstract boolean increaseResourceReferenceCount(String holderMessage);
+
+  public boolean decreaseReferenceCount(String holderMessage) {
+    AtomicBoolean success = new AtomicBoolean(true);
+    referenceCount.getAndUpdate(
+        count -> {
+          if (count == 1) {
+            success.set(decreaseResourceReferenceCount(holderMessage));
+          }
+          return count - 1;
+        });
+    return success.get();
+  }
 
   /**
    * Decrease the reference count of this event. If the reference count is decreased to 0, the event
@@ -43,14 +72,16 @@ public interface EnrichedEvent {
    * @param holderMessage the message of the invoker
    * @return true if the reference count is decreased successfully, false otherwise
    */
-  boolean decreaseReferenceCount(String holderMessage);
+  public abstract boolean decreaseResourceReferenceCount(String holderMessage);
 
   /**
    * Get the reference count of this event.
    *
    * @return the reference count
    */
-  int getReferenceCount();
+  public int getReferenceCount() {
+    return referenceCount.get();
+  }
 
-  ConsensusIndex getConsensusIndex();
+  public abstract ConsensusIndex getConsensusIndex();
 }
