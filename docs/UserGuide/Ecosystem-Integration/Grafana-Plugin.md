@@ -32,7 +32,7 @@ Compared with previous IoTDB-Grafana-Connector, current Grafana-Plugin performs 
 #### Install Grafana 
 
 * Download url: https://grafana.com/grafana/download
-* Version >= 7.0.0
+* Version >= 9.3.0
 
 
 #### Acquisition method of grafana plugin
@@ -182,9 +182,9 @@ Select the `Apache IoTDB` data source.
   * port is the running port of the REST service (default 18080).
 * Enter the username and password of the IoTDB server
 
-Click `Save & Test`, and `Success` will appear.
+Click `Save & Test`, and `Data source is working` will appear.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/datasource_3.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_datasource.png?raw=true">
 
 
 #### Create a new Panel
@@ -311,7 +311,7 @@ This plugin supports Grafana alert function.
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert2.png?raw=true">
 
 3. Set query and alarm conditions in step 1. Conditions represent query conditions, and multiple combined query conditions can be configured. As shown below:
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert3.jpg?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert3.png?raw=true">
 
 The query condition in the figure: `min() OF A IS BELOW 0`, means that the condition will be triggered when the minimum value in the A tab is 0, click this function to change it to another function.
 
