@@ -43,7 +43,7 @@ import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Maintain the Cluster-Heartbeat-Service. */
 public class HeartbeatService {
@@ -63,7 +63,7 @@ public class HeartbeatService {
   private Future<?> currentHeartbeatFuture;
   private final ScheduledExecutorService heartBeatExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
-  private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
+  private final AtomicLong heartbeatCounter = new AtomicLong(0);
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
     this.configManager = configManager;
@@ -133,7 +133,7 @@ public class HeartbeatService {
     }
 
     /* Update heartbeat counter */
-    heartbeatCounter.getAndUpdate(x -> (x + 1) % 10);
+    heartbeatCounter.getAndIncrement();
 
     return heartbeatReq;
   }
