@@ -16,30 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.os.conf.provider;
 
-package org.apache.iotdb.os.io.aws;
+public abstract class OSProviderConfig {
+  protected String endpoint;
+  protected String bucketName;
+  protected String accessKeyId;
+  protected String accessKeySecret;
 
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-
-public class AWSS3Config {
-
-  private static String region;
-  private static String bucketName;
-  private static String access_key_id;
-  private static String access_key_secret;
-
-  public static String getRegion() {
-    return region;
+  public String getEndpoint() {
+    return endpoint;
   }
 
-  public static String getBucketName() {
+  public void setEndpoint(String endpoint) {
+    this.endpoint = endpoint;
+  }
+
+  public String getBucketName() {
     return bucketName;
   }
 
-  public static AwsCredentialsProvider getCredentialProvider() {
-    return StaticCredentialsProvider.create(
-        AwsBasicCredentials.create(access_key_id, access_key_secret));
+  public void setBucketName(String bucketName) {
+    this.bucketName = bucketName;
+  }
+
+  public String getAccessKeyId() {
+    return accessKeyId;
+  }
+
+  public void setAccessKeyId(String accessKeyId) {
+    this.accessKeyId = accessKeyId;
+  }
+
+  public String getAccessKeySecret() {
+    return accessKeySecret;
+  }
+
+  public void setAccessKeySecret(String accessKeySecret) {
+    this.accessKeySecret = accessKeySecret;
   }
 }

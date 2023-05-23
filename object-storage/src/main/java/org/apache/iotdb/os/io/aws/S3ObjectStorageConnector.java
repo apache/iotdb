@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.os.io.aws;
 
+import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
+import org.apache.iotdb.os.conf.provider.AWSS3Config;
 import org.apache.iotdb.os.exception.ObjectStorageException;
 import org.apache.iotdb.os.fileSystem.OSURI;
 import org.apache.iotdb.os.io.IMetaData;
 import org.apache.iotdb.os.io.ObjectStorageConnector;
 
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
@@ -45,10 +49,15 @@ import java.io.InputStream;
 
 public class S3ObjectStorageConnector implements ObjectStorageConnector {
   private static final String RANGE_FORMAT = "%d-%d";
+  private static final AWSS3Config s3config =
+      (AWSS3Config) ObjectStorageDescriptor.getInstance().getConfig().getProviderConfig();
   private static final S3Client s3Client =
       S3Client.builder()
-          .region(Region.of(AWSS3Config.getRegion()))
-          .credentialsProvider(AWSS3Config.getCredentialProvider())
+          .region(Region.of(s3config.getEndpoint()))
+          .credentialsProvider(
+              StaticCredentialsProvider.create(
+                  AwsBasicCredentials.create(
+                      s3config.getAccessKeyId(), s3config.getAccessKeySecret())))
           .build();
 
   @Override

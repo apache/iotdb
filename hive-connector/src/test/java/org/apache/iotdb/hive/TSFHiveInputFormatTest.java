@@ -46,7 +46,7 @@ public class TSFHiveInputFormatTest {
   private TSFInputSplit inputSplit;
   private TSFHiveInputFormat inputFormat;
   private JobConf job;
-  private FSType beforeFSType;
+  private FSType[] beforeFSType;
   private final String filePath =
       TestConstant.BASE_OUTPUT_PATH
           .concat("data")
@@ -75,7 +75,7 @@ public class TSFHiveInputFormatTest {
     String[] hosts = {"127.0.0.1"};
     inputSplit = new TSFInputSplit(path, hosts, 0, 3727688L);
     beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
-    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(new FSType[] {FSType.HDFS});
   }
 
   @After

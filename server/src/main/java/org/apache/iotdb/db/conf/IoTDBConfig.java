@@ -39,6 +39,9 @@ import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.os.conf.ObjectStorageConfig;
+import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
+import org.apache.iotdb.os.utils.ObjectStorageType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -725,6 +728,9 @@ public class IoTDBConfig {
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
 
+  /** Enable hdfs or not */
+  private boolean enableHDFS = false;
+
   /** Default core-site.xml file path is /etc/hadoop/conf/core-site.xml */
   private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
 
@@ -1129,13 +1135,14 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
+  /** Threads for migration tasks */
   private int migrateThreadCount = 3;
 
-  private String objectStorageName = "aws_s3";
-  private String objectStorageBucket = "iotdb";
-  private String objectStorageEndpoiont = "yourEndpoint";
-  private String objectStorageAccessKey = "yourAccessKey";
-  private String objectStorageAccessSecret = "yourAccessSecret";
+  /** Enable hdfs or not */
+  private boolean enableObjectStorage = false;
+
+  /** Config for object storage */
+  private ObjectStorageConfig osConfig = ObjectStorageDescriptor.getInstance().getConfig();
 
   IoTDBConfig() {}
 
@@ -2445,6 +2452,14 @@ public class IoTDBConfig {
 
   void setTsFileStorageFs(String tsFileStorageFs) {
     this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
+  }
+
+  public boolean isEnableHDFS() {
+    return enableHDFS;
+  }
+
+  public void setEnableHDFS(boolean enableHDFS) {
+    this.enableHDFS = enableHDFS;
   }
 
   String getCoreSitePath() {
@@ -3917,24 +3932,76 @@ public class IoTDBConfig {
     this.migrateThreadCount = migrateThreadCount;
   }
 
+  public boolean isEnableObjectStorage() {
+    return enableObjectStorage;
+  }
+
+  public void setEnableObjectStorage(boolean enableObjectStorage) {
+    this.enableObjectStorage = enableObjectStorage;
+  }
+
   public String getObjectStorageName() {
-    return objectStorageName;
+    return osConfig.getOsType().name();
+  }
+
+  public void setObjectStorageName(String objectStorageName) {
+    osConfig.setOsType(ObjectStorageType.valueOf(objectStorageName));
   }
 
   public String getObjectStorageBucket() {
-    return objectStorageBucket;
+    return osConfig.getBucketName();
   }
 
-  public String getObjectStorageEndpoiont() {
-    return objectStorageEndpoiont;
+  public void setObjectStorageBucket(String objectStorageBucket) {
+    osConfig.setBucketName(objectStorageBucket);
+  }
+
+  public String getObjectStorageEndpoint() {
+    return osConfig.getEndpoint();
+  }
+
+  public void setObjectStorageEndpoint(String objectStorageEndpoint) {
+    osConfig.setEndpoint(objectStorageEndpoint);
   }
 
   public String getObjectStorageAccessKey() {
-    return objectStorageAccessKey;
+    return osConfig.getAccessKeyId();
+  }
+
+  public void setObjectStorageAccessKey(String objectStorageAccessKey) {
+    osConfig.setAccessKeyId(objectStorageAccessKey);
   }
 
   public String getObjectStorageAccessSecret() {
-    return objectStorageAccessSecret;
+    return osConfig.getAccessKeySecret();
+  }
+
+  public void setObjectStorageAccessSecret(String objectStorageAccessSecret) {
+    osConfig.setAccessKeySecret(objectStorageAccessSecret);
+  }
+
+  public String[] getCacheDirs() {
+    return osConfig.getCacheDirs();
+  }
+
+  public void setCacheDirs(String[] cacheDirs) {
+    osConfig.setCacheDirs(cacheDirs);
+  }
+
+  public long getCacheMaxDiskUsage() {
+    return osConfig.getCacheMaxDiskUsage();
+  }
+
+  public void setCacheMaxDiskUsage(long cacheMaxDiskUsage) {
+    osConfig.setCacheMaxDiskUsage(cacheMaxDiskUsage);
+  }
+
+  public int getCachePageSize() {
+    return osConfig.getCachePageSize();
+  }
+
+  public void setCachePageSize(int cachePageSize) {
+    osConfig.setCachePageSize(cachePageSize);
   }
 
   public String getClusterSchemaLimitLevel() {

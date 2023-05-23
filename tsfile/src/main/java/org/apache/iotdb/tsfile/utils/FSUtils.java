@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSPath;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
@@ -36,17 +37,28 @@ public class FSUtils {
   private static final String[] fsFileClassName = {
     "org.apache.iotdb.os.fileSystem.OSFile", "org.apache.iotdb.hadoop.fileSystem.HDFSFile"
   };
+  private static final boolean[] isSupported = new boolean[fsTypes.length];
   private static final Class<?>[] fsFileClass = new Class[fsTypes.length];
 
   private FSUtils() {}
 
   static {
+    for (FSType fsType : TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs()) {
+      if (fsType == FSType.OBJECT_STORAGE) {
+        isSupported[0] = true;
+      } else if (fsType == FSType.HDFS) {
+        isSupported[1] = true;
+      }
+    }
+
     for (int i = 0; i < fsTypes.length; ++i) {
+      if (!isSupported[i]) {
+        continue;
+      }
       try {
         fsFileClass[i] = Class.forName(fsFileClassName[i]);
       } catch (ClassNotFoundException e) {
-        // TODO
-        logger.info(
+        logger.error(
             "Failed to get "
                 + fsTypes[i].name()
                 + " file system. Please check your dependency of "

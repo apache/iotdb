@@ -66,6 +66,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
 
@@ -772,6 +774,9 @@ public class IoTDBDescriptor {
 
     conf.setTsFileStorageFs(
         properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()));
+    conf.setEnableHDFS(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_hdfs", String.valueOf(conf.isEnableHDFS()))));
     conf.setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
     conf.setHdfsSitePath(properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
     conf.setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
@@ -967,11 +972,18 @@ public class IoTDBDescriptor {
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
     // At the same time, set TSFileConfig
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setTSFileStorageFs(
-            FSType.valueOf(
-                properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name())));
+    List<FSType> fsTypes = new ArrayList<>();
+    fsTypes.add(FSType.LOCAL);
+    if (Boolean.parseBoolean(
+        properties.getProperty(
+            "enable_object_storage", String.valueOf(conf.isEnableObjectStorage())))) {
+      fsTypes.add(FSType.OBJECT_STORAGE);
+    }
+    if (Boolean.parseBoolean(
+        properties.getProperty("enable_hdfs", String.valueOf(conf.isEnableHDFS())))) {
+      fsTypes.add(FSType.HDFS);
+    }
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(fsTypes.toArray(new FSType[0]));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
@@ -1070,6 +1082,9 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
+    // object storage
+    loadObjectStorageProps(properties);
+
     conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
@@ -1136,6 +1151,37 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
+  }
+
+  private void loadObjectStorageProps(Properties properties) {
+    conf.setEnableObjectStorage(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_object_storage", String.valueOf(conf.isEnableObjectStorage()))));
+    conf.setCacheDirs(
+        properties
+            .getProperty("remote_tsfile_cache_dirs", String.join(",", conf.getCacheDirs()))
+            .split(","));
+    conf.setCacheMaxDiskUsage(
+        Long.parseLong(
+            properties.getProperty(
+                "remote_tsfile_cache_max_disk_usage",
+                String.valueOf(conf.getCacheMaxDiskUsage()))));
+    conf.setCachePageSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "remote_tsfile_cache_page_size", String.valueOf(conf.getCachePageSize()))));
+    conf.setObjectStorageName(
+        properties.getProperty("object_storage_name", conf.getObjectStorageName()));
+    conf.setObjectStorageEndpoint(
+        properties.getProperty("object_storage_endpoint", conf.getObjectStorageEndpoint()));
+    conf.setObjectStorageBucket(
+        properties.getProperty("object_storage_bucket", conf.getObjectStorageBucket()));
+    conf.setObjectStorageAccessKey(
+        properties.getProperty("object_storage_access_key", conf.getObjectStorageAccessKey()));
+    conf.setObjectStorageAccessSecret(
+        properties.getProperty(
+            "object_storage_access_secret", conf.getObjectStorageAccessSecret()));
   }
 
   private void loadWALProps(Properties properties) {

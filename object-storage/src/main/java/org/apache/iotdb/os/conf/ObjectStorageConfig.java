@@ -18,23 +18,25 @@
  */
 package org.apache.iotdb.os.conf;
 
-import org.apache.iotdb.os.io.aws.AWSS3Config;
+import org.apache.iotdb.os.conf.provider.AWSS3Config;
+import org.apache.iotdb.os.conf.provider.OSProviderConfig;
 import org.apache.iotdb.os.utils.ObjectStorageType;
 
 import java.io.File;
+import java.util.Objects;
 
 public class ObjectStorageConfig {
   private ObjectStorageType osType = ObjectStorageType.AWS_S3;
 
-  private AWSS3Config awss3Config = new AWSS3Config();
+  private OSProviderConfig providerConfig = new AWSS3Config();
 
   private String[] cacheDirs = {
     "data" + File.separator + "datanode" + File.separator + "data" + File.separator + "cache"
   };
 
-  private long cacheMaxDiskUsage = 20 * 1024 * 1024 * 1024L;
+  private long cacheMaxDiskUsage = 50 * 1024 * 1024 * 1024L;
 
-  private int cachePageSize = 10 * 1024 * 1024;
+  private int cachePageSize = 20 * 1024 * 1024;
 
   ObjectStorageConfig() {}
 
@@ -44,14 +46,51 @@ public class ObjectStorageConfig {
 
   public void setOsType(ObjectStorageType osType) {
     this.osType = osType;
+    if (Objects.requireNonNull(osType) == ObjectStorageType.AWS_S3) {
+      this.providerConfig = new AWSS3Config();
+    } else {
+      this.providerConfig = null;
+    }
+  }
+
+  public OSProviderConfig getProviderConfig() {
+    return providerConfig;
+  }
+
+  public String getEndpoint() {
+    return providerConfig.getEndpoint();
+  }
+
+  public void setEndpoint(String endpoint) {
+    providerConfig.setEndpoint(endpoint);
+  }
+
+  public String getBucketName() {
+    return providerConfig.getBucketName();
+  }
+
+  public void setBucketName(String bucketName) {
+    providerConfig.setBucketName(bucketName);
+  }
+
+  public String getAccessKeyId() {
+    return providerConfig.getAccessKeyId();
+  }
+
+  public void setAccessKeyId(String accessKeyId) {
+    providerConfig.setAccessKeyId(accessKeyId);
+  }
+
+  public String getAccessKeySecret() {
+    return providerConfig.getAccessKeySecret();
+  }
+
+  public void setAccessKeySecret(String accessKeySecret) {
+    providerConfig.setAccessKeySecret(accessKeySecret);
   }
 
   public String[] getCacheDirs() {
     return cacheDirs;
-  }
-
-  public String getBucketName() {
-    return AWSS3Config.getBucketName();
   }
 
   public void setCacheDirs(String[] cacheDirs) {
@@ -60,6 +99,10 @@ public class ObjectStorageConfig {
 
   public long getCacheMaxDiskUsage() {
     return cacheMaxDiskUsage;
+  }
+
+  public void setCacheMaxDiskUsage(long cacheMaxDiskUsage) {
+    this.cacheMaxDiskUsage = cacheMaxDiskUsage;
   }
 
   public int getCachePageSize() {
