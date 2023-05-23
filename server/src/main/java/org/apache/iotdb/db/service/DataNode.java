@@ -59,6 +59,7 @@ import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -411,6 +412,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void configOSStorage(int dataNodeID) {
+    TierManager.getInstance().resetFolders();
     FSFactoryProducer.setFileInputFactory(new HybridFileInputFactoryDecorator(dataNodeID));
     // recover OS cache
   }

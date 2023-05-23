@@ -330,4 +330,6 @@ public class IoTDBConstant {
   public static final int MAX_DATABASE_NAME_LENGTH = 64;
 
   public static final String TIER_SEPARATOR = ";";
+
+  public static final String OBJECT_STORAGE_DIR = "object_storage";
 }

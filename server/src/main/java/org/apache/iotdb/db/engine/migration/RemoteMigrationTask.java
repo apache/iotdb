@@ -48,12 +48,12 @@ public class RemoteMigrationTask extends MigrationTask {
       tsFile.readUnlock();
     }
     // replace TsFile path
-    tsFile.writeLock();
-    try {
-      tsFile.setFile(destTsFile);
-    } finally {
-      tsFile.writeUnlock();
-    }
+    //    tsFile.writeLock();
+    //    try {
+    //      tsFile.setFile(destTsFile);
+    //    } finally {
+    //      tsFile.writeUnlock();
+    //    }
     // clear src files
     srcTsFile.delete();
   }

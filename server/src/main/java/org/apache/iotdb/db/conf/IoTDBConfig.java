@@ -1218,18 +1218,15 @@ public class IoTDBConfig {
   private void formulateDataDirs(String[][] tierDataDirs) {
     for (int i = 0; i < tierDataDirs.length; i++) {
       for (int j = 0; j < tierDataDirs[i].length; j++) {
-        if (tierDataDirs[i][j].equals("object_storage")) {
-          tierDataDirs[i][j] = FSUtils.getOSDefaultPath(objectStorageBucket, dataNodeId);
-        } else {
-          switch (FSUtils.getFSType(tierDataDirs[i][j])) {
-            case HDFS:
-              tierDataDirs[i][j] = getHdfsDir() + File.separatorChar + tierDataDirs[i][j];
-              break;
-            case LOCAL:
-            default:
-              tierDataDirs[i][j] = addDataHomeDir(tierDataDirs[i][j]);
-              break;
-          }
+        switch (FSUtils.getFSType(tierDataDirs[i][j])) {
+          case HDFS:
+            tierDataDirs[i][j] = getHdfsDir() + File.separatorChar + tierDataDirs[i][j];
+            break;
+          case LOCAL:
+            tierDataDirs[i][j] = addDataHomeDir(tierDataDirs[i][j]);
+          case OBJECT_STORAGE:
+          default:
+            break;
         }
       }
     }

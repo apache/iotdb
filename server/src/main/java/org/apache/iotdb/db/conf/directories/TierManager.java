@@ -47,6 +47,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
+
 /** The main class of multiple directories. Used to allocate folders to data files. */
 public class TierManager {
   private static final Logger logger = LoggerFactory.getLogger(TierManager.class);
@@ -86,10 +88,17 @@ public class TierManager {
   }
 
   public void resetFolders() {
+    if (config.getDataNodeId() == -1) {
+      return;
+    }
+
     String[][] tierDirs = config.getTierDataDirs();
     for (int i = 0; i < tierDirs.length; ++i) {
       for (int j = 0; j < tierDirs[i].length; ++j) {
-        if (FSUtils.isLocal(tierDirs[i][j])) {
+        if (tierDirs[i][j].equals(OBJECT_STORAGE_DIR)) {
+          tierDirs[i][j] =
+              FSUtils.getOSDefaultPath(config.getObjectStorageBucket(), config.getDataNodeId());
+        } else if (FSUtils.isLocal(tierDirs[i][j])) {
           try {
             tierDirs[i][j] = new File(tierDirs[i][j]).getCanonicalPath();
           } catch (IOException e) {
