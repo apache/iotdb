@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.common.conf;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
@@ -119,7 +120,7 @@ public class TSFileConfig implements Serializable {
   /** Default endian value is BIG_ENDIAN. */
   private String endian = "BIG_ENDIAN";
   /** Default storage is in local file system */
-  private FSType[] TSFileStorageFs = FSType.values();
+  private FSType[] TSFileStorageFs = new FSType[] {FSType.LOCAL};
   /** Default core-site.xml file path is /etc/hadoop/conf/core-site.xml */
   private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
   /** Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml */
@@ -354,6 +355,7 @@ public class TSFileConfig implements Serializable {
 
   public void setTSFileStorageFs(FSType[] fileStorageFs) {
     this.TSFileStorageFs = fileStorageFs;
+    FSUtils.reload();
   }
 
   public String getCoreSitePath() {

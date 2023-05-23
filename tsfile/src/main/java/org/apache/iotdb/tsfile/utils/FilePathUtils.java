@@ -65,6 +65,11 @@ public class FilePathUtils {
     return tsFileAbsolutePath.split(separator);
   }
 
+  public static boolean isSequence(String tsFileAbsolutePath) {
+    String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
+    return pathSegments[pathSegments.length - 5].equals("sequence");
+  }
+
   public static String getLogicalStorageGroupName(String tsFileAbsolutePath) {
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
     return pathSegments[pathSegments.length - 4];

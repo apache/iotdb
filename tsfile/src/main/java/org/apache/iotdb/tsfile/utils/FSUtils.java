@@ -43,6 +43,10 @@ public class FSUtils {
   private FSUtils() {}
 
   static {
+    reload();
+  }
+
+  public static synchronized void reload() {
     for (FSType fsType : TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs()) {
       if (fsType == FSType.OBJECT_STORAGE) {
         isSupported[0] = true;
