@@ -49,7 +49,7 @@ public class HybridFileInputFactoryDecorator implements FileInputFactory {
   public TsFileInput getTsFileInput(String filePath) throws IOException {
     File file = new File(filePath);
     if (!file.exists()) {
-      fileInputFactory.getTsFileInput(
+      return fileInputFactory.getTsFileInput(
           FSUtils.parseLocalTsFile2OSFile(file, AWSS3Config.getBucketName(), dataNodeId).getPath());
     }
     return fileInputFactory.getTsFileInput(filePath);

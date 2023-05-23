@@ -42,7 +42,8 @@ public class HybridFileInputFactory implements FileInputFactory {
 
   @Override
   public TsFileInput getTsFileInput(String filePath) throws IOException {
-    FSPath path = FSUtils.parse(filePath);
-    return inputFactories.get(path.getFsType()).getTsFileInput(path.getPath());
+    return inputFactories.get(FSType.OBJECT_STORAGE).getTsFileInput(filePath);
+//    FSPath path = FSUtils.parse(filePath);
+//    return inputFactories.get(path.getFsType()).getTsFileInput(path.getPath());
   }
 }
