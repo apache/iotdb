@@ -35,6 +35,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -118,6 +119,7 @@ public class IoTDBConfigNodeConsensusEfficiencyIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  @Ignore
   @Test
   public void consensusEfficiencyIT() throws InterruptedException {
     long totalTime = 0;

@@ -149,6 +149,22 @@ public class MemoryPool {
     return id;
   }
 
+  public long getMaxBytes() {
+    return maxBytes;
+  }
+
+  public long getRemainingBytes() {
+    return remainingBytes.get();
+  }
+
+  public int getQueryMemoryReservationSize() {
+    return queryMemoryReservations.size();
+  }
+
+  public int getMemoryReservationSize() {
+    return memoryReservationFutures.size();
+  }
+
   /**
    * Before executing, we register memory map which is related to queryId, fragmentInstanceId, and
    * planNodeId to queryMemoryReservationsMap first.

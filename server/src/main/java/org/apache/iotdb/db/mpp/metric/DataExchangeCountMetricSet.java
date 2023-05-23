@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricInfo;
@@ -44,6 +46,10 @@ public class DataExchangeCountMetricSet implements IMetricSet {
       "on_acknowledge_data_block_num_server";
   public static final String GET_DATA_BLOCK_NUM_CALLER = "get_data_block_num_caller";
   public static final String GET_DATA_BLOCK_NUM_SERVER = "get_data_block_num_server";
+  private static final MPPDataExchangeManager dataExchangeManager =
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
+  private static final String SHUFFLE_SINK_HANDLE_SIZE = "shuffle_sink_handle_size";
+  private static final String SOURCE_HANDLE_SIZE = "source_handle_size";
 
   static {
     metricInfoMap.put(
@@ -108,6 +114,21 @@ public class DataExchangeCountMetricSet implements IMetricSet {
       metricService.getOrCreateHistogram(
           metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
     }
+
+    metricService.createAutoGauge(
+        metric,
+        MetricLevel.IMPORTANT,
+        dataExchangeManager,
+        MPPDataExchangeManager::getShuffleSinkHandleSize,
+        Tag.NAME.toString(),
+        SHUFFLE_SINK_HANDLE_SIZE);
+    metricService.createAutoGauge(
+        metric,
+        MetricLevel.IMPORTANT,
+        dataExchangeManager,
+        MPPDataExchangeManager::getSourceHandleSize,
+        Tag.NAME.toString(),
+        SOURCE_HANDLE_SIZE);
   }
 
   @Override
@@ -115,5 +136,9 @@ public class DataExchangeCountMetricSet implements IMetricSet {
     for (MetricInfo metricInfo : metricInfoMap.values()) {
       metricService.remove(MetricType.HISTOGRAM, metric, metricInfo.getTagsInArray());
     }
+
+    metricService.remove(
+        MetricType.AUTO_GAUGE, metric, Tag.NAME.toString(), SHUFFLE_SINK_HANDLE_SIZE);
+    metricService.remove(MetricType.AUTO_GAUGE, metric, Tag.NAME.toString(), SOURCE_HANDLE_SIZE);
   }
 }
