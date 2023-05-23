@@ -500,19 +500,19 @@ public class PipeTaskAgent {
   ///////////////////////// Manage by dataRegionGroupId /////////////////////////
 
   private void createPipeTask(
-      TConsensusGroupId dataRegionGroupId,
+      TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
       ConsensusIndex progressIndex,
-      int dataRegionId) {
+      int regionLeader) {
     final PipeTask pipeTask =
-        new PipeTaskBuilder(Integer.toString(dataRegionId), progressIndex, pipeStaticMeta).build();
+        new PipeTaskBuilder(consensusGroupId, progressIndex, pipeStaticMeta).build();
     pipeTask.create();
-    pipeTaskManager.addPipeTask(pipeStaticMeta, dataRegionGroupId, pipeTask);
+    pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
         .getConsensusGroupIdToTaskMetaMap()
-        .put(dataRegionGroupId, new PipeTaskMeta(progressIndex, dataRegionId));
+        .put(consensusGroupId, new PipeTaskMeta(progressIndex, regionLeader));
   }
 
   private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {

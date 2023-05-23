@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskCollectorStage;
@@ -29,7 +30,7 @@ import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 public class PipeTaskBuilder {
 
   private final String pipeName;
-  private final String dataRegionId;
+  private final TConsensusGroupId dataRegionId;
   private final ConsensusIndex progressIndex;
   private final PipeParameters pipeCollectorParameters;
   private final PipeParameters pipeProcessorParameters;
@@ -37,7 +38,7 @@ public class PipeTaskBuilder {
 
   PipeTaskBuilder(
       String pipeName,
-      String dataRegionId,
+      TConsensusGroupId dataRegionId,
       ConsensusIndex progressIndex,
       PipeParameters pipeCollectorParameters,
       PipeParameters pipeProcessorParameters,
@@ -51,7 +52,7 @@ public class PipeTaskBuilder {
   }
 
   public PipeTaskBuilder(
-      String dataRegionId, ConsensusIndex progressIndex, PipeStaticMeta pipeStaticMeta) {
+      TConsensusGroupId dataRegionId, ConsensusIndex progressIndex, PipeStaticMeta pipeStaticMeta) {
     this(
         pipeStaticMeta.getPipeName(),
         dataRegionId,

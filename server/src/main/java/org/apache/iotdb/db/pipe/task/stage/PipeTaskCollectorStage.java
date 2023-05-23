@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -55,7 +56,9 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
   private final PipeCollector pipeCollector;
 
   public PipeTaskCollectorStage(
-      String dataRegionId, ConsensusIndex progressIndex, PipeParameters collectorParameters) {
+      TConsensusGroupId dataRegionId,
+      ConsensusIndex progressIndex,
+      PipeParameters collectorParameters) {
     // TODO: avoid if-else, use reflection to create collector all the time
     if (collectorParameters
         .getStringOrDefault(
@@ -71,7 +74,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       // collector
       this.collectorParameters
           .getAttribute()
-          .put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
+          .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
 
       collectorPendingQueue = new ListenableUnblockingPendingQueue<>();
       this.pipeCollector = new IoTDBDataRegionCollector(progressIndex, collectorPendingQueue);
