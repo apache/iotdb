@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskCollectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
@@ -29,6 +30,7 @@ public class PipeTaskBuilder {
 
   private final String pipeName;
   private final String dataRegionId;
+  private final ConsensusIndex progressIndex;
   private final PipeParameters pipeCollectorParameters;
   private final PipeParameters pipeProcessorParameters;
   private final PipeParameters pipeConnectorParameters;
@@ -36,20 +38,24 @@ public class PipeTaskBuilder {
   PipeTaskBuilder(
       String pipeName,
       String dataRegionId,
+      ConsensusIndex progressIndex,
       PipeParameters pipeCollectorParameters,
       PipeParameters pipeProcessorParameters,
       PipeParameters pipeConnectorParameters) {
     this.pipeName = pipeName;
     this.dataRegionId = dataRegionId;
+    this.progressIndex = progressIndex;
     this.pipeCollectorParameters = pipeCollectorParameters;
     this.pipeProcessorParameters = pipeProcessorParameters;
     this.pipeConnectorParameters = pipeConnectorParameters;
   }
 
-  public PipeTaskBuilder(String dataRegionId, PipeStaticMeta pipeStaticMeta) {
+  public PipeTaskBuilder(
+      String dataRegionId, ConsensusIndex progressIndex, PipeStaticMeta pipeStaticMeta) {
     this(
         pipeStaticMeta.getPipeName(),
         dataRegionId,
+        progressIndex,
         pipeStaticMeta.getCollectorParameters(),
         pipeStaticMeta.getProcessorParameters(),
         pipeStaticMeta.getConnectorParameters());
@@ -60,7 +66,7 @@ public class PipeTaskBuilder {
 
     // we first build the collector and connector, then build the processor.
     final PipeTaskCollectorStage collectorStage =
-        new PipeTaskCollectorStage(dataRegionId, pipeCollectorParameters);
+        new PipeTaskCollectorStage(dataRegionId, progressIndex, pipeCollectorParameters);
     final PipeTaskConnectorStage connectorStage =
         new PipeTaskConnectorStage(pipeConnectorParameters);
 

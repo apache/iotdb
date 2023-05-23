@@ -19,9 +19,10 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndexType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.common.index.ComparableConsensusRequest;
-import org.apache.iotdb.consensus.common.index.ConsensusIndex;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -74,7 +75,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
 
-  private ConsensusIndex consensusIndex;
+  protected ConsensusIndex consensusIndex;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -158,6 +159,15 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     this.searchIndex = searchIndex;
   }
 
+  /**
+   * All inherited classes need to follow these steps when overriding this method.
+   *
+   * <p>1. serialize {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType}.
+   *
+   * <p>2. serialize your information.
+   *
+   * <p>3. call this method, i.e. {@link InsertNode#serializeAttributes(ByteBuffer)}.
+   */
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(consensusIndex != null, byteBuffer);
@@ -166,6 +176,15 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     }
   }
 
+  /**
+   * All inherited classes need to follow these steps when overriding this method.
+   *
+   * <p>1. serialize {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType}.
+   *
+   * <p>2. serialize your information.
+   *
+   * <p>3. call this method, i.e. {@link InsertNode#serializeAttributes(DataOutputStream)}.
+   */
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(consensusIndex != null, stream);
@@ -174,9 +193,20 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     }
   }
 
+  /**
+   * All inherited classes need to follow these steps when deserializing.
+   *
+   * <p>1. deserialize {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType}.
+   *
+   * <p>2. deserialize your information.
+   *
+   * <p>3. call this method, i.e. {@link InsertNode#deserializeInsertNodeAttributes(ByteBuffer)}.
+   *
+   * <p>4. deserialize {@link PlanNodeId}
+   */
   protected void deserializeInsertNodeAttributes(ByteBuffer byteBuffer) {
     if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      consensusIndex = ConsensusIndex.deserializeFrom(byteBuffer);
+      consensusIndex = ConsensusIndexType.deserializeFrom(byteBuffer);
     }
   }
 

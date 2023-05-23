@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -78,6 +79,11 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
   public int getReferenceCount() {
     // TODO: use WALPipeHandler unpinMemetable
     return referenceCount.get();
+  }
+
+  @Override
+  public ConsensusIndex getConsensusIndex() {
+    return insertNode.getConsensusIndex();
   }
 
   @Override

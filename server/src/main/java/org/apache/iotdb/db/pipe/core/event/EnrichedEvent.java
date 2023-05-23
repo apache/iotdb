@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+
 /**
  * EnrichedEvent is an event that can be enriched with additional runtime information. The
  * additional information mainly includes the reference count of the event.
@@ -50,5 +52,5 @@ public interface EnrichedEvent {
    */
   int getReferenceCount();
 
-  // TODO: ConsensusIndex getConsensusIndex();
+  ConsensusIndex getConsensusIndex();
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.core.collector.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -37,9 +38,14 @@ import java.util.stream.Collectors;
 
 public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
 
+  private final ConsensusIndex startIndex;
   private int dataRegionId;
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
+
+  public PipeHistoricalDataRegionTsFileCollector(ConsensusIndex startIndex) {
+    this.startIndex = startIndex;
+  }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -71,10 +77,12 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(true).stream()
+                .filter(resource -> !startIndex.isAfter(resource.getMaxConsensusIndexAfterClose()))
                 .map(PipeTsFileInsertionEvent::new)
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
+                .filter(resource -> !startIndex.isAfter(resource.getMaxConsensusIndexAfterClose()))
                 .map(PipeTsFileInsertionEvent::new)
                 .collect(Collectors.toList()));
         pendingQueue.forEach(

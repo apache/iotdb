@@ -54,7 +54,7 @@ public class PipeBuilder {
           new PipeTaskBuilder(
                   pipeName,
                   Integer.toString(consensusGroupIdToPipeTaskMeta.getKey().getId()),
-                  // TODO: consensusGroupIdToPipeTaskMeta.getValue().getProgressIndex() is not used
+                  consensusGroupIdToPipeTaskMeta.getValue().getProgressIndex(),
                   collectorParameters,
                   processorParameters,
                   connectorParameters)

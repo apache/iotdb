@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumConsensusIndex;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
@@ -36,10 +38,12 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
+  private final TsFileResource resource;
   private File tsFile;
   private final AtomicBoolean isClosed;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
+    this.resource = resource;
     tsFile = resource.getTsFile();
 
     isClosed = new AtomicBoolean(resource.isClosed());
@@ -116,6 +120,19 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   @Override
   public int getReferenceCount() {
     return PipeResourceManager.file().getFileReferenceCount(tsFile);
+  }
+
+  @Override
+  public ConsensusIndex getConsensusIndex() {
+    try {
+      waitForTsFileClose();
+      return resource.getMaxConsensusIndexAfterClose();
+    } catch (InterruptedException e) {
+      LOGGER.warn(
+          String.format(
+              "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
+      return new MinimumConsensusIndex();
+    }
   }
 
   @Override

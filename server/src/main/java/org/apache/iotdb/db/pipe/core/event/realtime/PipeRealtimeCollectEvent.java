@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumConsensusIndex;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.EventType;
@@ -75,6 +77,13 @@ public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
   @Override
   public int getReferenceCount() {
     return event instanceof EnrichedEvent ? ((EnrichedEvent) event).getReferenceCount() : 0;
+  }
+
+  @Override
+  public ConsensusIndex getConsensusIndex() {
+    return event instanceof EnrichedEvent
+        ? ((EnrichedEvent) event).getConsensusIndex()
+        : new MinimumConsensusIndex();
   }
 
   @Override

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.consensus.common.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -64,7 +64,7 @@ public class TsFileResourceConsensusIndexTest {
               deviceTimeIndex.updateEndTime("root.sg.d" + i, i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
 
     IntStream.range(0, INDEX_NUM).forEach(i -> indexList.add(new MockConsensusIndex(i)));
   }
@@ -83,7 +83,7 @@ public class TsFileResourceConsensusIndexTest {
 
   @Test
   public void testConsensusIndexRecorder() {
-    Assert.assertFalse(tsFileResource.containConsensusIndexRange(new MockConsensusIndex(0)));
+    Assert.assertTrue(tsFileResource.containConsensusIndexRange(new MockConsensusIndex(0)));
 
     indexList.forEach(tsFileResource::updateConsensusIndex);
 
@@ -98,9 +98,9 @@ public class TsFileResourceConsensusIndexTest {
     Assert.assertFalse(
         tsFileResource.containConsensusIndexRange(new MockConsensusIndex(Integer.MAX_VALUE)));
 
-    Assert.assertFalse(
+    Assert.assertTrue(
         tsFileResource.containConsensusIndexRange(new MockConsensusIndex(1, INDEX_NUM - 1)));
-    Assert.assertFalse(tsFileResource.containConsensusIndexRange(null));
+    Assert.assertTrue(tsFileResource.containConsensusIndexRange(null));
   }
 
   @Test
@@ -132,19 +132,13 @@ public class TsFileResourceConsensusIndexTest {
     }
 
     @Override
-    public CompareResult compareTo(ConsensusIndex consensusIndex) {
+    public boolean isAfter(ConsensusIndex consensusIndex) {
       if (!(consensusIndex instanceof MockConsensusIndex)) {
-        return CompareResult.INCOMPARABLE;
+        return true;
       }
-      if (((MockConsensusIndex) consensusIndex).type != type) {
-        return CompareResult.INCOMPARABLE;
-      }
-      if (val < ((MockConsensusIndex) consensusIndex).val) {
-        return CompareResult.SMALLER;
-      } else if (val == ((MockConsensusIndex) consensusIndex).val) {
-        return CompareResult.EQUAL;
-      }
-      return CompareResult.GREATER;
+
+      MockConsensusIndex that = (MockConsensusIndex) consensusIndex;
+      return this.type != that.type || this.val > that.val;
     }
   }
 }

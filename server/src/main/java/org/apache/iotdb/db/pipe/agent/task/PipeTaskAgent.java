@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -485,10 +486,10 @@ public class PipeTaskAgent {
   private void createPipeTask(
       TConsensusGroupId dataRegionGroupId,
       PipeStaticMeta pipeStaticMeta,
-      long progressIndex,
+      ConsensusIndex progressIndex,
       int dataRegionId) {
     final PipeTask pipeTask =
-        new PipeTaskBuilder(Integer.toString(dataRegionId), pipeStaticMeta).build();
+        new PipeTaskBuilder(Integer.toString(dataRegionId), progressIndex, pipeStaticMeta).build();
     pipeTask.create();
     pipeTaskManager.addPipeTask(pipeStaticMeta, dataRegionGroupId, pipeTask);
     pipeMetaKeeper

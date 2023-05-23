@@ -17,10 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.index;
+package org.apache.iotdb.commons.consensus.index;
 
-public interface ComparableConsensusRequest {
-  ConsensusIndex getConsensusIndex();
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
-  void setConsensusIndex(ConsensusIndex consensusIndex);
+public interface ConsensusIndex {
+
+  void serialize(ByteBuffer byteBuffer);
+
+  void serialize(OutputStream stream) throws IOException;
+
+  boolean isAfter(ConsensusIndex consensusIndex);
+
+  ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex);
 }

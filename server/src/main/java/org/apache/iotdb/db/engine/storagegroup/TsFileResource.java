@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndexType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.common.index.ConsensusIndex;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -154,7 +155,7 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
-  private ConsensusIndexRecorder consensusIndexRecorder;
+  private ConsensusIndex maxConsensusIndex;
 
   public TsFileResource() {}
 
@@ -173,7 +174,7 @@ public class TsFileResource {
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.tsFileSize = other.tsFileSize;
-    this.consensusIndexRecorder = other.consensusIndexRecorder;
+    this.maxConsensusIndex = other.maxConsensusIndex;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -247,8 +248,8 @@ public class TsFileResource {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
       }
-      if (consensusIndexRecorder != null) {
-        consensusIndexRecorder.serialize(outputStream);
+      if (maxConsensusIndex != null) {
+        maxConsensusIndex.serialize(outputStream);
       }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
@@ -273,8 +274,7 @@ public class TsFileResource {
         }
       }
       if (inputStream.available() > 0) {
-        consensusIndexRecorder = new ConsensusIndexRecorder();
-        consensusIndexRecorder.deserialize(inputStream);
+        maxConsensusIndex = ConsensusIndexType.deserializeFrom(inputStream);
       }
     }
 
@@ -322,8 +322,7 @@ public class TsFileResource {
         }
       }
       if (inputStream.available() > 0) {
-        consensusIndexRecorder = new ConsensusIndexRecorder();
-        consensusIndexRecorder.deserialize(inputStream);
+        maxConsensusIndex = ConsensusIndexType.deserializeFrom(inputStream);
       }
     }
   }
@@ -1136,75 +1135,17 @@ public class TsFileResource {
       return;
     }
 
-    if (consensusIndexRecorder == null) {
-      consensusIndexRecorder = new ConsensusIndexRecorder();
-    }
-    consensusIndexRecorder.update(consensusIndex);
+    maxConsensusIndex =
+        (maxConsensusIndex == null
+            ? consensusIndex
+            : maxConsensusIndex.updateToMaximum(consensusIndex));
   }
 
-  /**
-   * Check if the {@link ConsensusIndex} range of this file intersects with [startIndex, INF).
-   *
-   * <p>This method will return FALSE in the following four cases, and TRUE otherwise.
-   *
-   * <p>1.startIndex is null. 2.there is no index records in this file.3.there is no comparable
-   * index in this file.4.this file's all comparable index is smaller than startIndex.
-   *
-   * @param startIndex search index range [startIndex, INF).
-   */
-  public boolean containConsensusIndexRange(ConsensusIndex startIndex) {
-    if (consensusIndexRecorder == null || startIndex == null) {
-      return false;
+  public ConsensusIndex getMaxConsensusIndexAfterClose() throws IllegalStateException {
+    if (status.equals(TsFileResourceStatus.UNCLOSED)) {
+      throw new IllegalStateException(
+          "Should not get consensus index from a unclosing TsFileResource.");
     }
-    return consensusIndexRecorder.containIndexRange(startIndex);
-  }
-
-  public static class ConsensusIndexRecorder {
-    private int indexTypes;
-    private final List<ConsensusIndex> maxIndex;
-
-    public ConsensusIndexRecorder() {
-      indexTypes = 0;
-      maxIndex = new ArrayList<>();
-    }
-
-    public void update(ConsensusIndex index) {
-      for (int i = 0; i < indexTypes; i++) {
-        switch (index.compareTo(maxIndex.get(i))) {
-          case GREATER:
-            maxIndex.set(i, index);
-          case SMALLER:
-          case EQUAL:
-            return;
-        }
-      }
-      indexTypes += 1;
-      maxIndex.add(index);
-    }
-
-    public boolean containIndexRange(ConsensusIndex startIndex) {
-      for (int i = 0; i < indexTypes; i++) {
-        ConsensusIndex.CompareResult result = startIndex.compareTo(maxIndex.get(i));
-        if (result == ConsensusIndex.CompareResult.EQUAL
-            || result == ConsensusIndex.CompareResult.SMALLER) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    public void serialize(OutputStream stream) throws IOException {
-      ReadWriteIOUtils.write(indexTypes, stream);
-      for (int i = 0; i < indexTypes; i++) {
-        maxIndex.get(i).serialize(stream);
-      }
-    }
-
-    public void deserialize(InputStream stream) throws IOException {
-      indexTypes = ReadWriteIOUtils.readInt(stream);
-      for (int i = 0; i < indexTypes; i++) {
-        maxIndex.add(ConsensusIndex.deserializeFrom(stream));
-      }
-    }
+    return maxConsensusIndex;
   }
 }

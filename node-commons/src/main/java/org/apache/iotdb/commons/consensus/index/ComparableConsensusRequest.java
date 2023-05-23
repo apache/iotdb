@@ -17,33 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.common.index;
+package org.apache.iotdb.commons.consensus.index;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
+public interface ComparableConsensusRequest {
+  ConsensusIndex getConsensusIndex();
 
-public interface ConsensusIndex {
-
-  void serialize(ByteBuffer byteBuffer);
-
-  void serialize(OutputStream stream) throws IOException;
-
-  static ConsensusIndex deserializeFrom(ByteBuffer byteBuffer) {
-    return null;
-  }
-
-  static ConsensusIndex deserializeFrom(InputStream byteBuffer) {
-    return null;
-  }
-
-  CompareResult compareTo(ConsensusIndex consensusIndex);
-
-  enum CompareResult {
-    INCOMPARABLE,
-    SMALLER,
-    GREATER,
-    EQUAL
-  }
+  void setConsensusIndex(ConsensusIndex consensusIndex);
 }
