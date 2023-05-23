@@ -391,6 +391,10 @@ public class TsFileResource {
     return file.getPath();
   }
 
+  public void increaseTierLevel() {
+    this.tierLevel++;
+  }
+
   public int getTierLevel() {
     return tierLevel;
   }

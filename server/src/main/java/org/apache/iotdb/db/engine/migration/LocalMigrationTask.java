@@ -51,7 +51,9 @@ public class LocalMigrationTask extends MigrationTask {
     tsFile.writeLock();
     try {
       tsFile.resetModFile();
-      fsFactory.copyFile(srcModsFile, destModsFile);
+      if (srcModsFile.exists()) {
+        fsFactory.copyFile(srcModsFile, destModsFile);
+      }
       tsFile.setFile(destTsFile);
     } catch (IOException e) {
       logger.error("Fail to copy mods file {}", srcModsFile);

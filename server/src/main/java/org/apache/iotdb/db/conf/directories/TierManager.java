@@ -206,6 +206,10 @@ public class TierManager {
   }
 
   public int getFileTierLevel(File file) {
+    if (!file.exists()) {
+      return getTiersNum() - 1;
+    }
+
     String filePath;
     try {
       filePath = file.getCanonicalPath();

@@ -71,6 +71,7 @@ public abstract class MigrationTask implements Runnable {
   @Override
   public void run() {
     migrate();
+    tsFile.increaseTierLevel();
     tsFile.setIsMigrating(false);
   }
 
