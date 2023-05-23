@@ -119,11 +119,11 @@ public class InExpression extends UnaryExpression {
     if (expression instanceof FunctionExpression
         || expression instanceof ConstantOperand
         || expression instanceof TimeSeriesOperand) {
-      stringBuilder.append(expression.getStringWithLogicalView()).append(" IN (");
+      stringBuilder.append(expression.getViewPathOfThisExpression()).append(" IN (");
     } else {
       stringBuilder
           .append('(')
-          .append(expression.getStringWithLogicalView())
+          .append(expression.getViewPathOfThisExpression())
           .append(')')
           .append(" IN (");
     }

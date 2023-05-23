@@ -91,7 +91,7 @@ public class RegularExpression extends UnaryExpression {
 
   @Override
   public String getStringWithLogicalViewInternal() {
-    return expression.getStringWithLogicalView() + " REGEXP '" + patternString + "'";
+    return expression.getViewPathOfThisExpression() + " REGEXP '" + patternString + "'";
   }
 
   @Override

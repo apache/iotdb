@@ -70,7 +70,6 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceLogicalViewVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByConditionParameter;
@@ -267,6 +266,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         return finishQuery(queryStatement, analysis);
       }
 
+      // make sure paths in logical view is fetched
+      findAllViewsInTreeThenReFetchAndMerge(schemaTree);
+
       // extract global time filter from query filter and determine if there is a value filter
       analyzeGlobalTimeFilter(analysis, queryStatement);
 
@@ -444,7 +446,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (Expression selectExpression : selectExpressions) {
       sourceExpressions.addAll(
-          ExpressionAnalyzer.removeWildcardInExpression(selectExpression, schemaTree));
+          ExpressionAnalyzer.removeWildcardAndViewInExpression(
+              selectExpression, analysis, schemaTree));
     }
     analysis.setSourceExpressions(sourceExpressions);
   }
@@ -484,39 +487,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return originSchemaTree;
   }
 
-  /**
-   * Fetch all paths in logical view from given ResultColumns.
-   *
-   * @param resultColumnList the ResultColumns that you want to analyze.
-   * @param originSchemaTree the schema tree that generated WITHOUT concern logical view. It
-   *     contains no paths for logical view.
-   * @return return null if there is no logical view; else return the schema tree for all paths in
-   *     logical view.
-   */
-  private ISchemaTree fetchAllPathsInLogicalViewFromResultColumnsForAlignedByTime(
-      List<ResultColumn> resultColumnList, ISchemaTree originSchemaTree) {
-    // record paths that need to re-fetch. It's useful if expression contains logical view.
-    ReplaceLogicalViewVisitor replaceLogicalViewVisitor = new ReplaceLogicalViewVisitor();
-    for (ResultColumn resultColumn : resultColumnList) {
-      List<Expression> resultExpressions =
-          ExpressionAnalyzer.removeWildcardInExpression(
-              resultColumn.getExpression(), originSchemaTree);
-      for (Expression expression : resultExpressions) {
-        replaceLogicalViewVisitor.replaceViewInThisExpression(expression);
-      }
-    }
-    if (!replaceLogicalViewVisitor.getNewAddedPathList().isEmpty()) {
-      PathPatternTree reFetchPathPatternTree = new PathPatternTree();
-      for (PartialPath path : replaceLogicalViewVisitor.getNewAddedPathList()) {
-        reFetchPathPatternTree.appendFullPath(path);
-      }
-      // This schemaTree only contains paths in view expression!
-      ISchemaTree viewSchemaTree = schemaFetcher.fetchSchema(reFetchPathPatternTree, null);
-      return viewSchemaTree;
-    }
-    return null;
-  }
-
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Map<Integer, List<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
@@ -531,8 +501,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<String> aliasSet = new HashSet<>();
 
     int columnIndex = 0;
-    // make sure paths in logical view is fetched
-    schemaTree = findAllViewsInTreeThenReFetchAndMerge(schemaTree);
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
@@ -557,7 +525,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           } else {
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
-            String alias = expression.getStringWithLogicalView();
+            String alias = expression.getViewPathOfThisExpression();
             alias = hasAlias ? resultColumn.getAlias() : alias;
             if (hasAlias) {
               if (aliasSet.contains(alias)) {
@@ -697,7 +665,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // get removeWildcard Expressions in Having
     List<Expression> conJunctions =
-        ExpressionAnalyzer.removeWildcardInFilter(
+        ExpressionAnalyzer.removeWildcardAndViewInFilter(
             queryStatement.getHavingCondition().getPredicate(),
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
@@ -1149,7 +1117,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
     List<Expression> conJunctions =
-        ExpressionAnalyzer.removeWildcardInFilter(
+        ExpressionAnalyzer.removeWildcardAndViewInFilter(
             queryStatement.getWhereCondition().getPredicate(),
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
@@ -1318,7 +1286,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
       // Expression in a sortItem only indicates one column
       List<Expression> expressions =
-          ExpressionAnalyzer.removeWildcardInExpression(expressionForItem, schemaTree);
+          ExpressionAnalyzer.removeWildcardAndViewInExpression(
+              expressionForItem, analysis, schemaTree);
       if (expressions.size() != 1) {
         throw new SemanticException("One sort item in order by should only indicate one value");
       }
@@ -1472,7 +1441,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       groupByExpression = groupByComponent.getControlColumnExpression();
       // Expression in group by variation clause only indicates one column
       List<Expression> expressions =
-          ExpressionAnalyzer.removeWildcardInExpression(groupByExpression, schemaTree);
+          ExpressionAnalyzer.removeWildcardAndViewInExpression(
+              groupByExpression, analysis, schemaTree);
       if (expressions.size() != 1) {
         throw new SemanticException("Expression in group by should indicate one value");
       }

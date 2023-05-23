@@ -74,7 +74,7 @@ public class IsNullExpression extends UnaryExpression {
 
   @Override
   public String getStringWithLogicalViewInternal() {
-    return expression.getStringWithLogicalView() + " IS " + (isNot ? "NOT " : "") + "NULL";
+    return expression.getViewPathOfThisExpression() + " IS " + (isNot ? "NOT " : "") + "NULL";
   }
 
   @Override

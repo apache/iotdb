@@ -170,10 +170,10 @@ public class CaseWhenThenExpression extends Expression {
     StringBuilder builder = new StringBuilder();
     builder.append("CASE ");
     for (Expression expression : this.whenThenExpressions) {
-      builder.append(expression.getStringWithLogicalView()).append(" ");
+      builder.append(expression.getViewPathOfThisExpression()).append(" ");
     }
     if (!(this.elseExpression instanceof NullOperand)) {
-      builder.append("ELSE ").append(this.elseExpression.getStringWithLogicalView()).append(" ");
+      builder.append("ELSE ").append(this.elseExpression.getViewPathOfThisExpression()).append(" ");
     }
     builder.append("END");
     return builder.toString();

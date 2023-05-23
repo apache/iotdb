@@ -57,8 +57,8 @@ public class LogicNotExpression extends UnaryExpression {
     return expression instanceof FunctionExpression
             || expression instanceof ConstantOperand
             || expression instanceof TimeSeriesOperand
-        ? "!" + expression.getStringWithLogicalView()
-        : "!(" + expression.getStringWithLogicalView() + ")";
+        ? "!" + expression.getViewPathOfThisExpression()
+        : "!(" + expression.getViewPathOfThisExpression() + ")";
   }
 
   @Override

@@ -86,11 +86,11 @@ public class BetweenExpression extends TernaryExpression {
 
   @Override
   public String getStringWithLogicalViewInternal() {
-    return firstExpression.getStringWithLogicalView()
+    return firstExpression.getViewPathOfThisExpression()
         + " BETWEEN "
-        + secondExpression.getStringWithLogicalView()
+        + secondExpression.getViewPathOfThisExpression()
         + " AND "
-        + thirdExpression.getStringWithLogicalView();
+        + thirdExpression.getViewPathOfThisExpression();
   }
 
   @Override

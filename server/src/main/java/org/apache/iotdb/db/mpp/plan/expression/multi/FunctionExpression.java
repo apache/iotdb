@@ -180,9 +180,9 @@ public class FunctionExpression extends Expression {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {
-        builder.append(expressions.get(0).getStringWithLogicalView());
+        builder.append(expressions.get(0).getViewPathOfThisExpression());
         for (int i = 1; i < expressions.size(); ++i) {
-          builder.append(", ").append(expressions.get(i).getStringWithLogicalView());
+          builder.append(", ").append(expressions.get(i).getViewPathOfThisExpression());
         }
       }
       if (!functionAttributes.isEmpty()) {
