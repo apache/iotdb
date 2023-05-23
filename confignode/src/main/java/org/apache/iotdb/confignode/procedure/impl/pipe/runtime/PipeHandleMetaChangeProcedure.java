@@ -54,13 +54,14 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHandleMetaChangeProcedure.class);
 
   private int dataNodeId;
-  private List<ByteBuffer> pipeMetaByteBufferListFromDataNode;
+  private final List<ByteBuffer> pipeMetaByteBufferListFromDataNode;
 
   private boolean needWriteConsensusOnConfigNodes = false;
   private boolean needPushPipeMetaToDataNodes = false;
 
   public PipeHandleMetaChangeProcedure() {
     super();
+    pipeMetaByteBufferListFromDataNode = new ArrayList<>();
   }
 
   public PipeHandleMetaChangeProcedure(
@@ -230,6 +231,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
     ReadWriteIOUtils.write(pipeMetaByteBufferListFromDataNode.size(), stream);
     for (ByteBuffer pipeMetaByteBuffer : pipeMetaByteBufferListFromDataNode) {
+      ReadWriteIOUtils.write(pipeMetaByteBuffer.limit(), stream);
       ReadWriteIOUtils.write(new Binary(pipeMetaByteBuffer.array()), stream);
     }
 
@@ -245,8 +247,11 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      pipeMetaByteBufferListFromDataNode.add(
-          ByteBuffer.wrap(ReadWriteIOUtils.readBinary(byteBuffer).getValues()));
+      final int limit = ReadWriteIOUtils.readInt(byteBuffer);
+      final ByteBuffer pipeMetaByteBuffer =
+          ByteBuffer.wrap(ReadWriteIOUtils.readBinary(byteBuffer).getValues());
+      pipeMetaByteBuffer.limit(limit);
+      pipeMetaByteBufferListFromDataNode.add(pipeMetaByteBuffer);
     }
 
     needWriteConsensusOnConfigNodes = ReadWriteIOUtils.readBool(byteBuffer);
@@ -255,24 +260,23 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof PipeHandleMetaChangeProcedure
-        && super.equals(o)
-        && Objects.equals(dataNodeId, ((PipeHandleMetaChangeProcedure) o).dataNodeId)
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof PipeHandleMetaChangeProcedure)) {
+      return false;
+    }
+    PipeHandleMetaChangeProcedure that = (PipeHandleMetaChangeProcedure) o;
+    return dataNodeId == that.dataNodeId
+        && needWriteConsensusOnConfigNodes == that.needWriteConsensusOnConfigNodes
+        && needPushPipeMetaToDataNodes == that.needPushPipeMetaToDataNodes
         && Objects.equals(
-            pipeMetaByteBufferListFromDataNode,
-            ((PipeHandleMetaChangeProcedure) o).pipeMetaByteBufferListFromDataNode)
-        && Objects.equals(
-            needWriteConsensusOnConfigNodes,
-            ((PipeHandleMetaChangeProcedure) o).needWriteConsensusOnConfigNodes)
-        && Objects.equals(
-            needPushPipeMetaToDataNodes,
-            ((PipeHandleMetaChangeProcedure) o).needPushPipeMetaToDataNodes);
+            pipeMetaByteBufferListFromDataNode, that.pipeMetaByteBufferListFromDataNode);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(),
         dataNodeId,
         pipeMetaByteBufferListFromDataNode,
         needWriteConsensusOnConfigNodes,

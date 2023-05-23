@@ -89,6 +89,7 @@ public class PipeHandleMetaChangeProcedureTest {
 
       assertEquals(proc, proc2);
     } catch (Exception e) {
+      e.printStackTrace();
       fail();
     }
   }
