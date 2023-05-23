@@ -64,10 +64,6 @@ public class HeartbeatService {
   private final ScheduledExecutorService heartBeatExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
   private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
-  private final AtomicInteger heartbeatForPipeCounter = new AtomicInteger(0);
-
-  // TODO: make this configurable
-  private final int PIPE_META_HEARTBEAT_INTERVAL = 180;
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
     this.configManager = configManager;
@@ -128,19 +124,17 @@ public class HeartbeatService {
     // We sample DataNode's load in every 10 heartbeat loop
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
     heartbeatReq.setSchemaQuotaCount(configManager.getClusterSchemaManager().getSchemaQuotaCount());
-
-    /* Update heartbeat counter */
-    heartbeatCounter.getAndUpdate(x -> (x + 1) % 10);
+    // We collect pipe meta in every 100 heartbeat loop, TODO: make this configurable
+    heartbeatReq.setNeedPipeMetaList(heartbeatCounter.get() % 100 == 0);
     if (!configManager.getClusterQuotaManager().hasSpaceQuotaLimit()) {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
     }
 
-    /* Update heartbeatForPipe counter */
-    heartbeatReq.setNeedPipeMetaList(
-        heartbeatForPipeCounter.get() % PIPE_META_HEARTBEAT_INTERVAL == 0);
-    heartbeatForPipeCounter.getAndUpdate(x -> (x + 1) % PIPE_META_HEARTBEAT_INTERVAL);
+    /* Update heartbeat counter */
+    heartbeatCounter.getAndUpdate(x -> (x + 1) % 10);
+
     return heartbeatReq;
   }
 

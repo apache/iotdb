@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -89,6 +88,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -775,12 +775,11 @@ public class ProcedureManager {
   }
 
   public TSStatus pipeHandleMetaChange(
-      List<PipeMeta> newPipeMetaList, List<PipeMeta> oldPipeMetaList, boolean needPushToDataNode) {
+      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
     try {
       long procedureId =
           executor.submitProcedure(
-              new PipeHandleMetaChangeProcedure(
-                  newPipeMetaList, oldPipeMetaList, needPushToDataNode));
+              new PipeHandleMetaChangeProcedure(dataNodeId, pipeMetaByteBufferListFromDataNode));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

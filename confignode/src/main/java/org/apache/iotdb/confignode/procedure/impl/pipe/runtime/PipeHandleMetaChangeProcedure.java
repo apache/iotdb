@@ -19,17 +19,24 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
-import org.apache.iotdb.commons.exception.sync.PipeException;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleMetaChangePlan;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,28 +44,32 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV2 {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHandleMetaChangeProcedure.class);
 
-  private List<PipeMeta> newPipeMetaList = new ArrayList<>();
-  private List<PipeMeta> oldPipeMetaList = new ArrayList<>();
+  private int dataNodeId;
+  private List<ByteBuffer> pipeMetaByteBufferListFromDataNode;
 
-  boolean needPushToDataNodes = false;
+  private boolean needWriteConsensusOnConfigNodes = false;
+  private boolean needPushPipeMetaToDataNodes = false;
 
   public PipeHandleMetaChangeProcedure() {
     super();
   }
 
   public PipeHandleMetaChangeProcedure(
-      List<PipeMeta> newPipeMetaList, List<PipeMeta> oldPipeMetaList, boolean needPushToDataNodes) {
+      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
     super();
-    this.newPipeMetaList = newPipeMetaList;
-    this.oldPipeMetaList = oldPipeMetaList;
-    this.needPushToDataNodes = needPushToDataNodes;
+    this.dataNodeId = dataNodeId;
+    this.pipeMetaByteBufferListFromDataNode = pipeMetaByteBufferListFromDataNode;
+    needWriteConsensusOnConfigNodes = false;
+    needPushPipeMetaToDataNodes = false;
   }
 
   @Override
@@ -67,27 +78,105 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromValidateTask");
 
     // do nothing
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromCalculateInfoForTask");
 
-    // do nothing
+    final Map<PipeStaticMeta, PipeMeta> pipeMetaMapFromDataNode = new HashMap<>();
+    for (ByteBuffer byteBuffer : pipeMetaByteBufferListFromDataNode) {
+      final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
+      pipeMetaMapFromDataNode.put(pipeMeta.getStaticMeta(), pipeMeta);
+    }
+
+    for (final PipeMeta pipeMetaOnConfigNode :
+        env.getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .getPipeTaskInfo()
+            .getPipeMetaList()) {
+      final PipeMeta pipeMetaFromDataNode =
+          pipeMetaMapFromDataNode.get(pipeMetaOnConfigNode.getStaticMeta());
+      if (pipeMetaFromDataNode == null) {
+        LOGGER.warn(
+            "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
+                + "pipeMetaFromDataNode is null, pipeMetaOnConfigNode: {}",
+            pipeMetaOnConfigNode);
+        continue;
+      }
+
+      final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapOnConfigNode =
+          pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+      final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapFromDataNode =
+          pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+      for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
+          pipeTaskMetaMapOnConfigNode.entrySet()) {
+        if (runtimeMetaOnConfigNode.getValue().getRegionLeader() != dataNodeId) {
+          continue;
+        }
+
+        final PipeTaskMeta runtimeMetaFromDataNode =
+            pipeTaskMetaMapFromDataNode.get(runtimeMetaOnConfigNode.getKey());
+        if (runtimeMetaFromDataNode == null) {
+          LOGGER.warn(
+              "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
+                  + "runtimeMetaFromDataNode is null, runtimeMetaOnConfigNode: {}",
+              runtimeMetaOnConfigNode);
+          continue;
+        }
+
+        // update progress index
+        if (runtimeMetaOnConfigNode.getValue().getProgressIndex()
+            < runtimeMetaFromDataNode.getProgressIndex()) {
+          runtimeMetaOnConfigNode
+              .getValue()
+              .setProgressIndex(runtimeMetaFromDataNode.getProgressIndex());
+          needWriteConsensusOnConfigNodes = true;
+        }
+
+        // update runtime exception
+        final PipeTaskMeta pipeTaskMetaOnConfigNode = runtimeMetaOnConfigNode.getValue();
+        pipeTaskMetaOnConfigNode.clearExceptionMessages();
+        for (final PipeRuntimeException exception :
+            runtimeMetaFromDataNode.getExceptionMessages()) {
+          pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
+          if (exception instanceof PipeRuntimeCriticalException) {
+            pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+            needWriteConsensusOnConfigNodes = true;
+            needPushPipeMetaToDataNodes = true;
+          }
+        }
+      }
+    }
   }
 
   @Override
-  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeException {
+  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromWriteConfigNodeConsensus");
 
-    final PipeHandleMetaChangePlan plan = new PipeHandleMetaChangePlan(newPipeMetaList);
+    if (!needWriteConsensusOnConfigNodes) {
+      return;
+    }
+
+    final List<PipeMeta> pipeMetaList = new ArrayList<>();
+    for (final PipeMeta pipeMeta :
+        env.getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .getPipeTaskInfo()
+            .getPipeMetaList()) {
+      pipeMetaList.add(pipeMeta);
+    }
+
     final ConsensusWriteResponse response =
-        env.getConfigManager().getConsensusManager().write(plan);
+        env.getConfigManager()
+            .getConsensusManager()
+            .write(new PipeHandleMetaChangePlan(pipeMetaList));
     if (!response.isSuccessful()) {
       throw new PipeManagementException(response.getErrorMessage());
     }
@@ -97,9 +186,11 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromHandleOnDataNodes");
 
-    if (needPushToDataNodes) {
-      pushPipeMetaToDataNodes(env);
+    if (!needPushPipeMetaToDataNodes) {
+      return;
     }
+
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override
@@ -120,78 +211,71 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: rollbackFromWriteConfigNodeConsensus");
 
-    final PipeHandleMetaChangePlan plan = new PipeHandleMetaChangePlan(oldPipeMetaList);
-    final ConsensusWriteResponse response =
-        env.getConfigManager().getConsensusManager().write(plan);
-    if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
-    }
+    // do nothing
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: rollbackFromOperateOnDataNodes");
 
-    if (needPushToDataNodes) {
-      // rollback to old pipe meta list
-      List<PipeMeta> pipeMetaList =
-          (List<PipeMeta>)
-              env.getConfigManager()
-                  .getPipeManager()
-                  .getPipeTaskCoordinator()
-                  .getPipeTaskInfo()
-                  .getPipeMetaList();
-      pipeMetaList.clear();
-      pipeMetaList.addAll(oldPipeMetaList);
-
-      pushPipeMetaToDataNodes(env);
-    }
+    // do nothing
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.PIPE_HANDLE_META_CHANGE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    ReadWriteIOUtils.write(needPushToDataNodes, stream);
-    ReadWriteIOUtils.write(newPipeMetaList.size(), stream);
-    for (PipeMeta pipeMeta : newPipeMetaList) {
-      pipeMeta.serialize(stream);
+
+    ReadWriteIOUtils.write(dataNodeId, stream);
+
+    ReadWriteIOUtils.write(pipeMetaByteBufferListFromDataNode.size(), stream);
+    for (ByteBuffer pipeMetaByteBuffer : pipeMetaByteBufferListFromDataNode) {
+      ReadWriteIOUtils.write(new Binary(pipeMetaByteBuffer.array()), stream);
     }
-    ReadWriteIOUtils.write(oldPipeMetaList.size(), stream);
-    for (PipeMeta pipeMeta : oldPipeMetaList) {
-      pipeMeta.serialize(stream);
-    }
+
+    ReadWriteIOUtils.write(needWriteConsensusOnConfigNodes, stream);
+    ReadWriteIOUtils.write(needPushPipeMetaToDataNodes, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    needPushToDataNodes = ReadWriteIOUtils.readBool(byteBuffer);
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
+
+    dataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
+
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
-      newPipeMetaList.add(pipeMeta);
+      pipeMetaByteBufferListFromDataNode.add(
+          ByteBuffer.wrap(ReadWriteIOUtils.readBinary(byteBuffer).getValues()));
     }
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; ++i) {
-      final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
-      oldPipeMetaList.add(pipeMeta);
-    }
+
+    needWriteConsensusOnConfigNodes = ReadWriteIOUtils.readBool(byteBuffer);
+    needPushPipeMetaToDataNodes = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (o instanceof PipeHandleMetaChangeProcedure) {
-      PipeHandleMetaChangeProcedure that = (PipeHandleMetaChangeProcedure) o;
-      return this.newPipeMetaList.equals(that.newPipeMetaList)
-          && this.oldPipeMetaList.equals(that.oldPipeMetaList)
-          && this.needPushToDataNodes == that.needPushToDataNodes;
-    }
-    return false;
+    return o instanceof PipeHandleMetaChangeProcedure
+        && super.equals(o)
+        && Objects.equals(dataNodeId, ((PipeHandleMetaChangeProcedure) o).dataNodeId)
+        && Objects.equals(
+            pipeMetaByteBufferListFromDataNode,
+            ((PipeHandleMetaChangeProcedure) o).pipeMetaByteBufferListFromDataNode)
+        && Objects.equals(
+            needWriteConsensusOnConfigNodes,
+            ((PipeHandleMetaChangeProcedure) o).needWriteConsensusOnConfigNodes)
+        && Objects.equals(
+            needPushPipeMetaToDataNodes,
+            ((PipeHandleMetaChangeProcedure) o).needPushPipeMetaToDataNodes);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(newPipeMetaList, oldPipeMetaList, needPushToDataNodes);
+    return Objects.hash(
+        super.hashCode(),
+        dataNodeId,
+        pipeMetaByteBufferListFromDataNode,
+        needWriteConsensusOnConfigNodes,
+        needPushPipeMetaToDataNodes);
   }
 }

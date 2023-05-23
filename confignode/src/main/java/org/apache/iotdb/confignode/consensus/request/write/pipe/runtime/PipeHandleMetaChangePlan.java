@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator;
+package org.apache.iotdb.confignode.consensus.request.write.pipe.runtime;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;

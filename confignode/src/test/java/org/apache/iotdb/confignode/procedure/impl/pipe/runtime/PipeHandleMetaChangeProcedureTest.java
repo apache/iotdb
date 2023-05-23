@@ -31,21 +31,21 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.junit.Test;
 
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class PipeHandleMetaChangeProcedureTest {
+
   @Test
-  public void serializeDeserializeTest() {
+  public void serializeDeserializeTest() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    List<PipeMeta> pipeMetaList = new ArrayList<>();
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "pipeName",
@@ -74,9 +74,11 @@ public class PipeHandleMetaChangeProcedureTest {
                     new PipeTaskMeta(456, 789));
               }
             });
-    pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));
+
     PipeHandleMetaChangeProcedure proc =
-        new PipeHandleMetaChangeProcedure(pipeMetaList, pipeMetaList, true);
+        new PipeHandleMetaChangeProcedure(
+            123,
+            Collections.singletonList(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta).serialize()));
 
     try {
       proc.serialize(outputStream);

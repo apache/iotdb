@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
@@ -29,9 +28,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -46,6 +42,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final Map<Integer, Long> regionDisk;
 
   private final Consumer<Map<Integer, Long>> schemaQuotaRespProcess;
+
   private final PipeRuntimeCoordinator pipeRuntimeCoordinator;
 
   public DataNodeHeartbeatHandler(
@@ -115,11 +112,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
       }
     }
     if (heartbeatResp.getPipeMetaList() != null) {
-      List<PipeMeta> pipeMetaList = new ArrayList<>();
-      for (ByteBuffer byteBuffer : heartbeatResp.getPipeMetaList()) {
-        pipeMetaList.add(PipeMeta.deserialize(byteBuffer));
-      }
-      pipeRuntimeCoordinator.updatePipeMetaKeeper(pipeMetaList);
+      pipeRuntimeCoordinator.parseHeartbeat(nodeId, heartbeatResp.getPipeMetaList());
     }
   }
 
