@@ -63,6 +63,7 @@ public class MigrationTaskManager implements IService {
   @Override
   public void start() throws StartupException {
     if (iotdbConfig.getTierDataDirs().length == 1) {
+      logger.info("tiered storage status: disable");
       return;
     }
     scheduler =
