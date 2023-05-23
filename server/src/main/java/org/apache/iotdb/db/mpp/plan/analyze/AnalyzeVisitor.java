@@ -70,7 +70,6 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardAndViewInExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceLogicalViewVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
@@ -534,20 +533,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     int columnIndex = 0;
     // make sure paths in logical view is fetched
     schemaTree = findAllViewsInTreeThenReFetchAndMerge(schemaTree);
-    RemoveWildcardAndViewInExpressionVisitor removeWildcardAndViewInExpressionVisitor =
-        new RemoveWildcardAndViewInExpressionVisitor();
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
 
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
-          removeWildcardAndViewInExpressionVisitor.process(
-              resultColumn.getExpression(), schemaTree);
-      // record that there is views in this query
-      if (removeWildcardAndViewInExpressionVisitor.isHasProcessedLogicalView()) {
-        analysis.setHasViewsInQuery(true);
-      }
+          ExpressionAnalyzer.removeWildcardAndViewInExpression(
+              resultColumn.getExpression(), analysis, schemaTree);
+
       for (Expression expression : resultExpressions) {
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
