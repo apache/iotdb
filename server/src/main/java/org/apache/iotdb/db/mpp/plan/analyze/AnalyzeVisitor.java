@@ -3233,14 +3233,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Pair<Expression, String>> outputExpressions = queryAnalysis.getOutputExpressions();
       if (queryAnalysis.isFailed()) {
         analysis.setFinishQueryAfterAnalyze(true);
-        analysis.setFailMessage(queryAnalysis.getFailMessage());
+        analysis.setFailStatus(queryAnalysis.getFailStatus());
         return analysis;
       }
       if (outputExpressions == null) {
         analysis.setFinishQueryAfterAnalyze(true);
-        analysis.setFailMessage(
-            "The result columns in select is empty. "
-                + "Please check the query you used to create view");
+        analysis.setFailStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+                "Columns in the query statement is empty. Please check your SQL."));
         return analysis;
       }
       List<Expression> expressionList = new ArrayList<>();
@@ -3261,7 +3262,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (createLogicalViewStatement.getSourceExpressionList().size()
         != createLogicalViewStatement.getTargetPathList().size()) {
       analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailMessage("The number of target and source paths are miss matched!");
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "The number of target and source paths are miss matched! Please check your SQL."));
       return analysis;
     }
 
@@ -3276,10 +3280,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Pair<ISchemaTree, Integer> schemaOfNeedToCheck =
         fetchSchemaOfPathsAndCount(pathsNeedCheck, context);
     if (schemaOfNeedToCheck.right != pathsNeedCheck.size()) {
-      // some source paths is not exist
+      // some source paths is not exist, and could not fetch schema.
       analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailMessage(
-          "Some paths do not exist so you can not create a logical view based on them.");
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "Can not create a logical view based on non-exist time series."));
       return analysis;
     }
     Pair<List<PartialPath>, PartialPath> viewInSourceCheckResult =
@@ -3287,10 +3293,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (viewInSourceCheckResult.right != null) {
       // some source paths is not exist
       analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailMessage(
-          "Path "
-              + viewInSourceCheckResult.right.toString()
-              + " does not exist so you can not create a logical view based on them.");
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "Path "
+                  + viewInSourceCheckResult.right.toString()
+                  + " does not exist! You can not create a logical view based on non-exist time series."));
       return analysis;
     }
     if (viewInSourceCheckResult.left.size() > 0) {
@@ -3299,7 +3307,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (hasViewInSource) {
       // some source paths is logical view
       analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailMessage("You can not create a logical view based on existing views.");
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "Can not create a logical view based on existing views."));
       return analysis;
     }
 
