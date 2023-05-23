@@ -551,10 +551,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           } else {
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
-            //            String alias =
-            //                !Objects.equals(expressionWithoutAlias, expression)
-            //                    ? expression.getStringWithLogicalView()
-            //                    : null;
             String alias = expression.getStringWithLogicalView();
             alias = hasAlias ? resultColumn.getAlias() : alias;
             if (hasAlias) {
