@@ -221,10 +221,9 @@ public class CompactionTaskManager implements IService {
       throws InterruptedException {
     if (init
         && !candidateCompactionTaskQueue.contains(compactionTask)
-        && !isTaskRunning(compactionTask)) {
-      compactionTask.setSourceFilesToCompactionCandidate();
+        && !isTaskRunning(compactionTask)
+        && !compactionTask.setSourceFilesToCompactionCandidate()) {
       candidateCompactionTaskQueue.put(compactionTask);
-
       return true;
     }
     return false;

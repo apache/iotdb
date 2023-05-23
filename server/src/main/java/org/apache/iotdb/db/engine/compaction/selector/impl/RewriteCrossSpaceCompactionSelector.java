@@ -107,8 +107,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return two lists of TsFileResource, the former is selected seqFiles and the latter is selected
    *     unseqFiles or an empty array if there are no proper candidates by the budget.
    */
-  private CrossCompactionTaskResource selectOneTaskResources(
-      CrossSpaceCompactionCandidate candidate) throws MergeException {
+  public CrossCompactionTaskResource selectOneTaskResources(CrossSpaceCompactionCandidate candidate)
+      throws MergeException {
     try {
       LOGGER.debug(
           "Selecting cross compaction task resources from {} seqFile, {} unseqFiles",
@@ -164,6 +164,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
         if (!latestSealedSeqFile.selected) {
           targetSeqFiles.add(latestSealedSeqFile.resource);
+          latestSealedSeqFile.markAsSelected();
         }
       }
 
@@ -276,6 +277,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     CrossSpaceCompactionCandidate candidate =
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
     try {
+      candidate.addReadLock();
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
@@ -309,6 +311,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     } catch (MergeException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
+    } finally {
+      candidate.releaseReadLock();
     }
     return Collections.emptyList();
   }

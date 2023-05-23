@@ -67,7 +67,7 @@ public abstract class AbstractCompactionTask {
     this.serialId = serialId;
   }
 
-  public abstract void setSourceFilesToCompactionCandidate();
+  public abstract boolean setSourceFilesToCompactionCandidate();
 
   protected abstract boolean doCompaction();
 
