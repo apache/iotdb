@@ -50,15 +50,16 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  PipeTaskOperation getOperation() {
+  protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.DROP_PIPE;
   }
 
   @Override
-  boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    return env.getConfigManager()
+    env.getConfigManager()
         .getPipeManager()
         .getPipeTaskCoordinator()
         .getPipeTaskInfo()
@@ -66,13 +67,14 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
@@ -84,7 +86,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeManagementException, IOException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 

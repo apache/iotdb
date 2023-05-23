@@ -195,9 +195,9 @@ Grafana 以网页的 dashboard 形式为您展示数据，在使用时请您打�
 
 Ip 为您的 IoTDB 服务器所在的宿主机 IP，port 为 REST 服务的运行端口（默认 18080）。
 
-输入 IoTDB 服务器的 username 和 password，点击 `Save & Test`，出现 `Success` 则提示配置成功。
+输入 IoTDB 服务器的 username 和 password，点击 `Save & Test`，出现 `Data source is working` 则提示配置成功。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/UserGuide/Ecosystem-Integration/Grafana-plugin/datasource_3.png?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_datasource.png?raw=true">
 
 
 
@@ -324,7 +324,7 @@ Type下拉中有Query、Custom、Text box、Constant、DataSource、Interval、A
 
 3. 在第1步中设置查询和警报条件，Conditions 表示查询条件，可以配置多个组合查询条件。如下图所示：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert3.jpg?raw=true">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/grafana9_alert3.png?raw=true">
 
 图中的查询条件：min() OF A IS BELOW 0，表示将A选项卡中的最小值在0一下就会触发条件，单击该函数可将其更改为另一个函数。
 

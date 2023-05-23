@@ -122,7 +122,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   }
 
   public boolean isWildcard() {
-    return name.equals(ONE_LEVEL_PATH_WILDCARD) || name.equals(MULTI_LEVEL_PATH_WILDCARD);
+    return PathPatternUtil.hasWildcard(name);
   }
 
   public boolean isMultiLevelWildcard() {

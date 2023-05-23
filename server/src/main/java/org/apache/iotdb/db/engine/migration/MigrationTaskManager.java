@@ -109,7 +109,7 @@ public class MigrationTaskManager implements IService {
           try {
             int tierLevel = tsfile.getTierLevel();
             // only migrate closed TsFiles not in the last tier
-            if (tsfile.getStatus() != TsFileResourceStatus.CLOSED
+            if (tsfile.getStatus() != TsFileResourceStatus.NORMAL
                 || tierLevel == iotdbConfig.getTierDataDirs().length - 1) {
               continue;
             }

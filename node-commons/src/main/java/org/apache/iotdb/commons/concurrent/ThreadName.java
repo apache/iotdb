@@ -73,6 +73,7 @@ public enum ThreadName {
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
   MIGRATION_SCHEDULER("Migration-Scheduler"),
   MIGRATION("Migration-Executor-Pool"),
+  PIPE_META_SYNC_SERVICE("Pipe-Meta-Sync-Service"),
   ;
 
   private final String name;

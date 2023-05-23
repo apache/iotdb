@@ -48,6 +48,7 @@ import org.apache.iotdb.pipe.api.event.Event;
  *       cancelled (the `DROP PIPE` command is executed).
  * </ul>
  */
+// TODO: support event lifecycle management
 public interface PipeCollector extends PipePlugin {
 
   /**

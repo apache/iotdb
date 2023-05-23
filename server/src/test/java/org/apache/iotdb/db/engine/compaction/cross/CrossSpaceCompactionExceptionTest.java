@@ -619,14 +619,15 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the first target file should be deleted after compaction, the others still exist
-    for (TsFileResource resource : targetResources) {
-      if (resource.getVersion() == 0) {
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource resource = targetResources.get(i);
+      if (i == 0) {
         Assert.assertFalse(resource.getTsFile().exists());
         Assert.assertFalse(resource.resourceFileExists());
       } else {
         Assert.assertTrue(resource.getTsFile().exists());
         Assert.assertTrue(resource.resourceFileExists());
-        Assert.assertEquals(TsFileResourceStatus.CLOSED, resource.getStatus());
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
       }
     }
   }

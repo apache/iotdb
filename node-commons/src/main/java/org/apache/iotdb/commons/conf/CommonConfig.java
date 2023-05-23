@@ -120,7 +120,7 @@ public class CommonConfig {
 
   private volatile String statusReason = null;
 
-  private int TTimePartitionSlotTransmitLimit = 1000;
+  private final int TTimePartitionSlotTransmitLimit = 1000;
 
   /** Disk Monitor */
   private double diskSpaceWarningThreshold = 0.05;
@@ -371,10 +371,6 @@ public class CommonConfig {
 
   public int getTTimePartitionSlotTransmitLimit() {
     return TTimePartitionSlotTransmitLimit;
-  }
-
-  public void setTTimePartitionSlotTransmitLimit(int TTimePartitionSlotTransmitLimit) {
-    this.TTimePartitionSlotTransmitLimit = TTimePartitionSlotTransmitLimit;
   }
 
   public boolean isStopping() {

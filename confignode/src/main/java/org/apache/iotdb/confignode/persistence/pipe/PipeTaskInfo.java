@@ -18,15 +18,21 @@
  */
 package org.apache.iotdb.confignode.persistence.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
+import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -36,7 +42,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class PipeTaskInfo implements SnapshotProcessor {
 
@@ -63,59 +72,67 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public boolean checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) {
+  public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest)
+      throws PipeManagementException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
-      return true;
+      return;
     }
 
-    LOGGER.info(
+    final String exceptionMessage =
         String.format(
-            "Failed to create pipe [%s], the pipe with the same name has been created",
-            createPipeRequest.getPipeName()));
-    return false;
+            "Failed to create pipe %s, the pipe with the same name has been created",
+            createPipeRequest.getPipeName());
+    LOGGER.info(exceptionMessage);
+    throw new PipeManagementException(exceptionMessage);
   }
 
-  public boolean checkBeforeStartPipe(String pipeName) {
+  public void checkBeforeStartPipe(String pipeName) throws PipeManagementException {
     if (!isPipeExisted(pipeName)) {
-      LOGGER.info(String.format("Failed to start pipe [%s], the pipe does not exist", pipeName));
-      return false;
+      final String exceptionMessage =
+          String.format("Failed to start pipe %s, the pipe does not exist", pipeName);
+      LOGGER.info(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
     if (pipeStatus == PipeStatus.RUNNING) {
-      LOGGER.info(
-          String.format("Failed to start pipe [%s], the pipe is already running", pipeName));
-      return false;
+      final String exceptionMessage =
+          String.format("Failed to start pipe %s, the pipe is already running", pipeName);
+      LOGGER.info(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
     }
     if (pipeStatus == PipeStatus.DROPPED) {
-      LOGGER.info(
-          String.format("Failed to start pipe [%s], the pipe is already dropped", pipeName));
-      return false;
+      final String exceptionMessage =
+          String.format("Failed to start pipe %s, the pipe is already dropped", pipeName);
+      LOGGER.info(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
     }
-
-    return true;
   }
 
-  public boolean checkBeforeStopPipe(String pipeName) {
+  public void checkBeforeStopPipe(String pipeName) throws PipeManagementException {
     if (!isPipeExisted(pipeName)) {
-      LOGGER.info(String.format("Failed to stop pipe [%s], the pipe does not exist", pipeName));
-      return false;
+      final String exceptionMessage =
+          String.format("Failed to stop pipe %s, the pipe does not exist", pipeName);
+      LOGGER.info(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
     if (pipeStatus == PipeStatus.STOPPED) {
-      LOGGER.info(String.format("Failed to stop pipe [%s], the pipe is already stop", pipeName));
-      return false;
+      final String exceptionMessage =
+          String.format("Failed to stop pipe %s, the pipe is already stop", pipeName);
+      LOGGER.info(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
     }
     if (pipeStatus == PipeStatus.DROPPED) {
-      LOGGER.info(String.format("Failed to stop pipe [%s], the pipe is already dropped", pipeName));
-      return false;
+      final String exceptionMessage =
+          String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
+      LOGGER.info(exceptionMessage);
+      throw new PipeManagementException(exceptionMessage);
     }
-
-    return true;
   }
 
-  public boolean checkBeforeDropPipe(String pipeName) {
+  public void checkBeforeDropPipe(String pipeName) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
           "Check before drop pipe {}, pipe exists: {}.",
@@ -123,8 +140,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
           isPipeExisted(pipeName) ? "true" : "false");
     }
     // no matter whether the pipe exists, we allow the drop operation executed on all nodes to
-    // ensure the consistency
-    return true;
+    // ensure the consistency.
+    // DO NOTHING HERE!
   }
 
   private boolean isPipeExisted(String pipeName) {
@@ -158,8 +175,60 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public DataSet showPipes() {
+    return new PipeTableResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        StreamSupport.stream(getPipeMetaList().spliterator(), false).collect(Collectors.toList()));
+  }
+
   public Iterable<PipeMeta> getPipeMetaList() {
     return pipeMetaKeeper.getPipeMetaList();
+  }
+
+  public boolean isEmpty() {
+    return pipeMetaKeeper.isEmpty();
+  }
+
+  /////////////////////////////// Pipe Runtime Management ///////////////////////////////
+
+  /** handle the data region leader change event and update the pipe task meta accordingly */
+  public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
+    plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
+        .forEach(
+            (dataRegionGroupId, newDataRegionLeader) ->
+                pipeMetaKeeper
+                    .getPipeMetaList()
+                    .forEach(
+                        pipeMeta -> {
+                          final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                              pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+
+                          if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
+                            // if the data region leader is -1, it means the data region is
+                            // removed
+                            if (newDataRegionLeader != -1) {
+                              consensusGroupIdToTaskMetaMap
+                                  .get(dataRegionGroupId)
+                                  .setRegionLeader(newDataRegionLeader);
+                            } else {
+                              consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
+                            }
+                          } else {
+                            // if CN does not contain the data region group, it means the data
+                            // region group is newly added.
+                            if (newDataRegionLeader != -1) {
+                              consensusGroupIdToTaskMetaMap.put(
+                                  // TODO: the progress index should be passed from the leader
+                                  // correctly
+                                  dataRegionGroupId, new PipeTaskMeta(0, newDataRegionLeader));
+                            } else {
+                              LOGGER.warn(
+                                  "The pipe task meta does not contain the data region group {} or the data region group has already been removed",
+                                  dataRegionGroupId);
+                            }
+                          }
+                        }));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

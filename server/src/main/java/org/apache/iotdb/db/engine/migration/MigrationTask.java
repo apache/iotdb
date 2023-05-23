@@ -86,7 +86,7 @@ public abstract class MigrationTask implements Runnable {
   }
 
   protected boolean canMigrate() {
-    return tsFile.getStatus() == TsFileResourceStatus.CLOSED;
+    return tsFile.getStatus() == TsFileResourceStatus.NORMAL;
   }
 
   public abstract void migrate();

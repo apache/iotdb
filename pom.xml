@@ -99,7 +99,8 @@
         <module>grafana-connector</module>
         <module>spark-tsfile</module>
         <module>hadoop</module>
-        <module>spark-iotdb-connector</module>
+        <module>spark-iotdb-connector/scala_2.11</module>
+        <module>spark-iotdb-connector/scala_2.12</module>
         <module>flink-tsfile-connector</module>
         <module>flink-iotdb-connector</module>
         <module>distribution</module>
@@ -134,15 +135,15 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.assembly.version>3.1.0</maven.assembly.version>
-        <scala.library.version>2.11</scala.library.version>
-        <scala.version>2.11.12</scala.version>
+        <scala.library.version>2.12</scala.library.version>
+        <scala.version>2.12.10</scala.version>
         <hadoop2.version>2.10.1</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
         <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
         <logback.version>1.2.11</logback.version>
         <joda.version>2.9.9</joda.version>
-        <spark.version>2.4.5</spark.version>
+        <spark.version>3.3.2</spark.version>
         <flink.version>1.14.6</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
@@ -204,7 +205,7 @@
         <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
-        <scalatest_2.11.version>3.0.5</scalatest_2.11.version>
+        <scalatest_2.12.version>3.2.14</scalatest_2.12.version>
         <io.airlift.units.version>1.6</io.airlift.units.version>
         <io.airlift.slice.version>0.41</io.airlift.slice.version>
         <dep.airlift.version>200</dep.airlift.version>
@@ -424,16 +425,6 @@
                 </exclusions>
             </dependency>
             <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-core_2.11</artifactId>
-                <version>${spark.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-sql_2.11</artifactId>
-                <version>${spark.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>jackson-core-asl</artifactId>
                 <version>${jackson-core-asl.version}</version>
@@ -481,19 +472,9 @@
                 <version>${powermock-core.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.scala-lang</groupId>
-                <artifactId>scala-library</artifactId>
-                <version>${scala.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.scala-lang</groupId>
-                <artifactId>scala-reflect</artifactId>
-                <version>${scala.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.scalatest</groupId>
-                <artifactId>scalatest_2.11</artifactId>
-                <version>${scalatest_2.11.version}</version>
+                <artifactId>scalatest_2.12</artifactId>
+                <version>${scalatest_2.12.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>

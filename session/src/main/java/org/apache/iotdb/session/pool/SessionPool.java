@@ -119,6 +119,9 @@ public class SessionPool implements ISessionPool {
   // Redirect-able SessionPool
   private final List<String> nodeUrls;
 
+  // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port, host:port]"
+  private final String formattedNodeUrls;
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
@@ -310,6 +313,7 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.formattedNodeUrls = String.format("%s:%s", host, port);
   }
 
   public SessionPool(
@@ -344,6 +348,7 @@ public class SessionPool implements ISessionPool {
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.formattedNodeUrls = nodeUrls.toString();
   }
 
   private Session constructNewSession() {
@@ -417,10 +422,9 @@ public class SessionPool implements ISessionPool {
           long timeOut = Math.min(waitToGetSessionTimeoutInMs, 60_000);
           if (System.currentTimeMillis() - start > timeOut) {
             logger.warn(
-                "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
+                "the SessionPool has wait for {} seconds to get a new connection: {} with {}, {}",
                 (System.currentTimeMillis() - start) / 1000,
-                host,
-                port,
+                formattedNodeUrls,
                 user,
                 password);
             logger.warn(
@@ -430,7 +434,7 @@ public class SessionPool implements ISessionPool {
                 size);
             if (System.currentTimeMillis() - start > waitToGetSessionTimeoutInMs) {
               throw new IoTDBConnectionException(
-                  String.format("timeout to get a connection from %s:%s", host, port));
+                  String.format("timeout to get a connection from %s", formattedNodeUrls));
             }
           }
         } catch (InterruptedException e) {
@@ -438,6 +442,9 @@ public class SessionPool implements ISessionPool {
         }
 
         session = queue.poll();
+
+        // for putBack or size--
+        this.notify();
 
         if (closed) {
           throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
@@ -599,8 +606,8 @@ public class SessionPool implements ISessionPool {
     if (times == FINAL_RETRY) {
       throw new IoTDBConnectionException(
           String.format(
-              "retry to execute statement on %s:%s failed %d times: %s",
-              host, port, RETRY, e.getMessage()),
+              "retry to execute statement on %s failed %d times: %s",
+              formattedNodeUrls, RETRY, e.getMessage()),
           e);
     }
   }
@@ -659,6 +666,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertTablet", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -700,6 +711,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedTablet", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -747,6 +762,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertTablets", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -772,6 +791,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedTablets", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -804,6 +827,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecords", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -837,6 +864,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedRecords", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -870,6 +901,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -904,6 +939,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -937,6 +976,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertStringRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -972,6 +1015,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1008,6 +1055,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1043,6 +1094,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertStringRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1077,6 +1132,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1110,6 +1169,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedStringRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1146,6 +1209,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1181,6 +1248,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedStringRecordsOfOneDevice", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1212,6 +1283,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecords", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1244,6 +1319,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedRecords", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1276,6 +1355,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecord", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1308,6 +1391,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedRecord", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1336,6 +1423,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecord", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1364,6 +1455,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertAlignedRecord", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1388,6 +1483,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in testInsertTablet", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1412,6 +1511,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in testInsertTablet", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1436,6 +1539,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in testInsertTablets", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1460,6 +1567,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in testInsertTablets", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1488,6 +1599,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in testInsertRecords", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1517,6 +1632,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in testInsertRecords", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1542,6 +1661,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in testInsertRecord", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1571,6 +1694,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in testInsertRecord", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1596,6 +1723,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteTimeseries", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1621,6 +1752,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteTimeseries", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1647,6 +1782,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteData", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1673,6 +1812,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteData", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1700,6 +1843,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteData", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1722,6 +1869,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in setStorageGroup", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1744,6 +1895,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteStorageGroup", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1766,6 +1921,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteStorageGroups", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1786,6 +1945,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createDatabase", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1806,6 +1969,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteDatabase", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1826,6 +1993,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteDatabases", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1847,6 +2018,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createTimeseries", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1876,6 +2051,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createTimeseries", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1912,6 +2091,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createMultiTimeseries", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1932,6 +2115,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in checkTimeseriesExists", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here.
@@ -1959,6 +2146,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createSchemaTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -1997,6 +2188,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createSchemaTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2043,6 +2238,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createSchemaTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2069,6 +2268,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in addAlignedMeasurementsInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2095,6 +2298,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in addAlignedMeasurementInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2121,6 +2328,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in addUnalignedMeasurementsInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2147,6 +2358,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in addUnalignedMeasurementInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2167,6 +2382,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in deleteNodeInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2187,6 +2406,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in countMeasurementsInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     return -1;
@@ -2208,6 +2431,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in isMeasurementInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     return false;
@@ -2229,6 +2456,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in isPathExistInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     return false;
@@ -2250,6 +2481,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in showMeasurementsInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     return null;
@@ -2271,6 +2506,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in showMeasurementsInTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     return null;
@@ -2292,6 +2531,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in showAllTemplates", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     return null;
@@ -2313,6 +2556,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in showPathsTemplateSetOn", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     return null;
@@ -2334,6 +2581,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in showPathsTemplateUsingOn", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     return null;
@@ -2356,6 +2607,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in setSchemaTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2377,6 +2632,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in unsetSchemaTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2397,6 +2656,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in dropSchemaTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2417,6 +2680,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createTimeseriesUsingSchemaTemplate", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2448,6 +2715,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeQueryStatement", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
@@ -2482,6 +2753,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeQueryStatement", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
@@ -2509,6 +2784,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeNonQueryStatement", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
   }
@@ -2532,6 +2811,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeRawDataQuery", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
@@ -2555,6 +2838,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeLastDataQuery", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
@@ -2578,6 +2865,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeLastDataQuery", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
@@ -2602,6 +2893,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeAggregationQuery", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
@@ -2627,6 +2922,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeAggregationQuery", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
@@ -2656,6 +2955,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeAggregationQuery", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
@@ -2687,6 +2990,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeAggregationQuery", e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here

@@ -200,14 +200,6 @@ public class CommonDescriptor {
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
 
-    config.setTTimePartitionSlotTransmitLimit(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "time_partition_slot_transmit_limit",
-                    String.valueOf(config.getTTimePartitionSlotTransmitLimit()))
-                .trim()));
-
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",

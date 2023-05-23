@@ -78,7 +78,7 @@ IoTDB> drop timeseries root.ln.wf02.*
 
 ### 查看时间序列
 
-* SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
+* SHOW LATEST? TIMESERIES pathPattern? timeseriesWhereClause? limitClause?
 
   SHOW TIMESERIES 中可以有四种可选的子句，查询结果为这些时间序列的所有信息
 
@@ -136,24 +136,78 @@ It costs 0.004s
 show timeseries root.ln.** limit 10 offset 10
 ```
 
+* SHOW TIMESERIES WHERE TIMESERIES contains 'containStr'
+
+  对查询结果集根据 timeseries 名称进行字符串模糊匹配过滤。例如：
+
+```
+show timeseries root.ln.** where timeseries contains 'wf01.wt'
+```
+
+执行结果为：
+
+```
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+|                     timeseries|   alias|     database|dataType|encoding|compression|                                       tags|                                              attributes|deadband|deadband parameters|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
+|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|    null|               null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+Total line number = 2
+It costs 0.016s
+```
+
+* SHOW TIMESERIES WHERE DataType=type
+
+  对查询结果集根据时间序列数据类型进行过滤。例如：
+
+```
+show timeseries root.ln.** where dataType=FLOAT
+```
+
+执行结果为:
+
+```
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+|                     timeseries|   alias|     database|dataType|encoding|compression|                                       tags|                                              attributes|deadband|deadband parameters|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
+|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|    null|               null|
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|    null|               null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+--------+-------------------+
+Total line number = 3
+It costs 0.016s
+
+```
+
+
 * SHOW LATEST TIMESERIES
 
   表示查询出的时间序列需要按照最近插入时间戳降序排列
-  
+
 
 需要注意的是，当查询路径不存在时，系统会返回 0 条时间序列。
 
 ### 统计时间序列总数
 
 IoTDB 支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL 语句如下所示：
+
+* 可以通过 `WHERE` 条件对时间序列名称进行字符串模糊匹配，语法为： `COUNT TIMESERIES <Path> WHERE TIMESERIES contains 'containStr'` 。
+* 可以通过 `WHERE` 条件对时间序列数据类型进行过滤，语法为： `COUNT TIMESERIES <Path> WHERE DataType=<DataType>'`。
+* 可以通过 `WHERE` 条件对标签点进行过滤，语法为： `COUNT TIMESERIES <Path> WHERE TAGS(key)='value'` 或 `COUNT TIMESERIES <Path> WHERE TAGS(key) contains 'value'`。
+* 可以通过定义`LEVEL`来统计指定层级下的时间序列个数。这条语句可以用来统计每一个设备下的传感器数量，语法为：`COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`。
+
 ```
 IoTDB > COUNT TIMESERIES root.**
 IoTDB > COUNT TIMESERIES root.ln.**
 IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+IoTDB > COUNT TIMESERIES root.** WHERE TIMESERIES contains 'sgcc' 
+IoTDB > COUNT TIMESERIES root.** WHERE DATATYPE = INT64
+IoTDB > COUNT TIMESERIES root.** WHERE TAGS(unit) contains 'c' 
+IoTDB > COUNT TIMESERIES root.** WHERE TAGS(unit) = 'c' 
+IoTDB > COUNT TIMESERIES root.** WHERE TIMESERIES contains 'sgcc' group by level = 1
 ```
-
-除此之外，还可以通过定义`LEVEL`来统计指定层级下的时间序列个数。这条语句可以用来统计每一个设备下的传感器数量，语法为：`COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`。
 
 例如有如下时间序列（可以使用`show timeseries`展示所有时间序列）：
 
@@ -270,9 +324,9 @@ ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
-* 使用标签作为过滤条件查询时间序列
+* 使用标签作为过滤条件查询时间序列，使用 TAGS(tagKey) 来标识作为过滤条件的标签
 ```
-SHOW TIMESERIES (<`PathPattern`>)? WhereClause
+SHOW TIMESERIES (<`PathPattern`>)? timeseriesWhereClause
 ```
 
 返回给定路径的下的所有满足条件的时间序列信息，SQL 语句如下所示：
@@ -280,8 +334,8 @@ SHOW TIMESERIES (<`PathPattern`>)? WhereClause
 ```
 ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
 ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln.** where unit=c
-show timeseries root.ln.** where description contains 'test1'
+show timeseries root.ln.** where TAGS(unit)='c'
+show timeseries root.ln.** where TAGS(description) contains 'test1'
 ```
 
 执行结果分别为：
@@ -307,16 +361,16 @@ It costs 0.004s
 - 使用标签作为过滤条件统计时间序列数量
 
 ```
-COUNT TIMESERIES (<`PathPattern`>)? WhereClause
-COUNT TIMESERIES (<`PathPattern`>)? WhereClause GROUP BY LEVEL=<INTEGER>
+COUNT TIMESERIES (<`PathPattern`>)? timeseriesWhereClause
+COUNT TIMESERIES (<`PathPattern`>)? timeseriesWhereClause GROUP BY LEVEL=<INTEGER>
 ```
 
 返回给定路径的下的所有满足条件的时间序列的数量，SQL 语句如下所示：
 
 ```
 count timeseries
-count timeseries root.** where unit = c
-count timeseries root.** where unit = c group by level = 2
+count timeseries root.** where TAGS(unit)='c'
+count timeseries root.** where TAGS(unit)='c' group by level = 2
 ```
 
 执行结果分别为：
@@ -330,7 +384,7 @@ IoTDB> count timeseries
 +-----------------+
 Total line number = 1
 It costs 0.019s
-IoTDB> count timeseries root.** where unit = c
+IoTDB> count timeseries root.** where TAGS(unit)='c'
 +-----------------+
 |count(timeseries)|
 +-----------------+
@@ -338,7 +392,7 @@ IoTDB> count timeseries root.** where unit = c
 +-----------------+
 Total line number = 1
 It costs 0.020s
-IoTDB> count timeseries root.** where unit = c group by level = 2
+IoTDB> count timeseries root.** where TAGS(unit)='c' group by level = 2
 +--------------+-----------------+
 |        column|count(timeseries)|
 +--------------+-----------------+
@@ -373,7 +427,7 @@ IoTDB> show timeseries
 支持查询：
 
 ```
-IoTDB> show timeseries where tag1='v1'
+IoTDB> show timeseries where TAGS(tag1)='v1'
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+--------+-------------------+
 |    timeseries|alias|     database|dataType|encoding|compression|                     tags|                 attributes|deadband|deadband parameters|
 +--------------+-----+-------------+--------+--------+-----------+-------------------------+---------------------------+--------+-------------------+

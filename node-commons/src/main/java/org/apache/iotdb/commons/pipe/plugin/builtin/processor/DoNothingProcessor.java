@@ -24,7 +24,7 @@ import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
@@ -46,19 +46,18 @@ public class DoNothingProcessor implements PipeProcessor {
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    eventCollector.collectTabletInsertionEvent(tabletInsertionEvent);
+    eventCollector.collect(tabletInsertionEvent);
   }
 
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    eventCollector.collectTsFileInsertionEvent(tsFileInsertionEvent);
+    eventCollector.collect(tsFileInsertionEvent);
   }
 
   @Override
-  public void process(DeletionEvent deletionEvent, EventCollector eventCollector)
-      throws IOException {
-    eventCollector.collectDeletionEvent(deletionEvent);
+  public void process(Event event, EventCollector eventCollector) throws IOException {
+    eventCollector.collect(event);
   }
 
   @Override
