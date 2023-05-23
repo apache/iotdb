@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -28,15 +30,46 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
   private File tsFile;
+  private final AtomicBoolean isClosed;
 
-  public PipeTsFileInsertionEvent(File tsFile) {
-    this.tsFile = tsFile;
+  public PipeTsFileInsertionEvent(TsFileResource resource) {
+    tsFile = resource.getTsFile();
+
+    isClosed = new AtomicBoolean(resource.isClosed());
+    // register close listener if TsFile is not closed
+    if (!isClosed.get()) {
+      final TsFileProcessor processor = resource.getProcessor();
+      if (processor != null) {
+        processor.addCloseFileListener(
+            o -> {
+              synchronized (isClosed) {
+                isClosed.set(true);
+                isClosed.notifyAll();
+              }
+            });
+      }
+    }
+  }
+
+  public void waitForTsFileClose() throws InterruptedException {
+    if (!isClosed.get()) {
+      synchronized (isClosed) {
+        while (!isClosed.get()) {
+          isClosed.wait();
+        }
+      }
+    }
+  }
+
+  public File getTsFile() {
+    return tsFile;
   }
 
   @Override

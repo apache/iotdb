@@ -198,7 +198,7 @@ public class PipePluginAgent {
         reflect(
             collectorParameters.getStringOrDefault(
                 PipeCollectorConstant.COLLECTOR_KEY,
-                BuiltinPipePlugin.DEFAULT_COLLECTOR.getPipePluginName()));
+                BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName()));
   }
 
   public PipeProcessor reflectProcessor(PipeParameters processorParameters) {

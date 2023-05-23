@@ -221,7 +221,7 @@ public class Coordinator {
         queryExecutionMap.remove(queryId);
         if (queryExecution.isQuery()) {
           long costTime = queryExecution.getTotalExecutionTime();
-          if (costTime >= CONFIG.getSlowQueryThreshold()) {
+          if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, sql is {}",
                 costTime,

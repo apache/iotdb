@@ -87,7 +87,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -597,13 +596,6 @@ public interface IManager {
    * @return All pipe information.
    */
   TGetAllPipeInfoResp getAllPipeInfo();
-
-  /**
-   * Record PipeMessage
-   *
-   * @return TSStatus
-   */
-  TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
   /**
    * Get RegionId。used for Show cluster slots information in

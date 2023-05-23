@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.schema.filter;
 
+import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -57,6 +58,8 @@ public abstract class SchemaFilter {
         return new TagFilter(byteBuffer);
       case PATH_CONTAINS:
         return new PathContainsFilter(byteBuffer);
+      case DATA_TYPE:
+        return new DataTypeFilter(byteBuffer);
       default:
         throw new IllegalArgumentException("Unsupported schema filter type: " + type);
     }

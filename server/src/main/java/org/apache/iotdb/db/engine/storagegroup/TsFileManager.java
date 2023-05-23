@@ -346,6 +346,7 @@ public class TsFileManager {
     readLock();
     try {
       Set<Long> timePartitions = new HashSet<>(sequenceFiles.keySet());
+      timePartitions.addAll(unsequenceFiles.keySet());
       return timePartitions;
     } finally {
       readUnlock();
