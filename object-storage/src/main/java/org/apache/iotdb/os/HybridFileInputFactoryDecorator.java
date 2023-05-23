@@ -20,7 +20,6 @@ package org.apache.iotdb.os;
 
 import org.apache.iotdb.os.conf.ObjectStorageConfig;
 import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
-import org.apache.iotdb.os.io.aws.AWSS3Config;
 import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.FileInputFactory;
 import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.HybridFileInputFactory;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
@@ -50,7 +49,7 @@ public class HybridFileInputFactoryDecorator implements FileInputFactory {
     File file = new File(filePath);
     if (!file.exists()) {
       return fileInputFactory.getTsFileInput(
-          FSUtils.parseLocalTsFile2OSFile(file, AWSS3Config.getBucketName(), dataNodeId).getPath());
+          FSUtils.parseLocalTsFile2OSFile(file, config.getBucketName(), dataNodeId).getPath());
     }
     return fileInputFactory.getTsFileInput(filePath);
   }

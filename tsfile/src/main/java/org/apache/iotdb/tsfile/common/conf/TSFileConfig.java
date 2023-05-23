@@ -119,7 +119,7 @@ public class TSFileConfig implements Serializable {
   /** Default endian value is BIG_ENDIAN. */
   private String endian = "BIG_ENDIAN";
   /** Default storage is in local file system */
-  private FSType TSFileStorageFs = FSType.LOCAL;
+  private FSType[] TSFileStorageFs = FSType.values();
   /** Default core-site.xml file path is /etc/hadoop/conf/core-site.xml */
   private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
   /** Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml */
@@ -348,11 +348,11 @@ public class TSFileConfig implements Serializable {
     this.bloomFilterErrorRate = bloomFilterErrorRate;
   }
 
-  public FSType getTSFileStorageFs() {
+  public FSType[] getTSFileStorageFs() {
     return this.TSFileStorageFs;
   }
 
-  public void setTSFileStorageFs(FSType fileStorageFs) {
+  public void setTSFileStorageFs(FSType[] fileStorageFs) {
     this.TSFileStorageFs = fileStorageFs;
   }
 

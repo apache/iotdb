@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.File;
 
@@ -29,11 +27,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 public class FilePathUtils {
 
-  private static final String PATH_SPLIT_STRING =
-      TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs() == FSType.LOCAL
-              && "\\".equals(File.separator)
-          ? "\\\\"
-          : "/";
+  private static final String LOCAL_PATH_SPLIT_STRING = "\\".equals(File.separator) ? "\\\\" : "/";
   public static final String FILE_NAME_SEPARATOR = "-";
 
   private FilePathUtils() {
@@ -64,7 +58,11 @@ public class FilePathUtils {
    * @param tsFileAbsolutePath the tsFile Absolute Path
    */
   public static String[] splitTsFilePath(String tsFileAbsolutePath) {
-    return tsFileAbsolutePath.split(PATH_SPLIT_STRING);
+    String separator = LOCAL_PATH_SPLIT_STRING;
+    if (!FSUtils.isLocal(tsFileAbsolutePath)) {
+      separator = "/";
+    }
+    return tsFileAbsolutePath.split(separator);
   }
 
   public static String getLogicalStorageGroupName(String tsFileAbsolutePath) {

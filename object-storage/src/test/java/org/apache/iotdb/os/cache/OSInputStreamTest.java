@@ -28,7 +28,9 @@ import org.apache.iotdb.os.io.aws.S3MetaData;
 import org.apache.iotdb.os.utils.ObjectStorageType;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -55,8 +57,20 @@ public class OSInputStreamTest {
       new OSFile(new OSURI("test_bucket", "test_key"), ObjectStorageType.TEST);
 
   @Mock private ObjectStorageConnector connector;
+  private static ObjectStorageType prevObjectStorageType;
   private int prevCachePageSize;
   private String[] prevCacheDirs;
+
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    prevObjectStorageType = config.getOsType();
+    config.setOsType(ObjectStorageType.TEST);
+  }
+
+  @AfterClass
+  public static void afterClass() throws Exception {
+    config.setOsType(prevObjectStorageType);
+  }
 
   @Before
   public void setUp() throws Exception {
