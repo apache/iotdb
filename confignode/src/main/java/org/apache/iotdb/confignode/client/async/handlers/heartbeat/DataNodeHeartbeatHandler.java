@@ -19,14 +19,19 @@
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.pipe.runtime.PipeRuntimeCoordinator;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -41,6 +46,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final Map<Integer, Long> regionDisk;
 
   private final Consumer<Map<Integer, Long>> schemaQuotaRespProcess;
+  private final PipeRuntimeCoordinator pipeRuntimeCoordinator;
 
   public DataNodeHeartbeatHandler(
       int nodeId,
@@ -48,7 +54,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
       Map<Integer, Long> deviceNum,
       Map<Integer, Long> timeSeriesNum,
       Map<Integer, Long> regionDisk,
-      Consumer<Map<Integer, Long>> schemaQuotaRespProcess) {
+      Consumer<Map<Integer, Long>> schemaQuotaRespProcess,
+      PipeRuntimeCoordinator pipeRuntimeCoordinator) {
 
     this.nodeId = nodeId;
     this.loadCache = loadCache;
@@ -56,6 +63,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
     this.timeSeriesNum = timeSeriesNum;
     this.regionDisk = regionDisk;
     this.schemaQuotaRespProcess = schemaQuotaRespProcess;
+    this.pipeRuntimeCoordinator = pipeRuntimeCoordinator;
   }
 
   @Override
@@ -105,6 +113,13 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
           schemaQuotaRespProcess.accept(heartbeatResp.getRegionTimeSeriesNumMap());
           break;
       }
+    }
+    if (heartbeatResp.getPipeMetaList() != null) {
+      List<PipeMeta> pipeMetaList = new ArrayList<>();
+      for (ByteBuffer byteBuffer : heartbeatResp.getPipeMetaList()) {
+        pipeMetaList.add(PipeMeta.deserialize(byteBuffer));
+      }
+      pipeRuntimeCoordinator.updatePipeMetaKeeper(pipeMetaList);
     }
   }
 

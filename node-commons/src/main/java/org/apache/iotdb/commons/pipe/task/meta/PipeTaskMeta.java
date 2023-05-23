@@ -63,6 +63,11 @@ public class PipeTaskMeta {
     return exceptionMessages;
   }
 
+  public void setExceptionMessages(Collection<? extends PipeRuntimeException> exceptionMessages) {
+    this.exceptionMessages.clear();
+    this.exceptionMessages.addAll(exceptionMessages);
+  }
+
   public void mergeExceptionMessages(
       Collection<? extends PipeRuntimeException> newExceptionMessages) {
     exceptionMessages.addAll(newExceptionMessages);

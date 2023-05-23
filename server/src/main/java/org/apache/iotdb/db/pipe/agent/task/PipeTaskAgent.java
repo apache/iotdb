@@ -68,6 +68,10 @@ public class PipeTaskAgent {
     pipeTaskManager = new PipeTaskManager();
   }
 
+  public PipeMetaKeeper getPipeMetaKeeper() {
+    return pipeMetaKeeper;
+  }
+
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   // TODO: handle progress index

@@ -64,6 +64,10 @@ public class HeartbeatService {
   private final ScheduledExecutorService heartBeatExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
   private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
+  private final AtomicInteger heartbeatForPipeCounter = new AtomicInteger(0);
+
+  // TODO: make this configurable
+  private final int PIPE_META_HEARTBEAT_INTERVAL = 180;
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
     this.configManager = configManager;
@@ -132,6 +136,11 @@ public class HeartbeatService {
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
     }
+
+    /* Update heartbeatForPipe counter */
+    heartbeatReq.setNeedPipeMetaList(
+        heartbeatForPipeCounter.get() % PIPE_META_HEARTBEAT_INTERVAL == 0);
+    heartbeatForPipeCounter.getAndUpdate(x -> (x + 1) % PIPE_META_HEARTBEAT_INTERVAL);
     return heartbeatReq;
   }
 
@@ -175,7 +184,8 @@ public class HeartbeatService {
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
               configManager.getClusterQuotaManager().getRegionDisk(),
-              configManager.getClusterSchemaManager()::updateSchemaQuota);
+              configManager.getClusterSchemaManager()::updateSchemaQuota,
+              configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
