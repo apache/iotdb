@@ -147,9 +147,9 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public String getStringWithLogicalViewInternal() {
-    String left = this.getLeftExpression().getViewPathOfThisExpression();
-    String right = this.getRightExpression().getViewPathOfThisExpression();
+  public String getStringWithViewOfThisExpressionInternal() {
+    String left = this.getLeftExpression().getStringWithViewOfThisExpression();
+    String right = this.getRightExpression().getStringWithViewOfThisExpression();
 
     StringBuilder builder = new StringBuilder();
     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {

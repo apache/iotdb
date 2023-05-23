@@ -176,27 +176,24 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public String getStringWithLogicalViewInternal() {
-    if (parametersString == null) {
-      StringBuilder builder = new StringBuilder();
-      if (!expressions.isEmpty()) {
-        builder.append(expressions.get(0).getViewPathOfThisExpression());
-        for (int i = 1; i < expressions.size(); ++i) {
-          builder.append(", ").append(expressions.get(i).getViewPathOfThisExpression());
-        }
+  public String getStringWithViewOfThisExpressionInternal() {
+    StringBuilder builder = new StringBuilder();
+    if (!expressions.isEmpty()) {
+      builder.append(expressions.get(0).getStringWithViewOfThisExpression());
+      for (int i = 1; i < expressions.size(); ++i) {
+        builder.append(", ").append(expressions.get(i).getStringWithViewOfThisExpression());
       }
-      if (!functionAttributes.isEmpty()) {
-        // Some built-in scalar functions may have different header.
-        if (BuiltinScalarFunction.contains(functionName)) {
-          BuiltInScalarFunctionHelperFactory.createHelper(functionName)
-              .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
-        } else {
-          appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
-        }
-      }
-      parametersString = builder.toString();
     }
-    return functionName + "(" + parametersString + ")";
+    if (!functionAttributes.isEmpty()) {
+      // Some built-in scalar functions may have different header.
+      if (BuiltinScalarFunction.contains(functionName)) {
+        BuiltInScalarFunctionHelperFactory.createHelper(functionName)
+            .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
+      } else {
+        appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
+      }
+    }
+    return functionName + "(" + builder + ")";
   }
 
   @Override

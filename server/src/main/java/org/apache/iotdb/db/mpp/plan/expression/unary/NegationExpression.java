@@ -56,14 +56,14 @@ public class NegationExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithLogicalViewInternal() {
+  public String getStringWithViewOfThisExpressionInternal() {
     return expression instanceof TimeSeriesOperand
             || expression instanceof FunctionExpression
             || expression instanceof NullOperand
             || (expression instanceof ConstantOperand
                 && !((ConstantOperand) expression).isNegativeNumber())
-        ? "-" + expression.getViewPathOfThisExpression()
-        : "-(" + expression.getViewPathOfThisExpression() + ")";
+        ? "-" + expression.getStringWithViewOfThisExpression()
+        : "-(" + expression.getStringWithViewOfThisExpression() + ")";
   }
 
   @Override

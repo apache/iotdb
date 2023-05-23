@@ -143,8 +143,8 @@ public class LikeExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithLogicalViewInternal() {
-    return expression.getViewPathOfThisExpression() + " LIKE '" + pattern + "'";
+  public String getStringWithViewOfThisExpressionInternal() {
+    return expression.getStringWithViewOfThisExpression() + " LIKE '" + pattern + "'";
   }
 
   @Override

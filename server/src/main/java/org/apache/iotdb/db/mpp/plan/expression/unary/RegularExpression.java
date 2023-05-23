@@ -90,8 +90,8 @@ public class RegularExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithLogicalViewInternal() {
-    return expression.getViewPathOfThisExpression() + " REGEXP '" + patternString + "'";
+  public String getStringWithViewOfThisExpressionInternal() {
+    return expression.getStringWithViewOfThisExpression() + " REGEXP '" + patternString + "'";
   }
 
   @Override

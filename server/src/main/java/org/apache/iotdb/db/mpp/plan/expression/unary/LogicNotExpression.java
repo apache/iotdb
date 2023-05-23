@@ -53,12 +53,12 @@ public class LogicNotExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithLogicalViewInternal() {
+  public String getStringWithViewOfThisExpressionInternal() {
     return expression instanceof FunctionExpression
             || expression instanceof ConstantOperand
             || expression instanceof TimeSeriesOperand
-        ? "!" + expression.getViewPathOfThisExpression()
-        : "!(" + expression.getViewPathOfThisExpression() + ")";
+        ? "!" + expression.getStringWithViewOfThisExpression()
+        : "!(" + expression.getStringWithViewOfThisExpression() + ")";
   }
 
   @Override

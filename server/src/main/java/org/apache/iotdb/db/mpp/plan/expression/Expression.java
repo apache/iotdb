@@ -383,12 +383,12 @@ public abstract class Expression extends StatementNode {
     this.viewPathOfThisExpression = viewPathOfThisExpression;
   }
 
-  public String getViewPathOfThisExpression() {
+  public String getStringWithViewOfThisExpression() {
     if (this.viewPathOfThisExpression == null) {
-      return this.getStringWithLogicalViewInternal();
+      return this.getStringWithViewOfThisExpressionInternal();
     }
     return this.viewPathOfThisExpression.getFullPath();
   }
 
-  public abstract String getStringWithLogicalViewInternal();
+  public abstract String getStringWithViewOfThisExpressionInternal();
 }
