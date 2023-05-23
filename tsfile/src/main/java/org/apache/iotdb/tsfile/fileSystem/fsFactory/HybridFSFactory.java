@@ -99,13 +99,30 @@ public class HybridFSFactory implements FSFactory {
   }
 
   @Override
-  public void moveFile(File srcFile, File destFile) {
-    // TODO
+  public void moveFile(File srcFile, File destFile) throws IOException {
+    FSType srcType = FSUtils.getFSType(srcFile);
+    FSType destType = FSUtils.getFSType(destFile);
+    if (srcType == destType) {
+      fsFactories.get(destType).moveFile(srcFile, destFile);
+    } else {
+      throw new IOException(
+          String.format("Doesn't support move file from %s to %s.", srcType, destType));
+    }
   }
 
   @Override
   public void copyFile(File srcFile, File destFile) throws IOException {
-    // TODO
+    FSType srcType = FSUtils.getFSType(srcFile);
+    FSType destType = FSUtils.getFSType(destFile);
+    if (srcType == destType || (srcType == FSType.LOCAL && destType == FSType.OBJECT_STORAGE)) {
+      fsFactories.get(destType).copyFile(srcFile, destFile);
+    } else if ((srcType == FSType.LOCAL || srcType == FSType.HDFS)
+        && (destType == FSType.LOCAL || destType == FSType.HDFS)) {
+      fsFactories.get(FSType.HDFS).copyFile(srcFile, destFile);
+    } else {
+      throw new IOException(
+          String.format("Doesn't support move file from %s to %s.", srcType, destType));
+    }
   }
 
   @Override

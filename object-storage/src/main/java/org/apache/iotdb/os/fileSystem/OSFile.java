@@ -430,6 +430,22 @@ public class OSFile extends File {
     }
   }
 
+  public void putFile(File localFile) {
+    try {
+      connector.putLocalFile(osUri, localFile);
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to put local file {} to the object storage {}.", localFile, osUri, e);
+    }
+  }
+
+  public void copyTo(File destFile) {
+    try {
+      connector.copyRemoteFile(osUri, ((OSFile) destFile).toOSURI());
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to copy file {} to {}.", osUri, destFile, e);
+    }
+  }
+
   // test only
   public void setConnector(ObjectStorageConnector connector) {
     this.connector = connector;

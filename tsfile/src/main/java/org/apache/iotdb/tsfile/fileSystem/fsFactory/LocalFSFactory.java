@@ -111,16 +111,8 @@ public class LocalFSFactory implements FSFactory {
   }
 
   @Override
-  public void moveFile(File srcFile, File destFile) {
-    try {
-      FileUtils.moveFile(srcFile, destFile);
-    } catch (IOException e) {
-      logger.error(
-          "Failed to move file from {} to {}. ",
-          srcFile.getAbsolutePath(),
-          destFile.getAbsolutePath(),
-          e);
-    }
+  public void moveFile(File srcFile, File destFile) throws IOException {
+    FileUtils.moveFile(srcFile, destFile);
   }
 
   @Override

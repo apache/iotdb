@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
+import org.apache.hadoop.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +36,9 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URL;
@@ -281,6 +284,21 @@ public class HDFSFile extends File {
       logger.error("Failed to list files in {}. ", fileFolder);
     }
     return files;
+  }
+
+  private void copyToLocal(File destFile) throws IOException {
+    fs.copyToLocalFile(hdfsPath, new Path(destFile.getPath()));
+  }
+
+  private void copyFromLocal(File srcFile) throws IOException {
+    fs.copyFromLocalFile(new Path(srcFile.getPath()), hdfsPath);
+  }
+
+  private void copyTo(File destFile) throws IOException {
+    try (InputStream in = fs.open(hdfsPath);
+        OutputStream out = fs.create(((HDFSFile) destFile).hdfsPath, true)) {
+      IOUtils.copyBytes(in, out, 4096);
+    }
   }
 
   @Override

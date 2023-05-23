@@ -26,11 +26,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class FSUtils {
   private static final Logger logger = LoggerFactory.getLogger(FSUtils.class);
   private static final FSType[] fsTypes = {FSType.OBJECT_STORAGE, FSType.HDFS};
   public static final String[] fsPrefix = {"os://", "hdfs://"};
+  public static final String OS_FILE_SEPARATOR = "/";
   private static final String[] fsFileClassName = {
     "org.apache.iotdb.os.fileSystem.OSFile", "org.apache.iotdb.hadoop.fileSystem.HDFSFile"
   };
@@ -96,22 +98,24 @@ public class FSUtils {
   }
 
   public static String getOSDefaultPath(String bucket, int dataNodeId) {
-    return new FSPath(FSType.OBJECT_STORAGE, fsPrefix[0] + "/" + dataNodeId).getPath();
+    return new FSPath(FSType.OBJECT_STORAGE, fsPrefix[0] + OS_FILE_SEPARATOR + dataNodeId)
+        .getPath();
   }
 
   public static FSPath parseLocalTsFile2OSFile(File lcoalFile, String bucket, int dataNodeId)
       throws IOException {
-    String canonicalPath = lcoalFile.getCanonicalPath();
-    int startIdx = canonicalPath.lastIndexOf("unsequence");
-    if (startIdx < 0) {
-      startIdx = canonicalPath.lastIndexOf("sequence");
-    }
-    if (startIdx < 0) {
-      throw new IllegalArgumentException(canonicalPath + "isn't a TsFile path.");
-    }
+    String[] filePathSplits = FilePathUtils.splitTsFilePath(lcoalFile.getCanonicalPath());
     return new FSPath(
         FSType.OBJECT_STORAGE,
-        fsPrefix[0] + bucket + "/" + dataNodeId + "/" + canonicalPath.substring(startIdx));
+        fsPrefix[0]
+            + bucket
+            + OS_FILE_SEPARATOR
+            + dataNodeId
+            + OS_FILE_SEPARATOR
+            + String.join(
+                OS_FILE_SEPARATOR,
+                Arrays.copyOfRange(
+                    filePathSplits, filePathSplits.length - 5, filePathSplits.length)));
   }
 
   public static boolean isLocal(String fsPath) {

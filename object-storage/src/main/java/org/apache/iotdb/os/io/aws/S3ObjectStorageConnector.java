@@ -176,6 +176,22 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
     }
   }
 
+  @Override
+  public void copyRemoteFile(OSURI srcUri, OSURI destUri) throws ObjectStorageException {
+    try {
+      CopyObjectRequest req =
+          CopyObjectRequest.builder()
+              .sourceBucket(srcUri.getBucket())
+              .sourceKey(srcUri.getKey())
+              .destinationBucket(destUri.getBucket())
+              .destinationKey(destUri.getKey())
+              .build();
+      s3Client.copyObject(req);
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
   public void close() {
     s3Client.close();
   }

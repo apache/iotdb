@@ -105,15 +105,15 @@ public interface FSFactory {
   BufferedOutputStream getBufferedOutputStream(String filePath);
 
   /**
-   * TODO(zhm) move file
+   * move file
    *
    * @param srcFile src file
    * @param destFile dest file
    */
-  void moveFile(File srcFile, File destFile);
+  void moveFile(File srcFile, File destFile) throws IOException;
 
   /**
-   * TODO(zhm) copy file
+   * copy file
    *
    * @param srcFile src file
    * @param destFile dest file
@@ -145,6 +145,6 @@ public interface FSFactory {
    */
   boolean deleteIfExists(File file) throws IOException;
 
-  /** TODO(zhm) Force delete the directory */
+  /** Force delete the directory */
   void deleteDirectory(String dir) throws IOException;
 }

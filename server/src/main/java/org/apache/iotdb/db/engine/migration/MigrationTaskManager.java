@@ -71,7 +71,7 @@ public class MigrationTaskManager implements IService {
             ThreadName.MIGRATION_SCHEDULER.getName());
     workers =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            iotdbConfig.getCompactionThreadCount(), ThreadName.MIGRATION.getName());
+            iotdbConfig.getMigrateThreadCount(), ThreadName.MIGRATION.getName());
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         scheduler,
         () -> new MigrationScheduleTask().run(),

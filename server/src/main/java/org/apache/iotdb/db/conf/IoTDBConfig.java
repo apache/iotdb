@@ -1106,6 +1106,8 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
+  private int migrateThreadCount = 3;
+
   private String objectStorageName = "aws_s3";
   private String objectStorageBucket = "iotdb";
   private String objectStorageEndpoiont = "yourEndpoint";
@@ -3815,6 +3817,14 @@ public class IoTDBConfig {
 
   public String getSortTmpDir() {
     return sortTmpDir;
+  }
+
+  public int getMigrateThreadCount() {
+    return migrateThreadCount;
+  }
+
+  public void setMigrateThreadCount(int migrateThreadCount) {
+    this.migrateThreadCount = migrateThreadCount;
   }
 
   public String getObjectStorageName() {
