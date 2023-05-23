@@ -2526,7 +2526,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(showTimeSeriesStatement.getPathPattern());
     SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
-    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
 
     Map<Integer, Template> templateMap =
@@ -2537,7 +2536,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.constructTree();
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
-      schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
       logger.debug("[EndFetchSchema]]");
 
       analyzeLastSource(
