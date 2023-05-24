@@ -34,7 +34,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
@@ -59,7 +59,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.SchemaValidator;
@@ -257,7 +257,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree, context);
       }
-      QueryMetricsManager.getInstance()
+      QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
       logger.debug("[EndFetchSchema]");
 
@@ -1597,7 +1597,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       }
     } finally {
-      QueryMetricsManager.getInstance()
+      QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(PARTITION_FETCHER, System.nanoTime() - startTime);
     }
   }
@@ -1741,7 +1741,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // fetch schema of target paths
     long startTime = System.nanoTime();
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
-    QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+    QueryPlanCostMetricSet.getInstance()
+        .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     deviceViewIntoPathDescriptor.bindType(targetSchemaTree);
 
     analysis.setDeviceViewIntoPathDescriptor(deviceViewIntoPathDescriptor);
@@ -1794,7 +1795,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // fetch schema of target paths
     long startTime = System.nanoTime();
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
-    QueryMetricsManager.getInstance().recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
+    QueryPlanCostMetricSet.getInstance()
+        .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     intoPathDescriptor.bindType(targetSchemaTree);
 
     analysis.setIntoPathDescriptor(intoPathDescriptor);

@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.cluster.RegionStatus;
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -55,14 +54,14 @@ public class PartitionMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     bindRegionPartitionMetrics(metricService);
-    bindDataNodePartitionMetrics();
+    bindDataNodePartitionMetrics(metricService);
     bindDatabasePartitionMetrics(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     unbindRegionPartitionMetrics(metricService);
-    unbindDataNodePartitionMetrics();
+    unbindDataNodePartitionMetrics(metricService);
     unbindDatabasePartitionMetrics(metricService);
   }
 
@@ -116,8 +115,8 @@ public class PartitionMetrics implements IMetricSet {
     }
   }
 
-  public static void bindDataNodePartitionMetrics(IManager configManager, int dataNodeId) {
-    MetricService metricService = MetricService.getInstance();
+  public static void bindDataNodePartitionMetrics(
+      AbstractMetricService metricService, IManager configManager, int dataNodeId) {
     NodeManager nodeManager = configManager.getNodeManager();
     PartitionManager partitionManager = configManager.getPartitionManager();
     LoadManager loadManager = configManager.getLoadManager();
@@ -167,17 +166,16 @@ public class PartitionMetrics implements IMetricSet {
         TConsensusGroupType.DataRegion.toString());
   }
 
-  private void bindDataNodePartitionMetrics() {
+  private void bindDataNodePartitionMetrics(AbstractMetricService metricService) {
     List<TDataNodeConfiguration> registerDataNodes = getNodeManager().getRegisteredDataNodes();
     for (TDataNodeConfiguration dataNodeConfiguration : registerDataNodes) {
       int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
-      bindDataNodePartitionMetrics(configManager, dataNodeId);
+      bindDataNodePartitionMetrics(metricService, configManager, dataNodeId);
     }
   }
 
-  public static void unbindDataNodePartitionMetrics(String dataNodeName) {
-    MetricService metricService = MetricService.getInstance();
-
+  public static void unbindDataNodePartitionMetrics(
+      AbstractMetricService metricService, String dataNodeName) {
     // Remove the number of Regions in the specified DataNode
     metricService.remove(
         MetricType.AUTO_GAUGE,
@@ -211,18 +209,18 @@ public class PartitionMetrics implements IMetricSet {
         TConsensusGroupType.DataRegion.toString());
   }
 
-  private void unbindDataNodePartitionMetrics() {
+  private void unbindDataNodePartitionMetrics(AbstractMetricService metricService) {
     List<TDataNodeConfiguration> registerDataNodes = getNodeManager().getRegisteredDataNodes();
     for (TDataNodeConfiguration dataNodeConfiguration : registerDataNodes) {
       String dataNodeName =
           NodeUrlUtils.convertTEndPointUrl(
               dataNodeConfiguration.getLocation().getClientRpcEndPoint());
-      unbindDataNodePartitionMetrics(dataNodeName);
+      unbindDataNodePartitionMetrics(metricService, dataNodeName);
     }
   }
 
-  public static void bindDatabasePartitionMetrics(IManager configManager, String database) {
-    MetricService metricService = MetricService.getInstance();
+  public static void bindDatabasePartitionMetrics(
+      AbstractMetricService metricService, IManager configManager, String database) {
     PartitionManager partitionManager = configManager.getPartitionManager();
 
     // Count the number of SeriesSlots in the specified Database
@@ -279,13 +277,12 @@ public class PartitionMetrics implements IMetricSet {
 
     List<String> databases = getClusterSchemaManager().getDatabaseNames();
     for (String database : databases) {
-      bindDatabasePartitionMetrics(configManager, database);
+      bindDatabasePartitionMetrics(metricService, configManager, database);
     }
   }
 
-  public static void unbindDatabasePartitionMetrics(String database) {
-    MetricService metricService = MetricService.getInstance();
-
+  public static void unbindDatabasePartitionMetrics(
+      AbstractMetricService metricService, String database) {
     // Remove the number of SeriesSlots in the specified Database
     metricService.remove(
         MetricType.AUTO_GAUGE,
@@ -316,7 +313,7 @@ public class PartitionMetrics implements IMetricSet {
 
     List<String> databases = getClusterSchemaManager().getDatabaseNames();
     for (String database : databases) {
-      unbindDatabasePartitionMetrics(database);
+      unbindDatabasePartitionMetrics(metricService, database);
     }
   }
 

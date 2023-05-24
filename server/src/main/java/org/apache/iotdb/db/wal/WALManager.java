@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.wal.allocation.ElasticStrategy;
 import org.apache.iotdb.db.wal.allocation.FirstCreateStrategy;
 import org.apache.iotdb.db.wal.allocation.NodeAllocationStrategy;
@@ -102,7 +102,7 @@ public class WALManager implements IService {
 
     ((FirstCreateStrategy) walNodesManager)
         .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
-    WritingMetricsManager.getInstance().createWALNodeInfoMetrics(applicantUniqueId);
+    WritingMetrics.getInstance().createWALNodeInfoMetrics(applicantUniqueId);
   }
 
   /** WAL node will be deleted only when using iot consensus protocol */
@@ -114,7 +114,7 @@ public class WALManager implements IService {
     }
 
     ((FirstCreateStrategy) walNodesManager).deleteWALNode(applicantUniqueId);
-    WritingMetricsManager.getInstance().removeWALNodeInfoMetrics(applicantUniqueId);
+    WritingMetrics.getInstance().removeWALNodeInfoMetrics(applicantUniqueId);
   }
 
   @Override

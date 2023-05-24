@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -39,30 +38,32 @@ public class MppDataExchangeServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .createAutoGauge(
-            Metric.THRIFT_CONNECTIONS.toString(),
-            MetricLevel.CORE,
-            thriftConnectionNumber,
-            AtomicLong::get,
-            Tag.NAME.toString(),
-            "MPPDataExchangeRPC");
+    metricService.createAutoGauge(
+        Metric.THRIFT_CONNECTIONS.toString(),
+        MetricLevel.CORE,
+        thriftConnectionNumber,
+        AtomicLong::get,
+        Tag.NAME.toString(),
+        "MPPDataExchangeRPC");
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .remove(
-            MetricType.AUTO_GAUGE,
-            Metric.THRIFT_CONNECTIONS.toString(),
-            Tag.NAME.toString(),
-            "MPPDataExchangeRPC");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.THRIFT_CONNECTIONS.toString(),
+        Tag.NAME.toString(),
+        "MPPDataExchangeRPC");
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     MppDataExchangeServiceThriftHandlerMetrics that =
         (MppDataExchangeServiceThriftHandlerMetrics) o;
     return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);
