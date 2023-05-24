@@ -67,7 +67,7 @@ jobs:
       - name: Test with Maven
         run: mvn clean verify -pl client-cpp -am -P compile-cpp -P cppTest
       - name: Show test result
-        run: cat client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
+        run: cat iotdb-client/client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
 
   build-win:
     strategy:
@@ -116,5 +116,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: cpp-IT-${{ runner.os }}
-          path: client-cpp/target/build/test/Testing
+          path: iotdb-client/client-cpp/target/build/test/Testing
           retention-days: 1
