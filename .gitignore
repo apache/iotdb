@@ -38,6 +38,8 @@ src/main/resources/metadata/mlog.txt
 tsfile-jdbc/src/main/resources/output/queryRes.csv
 
 *.txt
+!iotdb-client/client-py/requirements.txt
+!iotdb-client/client-py/requirements_dev.txt
 
 *.jar
 !trigger-example.jar
