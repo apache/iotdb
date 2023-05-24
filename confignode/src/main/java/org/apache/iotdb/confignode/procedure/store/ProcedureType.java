@@ -74,7 +74,8 @@ public enum ProcedureType {
 
   /** Pipe Runtime */
   PIPE_HANDLE_LEADER_CHANGE_PROCEDURE((short) 1100),
-  PIPE_META_SYNC_PROCEDURE((short) 1101);
+  PIPE_META_SYNC_PROCEDURE((short) 1101),
+  PIPE_HANDLE_META_CHANGE_PROCEDURE((short) 1102);
 
   private final short typeCode;
 

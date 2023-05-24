@@ -56,8 +56,6 @@ class AutoResizingBuffer {
       int newCapacity = Math.max(growCapacity, size);
       this.array = Arrays.copyOf(array, newCapacity);
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
-      logger.debug(
-          "{} expand from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
     } else if (size > initialCapacity
         && currentCapacity * loadFactor > size
         && bufTooLargeCounter-- <= 0
@@ -66,7 +64,6 @@ class AutoResizingBuffer {
       array = Arrays.copyOf(array, size + (currentCapacity - size) / 2);
       bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
       lastShrinkTime = System.currentTimeMillis();
-      logger.debug("{} shrink from {} to {}", this, currentCapacity, size);
     }
   }
 

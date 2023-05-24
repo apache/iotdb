@@ -248,6 +248,7 @@ struct THeartbeatReq {
   5: optional list<i32> schemaRegionIds
   6: optional list<i32> dataRegionIds
   7: optional map<string, common.TSpaceQuota> spaceQuotaUsage
+  8: optional bool needPipeMetaList
 }
 
 struct THeartbeatResp {
@@ -261,6 +262,7 @@ struct THeartbeatResp {
   8: optional map<i32, i64> regionDisk
   // TODO: schemaLimitLevel can be removed if confignode support hot load configuration
   9: optional TSchemaLimitLevel schemaLimitLevel
+  10: optional list<binary> pipeMetaList
 }
 
 enum TSchemaLimitLevel{

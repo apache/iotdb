@@ -184,6 +184,10 @@ public class Coordinator {
     return new ArrayList<>(queryExecutionMap.values());
   }
 
+  public int getQueryExecutionMapSize() {
+    return queryExecutionMap.size();
+  }
+
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =

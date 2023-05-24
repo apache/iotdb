@@ -29,10 +29,13 @@ import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
@@ -94,5 +97,23 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   public void stopPipeMetaSync() {
     pipeMetaSyncer.stop();
+  }
+
+  /**
+   * parse heartbeat from data node.
+   *
+   * @param dataNodeId data node id
+   * @param pipeMetaByteBufferListFromDataNode pipe meta byte buffer list collected from data node
+   */
+  public void parseHeartbeat(
+      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+    final TSStatus result =
+        configManager
+            .getProcedureManager()
+            .pipeHandleMetaChange(dataNodeId, pipeMetaByteBufferListFromDataNode);
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "PipeTaskCoordinator meets error in handling pipe meta change, status: ({})", result);
+    }
   }
 }
