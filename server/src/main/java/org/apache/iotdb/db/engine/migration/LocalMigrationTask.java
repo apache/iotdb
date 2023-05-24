@@ -38,10 +38,11 @@ public class LocalMigrationTask extends MigrationTask {
     // copy TsFile and resource file
     tsFileResource.readLock();
     try {
+      destTsFile.getParentFile().mkdirs();
       fsFactory.copyFile(srcFile, destTsFile);
       fsFactory.copyFile(srcResourceFile, destResourceFile);
-    } catch (IOException e) {
-      logger.error("Fail to copy TsFile {}", srcFile);
+    } catch (Exception e) {
+      logger.error("Fail to copy TsFile from local {} to local {}", srcFile, srcResourceFile);
       destTsFile.delete();
       destResourceFile.delete();
       return;
@@ -57,8 +58,8 @@ public class LocalMigrationTask extends MigrationTask {
         fsFactory.copyFile(srcModsFile, destModsFile);
       }
       tsFileResource.setFile(destTsFile);
-    } catch (IOException e) {
-      logger.error("Fail to copy mods file {}", srcModsFile);
+    } catch (Exception e) {
+      logger.error("Fail to copy mods file from local {} to local {}", srcModsFile, destModsFile);
       destTsFile.delete();
       destResourceFile.delete();
       destModsFile.delete();

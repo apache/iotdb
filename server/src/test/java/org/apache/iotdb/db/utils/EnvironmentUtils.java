@@ -231,11 +231,11 @@ public class EnvironmentUtils {
 
   public static void cleanAllDir() throws IOException {
     // delete sequential files
-    for (String path : tierManager.getAllSequenceFileFolders()) {
+    for (String path : tierManager.getAllLocalSequenceFileFolders()) {
       cleanDir(path);
     }
     // delete unsequence files
-    for (String path : tierManager.getAllUnSequenceFileFolders()) {
+    for (String path : tierManager.getAllLocalUnSequenceFileFolders()) {
       cleanDir(path);
     }
     // delete system info
@@ -319,11 +319,11 @@ public class EnvironmentUtils {
 
   private static void createAllDir() {
     // create sequential files
-    for (String path : tierManager.getAllSequenceFileFolders()) {
+    for (String path : tierManager.getAllLocalSequenceFileFolders()) {
       createDir(path);
     }
     // create unsequential files
-    for (String path : tierManager.getAllUnSequenceFileFolders()) {
+    for (String path : tierManager.getAllLocalUnSequenceFileFolders()) {
       createDir(path);
     }
     // create database

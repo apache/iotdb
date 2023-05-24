@@ -325,7 +325,7 @@ public class DataRegion implements IDataRegionForQuery {
           "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
           databaseName,
           dataRegionId);
-      for (String fileFolder : TierManager.getInstance().getAllFilesFolders()) {
+      for (String fileFolder : TierManager.getInstance().getAllLocalFilesFolders()) {
         File dataRegionFolder =
             fsFactory.getFile(fileFolder, databaseName + File.separator + dataRegionId);
         if (dataRegionFolder.exists()) {
@@ -442,12 +442,12 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
-          getAllFiles(TierManager.getInstance().getAllSequenceFileFolders());
+          getAllFiles(TierManager.getInstance().getAllLocalSequenceFileFolders());
       List<TsFileResource> tmpSeqTsFiles = seqTsFilesPair.left;
       List<TsFileResource> oldSeqTsFiles = seqTsFilesPair.right;
       upgradeSeqFileList.addAll(oldSeqTsFiles);
       Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair =
-          getAllFiles(TierManager.getInstance().getAllUnSequenceFileFolders());
+          getAllFiles(TierManager.getInstance().getAllLocalUnSequenceFileFolders());
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
@@ -683,8 +683,7 @@ public class DataRegion implements IDataRegionForQuery {
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
       throws IOException, DataRegionException {
     // represents local TsFile and remote TsFile on Object Storage
-    Set<String> tsFilePathSet = new HashSet<>();
-    List<File> tsFiles = new ArrayList<>();
+    Map<String, File> tsFileName2File = new HashMap<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir + File.separator + databaseName, dataRegionId);
@@ -713,16 +712,30 @@ public class DataRegion implements IDataRegionForQuery {
             File[] resourceFilesInThisFolder =
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), RESOURCE_SUFFIX);
             for (File f : tsFilesInThisFolder) {
-              tsFilePathSet.add(f.getCanonicalPath());
+              String tsFileFileName = f.getName();
+              if (tsFileName2File.containsKey(tsFileFileName)) {
+                // check migration: two same name tsfile exists, only keep one of them
+                File actualFile = deleteDuplicateTsFiles(f, tsFileName2File.get(tsFileFileName));
+                tsFileName2File.put(tsFileFileName, actualFile);
+              } else {
+                tsFileName2File.put(tsFileFileName, f);
+              }
             }
 
-            Collections.addAll(tsFiles, tsFilesInThisFolder);
             for (File f : resourceFilesInThisFolder) {
-              String tsFilePath =
+              String tsFileFileName =
                   f.getCanonicalPath()
                       .substring(0, f.getCanonicalPath().length() - RESOURCE_SUFFIX.length());
-              if (!tsFilePathSet.contains(tsFilePath)) {
-                tsFiles.add(fsFactory.getFile(tsFilePath));
+              if (tsFileName2File.containsKey(tsFileFileName)) {
+                // check migration: tsfile already added, but this resource file doesn't correspond
+                // to the file, so delete it
+                if (!f.getCanonicalPath()
+                    .startsWith(tsFileName2File.get(tsFileFileName).getCanonicalPath())) {
+                  f.delete();
+                }
+              } else {
+                tsFileName2File.put(
+                    tsFileFileName, fsFactory.getFile(partitionFolder, tsFileFileName));
               }
             }
 
@@ -736,19 +749,16 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
 
-    tsFiles.sort(this::compareFileName);
-    if (!tsFiles.isEmpty()) {
-      checkTsFileTime(tsFiles.get(tsFiles.size() - 1));
-    }
+    long currentTime = System.currentTimeMillis();
     List<TsFileResource> ret = new ArrayList<>();
-    tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
-
-    upgradeFiles.sort(this::compareFileName);
-    if (!upgradeFiles.isEmpty()) {
-      checkTsFileTime(upgradeFiles.get(upgradeFiles.size() - 1));
+    for (File f : tsFileName2File.values()) {
+      checkTsFileTime(f, currentTime);
+      ret.add(new TsFileResource(f));
     }
+
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
+      checkTsFileTime(f, currentTime);
       TsFileResource fileResource = new TsFileResource(f);
       fileResource.setStatus(TsFileResourceStatus.NORMAL);
       // make sure the flush command is called before IoTDB is down.
@@ -772,11 +782,33 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  /** Remove the duplicate TsFile and return the actual TsFile (has .tsfile and .tsfile.resource) */
+  private File deleteDuplicateTsFiles(File f1, File f2) {
+    File f1Resource = fsFactory.getFile(f1 + RESOURCE_SUFFIX);
+    File f2Resource = fsFactory.getFile(f2 + RESOURCE_SUFFIX);
+    if (f1.exists() && f1Resource.exists()) {
+      if (f2.exists()) {
+        f2.delete();
+      }
+      if (f2Resource.exists()) {
+        f2Resource.delete();
+      }
+      return f1;
+    } else {
+      if (f1.exists()) {
+        f1.delete();
+      }
+      if (f1Resource.exists()) {
+        f1Resource.delete();
+      }
+      return f2;
+    }
+  }
+
   /** check if the tsfile's time is smaller than system current time. */
-  private void checkTsFileTime(File tsFile) throws DataRegionException {
+  private void checkTsFileTime(File tsFile, long currentTime) throws DataRegionException {
     String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
     long fileTime = Long.parseLong(items[0]);
-    long currentTime = System.currentTimeMillis();
     if (fileTime > currentTime) {
       throw new DataRegionException(
           String.format(
@@ -1570,7 +1602,7 @@ public class DataRegion implements IDataRegionForQuery {
               TsFileMetricManager.getInstance().decreaseModFileSize(x.getModFile().getSize());
             }
           });
-      deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
+      deleteAllSGFolders(TierManager.getInstance().getAllLocalFilesFolders());
 
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
@@ -3090,7 +3122,7 @@ public class DataRegion implements IDataRegionForQuery {
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
     TierManager.getInstance()
-        .getAllFilesFolders()
+        .getAllLocalFilesFolders()
         .forEach(
             folder -> {
               folder = folder + File.separator + databaseName + File.separator + dataRegionId;

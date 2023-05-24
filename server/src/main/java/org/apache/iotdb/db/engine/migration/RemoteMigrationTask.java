@@ -35,13 +35,21 @@ public class RemoteMigrationTask extends MigrationTask {
 
   @Override
   public void migrate() {
+    // tsfile may exist on the remote if the last same migration task hasn't completed when the
+    // system shutdown.
+    if (destTsFile.exists()) {
+      destTsFile.delete();
+    }
+    if (destResourceFile.exists()) {
+      destResourceFile.delete();
+    }
     // copy TsFile and resource file
     tsFileResource.readLock();
     try {
       fsFactory.copyFile(srcFile, destTsFile);
       fsFactory.copyFile(srcResourceFile, destResourceFile);
-    } catch (IOException e) {
-      logger.error("Fail to copy TsFile {}", srcFile);
+    } catch (Exception e) {
+      logger.error("Fail to copy TsFile from local {} to remote {}", srcFile, srcResourceFile);
       destTsFile.delete();
       destResourceFile.delete();
       return;
@@ -52,6 +60,8 @@ public class RemoteMigrationTask extends MigrationTask {
     tsFileResource.writeLock();
     try {
       srcFile.delete();
+    } catch (Exception e) {
+      logger.error("Fail to delete local TsFile {}", srcFile);
     } finally {
       tsFileResource.writeUnlock();
     }
