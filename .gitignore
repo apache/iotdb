@@ -40,6 +40,7 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 *.txt
 !iotdb-client/client-py/requirements.txt
 !iotdb-client/client-py/requirements_dev.txt
+!iotdb-client/client-cpp/src/main/CMakeLists.txt
 
 *.jar
 !trigger-example.jar
