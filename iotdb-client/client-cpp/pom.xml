@@ -169,11 +169,11 @@
                                 <configuration>
                                     <fileSets>
                                         <fileSet>
-                                            <sourceFile>../thrift/src/main/thrift/client.thrift</sourceFile>
+                                            <sourceFile>../../iotdb-protocol/thrift/src/main/thrift/client.thrift</sourceFile>
                                             <destinationFile>${project.build.directory}/thrift/client.thrift</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>../thrift-commons/src/main/thrift/common.thrift</sourceFile>
+                                            <sourceFile>../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift</sourceFile>
                                             <destinationFile>${project.build.directory}/thrift/common.thrift</destinationFile>
                                         </fileSet>
                                     </fileSets>
