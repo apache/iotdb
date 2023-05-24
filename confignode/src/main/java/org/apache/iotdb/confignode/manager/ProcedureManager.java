@@ -753,7 +753,6 @@ public class ProcedureManager {
             .setMessage(statusList.get(0).getMessage());
       }
     } catch (Exception e) {
-      e.printStackTrace();
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
     }
   }
