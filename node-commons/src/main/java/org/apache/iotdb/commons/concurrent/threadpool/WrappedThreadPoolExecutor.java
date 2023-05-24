@@ -70,6 +70,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
         String.format(
             "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
     JMXService.registerMBean(this, this.mbeanName);
+    ThreadPoolMetrics.getInstance().registerThreadPool(this, this.mbeanName);
   }
 
   @Override

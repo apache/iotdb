@@ -359,7 +359,6 @@ public enum ThreadName {
   }
 
   public static ThreadName getThreadPoolTheThreadBelongs(String givenThreadName) {
-    log.error("ThreadName: {}", givenThreadName);
     ThreadName[] threadNames = ThreadName.values();
     for (ThreadName threadName : threadNames) {
       String name = threadName.getName();

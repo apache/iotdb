@@ -31,6 +31,8 @@ import java.lang.management.ThreadMXBean;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -40,13 +42,14 @@ public class CpuUsageManager {
   protected AbstractMetricService metricService;
   protected final UnaryOperator<String> threadNameToModule;
   protected final UnaryOperator<String> threadNameToPool;
-  protected final Map<Long, String> threadIdToModuleCache = new HashMap<>();
-  protected final Map<Long, String> threadIdToPoolCache = new HashMap<>();
-  private final Map<String, Double> moduleCpuTimePercentageMap = new HashMap<>();
-  private final Map<String, Double> poolCpuUsageMap = new HashMap<>();
-  private final Map<String, Double> poolUserTimePercentageMap = new HashMap<>();
+  protected final Map<Long, String> threadIdToModuleCache = new ConcurrentHashMap<>();
+  protected final Map<Long, String> threadIdToPoolCache = new ConcurrentHashMap<>();
+  private final Map<String, Double> moduleCpuTimePercentageMap = new ConcurrentHashMap<>();
+  private final Map<String, Double> moduleUserTimePercentageMap = new ConcurrentHashMap<>();
+  private final Map<String, Double> poolCpuUsageMap = new ConcurrentHashMap<>();
+  private final Map<String, Double> poolUserTimePercentageMap = new ConcurrentHashMap<>();
   private final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-  private long lastUpdateTime = 0L;
+  private AtomicLong lastUpdateTime = new AtomicLong(0L);
 
   CpuUsageManager(
       UnaryOperator<String> threadNameToModule, UnaryOperator<String> threadNameToPool) {
@@ -73,12 +76,18 @@ public class CpuUsageManager {
     return poolUserTimePercentageMap;
   }
 
-  private void checkAndMayUpdate() {
-    long currentTime = System.currentTimeMillis();
-    if (currentTime - lastUpdateTime > UPDATE_INTERVAL) {
-      lastUpdateTime = currentTime;
-    }
+  public Map<String, Double> getModuleUserTimePercentage() {
+    checkAndMayUpdate();
+    return moduleUserTimePercentageMap;
+  }
 
+  private synchronized void checkAndMayUpdate() {
+    long currentTime = System.currentTimeMillis();
+    if (currentTime - lastUpdateTime.get() > UPDATE_INTERVAL) {
+      lastUpdateTime.set(currentTime);
+    } else {
+      return;
+    }
     updateIoTDBCpuUsage();
   }
 
@@ -136,6 +145,7 @@ public class CpuUsageManager {
 
     long totalIncrementTime = 0L;
     Map<String, Long> moduleIncrementCpuTimeMap = new HashMap<>();
+    Map<String, Long> moduleIncrementUserTimeMap = new HashMap<>();
     Map<String, Long> poolIncrementCpuTimeMap = new HashMap<>();
     Map<String, Long> poolIncrementUserTimeMap = new HashMap<>();
     for (ThreadInfo threadInfo : threadInfos) {
@@ -148,11 +158,19 @@ public class CpuUsageManager {
       String module = getThreadModuleById(id, threadInfo);
       String pool = getThreadPoolById(id, threadInfo);
       moduleIncrementCpuTimeMap.compute(
-          module, (k, v) -> v == null ? 0L : v + afterCpuTime - beforeCpuTime);
+          module,
+          (k, v) -> v == null ? afterCpuTime - beforeCpuTime : v + afterCpuTime - beforeCpuTime);
+      moduleIncrementUserTimeMap.compute(
+          module,
+          (k, v) ->
+              v == null ? afterUserTime - beforeUserTime : v + afterUserTime - beforeUserTime);
       poolIncrementCpuTimeMap.compute(
-          pool, (k, v) -> v == null ? 0L : v + afterCpuTime - beforeCpuTime);
+          pool,
+          (k, v) -> v == null ? afterCpuTime - beforeCpuTime : v + afterCpuTime - beforeCpuTime);
       poolIncrementUserTimeMap.compute(
-          pool, (k, v) -> v == null ? 0L : v + afterUserTime - beforeUserTime);
+          pool,
+          (k, v) ->
+              v == null ? afterUserTime - beforeUserTime : v + afterUserTime - beforeUserTime);
     }
 
     double processCpuLoad =
@@ -160,9 +178,12 @@ public class CpuUsageManager {
     for (Map.Entry<String, Long> entry : moduleIncrementCpuTimeMap.entrySet()) {
       moduleCpuTimePercentageMap.put(
           entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime * processCpuLoad);
+      moduleUserTimePercentageMap.put(
+          entry.getKey(), moduleIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue());
     }
     for (Map.Entry<String, Long> entry : poolIncrementCpuTimeMap.entrySet()) {
-      poolCpuUsageMap.put(entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime);
+      poolCpuUsageMap.put(
+          entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime * processCpuLoad);
       poolUserTimePercentageMap.put(
           entry.getKey(), poolIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue());
     }

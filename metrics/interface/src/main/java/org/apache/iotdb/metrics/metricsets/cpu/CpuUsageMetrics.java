@@ -29,10 +29,12 @@ import java.util.function.UnaryOperator;
 
 public class CpuUsageMetrics implements IMetricSet {
 
-  private static final String CPU_USAGE = "cpu_usage";
+  private static final String MODULE_CPU_USAGE = "module_cpu_usage";
+  private static final String POOL_CPU_USAGE = "pool_cpu_usage";
   private static final String POOL = "pool";
   private static final String MODULE = "module";
-  private static final String USER_TIME_PERCENTAGE = "user_time_percentage";
+  private static final String MODULE_USER_TIME_PERCENTAGE = "module_user_time_percentage";
+  private static final String POOL_USER_TIME_PERCENTAGE = "user_time_percentage";
   private final List<String> modules;
   private final List<String> pools;
   private final CpuUsageManager cpuUsageManager;
@@ -52,23 +54,30 @@ public class CpuUsageMetrics implements IMetricSet {
     cpuUsageManager.setMetricService(metricService);
     for (String moduleName : modules) {
       metricService.createAutoGauge(
-          CPU_USAGE,
+          MODULE_CPU_USAGE,
           MetricLevel.IMPORTANT,
           cpuUsageManager,
           x -> x.getModuleCpuUsage().getOrDefault(moduleName, 0.0),
           MODULE,
           moduleName);
+      metricService.createAutoGauge(
+          MODULE_USER_TIME_PERCENTAGE,
+          MetricLevel.IMPORTANT,
+          cpuUsageManager,
+          x -> x.getModuleUserTimePercentage().getOrDefault(moduleName, 0.0),
+          MODULE,
+          moduleName);
     }
     for (String poolName : pools) {
       metricService.createAutoGauge(
-          CPU_USAGE,
+          POOL_CPU_USAGE,
           MetricLevel.IMPORTANT,
           cpuUsageManager,
           x -> x.getPoolCpuUsage().getOrDefault(poolName, 0.0),
           POOL,
           poolName);
       metricService.createAutoGauge(
-          USER_TIME_PERCENTAGE,
+          POOL_USER_TIME_PERCENTAGE,
           MetricLevel.IMPORTANT,
           cpuUsageManager,
           x -> x.getPoolUserCpuPercentage().getOrDefault(poolName, 0.0),
@@ -80,11 +89,12 @@ public class CpuUsageMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (String moduleName : modules) {
-      metricService.remove(MetricType.AUTO_GAUGE, CPU_USAGE, MODULE, moduleName);
+      metricService.remove(MetricType.AUTO_GAUGE, MODULE_CPU_USAGE, MODULE, moduleName);
+      metricService.remove(MetricType.AUTO_GAUGE, MODULE_USER_TIME_PERCENTAGE, MODULE, moduleName);
     }
     for (String poolName : pools) {
-      metricService.remove(MetricType.AUTO_GAUGE, CPU_USAGE, POOL, poolName);
-      metricService.remove(MetricType.AUTO_GAUGE, USER_TIME_PERCENTAGE, POOL, poolName);
+      metricService.remove(MetricType.AUTO_GAUGE, POOL_CPU_USAGE, POOL, poolName);
+      metricService.remove(MetricType.AUTO_GAUGE, POOL_USER_TIME_PERCENTAGE, POOL, poolName);
     }
   }
 }

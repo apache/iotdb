@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.concurrent.DataNodeThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
@@ -48,6 +49,7 @@ public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode. */
   public static void bind() {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
+    MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new FileMetrics());
     MetricService.getInstance().addMetricSet(new CompactionMetrics());
