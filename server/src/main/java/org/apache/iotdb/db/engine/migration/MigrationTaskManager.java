@@ -118,9 +118,9 @@ public class MigrationTaskManager implements IService {
             // check tier ttl and disk space
             long tierTTL =
                 DateTimeUtils.convertMilliTimeWithPrecision(
-                    commonConfig.getTierTTLInMs()[currentTier],
+                    System.currentTimeMillis() - commonConfig.getTierTTLInMs()[currentTier],
                     iotdbConfig.getTimestampPrecision());
-            if (tsfile.stillLives(tierTTL)) {
+            if (!tsfile.stillLives(tierTTL)) {
               submitMigrationTask(
                   currentTier,
                   MigrationCause.TTL,
