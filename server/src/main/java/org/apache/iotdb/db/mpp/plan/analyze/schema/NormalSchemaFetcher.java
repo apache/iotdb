@@ -138,6 +138,16 @@ class NormalSchemaFetcher {
             isAlignedList);
         indexOfMissingMeasurements =
             schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
+        for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
+          if (logicalViewSchemaMap.containsKey(measurementPath.getFullPath())) {
+            schemaComputationWithAutoCreation.computeViewMeasurement(
+                logicalViewSchemaMap.get(measurementPath.getFullPath()),
+                new MeasurementSchemaInfo(
+                    measurementPath.getMeasurement(), measurementPath.getMeasurementSchema(), null),
+                measurementPath.getDevice(),
+                measurementPath.isUnderAlignedEntity());
+          }
+        }
       }
 
       return indexOfMissingMeasurements;
