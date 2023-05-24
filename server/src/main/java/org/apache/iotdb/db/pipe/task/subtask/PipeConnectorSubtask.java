@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -101,8 +102,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
           retry++;
           LOGGER.error("Failed to reconnect to the target system, retrying... ({} time(s))", retry);
           try {
-            // TODO: make the retry interval configurable
-            Thread.sleep(retry * 1000L);
+            Thread.sleep(retry * PipeConfig.getInstance().getRetryIntervalMs());
           } catch (InterruptedException interruptedException) {
             LOGGER.info(
                 "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.");

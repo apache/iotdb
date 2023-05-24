@@ -1115,6 +1115,12 @@ public class IoTDBConfig {
   private int maxPendingBatchesNum = 12;
   private double maxMemoryRatioForQueue = 0.6;
 
+  /** Pipe related */
+  private String receiveFileDir =
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+          + File.separator
+          + "pipe"; // TODO: replace with resource manager
+
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
@@ -3852,6 +3858,14 @@ public class IoTDBConfig {
 
   public int getModeMapSizeThreshold() {
     return modeMapSizeThreshold;
+  }
+
+  public void setReceiveFileDir(String receiveFileDir) {
+    this.receiveFileDir = receiveFileDir;
+  }
+
+  public String getReceiveFileDir() {
+    return receiveFileDir;
   }
 
   public void setPipeSubtaskExecutorMaxThreadNum(int pipeMaxThreadNum) {

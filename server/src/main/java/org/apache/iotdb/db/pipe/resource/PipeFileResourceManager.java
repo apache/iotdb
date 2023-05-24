@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.pipe.config.PipeConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -102,19 +102,19 @@ public class PipeFileResourceManager {
   private static String getPipeTsFileDirPath(File file) throws IOException {
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
         && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-        && !file.getName().equals(PipeConfig.PIPE_TSFILE_DIR_NAME)) {
+        && !file.getName().equals(PipeConfig.getInstance().getPipeTsFileDirName())) {
       file = file.getParentFile();
     }
     return file.getParentFile().getCanonicalPath()
         + File.separator
-        + PipeConfig.PIPE_TSFILE_DIR_NAME;
+        + PipeConfig.getInstance().getPipeTsFileDirName();
   }
 
   private static String getRelativeFilePath(File file) {
     StringBuilder builder = new StringBuilder(file.getName());
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
         && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-        && !file.getName().equals(PipeConfig.PIPE_TSFILE_DIR_NAME)) {
+        && !file.getName().equals(PipeConfig.getInstance().getPipeTsFileDirName())) {
       file = file.getParentFile();
       builder =
           new StringBuilder(file.getName())
@@ -168,7 +168,7 @@ public class PipeFileResourceManager {
    * <p>this method can be only invoked when the system is booting up.
    */
   public synchronized void clear(String dataDir) {
-    File pipeTsFileDir = new File(dataDir, PipeConfig.PIPE_TSFILE_DIR_NAME);
+    File pipeTsFileDir = new File(dataDir, PipeConfig.getInstance().getPipeTsFileDirName());
     if (pipeTsFileDir.exists()) {
       FileUtils.deleteDirectory(pipeTsFileDir);
     }

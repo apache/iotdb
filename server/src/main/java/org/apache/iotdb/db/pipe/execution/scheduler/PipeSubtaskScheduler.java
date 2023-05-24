@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.execution.scheduler;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutor;
 
 public class PipeSubtaskScheduler {
@@ -27,14 +28,14 @@ public class PipeSubtaskScheduler {
 
   private boolean isFirstSchedule = true;
 
-  // TODO: make these two configurable
-
-  private static final int BASIC_CHECKPOINT_INTERVAL_BY_CONSUMED_EVENT_COUNT = 10_000;
+  private static final int BASIC_CHECKPOINT_INTERVAL_BY_CONSUMED_EVENT_COUNT =
+      PipeConfig.getInstance().getBasicCheckPointIntervalByConsumedEventCount();
   private int consumedEventCountCheckpointInterval;
   private int consumedEventCount;
 
   // in ms
-  private static final long BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION = 10 * 1000L;
+  private static final long BASIC_CHECKPOINT_INTERVAL_BY_TIME_DURATION =
+      PipeConfig.getInstance().getBasicCheckPointIntervalByTimeDuration();
   private long timeDurationCheckpointInterval;
   private long lastCheckTime;
 
