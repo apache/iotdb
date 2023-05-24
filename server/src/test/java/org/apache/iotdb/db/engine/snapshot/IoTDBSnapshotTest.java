@@ -85,7 +85,7 @@ public class IoTDBSnapshotTest {
         resource.updateEndTime(testSgName + PATH_SEPARATOR + "d" + i, (i + 1) * 100);
       }
       resource.updatePlanIndexes(i);
-      resource.setStatus(TsFileResourceStatus.NORMAL);
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
       resource.serialize();
     }
     return resources;
@@ -133,7 +133,7 @@ public class IoTDBSnapshotTest {
     DirectoryManager.getInstance().resetFolders();
     try {
       List<TsFileResource> resources = writeTsFiles();
-      resources.subList(50, 100).forEach(x -> x.setStatus(TsFileResourceStatus.UNCLOSED));
+      resources.subList(50, 100).forEach(x -> x.setStatusForTest(TsFileResourceStatus.UNCLOSED));
       DataRegion region = new DataRegion(testSgName, "0");
       region.getTsFileManager().addAll(resources, true);
       File snapshotDir = new File("target" + File.separator + "snapshot");
