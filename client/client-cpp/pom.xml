@@ -236,15 +236,15 @@
                                 <configuration>
                                     <classifier>${os.classifier}</classifier>
                                     <!--
-                    We need to use a newer version of cmake, so disable downloading. If we do not
-                    set this to false, a cmake of version 3.7.2 will be downloaded.
-                  -->
+                                      We need to use a newer version of cmake, so disable downloading. If we do not
+                                      set this to false, a cmake of version 3.7.2 will be downloaded.
+                                    -->
                                     <downloadBinaries>false</downloadBinaries>
                                     <sourcePath>${project.build.directory}/build/main</sourcePath>
                                     <!--
-                    Path to where the build configuration is generated
-                    (This directory is then used in the compile step to actually perform the build)
-                  -->
+                                      Path to where the build configuration is generated
+                                      (This directory is then used in the compile step to actually perform the build)
+                                    -->
                                     <targetPath>${project.build.directory}/build/main</targetPath>
                                     <generator>${cmake.generator}</generator>
                                     <options>
@@ -264,9 +264,9 @@
                                     <classifier>${os.classifier}</classifier>
                                     <config>${cmake.build.type}</config>
                                     <!--
-                    We need to use a newer version of cmake, so disable downloading
-                    and tell the plugin where to find that version.
-                  -->
+                                      We need to use a newer version of cmake, so disable downloading
+                                      and tell the plugin where to find that version.
+                                    -->
                                     <downloadBinaries>false</downloadBinaries>
                                     <!-- The directory where the "generate" step generated the build configuration -->
                                     <projectDirectory>${project.build.directory}/build/main</projectDirectory>
