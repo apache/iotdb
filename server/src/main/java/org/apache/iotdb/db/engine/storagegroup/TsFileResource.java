@@ -658,6 +658,10 @@ public class TsFileResource {
     this.isMigrating = isMigrating;
   }
 
+  public boolean onRemote() {
+    return !file.exists();
+  }
+
   public void setStatus(TsFileResourceStatus status) {
     switch (status) {
       case NORMAL:

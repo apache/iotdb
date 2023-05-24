@@ -114,7 +114,9 @@ public class SizeTieredCompactionSelector
         selectedFileSize = 0L;
         continue;
       }
-      if (currentFile.getStatus() != TsFileResourceStatus.NORMAL || currentFile.isMigrating()) {
+      if (currentFile.getStatus() != TsFileResourceStatus.NORMAL
+          || currentFile.onRemote()
+          || currentFile.isMigrating()) {
         selectedFileList.clear();
         selectedFileSize = 0L;
         continue;

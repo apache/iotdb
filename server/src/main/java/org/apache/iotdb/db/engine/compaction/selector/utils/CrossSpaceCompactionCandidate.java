@@ -143,6 +143,7 @@ public class CrossSpaceCompactionCandidate {
     List<TsFileResourceCandidate> ret = new ArrayList<>();
     for (TsFileResource resource : unseqResources) {
       if (resource.getStatus() != TsFileResourceStatus.NORMAL
+          || resource.onRemote()
           || resource.isMigrating()
           || !resource.getTsFile().exists()) {
         break;
@@ -201,6 +202,7 @@ public class CrossSpaceCompactionCandidate {
       // the status of file may be changed after the task is submitted to queue
       this.isValidCandidate =
           tsFileResource.getStatus() == TsFileResourceStatus.NORMAL
+              && !tsFileResource.onRemote()
               && !tsFileResource.isMigrating()
               && tsFileResource.getTsFile().exists();
     }

@@ -101,6 +101,9 @@ public class TierManager {
     for (int i = 0; i < tierDirs.length; ++i) {
       for (int j = 0; j < tierDirs[i].length; ++j) {
         if (tierDirs[i][j].equals(OBJECT_STORAGE_DIR)) {
+          if (i != tierDirs.length - 1) {
+            logger.error("Object Storage can only exist on the last tier.");
+          }
           tierDirs[i][j] =
               FSUtils.getOSDefaultPath(config.getObjectStorageBucket(), config.getDataNodeId());
         } else if (FSUtils.isLocal(tierDirs[i][j])) {
