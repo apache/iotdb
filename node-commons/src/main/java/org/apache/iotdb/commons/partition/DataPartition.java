@@ -67,6 +67,7 @@ public class DataPartition extends Partition {
     this.dataPartitionMap = dataPartitionMap;
   }
 
+  // TODO: (xingtanzjr) the timePartitionIdList is ignored
   public List<TRegionReplicaSet> getDataRegionReplicaSet(
       String deviceName, List<TTimePartitionSlot> timePartitionSlotList) {
     String storageGroup = getStorageGroupByDevice(deviceName);
@@ -75,7 +76,15 @@ public class DataPartition extends Partition {
         || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    // TODO: (xingtanzjr) the timePartitionIdList is ignored
+    // Set start time of TRegionReplicaSet with start time of TTimePartitionSlot
+    dataPartitionMap
+        .get(storageGroup)
+        .get(seriesPartitionSlot)
+        .forEach(
+            (key, value) ->
+                value.forEach(
+                    tRegionReplicaSet ->
+                        tRegionReplicaSet.setStartTimeOfTTimePartitionSlot(key.getStartTime())));
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
         .flatMap(Collection::stream)
         .distinct()

@@ -2021,8 +2021,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     if (timeValuePair == null) { // last value is not cached
       return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
     } else if (!LastQueryUtil.satisfyFilter(
-        updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
-        timeValuePair)) { // cached last value is not satisfied
+            updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
+            timeValuePair)
+        || !LastQueryUtil.satisfyTimePartition(
+            context.getStartTimeOfTimePartition(),
+            timeValuePair)) { // cached last value is not satisfied
 
       boolean isFilterGtOrGe =
           (context.getLastQueryTimeFilter() instanceof Gt
@@ -2109,14 +2112,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // get series under aligned entity that has not been cached
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
     List<String> measurementList = alignedPath.getMeasurementList();
+    Filter updatedFilter =
+        updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL());
     for (int i = 0; i < measurementList.size(); i++) {
       PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
       TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
-      } else if (!LastQueryUtil.satisfyFilter(
-          updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
-          timeValuePair)) { // cached last value is not satisfied
+      } else if (!LastQueryUtil.satisfyFilter(updatedFilter, timeValuePair)
+          || !LastQueryUtil.satisfyTimePartition(
+              context.getStartTimeOfTimePartition(),
+              timeValuePair)) { // cached last value is not satisfied
 
         boolean isFilterGtOrGe =
             (context.getLastQueryTimeFilter() instanceof Gt
@@ -2216,6 +2222,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         "Last query only support order by timeseries asc/desc");
 
     context.setLastQueryTimeFilter(node.getTimeFilter());
+    context.setStartTimeOfTimePartition(node.getStartTimeOfTimePartition());
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(node.getTimeFilter()));
 
     List<AbstractUpdateLastCacheOperator> operatorList =

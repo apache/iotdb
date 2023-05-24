@@ -45,6 +45,9 @@ public class LastQueryNode extends MultiChildProcessNode {
   // The result output order, which could sort by sensor and time.
   // The size of this list is 2 and the first SortItem in this list has higher priority.
   private OrderByParameter mergeOrderParameter;
+  // This field will be passed to LastQueryScanNode to decide whether its last cache is valid
+  // The time of last cache should be greater that or equal to this value.
+  private long startTimeOfTimePartition = Long.MIN_VALUE;
 
   public LastQueryNode(PlanNodeId id, Filter timeFilter, OrderByParameter mergeOrderParameter) {
     super(id);
@@ -70,6 +73,14 @@ public class LastQueryNode extends MultiChildProcessNode {
   @Override
   public void addChild(PlanNode child) {
     children.add(child);
+  }
+
+  public long getStartTimeOfTimePartition() {
+    return startTimeOfTimePartition;
+  }
+
+  public void setStartTimeOfTimePartition(long startTimeOfTimePartition) {
+    this.startTimeOfTimePartition = startTimeOfTimePartition;
   }
 
   @Override
@@ -128,6 +139,7 @@ public class LastQueryNode extends MultiChildProcessNode {
       timeFilter.serialize(byteBuffer);
     }
     mergeOrderParameter.serializeAttributes(byteBuffer);
+    ReadWriteIOUtils.write(startTimeOfTimePartition, byteBuffer);
   }
 
   @Override
@@ -140,6 +152,7 @@ public class LastQueryNode extends MultiChildProcessNode {
       timeFilter.serialize(stream);
     }
     mergeOrderParameter.serializeAttributes(stream);
+    ReadWriteIOUtils.write(startTimeOfTimePartition, stream);
   }
 
   public static LastQueryNode deserialize(ByteBuffer byteBuffer) {
@@ -148,8 +161,11 @@ public class LastQueryNode extends MultiChildProcessNode {
       timeFilter = FilterFactory.deserialize(byteBuffer);
     }
     OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
+    long startTime = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryNode(planNodeId, timeFilter, mergeOrderParameter);
+    LastQueryNode lastQueryNode = new LastQueryNode(planNodeId, timeFilter, mergeOrderParameter);
+    lastQueryNode.setStartTimeOfTimePartition(startTime);
+    return lastQueryNode;
   }
 
   @Override

@@ -79,6 +79,9 @@ public class LocalExecutionPlanContext {
   // whether we need to update last cache
   private boolean needUpdateLastCache;
 
+  // start time of the time partition of this data region
+  private long startTimeOfTimePartition = Long.MIN_VALUE;
+
   // for data region
   public LocalExecutionPlanContext(
       TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
@@ -271,5 +274,13 @@ public class LocalExecutionPlanContext {
 
   public long getDataRegionTTL() {
     return dataRegionTTL;
+  }
+
+  public long getStartTimeOfTimePartition() {
+    return startTimeOfTimePartition;
+  }
+
+  public void setStartTimeOfTimePartition(long startTimeOfTimePartition) {
+    this.startTimeOfTimePartition = startTimeOfTimePartition;
   }
 }

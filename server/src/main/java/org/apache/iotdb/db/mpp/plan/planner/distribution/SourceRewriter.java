@@ -682,6 +682,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // new TimeJoinNode as the child of current TimeJoinNode
     // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
     final boolean[] addParent = {false};
+    boolean isLastQueryNode = (node instanceof LastQueryNode);
     sourceGroup.forEach(
         (dataRegion, seriesScanNodes) -> {
           if (seriesScanNodes.size() == 1 && !context.forceAddParent) {
@@ -704,6 +705,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               // We clone a TimeJoinNode from root to make the params to be consistent.
               // But we need to assign a new ID to it
               MultiChildProcessNode parentOfGroup = (MultiChildProcessNode) root.clone();
+              if (isLastQueryNode) {
+                ((LastQueryNode) parentOfGroup)
+                    .setStartTimeOfTimePartition(dataRegion.getStartTimeOfTTimePartitionSlot());
+              }
               parentOfGroup.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
               seriesScanNodes.forEach(parentOfGroup::addChild);
               root.addChild(parentOfGroup);
