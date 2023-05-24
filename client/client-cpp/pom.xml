@@ -22,7 +22,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>iotdb-parent</artifactId>
+        <artifactId>iotdb-clients</artifactId>
         <groupId>org.apache.iotdb</groupId>
         <version>1.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -42,17 +42,12 @@
         <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
     </properties>
     <modules>
-        <module>../example/client-cpp-example</module>
+        <module>../../example/client-cpp-example</module>
     </modules>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>client-cpp-tools-thrift</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -241,15 +236,15 @@
                                 <configuration>
                                     <classifier>${os.classifier}</classifier>
                                     <!--
-                                      We need to use a newer version of cmake, so disable downloading. If we do not
-                                      set this to false, a cmake of version 3.7.2 will be downloaded.
-                                    -->
+                    We need to use a newer version of cmake, so disable downloading. If we do not
+                    set this to false, a cmake of version 3.7.2 will be downloaded.
+                  -->
                                     <downloadBinaries>false</downloadBinaries>
                                     <sourcePath>${project.build.directory}/build/main</sourcePath>
                                     <!--
-                                      Path to where the build configuration is generated
-                                      (This directory is then used in the compile step to actually perform the build)
-                                    -->
+                    Path to where the build configuration is generated
+                    (This directory is then used in the compile step to actually perform the build)
+                  -->
                                     <targetPath>${project.build.directory}/build/main</targetPath>
                                     <generator>${cmake.generator}</generator>
                                     <options>
@@ -269,9 +264,9 @@
                                     <classifier>${os.classifier}</classifier>
                                     <config>${cmake.build.type}</config>
                                     <!--
-                                      We need to use a newer version of cmake, so disable downloading
-                                      and tell the plugin where to find that version.
-                                    -->
+                    We need to use a newer version of cmake, so disable downloading
+                    and tell the plugin where to find that version.
+                  -->
                                     <downloadBinaries>false</downloadBinaries>
                                     <!-- The directory where the "generate" step generated the build configuration -->
                                     <projectDirectory>${project.build.directory}/build/main</projectDirectory>

@@ -108,9 +108,8 @@
         <module>node-commons</module>
         <module>confignode</module>
         <module>zeppelin-interpreter</module>
-        <module>client-py</module>
+        <module>client</module>
         <module>compile-tools</module>
-        <module>client-cpp</module>
         <module>metrics</module>
         <!-- Will remove integration at 2023.1.23-->
         <module>integration</module>
@@ -209,11 +208,11 @@
         <io.airlift.slice.version>0.41</io.airlift.slice.version>
         <dep.airlift.version>200</dep.airlift.version>
         <!-- do not upgrade this package unless we have to...
-        Some experiments(https://github.com/jixuan1989/DependencyTest/blob/main/src/main/java/timecho/exp/JolTimeCost.java):
-        jol v0.2, scan tsfile package and calculate the classes size, time cost: 600ms
-        jol v0.4: time cost is 980ms,
-        jol v0.14, time cost is 1600ms
-        -->
+    Some experiments(https://github.com/jixuan1989/DependencyTest/blob/main/src/main/java/timecho/exp/JolTimeCost.java):
+    jol v0.2, scan tsfile package and calculate the classes size, time cost: 600ms
+    jol v0.4: time cost is 980ms,
+    jol v0.14, time cost is 1600ms
+    -->
         <jol-core.version>0.2</jol-core.version>
         <jackson-core-asl.version>1.9.13</jackson-core-asl.version>
         <mqtt-client.version>1.12</mqtt-client.version>
@@ -240,16 +239,16 @@
         <codegen.phase>generate-sources</codegen.phase>
     </properties>
     <!--
-        if we claim dependencies in dependencyManagement, then we do not claim
-        their version in sub-project's pom, but we have to claim themselves again
-        in sub-projects
-    -->
+      if we claim dependencies in dependencyManagement, then we do not claim
+      their version in sub-project's pom, but we have to claim themselves again
+      in sub-projects
+  -->
     <dependencyManagement>
         <dependencies>
             <!--
-                in the subprojects, you have to claim logback again, because maybe
-                someone in your dependences uses log4j lib.
-            -->
+          in the subprojects, you have to claim logback again, because maybe
+          someone in your dependences uses log4j lib.
+      -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
@@ -440,10 +439,10 @@
                 </exclusions>
             </dependency>
             <!--            <dependency>
-                <groupId>org.javassist</groupId>
-                <artifactId>javassist</artifactId>
-                <version>3.24.1-GA</version>
-            </dependency>-->
+          <groupId>org.javassist</groupId>
+          <artifactId>javassist</artifactId>
+          <version>3.24.1-GA</version>
+      </dependency>-->
             <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
@@ -680,7 +679,7 @@
         <pluginManagement>
             <plugins>
                 <!-- using `mvn -N versions:update-child-modules` can update the version
-                of child modules to what their parent claims -->
+        of child modules to what their parent claims -->
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>versions-maven-plugin</artifactId>
@@ -695,18 +694,18 @@
                     <configuration>
                         <excludePackageNames>*thrift*</excludePackageNames>
                         <!--
-                          This will suppress the generation of a hidden timestamp at the top of each generated html page
-                          and hopefully let the site generation nod to too big updates every time.
-                        -->
+              This will suppress the generation of a hidden timestamp at the top of each generated html page
+              and hopefully let the site generation nod to too big updates every time.
+            -->
                         <notimestamp>true</notimestamp>
                         <!--Don't fail the build, just because there were issues in the JavaDoc generation.-->
                         <failOnError>false</failOnError>
                     </configuration>
                 </plugin>
                 <!--
-                  We need to increase the memory available to tests as we were
-                  getting out-of-memory errors when building on windows machines.
-                -->
+          We need to increase the memory available to tests as we were
+          getting out-of-memory errors when building on windows machines.
+        -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
@@ -715,8 +714,8 @@
                     </configuration>
                 </plugin>
                 <!--
-                    Plugin for doing the code analysis.
-                -->
+            Plugin for doing the code analysis.
+        -->
                 <plugin>
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
@@ -870,10 +869,10 @@
                 </dependencies>
             </plugin>
             <!--
-                      Strange things usually happen if you run with a too low Java version.
-                      This plugin not only checks the minimum java version of 1.8, but also
-                      checks all dependencies (and transitive dependencies) for reported CVEs.
-                    -->
+                Strange things usually happen if you run with a too low Java version.
+                This plugin not only checks the minimum java version of 1.8, but also
+                checks all dependencies (and transitive dependencies) for reported CVEs.
+              -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -894,28 +893,28 @@
                         </goals>
                     </execution>
                     <!--
-                        Fails the build if classes are included from multiple
-                        artifacts and these are not identical.
-                    -->
+              Fails the build if classes are included from multiple
+              artifacts and these are not identical.
+          -->
                     <!--execution>
-                        <id>enforce-ban-duplicate-classes</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <banDuplicateClasses>
-                                    <scopes>
-                                        <scope>compile</scope>
-                                        <scope>provided</scope>
-                                    </scopes>
-                                    <findAllDuplicates>true</findAllDuplicates>
-                                    <ignoreWhenIdentical>true</ignoreWhenIdentical>
-                                </banDuplicateClasses>
-                            </rules>
-                            <fail>true</fail>
-                        </configuration>
-                    </execution-->
+              <id>enforce-ban-duplicate-classes</id>
+              <goals>
+                  <goal>enforce</goal>
+              </goals>
+              <configuration>
+                  <rules>
+                      <banDuplicateClasses>
+                          <scopes>
+                              <scope>compile</scope>
+                              <scope>provided</scope>
+                          </scopes>
+                          <findAllDuplicates>true</findAllDuplicates>
+                          <ignoreWhenIdentical>true</ignoreWhenIdentical>
+                      </banDuplicateClasses>
+                  </rules>
+                  <fail>true</fail>
+              </configuration>
+          </execution-->
                     <!-- Make sure no dependencies are used for which known vulnerabilities exist. -->
                     <execution>
                         <id>vulnerability-checks</id>
@@ -951,14 +950,14 @@
                 </dependencies>
             </plugin>
             <!--
-              Even if Maven transitively pulls in dependencies, relying on these can
-              quite often cause hard to find problems. So it's a good practice to make
-              sure everything directly required is also directly added as a dependency.
-              On the other side adding unused dependency only over-complicates the
-              the dependency graph, so the maven-dependency-plugin checks we depend on
-              what we need and only that and that runtime dependencies are correctly
-              imported with runtime scope.
-            -->
+        Even if Maven transitively pulls in dependencies, relying on these can
+        quite often cause hard to find problems. So it's a good practice to make
+        sure everything directly required is also directly added as a dependency.
+        On the other side adding unused dependency only over-complicates the
+        the dependency graph, so the maven-dependency-plugin checks we depend on
+        what we need and only that and that runtime dependencies are correctly
+        imported with runtime scope.
+      -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -1011,9 +1010,9 @@
                 </configuration>
             </plugin>
             <!--
-              Check if all files contain Apache headers in them.
-              Ignore this plugin, we use license-maven-plugin to check apache header.
-            -->
+        Check if all files contain Apache headers in them.
+        Ignore this plugin, we use license-maven-plugin to check apache header.
+      -->
             <plugin>
                 <groupId>org.apache.rat</groupId>
                 <artifactId>apache-rat-plugin</artifactId>
@@ -1051,8 +1050,8 @@
                 </executions>
             </plugin>
             <!--
-              Generate the legally required text files in the jars
-            -->
+        Generate the legally required text files in the jars
+      -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-remote-resources-plugin</artifactId>
@@ -1151,9 +1150,9 @@
             </build>
         </profile>
         <!--
-          A set of profiles defining the different properties needed to download and run thrift
-          They are automatically activated depending on the OS you are using.
-        -->
+      A set of profiles defining the different properties needed to download and run thrift
+      They are automatically activated depending on the OS you are using.
+    -->
         <profile>
             <id>windows</id>
             <activation>
@@ -1237,7 +1236,7 @@
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
                 <!-- change to 1.15.0 will modify many codes (all are javadocs), we change it to 1.15.0
-                until: iotdb decides to do not support jdk8-->
+        until: iotdb decides to do not support jdk8-->
                 <google.java.format.version>1.7</google.java.format.version>
             </properties>
             <dependencies>
@@ -1257,7 +1256,7 @@
             </dependencies>
         </profile>
         <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
-          (https://openjdk.java.net/jeps/396) -->
+      (https://openjdk.java.net/jeps/396) -->
         <profile>
             <id>java-16-and-above</id>
             <activation>
@@ -1270,14 +1269,14 @@
             </properties>
         </profile>
         <!--
-          Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.
-          The different plugins here download the thrift executable matching the current os, make that
-          executable (on mac and unix/linux) and run the code generation.
+      Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.
+      The different plugins here download the thrift executable matching the current os, make that
+      executable (on mac and unix/linux) and run the code generation.
 
-          Note to the Download: The download-maven-plugin checks if a resource is previously downloaded
-          and only downloads each file once. It caches downloaded files in:
-          {maven local repo}/.cache/download-maven-plugin
-        -->
+      Note to the Download: The download-maven-plugin checks if a resource is previously downloaded
+      and only downloads each file once. It caches downloaded files in:
+      {maven local repo}/.cache/download-maven-plugin
+    -->
         <profile>
             <id>thrift-generation</id>
             <activation>
@@ -1395,10 +1394,10 @@
                                     <goal>single</goal>
                                 </goals>
                                 <!-- heads up: combine.self in the following is highlighted
-                                    as an error in Eclipse's xml editor view.
-                                    Just ignore that.
-                                    See  https://issues.apache.org/jira/browse/MNG-5454  sigh.
-                                 -->
+                    as an error in Eclipse's xml editor view.
+                    Just ignore that.
+                    See  https://issues.apache.org/jira/browse/MNG-5454  sigh.
+                 -->
                                 <configuration combine.self="append">
                                     <finalName>apache-iotdb-${project.version}</finalName>
                                     <archive>
@@ -1412,8 +1411,8 @@
                         </executions>
                     </plugin>
                     <!--
-                      Create SHA512 checksum files for the release artifacts.
-                    -->
+            Create SHA512 checksum files for the release artifacts.
+          -->
                     <plugin>
                         <groupId>net.nicoulaj.maven.plugins</groupId>
                         <artifactId>checksum-maven-plugin</artifactId>
@@ -1461,7 +1460,7 @@
             <build>
                 <plugins>
                     <!-- Jacoco is a code coverage analysis plugin when tests run.
-                    (not a static code analysis tool)-->
+          (not a static code analysis tool)-->
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
@@ -1478,7 +1477,7 @@
                                     <element>BUNDLE</element>
                                     <limits>　　
                                         <!-- Cover methodes >=30%. (the plugin does not support
-                                        ignore getter and setter and toString etc..) -->
+                    ignore getter and setter and toString etc..) -->
                                         <limit implementation="org.jacoco.report.check.Limit">
                                             <counter>METHOD</counter>
                                             <value>COVEREDRATIO</value>
@@ -1611,7 +1610,7 @@
         </profile>
         <!-- upload code coverage report to coveralls.io-->
         <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/iotdb.
-             use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
+         use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
         <profile>
             <id>enforce</id>
             <properties>
