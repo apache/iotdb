@@ -159,13 +159,13 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       List<TSDataType> dataTypes = new ArrayList<>();
       for (int i = 0; i < size; i++) {
-        dataTypes.add(TSDataType.values()[buffer.get()]);
+        dataTypes.add(TSDataType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setDataTypes(dataTypes);
 
       List<TSEncoding> encodings = new ArrayList<>();
       for (int i = 0; i < size; i++) {
-        encodings.add(TSEncoding.values()[buffer.get()]);
+        encodings.add(TSEncoding.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setEncodings(encodings);
 
@@ -226,8 +226,8 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
 
-      createTimeSeriesPlan.setDataType(TSDataType.values()[buffer.get()]);
-      createTimeSeriesPlan.setEncoding(TSEncoding.values()[buffer.get()]);
+      createTimeSeriesPlan.setDataType(TSDataType.deserialize(buffer.get()));
+      createTimeSeriesPlan.setEncoding(TSEncoding.deserialize(buffer.get()));
       createTimeSeriesPlan.setCompressor(CompressionType.deserialize(buffer.get()));
       createTimeSeriesPlan.setTagOffset(buffer.getLong());
 
