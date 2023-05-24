@@ -41,20 +41,20 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeTaskMeta {
 
   private final AtomicReference<ConsensusIndex> progressIndex = new AtomicReference<>();
-  private final AtomicInteger regionLeader = new AtomicInteger(0);
+  private final AtomicInteger dataNodeId = new AtomicInteger(0);
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
-  public PipeTaskMeta(ConsensusIndex progressIndex, int regionLeader) {
+  public PipeTaskMeta(ConsensusIndex progressIndex, int dataNodeId) {
     this.progressIndex.set(progressIndex);
-    this.regionLeader.set(regionLeader);
+    this.dataNodeId.set(dataNodeId);
   }
 
   public ConsensusIndex getProgressIndex() {
     return progressIndex.get();
   }
 
-  public int getRegionLeader() {
-    return regionLeader.get();
+  public int getDataNodeId() {
+    return dataNodeId.get();
   }
 
   public Iterable<PipeRuntimeException> getExceptionMessages() {
@@ -73,13 +73,13 @@ public class PipeTaskMeta {
     progressIndex.updateAndGet(index -> index.updateToMaximum(updateIndex));
   }
 
-  public void setRegionLeader(int regionLeader) {
-    this.regionLeader.set(regionLeader);
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId.set(dataNodeId);
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
-    ReadWriteIOUtils.write(regionLeader.get(), outputStream);
+    ReadWriteIOUtils.write(dataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
       ReadWriteIOUtils.write(
@@ -90,7 +90,7 @@ public class PipeTaskMeta {
 
   public void serialize(FileOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
-    ReadWriteIOUtils.write(regionLeader.get(), outputStream);
+    ReadWriteIOUtils.write(dataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
       ReadWriteIOUtils.write(
@@ -141,13 +141,13 @@ public class PipeTaskMeta {
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
     return progressIndex.get().equals(that.progressIndex.get())
-        && regionLeader.get() == that.regionLeader.get()
+        && dataNodeId.get() == that.dataNodeId.get()
         && Arrays.equals(exceptionMessages.toArray(), that.exceptionMessages.toArray());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex, regionLeader, exceptionMessages);
+    return Objects.hash(progressIndex, dataNodeId, exceptionMessages);
   }
 
   @Override
@@ -156,8 +156,8 @@ public class PipeTaskMeta {
         + "progressIndex='"
         + progressIndex
         + '\''
-        + ", regionLeader='"
-        + regionLeader
+        + ", dataNodeId='"
+        + dataNodeId
         + '\''
         + ", exceptionMessages="
         + exceptionMessages

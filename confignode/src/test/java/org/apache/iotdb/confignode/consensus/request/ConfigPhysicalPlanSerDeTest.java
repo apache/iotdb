@@ -1164,10 +1164,12 @@ public class ConfigPhysicalPlanSerDeTest {
               {
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(789, 987));
+                    new PipeTaskMeta(
+                        new MinimumConsensusIndex(), 987)); // TODO: replace with IoTConsensus
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(456, 789));
+                    new PipeTaskMeta(
+                        new MinimumConsensusIndex(), 789)); // TODO: replace with IoTConsensus
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));

@@ -117,7 +117,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
           pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
       for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
           pipeTaskMetaMapOnConfigNode.entrySet()) {
-        if (runtimeMetaOnConfigNode.getValue().getRegionLeader() != dataNodeId) {
+        if (runtimeMetaOnConfigNode.getValue().getDataNodeId() != dataNodeId) {
           continue;
         }
 

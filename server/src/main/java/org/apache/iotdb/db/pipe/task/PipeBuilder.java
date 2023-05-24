@@ -24,12 +24,15 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class PipeBuilder {
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final PipeMeta pipeMeta;
 
@@ -49,16 +52,18 @@ public class PipeBuilder {
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupIdToTaskMetaMap().entrySet()) {
-      consensusGroupIdToPipeTaskMap.put(
-          consensusGroupIdToPipeTaskMeta.getKey(),
-          new PipeTaskBuilder(
-                  pipeName,
-                  consensusGroupIdToPipeTaskMeta.getKey(),
-                  consensusGroupIdToPipeTaskMeta.getValue(),
-                  collectorParameters,
-                  processorParameters,
-                  connectorParameters)
-              .build());
+      if (consensusGroupIdToPipeTaskMeta.getValue().getDataNodeId() == CONFIG.getDataNodeId()) {
+        consensusGroupIdToPipeTaskMap.put(
+            consensusGroupIdToPipeTaskMeta.getKey(),
+            new PipeTaskBuilder(
+                    pipeName,
+                    consensusGroupIdToPipeTaskMeta.getKey(),
+                    consensusGroupIdToPipeTaskMeta.getValue(),
+                    collectorParameters,
+                    processorParameters,
+                    connectorParameters)
+                .build());
+      }
     }
 
     return consensusGroupIdToPipeTaskMap;
