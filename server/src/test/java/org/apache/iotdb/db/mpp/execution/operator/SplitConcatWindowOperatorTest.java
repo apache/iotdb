@@ -288,9 +288,8 @@ public class SplitConcatWindowOperatorTest {
       assert windowConcatOperator != null;
 
       long total = 0;
-      long windowCount = 0;
+      long windowCount;
       long startTime = 0;
-      long lastWindowIndex = 0;
 
       long restWindow = 8;
 
@@ -298,26 +297,21 @@ public class SplitConcatWindowOperatorTest {
         TsBlock tsBlock = windowConcatOperator.next();
         if (tsBlock == null) continue;
         int size = tsBlock.getPositionCount();
+        windowCount = 0;
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long windowIndex = tsBlock.getColumn(2).getLong(i);
-          if (lastWindowIndex != windowIndex) {
-
-            if (startTime >= 492) {
-              assertEquals(restWindow, windowCount);
-              restWindow -= 3;
-            } else {
-              assertEquals(windowCount, 10);
-            }
-
-            lastWindowIndex = windowIndex;
-            windowCount = 0;
-            startTime += 3;
-          }
           long expectedTime = startTime + windowCount;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           checkValue(expectedTime, tsBlock, i);
           windowCount++;
         }
+
+        if (startTime >= 492) {
+          assertEquals(restWindow, windowCount);
+          restWindow -= 3;
+        } else {
+          assertEquals(windowCount, 10);
+        }
+        startTime += 3;
         total += size;
       }
       assertEquals(1655, total);
@@ -334,28 +328,24 @@ public class SplitConcatWindowOperatorTest {
       assert windowConcatOperator != null;
 
       long total = 0;
-      long windowCount = 0;
+      long windowCount;
       long startTime = 0;
-      long lastWindowIndex = 0;
 
       while (windowConcatOperator.isBlocked().isDone() && windowConcatOperator.hasNext()) {
         TsBlock tsBlock = windowConcatOperator.next();
         if (tsBlock == null) continue;
         int size = tsBlock.getPositionCount();
+        windowCount = 0;
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long windowIndex = tsBlock.getColumn(2).getLong(i);
-          if (lastWindowIndex != windowIndex) {
-            assertEquals(windowCount, 10);
-            lastWindowIndex = windowIndex;
-            windowCount = 0;
-            startTime += 5;
-          }
           long expectedTime = startTime + windowCount;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           checkValue(expectedTime, tsBlock, i);
           windowCount++;
         }
+        if (startTime < 495) assertEquals(windowCount, 10);
+        else assertEquals(windowCount, 5);
         total += size;
+        startTime += 5;
       }
       assertEquals(995, total);
     } catch (Exception e) {
@@ -371,28 +361,23 @@ public class SplitConcatWindowOperatorTest {
       assert windowConcatOperator != null;
 
       long total = 0;
-      long windowCount = 0;
+      long windowCount;
       long startTime = 0;
-      long lastWindowIndex = 0;
 
       while (windowConcatOperator.isBlocked().isDone() && windowConcatOperator.hasNext()) {
         TsBlock tsBlock = windowConcatOperator.next();
         if (tsBlock == null) continue;
         int size = tsBlock.getPositionCount();
+        windowCount = 0;
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long windowIndex = tsBlock.getColumn(2).getLong(i);
-          if (lastWindowIndex != windowIndex) {
-            assertEquals(windowCount, 5);
-            lastWindowIndex = windowIndex;
-            windowCount = 0;
-            startTime += 10;
-          }
           long expectedTime = startTime + windowCount;
           assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
           checkValue(expectedTime, tsBlock, i);
           windowCount++;
         }
+        assertEquals(windowCount, 5);
         total += size;
+        startTime += 10;
       }
       assertEquals(250, total);
     } catch (Exception e) {
