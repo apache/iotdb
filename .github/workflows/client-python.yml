@@ -50,6 +50,8 @@ jobs:
         run: |
           docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
           docker images
+      - name: Print Test
+        run: ll -h iotdb-client/client-py/
       - name: Install IoTDB python client requirements
         run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
       - name: Integration test
