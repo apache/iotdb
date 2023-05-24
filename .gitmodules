@@ -1,3 +1,0 @@
-[submodule "iotdb-client/client-go"]
-	path = iotdb-client/client-go
-	url = https://github.com/apache/iotdb-client-go
