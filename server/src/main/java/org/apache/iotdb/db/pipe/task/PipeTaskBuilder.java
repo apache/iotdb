@@ -19,5 +19,61 @@
 
 package org.apache.iotdb.db.pipe.task;
 
-/** PipeTaskBuilder is used to build a PipeTask. */
-public class PipeTaskBuilder {}
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.db.pipe.task.stage.PipeTaskCollectorStage;
+import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
+import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
+import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+
+public class PipeTaskBuilder {
+
+  private final String pipeName;
+  private final String dataRegionId;
+  private final PipeParameters pipeCollectorParameters;
+  private final PipeParameters pipeProcessorParameters;
+  private final PipeParameters pipeConnectorParameters;
+
+  PipeTaskBuilder(
+      String pipeName,
+      String dataRegionId,
+      PipeParameters pipeCollectorParameters,
+      PipeParameters pipeProcessorParameters,
+      PipeParameters pipeConnectorParameters) {
+    this.pipeName = pipeName;
+    this.dataRegionId = dataRegionId;
+    this.pipeCollectorParameters = pipeCollectorParameters;
+    this.pipeProcessorParameters = pipeProcessorParameters;
+    this.pipeConnectorParameters = pipeConnectorParameters;
+  }
+
+  public PipeTaskBuilder(String dataRegionId, PipeStaticMeta pipeStaticMeta) {
+    this(
+        pipeStaticMeta.getPipeName(),
+        dataRegionId,
+        pipeStaticMeta.getCollectorParameters(),
+        pipeStaticMeta.getProcessorParameters(),
+        pipeStaticMeta.getConnectorParameters());
+  }
+
+  public PipeTask build() {
+    // event flow: collector -> processor -> connector
+
+    // we first build the collector and connector, then build the processor.
+    final PipeTaskCollectorStage collectorStage =
+        new PipeTaskCollectorStage(dataRegionId, pipeCollectorParameters);
+    final PipeTaskConnectorStage connectorStage =
+        new PipeTaskConnectorStage(pipeConnectorParameters);
+
+    // the processor connects the collector and connector.
+    final PipeTaskProcessorStage processorStage =
+        new PipeTaskProcessorStage(
+            pipeName,
+            dataRegionId,
+            collectorStage.getEventSupplier(),
+            collectorStage.getCollectorPendingQueue(),
+            pipeProcessorParameters,
+            connectorStage.getPipeConnectorPendingQueue());
+
+    return new PipeTask(pipeName, dataRegionId, collectorStage, processorStage, connectorStage);
+  }
+}

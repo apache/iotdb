@@ -33,7 +33,7 @@ import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeVisitorWithLi
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -195,7 +195,7 @@ public class ClusterSchemaTree implements ISchemaTree {
   private void appendSingleMeasurementPath(MeasurementPath measurementPath) {
     appendSingleMeasurement(
         measurementPath,
-        (MeasurementSchema) measurementPath.getMeasurementSchema(),
+        measurementPath.getMeasurementSchema(),
         measurementPath.getTagMap(),
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
         measurementPath.isUnderAlignedEntity());
@@ -203,7 +203,7 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   public void appendSingleMeasurement(
       PartialPath path,
-      MeasurementSchema schema,
+      IMeasurementSchema schema,
       Map<String, String> tagMap,
       String alias,
       boolean isAligned) {

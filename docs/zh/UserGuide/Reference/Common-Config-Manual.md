@@ -960,11 +960,11 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 * target\_compaction\_file\_size
 
 |     名字     | target\_compaction\_file\_size |
-| :----------: | :----------------------------- |
-|     描述     | 空间内合并的目标文件大小       |
+| :----------: |:-------------------------------|
+|     描述     | 合并后的目标文件大小                     |
 |     类型     | Int64                          |
-|    默认值    | 1073741824                     |
-| 改后生效方式 | 重启服务生效                   |
+|    默认值    | 2147483648                     |
+| 改后生效方式 | 重启服务生效                         |
 
 * target\_chunk\_size
 
@@ -1121,14 +1121,23 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |  默认值   | 0                            |
 | 改后生效方式 | 重启服务生效                       |
 
-* fsync\_wal\_delay\_in\_ms
+* wal\_async\_mode\_fsync\_delay\_in\_ms
 
-|   名字   | fsync\_wal\_delay\_in\_ms |
-|:------:|:--------------------------|
-|   描述   | 写前日志调用 fsync 前的等待时间       |
-|   类型   | int32                     |
-|  默认值   | 3                         |
-| 改后生效方式 | 热加载                       |
+|   名字   | wal\_async\_mode\_fsync\_delay\_in\_ms |
+|:------:|:---------------------------------------|
+|   描述   | async 模式下写前日志调用 fsync 前的等待时间           |
+|   类型   | int32                                  |
+|  默认值   | 1000                                   |
+| 改后生效方式 | 热加载                                    |
+
+* wal\_sync\_mode\_fsync\_delay\_in\_ms
+
+|   名字   | wal\_sync\_mode\_fsync\_delay\_in\_ms |
+|:------:|:--------------------------------------|
+|   描述   | sync 模式下写前日志调用 fsync 前的等待时间           |
+|   类型   | int32                                 |
+|  默认值   | 3                                     |
+| 改后生效方式 | 热加载                                   |
 
 * wal\_buffer\_size\_in\_byte
 
@@ -1136,7 +1145,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |:------:|:----------------------------|
 |   描述   | 写前日志的 buffer 大小             |
 |   类型   | int32                       |
-|  默认值   | 16777216                    |
+|  默认值   | 33554432                    |
 | 改后生效方式 | 重启服务生效                      |
 
 * wal\_buffer\_queue\_capacity
@@ -1145,7 +1154,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |:------:|:-----------------------------|
 |   描述   | 写前日志阻塞队列大小上限                 |
 |   类型   | int32                        |
-|  默认值   | 50                           |
+|  默认值   | 500                          |
 | 改后生效方式 | 重启服务生效                       |
 
 * wal\_file\_size\_threshold\_in\_byte
@@ -1154,7 +1163,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |:------:|:-------------------------------------|
 |   描述   | 写前日志文件封口阈值                           |
 |   类型   | int32                                |
-|  默认值   | 10485760                             |
+|  默认值   | 31457280                             |
 | 改后生效方式 | 热加载                                  |
 
 * wal\_min\_effective\_info\_ratio
@@ -1515,6 +1524,46 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |    默认值    | 5                             |
 | 改后生效方式 | 热加载                  |
 
+#### IoT 共识协议配置
+
+当Region配置了IoTConsensus共识协议之后，下述的配置项才会生效
+
+* data_region_iot_max_log_entries_num_per_batch
+
+|     名字     | data_region_iot_max_log_entries_num_per_batch     |
+| :----------: | :-------------------------------- |
+|     描述     | IoTConsensus batch 的最大日志条数 |
+|     类型     | int32                             |
+|    默认值    | 1024                              |
+| 改后生效方式 | 重启生效                          |
+
+* data_region_iot_max_size_per_batch
+
+|     名字     | data_region_iot_max_size_per_batch            |
+| :----------: | :---------------------------- |
+|     描述     | IoTConsensus batch 的最大大小 |
+|     类型     | int32                         |
+|    默认值    | 16MB                          |
+| 改后生效方式 | 重启生效                      |
+
+* data_region_iot_max_pending_batches_num
+
+|     名字     | data_region_iot_max_pending_batches_num             |
+| :----------: | :---------------------------------- |
+|     描述     | IoTConsensus batch 的流水线并发阈值 |
+|     类型     | int32                               |
+|    默认值    | 12                                  |
+| 改后生效方式 | 重启生效                            |
+
+* data_region_iot_max_memory_ratio_for_queue
+
+|     名字     | data_region_iot_max_memory_ratio_for_queue    |
+| :----------: | :---------------------------- |
+|     描述     | IoTConsensus 队列内存分配比例 |
+|     类型     | double                        |
+|    默认值    | 0.6                           |
+| 改后生效方式 | 重启生效                      |
+
 #### Ratis 共识协议配置
 当Region配置了RatisConsensus共识协议之后，下述的配置项才会生效
 
@@ -1653,6 +1702,24 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |   类型   | int32                                      |
 |  默认值   | 4MB                                        |
 | 改后生效方式 | 重启生效                                       |
+
+* data_region_ratis_grpc_leader_outstanding_appends_max
+
+|     名字     | data_region_ratis_grpc_leader_outstanding_appends_max |
+| :----------: | :---------------------------------------------------- |
+|     描述     | data region grpc 流水线并发阈值                       |
+|     类型     | int32                                                 |
+|    默认值    | 128                                                   |
+| 改后生效方式 | 重启生效                                              |
+
+* data_region_ratis_log_force_sync_num
+
+|     名字     | data_region_ratis_log_force_sync_num |
+| :----------: | :----------------------------------- |
+|     描述     | data region fsync 阈值               |
+|     类型     | int32                                |
+|    默认值    | 128                                  |
+| 改后生效方式 | 重启生效                             |
 
 * config\_node\_ratis\_rpc\_leader\_election\_timeout\_min\_ms
 

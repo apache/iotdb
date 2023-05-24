@@ -74,7 +74,6 @@ public abstract class AbstractCompactionTask {
   public boolean start() {
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
-    CompactionMetricsManager.getInstance().reportTaskStartRunning(crossTask, innerSeqTask);
     try {
       summary.start();
       isSuccess = doCompaction();
@@ -159,6 +158,10 @@ public abstract class AbstractCompactionTask {
 
   public boolean isCrossTask() {
     return crossTask;
+  }
+
+  public long getTemporalFileSize() {
+    return summary.getTemporalFileSize();
   }
 
   public boolean isInnerSeqTask() {

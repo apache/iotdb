@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
+import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -188,12 +193,29 @@ public class PipePluginAgent {
     }
   }
 
+  public PipeCollector reflectCollector(PipeParameters collectorParameters) {
+    return (PipeCollector)
+        reflect(
+            collectorParameters.getStringOrDefault(
+                PipeCollectorConstant.COLLECTOR_KEY,
+                BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName()));
+  }
+
   public PipeProcessor reflectProcessor(PipeParameters processorParameters) {
-    throw new UnsupportedOperationException("Not supported yet.");
+    return (PipeProcessor)
+        reflect(
+            processorParameters.getStringOrDefault(
+                PipeProcessorConstant.PROCESSOR_KEY,
+                BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()));
   }
 
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
-    throw new UnsupportedOperationException("Not supported yet.");
+    if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
+      throw new PipeManagementException(
+          "Failed to reflect PipeConnector instance because 'connector' is not specified in the parameters.");
+    }
+    return (PipeConnector)
+        reflect(connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY));
   }
 
   private PipePlugin reflect(String pluginName) {

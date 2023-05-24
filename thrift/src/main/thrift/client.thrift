@@ -455,6 +455,17 @@ struct TSyncTransportMetaInfo{
   2:required i64 startIndex
 }
 
+struct TPipeTransferReq {
+  1:required i8 version
+  2:required i16 type
+  3:required binary body
+}
+
+struct TPipeTransferResp {
+  1:required common.TSStatus status
+  2:optional binary body
+}
+
 struct TSBackupConfigurationResp {
   1: required common.TSStatus status
   2: optional bool enableOperationSync
@@ -594,6 +605,8 @@ service IClientRPCService {
   common.TSStatus sendPipeData(1:binary buff);
 
   common.TSStatus sendFile(1:TSyncTransportMetaInfo metaInfo, 2:binary buff);
+
+  TPipeTransferResp pipeTransfer(TPipeTransferReq req);
 
   TSBackupConfigurationResp getBackupConfiguration();
 

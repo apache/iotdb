@@ -19,70 +19,131 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.ArrayBlockingQueue;
 
 public class PipeConnectorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  // input
-  private final ArrayBlockingQueue<Event> pendingQueue;
-  // output
-  private final PipeConnector pipeConnector;
+  private final ListenableBlockingPendingQueue<Event> inputPendingQueue;
+  private final PipeConnector outputPipeConnector;
 
   /** @param taskID connectorAttributeSortedString */
-  public PipeConnectorSubtask(String taskID, PipeConnector pipeConnector) {
+  public PipeConnectorSubtask(
+      String taskID,
+      ListenableBlockingPendingQueue<Event> inputPendingQueue,
+      PipeConnector outputPipeConnector) {
     super(taskID);
-    // TODO: make the size of the queue size reasonable and configurable
-    this.pendingQueue = new ArrayBlockingQueue<>(1024 * 1024);
-    this.pipeConnector = pipeConnector;
+    this.inputPendingQueue = inputPendingQueue;
+    this.outputPipeConnector = outputPipeConnector;
   }
 
-  public ArrayBlockingQueue<Event> getInputPendingQueue() {
-    return pendingQueue;
-  }
-
-  // TODO: for a while
   @Override
-  protected void executeForAWhile() {
-    if (pendingQueue.isEmpty()) {
-      return;
+  protected synchronized boolean executeOnce() {
+    try {
+      // TODO: reduce the frequency of heartbeat
+      outputPipeConnector.heartbeat();
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          "PipeConnector: failed to connect to the target system.", e);
     }
 
-    final Event event = pendingQueue.poll();
+    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.poll();
+    // record this event for retrying on connection failure or other exceptions
+    lastEvent = event;
+    if (event == null) {
+      return false;
+    }
 
     try {
       if (event instanceof TabletInsertionEvent) {
-        pipeConnector.transfer((TabletInsertionEvent) event);
+        outputPipeConnector.transfer((TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
-        pipeConnector.transfer((TsFileInsertionEvent) event);
-      } else if (event instanceof DeletionEvent) {
-        pipeConnector.transfer((DeletionEvent) event);
+        outputPipeConnector.transfer((TsFileInsertionEvent) event);
       } else {
-        throw new RuntimeException("Unsupported event type: " + event.getClass().getName());
+        outputPipeConnector.transfer(event);
       }
+
+      releaseLastEvent();
+    } catch (PipeConnectionException e) {
+      throw e;
     } catch (Exception e) {
       e.printStackTrace();
       throw new PipeException(
           "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
           e);
     }
+
+    return true;
   }
 
   @Override
-  public void close() {
+  public void onFailure(@NotNull Throwable throwable) {
+    // retry to connect to the target system if the connection is broken
+    if (throwable instanceof PipeConnectionException) {
+      int retry = 0;
+      while (retry < MAX_RETRY_TIMES) {
+        try {
+          outputPipeConnector.handshake();
+          break;
+        } catch (Exception e) {
+          retry++;
+          LOGGER.error("Failed to reconnect to the target system, retrying... ({} time(s))", retry);
+          try {
+            // TODO: make the retry interval configurable
+            Thread.sleep(retry * 1000L);
+          } catch (InterruptedException interruptedException) {
+            LOGGER.info(
+                "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.");
+            Thread.currentThread().interrupt();
+          }
+        }
+      }
+
+      // stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
+      // times
+      if (retry == MAX_RETRY_TIMES) {
+        LOGGER.error(
+            "Failed to reconnect to the target system after {} times, stopping current pipe task {}...",
+            MAX_RETRY_TIMES,
+            taskID);
+        lastFailedCause = throwable;
+
+        PipeAgent.runtime().report(this);
+
+        // although the pipe task will be stopped, we still don't release the last event here
+        // because we need to keep it for the next retry. if user wants to restart the task,
+        // the last event will be processed again. the last event will be released when the task
+        // is dropped or the process is running normally.
+        return;
+      }
+    }
+
+    // handle other exceptions as usual
+    super.onFailure(throwable);
+  }
+
+  @Override
+  // synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
+  // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
+  // resource leak because of the lastEvent is not released.
+  public synchronized void close() {
     try {
-      pipeConnector.close();
+      outputPipeConnector.close();
+
+      // should be called after outputPipeConnector.close()
+      super.close();
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.info(

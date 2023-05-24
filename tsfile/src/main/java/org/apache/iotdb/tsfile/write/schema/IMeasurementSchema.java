@@ -31,6 +31,8 @@ import java.util.Map;
 
 public interface IMeasurementSchema {
 
+  MeasurementSchemaType getSchemaType();
+
   String getMeasurementId();
 
   CompressionType getCompressor();
@@ -83,4 +85,6 @@ public interface IMeasurementSchema {
    2. add a flag bit at the beginning to distinguish between MeasurementSchema(0) and VectorMeasurementSchema(1)
   */
   int partialSerializeTo(OutputStream outputStream) throws IOException;
+
+  boolean isLogicalView();
 }

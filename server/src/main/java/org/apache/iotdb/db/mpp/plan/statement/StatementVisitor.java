@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -239,6 +240,12 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowPipePlugins(ShowPipePluginsStatement showPipePluginsStatement, C context) {
     return visitStatement(showPipePluginsStatement, context);
+  }
+
+  // Create Logical View
+  public R visitCreateLogicalView(
+      CreateLogicalViewStatement createLogicalViewStatement, C context) {
+    return visitStatement(createLogicalViewStatement, context);
   }
 
   // ML Model

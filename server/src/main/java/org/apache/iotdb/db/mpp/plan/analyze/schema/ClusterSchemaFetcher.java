@@ -110,14 +110,18 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     this.context = context;
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
-    List<PartialPath> fullPathList = new ArrayList<>();
+    List<PartialPath> explicitPathList = new ArrayList<>();
+    List<PartialPath> explicitDevicePatternList = new ArrayList<>();
     for (PartialPath pattern : pathPatternList) {
       if (!pattern.hasWildcard()) {
-        fullPathList.add(pattern);
+        explicitPathList.add(pattern);
+      } else if (pattern.hasExplicitDevice()
+          && templateManager.checkTemplateSetInfo(pattern) != null) {
+        explicitDevicePatternList.add(pattern);
       }
     }
 
-    if (fullPathList.size() < pathPatternList.size()) {
+    if (explicitPathList.size() + explicitDevicePatternList.size() < pathPatternList.size()) {
       return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, false);
     }
 
@@ -125,13 +129,26 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
     try {
-      ClusterSchemaTree schemaTree;
-      if (fullPathList.size() == pathPatternList.size()) {
-        boolean isAllCached = true;
-        schemaTree = new ClusterSchemaTree();
-        ClusterSchemaTree cachedSchema;
-        Set<String> storageGroupSet = new HashSet<>();
-        for (PartialPath fullPath : fullPathList) {
+      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      boolean isAllCached = true;
+
+      ClusterSchemaTree cachedSchema;
+      Set<String> storageGroupSet = new HashSet<>();
+      if (!explicitDevicePatternList.isEmpty()) {
+        for (PartialPath explicitDevicePattern : explicitDevicePatternList) {
+          cachedSchema = schemaCache.getMatchedSchemaWithTemplate(explicitDevicePattern);
+          if (cachedSchema.isEmpty()) {
+            isAllCached = false;
+            break;
+          } else {
+            schemaTree.mergeSchemaTree(cachedSchema);
+            storageGroupSet.addAll(cachedSchema.getDatabases());
+          }
+        }
+      }
+
+      if (isAllCached && !explicitPathList.isEmpty()) {
+        for (PartialPath fullPath : explicitPathList) {
           cachedSchema = schemaCache.get(fullPath);
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
@@ -141,13 +158,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             storageGroupSet.addAll(cachedSchema.getDatabases());
           }
         }
-        if (isAllCached) {
-          schemaTree.setDatabases(storageGroupSet);
-          return schemaTree;
-        }
       }
 
-      return clusterSchemaFetchExecutor.fetchSchemaOfPreciseMatch(fullPathList, patternTree);
+      if (isAllCached) {
+        schemaTree.setDatabases(storageGroupSet);
+        return schemaTree;
+      }
+
+      return clusterSchemaFetchExecutor.fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
+          pathPatternList, patternTree);
+
     } finally {
       schemaCache.releaseReadLock();
     }

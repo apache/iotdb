@@ -274,7 +274,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |   描述   | IoTDB 元数据存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                              |
 |  默认值   | data/datanode/system（Windows：data\\datanode\\system）                |
-| 改后生效方式 | 热加载                                                                |
+| 改后生效方式 | 重启服务生效                                                                    |
 
 * dn\_data\_dirs
 
@@ -283,7 +283,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |   描述   | IoTDB 数据存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                             |
 |  默认值   | data/datanode/data（Windows：data\\datanode\\data）                   |
-| 改后生效方式 | 热加载                                                               |
+| 改后生效方式 | 重启服务生效                                                                   |
 
 * dn\_multi\_dir\_strategy
 
@@ -291,17 +291,26 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |:------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |   描述   | IoTDB 在 data\_dirs 中为 TsFile 选择目录时采用的策略。可使用简单类名或类名全称。系统提供以下三种策略：<br>1. SequenceStrategy：IoTDB 按顺序选择目录，依次遍历 data\_dirs 中的所有目录，并不断轮循；<br>2. MaxDiskUsableSpaceFirstStrategy：IoTDB 优先选择 data\_dirs 中对应磁盘空余空间最大的目录；<br>3. MinFolderOccupiedSpaceFirstStrategy：IoTDB 优先选择 data\_dirs 中已使用空间最小的目录；<br>4. UserDefineStrategyPackage（用户自定义策略）<br>您可以通过以下方法完成用户自定义策略：<br>1. 继承 org.apache.iotdb.db.conf.directories.strategy 类并实现自身的 Strategy 方法；<br>2. 将实现的类的完整类名（包名加类名，UserDefineStrategyPackage）填写到该配置项；<br>3. 将该类 jar 包添加到工程中。 |
 |   类型   | String                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-|  默认值   | MaxDiskUsableSpaceFirstStrategy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|  默认值   | SequenceStrategy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 改后生效方式 | 热加载                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
-* dn\_wal\_dir
+* dn\_consensus\_dir
 
-|   名字   | dn\_wal\_dir                                                         |
+|   名字   | dn\_consensus\_dir                                                       |
+|:------:|:-------------------------------------------------------------------------|
+|   描述   | IoTDB 共识层日志存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。    |
+|   类型   | String                                                                   |
+|  默认值   | data/datanode/consensus（Windows：data\\datanode\\consensus）               |
+| 改后生效方式 | 重启服务生效                                                                         |
+
+* dn\_wal\_dirs
+
+|   名字   | dn\_wal\_dirs                                                        |
 |:------:|:---------------------------------------------------------------------|
 |   描述   | IoTDB 写前日志存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                               |
 |  默认值   | data/datanode/wal（Windows：data\\datanode\\wal）                       |
-| 改后生效方式 | 热加载                                                                 |
+| 改后生效方式 | 重启服务生效                                                                     |
 
 * dn\_tracing\_dir
 
@@ -310,7 +319,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |   描述   | IoTDB 追踪根目录路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                              |
 |  默认值   | datanode/tracing                                                    |
-| 改后生效方式 | 热加载                                                                |
+| 改后生效方式 | 重启服务生效                                                                    |
 
 * dn\_sync\_dir
 
@@ -318,8 +327,8 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |:------:|:----------------------------------------------------------------------|
 |   描述   | IoTDB sync 存储路径，默认存放在和 sbin 目录同级的 data 目录下。相对路径的起始目录与操作系统相关，建议使用绝对路径。 |
 |   类型   | String                                                                |
-|  默认值   | data/datanode/sync                        |
-| 改后生效方式 | 热加载                                                                  |
+|  默认值   | data/datanode/sync                                                    |
+| 改后生效方式 | 重启服务生效                                                                      |
 
 #### Metric 配置
 

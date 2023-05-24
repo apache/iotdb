@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
@@ -204,9 +205,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
-import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.statistics.StatisticsManager;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
@@ -226,6 +227,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -556,9 +558,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isPrefixPath(),
             node.getLimit(),
             node.getOffset(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
+            node.getSchemaFilter(),
             node.getTemplateMap()));
   }
 
@@ -581,7 +581,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isPrefixPath(),
             node.getLimit(),
             node.getOffset(),
-            node.isHasSgCol()));
+            node.isHasSgCol(),
+            node.getSchemaFilter()));
   }
 
   @Override
@@ -648,12 +649,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPlanNodeId(),
         operatorContext,
         SchemaSourceFactory.getTimeSeriesSchemaSource(
-            node.getPath(),
-            node.isPrefixPath(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
-            node.getTemplateMap()));
+            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), node.getTemplateMap()));
   }
 
   @Override
@@ -672,12 +668,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         node.getLevel(),
         SchemaSourceFactory.getTimeSeriesSchemaSource(
-            node.getPath(),
-            node.isPrefixPath(),
-            node.getKey(),
-            node.getValue(),
-            node.isContains(),
-            null));
+            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), null));
   }
 
   @Override
@@ -801,7 +792,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     TimeSelector selector = null;
     TimeComparator timeComparator = null;
     for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
-      if (Objects.equals(sortItem.getSortKey(), SortKey.TIME)) {
+      if (Objects.equals(sortItem.getSortKey(), OrderByKey.TIME)) {
         Ordering ordering = sortItem.getOrdering();
         if (ordering == Ordering.ASC) {
           selector = new TimeSelector(node.getChildren().size() << 1, true);
@@ -857,7 +848,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       List<TSDataType> sortItemDataTypeList) {
     sortItemList.forEach(
         sortItem -> {
-          if (sortItem.getSortKey().equals(SortKey.TIME)) {
+          if (sortItem.getSortKey().equals(OrderByKey.TIME)) {
             sortItemIndexList.add(-1);
             sortItemDataTypeList.add(TSDataType.INT64);
           } else {
@@ -866,6 +857,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 sortItemIndexList.add(i);
                 sortItemDataTypeList.add(dataTypes.get(i));
                 break;
+              }
+              // there is no related column in outputColumnNames
+              if (i == outputColumnNames.size() - 1) {
+                sortItemIndexList.add(-2);
+                sortItemDataTypeList.add(null);
               }
             }
           }
@@ -1620,10 +1616,23 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         sortItemList,
         sortItemIndexList,
         sortItemDataTypeList);
+
+    String filePrefix =
+        IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+            + File.separator
+            + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
+            + File.separator
+            + operatorContext.getDriverContext().getPipelineId()
+            + File.separator;
+
+    context.getDriverContext().setHaveTmpFile(true);
+    context.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
+
     return new SortOperator(
         operatorContext,
         child,
         dataTypes,
+        filePrefix,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
   }
 
@@ -2244,7 +2253,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     checkArgument(
         sortItemList.isEmpty()
             || (sortItemList.size() == 1
-                && Objects.equals(sortItemList.get(0).getSortKey(), SortKey.TIMESERIES)),
+                && Objects.equals(sortItemList.get(0).getSortKey(), OrderByKey.TIMESERIES)),
         "Last query only support order by timeseries asc/desc");
 
     context.setLastQueryTimeFilter(node.getTimeFilter());

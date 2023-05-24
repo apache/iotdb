@@ -596,8 +596,7 @@ public class DataNodeRemoveHandler {
       if (newLeaderNode.isPresent()) {
         configManager
             .getLoadManager()
-            .getRouteBalancer()
-            .changeLeaderForIoTConsensus(regionId, newLeaderNode.get().getDataNodeId());
+            .forceUpdateRegionLeader(regionId, newLeaderNode.get().getDataNodeId());
 
         LOGGER.info(
             "{}, Change region leader finished for IOT_CONSENSUS, regionId: {}, newLeaderNode: {}",
@@ -610,6 +609,7 @@ public class DataNodeRemoveHandler {
     }
 
     if (newLeaderNode.isPresent()) {
+      // TODO: Trigger event post after enhance RegionMigrate procedure
       SyncDataNodeClientPool.getInstance()
           .changeRegionLeader(
               regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());

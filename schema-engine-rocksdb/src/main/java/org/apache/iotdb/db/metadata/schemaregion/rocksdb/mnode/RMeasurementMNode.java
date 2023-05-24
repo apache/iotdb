@@ -101,6 +101,11 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode<IMemM
   }
 
   @Override
+  public boolean isLogicalView() {
+    return false;
+  }
+
+  @Override
   public IMeasurementSchema getSchema() {
     return schema;
   }

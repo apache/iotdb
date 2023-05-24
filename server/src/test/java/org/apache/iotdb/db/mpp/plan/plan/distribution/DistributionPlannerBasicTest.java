@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
@@ -114,34 +115,31 @@ public class DistributionPlannerBasicTest {
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1.s1"),
             null,
-            null,
             10,
             0,
             false,
             false,
-            false));
+            Collections.emptyMap()));
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1.s2"),
             null,
-            null,
             10,
             0,
             false,
             false,
-            false));
+            Collections.emptyMap()));
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d22.s1"),
             null,
-            null,
             10,
             0,
             false,
             false,
-            false));
+            Collections.emptyMap()));
     LimitNode root2 = new LimitNode(queryId.genPlanNodeId(), metaMergeNode, 10);
     Analysis analysis = Util.constructAnalysis();
     DistributionPlanner planner2 =

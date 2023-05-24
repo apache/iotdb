@@ -697,19 +697,12 @@ public class ConsensusReqReaderTest {
       bitMaps[i].mark(i % times.length);
     }
 
-    InsertTabletNode insertTabletNode =
-        new InsertTabletNode(
-            new PlanNodeId(""),
-            new PartialPath(devicePath),
-            false,
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes,
-            times,
-            bitMaps,
-            columns,
-            times.length);
-
-    insertTabletNode.setMeasurementSchemas(
+    return new InsertTabletNode(
+        new PlanNodeId(""),
+        new PartialPath(devicePath),
+        false,
+        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+        dataTypes,
         new MeasurementSchema[] {
           new MeasurementSchema("s1", TSDataType.DOUBLE),
           new MeasurementSchema("s2", TSDataType.FLOAT),
@@ -717,9 +710,11 @@ public class ConsensusReqReaderTest {
           new MeasurementSchema("s4", TSDataType.INT32),
           new MeasurementSchema("s5", TSDataType.BOOLEAN),
           new MeasurementSchema("s6", TSDataType.TEXT)
-        });
-
-    return insertTabletNode;
+        },
+        times,
+        bitMaps,
+        columns,
+        times.length);
   }
 
   private DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {

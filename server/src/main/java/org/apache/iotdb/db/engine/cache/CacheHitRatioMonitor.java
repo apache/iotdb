@@ -107,7 +107,7 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
 
   @Override
   public double getBloomFilterHitRatio() {
-    return BloomFilterCache.getInstance().calculateChunkHitRatio();
+    return BloomFilterCache.getInstance().calculateBloomFilterHitRatio();
   }
 
   @Override

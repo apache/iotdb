@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.FileInputStream;
@@ -55,18 +54,24 @@ public class PipeMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(staticMeta.serialize(), outputStream);
-    ReadWriteIOUtils.write(runtimeMeta.serialize(), outputStream);
+    staticMeta.serialize(outputStream);
+    runtimeMeta.serialize(outputStream);
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(staticMeta.serialize(), outputStream);
-    ReadWriteIOUtils.write(runtimeMeta.serialize(), outputStream);
+    staticMeta.serialize(outputStream);
+    runtimeMeta.serialize(outputStream);
   }
 
   public static PipeMeta deserialize(FileInputStream fileInputStream) throws IOException {
-    PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(fileInputStream);
-    PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(fileInputStream);
+    final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(fileInputStream);
+    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(fileInputStream);
+    return new PipeMeta(staticMeta, runtimeMeta);
+  }
+
+  public static PipeMeta deserialize(ByteBuffer byteBuffer) {
+    final PipeStaticMeta staticMeta = PipeStaticMeta.deserialize(byteBuffer);
+    final PipeRuntimeMeta runtimeMeta = PipeRuntimeMeta.deserialize(byteBuffer);
     return new PipeMeta(staticMeta, runtimeMeta);
   }
 

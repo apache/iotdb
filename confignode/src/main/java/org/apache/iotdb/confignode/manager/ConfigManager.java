@@ -87,6 +87,8 @@ import org.apache.iotdb.confignode.manager.node.NodeMetrics;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -142,7 +144,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -279,16 +280,22 @@ public class ConfigManager implements IManager {
 
     // Build the manager module
     this.nodeManager = new NodeManager(this, nodeInfo);
-    this.clusterSchemaManager = new ClusterSchemaManager(this, clusterSchemaInfo);
+    this.clusterSchemaManager =
+        new ClusterSchemaManager(this, clusterSchemaInfo, new ClusterSchemaQuotaStatistics());
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = new PermissionManager(this, authorInfo);
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
-    this.loadManager = new LoadManager(this);
     this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
+
+    // 1. keep PipeManager initialization before LoadManager initialization, because
+    // LoadManager will register PipeManager as a listener.
+    // 2. keep RetryFailedTasksThread initialization after LoadManager initialization,
+    // because RetryFailedTasksThread will keep a reference of LoadManager.
+    this.loadManager = new LoadManager(this);
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
     this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
@@ -758,7 +765,7 @@ public class ConfigManager implements IManager {
           partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
       TSchemaNodeManagementResp result =
           resp.convertToRpcSchemaNodeManagementPartitionResp(
-              getLoadManager().getLatestRegionRouteMap());
+              getLoadManager().getRegionPriorityMap());
 
       LOGGER.info(
           "getNodePathsPartition receive devicePaths: {}, level: {}, return TSchemaNodeManagementResp: {}",
@@ -1332,7 +1339,7 @@ public class ConfigManager implements IManager {
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setTimestamp(System.currentTimeMillis());
-      resp.setRegionRouteMap(getLoadManager().getLatestRegionRouteMap());
+      resp.setRegionRouteMap(getLoadManager().getRegionPriorityMap());
     }
 
     return resp;
@@ -1609,30 +1616,17 @@ public class ConfigManager implements IManager {
   @Override
   public TShowPipeResp showPipe(TShowPipeReq req) {
     TSStatus status = confirmLeader();
-    LOGGER.info("showPipe: {}", req);
-    TShowPipeResp resp = new TShowPipeResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // TODO: Implement PipeManager
-      return resp.setStatus(status);
-    } else {
-      return resp.setStatus(status);
-    }
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? pipeManager.getPipeTaskCoordinator().showPipes(req)
+        : new TShowPipeResp().setStatus(status);
   }
 
   @Override
   public TGetAllPipeInfoResp getAllPipeInfo() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipeTaskCoordinator().showPipes()
+        ? pipeManager.getPipeTaskCoordinator().getAllPipeInfo()
         : new TGetAllPipeInfoResp().setStatus(status);
-  }
-
-  @Override
-  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? pipeManager.getPipeTaskCoordinator().recordPipeMessage(req)
-        : status;
   }
 
   @Override

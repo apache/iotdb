@@ -18,16 +18,23 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.basic;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
+
+import org.apache.commons.lang.StringUtils;
 
 public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
 
   private boolean usingTemplate = false;
   private int schemaTemplateId = -1;
+  private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
 
   /**
    * To traverse subtree under root.sg, e.g., init Traverser(root, "root.sg.**")
@@ -44,9 +51,19 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
   }
 
   @Override
+  protected boolean mayTargetNodeType(N node) {
+    if (node.isDevice()) {
+      return (!usingTemplate || schemaTemplateId == node.getAsDeviceMNode().getSchemaTemplateId())
+          && filterVisitor.process(schemaFilter, node);
+    }
+    return false;
+  }
+
+  @Override
   protected boolean acceptFullMatchedNode(N node) {
     if (node.isDevice()) {
-      return !usingTemplate || schemaTemplateId == node.getAsDeviceMNode().getSchemaTemplateId();
+      return (!usingTemplate || schemaTemplateId == node.getAsDeviceMNode().getSchemaTemplateId())
+          && filterVisitor.process(schemaFilter, node);
     }
     return false;
   }
@@ -69,5 +86,23 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
   public void setSchemaTemplateFilter(int schemaTemplateId) {
     this.usingTemplate = true;
     this.schemaTemplateId = schemaTemplateId;
+  }
+
+  class DeviceFilterVisitor extends SchemaFilterVisitor<Boolean, N> {
+    @Override
+    public Boolean visitNode(SchemaFilter filter, N node) {
+      return true;
+    }
+
+    @Override
+    public Boolean visitPathContainsFilter(PathContainsFilter pathContainsFilter, N node) {
+      if (pathContainsFilter.getContainString() == null) {
+        return true;
+      }
+      return StringUtils.join(
+              getFullPathFromRootToNode(node.getAsMNode()), IoTDBConstant.PATH_SEPARATOR)
+          .toLowerCase()
+          .contains(pathContainsFilter.getContainString());
+    }
   }
 }

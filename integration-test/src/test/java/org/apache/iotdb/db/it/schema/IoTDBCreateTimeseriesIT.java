@@ -27,9 +27,9 @@ import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.Parameterized;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -51,16 +51,21 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
     super(schemaTestMode);
   }
 
-  @Before
-  public void setUp() throws Exception {
-    super.setUp();
+  @Parameterized.BeforeParam
+  public static void before() throws Exception {
+    setUpEnvironment();
     EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Parameterized.AfterParam
+  public static void after() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-    super.tearDown();
+    clearSchema();
   }
 
   /** Test if creating a time series will cause the database with same name to disappear */

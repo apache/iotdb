@@ -23,11 +23,8 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.mpp.rpc.thrift.TOperatePipeOnDataNodeReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -53,15 +50,16 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  PipeTaskOperation getOperation() {
+  protected PipeTaskOperation getOperation() {
     return PipeTaskOperation.DROP_PIPE;
   }
 
   @Override
-  boolean executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    return env.getConfigManager()
+    env.getConfigManager()
         .getPipeManager()
         .getPipeTaskCoordinator()
         .getPipeTaskInfo()
@@ -69,13 +67,14 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
+      throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
-  void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
+  protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeManagementException {
     LOGGER.info("DropPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
@@ -87,18 +86,11 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeManagementException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws PipeManagementException, IOException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    final TOperatePipeOnDataNodeReq request =
-        new TOperatePipeOnDataNodeReq()
-            .setPipeName(pipeName)
-            .setOperation((byte) PipeTaskOperation.DROP_PIPE.ordinal());
-    if (RpcUtils.squashResponseStatusList(env.operatePipeOnDataNodes(request)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeManagementException(
-          String.format("Failed to drop pipe instance [%s] on data nodes", pipeName));
-    }
+    pushPipeMetaToDataNodes(env);
   }
 
   @Override
