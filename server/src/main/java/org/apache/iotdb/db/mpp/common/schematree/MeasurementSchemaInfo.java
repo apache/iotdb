@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -54,6 +55,14 @@ public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
     } else {
       return (MeasurementSchema) this.schema;
     }
+  }
+
+  @Override
+  public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+    if(this.isLogicalView()){
+      return (LogicalViewSchema) this.schema;
+    }
+    return null;
   }
 
   public String getAlias() {

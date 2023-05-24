@@ -128,7 +128,7 @@ public class TimeSeriesSchemaCache {
     return schemaTree;
   }
 
-  public List<Integer> compute(ISchemaComputation schemaComputation) {
+  public List<Integer> computeAndRecordLogicalView(ISchemaComputation schemaComputation) {
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     final AtomicBoolean isFirstMeasurement = new AtomicBoolean(true);
     dualKeyCache.compute(

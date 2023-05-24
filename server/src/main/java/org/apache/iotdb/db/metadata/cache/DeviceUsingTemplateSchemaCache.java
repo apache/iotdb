@@ -182,6 +182,15 @@ public class DeviceUsingTemplateSchemaCache {
             }
 
             @Override
+            public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+              if(isLogicalView()){
+                return new LogicalViewSchema(
+                  schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+              }
+              return null;
+            }
+
+            @Override
             public String getAlias() {
               return null;
             }
