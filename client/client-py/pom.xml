@@ -87,7 +87,7 @@
                         </goals>
                         <configuration>
                             <encoding>utf-8</encoding>
-                            <outputDirectory>${basedir}/iotdb/thrift</outputDirectory>
+                            <outputDirectory>${basedir}/iotdb/thrift/</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${basedir}/../../thrift/target/generated-sources-python/iotdb/thrift/</directory>
