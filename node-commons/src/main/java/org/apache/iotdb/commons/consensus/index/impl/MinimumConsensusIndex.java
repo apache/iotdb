@@ -47,7 +47,7 @@ public class MinimumConsensusIndex implements ConsensusIndex {
 
   @Override
   public ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex) {
-    return consensusIndex;
+    return consensusIndex == null ? this : consensusIndex;
   }
 
   public static MinimumConsensusIndex deserializeFrom(ByteBuffer byteBuffer) {
