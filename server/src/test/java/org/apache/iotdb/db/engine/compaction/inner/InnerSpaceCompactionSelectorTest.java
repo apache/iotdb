@@ -38,6 +38,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
@@ -67,12 +69,14 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     AtomicBoolean fail = new AtomicBoolean(false);
 
+    CountDownLatch cd = new CountDownLatch(1);
+
     Thread thread1 =
         new Thread(
             () -> {
               try {
                 // the file is deleted before selection
-                Thread.sleep(1000);
+                cd.await();
                 SizeTieredCompactionSelector selector =
                     new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
                 List<TsFileResource> resources =
@@ -101,6 +105,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 resource.writeLock();
                 resource.remove();
                 resource.writeUnlock();
+                cd.countDown();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -125,6 +130,9 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
     AtomicBoolean fail = new AtomicBoolean(false);
 
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
+
     // select files in cross compaction
     Thread thread1 =
         new Thread(
@@ -139,7 +147,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread holds write lock and delete files successfully before setting
                 // status to COMPACTION_CANDIDATE
-                Thread.sleep(1000);
+                cd1.countDown();
+                cd2.await(1000, TimeUnit.MILLISECONDS);
 
                 if (taskResource.size() != 3) {
                   throw new RuntimeException("task num is not 3");
@@ -196,12 +205,13 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new Thread(
             () -> {
               try {
-                Thread.sleep(200);
+                cd1.await();
                 TsFileResource resource = seqResources.get(1);
                 // try to delete file
                 resource.writeLock();
                 resource.remove();
                 resource.writeUnlock();
+                cd2.countDown();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -224,6 +234,9 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     AtomicBoolean fail = new AtomicBoolean(false);
+
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
 
     // select files in cross compaction
     Thread thread1 =
@@ -263,7 +276,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                   if (idx == taskResource.size() - 1) {
                     // the other thread holds write lock and delete files successfully before
                     // setting status to COMPACTING
-                    Thread.sleep(1000);
+                    cd1.countDown();
+                    cd2.await(1000, TimeUnit.MILLISECONDS);
 
                     if (innerSpaceCompactionTask.checkValidAndSetMerging()) {
                       throw new RuntimeException("cross space compaction task should be invalid.");
@@ -301,12 +315,13 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new Thread(
             () -> {
               try {
-                Thread.sleep(500);
+                cd1.await();
                 TsFileResource resource = seqResources.get(1);
                 // try to delete file
                 resource.writeLock();
                 resource.remove();
                 resource.writeUnlock();
+                cd2.countDown();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -333,12 +348,16 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     seqResources.get(1).degradeTimeIndex();
     seqResources.get(3).degradeTimeIndex();
 
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
+
     Thread thread1 =
         new Thread(
             () -> {
               try {
                 // the file is deleted before selection
-                Thread.sleep(1000);
+                cd1.countDown();
+                cd2.await(1000, TimeUnit.MILLISECONDS);
                 SizeTieredCompactionSelector selector =
                     new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
                 List<TsFileResource> resources =
@@ -362,11 +381,13 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new Thread(
             () -> {
               try {
+                cd1.await();
                 TsFileResource resource = seqResources.get(1);
                 // try to delete file
                 resource.writeLock();
                 resource.remove();
                 resource.writeUnlock();
+                cd2.countDown();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -394,6 +415,9 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     seqResources.get(1).degradeTimeIndex();
     seqResources.get(3).degradeTimeIndex();
 
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
+
     // select files in cross compaction
     Thread thread1 =
         new Thread(
@@ -408,7 +432,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread holds write lock and delete files successfully before setting
                 // status to COMPACTION_CANDIDATE
-                Thread.sleep(1000);
+                cd1.countDown();
+                cd2.await(1000, TimeUnit.MILLISECONDS);
 
                 if (taskResource.size() != 3) {
                   throw new RuntimeException("task num is not 3");
@@ -465,12 +490,13 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new Thread(
             () -> {
               try {
-                Thread.sleep(200);
+                cd1.await();
                 TsFileResource resource = seqResources.get(1);
                 // try to delete file
                 resource.writeLock();
                 resource.remove();
                 resource.writeUnlock();
+                cd2.countDown();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -496,6 +522,9 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     seqResources.get(0).degradeTimeIndex();
     seqResources.get(1).degradeTimeIndex();
     seqResources.get(3).degradeTimeIndex();
+
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
 
     // select files in cross compaction
     Thread thread1 =
@@ -535,7 +564,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                   if (idx == taskResource.size() - 1) {
                     // the other thread holds write lock and delete files successfully before
                     // setting status to COMPACTING
-                    Thread.sleep(1000);
+                    cd1.countDown();
+                    cd2.await(1000, TimeUnit.MILLISECONDS);
 
                     if (innerSpaceCompactionTask.checkValidAndSetMerging()) {
                       throw new RuntimeException("cross space compaction task should be invalid.");
@@ -573,12 +603,13 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new Thread(
             () -> {
               try {
-                Thread.sleep(500);
+                cd1.await();
                 TsFileResource resource = seqResources.get(1);
                 // try to delete file
                 resource.writeLock();
                 resource.remove();
                 resource.writeUnlock();
+                cd2.countDown();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();

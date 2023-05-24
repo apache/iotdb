@@ -279,7 +279,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       // we record the variable `candidate` here is used for selecting more than one
       // CrossCompactionTaskResources in this method
       CrossSpaceCompactionCandidate candidate =
-              new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
+          new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
@@ -320,14 +320,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     return Collections.emptyList();
   }
 
-  private void addReadLock(List<TsFileResource> resources){
-    for(TsFileResource resource:resources){
+  public void addReadLock(List<TsFileResource> resources) {
+    for (TsFileResource resource : resources) {
       resource.readLock();
     }
   }
 
-  private void releaseReadLock(List<TsFileResource> resources){
-    for(TsFileResource resource:resources){
+  public void releaseReadLock(List<TsFileResource> resources) {
+    for (TsFileResource resource : resources) {
       resource.readUnlock();
     }
   }
