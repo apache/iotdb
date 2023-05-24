@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -44,8 +45,15 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 
   private final boolean hasSgCol;
 
+  private final SchemaFilter schemaFilter;
+
   DeviceSchemaSource(
-      PartialPath pathPattern, boolean isPrefixPath, long limit, long offset, boolean hasSgCol) {
+      PartialPath pathPattern,
+      boolean isPrefixPath,
+      long limit,
+      long offset,
+      boolean hasSgCol,
+      SchemaFilter schemaFilter) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixPath;
 
@@ -53,6 +61,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
     this.offset = offset;
 
     this.hasSgCol = hasSgCol;
+    this.schemaFilter = schemaFilter;
   }
 
   @Override
@@ -60,7 +69,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
     try {
       return schemaRegion.getDeviceReader(
           SchemaRegionReadPlanFactory.getShowDevicesPlan(
-              pathPattern, limit, offset, isPrefixMatch));
+              pathPattern, limit, offset, isPrefixMatch, schemaFilter));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }

@@ -140,18 +140,20 @@ It costs 0.002s
 
 ### 查看设备
 
-* SHOW DEVICES pathPattern? (WITH DATABASE)? limitClause? #showDevices
+* SHOW DEVICES pathPattern? (WITH DATABASE)? devicesWhereClause? limitClause? 
 
 与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
 
 * `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root.**`。
 * `SHOW DEVICES <PathPattern>` 语句规定了 `PathPattern`，返回给定的路径模式所匹配的设备信息。
+* `WHERE` 条件中可以使用 `DEVICE contains 'xxx'`，根据 device 名称进行模糊查询。
 
 SQL 语句如下所示：
 
 ```
 IoTDB> show devices
 IoTDB> show devices root.ln.**
+IoTDB> show devices root.ln.** where device contains 't'
 ```
 
 你可以获得如下数据：

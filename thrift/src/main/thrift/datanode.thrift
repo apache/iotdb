@@ -244,9 +244,11 @@ struct THeartbeatReq {
   1: required i64 heartbeatTimestamp
   2: required bool needJudgeLeader
   3: required bool needSamplingLoad
-  4: optional list<i32> schemaRegionIds
-  5: optional list<i32> dataRegionIds
-  6: optional map<string, common.TSpaceQuota> spaceQuotaUsage
+  4: required i64 schemaQuotaCount
+  5: optional list<i32> schemaRegionIds
+  6: optional list<i32> dataRegionIds
+  7: optional map<string, common.TSpaceQuota> spaceQuotaUsage
+  8: optional bool needPipeMetaList
 }
 
 struct THeartbeatResp {
@@ -255,9 +257,17 @@ struct THeartbeatResp {
   3: optional string statusReason
   4: optional map<common.TConsensusGroupId, bool> judgedLeaders
   5: optional TLoadSample loadSample
-  6: optional map<i32, i64> deviceNum
-  7: optional map<i32, i64> timeSeriesNum
+  6: optional map<i32, i64> regionDeviceNumMap
+  7: optional map<i32, i64> regionTimeSeriesNumMap
   8: optional map<i32, i64> regionDisk
+  // TODO: schemaLimitLevel can be removed if confignode support hot load configuration
+  9: optional TSchemaLimitLevel schemaLimitLevel
+  10: optional list<binary> pipeMetaList
+}
+
+enum TSchemaLimitLevel{
+    DEVICE,
+    TIMESERIES
 }
 
 struct TLoadSample {

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.core.collector;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -30,7 +32,7 @@ import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDa
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.EventType;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.junit.After;
@@ -41,6 +43,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -57,26 +61,37 @@ public class PipeRealtimeCollectTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeCollectTest.class);
 
-  private final String dataRegion1 = "dataRegion-1";
-  private final String dataRegion2 = "dataRegion-2";
+  private final String dataRegion1 = "1";
+  private final String dataRegion2 = "2";
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
   private final AtomicBoolean alive = new AtomicBoolean();
+  private File tmpDir;
+  private File tsFileDir;
 
   private ExecutorService writeService;
   private ExecutorService listenerService;
 
   @Before
-  public void setUp() {
+  public void setUp() throws IOException {
     writeService = Executors.newFixedThreadPool(2);
     listenerService = Executors.newFixedThreadPool(4);
+    tmpDir = new File(Files.createTempDirectory("pipeRealtimeCollect").toString());
+    tsFileDir =
+        new File(
+            tmpDir.getPath()
+                + File.separator
+                + IoTDBConstant.SEQUENCE_FLODER_NAME
+                + File.separator
+                + "root.sg");
   }
 
   @After
   public void tearDown() {
     writeService.shutdownNow();
     listenerService.shutdownNow();
+    FileUtils.deleteDirectory(tmpDir);
   }
 
   @Test
@@ -96,7 +111,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern1);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                   put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion1);
                 }
               }),
@@ -105,7 +120,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern2);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                   put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion1);
                 }
               }),
@@ -114,7 +129,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern1);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                   put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion2);
                 }
               }),
@@ -123,7 +138,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.PATTERN_PATTERN_KEY, pattern2);
+                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                   put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion2);
                 }
               }),
@@ -140,16 +155,17 @@ public class PipeRealtimeCollectTest {
       int writeNum = 10;
       List<Future<?>> writeFutures =
           Arrays.asList(
-              write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
+              write2DataRegion(writeNum, dataRegion1, 0),
+              write2DataRegion(writeNum, dataRegion2, 0));
 
       alive.set(true);
       List<Future<?>> listenFutures =
           Arrays.asList(
               listen(
                   collectors[0],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[1], typ2 -> 1, writeNum));
+              listen(collectors[1], event -> 1, writeNum));
 
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
@@ -175,21 +191,22 @@ public class PipeRealtimeCollectTest {
       // test result of collector 0 - 3
       writeFutures =
           Arrays.asList(
-              write2DataRegion(writeNum, dataRegion1), write2DataRegion(writeNum, dataRegion2));
+              write2DataRegion(writeNum, dataRegion1, writeNum),
+              write2DataRegion(writeNum, dataRegion2, writeNum));
 
       alive.set(true);
       listenFutures =
           Arrays.asList(
               listen(
                   collectors[0],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[1], typ2 -> 1, writeNum),
+              listen(collectors[1], event -> 1, writeNum),
               listen(
                   collectors[2],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[3], typ2 -> 1, writeNum));
+              listen(collectors[3], event -> 1, writeNum));
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
         listenFutures.get(1).get(10, TimeUnit.MINUTES);
@@ -211,12 +228,22 @@ public class PipeRealtimeCollectTest {
     }
   }
 
-  private Future<?> write2DataRegion(int writeNum, String dataRegionId) {
+  private Future<?> write2DataRegion(int writeNum, String dataRegionId, int startNum) {
+    File dataRegionDir =
+        new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
+    boolean ignored = dataRegionDir.mkdirs();
     return writeService.submit(
         () -> {
-          for (int i = 0; i < writeNum; ++i) {
-            TsFileResource resource =
-                new TsFileResource(new File(dataRegionId, String.format("%s-%s-0-0.tsfile", i, i)));
+          for (int i = startNum; i < startNum + writeNum; ++i) {
+            File tsFile = new File(dataRegionDir, String.format("%s-%s-0-0.tsfile", i, i));
+            try {
+              boolean ignored1 = tsFile.createNewFile();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+
+            TsFileResource resource = new TsFileResource(tsFile);
             resource.updateStartTime(String.join(TsFileConstant.PATH_SEPARATOR, device), 0);
 
             PipeInsertionDataNodeListener.getInstance()
@@ -251,9 +278,7 @@ public class PipeRealtimeCollectTest {
   }
 
   private Future<?> listen(
-      PipeRealtimeDataRegionCollector collector,
-      Function<EventType, Integer> weight,
-      int expectNum) {
+      PipeRealtimeDataRegionCollector collector, Function<Event, Integer> weight, int expectNum) {
     return listenerService.submit(
         () -> {
           int eventNum = 0;
@@ -266,7 +291,7 @@ public class PipeRealtimeCollectTest {
                 throw new RuntimeException(e);
               }
               if (event != null) {
-                eventNum += weight.apply(event.getType());
+                eventNum += weight.apply(event);
               }
             }
           } finally {

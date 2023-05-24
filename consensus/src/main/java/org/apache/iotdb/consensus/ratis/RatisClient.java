@@ -31,11 +31,13 @@ import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.exceptions.RaftException;
 import org.apache.ratis.retry.ExponentialBackoffRetry;
 import org.apache.ratis.retry.RetryPolicy;
+import org.apache.ratis.thirdparty.io.grpc.StatusRuntimeException;
 import org.apache.ratis.util.TimeDuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 class RatisClient {
@@ -141,10 +143,18 @@ class RatisClient {
 
     @Override
     public Action handleAttemptFailure(Event event) {
+      // Ratis guarantees that event.getCause() is instance of IOException.
+      // We should allow RaftException or IOException(StatusRuntimeException, thrown by gRPC) to be
+      // retried.
+      Optional<Throwable> unexpectedCause =
+          Optional.ofNullable(event.getCause())
+              .filter(t -> t instanceof RaftException)
+              .map(Throwable::getCause)
+              .filter(t -> t instanceof StatusRuntimeException);
 
-      if (event.getCause() instanceof IOException && !(event.getCause() instanceof RaftException)) {
-        // unexpected. may be caused by statemachine.
-        logger.info("raft client request failed and caught exception: ", event.getCause());
+      if (unexpectedCause.isPresent()) {
+        logger.info(
+            "{}: raft client request failed and caught exception: ", this, unexpectedCause.get());
         return NO_RETRY_ACTION;
       }
 

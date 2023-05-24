@@ -174,7 +174,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     long previousRamSize = tsFileResource.calculateRamSize();
@@ -201,7 +201,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     assertEquals(
@@ -228,7 +228,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     tsFileResource.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource, 0, ptNum, 0);
     assertEquals(
@@ -258,7 +258,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource1 = new TsFileResource(file1);
-    tsFileResource1.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource1.setStatus(TsFileResourceStatus.NORMAL);
     tsFileResource1.updatePlanIndexes((long) 0);
     prepareFile(tsFileResource1, 0, ptNum, 0);
     assertEquals(
@@ -282,7 +282,7 @@ public class ResourceManagerTest {
                     + 0
                     + ".tsfile"));
     TsFileResource tsFileResource2 = new TsFileResource(file2);
-    tsFileResource2.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource2.setStatus(TsFileResourceStatus.NORMAL);
     tsFileResource2.updatePlanIndexes((long) 1);
     prepareFile(tsFileResource2, ptNum, ptNum, 0);
     assertEquals(
@@ -313,7 +313,7 @@ public class ResourceManagerTest {
                       + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
       tsFileResource.updatePlanIndexes((long) i);
       assertEquals(
           TimeIndexLevel.DEVICE_TIME_INDEX,

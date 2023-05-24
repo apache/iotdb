@@ -3924,6 +3924,11 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    tsFileManager.addAll(targetResources, true);
+    targetResources.get(3).degradeTimeIndex();
+    targetResources.get(2).degradeTimeIndex();
+    Assert.assertTrue(
+        CompactionUtils.validateTsFileResources(tsFileManager, COMPACTION_TEST_SG, 0));
 
     List<String> deviceIdList = new ArrayList<>();
     deviceIdList.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");

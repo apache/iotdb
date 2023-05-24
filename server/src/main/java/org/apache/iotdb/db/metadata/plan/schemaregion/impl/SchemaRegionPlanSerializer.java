@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.logfile.ISerializer;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -188,15 +188,15 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         }
 
         for (TSDataType dataType : createAlignedTimeSeriesPlan.getDataTypes()) {
-          dataOutputStream.writeByte(dataType.ordinal());
+          dataOutputStream.writeByte(dataType.serialize());
         }
 
         for (TSEncoding tsEncoding : createAlignedTimeSeriesPlan.getEncodings()) {
-          dataOutputStream.writeByte(tsEncoding.ordinal());
+          dataOutputStream.writeByte(tsEncoding.serialize());
         }
 
         for (CompressionType compressionType : createAlignedTimeSeriesPlan.getCompressors()) {
-          dataOutputStream.writeByte(compressionType.ordinal());
+          dataOutputStream.writeByte(compressionType.serialize());
         }
 
         for (long tagOffset : createAlignedTimeSeriesPlan.getTagOffsets()) {
@@ -253,9 +253,9 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         byte[] bytes = createTimeSeriesPlan.getPath().getFullPath().getBytes();
         dataOutputStream.writeInt(bytes.length);
         dataOutputStream.write(bytes);
-        dataOutputStream.writeByte(createTimeSeriesPlan.getDataType().ordinal());
-        dataOutputStream.writeByte(createTimeSeriesPlan.getEncoding().ordinal());
-        dataOutputStream.writeByte(createTimeSeriesPlan.getCompressor().ordinal());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getDataType().serialize());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getEncoding().serialize());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getCompressor().serialize());
         dataOutputStream.writeLong(createTimeSeriesPlan.getTagOffset());
 
         // alias

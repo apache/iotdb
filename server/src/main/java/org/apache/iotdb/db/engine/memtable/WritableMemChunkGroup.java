@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -33,9 +34,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
@@ -121,11 +119,13 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     int deletedPointsNumber = 0;
     String targetMeasurement = originalPath.getMeasurement();
-    if (targetMeasurement.equals(ONE_LEVEL_PATH_WILDCARD)
-        || targetMeasurement.equals(MULTI_LEVEL_PATH_WILDCARD)) {
+    if (PathPatternUtil.hasWildcard(targetMeasurement)) {
       Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
       while (iter.hasNext()) {
         Entry<String, IWritableMemChunk> entry = iter.next();
+        if (!PathPatternUtil.isNodeMatch(targetMeasurement, entry.getKey())) {
+          continue;
+        }
         IWritableMemChunk chunk = entry.getValue();
         if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
           iter.remove();

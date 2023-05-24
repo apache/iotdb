@@ -22,12 +22,14 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.pipe.runtime.PipeRuntimeCoordinator;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
@@ -39,18 +41,26 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final Map<Integer, Long> timeSeriesNum;
   private final Map<Integer, Long> regionDisk;
 
+  private final Consumer<Map<Integer, Long>> schemaQuotaRespProcess;
+
+  private final PipeRuntimeCoordinator pipeRuntimeCoordinator;
+
   public DataNodeHeartbeatHandler(
       int nodeId,
       LoadCache loadCache,
       Map<Integer, Long> deviceNum,
       Map<Integer, Long> timeSeriesNum,
-      Map<Integer, Long> regionDisk) {
+      Map<Integer, Long> regionDisk,
+      Consumer<Map<Integer, Long>> schemaQuotaRespProcess,
+      PipeRuntimeCoordinator pipeRuntimeCoordinator) {
 
     this.nodeId = nodeId;
     this.loadCache = loadCache;
     this.deviceNum = deviceNum;
     this.timeSeriesNum = timeSeriesNum;
     this.regionDisk = regionDisk;
+    this.schemaQuotaRespProcess = schemaQuotaRespProcess;
+    this.pipeRuntimeCoordinator = pipeRuntimeCoordinator;
   }
 
   @Override
@@ -82,14 +92,27 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
               }
             });
 
-    if (heartbeatResp.getDeviceNum() != null) {
-      deviceNum.putAll(heartbeatResp.getDeviceNum());
+    if (heartbeatResp.getRegionDeviceNumMap() != null) {
+      deviceNum.putAll(heartbeatResp.getRegionDeviceNumMap());
     }
-    if (heartbeatResp.getTimeSeriesNum() != null) {
-      timeSeriesNum.putAll(heartbeatResp.getTimeSeriesNum());
+    if (heartbeatResp.getRegionTimeSeriesNumMap() != null) {
+      timeSeriesNum.putAll(heartbeatResp.getRegionTimeSeriesNumMap());
     }
     if (heartbeatResp.getRegionDisk() != null) {
       regionDisk.putAll(heartbeatResp.getRegionDisk());
+    }
+    if (heartbeatResp.getSchemaLimitLevel() != null) {
+      switch (heartbeatResp.getSchemaLimitLevel()) {
+        case DEVICE:
+          schemaQuotaRespProcess.accept(heartbeatResp.getRegionDeviceNumMap());
+          break;
+        case TIMESERIES:
+          schemaQuotaRespProcess.accept(heartbeatResp.getRegionTimeSeriesNumMap());
+          break;
+      }
+    }
+    if (heartbeatResp.getPipeMetaList() != null) {
+      pipeRuntimeCoordinator.parseHeartbeat(nodeId, heartbeatResp.getPipeMetaList());
     }
   }
 
