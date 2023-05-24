@@ -22,7 +22,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>iotdb-parent</artifactId>
+        <artifactId>iotdb-clients</artifactId>
         <groupId>org.apache.iotdb</groupId>
         <version>1.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
@@ -42,17 +42,12 @@
         <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
     </properties>
     <modules>
-        <module>../example/client-cpp-example</module>
+        <module>../../example/client-cpp-example</module>
     </modules>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>client-cpp-tools-thrift</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

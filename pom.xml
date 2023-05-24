@@ -108,9 +108,8 @@
         <module>node-commons</module>
         <module>confignode</module>
         <module>zeppelin-interpreter</module>
-        <module>client-py</module>
+        <module>client</module>
         <module>compile-tools</module>
-        <module>client-cpp</module>
         <module>metrics</module>
         <!-- Will remove integration at 2023.1.23-->
         <module>integration</module>
