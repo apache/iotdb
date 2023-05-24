@@ -19,7 +19,18 @@
 package org.apache.iotdb.db.engine.compaction.schedule.constant;
 
 public enum ProcessChunkType {
-  FLUSH_CHUNK,
-  MERGE_CHUNK,
-  DESERIALIZE_CHUNK
+  FLUSH_CHUNK("flush_chunk"),
+  MERGE_CHUNK("merge_chunk"),
+  DESERIALIZE_CHUNK("deserialize_chunk");
+
+  private String name;
+
+  ProcessChunkType(String name) {
+    this.name = name;
+  }
+
+  @Override
+  public String toString() {
+    return name;
+  }
 }

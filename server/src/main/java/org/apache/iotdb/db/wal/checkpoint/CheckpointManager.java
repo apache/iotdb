@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
@@ -48,7 +48,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class CheckpointManager implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
+  private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   /** WALNode identifier of this checkpoint manager */
   protected final String identifier;

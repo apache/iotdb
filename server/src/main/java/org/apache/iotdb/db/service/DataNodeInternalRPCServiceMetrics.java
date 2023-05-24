@@ -59,8 +59,12 @@ public class DataNodeInternalRPCServiceMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DataNodeInternalRPCServiceMetrics that = (DataNodeInternalRPCServiceMetrics) o;
     return Objects.equals(thriftServiceThread, that.thriftServiceThread);
   }

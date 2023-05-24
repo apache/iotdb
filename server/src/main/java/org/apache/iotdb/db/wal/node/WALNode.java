@@ -35,7 +35,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
@@ -87,7 +87,7 @@ public class WALNode implements IWALNode {
   /** timeout threshold when waiting for next wal entry */
   private static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
 
-  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
+  private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   /** unique identifier of this WALNode */
   private final String identifier;
