@@ -1657,6 +1657,10 @@ public class DataRegion implements IDataRegionForQuery {
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {
       try {
+        // Try to set the resource to DELETED status and return if it failed
+        if (!resource.setStatus(TsFileResourceStatus.DELETED)) {
+          return;
+        }
         // try to delete physical data file
         resource.remove();
         tsFileManager.remove(resource, isSeq);
