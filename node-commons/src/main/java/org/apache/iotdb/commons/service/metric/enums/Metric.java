@@ -80,6 +80,7 @@ public enum Metric {
   QUERY_RESOURCE("query_resource"),
   DATA_EXCHANGE_COST("data_exchange_cost"),
   DATA_EXCHANGE_COUNT("data_exchange_count"),
+  DATA_EXCHANGE_SIZE("data_exchange_size"),
   DRIVER_SCHEDULER("driver_scheduler"),
   COORDINATOR("coordinator"),
   FRAGMENT_INSTANCE_MANAGER("fragment_instance_manager"),

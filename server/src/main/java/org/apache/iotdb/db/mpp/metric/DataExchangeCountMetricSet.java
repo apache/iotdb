@@ -123,14 +123,14 @@ public class DataExchangeCountMetricSet implements IMetricSet {
             Tag.TYPE.toString(),
             SERVER);
     metricService.createAutoGauge(
-        Metric.DATA_EXCHANGE_COUNT.toString(),
+        Metric.DATA_EXCHANGE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         dataExchangeManager,
         MPPDataExchangeManager::getShuffleSinkHandleSize,
         Tag.NAME.toString(),
         SHUFFLE_SINK_HANDLE_SIZE);
     metricService.createAutoGauge(
-        Metric.DATA_EXCHANGE_COUNT.toString(),
+        Metric.DATA_EXCHANGE_SIZE.toString(),
         MetricLevel.IMPORTANT,
         dataExchangeManager,
         MPPDataExchangeManager::getSourceHandleSize,
@@ -161,12 +161,12 @@ public class DataExchangeCountMetricSet implements IMetricSet {
                                 caller)));
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.DATA_EXCHANGE_COUNT.toString(),
+        Metric.DATA_EXCHANGE_SIZE.toString(),
         Tag.NAME.toString(),
         SHUFFLE_SINK_HANDLE_SIZE);
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.DATA_EXCHANGE_COUNT.toString(),
+        Metric.DATA_EXCHANGE_SIZE.toString(),
         Tag.NAME.toString(),
         SOURCE_HANDLE_SIZE);
   }
