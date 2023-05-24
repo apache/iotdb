@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.mpp.execution.exchange.SharedTsBlockQueue;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -50,7 +50,8 @@ public class LocalSinkChannel implements ISinkChannel {
 
   private boolean invokedOnFinished = false;
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
+      DataExchangeCostMetricSet.getInstance();
 
   public LocalSinkChannel(SharedTsBlockQueue queue, SinkListener sinkListener) {
     this.sinkListener = Validate.notNull(sinkListener);
@@ -142,7 +143,7 @@ public class LocalSinkChannel implements ISinkChannel {
         }
       }
     } finally {
-      QUERY_METRICS.recordDataExchangeCost(
+      DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
           SINK_HANDLE_SEND_TSBLOCK_LOCAL, System.nanoTime() - startTime);
     }
   }

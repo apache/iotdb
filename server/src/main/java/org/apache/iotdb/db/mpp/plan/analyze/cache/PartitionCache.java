@@ -47,7 +47,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.service.metrics.recorder.CacheMetricsRecorder;
+import org.apache.iotdb.db.service.metrics.CacheMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -72,9 +72,6 @@ public class PartitionCache {
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
-  private static final String STORAGE_GROUP_CACHE_NAME = "Database";
-  private static final String SCHEMA_PARTITION_CACHE_NAME = "SchemaPartition";
-  private static final String DATA_PARTITION_CACHE_NAME = "DataPartition";
 
   /** calculate slotId by device */
   private final String seriesSlotExecutorName = config.getSeriesPartitionExecutorClass();
@@ -106,6 +103,7 @@ public class PartitionCache {
 
   private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager =
       ConfigNodeClientManager.getInstance();
+  private final CacheMetrics cacheMetrics;
 
   public PartitionCache() {
     this.schemaPartitionCache = Caffeine.newBuilder().maximumSize(cacheSize).build();
@@ -113,6 +111,7 @@ public class PartitionCache {
     this.partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             this.seriesSlotExecutorName, this.seriesPartitionSlotNum);
+    this.cacheMetrics = new CacheMetrics();
   }
 
   // region database cache
@@ -243,7 +242,7 @@ public class PartitionCache {
             updateStorageCache(successFullyCreatedStorageGroup);
             logger.warn(
                 "[{} Cache] failed to create database {}",
-                STORAGE_GROUP_CACHE_NAME,
+                CacheMetrics.STORAGE_GROUP_CACHE_NAME,
                 storageGroupName);
             throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
           }
@@ -274,7 +273,9 @@ public class PartitionCache {
         String storageGroupName = getStorageGroupName(devicePath);
         if (null == storageGroupName) {
           logger.debug(
-              "[{} Cache] miss when search device {}", STORAGE_GROUP_CACHE_NAME, devicePath);
+              "[{} Cache] miss when search device {}",
+              CacheMetrics.STORAGE_GROUP_CACHE_NAME,
+              devicePath);
           status = false;
           if (failFast) {
             break;
@@ -289,8 +290,11 @@ public class PartitionCache {
       if (!status) {
         result.setFailed();
       }
-      logger.debug("[{} Cache] hit when search device {}", STORAGE_GROUP_CACHE_NAME, devicePaths);
-      CacheMetricsRecorder.record(status, STORAGE_GROUP_CACHE_NAME);
+      logger.debug(
+          "[{} Cache] hit when search device {}",
+          CacheMetrics.STORAGE_GROUP_CACHE_NAME,
+          devicePaths);
+      cacheMetrics.record(status, CacheMetrics.STORAGE_GROUP_CACHE_NAME);
     } finally {
       storageGroupCacheLock.readLock().unlock();
     }
@@ -478,7 +482,7 @@ public class PartitionCache {
     schemaPartitionCacheLock.readLock().lock();
     try {
       if (storageGroupToDeviceMap.size() == 0) {
-        CacheMetricsRecorder.record(false, SCHEMA_PARTITION_CACHE_NAME);
+        cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
         return null;
       }
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
@@ -495,9 +499,9 @@ public class PartitionCache {
           // if database not find, then return cache miss.
           logger.debug(
               "[{} Cache] miss when search database {}",
-              SCHEMA_PARTITION_CACHE_NAME,
+              CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
               storageGroupName);
-          CacheMetricsRecorder.record(false, SCHEMA_PARTITION_CACHE_NAME);
+          cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
           return null;
         }
         Map<TSeriesPartitionSlot, TConsensusGroupId> map =
@@ -509,8 +513,10 @@ public class PartitionCache {
           if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
             logger.debug(
-                "[{} Cache] miss when search device {}", SCHEMA_PARTITION_CACHE_NAME, device);
-            CacheMetricsRecorder.record(false, SCHEMA_PARTITION_CACHE_NAME);
+                "[{} Cache] miss when search device {}",
+                CacheMetrics.SCHEMA_PARTITION_CACHE_NAME,
+                device);
+            cacheMetrics.record(false, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
             return null;
           }
           TConsensusGroupId consensusGroupId = map.get(seriesPartitionSlot);
@@ -518,9 +524,9 @@ public class PartitionCache {
           regionReplicaSetMap.put(seriesPartitionSlot, regionReplicaSet);
         }
       }
-      logger.debug("[{} Cache] hit", SCHEMA_PARTITION_CACHE_NAME);
+      logger.debug("[{} Cache] hit", CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       // cache hit
-      CacheMetricsRecorder.record(true, SCHEMA_PARTITION_CACHE_NAME);
+      cacheMetrics.record(true, CacheMetrics.SCHEMA_PARTITION_CACHE_NAME);
       return new SchemaPartition(
           schemaPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     } finally {
@@ -592,7 +598,7 @@ public class PartitionCache {
     dataPartitionCacheLock.readLock().lock();
     try {
       if (storageGroupToQueryParamsMap.size() == 0) {
-        CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
+        cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
         return null;
       }
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -603,13 +609,13 @@ public class PartitionCache {
         if (null == entry.getValue()
             || entry.getValue().isEmpty()
             || !getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
-          CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
+          cacheMetrics.record(false, CacheMetrics.DATA_PARTITION_CACHE_NAME);
           return null;
         }
       }
-      logger.debug("[{} Cache] hit", DATA_PARTITION_CACHE_NAME);
+      logger.debug("[{} Cache] hit", CacheMetrics.DATA_PARTITION_CACHE_NAME);
       // cache hit
-      CacheMetricsRecorder.record(true, DATA_PARTITION_CACHE_NAME);
+      cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     } finally {
       dataPartitionCacheLock.readLock().unlock();
@@ -632,7 +638,9 @@ public class PartitionCache {
     DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(storageGroupName);
     if (null == dataPartitionTable) {
       logger.debug(
-          "[{} Cache] miss when search database {}", DATA_PARTITION_CACHE_NAME, storageGroupName);
+          "[{} Cache] miss when search database {}",
+          CacheMetrics.DATA_PARTITION_CACHE_NAME,
+          storageGroupName);
       return false;
     }
     Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedStorageGroupPartitionMap =
@@ -676,7 +684,7 @@ public class PartitionCache {
       if (logger.isDebugEnabled()) {
         logger.debug(
             "[{} Cache] miss when search device {}",
-            DATA_PARTITION_CACHE_NAME,
+            CacheMetrics.DATA_PARTITION_CACHE_NAME,
             dataPartitionQueryParam.getDevicePath());
       }
       return false;
@@ -718,7 +726,7 @@ public class PartitionCache {
         || null == timePartitionSlot) {
       logger.debug(
           "[{} Cache] miss when search time partition {}",
-          DATA_PARTITION_CACHE_NAME,
+          CacheMetrics.DATA_PARTITION_CACHE_NAME,
           timePartitionSlot);
       return false;
     }

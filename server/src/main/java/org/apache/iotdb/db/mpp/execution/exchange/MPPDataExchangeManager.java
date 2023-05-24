@@ -37,7 +37,8 @@ import org.apache.iotdb.db.mpp.execution.exchange.source.PipelineSourceHandle;
 import org.apache.iotdb.db.mpp.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.MPPDataExchangeService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
@@ -85,8 +86,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
   /** Handle thrift communications. */
   class MPPDataExchangeServiceImpl implements MPPDataExchangeService.Iface {
-
-    private final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+    private final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRICS =
+        DataExchangeCostMetricSet.getInstance();
+    private final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRICS =
+        DataExchangeCountMetricSet.getInstance();
 
     @Override
     public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
@@ -118,9 +121,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         }
         return resp;
       } finally {
-        QUERY_METRICS.recordDataExchangeCost(
+        DATA_EXCHANGE_COST_METRICS.recordDataExchangeCost(
             GET_DATA_BLOCK_TASK_SERVER, System.nanoTime() - startTime);
-        QUERY_METRICS.recordDataBlockNum(
+        DATA_EXCHANGE_COUNT_METRICS.recordDataBlockNum(
             GET_DATA_BLOCK_NUM_SERVER, req.getEndSequenceId() - req.getStartSequenceId());
       }
     }
@@ -154,9 +157,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             "ack TsBlock [{}, {}) failed.", e.getStartSequenceId(), e.getEndSequenceId(), t);
         throw t;
       } finally {
-        QUERY_METRICS.recordDataExchangeCost(
+        DATA_EXCHANGE_COST_METRICS.recordDataExchangeCost(
             ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
-        QUERY_METRICS.recordDataBlockNum(
+        DATA_EXCHANGE_COUNT_METRICS.recordDataBlockNum(
             ON_ACKNOWLEDGE_DATA_BLOCK_NUM_SERVER, e.getEndSequenceId() - e.getStartSequenceId());
       }
     }
@@ -222,9 +225,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
         sourceHandle.updatePendingDataBlockInfo(e.getStartSequenceId(), e.getBlockSizes());
       } finally {
-        QUERY_METRICS.recordDataExchangeCost(
+        DATA_EXCHANGE_COST_METRICS.recordDataExchangeCost(
             SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER, System.nanoTime() - startTime);
-        QUERY_METRICS.recordDataBlockNum(SEND_NEW_DATA_BLOCK_NUM_SERVER, e.getBlockSizes().size());
+        DATA_EXCHANGE_COUNT_METRICS.recordDataBlockNum(
+            SEND_NEW_DATA_BLOCK_NUM_SERVER, e.getBlockSizes().size());
       }
     }
 

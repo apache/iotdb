@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,8 +42,8 @@ public class Aggregator {
   // In some intermediate result input, inputLocation[] should include two columns
   protected List<InputLocation[]> inputLocationList;
   protected final AggregationStep step;
-
-  protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  protected final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+      QueryExecutionMetricSet.getInstance();
 
   // Used for SeriesAggregateScanOperator
   public Aggregator(Accumulator accumulator, AggregationStep step) {
@@ -78,7 +78,8 @@ public class Aggregator {
         accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);
       }
     } finally {
-      QUERY_METRICS.recordExecutionCost(AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
+      QUERY_EXECUTION_METRICS.recordExecutionCost(
+          AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
     }
   }
 
@@ -105,7 +106,8 @@ public class Aggregator {
         }
       }
     } finally {
-      QUERY_METRICS.recordExecutionCost(AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
+      QUERY_EXECUTION_METRICS.recordExecutionCost(
+          AGGREGATION_FROM_RAW_DATA, System.nanoTime() - startTime);
     }
   }
 
@@ -126,7 +128,8 @@ public class Aggregator {
         accumulator.addStatistics(statistics[valueIndex]);
       }
     } finally {
-      QUERY_METRICS.recordExecutionCost(AGGREGATION_FROM_STATISTICS, System.nanoTime() - startTime);
+      QUERY_EXECUTION_METRICS.recordExecutionCost(
+          AGGREGATION_FROM_STATISTICS, System.nanoTime() - startTime);
     }
   }
 
