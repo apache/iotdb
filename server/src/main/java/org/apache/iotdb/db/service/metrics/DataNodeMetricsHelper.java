@@ -57,10 +57,13 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new WritingMetrics());
     List<String> threadModules = new ArrayList<>();
     Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
+    List<String> pools = new ArrayList<>();
+    Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
     MetricService.getInstance()
         .addMetricSet(
             new CpuUsageMetrics(
                 threadModules,
+                pools,
                 x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
                 x -> {
                   ThreadName pool = ThreadName.getThreadPoolTheThreadBelongs(x);
