@@ -132,11 +132,13 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
         }
 
         // update progress index
-        if (runtimeMetaOnConfigNode.getValue().getProgressIndex()
-            < runtimeMetaFromDataNode.getProgressIndex()) {
+        if (!runtimeMetaOnConfigNode
+            .getValue()
+            .getProgressIndex()
+            .isAfter(runtimeMetaFromDataNode.getProgressIndex())) {
           runtimeMetaOnConfigNode
               .getValue()
-              .setProgressIndex(runtimeMetaFromDataNode.getProgressIndex());
+              .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex());
           needWriteConsensusOnConfigNodes = true;
         }
 
