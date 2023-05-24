@@ -28,33 +28,35 @@ import java.io.IOException;
 public class LocalMigrationTask extends MigrationTask {
   private static final Logger logger = LoggerFactory.getLogger(LocalMigrationTask.class);
 
-  LocalMigrationTask(MigrationCause cause, TsFileResource tsFile, String targetDir) {
+  protected LocalMigrationTask(MigrationCause cause, TsFileResource tsFile, String targetDir)
+      throws IOException {
     super(cause, tsFile, targetDir);
   }
 
   @Override
   public void migrate() {
     // copy TsFile and resource file
-    tsFile.readLock();
+    tsFileResource.readLock();
     try {
-      fsFactory.copyFile(srcTsFile, destTsFile);
+      fsFactory.copyFile(srcFile, destTsFile);
       fsFactory.copyFile(srcResourceFile, destResourceFile);
     } catch (IOException e) {
-      logger.error("Fail to copy TsFile {}", srcTsFile);
+      logger.error("Fail to copy TsFile {}", srcFile);
       destTsFile.delete();
       destResourceFile.delete();
       return;
     } finally {
-      tsFile.readUnlock();
+      tsFileResource.readUnlock();
     }
     // close mods file and replace TsFile path
-    tsFile.writeLock();
+    tsFileResource.writeLock();
     try {
-      tsFile.resetModFile();
+      tsFileResource.resetModFile();
+      // migrate MOD file only when it exists
       if (srcModsFile.exists()) {
         fsFactory.copyFile(srcModsFile, destModsFile);
       }
-      tsFile.setFile(destTsFile);
+      tsFileResource.setFile(destTsFile);
     } catch (IOException e) {
       logger.error("Fail to copy mods file {}", srcModsFile);
       destTsFile.delete();
@@ -62,10 +64,10 @@ public class LocalMigrationTask extends MigrationTask {
       destModsFile.delete();
       return;
     } finally {
-      tsFile.writeUnlock();
+      tsFileResource.writeUnlock();
     }
     // clear src files
-    srcTsFile.delete();
+    srcFile.delete();
     srcResourceFile.delete();
     srcModsFile.delete();
   }

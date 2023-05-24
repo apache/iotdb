@@ -206,6 +206,7 @@ public class TierManager {
   }
 
   public int getFileTierLevel(File file) {
+    // If the file does not exist on Local disk, it is assumed be on remote Object Storage
     if (!file.exists()) {
       return getTiersNum() - 1;
     }

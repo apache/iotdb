@@ -38,6 +38,7 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -134,14 +135,15 @@ public class MigrationTaskManager implements IService {
             }
           } catch (Exception e) {
             logger.error(
-                "An error occurred when checking migration of TsFileResource {}", tsfile, e);
+                "An error occurred when check and try to migrate TsFileResource {}", tsfile, e);
           }
         }
       }
     }
 
     private void submitMigrationTask(
-        int tierLevel, MigrationCause cause, TsFileResource sourceTsFile, String targetDir) {
+        int tierLevel, MigrationCause cause, TsFileResource sourceTsFile, String targetDir)
+        throws IOException {
       if (!checkAndMarkMigrate(sourceTsFile)) {
         return;
       }
@@ -159,7 +161,7 @@ public class MigrationTaskManager implements IService {
     private boolean checkAndMarkMigrate(TsFileResource tsFile) {
       if (canMigrate(tsFile)) {
         tsFile.setIsMigrating(true);
-        if (!canMigrate(tsFile)) {
+        if (occupiedByCompaction(tsFile)) {
           tsFile.setIsMigrating(false);
           return false;
         }
@@ -169,7 +171,11 @@ public class MigrationTaskManager implements IService {
     }
 
     private boolean canMigrate(TsFileResource tsFile) {
-      return tsFile.getStatus() == TsFileResourceStatus.NORMAL;
+      return tsFile.getStatus() == TsFileResourceStatus.NORMAL && !tsFile.isMigrating();
+    }
+
+    private boolean occupiedByCompaction(TsFileResource tsFile) {
+      return tsFile.getStatus() != TsFileResourceStatus.NORMAL;
     }
 
     private int compareMigrationPriority(TsFileResource f1, TsFileResource f2) {

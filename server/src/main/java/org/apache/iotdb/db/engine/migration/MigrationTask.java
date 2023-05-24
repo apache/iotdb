@@ -26,41 +26,47 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import java.io.File;
+import java.io.IOException;
 
 public abstract class MigrationTask implements Runnable {
   protected static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   protected final MigrationCause cause;
-  protected final TsFileResource tsFile;
+  protected final TsFileResource tsFileResource;
   protected final String targetDir;
 
-  protected final File srcTsFile;
+  protected final File srcFile;
   protected final File destTsFile;
   protected final File srcResourceFile;
   protected final File destResourceFile;
   protected final File srcModsFile;
   protected final File destModsFile;
 
-  MigrationTask(MigrationCause cause, TsFileResource tsFile, String targetDir) {
+  protected MigrationTask(MigrationCause cause, TsFileResource tsFileResource, String targetDir)
+      throws IOException {
     this.cause = cause;
-    this.tsFile = tsFile;
+    this.tsFileResource = tsFileResource;
     this.targetDir = targetDir;
-    this.srcTsFile = tsFile.getTsFile();
-    this.destTsFile = fsFactory.getFile(targetDir, tsFile.getTsFile().getName());
+    this.srcFile = tsFileResource.getTsFile();
+    this.destTsFile = fsFactory.getFile(targetDir, getDestTsFilePath(srcFile));
     this.srcResourceFile =
         fsFactory.getFile(
-            srcTsFile.getParentFile(), srcTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
+            srcFile.getParentFile(), srcFile.getName() + TsFileResource.RESOURCE_SUFFIX);
     this.destResourceFile =
-        fsFactory.getFile(targetDir, tsFile.getTsFile().getName() + TsFileResource.RESOURCE_SUFFIX);
+        fsFactory.getFile(targetDir, getDestTsFilePath(srcFile) + TsFileResource.RESOURCE_SUFFIX);
     this.srcModsFile =
         fsFactory.getFile(
-            srcTsFile.getParentFile(), srcTsFile.getName() + ModificationFile.FILE_SUFFIX);
+            srcFile.getParentFile(), srcFile.getName() + ModificationFile.FILE_SUFFIX);
     this.destModsFile =
-        fsFactory.getFile(targetDir, tsFile.getTsFile().getName() + ModificationFile.FILE_SUFFIX);
+        fsFactory.getFile(targetDir, getDestTsFilePath(srcFile) + ModificationFile.FILE_SUFFIX);
+  }
+
+  private String getDestTsFilePath(File src) throws IOException {
+    return FSUtils.getLocalTsFileShortPath(src, FSUtils.PATH_FROM_DATABASE_LEVEL);
   }
 
   public static MigrationTask newTask(
-      MigrationCause cause, TsFileResource sourceTsFile, String targetDir) {
+      MigrationCause cause, TsFileResource sourceTsFile, String targetDir) throws IOException {
     if (FSUtils.isLocal(targetDir)) {
       return new LocalMigrationTask(cause, sourceTsFile, targetDir);
     } else {
@@ -71,12 +77,12 @@ public abstract class MigrationTask implements Runnable {
   @Override
   public void run() {
     migrate();
-    tsFile.increaseTierLevel();
-    tsFile.setIsMigrating(false);
+    tsFileResource.increaseTierLevel();
+    tsFileResource.setIsMigrating(false);
   }
 
   protected boolean canMigrate() {
-    return tsFile.getStatus() == TsFileResourceStatus.NORMAL;
+    return tsFileResource.getStatus() == TsFileResourceStatus.NORMAL;
   }
 
   public abstract void migrate();

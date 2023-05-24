@@ -185,6 +185,8 @@ public class TsFileResource {
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.isSeq = FilePathUtils.isSequence(this.file.getAbsolutePath());
+    // This method is invoked when DataNode recovers, so the tierLevel should be calculated when
+    // restarting
     this.tierLevel = TierManager.getInstance().getFileTierLevel(file);
   }
 
@@ -201,7 +203,9 @@ public class TsFileResource {
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
     this.processor = processor;
     this.isSeq = processor.isSequence();
-    this.tierLevel = TierManager.getInstance().getFileTierLevel(file);
+    // this method is invoked when a new TsFile is created and a newly created TsFile's the
+    // tierLevel is 0 by default
+    this.tierLevel = 0;
   }
 
   /** unsealed TsFile, for query */

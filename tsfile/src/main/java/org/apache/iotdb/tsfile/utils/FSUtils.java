@@ -32,6 +32,8 @@ import java.util.Arrays;
 public class FSUtils {
   private static final Logger logger = LoggerFactory.getLogger(FSUtils.class);
   private static final FSType[] fsTypes = {FSType.OBJECT_STORAGE, FSType.HDFS};
+  public static final int PATH_FROM_SEQUENCE_LEVEL = 5;
+  public static final int PATH_FROM_DATABASE_LEVEL = 4;
   public static final String[] fsPrefix = {"os://", "hdfs://"};
   public static final String OS_FILE_SEPARATOR = "/";
   private static final String[] fsFileClassName = {
@@ -119,7 +121,6 @@ public class FSUtils {
 
   public static FSPath parseLocalTsFile2OSFile(File localFile, String bucket, int dataNodeId)
       throws IOException {
-    String[] filePathSplits = FilePathUtils.splitTsFilePath(localFile.getCanonicalPath());
     return new FSPath(
         FSType.OBJECT_STORAGE,
         fsPrefix[0]
@@ -127,18 +128,15 @@ public class FSUtils {
             + OS_FILE_SEPARATOR
             + dataNodeId
             + OS_FILE_SEPARATOR
-            + String.join(
-                OS_FILE_SEPARATOR,
-                Arrays.copyOfRange(
-                    filePathSplits, filePathSplits.length - 5, filePathSplits.length)));
+            + getLocalTsFileShortPath(localFile, PATH_FROM_SEQUENCE_LEVEL));
   }
 
-  //  public static FSPath parseLocalTsFile2OSFile(File lcoalFile, String bucket, int dataNodeId)
-  //      throws IOException {
-  //    String fileName = lcoalFile.getName();
-  //    return new FSPath(FSType.OBJECT_STORAGE,
-  // "os://bucket/Users/jinruizhangjinrui/Documents/work/iotdb/data/datanode/s3/" + fileName);
-  //  }
+  public static String getLocalTsFileShortPath(File localTsFile, int level) throws IOException {
+    String[] filePathSplits = FilePathUtils.splitTsFilePath(localTsFile.getCanonicalPath());
+    return String.join(
+        OS_FILE_SEPARATOR,
+        Arrays.copyOfRange(filePathSplits, filePathSplits.length - level, filePathSplits.length));
+  }
 
   public static boolean isLocal(String fsPath) {
     return getFSType(fsPath) == FSType.LOCAL;

@@ -1140,7 +1140,7 @@ public class IoTDBConfig {
   private int migrateThreadCount = 1;
 
   /** Enable hdfs or not */
-  private boolean enableObjectStorage = false;
+  private boolean enableObjectStorage = true;
 
   /** Config for object storage */
   private ObjectStorageConfig osConfig = ObjectStorageDescriptor.getInstance().getConfig();

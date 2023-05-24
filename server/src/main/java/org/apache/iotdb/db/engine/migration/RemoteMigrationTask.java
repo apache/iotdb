@@ -28,31 +28,32 @@ import java.io.IOException;
 public class RemoteMigrationTask extends MigrationTask {
   private static final Logger logger = LoggerFactory.getLogger(RemoteMigrationTask.class);
 
-  RemoteMigrationTask(MigrationCause cause, TsFileResource tsFile, String targetDir) {
+  protected RemoteMigrationTask(MigrationCause cause, TsFileResource tsFile, String targetDir)
+      throws IOException {
     super(cause, tsFile, targetDir);
   }
 
   @Override
   public void migrate() {
     // copy TsFile and resource file
-    tsFile.readLock();
+    tsFileResource.readLock();
     try {
-      fsFactory.copyFile(srcTsFile, destTsFile);
+      fsFactory.copyFile(srcFile, destTsFile);
       fsFactory.copyFile(srcResourceFile, destResourceFile);
     } catch (IOException e) {
-      logger.error("Fail to copy TsFile {}", srcTsFile);
+      logger.error("Fail to copy TsFile {}", srcFile);
       destTsFile.delete();
       destResourceFile.delete();
       return;
     } finally {
-      tsFile.readUnlock();
+      tsFileResource.readUnlock();
     }
     // clear src files
-    tsFile.writeLock();
+    tsFileResource.writeLock();
     try {
-      srcTsFile.delete();
+      srcFile.delete();
     } finally {
-      tsFile.writeUnlock();
+      tsFileResource.writeUnlock();
     }
   }
 }
