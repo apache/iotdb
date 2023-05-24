@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -51,6 +52,14 @@ public abstract class InsertBaseStatement extends Statement {
 
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
+
+  List<LogicalViewSchema> logicalViewSchemaList;
+
+  List<Integer> indexListOfLogicalViewPaths;
+
+  int recordedBeginOfLogicalViewSchemaList = 0;
+
+  int recordedEndOfLogicalViewSchemaList = 0;
 
   public PartialPath getDevicePath() {
     return devicePath;

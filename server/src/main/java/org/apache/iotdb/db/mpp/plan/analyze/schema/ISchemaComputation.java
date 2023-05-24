@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.List;
 
 /**
  * This interface defines the required behaviour invoked during schema fetch/computation, which is
@@ -31,6 +35,14 @@ public interface ISchemaComputation {
   PartialPath getDevicePath();
 
   String[] getMeasurements();
+
+  List<LogicalViewSchema> getLogicalViewSchemaList();
+
+  List<Integer> getIndexListOfLogicalViewPaths();
+
+  void recordSizeOfLogicalViewSchemaListNow();
+
+  Pair<Integer, Integer> getSizeOfLogicalViewSchemaListRecorded();
 
   /** @param isAligned whether the fetched device is aligned */
   void computeDevice(boolean isAligned);

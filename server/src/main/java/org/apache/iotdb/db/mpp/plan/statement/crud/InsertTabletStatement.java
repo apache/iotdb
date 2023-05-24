@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -36,6 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
@@ -60,6 +62,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public InsertTabletStatement() {
     super();
     statementType = StatementType.BATCH_INSERT;
+    this.logicalViewSchemaList = new ArrayList<>();
+    this.indexListOfLogicalViewPaths = new ArrayList<>();
+    this.recordedBeginOfLogicalViewSchemaList = 0;
+    this.recordedEndOfLogicalViewSchemaList = 0;
   }
 
   public int getRowCount() {
@@ -258,10 +264,18 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
     }
+    if(logicalViewSchemaList == null || indexListOfLogicalViewPaths == null){
+      logicalViewSchemaList = new ArrayList<>();
+      indexListOfLogicalViewPaths = new ArrayList<>();
+    }
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-      measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
+      if(measurementSchemaInfo.isLogicalView()){
+        logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
+      }else{
+        measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
+      }
     }
 
     try {
@@ -269,5 +283,26 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     } catch (DataTypeMismatchException | PathNotExistException e) {
       throw new SemanticException(e);
     }
+  }
+
+  @Override
+  public List<LogicalViewSchema> getLogicalViewSchemaList() {
+    return this.logicalViewSchemaList;
+  }
+
+  @Override
+  public List<Integer> getIndexListOfLogicalViewPaths() {
+    return this.indexListOfLogicalViewPaths;
+  }
+
+  @Override
+  public void recordSizeOfLogicalViewSchemaListNow() {
+    this.recordedBeginOfLogicalViewSchemaList = this.recordedEndOfLogicalViewSchemaList;
+    this.recordedEndOfLogicalViewSchemaList = this.logicalViewSchemaList.size();
+  }
+
+  @Override
+  public Pair<Integer, Integer> getSizeOfLogicalViewSchemaListRecorded() {
+    return new Pair<>(this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
   }
 }

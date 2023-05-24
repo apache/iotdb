@@ -49,19 +49,32 @@ class NormalSchemaFetcher {
 
   List<Integer> processNormalTimeSeries(
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
+    // [Step 1] Cache 1.
     List<Integer> indexOfMissingMeasurements =
         schemaCache.computeWithoutTemplate(schemaComputationWithAutoCreation);
+    // [Step 2] Cache 2.
+    List<Integer> indexOfMissingSourcesOfLogicalView =
+      schemaCache.computeLogicalViewWithoutTemplate(schemaComputationWithAutoCreation);
     // all schema can be taken from cache
-    if (indexOfMissingMeasurements.isEmpty()) {
+    if (indexOfMissingMeasurements.isEmpty() && indexOfMissingSourcesOfLogicalView.isEmpty()) {
       return indexOfMissingMeasurements;
     }
+    // [Step 3] Fetch 1.
+    // TODO: merge fullPath list of missing paths.
 
     // try fetch the missing schema from remote and cache fetched schema
+    // TODO: add and use a new fetch func
     ClusterSchemaTree remoteSchemaTree =
         clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
             schemaComputationWithAutoCreation.getDevicePath(),
             schemaComputationWithAutoCreation.getMeasurements(),
-            indexOfMissingMeasurements);
+          indexOfMissingMeasurements);
+
+
+    // [Step 4] Fetch 2.
+
+
+    // [Step 5] Auto Create
     // check and compute the fetched schema
     indexOfMissingMeasurements =
         remoteSchemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
