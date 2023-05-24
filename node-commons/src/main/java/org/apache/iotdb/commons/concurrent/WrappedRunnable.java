@@ -20,6 +20,8 @@ package org.apache.iotdb.commons.concurrent;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /** A wrapper for {@link Runnable} logging errors when uncaught exception is thrown. */
 public abstract class WrappedRunnable implements Runnable {
 
@@ -42,6 +44,22 @@ public abstract class WrappedRunnable implements Runnable {
       @Override
       public void runMayThrow() {
         runnable.run();
+      }
+    };
+  }
+
+  public static Runnable wrapWithCount(Runnable runnable, AtomicInteger count) {
+    if (runnable instanceof WrappedRunnable) {
+      return runnable;
+    }
+    return new WrappedRunnable() {
+      @Override
+      public void runMayThrow() {
+        try {
+          runnable.run();
+        } finally {
+          count.incrementAndGet();
+        }
       }
     };
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.concurrent;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** A wrapper for {@link Callable} logging errors when uncaught exception is thrown. */
 public abstract class WrappedCallable<V> implements Callable<V> {
@@ -44,6 +45,22 @@ public abstract class WrappedCallable<V> implements Callable<V> {
       @Override
       public V callMayThrow() throws Exception {
         return callable.call();
+      }
+    };
+  }
+
+  public static <V> Callable<V> wrapWithCount(Callable<V> callable, AtomicInteger count) {
+    if (callable instanceof WrappedCallable) {
+      return callable;
+    }
+    return new WrappedCallable<V>() {
+      @Override
+      public V callMayThrow() throws Exception {
+        try {
+          return callable.call();
+        } finally {
+          count.incrementAndGet();
+        }
       }
     };
   }

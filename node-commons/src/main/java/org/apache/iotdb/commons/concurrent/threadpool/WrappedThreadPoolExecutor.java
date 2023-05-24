@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.concurrent.threadpool;
 
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 
@@ -53,6 +54,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
         String.format(
             "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
     JMXService.registerMBean(this, this.mbeanName);
+    ThreadPoolMetrics.getInstance().registerThreadPool(this, this.mbeanName);
   }
 
   public WrappedThreadPoolExecutor(
@@ -107,5 +109,10 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
     if (t != null) {
       logger.error("Exception in thread pool {}", mbeanName, t);
     }
+  }
+
+  @Override
+  public int hashCode() {
+    return mbeanName.hashCode();
   }
 }
