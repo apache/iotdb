@@ -42,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -269,7 +268,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           true);
     } finally {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      releaseAllLock();
+      releaseAllLocksAndResetStatus();
       return isSuccess;
     }
   }
@@ -285,16 +284,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         && this.performer.getClass().isInstance(otherCrossCompactionTask.performer);
   }
 
-  private void releaseAllLock() {
-    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
+  private void releaseAllLocksAndResetStatus() {
+    resetCompactionCandidateStatusForAllSourceFiles();
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     }
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();
@@ -305,10 +301,22 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public void setSourceFilesToCompactionCandidate() {
-    this.selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
-    this.selectedUnsequenceFiles.forEach(
-        x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+  public boolean setSourceFilesToCompactionCandidate() {
+    for (TsFileResource resource : selectedSequenceFiles) {
+      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+        resetCompactionCandidateStatusForAllSourceFiles();
+        return false;
+      }
+      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
+    }
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+        resetCompactionCandidateStatusForAllSourceFiles();
+        return false;
+      }
+      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
+    }
+    return true;
   }
 
   public List<TsFileResource> getSelectedUnsequenceFiles() {
@@ -344,11 +352,23 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
+    for (TsFileResource resource : selectedSequenceFiles) {
+      if (resource.getStatus() == TsFileResourceStatus.COMPACTION_CANDIDATE
+          || resource.getStatus() == TsFileResourceStatus.COMPACTING) {
+        // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+      }
+    }
+    for (TsFileResource resource : unseqTsFileResourceList) {
+      if (resource.getStatus() == TsFileResourceStatus.COMPACTION_CANDIDATE
+          || resource.getStatus() == TsFileResourceStatus.COMPACTING) {
+        // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+      }
+    }
   }
 
-  private long deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
+  private long deleteOldFiles(List<TsFileResource> tsFileResourceList) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : tsFileResourceList) {
       totalSize += tsFileResource.getTsFileSize();
@@ -371,6 +391,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public boolean checkValidAndSetMerging() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return false;
+    }
     try {
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
     } catch (InterruptedException e) {
@@ -389,24 +412,19 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
-    if (!tsFileManager.isAllowCompaction()) {
-      return false;
-    }
     try {
       for (TsFileResource tsFileResource : tsFileResourceList) {
         tsFileResource.readLock();
         holdReadLockList.add(tsFileResource);
-        if (tsFileResource.isCompacting()
-            || !tsFileResource.isClosed()
-            || !tsFileResource.getTsFile().exists()
-            || tsFileResource.isDeleted()) {
-          releaseAllLock();
+        if (tsFileResource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE
+            || !tsFileResource.getTsFile().exists()) {
+          releaseAllLocksAndResetStatus();
           return false;
         }
         tsFileResource.setStatus(TsFileResourceStatus.COMPACTING);
       }
     } catch (Throwable e) {
-      releaseAllLock();
+      releaseAllLocksAndResetStatus();
       throw e;
     }
     return true;

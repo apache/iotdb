@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -1002,6 +1001,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         new Thread(
             () -> {
               try {
+                Thread.sleep(1000);
                 List<CrossCompactionTaskResource> selected =
                     selector.selectCrossSpaceTask(seqResources, unseqResources);
               } catch (Exception e) {
@@ -1012,10 +1012,11 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     Thread thread2 =
         new Thread(
             () -> {
-              try {
-                FileUtils.delete(seqResources.get(0).getTsFile());
-                FileUtils.delete(unseqResources.get(0).getTsFile());
-              } catch (IOException e) {
+              if (!seqResources.get(0).remove()) {
+                fail.set(true);
+              }
+              if (!unseqResources.get(0).remove()) {
+                fail.set(true);
               }
             });
     thread1.start();
@@ -1023,7 +1024,43 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     thread1.join();
     thread2.join();
     if (fail.get()) {
-      // fail();
+      Assert.fail();
+    }
+  }
+
+  @Test
+  public void testDeleteAndDegradeInSelection() throws Exception {
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+    AtomicBoolean fail = new AtomicBoolean(false);
+    Thread thread1 =
+        new Thread(
+            () -> {
+              try {
+                Thread.sleep(1000);
+                List<CrossCompactionTaskResource> selected =
+                    selector.selectCrossSpaceTask(seqResources, unseqResources);
+                Assert.assertEquals(1, selected.get(0).getSeqFiles().size());
+                Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+              } catch (Exception e) {
+                logger.error("Exception occurs", e);
+                fail.set(true);
+              }
+            });
+    Thread thread2 =
+        new Thread(
+            () -> {
+              seqResources.get(1).degradeTimeIndex();
+              if (!seqResources.get(1).remove()) {
+                fail.set(true);
+              }
+            });
+    thread1.start();
+    thread2.start();
+    thread1.join();
+    thread2.join();
+    if (fail.get()) {
+      Assert.fail();
     }
   }
 
