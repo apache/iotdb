@@ -101,6 +101,10 @@ public class WALPipeHandler {
     }
   }
 
+  public long getMemTableId() {
+    return memTableId;
+  }
+
   public void setMemTableId(long memTableId) {
     this.memTableId = memTableId;
   }
