@@ -63,6 +63,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
+import org.apache.iotdb.os.cache.CacheRecoverTask;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -272,6 +273,15 @@ public class StorageEngine implements IService {
             };
         futures.add(cachedThreadPool.submit(recoverDataRegionTask));
       }
+    }
+    // submit object storage cache recover task
+    if (config.isEnableObjectStorage()) {
+      futures.add(
+          cachedThreadPool.submit(
+              () -> {
+                new CacheRecoverTask().run();
+                return null;
+              }));
     }
   }
 
