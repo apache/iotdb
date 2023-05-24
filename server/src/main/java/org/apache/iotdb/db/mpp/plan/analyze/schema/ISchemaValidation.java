@@ -34,7 +34,22 @@ public interface ISchemaValidation extends ISchemaComputationWithAutoCreation {
     validateMeasurementSchema(index, measurementSchemaInfo);
   }
 
+  @Override
+  default void computeViewMeasurement(
+      int index,
+      IMeasurementSchemaInfo measurementSchemaInfo,
+      String devicePath,
+      boolean isAligned) {
+    validateViewMeasurementSchema(index, measurementSchemaInfo, devicePath, isAligned);
+  }
+
   void validateDeviceSchema(boolean isAligned);
 
   void validateMeasurementSchema(int index, IMeasurementSchemaInfo measurementSchemaInfo);
+
+  void validateViewMeasurementSchema(
+      int index,
+      IMeasurementSchemaInfo measurementSchemaInfo,
+      String devicePath,
+      boolean isAligned);
 }

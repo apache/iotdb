@@ -16,25 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.plan.statement.crud;
 
-package org.apache.iotdb.db.mpp.common.schematree;
-
-import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-public interface IMeasurementSchemaInfo {
-
-  String getName();
-
-  IMeasurementSchema getSchema();
-
-  /** @return if the IMeasurementSchema is MeasurementSchema, return itself; else return null. */
-  MeasurementSchema getSchemaAsMeasurementSchema();
-
-  LogicalViewSchema getSchemaAsLogicalViewSchema();
-
-  String getAlias();
-
-  boolean isLogicalView();
+public class InsertStatementWrapper {
+  public InsertBaseStatement statement;
 }

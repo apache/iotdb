@@ -270,4 +270,13 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       throw new SemanticException(e);
     }
   }
+
+  @Override
+  public void validateViewMeasurementSchema(
+      int index,
+      IMeasurementSchemaInfo measurementSchemaInfo,
+      String devicePath,
+      boolean isAligned) {
+    // TODO
+  }
 }

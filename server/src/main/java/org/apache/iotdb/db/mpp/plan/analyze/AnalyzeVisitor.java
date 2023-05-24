@@ -2056,18 +2056,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    analysis.setStatement(insertRowStatement);
     validateSchema(analysis, insertRowStatement);
+    InsertBaseStatement insertStatement = insertRowStatement.split();
+
+    analysis.setStatement(insertStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
-
-    DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-    dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-    dataPartitionQueryParam.setTimePartitionSlotList(
-        Collections.singletonList(insertRowStatement.getTimePartitionSlot()));
-
-    return getAnalysisForWriting(analysis, Collections.singletonList(dataPartitionQueryParam));
+    return getAnalysisForInsertStatement(analysis, insertStatement);
   }
 
   @Override
@@ -2077,27 +2073,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(insertRowsStatement);
     validateSchema(analysis, insertRowsStatement);
+    // TODO: split statement
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
-
-    Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
-    for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
-      Set<TTimePartitionSlot> timePartitionSlotSet =
-          dataPartitionQueryParamMap.computeIfAbsent(
-              insertRowStatement.getDevicePath().getFullPath(), k -> new HashSet<>());
-      timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
-    }
-
-    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-    for (Map.Entry<String, Set<TTimePartitionSlot>> entry : dataPartitionQueryParamMap.entrySet()) {
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(entry.getKey());
-      dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
-      dataPartitionQueryParams.add(dataPartitionQueryParam);
-    }
-
-    return getAnalysisForWriting(analysis, dataPartitionQueryParams);
+    return getAnalysisForInsertStatement(analysis, insertRowsStatement);
   }
 
   @Override
@@ -2128,6 +2108,41 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
 
+    return getAnalysisForWriting(analysis, dataPartitionQueryParams);
+  }
+
+  private Analysis getAnalysisForInsertStatement(
+      Analysis analysis, InsertBaseStatement insertBaseStatement) {
+    List<DataPartitionQueryParam> dataPartitionQueryParams;
+    if (insertBaseStatement instanceof InsertRowsStatement) {
+      InsertRowsStatement insertRowsStatement = (InsertRowsStatement) insertBaseStatement;
+      Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
+      for (InsertRowStatement insertRowStatement :
+          insertRowsStatement.getInsertRowStatementList()) {
+        Set<TTimePartitionSlot> timePartitionSlotSet =
+            dataPartitionQueryParamMap.computeIfAbsent(
+                insertRowStatement.getDevicePath().getFullPath(), k -> new HashSet<>());
+        timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
+      }
+      dataPartitionQueryParams = new ArrayList<>();
+      for (Map.Entry<String, Set<TTimePartitionSlot>> entry :
+          dataPartitionQueryParamMap.entrySet()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(entry.getKey());
+        dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
+        dataPartitionQueryParams.add(dataPartitionQueryParam);
+      }
+    } else if (insertBaseStatement instanceof InsertRowStatement) {
+      InsertRowStatement insertRowStatement = (InsertRowStatement) insertBaseStatement;
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          Collections.singletonList(insertRowStatement.getTimePartitionSlot()));
+      dataPartitionQueryParams = Collections.singletonList(dataPartitionQueryParam);
+    } else {
+      // TODO: support other insert statement
+      throw new UnsupportedOperationException();
+    }
     return getAnalysisForWriting(analysis, dataPartitionQueryParams);
   }
 

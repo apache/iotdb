@@ -40,4 +40,10 @@ public interface ISchemaComputation {
    * @param measurementSchemaInfo the measurement schema of fetched measurement
    */
   void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo);
+
+  void computeViewMeasurement(
+      int index,
+      IMeasurementSchemaInfo measurementSchemaInfo,
+      String devicePath,
+      boolean isAligned);
 }

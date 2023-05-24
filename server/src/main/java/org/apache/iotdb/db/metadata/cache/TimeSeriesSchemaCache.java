@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCache;
@@ -145,6 +148,30 @@ public class TimeSeriesSchemaCache {
 
           @Override
           public void computeValue(int index, SchemaCacheEntry value) {
+            if (value != null && value.isLogicalView()) {
+              ViewExpression expression = value.getSchemaAsLogicalViewSchema().getExpression();
+              if (expression instanceof TimeSeriesViewOperand) {
+                try {
+                  PartialPath path =
+                      new PartialPath(((TimeSeriesViewOperand) expression).getPathString());
+                  value = dualKeyCache.get(path.getDevicePath(), path.getMeasurement());
+                  if (value == null) {
+                    indexOfMissingMeasurements.add(index);
+                  } else {
+                    if (isFirstMeasurement.get()) {
+                      schemaComputation.computeDevice(value.isAligned());
+                      isFirstMeasurement.getAndSet(false);
+                    }
+                    schemaComputation.computeViewMeasurement(
+                        index, value, path.getDevice(), value.isAligned());
+                  }
+                } catch (IllegalPathException e) {
+                  throw new RuntimeException(e);
+                }
+              } else {
+                throw new UnsupportedOperationException("insert into view is not supported");
+              }
+            }
             if (value == null) {
               indexOfMissingMeasurements.add(index);
             } else {

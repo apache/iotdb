@@ -28,7 +28,9 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -51,6 +53,15 @@ public abstract class InsertBaseStatement extends Statement {
 
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
+
+  protected Map<String, List<Integer>> viewDevice2IndexMap;
+
+  protected Map<String, Boolean> viewDevice2IsAlignedMap;
+
+  public void setFailedMeasurementIndex2Info(
+      Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info) {
+    this.failedMeasurementIndex2Info = failedMeasurementIndex2Info;
+  }
 
   public PartialPath getDevicePath() {
     return devicePath;
@@ -210,6 +221,26 @@ public abstract class InsertBaseStatement extends Statement {
                   return cause.getMessage();
                 })
             .collect(Collectors.toList());
+  }
+
+  protected void processView(String device, int index, boolean isAligned) {
+    if (viewDevice2IndexMap == null || viewDevice2IsAlignedMap == null) {
+      viewDevice2IndexMap = new HashMap<>();
+      viewDevice2IsAlignedMap = new HashMap<>();
+    }
+    viewDevice2IsAlignedMap.put(device, isAligned);
+    viewDevice2IndexMap.compute(
+        device,
+        (k, v) -> {
+          if (v == null) {
+            List<Integer> valueList = new ArrayList<>();
+            valueList.add(index);
+            return valueList;
+          } else {
+            v.add(index);
+            return v;
+          }
+        });
   }
 
   protected static class FailedMeasurementInfo {

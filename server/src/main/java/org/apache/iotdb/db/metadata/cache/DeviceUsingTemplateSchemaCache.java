@@ -165,8 +165,7 @@ public class DeviceUsingTemplateSchemaCache {
             @Override
             public IMeasurementSchema getSchema() {
               if (isLogicalView()) {
-                return new LogicalViewSchema(
-                    schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+                return this.getSchemaAsLogicalViewSchema();
               } else {
                 return this.getSchemaAsMeasurementSchema();
               }
@@ -179,6 +178,12 @@ public class DeviceUsingTemplateSchemaCache {
                   schema.getType(),
                   schema.getEncodingType(),
                   schema.getCompressor());
+            }
+
+            @Override
+            public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+              return new LogicalViewSchema(
+                  schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
             }
 
             @Override

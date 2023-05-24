@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
@@ -47,7 +48,11 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class InsertRowStatement extends InsertBaseStatement implements ISchemaValidation {
 
@@ -309,6 +314,111 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       selfCheckDataTypes(index);
     } catch (DataTypeMismatchException | PathNotExistException e) {
       throw new SemanticException(e);
+    }
+  }
+
+  @Override
+  public void validateViewMeasurementSchema(
+      int index,
+      IMeasurementSchemaInfo measurementSchemaInfo,
+      String devicePath,
+      boolean isAligned) {
+    if (measurementSchemas == null) {
+      measurementSchemas = new MeasurementSchema[measurements.length];
+    }
+    if (measurementSchemaInfo == null) {
+      measurementSchemas[index] = null;
+    } else {
+      measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
+      processView(devicePath, index, isAligned);
+    }
+    if (isNeedInferType) {
+      return;
+    }
+
+    try {
+      selfCheckDataTypes(index);
+    } catch (DataTypeMismatchException | PathNotExistException e) {
+      throw new SemanticException(e);
+    }
+  }
+
+  public InsertBaseStatement split() {
+    if (viewDevice2IndexMap == null || viewDevice2IndexMap.isEmpty()) {
+      return this;
+    }
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    HashSet<Integer> remainIndex =
+        IntStream.range(0, measurements.length)
+            .boxed()
+            .collect(Collectors.toCollection(HashSet::new));
+    for (Map.Entry<String, List<Integer>> entry : viewDevice2IndexMap.entrySet()) {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setTime(this.time);
+      statement.setAligned(this.isAligned);
+      statement.setNeedInferType(this.isNeedInferType);
+      try {
+        statement.setDevicePath(new PartialPath(entry.getKey()));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+      Object[] values = new Object[entry.getValue().size()];
+      String[] measurements = new String[entry.getValue().size()];
+      MeasurementSchema[] measurementSchemas = new MeasurementSchema[entry.getValue().size()];
+      TSDataType[] dataTypes = new TSDataType[entry.getValue().size()];
+      Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info = new HashMap<>();
+      for (int i = 0; i < entry.getValue().size(); i++) {
+        int index = entry.getValue().get(i);
+        remainIndex.remove(index);
+        values[i] = this.values[index];
+        measurementSchemas[i] = this.measurementSchemas[index];
+        measurements[i] =
+            measurementSchemas[i] == null ? null : measurementSchemas[i].getMeasurementId();
+        dataTypes[i] = this.dataTypes[index];
+        if (this.failedMeasurementIndex2Info != null
+            && this.failedMeasurementIndex2Info.containsKey(index)) {
+          failedMeasurementIndex2Info.put(i, this.failedMeasurementIndex2Info.get(index));
+        }
+      }
+      statement.setValues(values);
+      statement.setMeasurements(measurements);
+      statement.setDataTypes(dataTypes);
+      statement.setMeasurementSchemas(measurementSchemas);
+      statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
+      insertRowStatementList.add(statement);
+    }
+    if (!remainIndex.isEmpty()) {
+      Object[] values = new Object[remainIndex.size()];
+      String[] measurements = new String[remainIndex.size()];
+      MeasurementSchema[] measurementSchemas = new MeasurementSchema[remainIndex.size()];
+      TSDataType[] dataTypes = new TSDataType[remainIndex.size()];
+      Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info = new HashMap<>();
+      for (int i = 0; i < remainIndex.size(); i++) {
+        int index = remainIndex.iterator().next();
+        remainIndex.remove(index);
+        values[i] = this.values[index];
+        measurementSchemas[i] = this.measurementSchemas[index];
+        measurements[i] = this.measurements[index];
+        dataTypes[i] = this.dataTypes[index];
+        if (this.failedMeasurementIndex2Info != null
+            && this.failedMeasurementIndex2Info.containsKey(index)) {
+          failedMeasurementIndex2Info.put(i, this.failedMeasurementIndex2Info.get(index));
+        }
+      }
+      this.setValues(values);
+      this.setMeasurements(measurements);
+      this.setDataTypes(dataTypes);
+      this.setMeasurements(measurements);
+      this.setMeasurementSchemas(measurementSchemas);
+      this.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
+      insertRowStatementList.add(this);
+    }
+    if (insertRowStatementList.size() == 1) {
+      return insertRowStatementList.get(0);
+    } else {
+      InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+      insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
+      return insertRowsStatement;
     }
   }
 }
