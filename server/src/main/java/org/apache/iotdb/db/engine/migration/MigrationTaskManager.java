@@ -144,7 +144,7 @@ public class MigrationTaskManager implements IService {
     private void submitMigrationTask(
         int tierLevel, MigrationCause cause, TsFileResource sourceTsFile, String targetDir)
         throws IOException {
-      if (!checkAndMarkMigrate(sourceTsFile)) {
+      if (!sourceTsFile.setStatus(TsFileResourceStatus.MIGRATING)) {
         return;
       }
       MigrationTask task = MigrationTask.newTask(cause, sourceTsFile, targetDir);
@@ -156,26 +156,6 @@ public class MigrationTaskManager implements IService {
           needMigrationTiers.remove(tierLevel);
         }
       }
-    }
-
-    private boolean checkAndMarkMigrate(TsFileResource tsFile) {
-      if (canMigrate(tsFile)) {
-        tsFile.setIsMigrating(true);
-        if (occupiedByCompaction(tsFile)) {
-          tsFile.setIsMigrating(false);
-          return false;
-        }
-        return true;
-      }
-      return false;
-    }
-
-    private boolean canMigrate(TsFileResource tsFile) {
-      return tsFile.getStatus() == TsFileResourceStatus.NORMAL && !tsFile.isMigrating();
-    }
-
-    private boolean occupiedByCompaction(TsFileResource tsFile) {
-      return tsFile.getStatus() != TsFileResourceStatus.NORMAL;
     }
 
     private int compareMigrationPriority(TsFileResource f1, TsFileResource f2) {

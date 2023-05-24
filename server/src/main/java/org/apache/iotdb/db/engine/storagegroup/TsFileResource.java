@@ -135,8 +135,6 @@ public class TsFileResource {
 
   private volatile int tierLevel = 0;
 
-  private volatile boolean isMigrating = false;
-
   private volatile long tsFileSize = -1L;
 
   private TsFileProcessor processor;
@@ -190,6 +188,9 @@ public class TsFileResource {
     // This method is invoked when DataNode recovers, so the tierLevel should be calculated when
     // restarting
     this.tierLevel = TierManager.getInstance().getFileTierLevel(file);
+    if (onRemote()) {
+      this.setAtomicStatus(TsFileResourceStatus.NORMAL_ON_REMOTE);
+    }
   }
 
   /** Used for compaction to create target files. */
@@ -652,16 +653,8 @@ public class TsFileResource {
     return getStatus() == TsFileResourceStatus.COMPACTION_CANDIDATE;
   }
 
-  public boolean isMigrating() {
-    return isMigrating;
-  }
-
-  public void setIsMigrating(boolean isMigrating) {
-    this.isMigrating = isMigrating;
-  }
-
   public boolean onRemote() {
-    return !file.exists();
+    return !isDeleted() && !file.exists();
   }
 
   private boolean compareAndSetStatus(
@@ -682,9 +675,13 @@ public class TsFileResource {
     switch (status) {
       case NORMAL:
         return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)
+            || compareAndSetStatus(TsFileResourceStatus.MIGRATING, TsFileResourceStatus.NORMAL)
             || compareAndSetStatus(TsFileResourceStatus.COMPACTING, TsFileResourceStatus.NORMAL)
             || compareAndSetStatus(
                 TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.NORMAL);
+      case NORMAL_ON_REMOTE:
+        return compareAndSetStatus(
+            TsFileResourceStatus.MIGRATING, TsFileResourceStatus.NORMAL_ON_REMOTE);
       case UNCLOSED:
         // TsFile cannot be set back to UNCLOSED so false is always returned
         return false;
@@ -698,6 +695,8 @@ public class TsFileResource {
       case COMPACTION_CANDIDATE:
         return compareAndSetStatus(
             TsFileResourceStatus.NORMAL, TsFileResourceStatus.COMPACTION_CANDIDATE);
+      case MIGRATING:
+        return compareAndSetStatus(TsFileResourceStatus.NORMAL, TsFileResourceStatus.COMPACTING);
       default:
         return false;
     }

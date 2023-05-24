@@ -76,13 +76,12 @@ public abstract class MigrationTask implements Runnable {
 
   @Override
   public void run() {
-    migrate();
-    tsFileResource.increaseTierLevel();
-    tsFileResource.setIsMigrating(false);
-  }
-
-  protected boolean canMigrate() {
-    return tsFileResource.getStatus() == TsFileResourceStatus.NORMAL;
+    try {
+      migrate();
+    } finally {
+      // try to set the final status to NORMAL to avoid migrate failure
+      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+    }
   }
 
   public abstract void migrate();

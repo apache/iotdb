@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.migration;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,8 @@ public class RemoteMigrationTask extends MigrationTask {
     tsFileResource.writeLock();
     try {
       srcFile.delete();
+      tsFileResource.increaseTierLevel();
+      tsFileResource.setStatus(TsFileResourceStatus.NORMAL_ON_REMOTE);
     } catch (Exception e) {
       logger.error("Fail to delete local TsFile {}", srcFile);
     } finally {

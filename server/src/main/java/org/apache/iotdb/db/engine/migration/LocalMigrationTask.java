@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.migration;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,8 @@ public class LocalMigrationTask extends MigrationTask {
         fsFactory.copyFile(srcModsFile, destModsFile);
       }
       tsFileResource.setFile(destTsFile);
+      tsFileResource.increaseTierLevel();
+      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     } catch (Exception e) {
       logger.error("Fail to copy mods file from local {} to local {}", srcModsFile, destModsFile);
       destTsFile.delete();
