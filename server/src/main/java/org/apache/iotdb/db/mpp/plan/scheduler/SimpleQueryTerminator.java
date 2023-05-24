@@ -113,7 +113,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
           FragmentInstanceManager.getInstance()
               .cancelTask(FragmentInstanceId.fromThrift(insId), false);
         }
-        return true;
+        continue;
       }
 
       try (SyncDataNodeInternalServiceClient client =
@@ -150,7 +150,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
           FragmentInstanceManager.getInstance()
               .cancelTask(FragmentInstanceId.fromThrift(insId), true);
         }
-        return true;
+        continue;
       }
 
       try (SyncDataNodeInternalServiceClient client =
