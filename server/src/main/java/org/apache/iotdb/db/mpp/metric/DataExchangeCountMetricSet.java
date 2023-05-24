@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -53,6 +55,11 @@ public class DataExchangeCountMetricSet implements IMetricSet {
   private static final String GET_DATA_BLOCK_NUM = "get_data_block_num";
   public static final String GET_DATA_BLOCK_NUM_CALLER = GET_DATA_BLOCK_NUM + "_" + CALLER;
   public static final String GET_DATA_BLOCK_NUM_SERVER = GET_DATA_BLOCK_NUM + "_" + SERVER;
+
+  private static final MPPDataExchangeManager dataExchangeManager =
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
+  private static final String SHUFFLE_SINK_HANDLE_SIZE = "shuffle_sink_handle_size";
+  private static final String SOURCE_HANDLE_SIZE = "source_handle_size";
 
   private Histogram sendNewDataBlockNumCallerHistogram =
       DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -115,6 +122,20 @@ public class DataExchangeCountMetricSet implements IMetricSet {
             GET_DATA_BLOCK_NUM,
             Tag.TYPE.toString(),
             SERVER);
+    metricService.createAutoGauge(
+        Metric.DATA_EXCHANGE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        dataExchangeManager,
+        MPPDataExchangeManager::getShuffleSinkHandleSize,
+        Tag.NAME.toString(),
+        SHUFFLE_SINK_HANDLE_SIZE);
+    metricService.createAutoGauge(
+        Metric.DATA_EXCHANGE_COUNT.toString(),
+        MetricLevel.IMPORTANT,
+        dataExchangeManager,
+        MPPDataExchangeManager::getSourceHandleSize,
+        Tag.NAME.toString(),
+        SOURCE_HANDLE_SIZE);
   }
 
   @Override
@@ -138,6 +159,9 @@ public class DataExchangeCountMetricSet implements IMetricSet {
                                 name,
                                 Tag.TYPE.toString(),
                                 caller)));
+    metricService.remove(
+        MetricType.AUTO_GAUGE, Metric.DATA_EXCHANGE_COUNT.toString(), Tag.NAME.toString(), SHUFFLE_SINK_HANDLE_SIZE);
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.DATA_EXCHANGE_COUNT.toString(), Tag.NAME.toString(), SOURCE_HANDLE_SIZE);
   }
 
   public void recordDataBlockNum(String type, int num) {

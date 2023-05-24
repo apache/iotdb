@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.mpp.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
@@ -55,6 +56,8 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(DataExchangeCostMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(DataExchangeCountMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(DriverSchedulerMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(new QueryRelatedResourceMetricSet());
+
 
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());

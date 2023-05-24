@@ -291,12 +291,14 @@ public class ConfigManager implements IManager {
     this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
 
+    // 1. keep PipeManager initialization before LoadManager initialization, because
+    // LoadManager will register PipeManager as a listener.
+    // 2. keep RetryFailedTasksThread initialization after LoadManager initialization,
+    // because RetryFailedTasksThread will keep a reference of LoadManager.
+    this.loadManager = new LoadManager(this);
+
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
     this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
-
-    // Please keep loadManager initializing at last because it may require other managers to
-    // register the eventBus
-    this.loadManager = new LoadManager(this);
   }
 
   public void initConsensusManager() throws IOException {

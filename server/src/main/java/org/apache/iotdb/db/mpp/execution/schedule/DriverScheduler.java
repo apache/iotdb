@@ -419,6 +419,14 @@ public class DriverScheduler implements IDriverScheduler, IService {
     return blockedTasks.size();
   }
 
+  public long getTimeoutQueueTaskCount() {
+    return timeoutQueue.size();
+  }
+
+  public int getQueryMapSize() {
+    return queryMap.size();
+  }
+
   @TestOnly
   IndexedBlockingQueue<DriverTask> getReadyQueue() {
     return readyQueue;

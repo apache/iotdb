@@ -31,12 +31,18 @@ import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -430,6 +436,12 @@ public class PipeTaskAgent {
 
     // set pipe meta status to RUNNING
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    // clear exception messages if started successfully
+    existedPipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupIdToTaskMetaMap()
+        .values()
+        .forEach(PipeTaskMeta::clearExceptionMessages);
   }
 
   private void stopPipe(String pipeName, long creationTime) {
@@ -538,5 +550,24 @@ public class PipeTaskAgent {
     if (pipeTask != null) {
       pipeTask.stop();
     }
+  }
+
+  ///////////////////////// Heartbeat /////////////////////////
+
+  public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
+      throws TException {
+    if (!req.isNeedPipeMetaList()) {
+      return;
+    }
+
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    try {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        pipeMetaBinaryList.add(pipeMeta.serialize());
+      }
+    } catch (IOException e) {
+      throw new TException(e);
+    }
+    resp.setPipeMetaList(pipeMetaBinaryList);
   }
 }

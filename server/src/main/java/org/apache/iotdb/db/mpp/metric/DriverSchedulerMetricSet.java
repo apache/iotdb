@@ -40,6 +40,9 @@ public class DriverSchedulerMetricSet implements IMetricSet {
   public static final String BLOCK_QUEUED_TIME = "block_queued_time";
   public static final String READY_QUEUE_TASK_COUNT = "ready_queue_task_count";
   public static final String BLOCK_QUEUE_TASK_COUNT = "block_queue_task_count";
+  private static final String TIMEOUT_QUEUE_SIZE = "timeout_queue_task_count";
+  private static final String QUERY_MAP_SIZE = "query_map_size";
+
   private Timer readyQueuedTimeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer blockQueuedTimeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
@@ -71,6 +74,22 @@ public class DriverSchedulerMetricSet implements IMetricSet {
         DriverScheduler::getBlockQueueTaskCount,
         Tag.NAME.toString(),
         BLOCK_QUEUE_TASK_COUNT);
+    metricService.createAutoGauge(
+        Metric.DRIVER_SCHEDULER.toString(),
+        MetricLevel.IMPORTANT,
+        DriverScheduler.getInstance(),
+        DriverScheduler::getTimeoutQueueTaskCount,
+        Tag.NAME.toString(),
+        TIMEOUT_QUEUE_SIZE);
+    metricService.createAutoGauge(
+        Metric.DRIVER_SCHEDULER.toString(),
+        MetricLevel.IMPORTANT,
+        DriverScheduler.getInstance(),
+        DriverScheduler::getQueryMapSize,
+        Tag.NAME.toString(),
+        QUERY_MAP_SIZE);
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.DRIVER_SCHEDULER.toString(), Tag.NAME.toString(), TIMEOUT_QUEUE_SIZE);
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.DRIVER_SCHEDULER.toString(), Tag.NAME.toString(), QUERY_MAP_SIZE);
   }
 
   @Override
@@ -97,6 +116,7 @@ public class DriverSchedulerMetricSet implements IMetricSet {
         Metric.DRIVER_SCHEDULER.toString(),
         Tag.NAME.toString(),
         BLOCK_QUEUE_TASK_COUNT);
+
   }
 
   public void recordTaskQueueTime(String name, long queueTimeInNanos) {
