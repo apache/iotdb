@@ -72,7 +72,7 @@ Users can start IoTDB standalone mode by the start-standalone script under the s
 > sbin\start-standalone.bat
 ```
 
-Note: Currently, To run standalone mode, you need to ensure that all addresses are set to 127.0.0.1, and replication factors set to 1, which is by now the default setting.
+Note: Currently, To run standalone mode, you need to ensure that all addresses are set to 127.0.0.1, If you need to access the IoTDB from a machine different from the one where the IoTDB is located, please change the configuration item `dn_rpc_address` to the IP of the machine where the IoTDB lives. And replication factors set to 1, which is by now the default setting.
 Besides, it's recommended to use SimpleConsensus in this mode, since it brings additional efficiency.
 ### Use Cli
 

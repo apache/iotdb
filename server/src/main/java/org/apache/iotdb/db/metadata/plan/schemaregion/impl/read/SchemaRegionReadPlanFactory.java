@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
@@ -32,55 +35,53 @@ public class SchemaRegionReadPlanFactory {
 
   private SchemaRegionReadPlanFactory() {}
 
+  @TestOnly
   public static IShowDevicesPlan getShowDevicesPlan(PartialPath path) {
-    return new ShowDevicesPlanImpl(path, 0, 0, false, -1);
+    return new ShowDevicesPlanImpl(path, 0, 0, false, -1, null);
   }
 
+  @TestOnly
   public static IShowDevicesPlan getShowDevicesPlan(PartialPath path, boolean isPrefixMatch) {
-    return new ShowDevicesPlanImpl(path, 0, 0, isPrefixMatch, -1);
+    return new ShowDevicesPlanImpl(path, 0, 0, isPrefixMatch, -1, null);
   }
 
   public static IShowDevicesPlan getShowDevicesPlan(
-      PartialPath path, long limit, long offset, boolean isPrefixMatch) {
-    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, -1);
+      PartialPath path, long limit, long offset, boolean isPrefixMatch, SchemaFilter schemaFilter) {
+    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, -1, schemaFilter);
   }
 
   public static IShowDevicesPlan getShowDevicesPlan(
       PartialPath path, int limit, int offset, boolean isPrefixMatch, int templateId) {
-    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, templateId);
+    return new ShowDevicesPlanImpl(path, limit, offset, isPrefixMatch, templateId, null);
   }
 
+  @TestOnly
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(PartialPath path) {
-    return new ShowTimeSeriesPlanImpl(path, Collections.emptyMap(), false, null, null, 0, 0, false);
+    return new ShowTimeSeriesPlanImpl(path, Collections.emptyMap(), 0, 0, false, null);
   }
 
-  public static IShowTimeSeriesPlan getShowTimeSeriesPlan(PartialPath path, int limit, int offset) {
-    return new ShowTimeSeriesPlanImpl(
-        path, Collections.emptyMap(), false, null, null, limit, offset, false);
-  }
-
+  @TestOnly
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
       PartialPath path, Map<Integer, Template> relatedTemplate) {
-    return new ShowTimeSeriesPlanImpl(path, relatedTemplate, false, null, null, 0, 0, false);
+    return new ShowTimeSeriesPlanImpl(path, relatedTemplate, 0, 0, false, null);
   }
 
+  @TestOnly
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
       PartialPath path, boolean isContains, String key, String value) {
     return new ShowTimeSeriesPlanImpl(
-        path, Collections.emptyMap(), isContains, key, value, 0, 0, false);
+        path, Collections.emptyMap(), 0, 0, false, new TagFilter(key, value, isContains));
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
       PartialPath path,
       Map<Integer, Template> relatedTemplate,
-      boolean isContains,
-      String key,
-      String value,
       long limit,
       long offset,
-      boolean isPrefixMatch) {
+      boolean isPrefixMatch,
+      SchemaFilter schemaFilter) {
     return new ShowTimeSeriesPlanImpl(
-        path, relatedTemplate, isContains, key, value, limit, offset, isPrefixMatch);
+        path, relatedTemplate, limit, offset, isPrefixMatch, schemaFilter);
   }
 
   public static IShowNodesPlan getShowNodesPlan(PartialPath path) {

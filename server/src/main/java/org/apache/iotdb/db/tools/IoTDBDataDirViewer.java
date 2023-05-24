@@ -40,7 +40,7 @@ public class IoTDBDataDirViewer {
     String[] data_dir;
     String outFile = "IoTDB_data_dir_overview.txt";
     if (args.length == 0) {
-      String path = "data/data";
+      String path = "data/datanode/data";
       data_dir = path.split(","); // multiple data dirs separated by comma
     } else if (args.length == 1) {
       data_dir = args[0].split(",");
@@ -56,7 +56,7 @@ public class IoTDBDataDirViewer {
       for (String dir : data_dir) {
         File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
         File[] seqAndUnseqDirs = dirFile.listFiles();
-        if (seqAndUnseqDirs == null || seqAndUnseqDirs.length != 2) {
+        if (seqAndUnseqDirs == null) {
           throw new IOException(
               "Irregular data dir structure.There should be a sequence and unsequence directory "
                   + "under the data directory "
@@ -64,20 +64,20 @@ public class IoTDBDataDirViewer {
         }
         List<File> fileList = Arrays.asList(seqAndUnseqDirs);
         fileList.sort((Comparator.comparing(File::getName)));
-        if (!"sequence".equals(seqAndUnseqDirs[0].getName())
-            || !"unsequence".equals(seqAndUnseqDirs[1].getName())) {
+        if (!"sequence".equals(seqAndUnseqDirs[1].getName())
+            || !"unsequence".equals(seqAndUnseqDirs[2].getName())) {
           throw new IOException(
               "Irregular data dir structure.There should be a sequence and unsequence directory "
                   + "under the data directory "
-                  + dirFile.getName());
+                  + dirFile.getPath());
         }
 
         printlnBoth(pw, "|==============================================================");
         printlnBoth(pw, "|" + dir);
         printlnBoth(pw, "|--sequence");
-        printFilesInSeqOrUnseqDir(seqAndUnseqDirs[0], pw);
-        printlnBoth(pw, "|--unsequence");
         printFilesInSeqOrUnseqDir(seqAndUnseqDirs[1], pw);
+        printlnBoth(pw, "|--unsequence");
+        printFilesInSeqOrUnseqDir(seqAndUnseqDirs[2], pw);
       }
       printlnBoth(pw, "|==============================================================");
     }
@@ -105,14 +105,31 @@ public class IoTDBDataDirViewer {
     File[] files = storageGroup.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be timeInterval directories under "
+          "Irregular data dir structure.There should be dataRegion directories under "
               + "the database directory "
               + storageGroup.getName());
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));
-    for (File file : files) {
+    for (File file : fileList) {
       printlnBoth(pw, "|  |  |--" + file.getName());
+      printFilesInDataRegionDir(file, pw);
+    }
+  }
+
+  private static void printFilesInDataRegionDir(File dataRegion, PrintWriter pw)
+      throws IOException {
+    File[] files = dataRegion.listFiles();
+    if (files == null) {
+      throw new IOException(
+          "Irregular data dir structure.There should be timeInterval directories under "
+              + "the database directory "
+              + dataRegion.getName());
+    }
+    List<File> fileList = Arrays.asList(files);
+    fileList.sort((Comparator.comparing(File::getName)));
+    for (File file : fileList) {
+      printlnBoth(pw, "|  |  |  |--" + file.getName());
       printFilesInTimeInterval(file, pw);
     }
   }
@@ -128,8 +145,8 @@ public class IoTDBDataDirViewer {
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort((Comparator.comparing(File::getName)));
-    for (File file : files) {
-      printlnBoth(pw, "|  |  |  |--" + file.getName());
+    for (File file : fileList) {
+      printlnBoth(pw, "|  |  |  |  |--" + file.getName());
 
       // To print the content if it is a tsfile.resource
       if (file.getName().endsWith(".tsfile.resource")) {
@@ -148,12 +165,12 @@ public class IoTDBDataDirViewer {
       printlnBoth(
           pw,
           String.format(
-              "|  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
+              "|  |  |  |  |  |--device %s, start time %d (%s), end time %d (%s)",
               device,
               resource.getStartTime(device),
-              DateTimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
+              DateTimeUtils.convertLongToDate(resource.getStartTime(device)),
               resource.getEndTime(device),
-              DateTimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device))));
+              DateTimeUtils.convertLongToDate(resource.getEndTime(device))));
     }
   }
 

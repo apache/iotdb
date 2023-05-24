@@ -137,14 +137,19 @@ public class StatisticsService implements IClusterStatusSubscriber {
       isNeedBroadcast = true;
     }
 
-    if (isNeedBroadcast) {
+    if (isNeedBroadcast || loadCache.existUnreadyRegionGroup()) {
+      // Update RegionRoute if cluster statistics changed or some RegionGroups are unready
       differentRegionLeaderMap.putAll(routeBalancer.balanceRegionLeader());
+      // Update RegionPriority
+      // Map<RegionGroupId, Pair<old priority, new priority>>
       Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
           differentRegionPriorityMap = routeBalancer.balanceRegionPriority();
+      eventBus.post(new RouteChangeEvent(differentRegionLeaderMap, differentRegionPriorityMap));
+    }
 
+    if (isNeedBroadcast) {
       eventBus.post(
           new StatisticsChangeEvent(differentNodeStatisticsMap, differentRegionGroupStatisticsMap));
-      eventBus.post(new RouteChangeEvent(differentRegionLeaderMap, differentRegionPriorityMap));
       broadcastLatestRegionRouteMap();
     }
   }

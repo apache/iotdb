@@ -222,7 +222,7 @@ public class LogDispatcher {
               peer,
               initialSyncIndex,
               config.getReplication().getCheckpointGap());
-      this.syncStatus = new SyncStatus(controller, config, impl::getSearchIndex);
+      this.syncStatus = new SyncStatus(controller, config);
       this.walEntryIterator = reader.getReqIterator(START_INDEX);
       this.metrics = new LogDispatcherThreadMetrics(this);
     }

@@ -24,19 +24,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 
-import java.io.File;
-
 public class PipeRealtimeCollectEventFactory {
 
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
-  // TODO: resource control here?
-  public static PipeRealtimeCollectEvent createCollectEvent(File tsFile, TsFileResource resource) {
+  public static PipeRealtimeCollectEvent createCollectEvent(TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(tsFile), resource);
+        new PipeTsFileInsertionEvent(resource), resource);
   }
 
-  // TODO: resource control here?
   public static PipeRealtimeCollectEvent createCollectEvent(
       InsertNode node, TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTabletInsertionEvent(

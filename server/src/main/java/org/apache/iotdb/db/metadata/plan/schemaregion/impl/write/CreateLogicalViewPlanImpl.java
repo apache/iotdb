@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 
 import java.util.Collections;
 import java.util.HashMap;

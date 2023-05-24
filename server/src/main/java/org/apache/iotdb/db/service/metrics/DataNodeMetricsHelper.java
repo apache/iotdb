@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
+import org.apache.iotdb.db.mpp.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.metrics.metricsets.cpu.CpuUsageMetrics;
@@ -82,6 +83,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new DataExchangeCostMetricSet());
     MetricService.getInstance().addMetricSet(new DataExchangeCountMetricSet());
     MetricService.getInstance().addMetricSet(new DriverSchedulerMetricSet());
+    MetricService.getInstance().addMetricSet(new QueryRelatedResourceMetricSet());
 
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());

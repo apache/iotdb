@@ -23,7 +23,7 @@ import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
@@ -48,7 +48,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
  *             following 3 methods will be called: {@link
  *             PipeProcessor#process(TabletInsertionEvent, EventCollector)}, {@link
  *             PipeProcessor#process(TsFileInsertionEvent, EventCollector)} and {@link
- *             PipeProcessor#process(DeletionEvent, EventCollector)}.
+ *             PipeProcessor#process(Event, EventCollector)}.
  *         <li>PipeConnector serializes the events into binaries and send them to sinks.
  *       </ul>
  *   <li>When the collaboration task is cancelled (the `DROP PIPE` command is executed), the {@link
@@ -107,11 +107,11 @@ public interface PipeProcessor extends PipePlugin {
       throws Exception;
 
   /**
-   * This method is called to process the DeletionEvent.
+   * This method is called to process the Event.
    *
-   * @param deletionEvent DeletionEvent to be processed
+   * @param event Event to be processed
    * @param eventCollector used to collect result events after processing
    * @throws Exception the user can throw errors if necessary
    */
-  void process(DeletionEvent deletionEvent, EventCollector eventCollector) throws Exception;
+  void process(Event event, EventCollector eventCollector) throws Exception;
 }

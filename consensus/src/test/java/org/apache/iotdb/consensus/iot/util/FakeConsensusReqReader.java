@@ -48,6 +48,11 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
   }
 
   @Override
+  public long getCurrentWALFileVersion() {
+    return 0;
+  }
+
+  @Override
   public long getTotalSize() {
     return 0;
   }

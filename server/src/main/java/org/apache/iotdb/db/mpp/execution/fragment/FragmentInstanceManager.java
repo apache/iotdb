@@ -109,6 +109,14 @@ public class FragmentInstanceManager {
             "into-operation-executor");
   }
 
+  public int getInstanceContextSize() {
+    return instanceContext.size();
+  }
+
+  public int getInstanceExecutionSize() {
+    return instanceExecution.size();
+  }
+
   public FragmentInstanceInfo execDataQueryFragmentInstance(
       FragmentInstance instance, IDataRegionForQuery dataRegion) {
     long startTime = System.nanoTime();

@@ -71,6 +71,7 @@ public class CompactionTaskManager implements IService {
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
+
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(
           config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());

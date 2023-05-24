@@ -437,7 +437,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.CLOSED);
+              targetResource.setStatus(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -741,7 +741,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.CLOSED);
+              targetResource.setStatus(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -1044,7 +1044,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.CLOSED);
+              targetResource.setStatus(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);

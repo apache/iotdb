@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
@@ -42,7 +44,6 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
-import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
@@ -51,7 +52,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -66,7 +66,6 @@ import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -620,6 +619,23 @@ public class MTreeBelowSGMemoryImpl {
     }
     return cur;
   }
+
+  /**
+   * Check if the device node exists
+   *
+   * @param deviceId full path of device
+   * @return true if the device node exists
+   */
+  public boolean checkDeviceNodeExists(PartialPath deviceId) {
+    IMemMNode deviceMNode;
+    try {
+      deviceMNode = getNodeByPath(deviceId);
+      return deviceMNode.isDevice();
+    } catch (MetadataException e) {
+      return false;
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for metadata info Query
@@ -687,13 +703,6 @@ public class MTreeBelowSGMemoryImpl {
     } else {
       throw new MNodeTypeMismatchException(
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
-    }
-  }
-
-  public long countAllMeasurement() throws MetadataException {
-    try (MeasurementCounter<IMemMNode> measurementCounter =
-        new MeasurementCounter<>(rootNode, MetadataConstant.ALL_MATCH_PATTERN, store, false)) {
-      return measurementCounter.count();
     }
   }
 
@@ -858,6 +867,7 @@ public class MTreeBelowSGMemoryImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
+    collector.setSchemaFilter(showDevicesPlan.getSchemaFilter());
     TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, IMemMNode> traverser =
         new TraverserWithLimitOffsetWrapper<>(
             collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
@@ -939,6 +949,8 @@ public class MTreeBelowSGMemoryImpl {
             };
           }
         };
+
+    collector.setSchemaFilter(showTimeSeriesPlan.getSchemaFilter());
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     Traverser<ITimeSeriesSchemaInfo, IMemMNode> traverser;
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {

@@ -146,6 +146,7 @@ public enum ThreadName {
   MLNODE_RPC_SERVICE("MLNodeRpc-Service"),
   IOTDB_SHUTDOWN_HOOK("IoTDB-Shutdown-Hook"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
+  PIPE_META_SYNC_SERVICE("Pipe-Meta-Sync-Service"),
   ;
 
   private final String name;
