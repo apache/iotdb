@@ -696,7 +696,7 @@ public class TsFileResource {
         return compareAndSetStatus(
             TsFileResourceStatus.NORMAL, TsFileResourceStatus.COMPACTION_CANDIDATE);
       case MIGRATING:
-        return compareAndSetStatus(TsFileResourceStatus.NORMAL, TsFileResourceStatus.COMPACTING);
+        return compareAndSetStatus(TsFileResourceStatus.NORMAL, TsFileResourceStatus.MIGRATING);
       default:
         return false;
     }
