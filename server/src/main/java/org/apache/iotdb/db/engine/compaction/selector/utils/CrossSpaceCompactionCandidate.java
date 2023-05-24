@@ -54,24 +54,6 @@ public class CrossSpaceCompactionCandidate {
     init(seqFiles, unseqFiles);
   }
 
-  public void addReadLock() {
-    for (TsFileResourceCandidate resourceCandidate : seqFiles) {
-      resourceCandidate.resource.readLock();
-    }
-    for (TsFileResourceCandidate resourceCandidate : unseqFiles) {
-      resourceCandidate.resource.readLock();
-    }
-  }
-
-  public void releaseReadLock() {
-    for (TsFileResourceCandidate resourceCandidate : seqFiles) {
-      resourceCandidate.resource.readUnlock();
-    }
-    for (TsFileResourceCandidate resourceCandidate : unseqFiles) {
-      resourceCandidate.resource.readUnlock();
-    }
-  }
-
   private void init(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = copySeqResource(seqFiles);
     // it is necessary that unseqFiles are all available
