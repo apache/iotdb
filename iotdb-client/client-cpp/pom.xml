@@ -398,7 +398,7 @@
                                     <!-- Redirect IoTDB server log to /dev/null -->
                                     <processLogFile>${project.build.directory}/build/test/test.log</processLogFile>
                                     <arguments>
-                                        <argument>${project.basedir}/../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.start.script}</argument>
+                                        <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.start.script}</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
@@ -417,7 +417,7 @@
                                     <!-- Redirect IoTDB server log to /dev/null -->
                                     <processLogFile>${project.build.directory}/build/test/test1.log</processLogFile>
                                     <arguments>
-                                        <argument>${project.basedir}/../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.stop.script}</argument>
+                                        <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.stop.script}</argument>
                                     </arguments>
                                 </configuration>
                             </execution>

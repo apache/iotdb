@@ -95,13 +95,13 @@
                             <outputDirectory>${basedir}/iotdb/thrift/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/../thrift/target/generated-sources-python/iotdb/thrift/</directory>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift/target/generated-sources-python/iotdb/thrift/</directory>
                                     <includes>
                                         <include>**/rpc/*</include>
                                     </includes>
                                 </resource>
                                 <resource>
-                                    <directory>${basedir}/../thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
                                 </resource>
                             </resources>
                         </configuration>
