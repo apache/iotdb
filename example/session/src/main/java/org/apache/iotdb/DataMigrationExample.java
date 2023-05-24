@@ -83,16 +83,16 @@ public class DataMigrationExample {
     deviceDataSet = readerPool.executeQueryStatement("show devices " + path);
     deviceIter = deviceDataSet.iterator();
 
-    List<Future> futureList = new ArrayList<>();
+    List<Future<Void>> futureList = new ArrayList<>();
     int count = 0;
     while (deviceIter.next()) {
       count++;
-      Future future = executorService.submit(new LoadThread(count, deviceIter.getString("Device")));
+      Future<Void> future = executorService.submit(new LoadThread(count, deviceIter.getString("Device")));
       futureList.add(future);
     }
     readerPool.closeResultSet(deviceDataSet);
 
-    for (Future future : futureList) {
+    for (Future<Void> future : futureList) {
       future.get();
     }
     executorService.shutdown();
