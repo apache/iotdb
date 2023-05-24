@@ -58,7 +58,6 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(DriverSchedulerMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(new QueryRelatedResourceMetricSet());
 
-
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());
   }

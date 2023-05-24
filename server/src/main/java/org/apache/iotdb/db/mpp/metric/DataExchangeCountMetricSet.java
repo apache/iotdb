@@ -160,8 +160,15 @@ public class DataExchangeCountMetricSet implements IMetricSet {
                                 Tag.TYPE.toString(),
                                 caller)));
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.DATA_EXCHANGE_COUNT.toString(), Tag.NAME.toString(), SHUFFLE_SINK_HANDLE_SIZE);
-    metricService.remove(MetricType.AUTO_GAUGE, Metric.DATA_EXCHANGE_COUNT.toString(), Tag.NAME.toString(), SOURCE_HANDLE_SIZE);
+        MetricType.AUTO_GAUGE,
+        Metric.DATA_EXCHANGE_COUNT.toString(),
+        Tag.NAME.toString(),
+        SHUFFLE_SINK_HANDLE_SIZE);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DATA_EXCHANGE_COUNT.toString(),
+        Tag.NAME.toString(),
+        SOURCE_HANDLE_SIZE);
   }
 
   public void recordDataBlockNum(String type, int num) {

@@ -81,6 +81,10 @@ public enum Metric {
   DATA_EXCHANGE_COST("data_exchange_cost"),
   DATA_EXCHANGE_COUNT("data_exchange_count"),
   DRIVER_SCHEDULER("driver_scheduler"),
+  COORDINATOR("coordinator"),
+  FRAGMENT_INSTANCE_MANAGER("fragment_instance_manager"),
+  MEMORY_POOL("memory_pool"),
+  LOCAL_EXECUTION_PLANNER("local_execution_planner"),
   // file related
   FILE_SIZE("file_size"),
   FILE_COUNT("file_count"),
