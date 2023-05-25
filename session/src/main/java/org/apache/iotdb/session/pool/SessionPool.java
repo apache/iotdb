@@ -132,7 +132,7 @@ public class SessionPool implements ISessionPool {
   private Long checkNodeUrlTimeMs = 86400000L;
 
   // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port, host:port]"
-  private final String formattedNodeUrls;
+  private String formattedNodeUrls;
 
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
@@ -310,7 +310,9 @@ public class SessionPool implements ISessionPool {
     this.maxSize = maxSize;
     this.host = host;
     this.port = port;
-    this.nodeUrls = null;
+    List<String> nodeUrls = new ArrayList<>();
+    nodeUrls.add(host+":"+port);
+    this.nodeUrls = nodeUrls;
     this.user = user;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -701,6 +703,7 @@ public class SessionPool implements ISessionPool {
       if (change || (!newNodeUrls.isEmpty() && newNodeUrls.size() != nodeUrls.size())) {
         nodeUrls = newNodeUrls;
         sessionList.forEach(session -> session.setNodeUrls(nodeUrls));
+        formattedNodeUrls = nodeUrls.toString();
         logger.info("The nodeUrl has been updated to {}", String.join(",", nodeUrls));
       }
       return true;

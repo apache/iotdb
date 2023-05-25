@@ -107,6 +107,7 @@ public class Session implements ISession {
   public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
   public static final String MSG_DONOT_ENABLE_REDIRECT =
       "Query do not enable redirect," + " please confirm the session and server conf.";
+  public static final String CLOSE_THE_SESSION_FAILED = "close the session failed.";
   private static final ThreadPoolExecutor OPERATION_EXECUTOR =
       new ThreadPoolExecutor(
           SessionConfig.DEFAULT_SESSION_EXECUTOR_THREAD_NUM,
@@ -292,6 +293,9 @@ public class Session implements ISession {
       int thriftMaxFrameSize,
       boolean enableRedirection,
       Version version) {
+    List<String> nodeUrls = new ArrayList<>();
+    nodeUrls.add(host+":"+rpcPort);
+    this.nodeUrls = nodeUrls;
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
@@ -413,7 +417,7 @@ public class Session implements ISession {
 
   @Override
   public void setCheckNodeUrlTimeMs(long checkNodeUrlTimeMs) {
-    if (poolNoticeSyncNodeUrlStatus || (!this.enableRedirection && !this.enableQueryRedirection)) {
+    if (poolNoticeSyncNodeUrlStatus || !this.enableRedirection) {
       return;
     }
     this.checkNodeUrlTimeMs = checkNodeUrlTimeMs;
@@ -495,6 +499,12 @@ public class Session implements ISession {
       return true;
     } catch (StatementExecutionException | IoTDBConnectionException | RedirectException ignored) {
       return false;
+    }finally {
+      try {
+        syncSessionConnection.close();
+      } catch (IoTDBConnectionException e) {
+        logger.warn(CLOSE_THE_SESSION_FAILED, e);
+      }
     }
   }
 
@@ -524,10 +534,10 @@ public class Session implements ISession {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
       endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
-      if (!poolNoticeSyncNodeUrlStatus) {
-        startCheckNodeUrlSchedule();
-        startFirstSyncExecutor();
-      }
+    }
+    if (!poolNoticeSyncNodeUrlStatus && enableRedirection) {
+      startCheckNodeUrlSchedule();
+      startFirstSyncExecutor();
     }
   }
 
