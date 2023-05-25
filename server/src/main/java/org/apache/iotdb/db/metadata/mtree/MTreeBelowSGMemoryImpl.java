@@ -1082,5 +1082,59 @@ public class MTreeBelowSGMemoryImpl {
       return measurementMNode;
     }
   }
+
+  public List<PartialPath> constructLogicalViewBlackList(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    try (MeasurementUpdater<IMemMNode> updater =
+        new MeasurementUpdater<IMemMNode>(rootNode, pathPattern, store, false) {
+
+          protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
+            if (node.isLogicalView()) {
+              node.setPreDeleted(true);
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+          }
+        }) {
+      updater.update();
+    }
+    return result;
+  }
+
+  public List<PartialPath> rollbackLogicalViewBlackList(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    try (MeasurementUpdater<IMemMNode> updater =
+        new MeasurementUpdater<IMemMNode>(rootNode, pathPattern, store, false) {
+
+          protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
+            if (node.isLogicalView()) {
+              node.setPreDeleted(false);
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+          }
+        }) {
+      updater.update();
+    }
+    return result;
+  }
+
+  public List<PartialPath> getPreDeletedLogicalView(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new LinkedList<>();
+    try (MeasurementCollector<Void, IMemMNode> collector =
+        new MeasurementCollector<Void, IMemMNode>(rootNode, pathPattern, store, false) {
+
+          protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
+            if (node.isLogicalView() && node.isPreDeleted()) {
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+            return null;
+          }
+        }) {
+      collector.traverse();
+    }
+    return result;
+  }
   // endregion
 }
