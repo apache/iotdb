@@ -2976,7 +2976,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath devicePath : batchActivateTemplateStatement.getDevicePathList()) {
-      patternTree.appendPathPattern(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+      // the devicePath is a path without wildcard
+      patternTree.appendFullPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
     }
     SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
 
@@ -2996,7 +2997,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath activatePath :
         internalBatchActivateTemplateStatement.getDeviceMap().keySet()) {
-      patternTree.appendPathPattern(activatePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+      // the devicePath is a path without wildcard
+      patternTree.appendFullPath(activatePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
     }
     SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
 
