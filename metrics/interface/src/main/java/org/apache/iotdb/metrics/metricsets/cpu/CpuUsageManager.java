@@ -87,7 +87,7 @@ public class CpuUsageManager {
     } else {
       return;
     }
-    updateIoTDBCpuUsage();
+    updateCpuUsage();
   }
 
   private String getThreadModuleById(long id, ThreadInfo threadInfo) {
@@ -100,7 +100,7 @@ public class CpuUsageManager {
         id, k -> threadNameToPool.apply(threadInfo.getThreadName()));
   }
 
-  private void updateIoTDBCpuUsage() {
+  private void updateCpuUsage() {
     if (!checkCpuMonitorEnable()) {
       return;
     }
@@ -114,6 +114,7 @@ public class CpuUsageManager {
     try {
       Thread.sleep(200);
     } catch (InterruptedException e) {
+      Thread.interrupted();
       log.error("Thread sleep error", e);
     }
 
@@ -137,6 +138,10 @@ public class CpuUsageManager {
             afterThreadCpuTime,
             afterThreadUserTime,
             threadInfos);
+
+    if (totalIncrementTime == 0L) {
+      return;
+    }
 
     updateUsageMap(
         moduleIncrementCpuTimeMap,

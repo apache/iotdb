@@ -111,9 +111,4 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
       logger.error("Exception in thread pool {}", mbeanName, t);
     }
   }
-
-  @Override
-  public int hashCode() {
-    return mbeanName.hashCode();
-  }
 }

@@ -174,11 +174,6 @@ public class WrappedSingleThreadScheduledExecutor
   }
 
   @Override
-  public int hashCode() {
-    return mbeanName.hashCode();
-  }
-
-  @Override
   public int getCorePoolSize() {
     return 1;
   }

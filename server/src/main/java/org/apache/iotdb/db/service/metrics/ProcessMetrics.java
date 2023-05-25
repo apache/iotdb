@@ -34,7 +34,7 @@ public class ProcessMetrics implements IMetricSet {
   private final OperatingSystemMXBean sunOsMxBean;
   private final Runtime runtime;
   private long lastUpdateTime = 0L;
-  private final long updateInterval = 15_000L;
+  private static final long UPDATE_INTERVAL = 15_000L;
   private volatile long processCpuLoad = 0L;
   private volatile long processCpuTime = 0L;
 
@@ -66,7 +66,7 @@ public class ProcessMetrics implements IMetricSet {
         MetricLevel.CORE,
         sunOsMxBean,
         a -> {
-          if (System.currentTimeMillis() - lastUpdateTime > updateInterval) {
+          if (System.currentTimeMillis() - lastUpdateTime > UPDATE_INTERVAL) {
             lastUpdateTime = System.currentTimeMillis();
             processCpuLoad = (long) (sunOsMxBean.getProcessCpuLoad() * 100);
           }
@@ -80,7 +80,7 @@ public class ProcessMetrics implements IMetricSet {
         MetricLevel.CORE,
         sunOsMxBean,
         bean -> {
-          if (System.currentTimeMillis() - lastUpdateTime > updateInterval) {
+          if (System.currentTimeMillis() - lastUpdateTime > UPDATE_INTERVAL) {
             lastUpdateTime = System.currentTimeMillis();
             processCpuTime = sunOsMxBean.getProcessCpuTime();
           }
