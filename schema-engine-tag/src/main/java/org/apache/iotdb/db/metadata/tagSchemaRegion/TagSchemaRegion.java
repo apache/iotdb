@@ -354,6 +354,21 @@ public class TagSchemaRegion implements ISchemaRegion {
     throw new UnsupportedOperationException("createLogicalView is unsupported.");
   }
 
+  @Override
+  public long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deleteLogicalView(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   private List<String> getDevicePaths(List<IDeviceID> deviceIDS) {
     List<String> devicePaths = new ArrayList<>();
     if (config.getDeviceIDTransformationMethod().equals("SHA256")) {
