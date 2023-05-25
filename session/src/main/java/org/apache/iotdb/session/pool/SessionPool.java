@@ -35,6 +35,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
@@ -42,11 +43,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * SessionPool is a wrapper of a Session Set. Using SessionPool, the user do not need to consider
@@ -117,7 +124,12 @@ public class SessionPool implements ISessionPool {
   private boolean closed;
 
   // Redirect-able SessionPool
-  private final List<String> nodeUrls;
+  private List<String> nodeUrls;
+
+  private ScheduledExecutorService checkPrimaryClusterExecutorService;
+  private ExecutorService firstSyncExecutorService;
+  private List<ISession> sessionList = new CopyOnWriteArrayList<>();
+  private Long checkNodeUrlTimeMs = 86400000L;
 
   // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port, host:port]"
   private final String formattedNodeUrls;
@@ -306,14 +318,16 @@ public class SessionPool implements ISessionPool {
     this.enableCompression = enableCompression;
     this.zoneId = zoneId;
     this.enableRedirection = enableRedirection;
-    if (this.enableRedirection) {
-      deviceIdToEndpoint = new ConcurrentHashMap<>();
-    }
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = String.format("%s:%s", host, port);
+    if (this.enableRedirection) {
+      deviceIdToEndpoint = new ConcurrentHashMap<>();
+      startCheckNodeUrlSchedule();
+      startFirstSyncExecutor();
+    }
   }
 
   public SessionPool(
@@ -341,14 +355,16 @@ public class SessionPool implements ISessionPool {
     this.enableCompression = enableCompression;
     this.zoneId = zoneId;
     this.enableRedirection = enableRedirection;
-    if (this.enableRedirection) {
-      deviceIdToEndpoint = new ConcurrentHashMap<>();
-    }
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     this.version = version;
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.formattedNodeUrls = nodeUrls.toString();
+    if (this.enableRedirection) {
+      deviceIdToEndpoint = new ConcurrentHashMap<>();
+      startCheckNodeUrlSchedule();
+      startFirstSyncExecutor();
+    }
   }
 
   private Session constructNewSession() {
@@ -383,6 +399,7 @@ public class SessionPool implements ISessionPool {
               .version(version)
               .build();
     }
+    session.setPoolNoticeSyncNodeUrlStatus(true);
     session.setEnableQueryRedirection(enableQueryRedirection);
     return session;
   }
@@ -456,6 +473,7 @@ public class SessionPool implements ISessionPool {
 
       try {
         session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint);
+        sessionList.add(session);
         // avoid someone has called close() the session pool
         synchronized (this) {
           if (closed) {
@@ -469,6 +487,7 @@ public class SessionPool implements ISessionPool {
         // Meanwhile, we have to set size--
         synchronized (this) {
           size--;
+          sessionList.remove(session);
           // we do not need to notifyAll as any waited thread can continue to work after waked up.
           this.notify();
         }
@@ -510,6 +529,13 @@ public class SessionPool implements ISessionPool {
   /** close all connections in the pool */
   @Override
   public synchronized void close() {
+    if (checkPrimaryClusterExecutorService != null
+        && !checkPrimaryClusterExecutorService.isShutdown()) {
+      checkPrimaryClusterExecutorService.shutdown();
+    }
+    if (firstSyncExecutorService != null && !firstSyncExecutorService.isShutdown()) {
+      firstSyncExecutorService.shutdown();
+    }
     for (ISession session : queue) {
       try {
         session.close();
@@ -553,6 +579,7 @@ public class SessionPool implements ISessionPool {
     Session session = constructNewSession();
     try {
       session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint);
+      sessionList.add(session);
       // avoid someone has called close() the session pool
       synchronized (this) {
         if (closed) {
@@ -566,6 +593,7 @@ public class SessionPool implements ISessionPool {
     } catch (IoTDBConnectionException e) {
       synchronized (this) {
         size--;
+        sessionList.remove(session);
         // we do not need to notifyAll as any waited thread can continue to work after waked up.
         this.notify();
       }
@@ -593,6 +621,97 @@ public class SessionPool implements ISessionPool {
               "retry to execute statement on %s failed %d times: %s",
               formattedNodeUrls, RETRY, e.getMessage()),
           e);
+    }
+  }
+
+  @Override
+  public List<String> getNodeUrls() {
+    return this.nodeUrls;
+  }
+
+  @Override
+  public void setCheckNodeUrlTimeMs(long checkNodeUrlTimeMs) {
+    if (!this.enableRedirection) {
+      return;
+    }
+    this.checkNodeUrlTimeMs = checkNodeUrlTimeMs;
+    checkPrimaryClusterExecutorService.shutdown();
+    startCheckNodeUrlSchedule();
+  }
+
+  @SuppressWarnings("unsafeThreadSchedule")
+  private void startFirstSyncExecutor() {
+    if (!complementaryNodeUrl()) {
+      firstSyncExecutorService = Executors.newSingleThreadExecutor();
+      firstSyncExecutorService.submit(
+          () -> {
+            while (!complementaryNodeUrl()) {
+              try {
+                Thread.sleep(1000);
+              } catch (InterruptedException ignored) {
+              }
+            }
+            firstSyncExecutorService.shutdown();
+          });
+    }
+  }
+
+  @SuppressWarnings("unsafeThreadSchedule")
+  private void startCheckNodeUrlSchedule() {
+    checkPrimaryClusterExecutorService = Executors.newScheduledThreadPool(1);
+    checkPrimaryClusterExecutorService.scheduleAtFixedRate(
+        this::complementaryNodeUrl, checkNodeUrlTimeMs, checkNodeUrlTimeMs, TimeUnit.MILLISECONDS);
+  }
+
+  private boolean complementaryNodeUrl() {
+    Session oneTimeSession = constructNewSession();
+    try {
+      oneTimeSession.open();
+    } catch (IoTDBConnectionException ignored) {
+    }
+    try (SessionDataSet dataSet = oneTimeSession.executeQueryStatement("SHOW DATANODES")) {
+      List<String> columnNames = dataSet.getColumnNames();
+      Integer hostNum = null;
+      Integer portNum = null;
+      for (int i = 0; i < columnNames.size(); i++) {
+        if ("RpcAddress".equals(columnNames.get(i))) {
+          hostNum = i;
+        }
+        if ("RpcPort".equals(columnNames.get(i))) {
+          portNum = i;
+        }
+      }
+      if (hostNum == null || portNum == null) {
+        return false;
+      }
+      boolean change = false;
+      List<String> newNodeUrls = new ArrayList<>();
+      while (dataSet.hasNext()) {
+        RowRecord record = dataSet.next();
+        String host = record.getFields().get(hostNum).getStringValue();
+        if ("0.0.0.0".equals(host)) {
+          continue;
+        }
+        int port = record.getFields().get(portNum).getIntV();
+        if (nodeUrls == null || !nodeUrls.contains(host.trim() + ":" + port)) {
+          change = true;
+        }
+        newNodeUrls.add(host.trim() + ":" + port);
+      }
+      if (change || (!newNodeUrls.isEmpty() && newNodeUrls.size() != nodeUrls.size())) {
+        nodeUrls = newNodeUrls;
+        sessionList.forEach(session -> session.setNodeUrls(nodeUrls));
+        logger.info("The nodeUrl has been updated to {}", String.join(",", nodeUrls));
+      }
+      return true;
+    } catch (StatementExecutionException | IoTDBConnectionException | RuntimeException ignored) {
+      return false;
+    } finally {
+      try {
+        oneTimeSession.close();
+      } catch (IoTDBConnectionException e) {
+        logger.warn(CLOSE_THE_SESSION_FAILED, e);
+      }
     }
   }
 
@@ -2648,6 +2767,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @Override
   public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {

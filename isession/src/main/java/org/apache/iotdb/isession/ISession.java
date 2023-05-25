@@ -49,6 +49,8 @@ public interface ISession extends AutoCloseable {
 
   void setFetchSize(int fetchSize);
 
+  List<String> getNodeUrls();
+
   void open() throws IoTDBConnectionException;
 
   void open(boolean enableRPCCompression) throws IoTDBConnectionException;
@@ -499,6 +501,10 @@ public interface ISession extends AutoCloseable {
   void setQueryTimeout(long timeoutInMs);
 
   long getQueryTimeout();
+
+  void setNodeUrls(List<String> nodeUrls);
+
+  void setCheckNodeUrlTimeMs(long checkNodeUrlTimeMs);
 
   @Deprecated
   default SystemStatus getSystemStatus() {
