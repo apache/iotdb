@@ -114,7 +114,7 @@ public class DataMigrationExample {
     @Override
     public Void call() {
       SessionDataSetWrapper dataSet = null;
-      long startTime = System.nanoTime();
+      long startTime = System.currentTimeMillis();
       try {
         dataSet = readerPool.executeQueryStatement(String.format("select * from %s", device));
         DataIterator dataIter = dataSet.iterator();
@@ -181,7 +181,7 @@ public class DataMigrationExample {
         if (dataSet != null) {
           readerPool.closeResultSet(dataSet);
         }
-        long endTime = System.nanoTime();
+        long endTime = System.currentTimeMillis();
         long totalTime = endTime - startTime;
         System.out.println("migrate device ：" +device+" using "+ totalTime + " ms");
       }
