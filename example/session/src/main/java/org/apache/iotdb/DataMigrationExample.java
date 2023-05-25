@@ -86,7 +86,8 @@ public class DataMigrationExample {
     int count = 0;
     while (deviceIter.next()) {
       count++;
-      Future<Void> future = executorService.submit(new LoadThread(count, deviceIter.getString("Device")));
+      Future<Void> future =
+          executorService.submit(new LoadThread(count, deviceIter.getString("Device")));
       futureList.add(future);
     }
     readerPool.closeResultSet(deviceDataSet);
@@ -183,7 +184,7 @@ public class DataMigrationExample {
         }
         long endTime = System.currentTimeMillis();
         long totalTime = endTime - startTime;
-        System.out.println("migrate device ：" +device+" using "+ totalTime + " ms");
+        System.out.println("migrate device ：" + device + " using " + totalTime + " ms");
       }
 
       System.out.println("Loading the " + i + "-th device: " + device + " success");
