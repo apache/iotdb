@@ -44,6 +44,7 @@ public class TsFileMetricManager {
   private static final Logger log = LoggerFactory.getLogger(TsFileMetricManager.class);
   private static final TsFileMetricManager INSTANCE = new TsFileMetricManager();
   private static final String FILE_LEVEL_COUNT = "file_level_count";
+  private static final String FILE_LEVEL_SIZE = "file_level_size";
   private static final String SEQUENCE = "sequence";
   private static final String UNSEQUENCE = "unsequence";
   private static final String LEVEL = "level";
@@ -57,6 +58,8 @@ public class TsFileMetricManager {
   private final AtomicLong modFileSize = new AtomicLong(0);
   private final Map<Integer, Integer> seqLevelTsFileCountMap = new HashMap<>();
   private final Map<Integer, Integer> unseqLevelTsFileCountMap = new HashMap<>();
+  private final Map<Integer, Long> seqLevelTsFileSizeMap = new HashMap<>();
+  private final Map<Integer, Long> unseqLevelTsFileSizeMap = new HashMap<>();
   private long lastUpdateTime = 0;
   private static final long UPDATE_INTERVAL = 10_000L;
 
@@ -91,10 +94,13 @@ public class TsFileMetricManager {
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
       int level = tsFileName.getInnerCompactionCnt();
       int count = -1;
+      long totalSize = 0L;
       if (seq) {
         count = seqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 1 : v + 1);
+        totalSize = seqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? size : v + size);
       } else {
         count = unseqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 1 : v + 1);
+        totalSize = unseqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? size : v + size);
       }
       if (metricService != null) {
         metricService
@@ -106,6 +112,15 @@ public class TsFileMetricManager {
                 LEVEL,
                 String.valueOf(level))
             .set(count);
+        metricService
+            .getOrCreateGauge(
+                FILE_LEVEL_SIZE,
+                MetricLevel.CORE,
+                Tag.TYPE.toString(),
+                seq ? SEQUENCE : UNSEQUENCE,
+                LEVEL,
+                String.valueOf(level))
+            .set(totalSize);
       }
     } catch (IOException e) {
       log.error("Unexpected error occurred when getting tsfile name", e);
@@ -123,6 +138,7 @@ public class TsFileMetricManager {
     for (String name : names) {
       int level = -1;
       int count = -1;
+      long totalSize = 0L;
       try {
         TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
         level = tsFileName.getInnerCompactionCnt();
@@ -130,6 +146,10 @@ public class TsFileMetricManager {
             seq
                 ? seqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 0 : v - 1)
                 : unseqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 0 : v - 1);
+        totalSize =
+            seq
+                ? seqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? 0 : v - size)
+                : unseqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? 0 : v - size);
       } catch (IOException e) {
         log.error("Unexpected error occurred when getting tsfile name", e);
       }
@@ -143,6 +163,15 @@ public class TsFileMetricManager {
                 LEVEL,
                 String.valueOf(level))
             .set(count);
+        metricService
+            .getOrCreateGauge(
+                FILE_LEVEL_SIZE,
+                MetricLevel.CORE,
+                Tag.TYPE.toString(),
+                seq ? SEQUENCE : UNSEQUENCE,
+                LEVEL,
+                String.valueOf(level))
+            .set(totalSize);
       }
     }
   }
