@@ -481,6 +481,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
     clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
+    clusterParameters.setTimestampPrecision(COMMON_CONF.getTimestampPrecision());
     return clusterParameters;
   }
 
