@@ -277,7 +277,10 @@ public class TsFileProcessor {
 
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowNode, tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            walFlushListener.getWalPipeHandler(),
+            insertRowNode,
+            tsFileResource);
 
     if (insertRowNode.isAligned()) {
       workMemTable.insertAlignedRow(insertRowNode);
@@ -377,7 +380,10 @@ public class TsFileProcessor {
 
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            walFlushListener.getWalPipeHandler(),
+            insertTabletNode,
+            tsFileResource);
 
     try {
       if (insertTabletNode.isAligned()) {

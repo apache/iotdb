@@ -133,4 +133,18 @@ public class WALPipeHandler {
   public void setSize(int size) {
     this.walEntryPosition.setSize(size);
   }
+
+  @Override
+  public String toString() {
+    return "WALPipeHandler{"
+        + "memTableId="
+        + memTableId
+        + ", value="
+        + value
+        + ", walEntryPosition="
+        + walEntryPosition
+        + ", walNode="
+        + walNode
+        + '}';
+  }
 }

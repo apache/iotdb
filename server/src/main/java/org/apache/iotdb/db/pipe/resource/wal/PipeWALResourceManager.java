@@ -95,4 +95,15 @@ public class PipeWALResourceManager implements AutoCloseable {
       }
     }
   }
+
+  public int getReferenceCount(long memtableId) {
+    final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
+
+    lock.lock();
+    try {
+      return memtableIdToPipeWALResourceMap.get(memtableId).getReferenceCount();
+    } finally {
+      lock.unlock();
+    }
+  }
 }

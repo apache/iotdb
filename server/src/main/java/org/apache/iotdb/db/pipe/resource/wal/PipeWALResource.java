@@ -155,4 +155,8 @@ public class PipeWALResource implements AutoCloseable {
 
     referenceCount.set(0);
   }
+
+  public int getReferenceCount() {
+    return referenceCount.get();
+  }
 }
