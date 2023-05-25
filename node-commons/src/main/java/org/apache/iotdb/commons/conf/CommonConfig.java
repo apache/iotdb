@@ -166,7 +166,6 @@ public class CommonConfig {
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
-
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
