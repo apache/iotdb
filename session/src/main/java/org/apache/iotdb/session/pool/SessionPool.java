@@ -542,6 +542,13 @@ public class SessionPool implements ISessionPool {
   /** close all connections in the pool */
   @Override
   public synchronized void close() {
+    if (checkPrimaryClusterExecutorService != null
+        && !checkPrimaryClusterExecutorService.isShutdown()) {
+      checkPrimaryClusterExecutorService.shutdown();
+    }
+    if (firstSyncExecutorService != null && !firstSyncExecutorService.isShutdown()) {
+      firstSyncExecutorService.shutdown();
+    }
     for (ISession session : queue) {
       try {
         session.close();
@@ -562,13 +569,6 @@ public class SessionPool implements ISessionPool {
     this.closed = true;
     queue.clear();
     occupied.clear();
-    if (checkPrimaryClusterExecutorService != null
-        && !checkPrimaryClusterExecutorService.isShutdown()) {
-      checkPrimaryClusterExecutorService.shutdown();
-    }
-    if (firstSyncExecutorService != null && !firstSyncExecutorService.isShutdown()) {
-      firstSyncExecutorService.shutdown();
-    }
   }
 
   @Override
@@ -638,6 +638,11 @@ public class SessionPool implements ISessionPool {
               formattedNodeUrls, RETRY, e.getMessage()),
           e);
     }
+  }
+
+  @Override
+  public List<String> getNodeUrls() {
+    return this.nodeUrls;
   }
 
   @Override
@@ -712,6 +717,7 @@ public class SessionPool implements ISessionPool {
       if (change || (!newNodeUrls.isEmpty() && newNodeUrls.size() != nodeUrls.size())) {
         nodeUrls = newNodeUrls;
         sessionList.forEach(session -> session.setNodeUrls(nodeUrls));
+        logger.info("The nodeUrl has been updated to {}", String.join(",", nodeUrls));
       }
       return true;
     } catch (StatementExecutionException | IoTDBConnectionException | RuntimeException ignored) {

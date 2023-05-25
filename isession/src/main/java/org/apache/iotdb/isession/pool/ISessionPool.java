@@ -45,6 +45,8 @@ public interface ISessionPool {
 
   void close();
 
+  List<String> getNodeUrls();
+
   void setCheckNodeUrlTimeMs(long checkNodeUrlTimeMs);
 
   void closeResultSet(SessionDataSetWrapper wrapper);

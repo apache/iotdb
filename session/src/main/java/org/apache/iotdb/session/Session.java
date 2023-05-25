@@ -394,11 +394,16 @@ public class Session implements ISession {
     this.syncNodeUrlStatus = true;
   }
 
+  @Override
+  public List<String> getNodeUrls() {
+    return this.nodeUrls;
+  }
+
   public void setPoolNoticeSyncNodeUrlStatus(boolean poolNoticeSyncNodeUrlStatus) {
     this.poolNoticeSyncNodeUrlStatus = poolNoticeSyncNodeUrlStatus;
   }
 
-  public SessionConnection getDefaultSessionConnection() {
+  private SessionConnection getDefaultSessionConnection() {
     if (syncNodeUrlStatus) {
       defaultSessionConnection.setEndPointList(nodeUrls);
       syncNodeUrlStatus = false;
@@ -447,7 +452,14 @@ public class Session implements ISession {
   }
 
   private boolean complementaryNodeUrl() {
-    try (SessionDataSet dataSet = executeQueryStatement("SHOW DATANODES")) {
+    SessionConnection syncSessionConnection;
+    try {
+      syncSessionConnection = constructSessionConnection(this, null, zoneId);
+    } catch (IoTDBConnectionException ignored) {
+      return false;
+    }
+    try (SessionDataSet dataSet =
+        syncSessionConnection.executeQueryStatement("SHOW DATANODES", queryTimeoutInMs)) {
       List<String> columnNames = dataSet.getColumnNames();
       Integer hostNum = null;
       Integer portNum = null;
@@ -478,9 +490,10 @@ public class Session implements ISession {
       }
       if (change || (!newNodeUrls.isEmpty() && newNodeUrls.size() != nodeUrls.size())) {
         setNodeUrls(newNodeUrls);
+        logger.info("The nodeUrl has been updated to {}", String.join(",", nodeUrls));
       }
       return true;
-    } catch (StatementExecutionException | IoTDBConnectionException ignored) {
+    } catch (StatementExecutionException | IoTDBConnectionException | RedirectException ignored) {
       return false;
     }
   }
@@ -546,6 +559,13 @@ public class Session implements ISession {
       return;
     }
     try {
+      if (checkPrimaryClusterExecutorService != null
+          && !checkPrimaryClusterExecutorService.isShutdown()) {
+        checkPrimaryClusterExecutorService.shutdownNow();
+      }
+      if (firstSyncExecutorService != null && !firstSyncExecutorService.isShutdown()) {
+        firstSyncExecutorService.shutdownNow();
+      }
       if (enableRedirection) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
           sessionConnection.close();
@@ -555,13 +575,6 @@ public class Session implements ISession {
       }
     } finally {
       isClosed = true;
-    }
-    if (checkPrimaryClusterExecutorService != null
-        && !checkPrimaryClusterExecutorService.isShutdown()) {
-      checkPrimaryClusterExecutorService.shutdown();
-    }
-    if (firstSyncExecutorService != null && !firstSyncExecutorService.isShutdown()) {
-      firstSyncExecutorService.shutdown();
     }
   }
 

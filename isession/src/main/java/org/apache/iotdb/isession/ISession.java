@@ -49,6 +49,8 @@ public interface ISession extends AutoCloseable {
 
   void setFetchSize(int fetchSize);
 
+  List<String> getNodeUrls();
+
   void open() throws IoTDBConnectionException;
 
   void open(boolean enableRPCCompression) throws IoTDBConnectionException;
