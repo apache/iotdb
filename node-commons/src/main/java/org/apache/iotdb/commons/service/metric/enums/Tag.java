@@ -20,18 +20,24 @@
 package org.apache.iotdb.commons.service.metric.enums;
 
 public enum Tag {
-  TYPE,
-  NAME,
-  REGION,
-  STATUS,
-  DATABASE,
-  FROM,
-  STAGE,
-  OPERATION,
-  INTERFACE;
+  TYPE("type"),
+  NAME("name"),
+  REGION("region"),
+  STATUS("status"),
+  DATABASE("database"),
+  FROM("from"),
+  STAGE("stage"),
+  OPERATION("operation"),
+  INTERFACE("interface");
+
+  final String value;
+
+  Tag(String value) {
+    this.value = value;
+  }
 
   @Override
   public String toString() {
-    return super.toString().toLowerCase();
+    return value;
   }
 }

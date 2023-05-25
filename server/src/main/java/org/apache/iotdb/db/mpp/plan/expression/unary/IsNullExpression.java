@@ -73,6 +73,11 @@ public class IsNullExpression extends UnaryExpression {
   }
 
   @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    return expression.getStringWithViewOfThisExpression() + " IS " + (isNot ? "NOT " : "") + "NULL";
+  }
+
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitIsNullExpression(this, context);
   }

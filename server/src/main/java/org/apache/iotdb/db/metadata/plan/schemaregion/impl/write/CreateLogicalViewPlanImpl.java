@@ -30,8 +30,10 @@ import java.util.Map;
 
 public class CreateLogicalViewPlanImpl implements ICreateLogicalViewPlan {
 
-  private PartialPath targetPath;
-  private ViewExpression sourceExpression;
+  private PartialPath targetPath = null;
+  private ViewExpression sourceExpression = null;
+
+  public CreateLogicalViewPlanImpl() {}
 
   public CreateLogicalViewPlanImpl(PartialPath targetPath, ViewExpression sourceExpression) {
     this.targetPath = targetPath;

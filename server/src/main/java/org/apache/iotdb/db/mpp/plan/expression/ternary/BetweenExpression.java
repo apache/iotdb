@@ -85,6 +85,15 @@ public class BetweenExpression extends TernaryExpression {
   }
 
   @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    return firstExpression.getStringWithViewOfThisExpression()
+        + " BETWEEN "
+        + secondExpression.getStringWithViewOfThisExpression()
+        + " AND "
+        + thirdExpression.getStringWithViewOfThisExpression();
+  }
+
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitBetweenExpression(this, context);
   }

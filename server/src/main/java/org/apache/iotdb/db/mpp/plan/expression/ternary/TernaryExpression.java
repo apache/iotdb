@@ -38,20 +38,32 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class TernaryExpression extends Expression {
-  protected final Expression firstExpression;
-  protected final Expression secondExpression;
-  protected final Expression thirdExpression;
+  protected Expression firstExpression;
+  protected Expression secondExpression;
+  protected Expression thirdExpression;
 
   public Expression getFirstExpression() {
     return firstExpression;
+  }
+
+  public void setFirstExpression(Expression expression) {
+    this.firstExpression = expression;
   }
 
   public Expression getSecondExpression() {
     return secondExpression;
   }
 
+  public void setSecondExpression(Expression expression) {
+    this.secondExpression = expression;
+  }
+
   public Expression getThirdExpression() {
     return thirdExpression;
+  }
+
+  public void setThirdExpression(Expression expression) {
+    this.thirdExpression = expression;
   }
 
   protected TernaryExpression(
