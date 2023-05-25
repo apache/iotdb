@@ -271,6 +271,6 @@ public class HDFSFactory implements FSFactory {
 
   @Override
   public void deleteDirectory(String dir) throws IOException {
-    throw new UnsupportedOperationException();
+    getFile(dir).delete();
   }
 }

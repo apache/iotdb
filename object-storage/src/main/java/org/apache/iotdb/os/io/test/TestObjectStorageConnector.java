@@ -110,7 +110,7 @@ public class TestObjectStorageConnector implements ObjectStorageConnector {
   }
 
   @Override
-  public byte[] getRemoteFile(OSURI osUri, long position, int len) throws ObjectStorageException {
+  public byte[] getRemoteObject(OSURI osUri, long position, int len) throws ObjectStorageException {
     File file = new File(getDstFilePath(osUri));
     ByteBuffer dst = ByteBuffer.allocate(len);
     try (FileChannel channel = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
@@ -121,6 +121,16 @@ public class TestObjectStorageConnector implements ObjectStorageConnector {
     return dst.array();
   }
 
+  @Override
+  public void deleteObjectsByPrefix(OSURI prefixUri) throws ObjectStorageException {
+    File file = new File(getDstFilePath(prefixUri));
+    try {
+      FileUtils.deleteDirectory(file);
+    } catch (IOException e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
   private String getDstFilePath(OSURI osuri) {
     return testConfig.getTestDir()
         + File.separator
@@ -128,5 +138,5 @@ public class TestObjectStorageConnector implements ObjectStorageConnector {
   }
 
   @Override
-  public void copyRemoteFile(OSURI srcUri, OSURI destUri) throws ObjectStorageException {}
+  public void copyObject(OSURI srcUri, OSURI destUri) throws ObjectStorageException {}
 }

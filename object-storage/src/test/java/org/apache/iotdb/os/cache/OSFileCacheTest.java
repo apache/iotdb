@@ -97,7 +97,7 @@ public class OSFileCacheTest {
     for (int i = 0; i < 100; ++i) {
       bytes0to100[i] = (byte) i;
     }
-    when(connector.getRemoteFile(testFile.toOSURI(), 0, 100)).thenReturn(bytes0to100);
+    when(connector.getRemoteObject(testFile.toOSURI(), 0, 100)).thenReturn(bytes0to100);
     OSFileCacheKey key0to100 = new OSFileCacheKey(testFile, 0);
     OSFileCacheValue value0to100 = cache.get(key0to100);
     assertTrue(value0to100.getCacheFile().exists());
@@ -118,7 +118,7 @@ public class OSFileCacheTest {
     for (int i = 0; i < 150 - 100; ++i) {
       bytes100to150[i] = (byte) i;
     }
-    when(connector.getRemoteFile(testFile.toOSURI(), 100, 100)).thenReturn(bytes100to150);
+    when(connector.getRemoteObject(testFile.toOSURI(), 100, 100)).thenReturn(bytes100to150);
     OSFileCacheKey key100to150 = new OSFileCacheKey(testFile, 100);
     OSFileCacheValue value100to150 = cache.get(key100to150);
     assertTrue(value100to150.getCacheFile().exists());

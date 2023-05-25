@@ -104,7 +104,8 @@ public class OSFileChannelTest {
       for (int i = 0; i < bytes.length; ++i) {
         bytes[i] = (byte) (startPos + i);
       }
-      when(connector.getRemoteFile(testFile.toOSURI(), startPos, cachePageSize)).thenReturn(bytes);
+      when(connector.getRemoteObject(testFile.toOSURI(), startPos, cachePageSize))
+          .thenReturn(bytes);
       startPos += cachePageSize;
     }
   }

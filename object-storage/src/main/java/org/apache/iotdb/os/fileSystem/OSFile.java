@@ -245,7 +245,7 @@ public class OSFile extends File {
 
   @Override
   public File[] listFiles() {
-    return super.listFiles();
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
@@ -440,9 +440,17 @@ public class OSFile extends File {
 
   public void copyTo(File destFile) {
     try {
-      connector.copyRemoteFile(osUri, ((OSFile) destFile).toOSURI());
+      connector.copyObject(osUri, ((OSFile) destFile).toOSURI());
     } catch (ObjectStorageException e) {
       logger.error("Fail to copy file {} to {}.", osUri, destFile, e);
+    }
+  }
+
+  public void deleteObjectsByPrefix() {
+    try {
+      connector.deleteObjectsByPrefix(osUri);
+    } catch (ObjectStorageException e) {
+      logger.error("Fail to delete objects by prefix {}.", osUri, e);
     }
   }
 

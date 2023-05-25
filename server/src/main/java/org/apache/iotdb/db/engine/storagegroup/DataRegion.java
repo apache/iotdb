@@ -103,8 +103,10 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -325,25 +327,20 @@ public class DataRegion implements IDataRegionForQuery {
           "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
           databaseName,
           dataRegionId);
-      for (String fileFolder : TierManager.getInstance().getAllLocalFilesFolders()) {
+      for (String fileFolder : TierManager.getInstance().getAllFilesFolders()) {
         File dataRegionFolder =
             fsFactory.getFile(fileFolder, databaseName + File.separator + dataRegionId);
-        if (dataRegionFolder.exists()) {
-          File[] timePartitions = dataRegionFolder.listFiles();
-          if (timePartitions != null) {
-            for (File timePartition : timePartitions) {
-              try {
-                FileUtils.forceDelete(timePartition);
-              } catch (IOException e) {
-                logger.error(
-                    "Exception occurs when deleting time partition directory {} for {}-{}",
-                    timePartitions,
-                    databaseName,
-                    dataRegionId,
-                    e);
-              }
-            }
-          }
+        try {
+          fsFactory.deleteDirectory(dataRegionFolder.getPath());
+        } catch (IOException e) {
+          logger.error(
+              "Exception occurs when deleting data region folder for {}-{}",
+              databaseName,
+              dataRegionId,
+              e);
+        }
+        if (FSUtils.getFSType(dataRegionFolder) == FSType.LOCAL) {
+          dataRegionFolder.mkdirs();
         }
       }
     } else {
@@ -1606,7 +1603,7 @@ public class DataRegion implements IDataRegionForQuery {
               TsFileMetricManager.getInstance().decreaseModFileSize(x.getModFile().getSize());
             }
           });
-      deleteAllSGFolders(TierManager.getInstance().getAllLocalFilesFolders());
+      deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
 
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
@@ -1622,9 +1619,17 @@ public class DataRegion implements IDataRegionForQuery {
     for (String tsfilePath : folder) {
       File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, databaseName + File.separator + dataRegionId);
-      if (dataRegionDataFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
-            dataRegionDataFolder);
+      if (FSUtils.getFSType(dataRegionDataFolder) != FSType.LOCAL) {
+        try {
+          fsFactory.deleteDirectory(dataRegionDataFolder.getPath());
+        } catch (IOException e) {
+          logger.error("Fail to delete data region folder {}", dataRegionDataFolder);
+        }
+      } else {
+        if (dataRegionDataFolder.exists()) {
+          org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+              dataRegionDataFolder);
+        }
       }
     }
   }
