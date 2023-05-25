@@ -30,6 +30,8 @@ import java.nio.ByteBuffer;
 public class OSTsFileOutput implements TsFileOutput {
   private static final Logger logger = LoggerFactory.getLogger(OSTsFileOutput.class);
 
+  public OSTsFileOutput(String filePath, boolean overwrite) throws IOException {}
+
   @Override
   public void write(byte[] b) throws IOException {
     throw new UnsupportedOperationException();

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.directories.strategy.MinFolderOccupiedSpaceFirst
 import org.apache.iotdb.db.conf.directories.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import org.slf4j.Logger;
@@ -44,10 +45,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
 
 /** The main class of multiple directories. Used to allocate folders to data files. */
 public class TierManager {
@@ -70,7 +70,13 @@ public class TierManager {
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
   private long[] tierDiskTotalSpace;
 
-  private TierManager() {
+  private TierManager() {}
+
+  public void resetFolders() {
+    if (config.getDataNodeId() == -1) {
+      return;
+    }
+
     try {
       String strategyName = Class.forName(config.getMultiDirStrategyClassName()).getSimpleName();
       if (strategyName.equals(MaxDiskUsableSpaceFirstStrategy.class.getSimpleName())) {
@@ -84,34 +90,41 @@ public class TierManager {
       logger.error(
           "Can't find strategy {} for mult-directories.", config.getMultiDirStrategyClassName(), e);
     }
-    resetFolders();
-  }
-
-  public void resetFolders() {
-    if (config.getDataNodeId() == -1) {
-      return;
-    }
 
     seqTiers.clear();
     unSeqTiers.clear();
     seqDir2TierLevel.clear();
     unSeqDir2TierLevel.clear();
 
+    config.updatePath();
     String[][] tierDirs = config.getTierDataDirs();
     for (int i = 0; i < tierDirs.length; ++i) {
       for (int j = 0; j < tierDirs[i].length; ++j) {
-        if (tierDirs[i][j].equals(OBJECT_STORAGE_DIR)) {
-          if (i != tierDirs.length - 1) {
-            logger.error("Object Storage can only exist on the last tier.");
-          }
-          tierDirs[i][j] =
-              FSUtils.getOSDefaultPath(config.getObjectStorageBucket(), config.getDataNodeId());
-        } else if (FSUtils.isLocal(tierDirs[i][j])) {
-          try {
-            tierDirs[i][j] = new File(tierDirs[i][j]).getCanonicalPath();
-          } catch (IOException e) {
-            logger.error("Fail to get canonical path of data dir {}", tierDirs[i][j], e);
-          }
+        switch (FSUtils.getFSType(tierDirs[i][j])) {
+          case LOCAL:
+            try {
+              tierDirs[i][j] = new File(tierDirs[i][j]).getCanonicalPath();
+            } catch (IOException e) {
+              logger.error("Fail to get canonical path of data dir {}", tierDirs[i][j], e);
+            }
+            break;
+          case OBJECT_STORAGE:
+            if (!config.isEnableObjectStorage()) {
+              logger.error(
+                  "Cannot configure object storage directory when enable_object_storage is false, use default data dir instead.");
+              tierDirs[i][j] =
+                  IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME;
+            }
+            if (i != tierDirs.length - 1) {
+              logger.error("Object Storage can only exist on the last tier.");
+            }
+            // reset datanode id
+            tierDirs[i][j] =
+                FSUtils.getOSDefaultPath(config.getObjectStorageBucket(), config.getDataNodeId());
+            break;
+          case HDFS:
+          default:
+            break;
         }
       }
     }
@@ -119,6 +132,7 @@ public class TierManager {
     for (int tierLevel = 0; tierLevel < tierDirs.length; ++tierLevel) {
       List<String> seqDirs =
           Arrays.stream(tierDirs[tierLevel])
+              .filter(Objects::nonNull)
               .map(
                   v ->
                       FSFactoryProducer.getFSFactory()
@@ -137,6 +151,7 @@ public class TierManager {
 
       List<String> unSeqDirs =
           Arrays.stream(tierDirs[tierLevel])
+              .filter(Objects::nonNull)
               .map(
                   v ->
                       FSFactoryProducer.getFSFactory()
@@ -160,6 +175,9 @@ public class TierManager {
   private void mkDataDirs(List<String> folders) {
     for (String folder : folders) {
       File file = FSFactoryProducer.getFSFactory().getFile(folder);
+      if (FSUtils.getFSType(file) == FSType.OBJECT_STORAGE) {
+        continue;
+      }
       if (file.mkdirs()) {
         logger.info("folder {} doesn't exist, create it", file.getPath());
       } else {

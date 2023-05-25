@@ -52,6 +52,7 @@ public class OSFSFactory implements FSFactory {
   private static Method renameTo;
   private static Method putFile;
   private static Method copyTo;
+  private static Method deleteObjectsByPrefix;
 
   static {
     try {
@@ -69,6 +70,7 @@ public class OSFSFactory implements FSFactory {
       renameTo = clazz.getMethod("renameTo", File.class);
       putFile = clazz.getMethod("putFile", File.class);
       copyTo = clazz.getMethod("copyTo", File.class);
+      deleteObjectsByPrefix = clazz.getMethod("deleteObjectsByPrefix");
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(
           "Failed to get object storage. Please check your dependency of object storage module.",
@@ -196,8 +198,8 @@ public class OSFSFactory implements FSFactory {
   @Override
   public void moveFile(File srcFile, File destFile) throws IOException {
     try {
-      renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
-    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      renameTo.invoke(srcFile, destFile);
+    } catch (InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to rename file from {} to {}. Please check your dependency of object storage module.",
           srcFile.getName(),
@@ -213,13 +215,13 @@ public class OSFSFactory implements FSFactory {
       if (srcType == FSType.LOCAL) {
         putFile.invoke(destFile, srcFile);
       } else if (srcType == FSType.OBJECT_STORAGE) {
-        copyTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
+        copyTo.invoke(srcFile, destFile);
       } else {
         throw new IOException(
             String.format(
                 "Doesn't support copy file from %s to %s.", srcType, FSType.OBJECT_STORAGE));
       }
-    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+    } catch (InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to copy file from {} to {}. Please check your dependency of object storage module.",
           srcFile.getName(),
@@ -267,6 +269,13 @@ public class OSFSFactory implements FSFactory {
 
   @Override
   public void deleteDirectory(String dir) throws IOException {
-    throw new UnsupportedOperationException();
+    try {
+      deleteObjectsByPrefix.invoke(constructorWithPathname.newInstance(dir));
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to delete directory {}. Please check your dependency of object storage module.",
+          dir,
+          e);
+    }
   }
 }

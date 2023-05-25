@@ -33,19 +33,25 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.stream.Collectors;
 
 public class S3ObjectStorageConnector implements ObjectStorageConnector {
   private static final String RANGE_FORMAT = "%d-%d";
@@ -169,7 +175,7 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
   }
 
   @Override
-  public byte[] getRemoteFile(OSURI osUri, long position, int len) throws ObjectStorageException {
+  public byte[] getRemoteObject(OSURI osUri, long position, int len) throws ObjectStorageException {
     String rangeStr = String.format(RANGE_FORMAT, position, position + len - 1);
     try {
       GetObjectRequest req =
@@ -186,7 +192,7 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
   }
 
   @Override
-  public void copyRemoteFile(OSURI srcUri, OSURI destUri) throws ObjectStorageException {
+  public void copyObject(OSURI srcUri, OSURI destUri) throws ObjectStorageException {
     try {
       CopyObjectRequest req =
           CopyObjectRequest.builder()
@@ -196,6 +202,41 @@ public class S3ObjectStorageConnector implements ObjectStorageConnector {
               .destinationKey(destUri.getKey())
               .build();
       s3Client.copyObject(req);
+    } catch (S3Exception e) {
+      throw new ObjectStorageException(e);
+    }
+  }
+
+  @Override
+  public void deleteObjectsByPrefix(OSURI prefixUri) throws ObjectStorageException {
+    try {
+      ListObjectsV2Request listReq =
+          ListObjectsV2Request.builder()
+              .bucket(prefixUri.getBucket())
+              .prefix(prefixUri.getKey())
+              .build();
+      ListObjectsV2Response listRes;
+
+      do {
+        listRes = s3Client.listObjectsV2(listReq);
+        Delete del =
+            Delete.builder()
+                .objects(
+                    listRes.contents().stream()
+                        .map(s3Object -> ObjectIdentifier.builder().key(s3Object.key()).build())
+                        .collect(Collectors.toList()))
+                .build();
+        DeleteObjectsRequest deleteObjectsRequest =
+            DeleteObjectsRequest.builder().delete(del).build();
+        s3Client.deleteObjects(deleteObjectsRequest);
+
+        listReq =
+            ListObjectsV2Request.builder()
+                .bucket(prefixUri.getBucket())
+                .prefix(prefixUri.getKey())
+                .continuationToken(listRes.nextContinuationToken())
+                .build();
+      } while (listRes.isTruncated());
     } catch (S3Exception e) {
       throw new ObjectStorageException(e);
     }

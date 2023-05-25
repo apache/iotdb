@@ -35,8 +35,8 @@ public class FakedTsFileResource extends TsFileResource {
   public FakedTsFileResource(long tsFileSize, String name) {
     this.timeIndex = new FileTimeIndex();
     this.tsFileSize = tsFileSize;
-    super.setStatus(TsFileResourceStatus.NORMAL);
     fakeTsfileName = name;
+    setStatusForTest(TsFileResourceStatus.NORMAL);
   }
 
   public void setTsFileSize(long tsFileSize) {

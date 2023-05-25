@@ -42,7 +42,9 @@ public interface ObjectStorageConnector {
 
   void putLocalFile(OSURI osUri, File lcoalFile) throws ObjectStorageException;
 
-  byte[] getRemoteFile(OSURI osUri, long position, int len) throws ObjectStorageException;
+  byte[] getRemoteObject(OSURI osUri, long position, int len) throws ObjectStorageException;
 
-  void copyRemoteFile(OSURI srcUri, OSURI destUri) throws ObjectStorageException;
+  void copyObject(OSURI srcUri, OSURI destUri) throws ObjectStorageException;
+
+  void deleteObjectsByPrefix(OSURI prefixUri) throws ObjectStorageException;
 }

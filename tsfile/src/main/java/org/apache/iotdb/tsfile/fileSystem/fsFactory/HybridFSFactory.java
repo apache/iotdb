@@ -39,34 +39,48 @@ public class HybridFSFactory implements FSFactory {
   private static final Logger logger = LoggerFactory.getLogger(HybridFSFactory.class);
   private static final Map<FSType, FSFactory> fsFactories = new ConcurrentHashMap<>();
 
-  static {
-    fsFactories.put(FSType.LOCAL, new LocalFSFactory());
-    fsFactories.put(FSType.HDFS, new HDFSFactory());
-    fsFactories.put(FSType.OBJECT_STORAGE, new OSFSFactory());
+  private FSFactory getFSFactory(FSType fsType) {
+    return fsFactories.compute(
+        fsType,
+        (k, v) -> {
+          if (v != null) {
+            return v;
+          }
+          switch (fsType) {
+            case LOCAL:
+              return new LocalFSFactory();
+            case OBJECT_STORAGE:
+              return new OSFSFactory();
+            case HDFS:
+              return new HDFSFactory();
+            default:
+              return null;
+          }
+        });
   }
 
   @Override
   public File getFileWithParent(String pathname) {
     FSPath path = FSUtils.parse(pathname);
-    return fsFactories.get(path.getFsType()).getFileWithParent(path.getPath());
+    return getFSFactory(path.getFsType()).getFileWithParent(path.getPath());
   }
 
   @Override
   public File getFile(String pathname) {
     FSPath path = FSUtils.parse(pathname);
-    return fsFactories.get(path.getFsType()).getFile(path.getPath());
+    return getFSFactory(path.getFsType()).getFile(path.getPath());
   }
 
   @Override
   public File getFile(String parent, String child) {
     FSPath parentPath = FSUtils.parse(parent);
-    return fsFactories.get(parentPath.getFsType()).getFile(parentPath.getPath(), child);
+    return getFSFactory(parentPath.getFsType()).getFile(parentPath.getPath(), child);
   }
 
   @Override
   public File getFile(File parent, String child) {
     FSType type = FSUtils.getFSType(parent);
-    return fsFactories.get(type).getFile(parent, child);
+    return getFSFactory(type).getFile(parent, child);
   }
 
   @Override
@@ -77,25 +91,25 @@ public class HybridFSFactory implements FSFactory {
   @Override
   public BufferedReader getBufferedReader(String filePath) {
     FSPath path = FSUtils.parse(filePath);
-    return fsFactories.get(path.getFsType()).getBufferedReader(path.getPath());
+    return getFSFactory(path.getFsType()).getBufferedReader(path.getPath());
   }
 
   @Override
   public BufferedWriter getBufferedWriter(String filePath, boolean append) {
     FSPath path = FSUtils.parse(filePath);
-    return fsFactories.get(path.getFsType()).getBufferedWriter(path.getPath(), append);
+    return getFSFactory(path.getFsType()).getBufferedWriter(path.getPath(), append);
   }
 
   @Override
   public BufferedInputStream getBufferedInputStream(String filePath) {
     FSPath path = FSUtils.parse(filePath);
-    return fsFactories.get(path.getFsType()).getBufferedInputStream(path.getPath());
+    return getFSFactory(path.getFsType()).getBufferedInputStream(path.getPath());
   }
 
   @Override
   public BufferedOutputStream getBufferedOutputStream(String filePath) {
     FSPath path = FSUtils.parse(filePath);
-    return fsFactories.get(path.getFsType()).getBufferedOutputStream(path.getPath());
+    return getFSFactory(path.getFsType()).getBufferedOutputStream(path.getPath());
   }
 
   @Override
@@ -103,7 +117,7 @@ public class HybridFSFactory implements FSFactory {
     FSType srcType = FSUtils.getFSType(srcFile);
     FSType destType = FSUtils.getFSType(destFile);
     if (srcType == destType) {
-      fsFactories.get(destType).moveFile(srcFile, destFile);
+      getFSFactory(destType).moveFile(srcFile, destFile);
     } else {
       throw new IOException(
           String.format("Doesn't support move file from %s to %s.", srcType, destType));
@@ -115,10 +129,10 @@ public class HybridFSFactory implements FSFactory {
     FSType srcType = FSUtils.getFSType(srcFile);
     FSType destType = FSUtils.getFSType(destFile);
     if (srcType == destType || (srcType == FSType.LOCAL && destType == FSType.OBJECT_STORAGE)) {
-      fsFactories.get(destType).copyFile(srcFile, destFile);
+      getFSFactory(destType).copyFile(srcFile, destFile);
     } else if ((srcType == FSType.LOCAL || srcType == FSType.HDFS)
         && (destType == FSType.LOCAL || destType == FSType.HDFS)) {
-      fsFactories.get(FSType.HDFS).copyFile(srcFile, destFile);
+      getFSFactory(FSType.HDFS).copyFile(srcFile, destFile);
     } else {
       throw new IOException(
           String.format("Doesn't support move file from %s to %s.", srcType, destType));
@@ -128,24 +142,24 @@ public class HybridFSFactory implements FSFactory {
   @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     FSPath folder = FSUtils.parse(fileFolder);
-    return fsFactories.get(folder.getFsType()).listFilesBySuffix(folder.getPath(), suffix);
+    return getFSFactory(folder.getFsType()).listFilesBySuffix(folder.getPath(), suffix);
   }
 
   @Override
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     FSPath folder = FSUtils.parse(fileFolder);
-    return fsFactories.get(folder.getFsType()).listFilesByPrefix(folder.getPath(), prefix);
+    return getFSFactory(folder.getFsType()).listFilesByPrefix(folder.getPath(), prefix);
   }
 
   @Override
   public boolean deleteIfExists(File file) throws IOException {
     FSType type = FSUtils.getFSType(file);
-    return fsFactories.get(type).deleteIfExists(file);
+    return getFSFactory(type).deleteIfExists(file);
   }
 
   @Override
   public void deleteDirectory(String dir) throws IOException {
     FSType type = FSUtils.getFSType(dir);
-    fsFactories.get(type).deleteDirectory(dir);
+    getFSFactory(type).deleteDirectory(dir);
   }
 }
