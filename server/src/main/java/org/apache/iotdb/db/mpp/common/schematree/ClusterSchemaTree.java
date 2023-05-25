@@ -192,6 +192,13 @@ public class ClusterSchemaTree implements ISchemaTree {
     return indexOfMissingMeasurements;
   }
 
+  /**
+   * This function compute logical view and fill source of these views. It returns nothing ! If some
+   * source paths are missed, throw errors.
+   *
+   * @param schemaComputation the statement
+   * @param indexOfTargetLogicalView the index list of logicalViewSchemaList that you want to check
+   */
   public void computeLogicalView(
       ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView) {
     List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();

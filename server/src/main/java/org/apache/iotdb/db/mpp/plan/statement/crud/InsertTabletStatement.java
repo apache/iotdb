@@ -196,11 +196,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   protected Map<PartialPath, List<Pair<String, Integer>>> getMapFromDeviceToMeasurementAndIndex() {
     boolean[] isLogicalView = new boolean[this.measurements.length];
+    int[] indexMapToLogicalViewList = new int[this.measurements.length];
     for (int i = 0; i < this.measurements.length; i++) {
       isLogicalView[i] = false;
     }
-    for (int realIndex : this.indexListOfLogicalViewPaths) {
+    for (int i = 0; i < this.indexListOfLogicalViewPaths.size(); i++) {
+      int realIndex = this.indexListOfLogicalViewPaths.get(i);
       isLogicalView[realIndex] = true;
+      indexMapToLogicalViewList[realIndex] = i;
     }
     // construct map from device to measurements and record the index of its measurement schema
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
@@ -209,9 +212,11 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       PartialPath devicePath;
       String measurementName;
       if (isLogicalView[i]) {
-        devicePath = this.logicalViewSchemaList.get(i).getSourcePathIfWritable().getDevicePath();
+        int viewIndex = indexMapToLogicalViewList[i];
+        devicePath =
+            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
         measurementName =
-            this.logicalViewSchemaList.get(i).getSourcePathIfWritable().getMeasurement();
+            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
       } else {
         devicePath = this.devicePath;
         measurementName = this.measurements[i];
@@ -265,13 +270,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
         measurements[i] = pairList.get(i).left;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
-        bitMaps[i] = this.bitMaps[realIndex];
+        if (this.bitMaps != null) {
+          bitMaps[i] = this.bitMaps[realIndex];
+        }
       }
       statement.setColumns(columns);
       statement.setMeasurements(measurements);
       statement.setMeasurementSchemas(measurementSchemas);
       statement.setDataTypes(dataTypes);
-      statement.setBitMaps(bitMaps);
+      if (this.bitMaps != null) {
+        statement.setBitMaps(bitMaps);
+      }
       statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
       insertTabletStatementList.add(statement);
     }
@@ -374,6 +383,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       if (measurementSchemaInfo.isLogicalView()) {
         logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
         indexListOfLogicalViewPaths.add(index);
+        return;
       } else {
         measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
       }
