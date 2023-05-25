@@ -38,6 +38,10 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
     this.tabletList = new ArrayList<>(Collections.singletonList(tablet));
   }
 
+  public InsertNode getInsertNode() {
+    return insertNode;
+  }
+
   @Override
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     throw new UnsupportedOperationException("Not implemented yet");

@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -156,7 +157,7 @@ public class ClusterSchemaManager {
 
     // Bind Database metrics
     PartitionMetrics.bindDatabasePartitionMetrics(
-        configManager, databaseSchemaPlan.getSchema().getName());
+        MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
 
     // Adjust the maximum RegionGroup number of each Database
     adjustMaxRegionGroupNum();
@@ -773,16 +774,19 @@ public class ClusterSchemaManager {
     }
 
     Template template = resp.getTemplateList().get(0);
-    boolean needExtend = false;
-    for (String measurement : templateExtendInfo.getMeasurements()) {
-      if (!template.hasSchema(measurement)) {
-        needExtend = true;
-        break;
-      }
-    }
+    List<String> intersectionMeasurements =
+        templateExtendInfo.updateAsDifferenceAndGetIntersection(template.getSchemaMap().keySet());
 
-    if (!needExtend) {
-      return RpcUtils.SUCCESS_STATUS;
+    if (templateExtendInfo.isEmpty()) {
+      if (intersectionMeasurements.isEmpty()) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return RpcUtils.getStatus(
+            TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE,
+            String.format(
+                "Measurement %s already exist in schema template %s",
+                intersectionMeasurements, template.getName()));
+      }
     }
 
     ExtendSchemaTemplatePlan extendSchemaTemplatePlan =
@@ -824,7 +828,16 @@ public class ClusterSchemaManager {
                 template.getName(), dataNodeLocationMap.get(entry.getKey())));
       }
     }
-    return RpcUtils.SUCCESS_STATUS;
+
+    if (intersectionMeasurements.isEmpty()) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return RpcUtils.getStatus(
+          TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE,
+          String.format(
+              "Measurement %s already exist in schema template %s",
+              intersectionMeasurements, template.getName()));
+    }
   }
 
   public long getSchemaQuotaCount() {

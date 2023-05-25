@@ -56,7 +56,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -94,6 +94,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
@@ -102,7 +103,7 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
-  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
+  private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval = -1;
@@ -698,6 +699,46 @@ public class StorageEngine implements IService {
         deletingDataRegionMap.remove(regionId);
       }
     }
+  }
+
+  /**
+   * run the runnable if the region is absent. if the region is present, do nothing.
+   *
+   * <p>we don't use computeIfAbsent because we don't want to create a new region if the region is
+   * absent, we just want to run the runnable in a synchronized way.
+   *
+   * @return true if the region is absent and the runnable is run. false if the region is present.
+   */
+  public boolean runIfAbsent(DataRegionId regionId, Runnable runnable) {
+    final AtomicBoolean result = new AtomicBoolean(false);
+    dataRegionMap.computeIfAbsent(
+        regionId,
+        k -> {
+          runnable.run();
+          result.set(true);
+          return null;
+        });
+    return result.get();
+  }
+
+  /**
+   * run the consumer if the region is present. if the region is absent, do nothing.
+   *
+   * <p>we don't use computeIfPresent because we don't want to remove the region if the consumer
+   * returns null, we just want to run the consumer in a synchronized way.
+   *
+   * @return true if the region is present and the consumer is run. false if the region is absent.
+   */
+  public boolean runIfPresent(DataRegionId regionId, Consumer<DataRegion> consumer) {
+    final AtomicBoolean result = new AtomicBoolean(false);
+    dataRegionMap.computeIfPresent(
+        regionId,
+        (id, region) -> {
+          consumer.accept(region);
+          result.set(true);
+          return region;
+        });
+    return result.get();
   }
 
   public DataRegion getDataRegion(DataRegionId regionId) {

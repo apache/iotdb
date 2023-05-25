@@ -32,11 +32,13 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.reader.SeriesDataBloc
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -70,6 +72,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.junit.Assert.fail;
 
@@ -85,6 +88,13 @@ public class AbstractCompactionTest {
 
   protected int maxDeviceNum = 25;
   protected int maxMeasurementNum = 25;
+
+  private long[] timestamp = {0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 6, 7, 7, 7};
+  // seq version is not in order
+  private int[] seqVersion = {18, 19, 0, 1, 14, 15, 16, 2, 3, 4, 12, 13, 5, 6, 9, 10, 11, 7, 8, 17};
+  private int[] unseqVersion = {
+    20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39
+  };
 
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -146,11 +156,14 @@ public class AbstractCompactionTest {
 
   private int fileVersion = 0;
 
+  private int fileCount = 0;
+
   protected TsFileManager tsFileManager =
       new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    fileCount = 0;
     if (!SEQ_DIRS.exists()) {
       Assert.assertTrue(SEQ_DIRS.mkdirs());
     }
@@ -195,11 +208,9 @@ public class AbstractCompactionTest {
       boolean isSeq)
       throws IOException, WriteProcessException, MetadataException {
     for (int i = 0; i < fileNum; i++) {
+      fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
       String fileName =
-          System.currentTimeMillis()
-              + FilePathUtils.FILE_NAME_SEPARATOR
-              + fileVersion++
-              + "-0-0.tsfile";
+          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -269,11 +280,9 @@ public class AbstractCompactionTest {
       throws IOException, WriteProcessException {
     String value = isSeq ? "seqTestValue" : "unseqTestValue";
     for (int i = 0; i < fileNum; i++) {
+      fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
       String fileName =
-          System.currentTimeMillis()
-              + FilePathUtils.FILE_NAME_SEPARATOR
-              + fileVersion++
-              + "-0-0.tsfile";
+          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -316,7 +325,7 @@ public class AbstractCompactionTest {
             startTime + pointNum * i + timeInterval * i + pointNum - 1);
       }
       resource.updatePlanIndexes(fileVersion);
-      resource.setStatus(TsFileResourceStatus.CLOSED);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
       resource.serialize();
       if (isSeq) {
         seqResources.add(resource);
@@ -344,7 +353,7 @@ public class AbstractCompactionTest {
     }
 
     resource.updatePlanIndexes(fileVersion);
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
     resource.serialize();
     if (isSeq) {
       seqResources.add(resource);
@@ -575,11 +584,9 @@ public class AbstractCompactionTest {
   }
 
   protected TsFileResource createEmptyFileAndResource(boolean isSeq) {
+    fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
     String fileName =
-        System.currentTimeMillis()
-            + FilePathUtils.FILE_NAME_SEPARATOR
-            + fileVersion
-            + "-0-0.tsfile";
+        timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
     String filePath;
     if (isSeq) {
       filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -587,12 +594,32 @@ public class AbstractCompactionTest {
       filePath = UNSEQ_DIRS.getPath() + File.separator + fileName;
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
-    resource.updatePlanIndexes(fileVersion++);
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.updatePlanIndexes(fileVersion);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
     return resource;
   }
 
   protected void setDataType(TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  protected void resetFileName(TsFileResource resource, int version) {
+    // rename TsFile
+    File file = resource.getTsFile();
+    String[] fileInfo = file.getPath().split(FILE_NAME_SEPARATOR);
+    fileInfo[1] = String.valueOf(version);
+    String newFileName = StringUtil.join(fileInfo, FILE_NAME_SEPARATOR);
+    file.renameTo(new File(newFileName));
+
+    resource.setVersion(version);
+    resource.setFile(new File(newFileName));
+
+    // rename resource file
+    file = new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    file.renameTo(new File(newFileName + TsFileResource.RESOURCE_SUFFIX));
+
+    // rename mods file
+    file = new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
+    file.renameTo(new File(newFileName + ModificationFile.FILE_SUFFIX));
   }
 }

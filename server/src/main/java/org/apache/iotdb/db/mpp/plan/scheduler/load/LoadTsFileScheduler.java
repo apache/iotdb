@@ -135,7 +135,13 @@ public class LoadTsFileScheduler implements IScheduler {
       LoadSingleTsFileNode node = tsFileNodeList.get(i);
       boolean isLoadSingleTsFileSuccess = true;
       try {
-        if (!node.needDecodeTsFile(
+        if (node.isTsFileEmpty()) {
+          logger.info(
+              String.format(
+                  "Load skip TsFile %s, because it has no data.",
+                  node.getTsFileResource().getTsFilePath()));
+
+        } else if (!node.needDecodeTsFile(
             partitionFetcher::queryDataPartition)) { // do not decode, load locally
           isLoadSingleTsFileSuccess = loadLocally(node);
           node.clean();

@@ -29,6 +29,8 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeMetaSyncProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
@@ -123,6 +125,12 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_HANDLE_LEADER_CHANGE_PROCEDURE:
         procedure = new PipeHandleLeaderChangeProcedure();
         break;
+      case PIPE_META_SYNC_PROCEDURE:
+        procedure = new PipeMetaSyncProcedure();
+        break;
+      case PIPE_HANDLE_META_CHANGE_PROCEDURE:
+        procedure = new PipeHandleMetaChangeProcedure();
+        break;
       case CREATE_CQ_PROCEDURE:
         procedure =
             new CreateCQProcedure(
@@ -210,6 +218,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.DROP_PIPE_PROCEDURE_V2;
     } else if (procedure instanceof PipeHandleLeaderChangeProcedure) {
       return ProcedureType.PIPE_HANDLE_LEADER_CHANGE_PROCEDURE;
+    } else if (procedure instanceof PipeMetaSyncProcedure) {
+      return ProcedureType.PIPE_META_SYNC_PROCEDURE;
+    } else if (procedure instanceof PipeHandleMetaChangeProcedure) {
+      return ProcedureType.PIPE_HANDLE_META_CHANGE_PROCEDURE;
     }
     return null;
   }

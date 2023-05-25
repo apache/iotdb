@@ -24,9 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -57,7 +55,6 @@ import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.wal.GetConsensusReqReaderPlan;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -111,8 +108,7 @@ public class IoTConsensusServerImpl {
   private volatile boolean active;
   private String newSnapshotDirName;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
-  private final IoTConsensusServerMetrics metrics;
-
+  private final IoTConsensusServerMetrics ioTConsensusServerMetrics;
   private final String consensusGroupId;
 
   public IoTConsensusServerImpl(
@@ -136,16 +132,16 @@ public class IoTConsensusServerImpl {
       persistConfiguration();
     }
     this.config = config;
-    this.logDispatcher = new LogDispatcher(this, clientManager);
+    this.consensusGroupId = thisNode.getGroupId().toString();
     reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     this.searchIndex = new AtomicLong(reader.getCurrentSearchIndex());
+    this.ioTConsensusServerMetrics = new IoTConsensusServerMetrics(this);
+    this.logDispatcher = new LogDispatcher(this, clientManager, ioTConsensusServerMetrics);
     // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
     // update wal with its syncIndex recovered from the consensus layer when initializing.
     // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
     // the restart and Leader migration occurs
     checkAndUpdateSafeDeletedSearchIndex();
-    this.consensusGroupId = thisNode.getGroupId().toString();
-    this.metrics = new IoTConsensusServerMetrics(this);
   }
 
   public IStateMachine getStateMachine() {
@@ -153,7 +149,7 @@ public class IoTConsensusServerImpl {
   }
 
   public void start() {
-    MetricService.getInstance().addMetricSet(this.metrics);
+    MetricService.getInstance().addMetricSet(this.ioTConsensusServerMetrics);
     stateMachine.start();
     logDispatcher.start();
   }
@@ -161,7 +157,7 @@ public class IoTConsensusServerImpl {
   public void stop() {
     logDispatcher.stop();
     stateMachine.stop();
-    MetricService.getInstance().removeMetricSet(this.metrics);
+    MetricService.getInstance().removeMetricSet(this.ioTConsensusServerMetrics);
   }
 
   /**
@@ -174,17 +170,8 @@ public class IoTConsensusServerImpl {
     try {
       long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
-      MetricService.getInstance()
-          .getOrCreateHistogram(
-              Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              Metric.IOT_CONSENSUS.toString(),
-              Tag.TYPE.toString(),
-              "getStateMachineLock",
-              Tag.REGION.toString(),
-              this.consensusGroupId)
-          .update(getStateMachineLockTime - consensusWriteStartTime);
+      ioTConsensusServerMetrics.recordGetStateMachineLockTime(
+          getStateMachineLockTime - consensusWriteStartTime);
       if (needBlockWrite()) {
         logger.info(
             "[Throttle Down] index:{}, safeIndex:{}",
@@ -206,17 +193,8 @@ public class IoTConsensusServerImpl {
       }
       long writeToStateMachineStartTime = System.nanoTime();
       // statistic the time of checking write block
-      MetricService.getInstance()
-          .getOrCreateHistogram(
-              Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              Metric.IOT_CONSENSUS.toString(),
-              Tag.TYPE.toString(),
-              "checkingBeforeWrite",
-              Tag.REGION.toString(),
-              this.consensusGroupId)
-          .update(writeToStateMachineStartTime - getStateMachineLockTime);
+      ioTConsensusServerMetrics.recordCheckingBeforeWriteTime(
+          writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 10000 == 0) {
@@ -233,17 +211,8 @@ public class IoTConsensusServerImpl {
 
       long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine
-      MetricService.getInstance()
-          .getOrCreateHistogram(
-              Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              Metric.IOT_CONSENSUS.toString(),
-              Tag.TYPE.toString(),
-              "writeStateMachine",
-              Tag.REGION.toString(),
-              this.consensusGroupId)
-          .update(writeToStateMachineEndTime - writeToStateMachineStartTime);
+      ioTConsensusServerMetrics.recordWriteStateMachineTime(
+          writeToStateMachineEndTime - writeToStateMachineStartTime);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // The index is used when constructing batch in LogDispatcher. If its value
         // increases but the corresponding request does not exist or is not put into
@@ -256,17 +225,8 @@ public class IoTConsensusServerImpl {
           searchIndex.incrementAndGet();
         }
         // statistic the time of offering request into queue
-        MetricService.getInstance()
-            .getOrCreateHistogram(
-                Metric.STAGE.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                Metric.IOT_CONSENSUS.toString(),
-                Tag.TYPE.toString(),
-                "offerRequestToQueue",
-                Tag.REGION.toString(),
-                this.consensusGroupId)
-            .update(System.nanoTime() - writeToStateMachineEndTime);
+        ioTConsensusServerMetrics.recordOfferRequestToQueueTime(
+            System.nanoTime() - writeToStateMachineEndTime);
       } else {
         logger.debug(
             "{}: write operation failed. searchIndex: {}. Code: {}",
@@ -275,17 +235,8 @@ public class IoTConsensusServerImpl {
             result.getCode());
       }
       // statistic the time of total write process
-      MetricService.getInstance()
-          .getOrCreateHistogram(
-              Metric.STAGE.toString(),
-              MetricLevel.IMPORTANT,
-              Tag.NAME.toString(),
-              Metric.IOT_CONSENSUS.toString(),
-              Tag.TYPE.toString(),
-              "consensusWrite",
-              Tag.REGION.toString(),
-              this.consensusGroupId)
-          .update(System.nanoTime() - consensusWriteStartTime);
+      ioTConsensusServerMetrics.recordConsensusWriteTime(
+          System.nanoTime() - consensusWriteStartTime);
       return result;
     } finally {
       stateMachineLock.unlock();
@@ -835,6 +786,10 @@ public class IoTConsensusServerImpl {
     return cacheQueueMap
         .computeIfAbsent(sourcePeerId, SyncLogCacheQueue::new)
         .cacheAndInsertLatestNode((DeserializedBatchIndexedConsensusRequest) request);
+  }
+
+  public String getConsensusGroupId() {
+    return consensusGroupId;
   }
 
   /**

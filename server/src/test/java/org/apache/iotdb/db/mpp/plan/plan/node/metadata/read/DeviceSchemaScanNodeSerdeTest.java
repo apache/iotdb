@@ -54,7 +54,8 @@ public class DeviceSchemaScanNodeSerdeTest {
             10,
             10,
             false,
-            false);
+            false,
+            null);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),

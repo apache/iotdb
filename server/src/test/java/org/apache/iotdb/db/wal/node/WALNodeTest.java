@@ -70,15 +70,14 @@ public class WALNodeTest {
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String devicePath = "root.test_sg.test_d";
   private WALMode prevMode;
+  private boolean prevIsClusterMode;
   private WALNode walNode;
-
-  private boolean isClusterMode;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
     prevMode = config.getWalMode();
-    isClusterMode = config.isClusterMode();
+    prevIsClusterMode = config.isClusterMode();
     config.setWalMode(WALMode.SYNC);
     config.setClusterMode(true);
     walNode = new WALNode(identifier, logDirectory);
@@ -88,7 +87,7 @@ public class WALNodeTest {
   public void tearDown() throws Exception {
     walNode.close();
     config.setWalMode(prevMode);
-    config.setClusterMode(isClusterMode);
+    config.setClusterMode(prevIsClusterMode);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 
@@ -196,24 +195,22 @@ public class WALNodeTest {
       }
       bitMaps[i].mark(i % times.length);
     }
-
-    InsertTabletNode insertTabletNode =
-        new InsertTabletNode(
-            new PlanNodeId(""),
-            new PartialPath(devicePath),
-            false,
-            measurements,
-            dataTypes,
-            times,
-            bitMaps,
-            columns,
-            times.length);
     MeasurementSchema[] schemas = new MeasurementSchema[6];
     for (int i = 0; i < 6; i++) {
       schemas[i] = new MeasurementSchema(measurements[i], dataTypes[i], TSEncoding.PLAIN);
     }
-    insertTabletNode.setMeasurementSchemas(schemas);
-    return insertTabletNode;
+
+    return new InsertTabletNode(
+        new PlanNodeId(""),
+        new PartialPath(devicePath),
+        false,
+        measurements,
+        dataTypes,
+        schemas,
+        times,
+        bitMaps,
+        columns,
+        times.length);
   }
 
   @Test

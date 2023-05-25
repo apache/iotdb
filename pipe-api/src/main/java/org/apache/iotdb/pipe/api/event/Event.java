@@ -20,8 +20,4 @@
 package org.apache.iotdb.pipe.api.event;
 
 /** This interface is used to abstract events in collaboration tasks. */
-public interface Event {
-
-  /** @return the type of the event */
-  EventType getType();
-}
+public interface Event {}

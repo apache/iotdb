@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
+import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -37,7 +38,9 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -65,6 +68,8 @@ public abstract class Driver implements IDriver {
   protected final DriverLock exclusiveLock = new DriverLock();
 
   protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  protected final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+      QueryExecutionMetricSet.getInstance();
 
   protected enum State {
     ALIVE,
@@ -244,7 +249,7 @@ public abstract class Driver implements IDriver {
       driverContext.failed(newException);
       throw newException;
     } finally {
-      QUERY_METRICS.recordExecutionCost(
+      QUERY_EXECUTION_METRICS.recordExecutionCost(
           DRIVER_INTERNAL_PROCESS, System.nanoTime() - startTimeNanos);
     }
   }
@@ -382,15 +387,20 @@ public abstract class Driver implements IDriver {
 
       sink.setNoMoreTsBlocks();
 
+      Map<String, long[]> operatorType2TotalCost = new HashMap<>();
       // record operator execution statistics to metrics
       List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
       for (OperatorContext operatorContext : operatorContexts) {
         String operatorType = operatorContext.getOperatorType();
-        QUERY_METRICS.recordOperatorExecutionCost(
-            operatorType, operatorContext.getTotalExecutionTimeInNanos());
-        QUERY_METRICS.recordOperatorExecutionCount(
-            operatorType, operatorContext.getNextCalledCount());
+        long[] value = operatorType2TotalCost.computeIfAbsent(operatorType, k -> new long[2]);
+        value[0] += operatorContext.getTotalExecutionTimeInNanos();
+        value[1] += operatorContext.getNextCalledCount();
       }
+      for (Map.Entry<String, long[]> entry : operatorType2TotalCost.entrySet()) {
+        QUERY_METRICS.recordOperatorExecutionCost(entry.getKey(), entry.getValue()[0]);
+        QUERY_METRICS.recordOperatorExecutionCount(entry.getKey(), entry.getValue()[1]);
+      }
+
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;

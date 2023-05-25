@@ -79,14 +79,18 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeProcessor,
             pipeConnectorOutputEventCollector);
 
+    final PipeTaskStage pipeTaskStage = this;
     this.pipeCollectorInputPendingQueue =
         pipeCollectorInputPendingQueue != null
             ? pipeCollectorInputPendingQueue
                 .registerEmptyToNotEmptyListener(
                     taskId,
                     () -> {
-                      if (status == PipeStatus.RUNNING) {
-                        executor.start(pipeProcessorSubtask.getTaskID());
+                      // status can be changed by other threads calling pipeTaskStage's methods
+                      synchronized (pipeTaskStage) {
+                        if (status == PipeStatus.RUNNING) {
+                          executor.start(pipeProcessorSubtask.getTaskID());
+                        }
                       }
                     })
                 .registerNotEmptyToEmptyListener(
@@ -99,10 +103,13 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             .registerFullToNotFullListener(
                 taskId,
                 () -> {
-                  // only start when the pipe is running
-                  if (status == PipeStatus.RUNNING) {
-                    pipeConnectorOutputEventCollector.tryCollectBufferedEvents();
-                    executor.start(pipeProcessorSubtask.getTaskID());
+                  // status can be changed by other threads calling pipeTaskStage's methods
+                  synchronized (pipeTaskStage) {
+                    // only start when the pipe is running
+                    if (status == PipeStatus.RUNNING) {
+                      pipeConnectorOutputEventCollector.tryCollectBufferedEvents();
+                      executor.start(pipeProcessorSubtask.getTaskID());
+                    }
                   }
                 });
   }

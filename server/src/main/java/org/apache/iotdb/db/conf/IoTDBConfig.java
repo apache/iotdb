@@ -421,7 +421,7 @@ public class IoTDBConfig {
   private boolean enableMLNodeService = false;
 
   /** The buffer for sort operation */
-  private long sortBufferSize = 50 * 1024 * 1024L;
+  private long sortBufferSize = 1024 * 1024L;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -464,8 +464,8 @@ public class IoTDBConfig {
 
   private double chunkMetadataSizeProportion = 0.1;
 
-  /** The target tsfile size in compaction, 1 GB by default */
-  private long targetCompactionFileSize = 1073741824L;
+  /** The target tsfile size in compaction, 2 GB by default */
+  private long targetCompactionFileSize = 2147483648L;
 
   /** The target chunk size in compaction. */
   private long targetChunkSize = 1048576L;
@@ -552,6 +552,10 @@ public class IoTDBConfig {
 
   /** Memory allocated proportion for time partition info */
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
+
+  /** Memory allocated proportion for wal pipe cache */
+  private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
+
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
    * it if its estimated memory exceeds current free memory
@@ -1918,10 +1922,6 @@ public class IoTDBConfig {
     return allocateMemoryForSchema;
   }
 
-  public long getAllocateMemoryForConsensus() {
-    return allocateMemoryForConsensus;
-  }
-
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
 
@@ -1930,8 +1930,13 @@ public class IoTDBConfig {
     this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
   }
 
+  public long getAllocateMemoryForConsensus() {
+    return allocateMemoryForConsensus;
+  }
+
   public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
     this.allocateMemoryForConsensus = allocateMemoryForConsensus;
+    this.allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
   }
 
   public long getAllocateMemoryForRead() {
@@ -2196,6 +2201,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForTimePartitionInfo(long allocateMemoryForTimePartitionInfo) {
     this.allocateMemoryForTimePartitionInfo = allocateMemoryForTimePartitionInfo;
+  }
+
+  public long getAllocateMemoryForWALPipeCache() {
+    return allocateMemoryForWALPipeCache;
+  }
+
+  public void setAllocateMemoryForWALPipeCache(long allocateMemoryForWALPipeCache) {
+    this.allocateMemoryForWALPipeCache = allocateMemoryForWALPipeCache;
   }
 
   public boolean isEnableQueryMemoryEstimation() {

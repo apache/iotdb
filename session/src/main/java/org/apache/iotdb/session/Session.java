@@ -741,16 +741,10 @@ public class Session implements ISession {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      logger.debug("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
       return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
-        logger.debug(
-            "{} redirect query {} to {}",
-            defaultSessionConnection.getEndPoint(),
-            sql,
-            e.getEndPoint());
         // retry
         try {
           return defaultSessionConnection.executeQueryStatement(sql, queryTimeoutInMs);
@@ -795,7 +789,6 @@ public class Session implements ISession {
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
-        logger.debug("redirect query {} to {}", paths, e.getEndPoint());
         // retry
         try {
           return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime, timeOut);
@@ -3348,6 +3341,10 @@ public class Session implements ISession {
   @Override
   public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws IoTDBConnectionException, StatementExecutionException {
+    if (devicePathList == null || devicePathList.contains(null)) {
+      throw new StatementExecutionException(
+          "Given device path list should not be  or contains null.");
+    }
     TCreateTimeseriesUsingSchemaTemplateReq request = new TCreateTimeseriesUsingSchemaTemplateReq();
     request.setDevicePathList(devicePathList);
     defaultSessionConnection.createTimeseriesUsingSchemaTemplate(request);
