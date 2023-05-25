@@ -658,6 +658,11 @@ struct TDeleteTimeSeriesReq{
   2: required binary pathPatternTree
 }
 
+struct TDeleteLogicalViewReq{
+  1: required string queryId
+  2: required binary pathPatternTree
+}
+
 // ====================================================
 // CQ
 // ====================================================
@@ -1258,6 +1263,8 @@ service IConfigNodeRPCService {
    *         EXECUTE_STATEMENT_ERROR if failed to submit or execute the DeleteTimeSeriesProcedure
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  common.TSStatus deleteLogicalView(TDeleteLogicalViewReq req)
 
   // ======================================================
   // Sync
