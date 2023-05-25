@@ -1609,6 +1609,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (resource.tryWriteLock()) {
       try {
         // try to delete physical data file
+        TsFileMetricManager.getInstance().deleteFile(resource.getTsFileSize(), isSeq, 1);
         resource.remove();
         tsFileManager.remove(resource, isSeq);
         logger.info(
@@ -2722,6 +2723,8 @@ public class DataRegion implements IDataRegionForQuery {
         if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
           tsFileResourceToBeMoved = sequenceResource;
           tsFileManager.remove(tsFileResourceToBeMoved, true);
+          TsFileMetricManager.getInstance()
+              .deleteFile(tsFileResourceToBeMoved.getTsFileSize(), true, 1);
           break;
         }
       }
@@ -2732,6 +2735,8 @@ public class DataRegion implements IDataRegionForQuery {
           if (unsequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
             tsFileResourceToBeMoved = unsequenceResource;
             tsFileManager.remove(tsFileResourceToBeMoved, false);
+            TsFileMetricManager.getInstance()
+                .deleteFile(tsFileResourceToBeMoved.getTsFileSize(), false, 1);
             break;
           }
         }
