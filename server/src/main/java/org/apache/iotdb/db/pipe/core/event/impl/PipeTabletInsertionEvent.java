@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
-import org.apache.iotdb.db.wal.utils.WALPipeHandler;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -39,14 +39,14 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletInsertionEvent.class);
 
-  private final WALPipeHandler walPipeHandler;
+  private final WALEntryHandler walEntryHandler;
 
-  public PipeTabletInsertionEvent(WALPipeHandler walPipeHandler) {
-    this.walPipeHandler = walPipeHandler;
+  public PipeTabletInsertionEvent(WALEntryHandler walEntryHandler) {
+    this.walEntryHandler = walEntryHandler;
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
-    return walPipeHandler.getValue();
+    return walEntryHandler.getValue();
   }
 
   @Override
@@ -67,13 +67,13 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
   @Override
   public boolean increaseReferenceCount(String holderMessage) {
     try {
-      PipeResourceManager.wal().pin(walPipeHandler.getMemTableId(), walPipeHandler);
+      PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for memtable %d error. Holder Message: %s",
-              walPipeHandler.getMemTableId(), holderMessage),
+              walEntryHandler.getMemTableId(), holderMessage),
           e);
       return false;
     }
@@ -82,13 +82,13 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
   @Override
   public boolean decreaseReferenceCount(String holderMessage) {
     try {
-      PipeResourceManager.wal().unpin(walPipeHandler.getMemTableId());
+      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
       return true;
     } catch (Exception e) {
       LOGGER.warn(
           String.format(
               "Decrease reference count for memtable %d error. Holder Message: %s",
-              walPipeHandler.getMemTableId(), holderMessage),
+              walEntryHandler.getMemTableId(), holderMessage),
           e);
       return false;
     }
@@ -96,11 +96,11 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
 
   @Override
   public int getReferenceCount() {
-    return PipeResourceManager.wal().getReferenceCount(walPipeHandler.getMemTableId());
+    return PipeResourceManager.wal().getReferenceCount(walEntryHandler.getMemTableId());
   }
 
   @Override
   public String toString() {
-    return "PipeTabletInsertionEvent{" + "walPipeHandler=" + walPipeHandler + '}';
+    return "PipeTabletInsertionEvent{" + "walEntryHandler=" + walEntryHandler + '}';
   }
 }

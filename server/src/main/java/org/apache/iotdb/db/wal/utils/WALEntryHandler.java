@@ -31,8 +31,8 @@ import org.slf4j.LoggerFactory;
  * This handler is used by the Pipe to find the corresponding insert node. Besides, it can try to
  * pin/unpin the wal entries by the memTable id.
  */
-public class WALPipeHandler {
-  private static final Logger logger = LoggerFactory.getLogger(WALPipeHandler.class);
+public class WALEntryHandler {
+  private static final Logger logger = LoggerFactory.getLogger(WALEntryHandler.class);
 
   private long memTableId = -1;
   /** cached value, null after this value is flushed to wal successfully */
@@ -42,7 +42,7 @@ public class WALPipeHandler {
   /** wal node, null when wal is disabled */
   private WALNode walNode = null;
 
-  public WALPipeHandler(WALEntryValue value) {
+  public WALEntryHandler(WALEntryValue value) {
     this.value = value;
   }
 
@@ -136,15 +136,13 @@ public class WALPipeHandler {
 
   @Override
   public String toString() {
-    return "WALPipeHandler{"
+    return "WALEntryHandler{"
         + "memTableId="
         + memTableId
         + ", value="
         + value
         + ", walEntryPosition="
         + walEntryPosition
-        + ", walNode="
-        + walNode
         + '}';
   }
 }

@@ -282,7 +282,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalPipeHandler(),
+            walFlushListener.getWalEntryHandler(),
             insertRowNode,
             tsFileResource);
 
@@ -385,7 +385,7 @@ public class TsFileProcessor {
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
             dataRegionInfo.getDataRegion().getDataRegionId(),
-            walFlushListener.getWalPipeHandler(),
+            walFlushListener.getWalEntryHandler(),
             insertTabletNode,
             tsFileResource);
 

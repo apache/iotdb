@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.resource.wal;
 
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
-import org.apache.iotdb.db.wal.utils.WALPipeHandler;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 
@@ -35,7 +35,7 @@ public class PipeWALResource implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALResource.class);
 
-  private final WALPipeHandler walPipeHandler;
+  private final WALEntryHandler walEntryHandler;
 
   private final AtomicInteger referenceCount;
 
@@ -44,8 +44,8 @@ public class PipeWALResource implements AutoCloseable {
   private final AtomicLong lastLogicalPinTime;
   private final AtomicBoolean isPhysicallyPinned;
 
-  public PipeWALResource(WALPipeHandler walPipeHandler) {
-    this.walPipeHandler = walPipeHandler;
+  public PipeWALResource(WALEntryHandler walEntryHandler) {
+    this.walEntryHandler = walEntryHandler;
 
     referenceCount = new AtomicInteger(0);
 
@@ -57,15 +57,15 @@ public class PipeWALResource implements AutoCloseable {
     if (referenceCount.get() == 0) {
       if (!isPhysicallyPinned.get()) {
         try {
-          walPipeHandler.pinMemTable();
+          walEntryHandler.pinMemTable();
         } catch (MemTablePinException e) {
           throw new PipeRuntimeNonCriticalException(
               String.format(
                   "failed to pin wal %d, because %s",
-                  walPipeHandler.getMemTableId(), e.getMessage()));
+                  walEntryHandler.getMemTableId(), e.getMessage()));
         }
         isPhysicallyPinned.set(true);
-        LOGGER.info("wal {} is pinned by pipe engine", walPipeHandler.getMemTableId());
+        LOGGER.info("wal {} is pinned by pipe engine", walEntryHandler.getMemTableId());
       } // else means the wal is already pinned, do nothing
 
       // no matter the wal is pinned or not, update the last pin time
@@ -84,7 +84,7 @@ public class PipeWALResource implements AutoCloseable {
       throw new PipeRuntimeCriticalException(
           String.format(
               "wal %d is unpinned more than pinned, this should not happen",
-              walPipeHandler.getMemTableId()));
+              walEntryHandler.getMemTableId()));
     }
 
     referenceCount.decrementAndGet();
@@ -113,17 +113,17 @@ public class PipeWALResource implements AutoCloseable {
     if (isPhysicallyPinned.get()) {
       if (System.currentTimeMillis() - lastLogicalPinTime.get() > MIN_TIME_TO_LIVE_IN_MS) {
         try {
-          walPipeHandler.unpinMemTable();
+          walEntryHandler.unpinMemTable();
         } catch (MemTablePinException e) {
           throw new PipeRuntimeNonCriticalException(
               String.format(
                   "failed to unpin wal %d, because %s",
-                  walPipeHandler.getMemTableId(), e.getMessage()));
+                  walEntryHandler.getMemTableId(), e.getMessage()));
         }
         isPhysicallyPinned.set(false);
         LOGGER.info(
             "wal {} is unpinned by pipe engine when checking time to live",
-            walPipeHandler.getMemTableId());
+            walEntryHandler.getMemTableId());
         return true;
       } else {
         return false;
@@ -131,7 +131,7 @@ public class PipeWALResource implements AutoCloseable {
     } else {
       LOGGER.info(
           "wal {} is not pinned physically when checking time to live",
-          walPipeHandler.getMemTableId());
+          walEntryHandler.getMemTableId());
       return true;
     }
   }
@@ -140,17 +140,17 @@ public class PipeWALResource implements AutoCloseable {
   public void close() {
     if (isPhysicallyPinned.get()) {
       try {
-        walPipeHandler.unpinMemTable();
+        walEntryHandler.unpinMemTable();
       } catch (MemTablePinException e) {
         LOGGER.error(
             "failed to unpin wal {} when closing pipe wal resource, because {}",
-            walPipeHandler.getMemTableId(),
+            walEntryHandler.getMemTableId(),
             e.getMessage());
       }
       isPhysicallyPinned.set(false);
       LOGGER.info(
           "wal {} is unpinned by pipe engine when closing pipe wal resource",
-          walPipeHandler.getMemTableId());
+          walEntryHandler.getMemTableId());
     }
 
     referenceCount.set(0);

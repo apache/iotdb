@@ -2,7 +2,7 @@
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.wal.utils.WALPipeHandler;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -53,13 +53,13 @@ public class PipeWALResourceManager implements AutoCloseable {
             TimeUnit.MILLISECONDS);
   }
 
-  public void pin(long memtableId, WALPipeHandler walPipeHandler) {
+  public void pin(long memtableId, WALEntryHandler walEntryHandler) {
     final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
 
     lock.lock();
     try {
       memtableIdToPipeWALResourceMap
-          .computeIfAbsent(memtableId, id -> new PipeWALResource(walPipeHandler))
+          .computeIfAbsent(memtableId, id -> new PipeWALResource(walEntryHandler))
           .pin();
     } finally {
       lock.unlock();
