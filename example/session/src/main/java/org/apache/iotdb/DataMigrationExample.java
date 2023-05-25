@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
@@ -55,9 +54,9 @@ public class DataMigrationExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, ExecutionException,
-          InterruptedException, IllegalPathException {
+          InterruptedException {
 
-    ExecutorService executorService = Executors.newFixedThreadPool(2 * CONCURRENCY + 1);
+    ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENCY + 1);
 
     String path = "root.**";
 
@@ -107,8 +106,7 @@ public class DataMigrationExample {
     Tablet tablet;
     int i;
 
-    public LoadThread(int i, String device)
-        throws IoTDBConnectionException, StatementExecutionException, IllegalPathException {
+    public LoadThread(int i, String device) {
       this.i = i;
       this.device = device;
     }
@@ -116,7 +114,7 @@ public class DataMigrationExample {
     @Override
     public Void call() {
       SessionDataSetWrapper dataSet = null;
-
+      long startTime = System.nanoTime();
       try {
         dataSet = readerPool.executeQueryStatement(String.format("select * from %s", device));
         DataIterator dataIter = dataSet.iterator();
@@ -183,6 +181,9 @@ public class DataMigrationExample {
         if (dataSet != null) {
           readerPool.closeResultSet(dataSet);
         }
+        long endTime = System.nanoTime();
+        long totalTime = endTime - startTime;
+        System.out.println("migrate device ：" +device+" using "+ totalTime + " ms");
       }
 
       System.out.println("Loading the " + i + "-th device: " + device + " success");
