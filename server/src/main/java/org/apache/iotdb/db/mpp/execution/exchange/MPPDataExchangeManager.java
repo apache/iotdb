@@ -547,6 +547,19 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         .deRegisterFragmentInstanceToQueryMemoryMap(queryId, fragmentInstanceId);
   }
 
+  public LocalMemoryManager getLocalMemoryManager() {
+    return localMemoryManager;
+  }
+
+  public int getShuffleSinkHandleSize() {
+    return shuffleSinkHandles.size();
+  }
+
+  public int getSourceHandleSize() {
+    // risk of Integer overflow
+    return sourceHandles.values().stream().mapToInt(Map::size).sum();
+  }
+
   private synchronized ISinkChannel createLocalSinkChannel(
       TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,

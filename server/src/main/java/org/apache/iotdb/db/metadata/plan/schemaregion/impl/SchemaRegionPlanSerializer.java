@@ -188,15 +188,15 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         }
 
         for (TSDataType dataType : createAlignedTimeSeriesPlan.getDataTypes()) {
-          dataOutputStream.writeByte(dataType.ordinal());
+          dataOutputStream.writeByte(dataType.serialize());
         }
 
         for (TSEncoding tsEncoding : createAlignedTimeSeriesPlan.getEncodings()) {
-          dataOutputStream.writeByte(tsEncoding.ordinal());
+          dataOutputStream.writeByte(tsEncoding.serialize());
         }
 
         for (CompressionType compressionType : createAlignedTimeSeriesPlan.getCompressors()) {
-          dataOutputStream.writeByte(compressionType.ordinal());
+          dataOutputStream.writeByte(compressionType.serialize());
         }
 
         for (long tagOffset : createAlignedTimeSeriesPlan.getTagOffsets()) {
@@ -253,9 +253,9 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         byte[] bytes = createTimeSeriesPlan.getPath().getFullPath().getBytes();
         dataOutputStream.writeInt(bytes.length);
         dataOutputStream.write(bytes);
-        dataOutputStream.writeByte(createTimeSeriesPlan.getDataType().ordinal());
-        dataOutputStream.writeByte(createTimeSeriesPlan.getEncoding().ordinal());
-        dataOutputStream.writeByte(createTimeSeriesPlan.getCompressor().ordinal());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getDataType().serialize());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getEncoding().serialize());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getCompressor().serialize());
         dataOutputStream.writeLong(createTimeSeriesPlan.getTagOffset());
 
         // alias

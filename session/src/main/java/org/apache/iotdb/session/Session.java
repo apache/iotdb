@@ -872,16 +872,10 @@ public class Session implements ISession {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      logger.debug("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
       return getDefaultSessionConnection().executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
-        logger.debug(
-            "{} redirect query {} to {}",
-            defaultSessionConnection.getEndPoint(),
-            sql,
-            e.getEndPoint());
         // retry
         try {
           return getDefaultSessionConnection().executeQueryStatement(sql, queryTimeoutInMs);
@@ -926,7 +920,6 @@ public class Session implements ISession {
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
-        logger.debug("redirect query {} to {}", paths, e.getEndPoint());
         // retry
         try {
           return getDefaultSessionConnection()
