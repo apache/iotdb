@@ -365,14 +365,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_TABLET.serialize(byteBuffer);
     subSerialize(byteBuffer);
-    super.serializeAttributes(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.INSERT_TABLET.serialize(stream);
     subSerialize(stream);
-    super.serializeAttributes(stream);
   }
 
   void subSerialize(ByteBuffer buffer) {
@@ -621,7 +619,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserialize(byteBuffer);
-    insertNode.deserializeInsertNodeAttributes(byteBuffer);
     insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return insertNode;
   }

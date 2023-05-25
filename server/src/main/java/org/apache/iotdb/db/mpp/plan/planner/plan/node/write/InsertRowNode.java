@@ -200,14 +200,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_ROW.serialize(byteBuffer);
     subSerialize(byteBuffer);
-    super.serializeAttributes(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.INSERT_ROW.serialize(stream);
     subSerialize(stream);
-    super.serializeAttributes(stream);
   }
 
   void subSerialize(ByteBuffer buffer) {
@@ -368,7 +366,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     // TODO: (xingtanzjr) remove placeholder
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.subDeserialize(byteBuffer);
-    insertNode.deserializeInsertNodeAttributes(byteBuffer);
     insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return insertNode;
   }

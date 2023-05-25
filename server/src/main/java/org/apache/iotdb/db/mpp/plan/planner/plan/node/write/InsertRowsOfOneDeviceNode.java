@@ -202,8 +202,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
-    InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode =
-        new InsertRowsOfOneDeviceNode(new PlanNodeId(""));
     PartialPath devicePath;
     PlanNodeId planNodeId;
     List<InsertRowNode> insertRowNodeList = new ArrayList<>();
@@ -226,15 +224,13 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     for (int i = 0; i < size; i++) {
       insertRowNodeIndex.add(byteBuffer.getInt());
     }
-    insertRowsOfOneDeviceNode.deserializeInsertNodeAttributes(byteBuffer);
 
     planNodeId = PlanNodeId.deserialize(byteBuffer);
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       insertRowNode.setPlanNodeId(planNodeId);
-      insertRowNode.setConsensusIndex(insertRowsOfOneDeviceNode.getConsensusIndex());
     }
-    insertRowsOfOneDeviceNode.setPlanNodeId(planNodeId);
 
+    InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode = new InsertRowsOfOneDeviceNode(planNodeId);
     insertRowsOfOneDeviceNode.setInsertRowNodeList(insertRowNodeList);
     insertRowsOfOneDeviceNode.setInsertRowNodeIndexList(insertRowNodeIndex);
     insertRowsOfOneDeviceNode.setDevicePath(devicePath);
@@ -255,8 +251,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, byteBuffer);
     }
-
-    super.serializeAttributes(byteBuffer);
   }
 
   @Override
@@ -273,8 +267,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, stream);
     }
-
-    super.serializeAttributes(stream);
   }
 
   @Override

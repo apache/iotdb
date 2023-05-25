@@ -149,7 +149,6 @@ public class InsertRowsNode extends InsertNode {
   }
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
-    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     PlanNodeId planNodeId;
     List<InsertRowNode> insertRowNodeList = new ArrayList<>();
     List<Integer> insertRowNodeIndex = new ArrayList<>();
@@ -163,15 +162,13 @@ public class InsertRowsNode extends InsertNode {
     for (int i = 0; i < size; i++) {
       insertRowNodeIndex.add(byteBuffer.getInt());
     }
-    insertRowsNode.deserializeInsertNodeAttributes(byteBuffer);
 
     planNodeId = PlanNodeId.deserialize(byteBuffer);
     for (InsertRowNode insertRowNode : insertRowNodeList) {
       insertRowNode.setPlanNodeId(planNodeId);
-      insertRowNode.setConsensusIndex(insertRowsNode.getConsensusIndex());
     }
-    insertRowsNode.setPlanNodeId(planNodeId);
 
+    InsertRowsNode insertRowsNode = new InsertRowsNode(planNodeId);
     insertRowsNode.setInsertRowNodeList(insertRowNodeList);
     insertRowsNode.setInsertRowNodeIndexList(insertRowNodeIndex);
     return insertRowsNode;
@@ -189,8 +186,6 @@ public class InsertRowsNode extends InsertNode {
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, byteBuffer);
     }
-
-    super.serializeAttributes(byteBuffer);
   }
 
   @Override
