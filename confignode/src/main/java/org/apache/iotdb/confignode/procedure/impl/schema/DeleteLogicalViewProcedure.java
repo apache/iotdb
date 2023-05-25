@@ -37,10 +37,10 @@ import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProce
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -121,14 +121,14 @@ public class DeleteLogicalViewProcedure
       return 0;
     }
     List<TSStatus> successResult = new ArrayList<>();
-    DeleteLogicalViewRegionTaskExecutor<TConstructSchemaBlackListReq> constructBlackListTask =
-        new DeleteLogicalViewRegionTaskExecutor<TConstructSchemaBlackListReq>(
+    DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq> constructBlackListTask =
+        new DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>(
             "construct view schema black list",
             env,
             targetSchemaRegionGroup,
-            DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
+            DataNodeRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TConstructSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
+                new TConstructViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
               TDataNodeLocation dataNodeLocation,
@@ -189,14 +189,14 @@ public class DeleteLogicalViewProcedure
   }
 
   private void deleteTimeSeriesSchema(ConfigNodeProcedureEnv env) {
-    DeleteLogicalViewRegionTaskExecutor<TDeleteTimeSeriesReq> deleteTimeSeriesTask =
+    DeleteLogicalViewRegionTaskExecutor<TDeleteViewSchemaReq> deleteTimeSeriesTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
             "delete view schema",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            DataNodeRequestType.DELETE_TIMESERIES,
+            DataNodeRequestType.DELETE_VIEW,
             ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteTimeSeriesReq(consensusGroupIdList, patternTreeBytes)));
+                new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)));
     deleteTimeSeriesTask.execute();
   }
 
@@ -204,14 +204,14 @@ public class DeleteLogicalViewProcedure
   protected void rollbackState(
       ConfigNodeProcedureEnv env, DeleteLogicalViewState deleteLogicalViewState)
       throws IOException, InterruptedException, ProcedureException {
-    DeleteLogicalViewRegionTaskExecutor<TRollbackSchemaBlackListReq> rollbackStateTask =
+    DeleteLogicalViewRegionTaskExecutor<TRollbackViewSchemaBlackListReq> rollbackStateTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
             "roll back view schema black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
+            DataNodeRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
-                new TRollbackSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
+                new TRollbackViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
     rollbackStateTask.execute();
   }
 
@@ -302,22 +302,6 @@ public class DeleteLogicalViewProcedure
         DataNodeRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
-      this.taskName = taskName;
-    }
-
-    DeleteLogicalViewRegionTaskExecutor(
-        String taskName,
-        ConfigNodeProcedureEnv env,
-        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        boolean executeOnAllReplicaset,
-        DataNodeRequestType dataNodeRequestType,
-        BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
-      super(
-          env,
-          targetSchemaRegionGroup,
-          executeOnAllReplicaset,
-          dataNodeRequestType,
-          dataNodeRequestGenerator);
       this.taskName = taskName;
     }
 
