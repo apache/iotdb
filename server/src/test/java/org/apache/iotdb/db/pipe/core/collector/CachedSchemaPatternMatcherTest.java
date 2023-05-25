@@ -37,7 +37,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -63,7 +62,7 @@ public class CachedSchemaPatternMatcherTest {
   }
 
   @Test
-  public void testCachedMatcher() throws ExecutionException, InterruptedException {
+  public void testCachedMatcher() throws Exception {
     PipeRealtimeDataRegionCollector databaseCollector = new PipeRealtimeDataRegionFakeCollector();
     databaseCollector.customize(
         new PipeParameters(

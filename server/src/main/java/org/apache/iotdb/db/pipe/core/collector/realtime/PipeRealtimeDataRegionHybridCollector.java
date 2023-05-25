@@ -118,7 +118,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "Unsupported event type %s for Hybrid Realtime Collector %s",
+                "Unsupported event type %s for Hybrid Realtime Collector %s to supply.",
                 eventToSupply.getClass(), this));
       }
 
@@ -193,7 +193,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
   }
 
   @Override
-  public void close() {
+  public void close() throws Exception {
     super.close();
     pendingQueue.clear();
   }

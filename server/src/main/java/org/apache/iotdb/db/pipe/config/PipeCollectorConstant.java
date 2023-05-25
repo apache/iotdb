@@ -28,6 +28,19 @@ public class PipeCollectorConstant {
 
   public static final String DATA_REGION_KEY = "collector.data-region";
 
+  public static final String COLLECTOR_HISTORY_ENABLE_KEY = "collector.history.enable";
+
+  public static final String COLLECTOR_HISTORY_START_TIME = "collector.history.startTime";
+  public static final String COLLECTOR_HISTORY_END_TIME = "collector.history.endTime";
+
+  public static final String COLLECTOR_REALTIME_ENABLE = "collector.realtime.enable";
+
+  public static final String COLLECTOR_REALTIME_MODE = "collector.realtime.mode";
+
+  public static final String COLLECTOR_REALTIME_MODE_HYBRID = "hybrid";
+  public static final String COLLECTOR_REALTIME_MODE_FILE = "file";
+  public static final String COLLECTOR_REALTIME_MODE_LOG = "log";
+
   private PipeCollectorConstant() {
     throw new IllegalStateException("Utility class");
   }
