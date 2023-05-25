@@ -311,7 +311,7 @@ public class SessionPool implements ISessionPool {
     this.host = host;
     this.port = port;
     List<String> nodeUrls = new ArrayList<>();
-    nodeUrls.add(host+":"+port);
+    nodeUrls.add(host + ":" + port);
     this.nodeUrls = nodeUrls;
     this.user = user;
     this.password = password;

@@ -294,7 +294,7 @@ public class Session implements ISession {
       boolean enableRedirection,
       Version version) {
     List<String> nodeUrls = new ArrayList<>();
-    nodeUrls.add(host+":"+rpcPort);
+    nodeUrls.add(host + ":" + rpcPort);
     this.nodeUrls = nodeUrls;
     this.defaultEndPoint = new TEndPoint(host, rpcPort);
     this.username = username;
@@ -499,7 +499,7 @@ public class Session implements ISession {
       return true;
     } catch (StatementExecutionException | IoTDBConnectionException | RedirectException ignored) {
       return false;
-    }finally {
+    } finally {
       try {
         syncSessionConnection.close();
       } catch (IoTDBConnectionException e) {
