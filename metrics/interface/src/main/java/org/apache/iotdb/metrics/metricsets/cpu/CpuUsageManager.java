@@ -101,6 +101,9 @@ public class CpuUsageManager {
   }
 
   private void updateIoTDBCpuUsage() {
+    if (!checkCpuMonitorEnable()) {
+      return;
+    }
     // update
     long[] taskIds = threadMxBean.getAllThreadIds();
     ThreadInfo[] threadInfos = threadMxBean.getThreadInfo(taskIds);
