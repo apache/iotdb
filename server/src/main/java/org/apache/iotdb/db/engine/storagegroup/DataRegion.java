@@ -751,9 +751,12 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
 
+    List<File> sortedFiles = new ArrayList<>(tsFilePartitionPath2File.values());
+    sortedFiles.sort(this::compareFileName);
+
     long currentTime = System.currentTimeMillis();
     List<TsFileResource> ret = new ArrayList<>();
-    for (File f : tsFilePartitionPath2File.values()) {
+    for (File f : sortedFiles) {
       checkTsFileTime(f, currentTime);
       ret.add(new TsFileResource(f));
     }

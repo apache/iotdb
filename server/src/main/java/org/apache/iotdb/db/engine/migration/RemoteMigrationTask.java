@@ -49,7 +49,7 @@ public class RemoteMigrationTask extends MigrationTask {
       migrateFile(srcResourceFile, destResourceFile);
     } catch (Exception e) {
       if (!tsFileResource.isDeleted()) {
-        logger.error("Fail to copy TsFile from local {} to remote {}", srcFile, srcResourceFile);
+        logger.error("Fail to copy TsFile from local {} to remote {}", srcFile, srcResourceFile, e);
       }
       cleanup();
       return;
@@ -67,7 +67,7 @@ public class RemoteMigrationTask extends MigrationTask {
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL_ON_REMOTE);
     } catch (Exception e) {
       if (!tsFileResource.isDeleted()) {
-        logger.error("Fail to delete local TsFile {}", srcFile);
+        logger.error("Fail to delete local TsFile {}", srcFile, e);
       }
     } finally {
       tsFileResource.writeUnlock();

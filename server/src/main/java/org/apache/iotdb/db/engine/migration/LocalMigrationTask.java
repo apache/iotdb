@@ -50,7 +50,7 @@ public class LocalMigrationTask extends MigrationTask {
       migrateFile(srcResourceFile, destResourceFile);
     } catch (Exception e) {
       if (!tsFileResource.isDeleted()) {
-        logger.error("Fail to copy TsFile from local {} to local {}", srcFile, srcResourceFile);
+        logger.error("Fail to copy TsFile from local {} to local {}", srcFile, srcResourceFile, e);
       }
       cleanup();
       return;
@@ -71,7 +71,8 @@ public class LocalMigrationTask extends MigrationTask {
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     } catch (Exception e) {
       if (!tsFileResource.isDeleted()) {
-        logger.error("Fail to copy mods file from local {} to local {}", srcModsFile, destModsFile);
+        logger.error(
+            "Fail to copy mods file from local {} to local {}", srcModsFile, destModsFile, e);
       }
       cleanup();
       return;
