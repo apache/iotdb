@@ -89,7 +89,6 @@
         <module>iotdb-protocol/thrift-mlnode</module>
         <module>iotdb-client/service-rpc</module>
         <module>iotdb-client/jdbc</module>
-        <module>iotdb-connector/influxdb-protocol</module>
         <module>iotdb-client/session</module>
         <module>iotdb-client/cli</module>
         <module>iotdb-protocol/openapi</module>
@@ -116,12 +115,9 @@
         <module>consensus</module>
         <module>iotdb-api/external-pipe-api</module>
         <module>library-udf</module>
-        <module>schema-engine-rocksdb</module>
         <module>iotdb-api/udf-api</module>
         <module>iotdb-api/trigger-api</module>
-        <module>rewrite-tsfile-tool</module>
         <module>iotdb-api/external-api</module>
-        <module>schema-engine-tag</module>
         <module>iotdb-client/isession</module>
         <module>mlnode</module>
         <module>iotdb-api/pipe-api</module>
