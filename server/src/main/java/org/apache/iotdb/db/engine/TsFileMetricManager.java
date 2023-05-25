@@ -19,19 +19,34 @@
 
 package org.apache.iotdb.db.engine;
 
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class collect the number and size of tsfile, and send it to the {@link FileMetrics} */
 public class TsFileMetricManager {
+  private static final Logger log = LoggerFactory.getLogger(TsFileMetricManager.class);
   private static final TsFileMetricManager INSTANCE = new TsFileMetricManager();
+  private static final String FILE_LEVEL_COUNT = "file_level_count";
+  private static final String SEQUENCE = "sequence";
+  private static final String UNSEQUENCE = "unsequence";
+  private static final String LEVEL = "level";
   private final AtomicLong seqFileSize = new AtomicLong(0);
   private final AtomicLong unseqFileSize = new AtomicLong(0);
   private final AtomicInteger seqFileNum = new AtomicInteger(0);
@@ -40,6 +55,8 @@ public class TsFileMetricManager {
   private final AtomicInteger modFileNum = new AtomicInteger(0);
 
   private final AtomicLong modFileSize = new AtomicLong(0);
+  private final Map<Integer, Integer> seqLevelTsFileCountMap = new HashMap<>();
+  private final Map<Integer, Integer> unseqLevelTsFileCountMap = new HashMap<>();
   private long lastUpdateTime = 0;
   private static final long UPDATE_INTERVAL = 10_000L;
 
@@ -50,6 +67,7 @@ public class TsFileMetricManager {
   private final AtomicInteger innerSeqCompactionTempFileNum = new AtomicInteger(0);
   private final AtomicInteger innerUnseqCompactionTempFileNum = new AtomicInteger(0);
   private final AtomicInteger crossCompactionTempFileNum = new AtomicInteger(0);
+  private AbstractMetricService metricService;
 
   private TsFileMetricManager() {}
 
@@ -57,7 +75,11 @@ public class TsFileMetricManager {
     return INSTANCE;
   }
 
-  public void addFile(long size, boolean seq) {
+  public void setMetricService(AbstractMetricService metricService) {
+    this.metricService = metricService;
+  }
+
+  public void addFile(long size, boolean seq, String name) {
     if (seq) {
       seqFileSize.getAndAdd(size);
       seqFileNum.incrementAndGet();
@@ -65,15 +87,63 @@ public class TsFileMetricManager {
       unseqFileSize.getAndAdd(size);
       unseqFileNum.incrementAndGet();
     }
+    try {
+      TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
+      int level = tsFileName.getInnerCompactionCnt();
+      int count = -1;
+      if (seq) {
+        count = seqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 1 : v + 1);
+      } else {
+        count = unseqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 1 : v + 1);
+      }
+      if (metricService != null) {
+        metricService
+            .getOrCreateGauge(
+                FILE_LEVEL_COUNT,
+                MetricLevel.CORE,
+                Tag.TYPE.toString(),
+                seq ? SEQUENCE : UNSEQUENCE,
+                LEVEL,
+                String.valueOf(level))
+            .set(count);
+      }
+    } catch (IOException e) {
+      log.error("Unexpected error occurred when getting tsfile name", e);
+    }
   }
 
-  public void deleteFile(long size, boolean seq, int num) {
+  public void deleteFile(long size, boolean seq, int num, List<String> names) {
     if (seq) {
       seqFileSize.getAndAdd(-size);
       seqFileNum.getAndAdd(-num);
     } else {
       unseqFileSize.getAndAdd(-size);
       unseqFileNum.getAndAdd(-num);
+    }
+    for (String name : names) {
+      int level = -1;
+      int count = -1;
+      try {
+        TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
+        level = tsFileName.getInnerCompactionCnt();
+        count =
+            seq
+                ? seqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 0 : v - 1)
+                : unseqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 0 : v - 1);
+      } catch (IOException e) {
+        log.error("Unexpected error occurred when getting tsfile name", e);
+      }
+      if (metricService != null && level != -1 && count != -1) {
+        metricService
+            .getOrCreateGauge(
+                FILE_LEVEL_COUNT,
+                MetricLevel.CORE,
+                Tag.TYPE.toString(),
+                seq ? SEQUENCE : UNSEQUENCE,
+                LEVEL,
+                String.valueOf(level))
+            .set(count);
+      }
     }
   }
 

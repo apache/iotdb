@@ -65,6 +65,7 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void bindTsFileMetrics(AbstractMetricService metricService) {
+    TS_FILE_METRIC_MANAGER.setMetricService(metricService);
     metricService.createAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.CORE,

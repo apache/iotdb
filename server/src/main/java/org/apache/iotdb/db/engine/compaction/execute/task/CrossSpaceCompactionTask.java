@@ -212,7 +212,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         // update the metrics finally in case of any exception occurs
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
-            TsFileMetricManager.getInstance().addFile(targetResource.getTsFileSize(), true);
+            TsFileMetricManager.getInstance()
+                .addFile(
+                    targetResource.getTsFileSize(), true, targetResource.getTsFile().getName());
 
             // set target resources to CLOSED, so that they can be selected to compact
             targetResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -221,10 +223,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetResource.remove();
           }
         }
+        List<String> fileNames = new ArrayList<>();
+        selectedSequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
         TsFileMetricManager.getInstance()
-            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size());
+            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size(), fileNames);
+        fileNames.clear();
+        selectedUnsequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
         TsFileMetricManager.getInstance()
-            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
+            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size(), fileNames);
 
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
