@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class LocalMigrationTask extends MigrationTask {
   private static final Logger logger = LoggerFactory.getLogger(LocalMigrationTask.class);
@@ -36,43 +37,51 @@ public class LocalMigrationTask extends MigrationTask {
 
   @Override
   public void migrate() {
+    // dest tsfile may exist if the last same migration task hasn't completed when the system
+    // shutdown.
+    filesShouldDelete.addAll(Arrays.asList(destTsFile, destResourceFile, destModsFile));
+    cleanup();
+
     // copy TsFile and resource file
     tsFileResource.readLock();
     try {
       destTsFile.getParentFile().mkdirs();
-      fsFactory.copyFile(srcFile, destTsFile);
-      fsFactory.copyFile(srcResourceFile, destResourceFile);
+      migrateFile(srcFile, destTsFile);
+      migrateFile(srcResourceFile, destResourceFile);
     } catch (Exception e) {
-      logger.error("Fail to copy TsFile from local {} to local {}", srcFile, srcResourceFile);
-      destTsFile.delete();
-      destResourceFile.delete();
+      if (!tsFileResource.isDeleted()) {
+        logger.error("Fail to copy TsFile from local {} to local {}", srcFile, srcResourceFile);
+      }
+      cleanup();
       return;
     } finally {
       tsFileResource.readUnlock();
     }
+
     // close mods file and replace TsFile path
     tsFileResource.writeLock();
     try {
       tsFileResource.resetModFile();
       // migrate MOD file only when it exists
       if (srcModsFile.exists()) {
-        fsFactory.copyFile(srcModsFile, destModsFile);
+        migrateFile(srcModsFile, destModsFile);
       }
       tsFileResource.setFile(destTsFile);
       tsFileResource.increaseTierLevel();
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     } catch (Exception e) {
-      logger.error("Fail to copy mods file from local {} to local {}", srcModsFile, destModsFile);
-      destTsFile.delete();
-      destResourceFile.delete();
-      destModsFile.delete();
+      if (!tsFileResource.isDeleted()) {
+        logger.error("Fail to copy mods file from local {} to local {}", srcModsFile, destModsFile);
+      }
+      cleanup();
       return;
     } finally {
       tsFileResource.writeUnlock();
     }
+
     // clear src files
-    srcFile.delete();
-    srcResourceFile.delete();
-    srcModsFile.delete();
+    filesShouldDelete.clear();
+    filesShouldDelete.addAll(Arrays.asList(srcFile, srcResourceFile, srcModsFile));
+    cleanup();
   }
 }

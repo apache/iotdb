@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class RemoteMigrationTask extends MigrationTask {
   private static final Logger logger = LoggerFactory.getLogger(RemoteMigrationTask.class);
@@ -36,35 +37,38 @@ public class RemoteMigrationTask extends MigrationTask {
 
   @Override
   public void migrate() {
-    // tsfile may exist on the remote if the last same migration task hasn't completed when the
-    // system shutdown.
-    if (destTsFile.exists()) {
-      destTsFile.delete();
-    }
-    if (destResourceFile.exists()) {
-      destResourceFile.delete();
-    }
+    // dest tsfile may exist if the last same migration task hasn't completed when the system
+    // shutdown.
+    filesShouldDelete.addAll(Arrays.asList(destTsFile, destResourceFile));
+    cleanup();
+
     // copy TsFile and resource file
     tsFileResource.readLock();
     try {
-      fsFactory.copyFile(srcFile, destTsFile);
-      fsFactory.copyFile(srcResourceFile, destResourceFile);
+      migrateFile(srcFile, destTsFile);
+      migrateFile(srcResourceFile, destResourceFile);
     } catch (Exception e) {
-      logger.error("Fail to copy TsFile from local {} to remote {}", srcFile, srcResourceFile);
-      destTsFile.delete();
-      destResourceFile.delete();
+      if (!tsFileResource.isDeleted()) {
+        logger.error("Fail to copy TsFile from local {} to remote {}", srcFile, srcResourceFile);
+      }
+      cleanup();
       return;
     } finally {
       tsFileResource.readUnlock();
     }
+
     // clear src files
     tsFileResource.writeLock();
     try {
-      srcFile.delete();
+      filesShouldDelete.clear();
+      filesShouldDelete.add(srcFile);
+      cleanup();
       tsFileResource.increaseTierLevel();
       tsFileResource.setStatus(TsFileResourceStatus.NORMAL_ON_REMOTE);
     } catch (Exception e) {
-      logger.error("Fail to delete local TsFile {}", srcFile);
+      if (!tsFileResource.isDeleted()) {
+        logger.error("Fail to delete local TsFile {}", srcFile);
+      }
     } finally {
       tsFileResource.writeUnlock();
     }

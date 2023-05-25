@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class MigrationTask implements Runnable {
   protected static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -34,13 +36,14 @@ public abstract class MigrationTask implements Runnable {
   protected final MigrationCause cause;
   protected final TsFileResource tsFileResource;
   protected final String targetDir;
-
   protected final File srcFile;
   protected final File destTsFile;
   protected final File srcResourceFile;
   protected final File destResourceFile;
   protected final File srcModsFile;
   protected final File destModsFile;
+
+  protected final List<File> filesShouldDelete = new ArrayList<>();
 
   protected MigrationTask(MigrationCause cause, TsFileResource tsFileResource, String targetDir)
       throws IOException {
@@ -86,4 +89,20 @@ public abstract class MigrationTask implements Runnable {
   }
 
   public abstract void migrate();
+
+  protected void migrateFile(File src, File dest) throws IOException {
+    fsFactory.copyFile(src, dest);
+    filesShouldDelete.add(dest);
+  }
+
+  protected void cleanup() {
+    filesShouldDelete.forEach(this::deleteIfExist);
+    filesShouldDelete.clear();
+  }
+
+  protected void deleteIfExist(File file) {
+    if (file.exists()) {
+      file.delete();
+    }
+  }
 }
