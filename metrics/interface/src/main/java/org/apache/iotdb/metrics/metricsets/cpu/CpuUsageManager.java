@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 public class CpuUsageManager {
   private static final Logger log = LoggerFactory.getLogger(CpuUsageManager.class);
@@ -48,7 +47,7 @@ public class CpuUsageManager {
   private final Map<String, Double> moduleUserTimePercentageMap = new ConcurrentHashMap<>();
   private final Map<String, Double> poolCpuUsageMap = new ConcurrentHashMap<>();
   private final Map<String, Double> poolUserTimePercentageMap = new ConcurrentHashMap<>();
-  private final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+  private final ThreadMXBean threadMxBean = ManagementFactory.getThreadMXBean();
   private AtomicLong lastUpdateTime = new AtomicLong(0L);
 
   CpuUsageManager(
@@ -103,26 +102,11 @@ public class CpuUsageManager {
 
   private void updateIoTDBCpuUsage() {
     // update
-    if (!threadMXBean.isThreadCpuTimeSupported()) {
-      return;
-    }
-    if (!threadMXBean.isThreadCpuTimeEnabled()) {
-      threadMXBean.setThreadCpuTimeEnabled(true);
-    }
-    long[] taskIds = threadMXBean.getAllThreadIds();
-    ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(taskIds);
-    Map<Long, Long> beforeThreadCpuTime =
-        Arrays.stream(threadInfos)
-            .collect(
-                Collectors.toMap(
-                    ThreadInfo::getThreadId,
-                    threadInfo -> threadMXBean.getThreadCpuTime(threadInfo.getThreadId())));
-    Map<Long, Long> beforeThreadUserTime =
-        Arrays.stream(threadInfos)
-            .collect(
-                Collectors.toMap(
-                    ThreadInfo::getThreadId,
-                    threadInfo -> threadMXBean.getThreadUserTime(threadInfo.getThreadId())));
+    long[] taskIds = threadMxBean.getAllThreadIds();
+    ThreadInfo[] threadInfos = threadMxBean.getThreadInfo(taskIds);
+    Map<Long, Long> beforeThreadCpuTime = new HashMap<>();
+    Map<Long, Long> beforeThreadUserTime = new HashMap<>();
+    collectThreadCpuInfo(beforeThreadCpuTime, beforeThreadUserTime, threadInfos);
 
     try {
       Thread.sleep(200);
@@ -130,24 +114,67 @@ public class CpuUsageManager {
       log.error("Thread sleep error", e);
     }
 
-    Map<Long, Long> afterThreadCpuTime =
-        Arrays.stream(threadInfos)
-            .collect(
-                Collectors.toMap(
-                    ThreadInfo::getThreadId,
-                    threadInfo -> threadMXBean.getThreadCpuTime(threadInfo.getThreadId())));
-    Map<Long, Long> afterThreadUserTime =
-        Arrays.stream(threadInfos)
-            .collect(
-                Collectors.toMap(
-                    ThreadInfo::getThreadId,
-                    threadInfo -> threadMXBean.getThreadUserTime(threadInfo.getThreadId())));
+    Map<Long, Long> afterThreadCpuTime = new HashMap<>();
+    Map<Long, Long> afterThreadUserTime = new HashMap<>();
+    collectThreadCpuInfo(afterThreadCpuTime, afterThreadUserTime, threadInfos);
 
-    long totalIncrementTime = 0L;
     Map<String, Long> moduleIncrementCpuTimeMap = new HashMap<>();
     Map<String, Long> moduleIncrementUserTimeMap = new HashMap<>();
     Map<String, Long> poolIncrementCpuTimeMap = new HashMap<>();
     Map<String, Long> poolIncrementUserTimeMap = new HashMap<>();
+
+    long totalIncrementTime =
+        computeUsageInfoForModuleAndPool(
+            moduleIncrementCpuTimeMap,
+            moduleIncrementUserTimeMap,
+            poolIncrementCpuTimeMap,
+            poolIncrementUserTimeMap,
+            beforeThreadCpuTime,
+            beforeThreadUserTime,
+            afterThreadCpuTime,
+            afterThreadUserTime,
+            threadInfos);
+
+    updateUsageMap(
+        moduleIncrementCpuTimeMap,
+        moduleIncrementUserTimeMap,
+        poolIncrementCpuTimeMap,
+        poolIncrementUserTimeMap,
+        totalIncrementTime);
+  }
+
+  private boolean checkCpuMonitorEnable() {
+    if (!threadMxBean.isThreadCpuTimeSupported()) {
+      return false;
+    }
+    if (!threadMxBean.isThreadCpuTimeEnabled()) {
+      threadMxBean.setThreadCpuTimeEnabled(true);
+    }
+    return true;
+  }
+
+  private void collectThreadCpuInfo(
+      Map<Long, Long> cpuTimeMap, Map<Long, Long> userTimeMap, ThreadInfo[] threadInfos) {
+    Arrays.stream(threadInfos)
+        .forEach(
+            info -> {
+              cpuTimeMap.put(info.getThreadId(), threadMxBean.getThreadCpuTime(info.getThreadId()));
+              userTimeMap.put(
+                  info.getThreadId(), threadMxBean.getThreadUserTime(info.getThreadId()));
+            });
+  }
+
+  private long computeUsageInfoForModuleAndPool(
+      Map<String, Long> moduleIncrementCpuTimeMap,
+      Map<String, Long> moduleIncrementUserTimeMap,
+      Map<String, Long> poolIncrementCpuTimeMap,
+      Map<String, Long> poolIncrementUserTimeMap,
+      Map<Long, Long> beforeThreadCpuTime,
+      Map<Long, Long> beforeThreadUserTime,
+      Map<Long, Long> afterThreadCpuTime,
+      Map<Long, Long> afterThreadUserTime,
+      ThreadInfo[] threadInfos) {
+    long totalIncrementTime = 0L;
     for (ThreadInfo threadInfo : threadInfos) {
       long id = threadInfo.getThreadId();
       long beforeCpuTime = beforeThreadCpuTime.get(id);
@@ -172,7 +199,15 @@ public class CpuUsageManager {
           (k, v) ->
               v == null ? afterUserTime - beforeUserTime : v + afterUserTime - beforeUserTime);
     }
+    return totalIncrementTime;
+  }
 
+  private void updateUsageMap(
+      Map<String, Long> moduleIncrementCpuTimeMap,
+      Map<String, Long> moduleIncrementUserTimeMap,
+      Map<String, Long> poolIncrementCpuTimeMap,
+      Map<String, Long> poolIncrementUserTimeMap,
+      long totalIncrementTime) {
     double processCpuLoad =
         metricService.getAutoGauge("process_cpu_load", MetricLevel.CORE, "name", "process").value();
     for (Map.Entry<String, Long> entry : moduleIncrementCpuTimeMap.entrySet()) {
