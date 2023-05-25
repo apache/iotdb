@@ -314,13 +314,5 @@ public class SessionDataSet implements AutoCloseable {
     public int findColumn(String columnName) {
       return ioTDBRpcDataSet.findColumn(columnName);
     }
-
-    public List<String> getColumnNameList() {
-      return ioTDBRpcDataSet.columnNameList;
-    }
-
-    public List<String> getColumnTypeList() {
-      return ioTDBRpcDataSet.columnTypeList;
-    }
   }
 }
