@@ -200,8 +200,6 @@ public class InsertRowsNode extends InsertNode {
     for (Integer index : insertRowNodeIndexList) {
       ReadWriteIOUtils.write(index, stream);
     }
-
-    super.serializeAttributes(stream);
   }
 
   @Override
