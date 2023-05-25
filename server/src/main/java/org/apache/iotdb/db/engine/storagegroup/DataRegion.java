@@ -714,7 +714,8 @@ public class DataRegion implements IDataRegionForQuery {
               if (tsFilePartitionPath2File.containsKey(tsFilePartitionPath)) {
                 // check migration: two same name tsfile exists, only keep one of them
                 File actualFile =
-                    deleteDuplicateTsFiles(f, tsFilePartitionPath2File.get(tsFilePartitionPath));
+                    deleteDuplicateMigrationTsFile(
+                        f, tsFilePartitionPath2File.get(tsFilePartitionPath));
                 tsFilePartitionPath2File.put(tsFilePartitionPath, actualFile);
               } else {
                 tsFilePartitionPath2File.put(tsFilePartitionPath, f);
@@ -784,25 +785,35 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** Remove the duplicate TsFile and return the actual TsFile (has .tsfile and .tsfile.resource) */
-  private File deleteDuplicateTsFiles(File f1, File f2) {
-    File f1Resource = fsFactory.getFile(f1 + RESOURCE_SUFFIX);
-    File f2Resource = fsFactory.getFile(f2 + RESOURCE_SUFFIX);
-    if (f1.exists() && f1Resource.exists()) {
-      if (f2.exists()) {
-        f2.delete();
-      }
-      if (f2Resource.exists()) {
-        f2Resource.delete();
-      }
-      return f1;
+  private File deleteDuplicateMigrationTsFile(File f1, File f2) {
+    int f1Tier = TierManager.getInstance().getFileTierLevel(f1);
+    int f2Tier = TierManager.getInstance().getFileTierLevel(f2);
+    File lowerTierFile = f1Tier < f2Tier ? f1 : f2;
+    File higherTierFile = f1Tier < f2Tier ? f2 : f1;
+    File lowerTierFileResource = fsFactory.getFile(lowerTierFile + RESOURCE_SUFFIX);
+    File higherTierFileResource = fsFactory.getFile(higherTierFile + RESOURCE_SUFFIX);
+    if (lowerTierFile.exists() && lowerTierFileResource.exists()) {
+      deleteIfExist(higherTierFile);
+      deleteIfExist(higherTierFileResource);
+      return lowerTierFile;
+    } else if (higherTierFile.exists() && higherTierFileResource.exists()) {
+      deleteIfExist(lowerTierFile);
+      deleteIfExist(lowerTierFileResource);
+      return higherTierFile;
     } else {
-      if (f1.exists()) {
-        f1.delete();
-      }
-      if (f1Resource.exists()) {
-        f1Resource.delete();
-      }
-      return f2;
+      logger.error(
+          "TsFile status is abnormal, please check {}, {}, {}, {}.",
+          lowerTierFile,
+          lowerTierFileResource,
+          higherTierFile,
+          higherTierFileResource);
+      return lowerTierFile;
+    }
+  }
+
+  private void deleteIfExist(File file) {
+    if (file.exists()) {
+      file.delete();
     }
   }
 

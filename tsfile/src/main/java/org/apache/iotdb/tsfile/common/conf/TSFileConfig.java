@@ -120,8 +120,7 @@ public class TSFileConfig implements Serializable {
   /** Default endian value is BIG_ENDIAN. */
   private String endian = "BIG_ENDIAN";
   /** Default storage is in local file system */
-  // TODO: (haiming) fix the bug that the config is not loaded
-  private FSType[] TSFileStorageFs = new FSType[] {FSType.LOCAL, FSType.OBJECT_STORAGE};
+  private FSType[] TSFileStorageFs = new FSType[] {FSType.LOCAL};
   /** Default core-site.xml file path is /etc/hadoop/conf/core-site.xml */
   private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
   /** Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml */

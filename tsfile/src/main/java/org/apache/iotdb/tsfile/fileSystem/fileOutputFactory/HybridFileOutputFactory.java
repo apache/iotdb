@@ -33,15 +33,29 @@ public class HybridFileOutputFactory implements FileOutputFactory {
   private static final Logger logger = LoggerFactory.getLogger(HybridFileOutputFactory.class);
   private static final Map<FSType, FileOutputFactory> outputFactories = new ConcurrentHashMap<>();
 
-  static {
-    outputFactories.put(FSType.LOCAL, new LocalFSOutputFactory());
-    outputFactories.put(FSType.HDFS, new HDFSOutputFactory());
-    outputFactories.put(FSType.OBJECT_STORAGE, new OSFileOutputFactory());
+  private FileOutputFactory getFileOutputFactory(FSType fsType) {
+    return outputFactories.compute(
+        fsType,
+        (k, v) -> {
+          if (v != null) {
+            return v;
+          }
+          switch (fsType) {
+            case LOCAL:
+              return new LocalFSOutputFactory();
+            case OBJECT_STORAGE:
+              return new OSFileOutputFactory();
+            case HDFS:
+              return new HDFSOutputFactory();
+            default:
+              return null;
+          }
+        });
   }
 
   @Override
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     FSPath path = FSUtils.parse(filePath);
-    return outputFactories.get(path.getFsType()).getTsFileOutput(path.getPath(), append);
+    return getFileOutputFactory(path.getFsType()).getTsFileOutput(path.getPath(), append);
   }
 }

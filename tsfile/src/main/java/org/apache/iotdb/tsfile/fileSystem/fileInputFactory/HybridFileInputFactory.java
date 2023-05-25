@@ -27,22 +27,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HybridFileInputFactory implements FileInputFactory {
   private static final Logger logger = LoggerFactory.getLogger(HybridFileInputFactory.class);
-  private static final Map<FSType, FileInputFactory> inputFactories = new HashMap<>();
+  private static final Map<FSType, FileInputFactory> inputFactories = new ConcurrentHashMap<>();
 
-  static {
-    inputFactories.put(FSType.LOCAL, new LocalFSInputFactory());
-    inputFactories.put(FSType.HDFS, new HDFSInputFactory());
-    inputFactories.put(FSType.OBJECT_STORAGE, new OSFileInputFactory());
+  private FileInputFactory getFileInputFactory(FSType fsType) {
+    return inputFactories.compute(
+        fsType,
+        (k, v) -> {
+          if (v != null) {
+            return v;
+          }
+          switch (fsType) {
+            case LOCAL:
+              return new LocalFSInputFactory();
+            case OBJECT_STORAGE:
+              return new OSFileInputFactory();
+            case HDFS:
+              return new HDFSInputFactory();
+            default:
+              return null;
+          }
+        });
   }
 
   @Override
   public TsFileInput getTsFileInput(String filePath) throws IOException {
     FSPath path = FSUtils.parse(filePath);
-    return inputFactories.get(path.getFsType()).getTsFileInput(path.getPath());
+    return getFileInputFactory(path.getFsType()).getTsFileInput(path.getPath());
   }
 }

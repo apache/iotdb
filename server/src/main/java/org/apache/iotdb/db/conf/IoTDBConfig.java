@@ -65,6 +65,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
@@ -1252,7 +1253,7 @@ public class IoTDBConfig {
     this.timeIndexLevel = TimeIndexLevel.valueOf(timeIndexLevel);
   }
 
-  void updatePath() {
+  public void updatePath() {
     formulateFolders();
     confirmMultiDirStrategy();
   }
@@ -1283,13 +1284,20 @@ public class IoTDBConfig {
   private void formulateDataDirs(String[][] tierDataDirs) {
     for (int i = 0; i < tierDataDirs.length; i++) {
       for (int j = 0; j < tierDataDirs[i].length; j++) {
+        if (tierDataDirs[i][j].equals(OBJECT_STORAGE_DIR)) {
+          // Notice: dataNodeId hasn't been initialized
+          tierDataDirs[i][j] = FSUtils.getOSDefaultPath(getObjectStorageBucket(), dataNodeId);
+        }
         switch (FSUtils.getFSType(tierDataDirs[i][j])) {
           case HDFS:
             tierDataDirs[i][j] = getHdfsDir() + File.separatorChar + tierDataDirs[i][j];
             break;
           case LOCAL:
             tierDataDirs[i][j] = addDataHomeDir(tierDataDirs[i][j]);
+            break;
           case OBJECT_STORAGE:
+            tierDataDirs[i][j] = FSUtils.getOSDefaultPath(getObjectStorageBucket(), dataNodeId);
+            break;
           default:
             break;
         }
