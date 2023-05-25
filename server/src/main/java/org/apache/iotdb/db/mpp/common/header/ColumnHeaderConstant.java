@@ -119,6 +119,8 @@ public class ColumnHeaderConstant {
   public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
   public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
 
+  public static final String TIMESTAMP_PRECISION = "TimestampPrecision";
+
   // column names for show region statement
   public static final String REGION_ID = "RegionId";
   public static final String TYPE = "Type";
