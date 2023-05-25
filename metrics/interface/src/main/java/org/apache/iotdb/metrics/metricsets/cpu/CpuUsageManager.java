@@ -114,8 +114,8 @@ public class CpuUsageManager {
     try {
       Thread.sleep(200);
     } catch (InterruptedException e) {
-      Thread.interrupted();
-      log.error("Thread sleep error", e);
+      log.error("Thread is interrupted", e);
+      Thread.currentThread().interrupt();
     }
 
     Map<Long, Long> afterThreadCpuTime = new HashMap<>();
