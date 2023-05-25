@@ -112,7 +112,7 @@ public class CpuUsageManager {
     collectThreadCpuInfo(beforeThreadCpuTime, beforeThreadUserTime, threadInfos);
 
     try {
-      Thread.sleep(200);
+      Thread.sleep(500);
     } catch (InterruptedException e) {
       log.error("Thread is interrupted", e);
       Thread.currentThread().interrupt();
@@ -221,14 +221,23 @@ public class CpuUsageManager {
     for (Map.Entry<String, Long> entry : moduleIncrementCpuTimeMap.entrySet()) {
       moduleCpuTimePercentageMap.put(
           entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime * processCpuLoad);
-      moduleUserTimePercentageMap.put(
-          entry.getKey(), moduleIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue());
+      if (entry.getValue() > 0.0) {
+        moduleUserTimePercentageMap.put(
+            entry.getKey(),
+            moduleIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue());
+      } else {
+        moduleUserTimePercentageMap.put(entry.getKey(), 0.0);
+      }
     }
     for (Map.Entry<String, Long> entry : poolIncrementCpuTimeMap.entrySet()) {
       poolCpuUsageMap.put(
           entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime * processCpuLoad);
-      poolUserTimePercentageMap.put(
-          entry.getKey(), poolIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue());
+      if (entry.getValue() > 0.0) {
+        poolUserTimePercentageMap.put(
+            entry.getKey(), poolIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue());
+      } else {
+        poolUserTimePercentageMap.put(entry.getKey(), 0.0);
+      }
     }
   }
 }
