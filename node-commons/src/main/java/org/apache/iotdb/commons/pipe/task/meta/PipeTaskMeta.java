@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndexType;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
@@ -34,28 +36,25 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskMeta {
 
-  // TODO: replace it with consensus index
-  private final AtomicLong progressIndex = new AtomicLong(0L);
-  private final AtomicInteger regionLeader = new AtomicInteger(0);
+  private final AtomicReference<ConsensusIndex> progressIndex = new AtomicReference<>();
+  private final AtomicInteger dataNodeId = new AtomicInteger(0);
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
-  private PipeTaskMeta() {}
-
-  public PipeTaskMeta(long progressIndex, int regionLeader) {
+  public PipeTaskMeta(ConsensusIndex progressIndex, int dataNodeId) {
     this.progressIndex.set(progressIndex);
-    this.regionLeader.set(regionLeader);
+    this.dataNodeId.set(dataNodeId);
   }
 
-  public long getProgressIndex() {
+  public ConsensusIndex getProgressIndex() {
     return progressIndex.get();
   }
 
-  public int getRegionLeader() {
-    return regionLeader.get();
+  public int getDataNodeId() {
+    return dataNodeId.get();
   }
 
   public Iterable<PipeRuntimeException> getExceptionMessages() {
@@ -70,17 +69,17 @@ public class PipeTaskMeta {
     exceptionMessages.clear();
   }
 
-  public void setProgressIndex(long progressIndex) {
-    this.progressIndex.set(progressIndex);
+  public void updateProgressIndex(ConsensusIndex updateIndex) {
+    progressIndex.updateAndGet(index -> index.updateToMaximum(updateIndex));
   }
 
-  public void setRegionLeader(int regionLeader) {
-    this.regionLeader.set(regionLeader);
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId.set(dataNodeId);
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(progressIndex.get(), outputStream);
-    ReadWriteIOUtils.write(regionLeader.get(), outputStream);
+    progressIndex.get().serialize(outputStream);
+    ReadWriteIOUtils.write(dataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
       ReadWriteIOUtils.write(
@@ -90,8 +89,8 @@ public class PipeTaskMeta {
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(progressIndex.get(), outputStream);
-    ReadWriteIOUtils.write(regionLeader.get(), outputStream);
+    progressIndex.get().serialize(outputStream);
+    ReadWriteIOUtils.write(dataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
       ReadWriteIOUtils.write(
@@ -101,9 +100,9 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
-    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
-    PipeTaskMeta.progressIndex.set(ReadWriteIOUtils.readLong(byteBuffer));
-    PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(byteBuffer));
+    final PipeTaskMeta PipeTaskMeta =
+        new PipeTaskMeta(
+            ConsensusIndexType.deserializeFrom(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final boolean critical = ReadWriteIOUtils.readBool(byteBuffer);
@@ -117,9 +116,9 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
-    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta();
-    PipeTaskMeta.progressIndex.set(ReadWriteIOUtils.readLong(inputStream));
-    PipeTaskMeta.regionLeader.set(ReadWriteIOUtils.readInt(inputStream));
+    final PipeTaskMeta PipeTaskMeta =
+        new PipeTaskMeta(
+            ConsensusIndexType.deserializeFrom(inputStream), ReadWriteIOUtils.readInt(inputStream));
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final boolean critical = ReadWriteIOUtils.readBool(inputStream);
@@ -141,14 +140,14 @@ public class PipeTaskMeta {
       return false;
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
-    return progressIndex.get() == that.progressIndex.get()
-        && regionLeader.get() == that.regionLeader.get()
+    return progressIndex.get().equals(that.progressIndex.get())
+        && dataNodeId.get() == that.dataNodeId.get()
         && Arrays.equals(exceptionMessages.toArray(), that.exceptionMessages.toArray());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex, regionLeader, exceptionMessages);
+    return Objects.hash(progressIndex, dataNodeId, exceptionMessages);
   }
 
   @Override
@@ -157,8 +156,8 @@ public class PipeTaskMeta {
         + "progressIndex='"
         + progressIndex
         + '\''
-        + ", regionLeader='"
-        + regionLeader
+        + ", dataNodeId='"
+        + dataNodeId
         + '\''
         + ", exceptionMessages="
         + exceptionMessages

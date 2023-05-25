@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
@@ -53,7 +55,10 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
 
   private final PipeCollector pipeCollector;
 
-  public PipeTaskCollectorStage(String dataRegionId, PipeParameters collectorParameters) {
+  public PipeTaskCollectorStage(
+      TConsensusGroupId dataRegionId,
+      PipeTaskMeta pipeTaskMeta,
+      PipeParameters collectorParameters) {
     // TODO: avoid if-else, use reflection to create collector all the time
     if (collectorParameters
         .getStringOrDefault(
@@ -69,10 +74,10 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       // collector
       this.collectorParameters
           .getAttribute()
-          .put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
+          .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
 
       collectorPendingQueue = new ListenableUnblockingPendingQueue<>();
-      this.pipeCollector = new IoTDBDataRegionCollector(collectorPendingQueue);
+      this.pipeCollector = new IoTDBDataRegionCollector(pipeTaskMeta, collectorPendingQueue);
     } else {
       this.collectorParameters = collectorParameters;
 

@@ -19,20 +19,21 @@
 
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
 
-public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
+public class PipeRealtimeCollectEvent extends EnrichedEvent {
 
-  private final Event event;
+  private final EnrichedEvent event;
   private final TsFileEpoch tsFileEpoch;
 
   private Map<String, String[]> device2Measurements;
 
   public PipeRealtimeCollectEvent(
-      Event event, TsFileEpoch tsFileEpoch, Map<String, String[]> device2Measurements) {
+      EnrichedEvent event, TsFileEpoch tsFileEpoch, Map<String, String[]> device2Measurements) {
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
     this.device2Measurements = device2Measurements;
@@ -55,20 +56,24 @@ public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
   }
 
   @Override
-  public boolean increaseReferenceCount(String holderMessage) {
-    return !(event instanceof EnrichedEvent)
-        || ((EnrichedEvent) event).increaseReferenceCount(holderMessage);
+  public boolean increaseResourceReferenceCount(String holderMessage) {
+    return event.increaseResourceReferenceCount(holderMessage);
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
-    return !(event instanceof EnrichedEvent)
-        || ((EnrichedEvent) event).decreaseReferenceCount(holderMessage);
+  public boolean decreaseResourceReferenceCount(String holderMessage) {
+    return event.decreaseResourceReferenceCount(holderMessage);
   }
 
   @Override
-  public int getReferenceCount() {
-    return event instanceof EnrichedEvent ? ((EnrichedEvent) event).getReferenceCount() : 0;
+  public ConsensusIndex getConsensusIndex() {
+    return event.getConsensusIndex();
+  }
+
+  @Override
+  public PipeRealtimeCollectEvent shallowCopySelf() {
+    return new PipeRealtimeCollectEvent(
+        event.shallowCopySelf(), this.tsFileEpoch, this.device2Measurements);
   }
 
   @Override

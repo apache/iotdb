@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -291,5 +292,11 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   @Override
   public long getMinTime() {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public void setConsensusIndex(ConsensusIndex consensusIndex) {
+    this.consensusIndex = consensusIndex;
+    insertRowNodeList.forEach(insertRowNode -> insertRowNode.setConsensusIndex(consensusIndex));
   }
 }

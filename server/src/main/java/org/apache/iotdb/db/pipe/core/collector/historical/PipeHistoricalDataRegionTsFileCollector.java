@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.core.collector.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -37,9 +39,16 @@ import java.util.stream.Collectors;
 
 public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
 
+  private final PipeTaskMeta pipeTaskMeta;
+  private final ConsensusIndex startIndex;
   private int dataRegionId;
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
+
+  public PipeHistoricalDataRegionTsFileCollector(PipeTaskMeta pipeTaskMeta) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.startIndex = pipeTaskMeta.getProgressIndex();
+  }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -71,16 +80,25 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(true).stream()
+                .filter(
+                    resource ->
+                        resource.getMaxConsensusIndexAfterClose() == null
+                            || !startIndex.isAfter(resource.getMaxConsensusIndexAfterClose()))
                 .map(PipeTsFileInsertionEvent::new)
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
+                .filter(
+                    resource ->
+                        resource.getMaxConsensusIndexAfterClose() == null
+                            || !startIndex.isAfter(resource.getMaxConsensusIndexAfterClose()))
                 .map(PipeTsFileInsertionEvent::new)
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
-            event ->
-                event.increaseReferenceCount(
-                    PipeHistoricalDataRegionTsFileCollector.class.getName()));
+            event -> {
+              event.reportProgressIndexToPipeTaskMetaWhenFinish(pipeTaskMeta);
+              event.increaseReferenceCount(PipeHistoricalDataRegionTsFileCollector.class.getName());
+            });
       } finally {
         tsFileManager.readUnlock();
       }

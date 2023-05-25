@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ConsensusIndexType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -153,6 +155,8 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
+  private ConsensusIndex maxConsensusIndex;
+
   public TsFileResource() {}
 
   public TsFileResource(TsFileResource other) throws IOException {
@@ -170,6 +174,7 @@ public class TsFileResource {
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.tsFileSize = other.tsFileSize;
+    this.maxConsensusIndex = other.maxConsensusIndex;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -243,6 +248,9 @@ public class TsFileResource {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
       }
+      if (maxConsensusIndex != null) {
+        maxConsensusIndex.serialize(outputStream);
+      }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
@@ -264,6 +272,9 @@ public class TsFileResource {
           File modF = new File(file.getParentFile(), modFileName);
           modFile = new ModificationFile(modF.getPath());
         }
+      }
+      if (inputStream.available() > 0) {
+        maxConsensusIndex = ConsensusIndexType.deserializeFrom(inputStream);
       }
     }
 
@@ -309,6 +320,9 @@ public class TsFileResource {
           File modF = new File(file.getParentFile(), modFileName);
           modFile = new ModificationFile(modF.getPath());
         }
+      }
+      if (inputStream.available() > 0) {
+        maxConsensusIndex = ConsensusIndexType.deserializeFrom(inputStream);
       }
     }
   }
@@ -1121,5 +1135,24 @@ public class TsFileResource {
   /** @return is this tsfile resource in a TsFileResourceList */
   public boolean isFileInList() {
     return prev != null || next != null;
+  }
+
+  public void updateConsensusIndex(ConsensusIndex consensusIndex) {
+    if (consensusIndex == null) {
+      return;
+    }
+
+    maxConsensusIndex =
+        (maxConsensusIndex == null
+            ? consensusIndex
+            : maxConsensusIndex.updateToMaximum(consensusIndex));
+  }
+
+  public ConsensusIndex getMaxConsensusIndexAfterClose() throws IllegalStateException {
+    if (status.equals(TsFileResourceStatus.UNCLOSED)) {
+      throw new IllegalStateException(
+          "Should not get consensus index from a unclosing TsFileResource.");
+    }
+    return maxConsensusIndex;
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -30,7 +31,7 @@ import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
+public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
 
   private final InsertNode insertNode;
 
@@ -61,23 +62,27 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
   }
 
   @Override
-  public boolean increaseReferenceCount(String holderMessage) {
+  public boolean increaseResourceReferenceCount(String holderMessage) {
     // TODO: use WALPipeHandler pinMemtable
     referenceCount.incrementAndGet();
     return true;
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseResourceReferenceCount(String holderMessage) {
     // TODO: use WALPipeHandler unpinMemetable
     referenceCount.decrementAndGet();
     return true;
   }
 
   @Override
-  public int getReferenceCount() {
-    // TODO: use WALPipeHandler unpinMemetable
-    return referenceCount.get();
+  public ConsensusIndex getConsensusIndex() {
+    return insertNode.getConsensusIndex();
+  }
+
+  @Override
+  public PipeTabletInsertionEvent shallowCopySelf() {
+    return new PipeTabletInsertionEvent(this.insertNode);
   }
 
   @Override

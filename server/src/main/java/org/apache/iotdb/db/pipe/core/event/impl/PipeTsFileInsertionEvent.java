@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumConsensusIndex;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
@@ -32,14 +34,16 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedEvent {
+public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
+  private final TsFileResource resource;
   private File tsFile;
   private final AtomicBoolean isClosed;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
+    this.resource = resource;
     tsFile = resource.getTsFile();
 
     isClosed = new AtomicBoolean(resource.isClosed());
@@ -83,7 +87,7 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   }
 
   @Override
-  public boolean increaseReferenceCount(String holderMessage) {
+  public boolean increaseResourceReferenceCount(String holderMessage) {
     try {
       // TODO: increase reference count for mods & resource files
       tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
@@ -99,7 +103,7 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.file().decreaseFileReference(tsFile);
       return true;
@@ -114,8 +118,21 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   }
 
   @Override
-  public int getReferenceCount() {
-    return PipeResourceManager.file().getFileReferenceCount(tsFile);
+  public ConsensusIndex getConsensusIndex() {
+    try {
+      waitForTsFileClose();
+      return resource.getMaxConsensusIndexAfterClose();
+    } catch (InterruptedException e) {
+      LOGGER.warn(
+          String.format(
+              "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
+      return new MinimumConsensusIndex();
+    }
+  }
+
+  @Override
+  public PipeTsFileInsertionEvent shallowCopySelf() {
+    return new PipeTsFileInsertionEvent(this.resource);
   }
 
   @Override
