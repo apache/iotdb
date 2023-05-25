@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -72,6 +74,11 @@ public class InExpression extends UnaryExpression {
     } else {
       stringBuilder.append('(').append(expression).append(')').append(" IN (");
     }
+    return appendValuesToBuild(stringBuilder).toString();
+  }
+
+  @NotNull
+  private StringBuilder appendValuesToBuild(StringBuilder stringBuilder) {
     Iterator<String> iterator = values.iterator();
     if (iterator.hasNext()) {
       stringBuilder.append(iterator.next());
@@ -80,7 +87,7 @@ public class InExpression extends UnaryExpression {
       stringBuilder.append(',').append(iterator.next());
     }
     stringBuilder.append(')');
-    return stringBuilder.toString();
+    return stringBuilder;
   }
 
   @Override
@@ -111,6 +118,23 @@ public class InExpression extends UnaryExpression {
     for (String value : values) {
       ReadWriteIOUtils.write(value, stream);
     }
+  }
+
+  @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    StringBuilder stringBuilder = new StringBuilder();
+    if (expression instanceof FunctionExpression
+        || expression instanceof ConstantOperand
+        || expression instanceof TimeSeriesOperand) {
+      stringBuilder.append(expression.getStringWithViewOfThisExpression()).append(" IN (");
+    } else {
+      stringBuilder
+          .append('(')
+          .append(expression.getStringWithViewOfThisExpression())
+          .append(')')
+          .append(" IN (");
+    }
+    return appendValuesToBuild(stringBuilder).toString();
   }
 
   @Override

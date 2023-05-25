@@ -231,6 +231,13 @@ public class Analysis {
   private List<PartialPath> specifiedTemplateRelatedPathPatternList;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Logical View Analysis
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private boolean hasViewsInQuery = false;
+  private List<Pair<Expression, String>> outputExpressions = null;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   // Show Queries Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -667,5 +674,25 @@ public class Analysis {
 
   public void setDeviceToSortItems(Map<String, List<SortItem>> deviceToSortItems) {
     this.deviceToSortItems = deviceToSortItems;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Logical View Analysis
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public void setHasViewsInQuery(boolean hasViewsInQuery) {
+    this.hasViewsInQuery = hasViewsInQuery;
+  }
+
+  public boolean hasViewsInQuery() {
+    return this.hasViewsInQuery;
+  }
+
+  public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {
+    this.outputExpressions = outputExpressions;
+  }
+
+  public List<Pair<Expression, String>> getOutputExpressions() {
+    return this.outputExpressions;
   }
 }
