@@ -236,7 +236,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         // inner space compaction task has only one target file
         if (!targetTsFileResource.isDeleted()) {
           TsFileMetricManager.getInstance()
-              .addFile(targetTsFileResource.getTsFile().length(), sequence);
+              .addFile(
+                  targetTsFileResource.getTsFile().length(),
+                  sequence,
+                  targetTsFileResource.getTsFile().getName());
 
           // set target resource to CLOSED, so that it can be selected to compact
           targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -244,8 +247,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           // target resource is empty after compaction, then delete it
           targetTsFileResource.remove();
         }
+        List<String> fileNames = new ArrayList<>();
+        for (TsFileResource resource : selectedTsFileResourceList) {
+          fileNames.add(resource.getTsFile().getName());
+        }
         TsFileMetricManager.getInstance()
-            .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
+            .deleteFile(
+                totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size(), fileNames);
 
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
