@@ -2,6 +2,7 @@
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import java.util.HashMap;
@@ -32,7 +33,8 @@ public class PipeWALResourceManager implements AutoCloseable {
     }
 
     ttlCheckerFuture =
-        PIPE_WAL_RESOURCE_TTL_CHECKER.scheduleAtFixedRate(
+        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+            PIPE_WAL_RESOURCE_TTL_CHECKER,
             () -> {
               for (final long memtableId : memtableIdToPipeWALResourceMap.keySet()) {
                 final ReentrantLock lock =
