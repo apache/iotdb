@@ -128,6 +128,8 @@ public class CommonConfig {
   /** Ip and port of target ML node. */
   private TEndPoint targetMLNodeEndPoint = new TEndPoint("127.0.0.1", 10810);
 
+  private String timestampPrecision = "ms";
+
   /** Pipe related */
 
   /**
@@ -163,6 +165,7 @@ public class CommonConfig {
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
+
 
   CommonConfig() {}
 
@@ -411,6 +414,14 @@ public class CommonConfig {
 
   public void setStopping(boolean stopping) {
     isStopping = stopping;
+  }
+
+  public String getTimestampPrecision() {
+    return timestampPrecision;
+  }
+
+  public void setTimestampPrecision(String timestampPrecision) {
+    this.timestampPrecision = timestampPrecision;
   }
 
   public String getPipeTsFileDirName() {

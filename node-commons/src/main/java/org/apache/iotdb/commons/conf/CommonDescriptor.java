@@ -188,6 +188,9 @@ public class CommonDescriptor {
                     String.valueOf(config.getDiskSpaceWarningThreshold()))
                 .trim()));
 
+    config.setTimestampPrecision(
+        properties.getProperty("timestamp_precision", config.getTimestampPrecision()).trim());
+
     String endPointUrl =
         properties.getProperty(
             "target_ml_node_endpoint",
