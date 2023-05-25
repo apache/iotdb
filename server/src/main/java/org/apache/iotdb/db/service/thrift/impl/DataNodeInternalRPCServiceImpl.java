@@ -103,6 +103,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.ConstructLogicalViewBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
@@ -829,7 +832,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   executor
                       .execute(
                           new SchemaRegionId(consensusGroupId.getId()),
-                          new ConstructSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
+                          new ConstructLogicalViewBlackListNode(
+                              new PlanNodeId(""), filteredPatternTree))
                       .getStatus();
               if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 preDeletedNum.getAndAdd(Integer.parseInt(status.getMessage()));
@@ -860,7 +864,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           return executor
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
-                  new RollbackSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
+                  new RollbackLogicalViewBlackListNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
         });
   }
@@ -884,7 +888,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           return executor
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
-                  new DeleteTimeSeriesNode(new PlanNodeId(""), filteredPatternTree))
+                  new DeleteLogicalViewNode(new PlanNodeId(""), filteredPatternTree))
               .getStatus();
         });
   }

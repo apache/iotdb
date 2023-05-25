@@ -98,7 +98,7 @@ public class DeleteLogicalViewProcedure
           break;
         case DELETE_VIEW_SCHEMA:
           LOGGER.info("Delete view schema of {}", requestMessage);
-          deleteTimeSeriesSchema(env);
+          deleteViewSchema(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state.toString()));
@@ -188,7 +188,7 @@ public class DeleteLogicalViewProcedure
     setNextState(DeleteLogicalViewState.DELETE_VIEW_SCHEMA);
   }
 
-  private void deleteTimeSeriesSchema(ConfigNodeProcedureEnv env) {
+  private void deleteViewSchema(ConfigNodeProcedureEnv env) {
     DeleteLogicalViewRegionTaskExecutor<TDeleteViewSchemaReq> deleteTimeSeriesTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
             "delete view schema",
