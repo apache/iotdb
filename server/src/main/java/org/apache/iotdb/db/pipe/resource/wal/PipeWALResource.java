@@ -129,7 +129,7 @@ public class PipeWALResource implements AutoCloseable {
         return false;
       }
     } else {
-      LOGGER.info(
+      LOGGER.warn(
           "wal {} is not pinned physically when checking time to live",
           walEntryHandler.getMemTableId());
       return true;
