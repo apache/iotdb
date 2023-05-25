@@ -22,9 +22,6 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
-import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCache;
@@ -164,57 +161,64 @@ public class TimeSeriesSchemaCache {
     return indexOfMissingMeasurements;
   }
 
-  public List<Integer> computeSourceOfLogicalViewInCache(ISchemaComputation schemaComputation) {
+  public Pair<List<Integer>, List<String>> computeSourceOfLogicalViewInCache(
+      ISchemaComputation schemaComputation) {
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    List<String> missedPathStringList = new ArrayList<>();
     final AtomicBoolean isFirstMeasurement = new AtomicBoolean(true);
     Pair<Integer, Integer> beginToEnd = schemaComputation.getSizeOfLogicalViewSchemaListRecorded();
     List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();
     List<Integer> indexListOfLogicalViewPaths = schemaComputation.getIndexListOfLogicalViewPaths();
-    for(int i=beginToEnd.left; i < beginToEnd.right ; i++){
+    for (int i = beginToEnd.left; i < beginToEnd.right; i++) {
       LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(i);
       final int realIndex = indexListOfLogicalViewPaths.get(i);
       final int recordMissingIndex = i;
-      if(!logicalViewSchema.isWritable()){
-        throw new RuntimeException(new UnsupportedOperationException(
-          "You can not insert into a logical view which is not alias series!"
-        ));
+      if (!logicalViewSchema.isWritable()) {
+        throw new RuntimeException(
+            new UnsupportedOperationException(
+                "You can not insert into a logical view which is not alias series!"));
       }
       PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       dualKeyCache.compute(
-        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
-          @Override
-          public PartialPath getFirstKey() {
-            return fullPath.getDevicePath();
-          }
-
-          @Override
-          public String[] getSecondKeyList() {
-            return new String[]{fullPath.getMeasurement()};
-          }
-
-          @Override
-          public void computeValue(int index, SchemaCacheEntry value) {
-            index = realIndex;
-            if (value == null) {
-              indexOfMissingMeasurements.add(recordMissingIndex);
-            } else {
-              if (isFirstMeasurement.get()) {
-                schemaComputation.computeDevice(value.isAligned());
-                isFirstMeasurement.getAndSet(false);
-              }
-              if(value.isLogicalView()){
-                // does not support views in views
-                throw new RuntimeException(new UnsupportedOperationException(
-                  String.format("The source of view [%s] is also a view! Nested view is unsupported! " +
-                    "Please check it.", fullPath)
-                ));
-              }
-              schemaComputation.computeMeasurement(index, value);
+          new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
+            @Override
+            public PartialPath getFirstKey() {
+              return fullPath.getDevicePath();
             }
-          }
-        });
+
+            @Override
+            public String[] getSecondKeyList() {
+              return new String[] {fullPath.getMeasurement()};
+            }
+
+            @Override
+            public void computeValue(int index, SchemaCacheEntry value) {
+              index = realIndex;
+              if (value == null) {
+                indexOfMissingMeasurements.add(recordMissingIndex);
+              } else {
+                if (isFirstMeasurement.get()) {
+                  schemaComputation.computeDevice(value.isAligned());
+                  isFirstMeasurement.getAndSet(false);
+                }
+                if (value.isLogicalView()) {
+                  // does not support views in views
+                  throw new RuntimeException(
+                      new UnsupportedOperationException(
+                          String.format(
+                              "The source of view [%s] is also a view! Nested view is unsupported! "
+                                  + "Please check it.",
+                              fullPath)));
+                }
+                schemaComputation.computeMeasurement(index, value);
+              }
+            }
+          });
     }
-    return indexOfMissingMeasurements;
+    for (int index : indexOfMissingMeasurements) {
+      missedPathStringList.add(logicalViewSchemaList.get(index).getSourcePathStringIfWritable());
+    }
+    return new Pair<>(indexOfMissingMeasurements, missedPathStringList);
   }
 
   public void put(ClusterSchemaTree schemaTree) {

@@ -59,7 +59,7 @@ public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
 
   @Override
   public LogicalViewSchema getSchemaAsLogicalViewSchema() {
-    if(this.isLogicalView()){
+    if (this.isLogicalView()) {
       return (LogicalViewSchema) this.schema;
     }
     return null;

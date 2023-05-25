@@ -236,4 +236,11 @@ public abstract class InsertBaseStatement extends Statement {
     }
   }
   // endregion
+
+  public abstract InsertBaseStatement split();
+
+  public void setFailedMeasurementIndex2Info(
+      Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info) {
+    this.failedMeasurementIndex2Info = failedMeasurementIndex2Info;
+  }
 }

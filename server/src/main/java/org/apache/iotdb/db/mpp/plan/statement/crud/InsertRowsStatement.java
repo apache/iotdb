@@ -136,4 +136,16 @@ public class InsertRowsStatement extends InsertBaseStatement {
   public Object getFirstValueOfIndex(int index) {
     throw new NotImplementedException();
   }
+
+  @Override
+  public InsertBaseStatement split() {
+    List<InsertRowStatement> mergedList = new ArrayList<>();
+    for (InsertRowStatement child : this.insertRowStatementList) {
+      List<InsertRowStatement> childSplitResult = child.getSplitList();
+      mergedList.addAll(childSplitResult);
+    }
+    InsertRowsStatement splitResult = new InsertRowsStatement();
+    splitResult.setInsertRowStatementList(mergedList);
+    return splitResult;
+  }
 }

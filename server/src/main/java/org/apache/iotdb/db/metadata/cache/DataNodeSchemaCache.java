@@ -132,7 +132,8 @@ public class DataNodeSchemaCache {
     return result;
   }
 
-  public List<Integer> computeLogicalViewWithoutTemplate(ISchemaComputation schemaComputation) {
+  public Pair<List<Integer>, List<String>> computeLogicalViewWithoutTemplate(
+      ISchemaComputation schemaComputation) {
     return timeSeriesSchemaCache.computeSourceOfLogicalViewInCache(schemaComputation);
   }
 

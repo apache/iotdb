@@ -44,8 +44,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class InsertTabletStatement extends InsertBaseStatement implements ISchemaValidation {
 
@@ -192,6 +194,104 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     columns[index] = null;
   }
 
+  protected Map<PartialPath, List<Pair<String, Integer>>> getMapFromDeviceToMeasurementAndIndex() {
+    boolean[] isLogicalView = new boolean[this.measurements.length];
+    for (int i = 0; i < this.measurements.length; i++) {
+      isLogicalView[i] = false;
+    }
+    for (int realIndex : this.indexListOfLogicalViewPaths) {
+      isLogicalView[realIndex] = true;
+    }
+    // construct map from device to measurements and record the index of its measurement schema
+    Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
+        new HashMap<>();
+    for (int i = 0; i < this.measurements.length; i++) {
+      PartialPath devicePath;
+      String measurementName;
+      if (isLogicalView[i]) {
+        devicePath = this.logicalViewSchemaList.get(i).getSourcePathIfWritable().getDevicePath();
+        measurementName =
+            this.logicalViewSchemaList.get(i).getSourcePathIfWritable().getMeasurement();
+      } else {
+        devicePath = this.devicePath;
+        measurementName = this.measurements[i];
+      }
+      int index = i;
+      final String finalMeasurementName = measurementName;
+      mapFromDeviceToMeasurementAndIndex.compute(
+          devicePath,
+          (k, v) -> {
+            if (v == null) {
+              List<Pair<String, Integer>> valueList = new ArrayList<>();
+              valueList.add(new Pair<>(finalMeasurementName, index));
+              return valueList;
+            } else {
+              v.add(new Pair<>(finalMeasurementName, index));
+              return v;
+            }
+          });
+    }
+    return mapFromDeviceToMeasurementAndIndex;
+  }
+
+  public boolean isNeedSplit() {
+    return !this.indexListOfLogicalViewPaths.isEmpty();
+  }
+
+  public List<InsertTabletStatement> getSplitList() {
+    if (!isNeedSplit()) {
+      return Collections.singletonList(this);
+    }
+    Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
+        this.getMapFromDeviceToMeasurementAndIndex();
+    // Reconstruct statements
+    List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+    for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry :
+        mapFromDeviceToMeasurementAndIndex.entrySet()) {
+      List<Pair<String, Integer>> pairList = entry.getValue();
+      InsertTabletStatement statement = new InsertTabletStatement();
+      statement.setTimes(this.times);
+      statement.setAligned(this.isAligned);
+      statement.setDevicePath(entry.getKey());
+      statement.setRowCount(this.rowCount);
+      Object[] columns = new Object[pairList.size()];
+      String[] measurements = new String[pairList.size()];
+      BitMap[] bitMaps = new BitMap[pairList.size()];
+      MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];
+      TSDataType[] dataTypes = new TSDataType[pairList.size()];
+      for (int i = 0; i < pairList.size(); i++) {
+        int realIndex = pairList.get(i).right;
+        columns[i] = this.columns[realIndex];
+        measurements[i] = pairList.get(i).left;
+        measurementSchemas[i] = this.measurementSchemas[realIndex];
+        dataTypes[i] = this.dataTypes[realIndex];
+        bitMaps[i] = this.bitMaps[realIndex];
+      }
+      statement.setColumns(columns);
+      statement.setMeasurements(measurements);
+      statement.setMeasurementSchemas(measurementSchemas);
+      statement.setDataTypes(dataTypes);
+      statement.setBitMaps(bitMaps);
+      statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
+      insertTabletStatementList.add(statement);
+    }
+    return insertTabletStatementList;
+  }
+
+  @Override
+  public InsertBaseStatement split() {
+    if (this.indexListOfLogicalViewPaths.isEmpty()) {
+      return this;
+    }
+    List<InsertTabletStatement> insertTabletStatementList = this.getSplitList();
+    if (insertTabletStatementList.size() == 1) {
+      return insertTabletStatementList.get(0);
+    }
+    InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
+    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+    return insertMultiTabletsStatement;
+  }
+
   @Override
   public long getMinTime() {
     return times[0];
@@ -264,16 +364,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
     }
-    if(logicalViewSchemaList == null || indexListOfLogicalViewPaths == null){
+    if (logicalViewSchemaList == null || indexListOfLogicalViewPaths == null) {
       logicalViewSchemaList = new ArrayList<>();
       indexListOfLogicalViewPaths = new ArrayList<>();
     }
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
-      if(measurementSchemaInfo.isLogicalView()){
+      if (measurementSchemaInfo.isLogicalView()) {
         logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
-      }else{
+        indexListOfLogicalViewPaths.add(index);
+      } else {
         measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
       }
     }
@@ -303,6 +404,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public Pair<Integer, Integer> getSizeOfLogicalViewSchemaListRecorded() {
-    return new Pair<>(this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
+    return new Pair<>(
+        this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
   }
 }

@@ -226,26 +226,27 @@ public class LogicalViewSchema
     this.expression = expression;
   }
 
-  public boolean isWritable(){
+  public boolean isWritable() {
     return this.expression instanceof TimeSeriesViewOperand;
   }
 
-  public String getSourcePathStringIfWritable(){
-    if(this.isWritable()){
-      return ((TimeSeriesViewOperand)this.expression).getPathString();
+  public String getSourcePathStringIfWritable() {
+    if (this.isWritable()) {
+      return ((TimeSeriesViewOperand) this.expression).getPathString();
     }
     return null;
   }
 
-  public PartialPath getSourcePathIfWritable(){
-    if(this.isWritable()){
+  public PartialPath getSourcePathIfWritable() {
+    if (this.isWritable()) {
       try {
-        return new PartialPath(((TimeSeriesViewOperand)this.expression).getPathString());
+        return new PartialPath(((TimeSeriesViewOperand) this.expression).getPathString());
       } catch (IllegalPathException e) {
         throw new RuntimeException(
-          new UnexpectedException(
-            String.format("Logical view with measurementID [%s] is broken. It stores illegal path [%s].",
-              this.measurementId, this.getSourcePathStringIfWritable())));
+            new UnexpectedException(
+                String.format(
+                    "Logical view with measurementID [%s] is broken. It stores illegal path [%s].",
+                    this.measurementId, this.getSourcePathStringIfWritable())));
       }
     }
     return null;

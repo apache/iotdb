@@ -125,4 +125,16 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   public Object getFirstValueOfIndex(int index) {
     throw new NotImplementedException();
   }
+
+  @Override
+  public InsertBaseStatement split() {
+    List<InsertTabletStatement> mergedList = new ArrayList<>();
+    for (InsertTabletStatement child : this.insertTabletStatementList) {
+      List<InsertTabletStatement> childSplitResult = child.getSplitList();
+      mergedList.addAll(childSplitResult);
+    }
+    InsertMultiTabletsStatement splitResult = new InsertMultiTabletsStatement();
+    splitResult.setInsertTabletStatementList(mergedList);
+    return splitResult;
+  }
 }

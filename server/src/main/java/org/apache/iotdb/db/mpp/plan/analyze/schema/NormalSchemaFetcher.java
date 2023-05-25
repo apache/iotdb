@@ -24,9 +24,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 class NormalSchemaFetcher {
@@ -53,37 +56,63 @@ class NormalSchemaFetcher {
     List<Integer> indexOfMissingMeasurements =
         schemaCache.computeWithoutTemplate(schemaComputationWithAutoCreation);
     // [Step 2] Cache 2.
-    List<Integer> indexOfMissingSourcesOfLogicalView =
-      schemaCache.computeLogicalViewWithoutTemplate(schemaComputationWithAutoCreation);
+    Pair<List<Integer>, List<String>> missedIndexAndPathString =
+        schemaCache.computeLogicalViewWithoutTemplate(schemaComputationWithAutoCreation);
+    List<Integer> indexOfMissingLogicalView = missedIndexAndPathString.left;
+    List<String> missedPathStringOfLogicalView = missedIndexAndPathString.right;
     // all schema can be taken from cache
-    if (indexOfMissingMeasurements.isEmpty() && indexOfMissingSourcesOfLogicalView.isEmpty()) {
+    if (indexOfMissingMeasurements.isEmpty() && indexOfMissingLogicalView.isEmpty()) {
       return indexOfMissingMeasurements;
     }
     // [Step 3] Fetch 1.
-    // TODO: merge fullPath list of missing paths.
-
-    // try fetch the missing schema from remote and cache fetched schema
-    // TODO: add and use a new fetch func
-    ClusterSchemaTree remoteSchemaTree =
-        clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
-            schemaComputationWithAutoCreation.getDevicePath(),
-            schemaComputationWithAutoCreation.getMeasurements(),
-          indexOfMissingMeasurements);
-
-
-    // [Step 4] Fetch 2.
-
-
-    // [Step 5] Auto Create
+    ClusterSchemaTree remoteSchemaTree = null;
+    if (missedPathStringOfLogicalView.isEmpty()) {
+      // try fetch the missing raw schema from remote and cache fetched schema
+      remoteSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
+              schemaComputationWithAutoCreation.getDevicePath(),
+              schemaComputationWithAutoCreation.getMeasurements(),
+              indexOfMissingMeasurements);
+    } else {
+      remoteSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
+              schemaComputationWithAutoCreation.getDevicePath(),
+              schemaComputationWithAutoCreation.getMeasurements(),
+              indexOfMissingMeasurements);
+      ClusterSchemaTree viewSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(missedPathStringOfLogicalView);
+      remoteSchemaTree.mergeSchemaTree(viewSchemaTree);
+      Set<String> databaseSet = new HashSet<>();
+      databaseSet.addAll(remoteSchemaTree.getDatabases());
+      databaseSet.addAll(viewSchemaTree.getDatabases());
+      remoteSchemaTree.setDatabases(databaseSet);
+    }
+    // make sure all missed views are computed.
+    remoteSchemaTree.computeLogicalView(
+        schemaComputationWithAutoCreation, indexOfMissingLogicalView);
     // check and compute the fetched schema
     indexOfMissingMeasurements =
         remoteSchemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
+    schemaComputationWithAutoCreation.recordSizeOfLogicalViewSchemaListNow();
+
+    // [Step 4] Fetch 2. Find all missed logical view
+    missedIndexAndPathString =
+        schemaCache.computeLogicalViewWithoutTemplate(schemaComputationWithAutoCreation);
+    indexOfMissingLogicalView = missedIndexAndPathString.left;
+    missedPathStringOfLogicalView = missedIndexAndPathString.right;
+    if (!missedPathStringOfLogicalView.isEmpty()) {
+      ClusterSchemaTree viewSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(missedPathStringOfLogicalView);
+      viewSchemaTree.computeLogicalView(
+          schemaComputationWithAutoCreation, indexOfMissingLogicalView);
+    }
 
     // all schema has been taken and processed
     if (indexOfMissingMeasurements.isEmpty()) {
       return indexOfMissingMeasurements;
     }
 
+    // [Step 5] Auto Create
     // auto create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
