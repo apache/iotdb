@@ -1584,7 +1584,12 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
-    return null;
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.deleteLogicalView(req);
+    } else {
+      return status;
+    }
   }
 
   @Override
