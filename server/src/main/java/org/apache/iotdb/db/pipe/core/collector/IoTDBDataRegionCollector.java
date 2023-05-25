@@ -71,17 +71,19 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     validator.validateRequiredAttribute(PipeCollectorConstant.DATA_REGION_KEY);
 
     // validate collector.history.enable and collector.realtime.enable
-    validator.validateAttributeValueRange(
-        COLLECTOR_HISTORY_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString());
-    validator.validateAttributeValueRange(
-        COLLECTOR_REALTIME_ENABLE, true, Boolean.TRUE.toString(), Boolean.FALSE.toString());
-    validator.validate(
-        args -> args[0] == null || args[1] == null || ((boolean) args[0]) || ((boolean) args[1]),
-        String.format(
-            "Should not set both %s and %s to false.",
-            COLLECTOR_HISTORY_ENABLE_KEY, COLLECTOR_REALTIME_ENABLE),
-        validator.getParameters().getBoolean(COLLECTOR_HISTORY_ENABLE_KEY),
-        validator.getParameters().getBoolean(COLLECTOR_REALTIME_ENABLE));
+    validator
+        .validateAttributeValueRange(
+            COLLECTOR_HISTORY_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
+        .validateAttributeValueRange(
+            COLLECTOR_REALTIME_ENABLE, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
+        .validate(
+            args ->
+                args[0] == null || args[1] == null || ((boolean) args[0]) || ((boolean) args[1]),
+            String.format(
+                "Should not set both %s and %s to false.",
+                COLLECTOR_HISTORY_ENABLE_KEY, COLLECTOR_REALTIME_ENABLE),
+            validator.getParameters().getBoolean(COLLECTOR_HISTORY_ENABLE_KEY),
+            validator.getParameters().getBoolean(COLLECTOR_REALTIME_ENABLE));
 
     // validate collector.realtime.mode
     validator.validateAttributeValueRange(
