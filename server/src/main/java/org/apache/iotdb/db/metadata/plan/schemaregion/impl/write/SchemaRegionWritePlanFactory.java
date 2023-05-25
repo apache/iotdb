@@ -71,6 +71,8 @@ public class SchemaRegionWritePlanFactory {
         return new RollbackPreDeactivateTemplatePlanImpl();
       case DEACTIVATE_TEMPLATE:
         return new DeactivateTemplatePlanImpl();
+      case CREATE_LOGICAL_VIEW:
+        return new CreateLogicalViewPlanImpl();
       default:
         throw new UnsupportedOperationException(
             String.format(

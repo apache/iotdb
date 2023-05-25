@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -48,7 +48,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -57,7 +58,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -170,7 +171,10 @@ public class TsFileProcessor {
   /** flush file listener. */
   private final List<FlushListener> flushListeners = new ArrayList<>();
 
-  private final QueryMetricsManager queryMetricsManager = QueryMetricsManager.getInstance();
+  private final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+      QueryExecutionMetricSet.getInstance();
+  private final QueryResourceMetricSet QUERY_RESOURCE_METRICS =
+      QueryResourceMetricSet.getInstance();
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -1274,7 +1278,7 @@ public class TsFileProcessor {
           totalMemTableSize,
           writer.getPos());
       String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
-      WritingMetricsManager.getInstance()
+      WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
       CompressionRatio.getInstance().updateRatio(compressionRatio);
     } catch (IOException e) {
@@ -1442,8 +1446,9 @@ public class TsFileProcessor {
             tsFileResource.getTsFile().getName(),
             e);
       } finally {
-        queryMetricsManager.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
-        queryMetricsManager.recordQueryResourceNum(WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
+        QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
+        QUERY_RESOURCE_METRICS.recordQueryResourceNum(
+            WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
 
         flushQueryLock.readLock().unlock();
         if (logger.isDebugEnabled()) {
@@ -1460,7 +1465,7 @@ public class TsFileProcessor {
                 pathToReadOnlyMemChunkMap, pathToChunkMetadataListMap, tsFileResource));
       }
     } finally {
-      queryMetricsManager.recordExecutionCost(
+      QUERY_EXECUTION_METRICS.recordExecutionCost(
           GET_QUERY_RESOURCE_FROM_MEM, System.nanoTime() - startTime);
     }
   }

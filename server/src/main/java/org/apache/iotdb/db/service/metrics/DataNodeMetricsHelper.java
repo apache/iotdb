@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet;
@@ -52,12 +52,11 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new FileMetrics());
-    MetricService.getInstance().addMetricSet(new CompactionMetrics());
+    MetricService.getInstance().addMetricSet(CompactionMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
-    MetricService.getInstance().addMetricSet(new WritingMetrics());
     List<String> threadModules = new ArrayList<>();
     Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
     List<String> pools = new ArrayList<>();
@@ -76,15 +75,16 @@ public class DataNodeMetricsHelper {
                   }
                   return pool == null ? "UNKNOWN" : pool.name();
                 }));
+    MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
 
     // bind query related metrics
-    MetricService.getInstance().addMetricSet(new QueryPlanCostMetricSet());
-    MetricService.getInstance().addMetricSet(new SeriesScanCostMetricSet());
-    MetricService.getInstance().addMetricSet(new QueryExecutionMetricSet());
-    MetricService.getInstance().addMetricSet(new QueryResourceMetricSet());
-    MetricService.getInstance().addMetricSet(new DataExchangeCostMetricSet());
-    MetricService.getInstance().addMetricSet(new DataExchangeCountMetricSet());
-    MetricService.getInstance().addMetricSet(new DriverSchedulerMetricSet());
+    MetricService.getInstance().addMetricSet(QueryPlanCostMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(SeriesScanCostMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(QueryExecutionMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(QueryResourceMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(DataExchangeCostMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(DataExchangeCountMetricSet.getInstance());
+    MetricService.getInstance().addMetricSet(DriverSchedulerMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(new QueryRelatedResourceMetricSet());
 
     // bind performance overview related metrics

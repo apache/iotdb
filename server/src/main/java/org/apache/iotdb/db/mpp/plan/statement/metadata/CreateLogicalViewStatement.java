@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -117,13 +116,13 @@ public class CreateLogicalViewStatement extends Statement {
   /**
    * Check errors in targetPaths.
    *
-   * @return Pair<Boolean, Exception>. True: checks passed, exception is null; False: checks failed,
-   *     returns exception.
+   * @return Pair<Boolean, String>. True: checks passed; False: checks failed. if check failed,
+   *     return the string of illegal path.
    */
-  public Pair<Boolean, Exception> checkTargetPaths() {
+  public Pair<Boolean, String> checkTargetPaths() {
     for (PartialPath thisPath : this.getTargetPathList()) {
       if (thisPath.getNodeLength() < 3) {
-        return new Pair<>(false, new IllegalPathException(thisPath.getFullPath()));
+        return new Pair<>(false, thisPath.getFullPath());
       }
     }
     return new Pair<>(true, null);
@@ -133,24 +132,27 @@ public class CreateLogicalViewStatement extends Statement {
    * Check errors in sourcePaths. Only usable when not using query statement. If this statement is
    * generated with a query statement, check always pass; if not, check each full paths.
    *
-   * @return Pair<Boolean, Exception>. True: checks passed, exception is null; False: checks failed,
-   *     returns exception.
+   * @return Pair<Boolean, String>. True: checks passed; False: checks failed. if check failed,
+   *     return the string of illegal path.
    */
-  public Pair<Boolean, Exception> checkSourcePathsIfNotUsingQueryStatement() {
+  public Pair<Boolean, String> checkSourcePathsIfNotUsingQueryStatement() {
     if (this.sourcePaths.viewPathType == ViewPathType.PATHS_GROUP
         || this.sourcePaths.viewPathType == ViewPathType.FULL_PATH_LIST) {
       for (PartialPath thisPath : this.sourcePaths.fullPathList) {
         if (thisPath.getNodeLength() < 3) {
-          return new Pair<>(false, new IllegalPathException(thisPath.getFullPath()));
+          return new Pair<>(false, thisPath.getFullPath());
         }
       }
     }
     return new Pair<>(true, null);
   }
 
-  public Pair<Boolean, Exception> checkAll() {
-    Pair<Boolean, Exception> result = null;
-    result = this.checkTargetPaths();
+  /**
+   * @return return true if checks passed; else return false. if check failed, return the string of
+   *     illegal path.
+   */
+  public Pair<Boolean, String> checkAllPaths() {
+    Pair<Boolean, String> result = this.checkTargetPaths();
     if (result.left == false) return result;
     result = this.checkSourcePathsIfNotUsingQueryStatement();
     if (result.left == false) return result;
