@@ -53,24 +53,25 @@ public class DataMigrationExample {
       throws IoTDBConnectionException, StatementExecutionException, ExecutionException,
           InterruptedException {
 
-
     long start = System.currentTimeMillis();
     String path = "root.**";
-    args = new String[]{"127.0.0.1","6667","root","127.0.0.1","6668","root","1"};
+    args = new String[] {"127.0.0.1", "6667", "root", "127.0.0.1", "6668", "root", "1"};
     ExecutorService executorService = null;
     if (args == null || args.length != 7) {
       System.out.println(
-              "Correct input parameters are required. For example, java -jar xxx.jar sourceIP sourcePort sourcePassword destIP destPort destPassword concurrency(ThreadNumber = 2*concurrency+1)");
+          "Correct input parameters are required. For example, java -jar xxx.jar sourceIP sourcePort sourcePassword destIP destPort destPassword concurrency(ThreadNumber = 2*concurrency+1)");
       System.exit(1);
     }
-    try{
+    try {
       int concurrency = Integer.parseInt(args[6]);
       executorService = Executors.newFixedThreadPool(2 * concurrency + 1);
-      readerPool = new SessionPool(args[0], Integer.parseInt(args[1]), "root", args[2], 2 * concurrency + 1);
-      writerPool = new SessionPool(args[3], Integer.parseInt(args[4]), "root", args[5], 2 * concurrency + 1);
-    }catch (Exception e){
+      readerPool =
+          new SessionPool(args[0], Integer.parseInt(args[1]), "root", args[2], 2 * concurrency + 1);
+      writerPool =
+          new SessionPool(args[3], Integer.parseInt(args[4]), "root", args[5], 2 * concurrency + 1);
+    } catch (Exception e) {
       System.out.println(
-              "Correct input parameters are required. For example, java -jar xxx.jar sourceIP sourcePort sourcePassword destIP destPort destPassword concurrency(ThreadNumber = 2*concurrency+1)");
+          "Correct input parameters are required. For example, java -jar xxx.jar sourceIP sourcePort sourcePassword destIP destPort destPassword concurrency(ThreadNumber = 2*concurrency+1)");
       System.exit(1);
     }
 
@@ -101,7 +102,7 @@ public class DataMigrationExample {
     for (Future future : futureList) {
       future.get();
     }
-    System.out.println("Total cost: "+(System.currentTimeMillis()-start)+"ms");
+    System.out.println("Total cost: " + (System.currentTimeMillis() - start) + "ms");
     executorService.shutdown();
 
     readerPool.close();
@@ -131,16 +132,16 @@ public class DataMigrationExample {
         List<MeasurementSchema> schemaList = new ArrayList<>();
         List<Integer> measureMentValueList = new ArrayList<>();
         for (int j = 1; j < columnNameList.size(); j++) {
-          String measurement = columnNameList.get(j).substring(columnNameList.get(j).lastIndexOf(".")+1);
-          if(measurement.contains("`")){
+          String measurement =
+              columnNameList.get(j).substring(columnNameList.get(j).lastIndexOf(".") + 1);
+          if (measurement.contains("`")) {
             continue;
           }
           schemaList.add(
-              new MeasurementSchema(
-                      measurement, TSDataType.valueOf(columnTypeList.get(j))));
-          measureMentValueList.add(j+1);
+              new MeasurementSchema(measurement, TSDataType.valueOf(columnTypeList.get(j))));
+          measureMentValueList.add(j + 1);
         }
-        if(schemaList.isEmpty()){
+        if (schemaList.isEmpty()) {
           return null;
         }
         tablet = new Tablet(device, schemaList, 300000);
@@ -148,28 +149,46 @@ public class DataMigrationExample {
           int row = tablet.rowSize++;
           tablet.timestamps[row] = dataIter.getLong(1);
           for (int j = 0; j < schemaList.size(); ++j) {
-            if(dataIter.isNull(measureMentValueList.get(j))){
+            if (dataIter.isNull(measureMentValueList.get(j))) {
               tablet.addValue(schemaList.get(j).getMeasurementId(), row, null);
               continue;
             }
             switch (schemaList.get(j).getType()) {
               case BOOLEAN:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getBoolean(measureMentValueList.get(j)));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(),
+                    row,
+                    dataIter.getBoolean(measureMentValueList.get(j)));
                 break;
               case INT32:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getInt(measureMentValueList.get(j)));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(),
+                    row,
+                    dataIter.getInt(measureMentValueList.get(j)));
                 break;
               case INT64:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getLong(measureMentValueList.get(j)));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(),
+                    row,
+                    dataIter.getLong(measureMentValueList.get(j)));
                 break;
               case FLOAT:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getFloat(measureMentValueList.get(j)));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(),
+                    row,
+                    dataIter.getFloat(measureMentValueList.get(j)));
                 break;
               case DOUBLE:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getDouble(measureMentValueList.get(j)));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(),
+                    row,
+                    dataIter.getDouble(measureMentValueList.get(j)));
                 break;
               case TEXT:
-                tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getString(measureMentValueList.get(j)));
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(),
+                    row,
+                    dataIter.getString(measureMentValueList.get(j)));
                 break;
               default:
                 System.out.println("Migration of this type of data is not supported");
@@ -177,7 +196,7 @@ public class DataMigrationExample {
           }
           if (tablet.rowSize == tablet.getMaxRowNumber()) {
             writerPool.insertTablet(tablet, true);
-            System.out.println("device: " + device + " migrates " + 300000  + " data");
+            System.out.println("device: " + device + " migrates " + 300000 + " data");
             tablet.reset();
           }
         }
@@ -197,7 +216,7 @@ public class DataMigrationExample {
         }
         long endTime = System.nanoTime();
         long totalTime = endTime - startTime;
-        System.out.println("device ：" +device+" 运行耗时 "+ totalTime + " ms");
+        System.out.println("device ：" + device + " 运行耗时 " + totalTime + " ms");
       }
 
       System.out.println("Loading the " + i + "-th device: " + device + " success");
