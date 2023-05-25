@@ -64,4 +64,4 @@ jobs:
       - name: IT Test
         shell: bash
         run: |
-          cd influxdb-protocol && mvn -B clean compile post-integration-test -Dtest.port.closed=true -Dinfluxdb.test.skip=false
+          cd iotdb-connector/influxdb-protocol && mvn -B clean compile post-integration-test -Dtest.port.closed=true -Dinfluxdb.test.skip=false
