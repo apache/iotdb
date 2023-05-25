@@ -55,11 +55,11 @@ jobs:
 
       - name: Install dependencies and Build and test frontend
         run: |
-          cd ./grafana-plugin
+          cd iotdb-connector/grafana-plugin/
           yarn install --frozen-lockfile
           yarn build
 
       - name: Install dependencies and Build backend
         run: |
-          cd ./grafana-plugin
+          cd iotdb-connector/grafana-plugin/
           ./backend-compile.sh
