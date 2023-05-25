@@ -50,5 +50,15 @@ public interface EnrichedEvent {
    */
   int getReferenceCount();
 
+  /** set the pattern of this event. */
+  void setPattern(String pattern);
+
+  /**
+   * Get the pattern of this event.
+   *
+   * @return the pattern
+   */
+  String getPattern();
+
   // TODO: ConsensusIndex getConsensusIndex();
 }

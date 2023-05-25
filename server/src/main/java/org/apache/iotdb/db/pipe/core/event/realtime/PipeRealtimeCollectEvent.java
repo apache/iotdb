@@ -72,6 +72,21 @@ public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
   }
 
   @Override
+  public void setPattern(String pathPattern) {
+    if (event instanceof EnrichedEvent) {
+      ((EnrichedEvent) event).setPattern(pathPattern);
+    }
+  }
+
+  @Override
+  public String getPattern() {
+    if (event instanceof EnrichedEvent) {
+      return ((EnrichedEvent) event).getPattern();
+    }
+    return null;
+  }
+
+  @Override
   public String toString() {
     return "PipeRealtimeCollectEvent{" + "event=" + event + ", tsFileEpoch=" + tsFileEpoch + '}';
   }

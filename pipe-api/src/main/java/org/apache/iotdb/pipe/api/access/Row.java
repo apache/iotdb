@@ -159,4 +159,11 @@ public interface Row {
    * @return the column data types in the Row
    */
   List<Type> getColumnTypes();
+
+  /**
+   * Set the row records in the Row
+   *
+   * @return the Row
+   */
+  Row setRowRecord(Object[] rowRecord);
 }

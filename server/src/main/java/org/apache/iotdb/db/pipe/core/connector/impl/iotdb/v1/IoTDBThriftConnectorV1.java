@@ -32,7 +32,7 @@ import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransfe
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
@@ -114,13 +114,13 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // TODO: support more TabletInsertionEvent
     // PipeProcessor can change the type of TabletInsertionEvent
-    if (!(tabletInsertionEvent instanceof PipeTabletInsertionEvent)) {
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeInsertionEvent)) {
       throw new NotImplementedException(
           "IoTDBThriftConnectorV1 only support PipeTabletInsertionEvent.");
     }
 
     try {
-      doTransfer((PipeTabletInsertionEvent) tabletInsertionEvent);
+      doTransfer((PipeInsertNodeInsertionEvent) tabletInsertionEvent);
     } catch (TException e) {
       LOGGER.error(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
@@ -129,17 +129,18 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
+  private void doTransfer(PipeInsertNodeInsertionEvent pipeInsertNodeInsertionEvent)
       throws PipeException, TException {
     final TPipeTransferResp resp =
         client.pipeTransfer(
-            PipeTransferInsertNodeReq.toTPipeTransferReq(pipeTabletInsertionEvent.getInsertNode()));
+            PipeTransferInsertNodeReq.toTPipeTransferReq(
+                pipeInsertNodeInsertionEvent.getInsertNode()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
               "Transfer tablet insertion event %s error, result status %s",
-              pipeTabletInsertionEvent, resp.status));
+              pipeInsertNodeInsertionEvent, resp.status));
     }
   }
 

@@ -38,6 +38,7 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
 
   private File tsFile;
   private final AtomicBoolean isClosed;
+  private String pattern;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
     tsFile = resource.getTsFile();
@@ -116,6 +117,16 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   @Override
   public int getReferenceCount() {
     return PipeResourceManager.file().getFileReferenceCount(tsFile);
+  }
+
+  @Override
+  public void setPattern(String pathPattern) {
+    this.pattern = pathPattern;
+  }
+
+  @Override
+  public String getPattern() {
+    return pattern;
   }
 
   @Override

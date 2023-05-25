@@ -30,19 +30,19 @@ import java.util.List;
 
 public class PipeRowIterator implements RowIterator {
 
-  private final List<PipeRow> rowRecordList;
+  private final List<Row> rowList;
   private final int beginIndex;
   private final int size;
-  private PipeRow row;
+  private Row row;
 
   private int rowIndex;
 
-  public PipeRowIterator(List<PipeRow> rowRecordList, int beginIndex, int endIndex) {
-    this.rowRecordList = rowRecordList;
+  public PipeRowIterator(List<Row> rowList, int beginIndex, int endIndex) {
+    this.rowList = rowList;
     this.beginIndex = beginIndex;
     this.size = endIndex - beginIndex;
 
-    row = rowRecordList.get(beginIndex);
+    row = rowList.get(beginIndex);
     rowIndex = -1;
   }
 
@@ -53,7 +53,7 @@ public class PipeRowIterator implements RowIterator {
 
   @Override
   public Row next() throws IOException {
-    row = rowRecordList.get(++rowIndex + beginIndex);
+    row = rowList.get(++rowIndex + beginIndex);
     return row;
   }
 

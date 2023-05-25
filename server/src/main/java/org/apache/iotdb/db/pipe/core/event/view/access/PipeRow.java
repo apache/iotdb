@@ -125,6 +125,7 @@ public class PipeRow implements Row {
     return PipeDataTypeTransformer.transformToPipeDataTypeList(columnTypeList);
   }
 
+  @Override
   public Row setRowRecord(Object[] rowRecord) {
     this.rowRecord = rowRecord;
     return this;

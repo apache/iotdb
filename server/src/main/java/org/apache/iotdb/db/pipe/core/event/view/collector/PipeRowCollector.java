@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class PipeRowCollector implements RowCollector {
@@ -61,7 +62,8 @@ public class PipeRowCollector implements RowCollector {
   }
 
   public TabletInsertionEvent toTabletInsertionEvent() {
-    PipeTabletInsertionEvent tablet = new PipeTabletInsertionEvent(this.tablet);
+    PipeTabletInsertionEvent tablet =
+        new PipeTabletInsertionEvent(Collections.singletonList(this.tablet));
     this.tablet = null;
     return tablet;
   }
