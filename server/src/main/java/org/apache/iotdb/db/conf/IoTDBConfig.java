@@ -1605,7 +1605,7 @@ public class IoTDBConfig {
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
-    this.degreeOfParallelism = degreeOfParallelism;
+    this.degreeOfParallelism = Math.max(1, degreeOfParallelism);
   }
 
   public int getDegreeOfParallelism() {
