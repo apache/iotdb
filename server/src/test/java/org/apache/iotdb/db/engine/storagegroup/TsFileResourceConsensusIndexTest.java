@@ -148,6 +148,16 @@ public class TsFileResourceConsensusIndexTest {
     }
 
     @Override
+    public boolean equals(ConsensusIndex consensusIndex) {
+      if (!(consensusIndex instanceof MockConsensusIndex)) {
+        return false;
+      }
+
+      MockConsensusIndex that = (MockConsensusIndex) consensusIndex;
+      return this.type == that.type && this.val == that.val;
+    }
+
+    @Override
     public ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex) {
       if (!(consensusIndex instanceof MockConsensusIndex)) {
         throw new IllegalStateException("Mock update error.");

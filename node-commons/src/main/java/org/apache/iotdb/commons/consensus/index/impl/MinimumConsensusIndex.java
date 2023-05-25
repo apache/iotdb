@@ -46,6 +46,11 @@ public class MinimumConsensusIndex implements ConsensusIndex {
   }
 
   @Override
+  public boolean equals(ConsensusIndex consensusIndex) {
+    return consensusIndex instanceof MinimumConsensusIndex;
+  }
+
+  @Override
   public ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex) {
     return consensusIndex == null ? this : consensusIndex;
   }

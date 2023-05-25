@@ -25,11 +25,45 @@ import java.nio.ByteBuffer;
 
 public interface ConsensusIndex {
 
+  /** serialize this consensus index to the given byte buffer */
   void serialize(ByteBuffer byteBuffer);
 
+  /** serialize this consensus index to the given output stream */
   void serialize(OutputStream stream) throws IOException;
 
+  /**
+   * A.isAfter(B) is true if and only if A is strictly greater than B
+   *
+   * @param consensusIndex the consensus index to be compared
+   * @return true if and only if this consensus index is strictly greater than the given consensus
+   *     index
+   */
   boolean isAfter(ConsensusIndex consensusIndex);
 
+  /**
+   * A.equals(B) is true if and only if A is equal to B
+   *
+   * @param consensusIndex the consensus index to be compared
+   * @return true if and only if this consensus index is equal to the given consensus index
+   */
+  boolean equals(ConsensusIndex consensusIndex);
+
+  /**
+   * C = A.updateToMaximum(B) where C should satisfy:
+   *
+   * <p>(C.equals(A) || C.isAfter(A)) is true
+   *
+   * <p>(C.equals(B) || C.isAfter(B)) is true
+   *
+   * <p>There is no D, such that D satisfies the above conditions and C.isAfter(D) is true
+   *
+   * <p>The implementation of this function should be reflexive, that is
+   * A.updateToMaximum(B).equals(B.updateToMaximum(A)) is true
+   *
+   * <p>Note: this function may modify the caller.
+   *
+   * @param consensusIndex the consensus index to be compared
+   * @return the maximum of the two consensus indexes
+   */
   ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex);
 }

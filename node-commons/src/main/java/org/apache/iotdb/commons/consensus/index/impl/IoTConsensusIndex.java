@@ -63,6 +63,20 @@ public class IoTConsensusIndex implements ConsensusIndex {
   }
 
   @Override
+  public boolean equals(ConsensusIndex consensusIndex) {
+    if (!(consensusIndex instanceof IoTConsensusIndex)) {
+      return false;
+    }
+
+    return ((IoTConsensusIndex) consensusIndex)
+        .peerId2SearchIndex.entrySet().stream()
+            .allMatch(
+                entry ->
+                    this.peerId2SearchIndex.containsKey(entry.getKey())
+                        && this.peerId2SearchIndex.get(entry.getKey()).equals(entry.getValue()));
+  }
+
+  @Override
   public ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex) {
     if (!(consensusIndex instanceof IoTConsensusIndex)) {
       return this;
