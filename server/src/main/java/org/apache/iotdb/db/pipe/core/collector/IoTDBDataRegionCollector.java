@@ -76,7 +76,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     validator.validateAttributeValueRange(
         COLLECTOR_REALTIME_ENABLE, true, Boolean.TRUE.toString(), Boolean.FALSE.toString());
     validator.validate(
-        args -> ((boolean) args[0]) || ((boolean) args[1]),
+        args -> args[0] == null || args[1] == null || ((boolean) args[0]) || ((boolean) args[1]),
         String.format(
             "Should not set both %s and %s to false.",
             COLLECTOR_HISTORY_ENABLE_KEY, COLLECTOR_REALTIME_ENABLE),
@@ -114,6 +114,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
     if (!parameters.hasAttribute(COLLECTOR_REALTIME_MODE)) {
       realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
+      return;
     }
 
     switch (parameters.getString(COLLECTOR_REALTIME_MODE)) {
