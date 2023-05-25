@@ -71,6 +71,16 @@ public class DeleteLogicalViewProcedure
 
   private transient String requestMessage;
 
+  public DeleteLogicalViewProcedure() {
+    super();
+  }
+
+  public DeleteLogicalViewProcedure(String queryId, PathPatternTree patternTree) {
+    super();
+    this.queryId = queryId;
+    setPatternTree(patternTree);
+  }
+
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, DeleteLogicalViewState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {

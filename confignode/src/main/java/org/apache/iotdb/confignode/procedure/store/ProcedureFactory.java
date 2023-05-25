@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
@@ -91,6 +92,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case DELETE_TIMESERIES_PROCEDURE:
         procedure = new DeleteTimeSeriesProcedure();
+        break;
+      case DELETE_LOGICAL_VIEW_PROCEDURE:
+        procedure = new DeleteLogicalViewProcedure();
         break;
       case CREATE_TRIGGER_PROCEDURE:
         procedure = new CreateTriggerProcedure();
@@ -222,6 +226,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.PIPE_META_SYNC_PROCEDURE;
     } else if (procedure instanceof PipeHandleMetaChangeProcedure) {
       return ProcedureType.PIPE_HANDLE_META_CHANGE_PROCEDURE;
+    } else if (procedure instanceof DeleteLogicalViewProcedure) {
+      return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     }
     return null;
   }

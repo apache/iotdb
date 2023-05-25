@@ -255,7 +255,7 @@ public class ProcedureManager {
               "Some other task is deleting some target views.");
         }
         procedureId =
-            this.executor.submitProcedure(new DeleteTimeSeriesProcedure(queryId, patternTree));
+            this.executor.submitProcedure(new DeleteLogicalViewProcedure(queryId, patternTree));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
