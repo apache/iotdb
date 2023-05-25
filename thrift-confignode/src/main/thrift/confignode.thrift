@@ -339,6 +339,7 @@ struct TClusterParameters {
   12: required i32 seriesPartitionSlotNum
   13: required string seriesPartitionExecutorClass
   14: required double diskSpaceWarningThreshold
+  15: required string timestampPrecision
 }
 
 struct TConfigNodeRegisterReq {
