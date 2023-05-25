@@ -39,8 +39,6 @@ import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -69,10 +67,6 @@ public class DataNodeMetricsHelper {
                 x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
                 x -> {
                   ThreadName pool = ThreadName.getThreadPoolTheThreadBelongs(x);
-                  if (pool == null) {
-                    LoggerFactory.getLogger("org.apache.iotdb.metrics.metricsets.cpu")
-                        .error("Cannot find thread pool for thread {}", x);
-                  }
                   return pool == null ? "UNKNOWN" : pool.name();
                 }));
     MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
