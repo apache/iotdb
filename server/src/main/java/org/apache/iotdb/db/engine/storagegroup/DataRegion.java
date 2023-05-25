@@ -682,8 +682,8 @@ public class DataRegion implements IDataRegionForQuery {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
       throws IOException, DataRegionException {
-    // represents local TsFile and remote TsFile on Object Storage
-    Map<String, File> tsFileName2File = new HashMap<>();
+    // "{partition id}/{tsfile name}" -> tsfile file, remove duplicate files in one time partition
+    Map<String, File> tsFilePartitionPath2File = new HashMap<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir + File.separator + databaseName, dataRegionId);
@@ -707,35 +707,39 @@ public class DataRegion implements IDataRegionForQuery {
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
 
+            String partitionName = partitionFolder.getName();
             File[] tsFilesInThisFolder =
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX);
             File[] resourceFilesInThisFolder =
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), RESOURCE_SUFFIX);
             for (File f : tsFilesInThisFolder) {
-              String tsFileFileName = f.getName();
-              if (tsFileName2File.containsKey(tsFileFileName)) {
+              String tsFilePartitionPath = partitionName + File.separator + f.getName();
+              if (tsFilePartitionPath2File.containsKey(tsFilePartitionPath)) {
                 // check migration: two same name tsfile exists, only keep one of them
-                File actualFile = deleteDuplicateTsFiles(f, tsFileName2File.get(tsFileFileName));
-                tsFileName2File.put(tsFileFileName, actualFile);
+                File actualFile =
+                    deleteDuplicateTsFiles(f, tsFilePartitionPath2File.get(tsFilePartitionPath));
+                tsFilePartitionPath2File.put(tsFilePartitionPath, actualFile);
               } else {
-                tsFileName2File.put(tsFileFileName, f);
+                tsFilePartitionPath2File.put(tsFilePartitionPath, f);
               }
             }
 
             for (File f : resourceFilesInThisFolder) {
-              String tsFileFileName =
-                  f.getName()
-                      .substring(0, f.getCanonicalPath().length() - RESOURCE_SUFFIX.length());
-              if (tsFileName2File.containsKey(tsFileFileName)) {
+              String tsFilePartitionPath =
+                  partitionName
+                      + File.separator
+                      + f.getName().substring(0, f.getName().length() - RESOURCE_SUFFIX.length());
+              if (tsFilePartitionPath2File.containsKey(tsFilePartitionPath)) {
                 // check migration: tsfile already added, but this resource file doesn't correspond
                 // to the file, so delete it
                 if (!f.getCanonicalPath()
-                    .startsWith(tsFileName2File.get(tsFileFileName).getCanonicalPath())) {
+                    .startsWith(
+                        tsFilePartitionPath2File.get(tsFilePartitionPath).getCanonicalPath())) {
                   f.delete();
                 }
               } else {
-                tsFileName2File.put(
-                    tsFileFileName, fsFactory.getFile(partitionFolder, tsFileFileName));
+                tsFilePartitionPath2File.put(
+                    tsFilePartitionPath, fsFactory.getFile(fileFolder, tsFilePartitionPath));
               }
             }
 
@@ -751,7 +755,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     long currentTime = System.currentTimeMillis();
     List<TsFileResource> ret = new ArrayList<>();
-    for (File f : tsFileName2File.values()) {
+    for (File f : tsFilePartitionPath2File.values()) {
       checkTsFileTime(f, currentTime);
       ret.add(new TsFileResource(f));
     }
