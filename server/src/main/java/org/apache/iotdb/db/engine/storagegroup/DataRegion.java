@@ -724,7 +724,7 @@ public class DataRegion implements IDataRegionForQuery {
 
             for (File f : resourceFilesInThisFolder) {
               String tsFileFileName =
-                  f.getCanonicalPath()
+                  f.getName()
                       .substring(0, f.getCanonicalPath().length() - RESOURCE_SUFFIX.length());
               if (tsFileName2File.containsKey(tsFileFileName)) {
                 // check migration: tsfile already added, but this resource file doesn't correspond
