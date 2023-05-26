@@ -1616,7 +1616,7 @@ public class DataRegion implements IDataRegionForQuery {
         // try to delete physical data file
         TsFileMetricManager.getInstance()
             .deleteFile(
-                resource.getTsFileSize(),
+                Collections.singletonList(resource.getTsFileSize()),
                 isSeq,
                 1,
                 Collections.singletonList(resource.getTsFile().getName()));
@@ -2742,7 +2742,7 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileManager.remove(tsFileResourceToBeMoved, true);
           TsFileMetricManager.getInstance()
               .deleteFile(
-                  tsFileResourceToBeMoved.getTsFileSize(),
+                  Collections.singletonList(tsFileResourceToBeMoved.getTsFileSize()),
                   true,
                   1,
                   Collections.singletonList(tsFileResourceToBeMoved.getTsFile().getName()));
@@ -2758,7 +2758,7 @@ public class DataRegion implements IDataRegionForQuery {
             tsFileManager.remove(tsFileResourceToBeMoved, false);
             TsFileMetricManager.getInstance()
                 .deleteFile(
-                    tsFileResourceToBeMoved.getTsFileSize(),
+                    Collections.singletonList(tsFileResourceToBeMoved.getTsFileSize()),
                     false,
                     1,
                     Collections.singletonList(tsFileResourceToBeMoved.getTsFile().getName()));

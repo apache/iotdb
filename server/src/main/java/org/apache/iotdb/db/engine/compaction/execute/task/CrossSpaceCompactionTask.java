@@ -205,8 +205,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           }
         }
 
-        long sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
-        long unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
+        List<Long> sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
+        List<Long> unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         // update the metrics finally in case of any exception occurs
@@ -354,16 +354,16 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
-  private long deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
-    long totalSize = 0;
+  private List<Long> deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
+    List<Long> size = new ArrayList<>();
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      totalSize += tsFileResource.getTsFileSize();
+      size.add(tsFileResource.getTsFileSize());
       tsFileResource.remove();
       LOGGER.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
           tsFileResource.getTsFile().getAbsolutePath());
     }
-    return totalSize;
+    return size;
   }
 
   private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {
