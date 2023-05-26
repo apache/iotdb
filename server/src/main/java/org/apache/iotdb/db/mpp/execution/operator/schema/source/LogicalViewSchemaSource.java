@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.query.reader.SchemaReaderLimitOffsetWrapper;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -61,10 +62,13 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   @Override
   public ISchemaReader<ITimeSeriesSchemaInfo> getSchemaReader(ISchemaRegion schemaRegion) {
     try {
-      return new LogicalViewSchemaReader(
-          schemaRegion.getTimeSeriesReader(
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  pathPattern, Collections.emptyMap(), limit, offset, false, schemaFilter)));
+      return new SchemaReaderLimitOffsetWrapper<ITimeSeriesSchemaInfo>(
+          new LogicalViewSchemaReader(
+              schemaRegion.getTimeSeriesReader(
+                  SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                      pathPattern, Collections.emptyMap(), 0, 0, false, schemaFilter))),
+          limit,
+          offset);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
