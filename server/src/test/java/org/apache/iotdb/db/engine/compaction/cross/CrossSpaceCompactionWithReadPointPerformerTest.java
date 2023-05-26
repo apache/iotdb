@@ -99,7 +99,7 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
   public void setUp() throws MetadataException {
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     CompactionTaskManager.getInstance().start();
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
