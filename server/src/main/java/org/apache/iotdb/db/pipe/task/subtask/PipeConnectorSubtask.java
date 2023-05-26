@@ -39,6 +39,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
   private final ListenableBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
 
+  private static final int HEARTBEAT_CHECK_INTERVAL = 1000;
+  private int executeOnceInvokedTimes;
+
   /** @param taskID connectorAttributeSortedString */
   public PipeConnectorSubtask(
       String taskID,
@@ -47,13 +50,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
+    executeOnceInvokedTimes = 0;
   }
 
   @Override
   protected synchronized boolean executeOnce() {
     try {
-      // TODO: reduce the frequency of heartbeat
-      outputPipeConnector.heartbeat();
+      if (executeOnceInvokedTimes++ % HEARTBEAT_CHECK_INTERVAL == 0) {
+        outputPipeConnector.heartbeat();
+      }
     } catch (Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: failed to connect to the target system.", e);
