@@ -132,6 +132,15 @@ public class DataNodeSchemaCache {
     return result;
   }
 
+  /**
+   * This function is used to process logical view schema list in statement. It will try to find the
+   * source paths of those views in cache. If it found sources, measurement schemas of sources will
+   * be recorded in measurement schema list; else the views will be recorded as missed. The indexes
+   * of missed views and full paths of their source paths will be returned.
+   *
+   * @param schemaComputation the statement you want to process
+   * @return The indexes of missed views and full paths of their source paths will be returned.
+   */
   public Pair<List<Integer>, List<String>> computeLogicalViewWithoutTemplate(
       ISchemaComputation schemaComputation) {
     return timeSeriesSchemaCache.computeSourceOfLogicalViewInCache(schemaComputation);

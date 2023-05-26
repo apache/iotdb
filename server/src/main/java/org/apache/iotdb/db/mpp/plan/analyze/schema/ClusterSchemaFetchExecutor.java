@@ -144,6 +144,11 @@ class ClusterSchemaFetchExecutor {
     return fetchSchemaAndCacheResult(patternTree);
   }
 
+  ClusterSchemaTree fetchSchemaWithPatternTreeAndCache(PathPatternTree patternTree) {
+    patternTree.constructTree();
+    return fetchSchemaAndCacheResult(patternTree);
+  }
+
   private ClusterSchemaTree fetchSchemaAndCacheResult(PathPatternTree patternTree) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(

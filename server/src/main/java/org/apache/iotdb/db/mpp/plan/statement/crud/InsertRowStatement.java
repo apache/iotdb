@@ -251,6 +251,14 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     values[index] = null;
   }
 
+  /**
+   * This function is used in splitting. Traverse two lists: logicalViewSchemaList, measurements,
+   * then find out all devices in this statement. Those devices will map to their measurements,
+   * recorded in a pair of measurement name and the index of measurement schemas
+   * (this.measurementSchemas).
+   *
+   * @return map from device path to its measurements.
+   */
   protected Map<PartialPath, List<Pair<String, Integer>>> getMapFromDeviceToMeasurementAndIndex() {
     boolean[] isLogicalView = new boolean[this.measurements.length];
     int[] indexMapToLogicalViewList = new int[this.measurements.length];

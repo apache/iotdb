@@ -140,9 +140,14 @@ public class InsertRowsStatement extends InsertBaseStatement {
   @Override
   public InsertBaseStatement split() {
     List<InsertRowStatement> mergedList = new ArrayList<>();
+    boolean needSplit = false;
     for (InsertRowStatement child : this.insertRowStatementList) {
       List<InsertRowStatement> childSplitResult = child.getSplitList();
+      needSplit = needSplit || child.isNeedSplit();
       mergedList.addAll(childSplitResult);
+    }
+    if (!needSplit) {
+      return this;
     }
     InsertRowsStatement splitResult = new InsertRowsStatement();
     splitResult.setInsertRowStatementList(mergedList);
