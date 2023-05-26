@@ -2084,7 +2084,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertTabletStatement);
-    InsertBaseStatement realStatement = insertTabletStatement.split();
+    InsertBaseStatement realStatement = insertTabletStatement.removeLogicalView();
     analysis.setStatement(realStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -2109,7 +2109,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowStatement);
-    InsertBaseStatement realInsertStatement = insertRowStatement.split();
+    InsertBaseStatement realInsertStatement = insertRowStatement.removeLogicalView();
     analysis.setStatement(realInsertStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -2155,7 +2155,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowsStatement);
-    InsertRowsStatement realInsertRowsStatement = (InsertRowsStatement) insertRowsStatement.split();
+    InsertRowsStatement realInsertRowsStatement =
+        (InsertRowsStatement) insertRowsStatement.removeLogicalView();
     analysis.setStatement(realInsertRowsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -2193,7 +2194,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertMultiTabletsStatement);
     InsertMultiTabletsStatement realStatement =
-        (InsertMultiTabletsStatement) insertMultiTabletsStatement.split();
+        (InsertMultiTabletsStatement) insertMultiTabletsStatement.removeLogicalView();
     analysis.setStatement(realStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -2208,7 +2209,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowsOfOneDeviceStatement);
-    InsertBaseStatement realInsertStatement = insertRowsOfOneDeviceStatement.split();
+    InsertBaseStatement realInsertStatement = insertRowsOfOneDeviceStatement.removeLogicalView();
     analysis.setStatement(realInsertStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;

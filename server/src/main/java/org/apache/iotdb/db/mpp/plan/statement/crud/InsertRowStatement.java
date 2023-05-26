@@ -302,7 +302,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @Override
-  public InsertBaseStatement split() {
+  public InsertBaseStatement removeLogicalView() {
     if (!isNeedSplit()) {
       return this;
     }

@@ -57,6 +57,8 @@ public abstract class InsertBaseStatement extends Statement {
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
 
+  // region params used by analyzing logical views.
+
   /** This param records the logical view schema appeared in this statement. */
   List<LogicalViewSchema> logicalViewSchemaList;
 
@@ -71,6 +73,8 @@ public abstract class InsertBaseStatement extends Statement {
   int recordedBeginOfLogicalViewSchemaList = 0;
 
   int recordedEndOfLogicalViewSchemaList = 0;
+
+  // endregion
 
   public PartialPath getDevicePath() {
     return devicePath;
@@ -248,7 +252,12 @@ public abstract class InsertBaseStatement extends Statement {
   }
   // endregion
 
-  public abstract InsertBaseStatement split();
+  // region functions used by analyzing logical views
+  /**
+   * Remove logical view in this statement according to validated schemas. So this function should
+   * be called after validating schemas.
+   */
+  public abstract InsertBaseStatement removeLogicalView();
 
   public void setFailedMeasurementIndex2Info(
       Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info) {
@@ -306,4 +315,5 @@ public abstract class InsertBaseStatement extends Statement {
     }
     return mapFromDeviceToMeasurementAndIndex;
   }
+  // endregion
 }

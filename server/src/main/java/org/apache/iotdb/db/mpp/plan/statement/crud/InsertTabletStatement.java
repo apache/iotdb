@@ -252,7 +252,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
-  public InsertBaseStatement split() {
+  public InsertBaseStatement removeLogicalView() {
     if (!isNeedSplit()) {
       return this;
     }

@@ -138,7 +138,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   }
 
   @Override
-  public InsertBaseStatement split() {
+  public InsertBaseStatement removeLogicalView() {
     boolean needSplit = false;
     for (InsertRowStatement child : this.insertRowStatementList) {
       if (child.isNeedSplit()) {

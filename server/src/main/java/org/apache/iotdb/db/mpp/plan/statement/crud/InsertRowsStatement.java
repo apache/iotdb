@@ -138,7 +138,7 @@ public class InsertRowsStatement extends InsertBaseStatement {
   }
 
   @Override
-  public InsertBaseStatement split() {
+  public InsertBaseStatement removeLogicalView() {
     List<InsertRowStatement> mergedList = new ArrayList<>();
     boolean needSplit = false;
     for (InsertRowStatement child : this.insertRowStatementList) {
