@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MigrationTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(MigrationTaskManager.class);
@@ -56,6 +57,9 @@ public class MigrationTaskManager implements IService {
       commonConfig.getDiskSpaceWarningThreshold() + 0.1;
   private static final double TIER_DISK_SPACE_SAFE_THRESHOLD =
       commonConfig.getDiskSpaceWarningThreshold() + 0.2;
+  private static final int MIGRATION_TASK_LIMIT = 20;
+  /** max concurrent migration tasks */
+  private final AtomicInteger migrationTasksNum = new AtomicInteger(0);
   /** single thread to schedule */
   private ScheduledExecutorService scheduler;
   /** single thread to sync syncingBuffer to disk */
@@ -121,13 +125,13 @@ public class MigrationTaskManager implements IService {
                     System.currentTimeMillis() - commonConfig.getTierTTLInMs()[currentTier],
                     iotdbConfig.getTimestampPrecision());
             if (!tsfile.stillLives(tierTTL)) {
-              submitMigrationTask(
+              trySubmitMigrationTask(
                   currentTier,
                   MigrationCause.TTL,
                   tsfile,
                   tierManager.getNextFolderForTsFile(nextTier, tsfile.isSeq()));
             } else if (needMigrationTiers.contains(currentTier)) {
-              submitMigrationTask(
+              trySubmitMigrationTask(
                   currentTier,
                   MigrationCause.DISK_SPACE,
                   tsfile,
@@ -141,12 +145,14 @@ public class MigrationTaskManager implements IService {
       }
     }
 
-    private void submitMigrationTask(
+    private void trySubmitMigrationTask(
         int tierLevel, MigrationCause cause, TsFileResource sourceTsFile, String targetDir)
         throws IOException {
-      if (!sourceTsFile.setStatus(TsFileResourceStatus.MIGRATING)) {
+      if (migrationTasksNum.get() >= MIGRATION_TASK_LIMIT
+          || !sourceTsFile.setStatus(TsFileResourceStatus.MIGRATING)) {
         return;
       }
+      migrationTasksNum.incrementAndGet();
       MigrationTask task = MigrationTask.newTask(cause, sourceTsFile, targetDir);
       workers.submit(task);
       tierDiskUsableSpace[tierLevel] -= sourceTsFile.getTsFileSize();
@@ -175,6 +181,10 @@ public class MigrationTaskManager implements IService {
       }
       return res;
     }
+  }
+
+  void decreaseMigrationTasksNum() {
+    migrationTasksNum.decrementAndGet();
   }
 
   @Override
