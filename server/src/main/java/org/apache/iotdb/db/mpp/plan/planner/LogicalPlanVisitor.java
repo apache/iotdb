@@ -80,6 +80,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplate
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -843,5 +844,41 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         context.getQueryId().genPlanNodeId(),
         createLogicalViewStatement.getTargetPathList(),
         viewExpressionList);
+  }
+
+  @Override
+  public PlanNode visitShowLogicalView(
+      ShowLogicalViewStatement showTimeSeriesStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    // If there is only one region, we can push down the offset and limit operation to
+    // source operator.
+    boolean canPushDownOffsetLimit =
+        analysis.getSchemaPartitionInfo() != null
+            && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
+
+    long limit = showTimeSeriesStatement.getLimit();
+    long offset = showTimeSeriesStatement.getOffset();
+    if (!canPushDownOffsetLimit) {
+      limit = showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset();
+      offset = 0;
+    }
+    planBuilder =
+        planBuilder
+            .planLogicalViewSchemaSource(
+                showTimeSeriesStatement.getPathPattern(),
+                showTimeSeriesStatement.getSchemaFilter(),
+                limit,
+                offset)
+            .planSchemaQueryMerge(false);
+
+    if (canPushDownOffsetLimit) {
+      return planBuilder.getRoot();
+    }
+
+    return planBuilder
+        .planOffset(showTimeSeriesStatement.getOffset())
+        .planLimit(showTimeSeriesStatement.getLimit())
+        .getRoot();
   }
 }

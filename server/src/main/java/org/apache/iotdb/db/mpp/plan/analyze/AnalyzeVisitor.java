@@ -136,6 +136,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
@@ -3324,6 +3325,22 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     SchemaPartition schemaPartitionInfo = partitionFetcher.getOrCreateSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
 
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowLogicalView(
+      ShowLogicalViewStatement showLogicalViewStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(showLogicalViewStatement);
+
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(showLogicalViewStatement.getPathPattern());
+    SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
+    analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+
+    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowLogicalViewHeader());
     return analysis;
   }
 }
