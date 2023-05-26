@@ -27,9 +27,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,9 +57,16 @@ public abstract class InsertBaseStatement extends Statement {
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
 
+  /** This param records the logical view schema appeared in this statement. */
   List<LogicalViewSchema> logicalViewSchemaList;
 
-  List<Integer> indexListOfLogicalViewPaths;
+  /**
+   * This param records the index of the location where the source of this view should be placed.
+   *
+   * <p>For example, indexListOfLogicalViewPaths[alpha] = beta means source of
+   * logicalViewSchemaList[alpha] should be filled into measurementSchemas[beta].
+   */
+  List<Integer> indexOfSourcePathsOfLogicalViews;
 
   int recordedBeginOfLogicalViewSchemaList = 0;
 
@@ -242,5 +253,57 @@ public abstract class InsertBaseStatement extends Statement {
   public void setFailedMeasurementIndex2Info(
       Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info) {
     this.failedMeasurementIndex2Info = failedMeasurementIndex2Info;
+  }
+
+  /**
+   * This function is used in splitting. Traverse two lists: logicalViewSchemaList, measurements,
+   * then find out all devices in this statement. Those devices will map to their measurements,
+   * recorded in a pair of measurement name and the index of measurement schemas
+   * (this.measurementSchemas).
+   *
+   * @return map from device path to its measurements.
+   */
+  protected final Map<PartialPath, List<Pair<String, Integer>>>
+      getMapFromDeviceToMeasurementAndIndex() {
+    boolean[] isLogicalView = new boolean[this.measurements.length];
+    int[] indexMapToLogicalViewList = new int[this.measurements.length];
+    Arrays.fill(isLogicalView, false);
+    for (int i = 0; i < this.indexOfSourcePathsOfLogicalViews.size(); i++) {
+      int realIndex = this.indexOfSourcePathsOfLogicalViews.get(i);
+      isLogicalView[realIndex] = true;
+      indexMapToLogicalViewList[realIndex] = i;
+    }
+    // construct map from device to measurements and record the index of its measurement schema
+    Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
+        new HashMap<>();
+    for (int i = 0; i < this.measurements.length; i++) {
+      PartialPath devicePath;
+      String measurementName;
+      if (isLogicalView[i]) {
+        int viewIndex = indexMapToLogicalViewList[i];
+        devicePath =
+            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
+        measurementName =
+            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
+      } else {
+        devicePath = this.devicePath;
+        measurementName = this.measurements[i];
+      }
+      int index = i;
+      final String finalMeasurementName = measurementName;
+      mapFromDeviceToMeasurementAndIndex.compute(
+          devicePath,
+          (k, v) -> {
+            if (v == null) {
+              List<Pair<String, Integer>> valueList = new ArrayList<>();
+              valueList.add(new Pair<>(finalMeasurementName, index));
+              return valueList;
+            } else {
+              v.add(new Pair<>(finalMeasurementName, index));
+              return v;
+            }
+          });
+    }
+    return mapFromDeviceToMeasurementAndIndex;
   }
 }

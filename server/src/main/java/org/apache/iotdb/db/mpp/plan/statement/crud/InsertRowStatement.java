@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -64,11 +65,17 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   private Object[] values;
   private boolean isNeedInferType = false;
 
+  /**
+   * This param record whether the source of logical view is aligned. Only used when there are
+   * views.
+   */
+  private boolean[] measurementIsAligned;
+
   public InsertRowStatement() {
     super();
     statementType = StatementType.INSERT;
     this.logicalViewSchemaList = new ArrayList<>();
-    this.indexListOfLogicalViewPaths = new ArrayList<>();
+    this.indexOfSourcePathsOfLogicalViews = new ArrayList<>();
     this.recordedBeginOfLogicalViewSchemaList = 0;
     this.recordedEndOfLogicalViewSchemaList = 0;
   }
@@ -251,61 +258,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     values[index] = null;
   }
 
-  /**
-   * This function is used in splitting. Traverse two lists: logicalViewSchemaList, measurements,
-   * then find out all devices in this statement. Those devices will map to their measurements,
-   * recorded in a pair of measurement name and the index of measurement schemas
-   * (this.measurementSchemas).
-   *
-   * @return map from device path to its measurements.
-   */
-  protected Map<PartialPath, List<Pair<String, Integer>>> getMapFromDeviceToMeasurementAndIndex() {
-    boolean[] isLogicalView = new boolean[this.measurements.length];
-    int[] indexMapToLogicalViewList = new int[this.measurements.length];
-    for (int i = 0; i < this.measurements.length; i++) {
-      isLogicalView[i] = false;
-    }
-    for (int i = 0; i < this.indexListOfLogicalViewPaths.size(); i++) {
-      int realIndex = this.indexListOfLogicalViewPaths.get(i);
-      isLogicalView[realIndex] = true;
-      indexMapToLogicalViewList[realIndex] = i;
-    }
-    // construct map from device to measurements and record the index of its measurement schema
-    Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
-        new HashMap<>();
-    for (int i = 0; i < this.measurements.length; i++) {
-      PartialPath devicePath;
-      String measurementName;
-      if (isLogicalView[i]) {
-        int viewIndex = indexMapToLogicalViewList[i];
-        devicePath =
-            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
-        measurementName =
-            this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
-      } else {
-        devicePath = this.devicePath;
-        measurementName = this.measurements[i];
-      }
-      int index = i;
-      final String finalMeasurementName = measurementName;
-      mapFromDeviceToMeasurementAndIndex.compute(
-          devicePath,
-          (k, v) -> {
-            if (v == null) {
-              List<Pair<String, Integer>> valueList = new ArrayList<>();
-              valueList.add(new Pair<>(finalMeasurementName, index));
-              return valueList;
-            } else {
-              v.add(new Pair<>(finalMeasurementName, index));
-              return v;
-            }
-          });
-    }
-    return mapFromDeviceToMeasurementAndIndex;
-  }
-
   public boolean isNeedSplit() {
-    return !this.indexListOfLogicalViewPaths.isEmpty();
+    return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
   }
 
   public List<InsertRowStatement> getSplitList() {
@@ -321,7 +275,6 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       List<Pair<String, Integer>> pairList = entry.getValue();
       InsertRowStatement statement = new InsertRowStatement();
       statement.setTime(this.time);
-      statement.setAligned(this.isAligned);
       statement.setNeedInferType(this.isNeedInferType);
       statement.setDevicePath(entry.getKey());
       Object[] values = new Object[pairList.size()];
@@ -334,6 +287,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         measurements[i] = pairList.get(i).left;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
+        if (this.measurementIsAligned != null) {
+          statement.setAligned(this.measurementIsAligned[realIndex]);
+        }
       }
       statement.setValues(values);
       statement.setMeasurements(measurements);
@@ -347,7 +303,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public InsertBaseStatement split() {
-    if (this.indexListOfLogicalViewPaths.isEmpty()) {
+    if (!isNeedSplit()) {
       return this;
     }
     List<InsertRowStatement> insertRowStatementList = this.getSplitList();
@@ -412,16 +368,16 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
     }
-    if (logicalViewSchemaList == null || indexListOfLogicalViewPaths == null) {
+    if (logicalViewSchemaList == null || indexOfSourcePathsOfLogicalViews == null) {
       logicalViewSchemaList = new ArrayList<>();
-      indexListOfLogicalViewPaths = new ArrayList<>();
+      indexOfSourcePathsOfLogicalViews = new ArrayList<>();
     }
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
       if (measurementSchemaInfo.isLogicalView()) {
         logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
-        indexListOfLogicalViewPaths.add(index);
+        indexOfSourcePathsOfLogicalViews.add(index);
         return;
       } else {
         measurementSchemas[index] = measurementSchemaInfo.getSchemaAsMeasurementSchema();
@@ -439,13 +395,24 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @Override
+  public void validateMeasurementSchema(
+      int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
+    this.validateMeasurementSchema(index, measurementSchemaInfo);
+    if (this.measurementIsAligned == null) {
+      this.measurementIsAligned = new boolean[this.measurements.length];
+      Arrays.fill(this.measurementIsAligned, this.isAligned);
+    }
+    this.measurementIsAligned[index] = isAligned;
+  }
+
+  @Override
   public List<LogicalViewSchema> getLogicalViewSchemaList() {
     return this.logicalViewSchemaList;
   }
 
   @Override
   public List<Integer> getIndexListOfLogicalViewPaths() {
-    return this.indexListOfLogicalViewPaths;
+    return this.indexOfSourcePathsOfLogicalViews;
   }
 
   @Override

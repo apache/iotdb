@@ -219,12 +219,12 @@ public class ClusterSchemaTree implements ISchemaTree {
                     "The source paths of view [%s] are multiple.", fullPath.getFullPath())));
       } else {
         Integer realIndex = schemaComputation.getIndexListOfLogicalViewPaths().get(index);
-        schemaComputation.computeMeasurement(
+        MeasurementPath measurementPath = measurementPathList.get(0);
+        schemaComputation.computeMeasurementOfView(
             realIndex,
             new MeasurementSchemaInfo(
-                measurementPathList.get(0).getMeasurement(),
-                measurementPathList.get(0).getMeasurementSchema(),
-                null));
+                measurementPath.getMeasurement(), measurementPath.getMeasurementSchema(), null),
+            measurementPath.isUnderAlignedEntity());
       }
     }
   }

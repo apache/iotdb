@@ -52,4 +52,12 @@ public interface ISchemaComputation {
    * @param measurementSchemaInfo the measurement schema of fetched measurement
    */
   void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo);
+
+  /**
+   * @param index the index of fetched measurement in array returned by getMeasurements
+   * @param measurementSchemaInfo the measurement schema of source of the logical view
+   * @param isAligned whether the source of this view is aligned.
+   */
+  void computeMeasurementOfView(
+      int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned);
 }

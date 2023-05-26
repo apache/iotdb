@@ -132,7 +132,7 @@ public class TimeSeriesSchemaCache {
 
   public List<Integer> computeAndRecordLogicalView(ISchemaComputation schemaComputation) {
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    final AtomicBoolean isFirstMeasurement = new AtomicBoolean(true);
+    final AtomicBoolean isFirstNonViewMeasurement = new AtomicBoolean(true);
     dualKeyCache.compute(
         new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
           @Override
@@ -150,9 +150,9 @@ public class TimeSeriesSchemaCache {
             if (value == null) {
               indexOfMissingMeasurements.add(index);
             } else {
-              if (isFirstMeasurement.get()) {
+              if (isFirstNonViewMeasurement.get() && (!value.isLogicalView())) {
                 schemaComputation.computeDevice(value.isAligned());
-                isFirstMeasurement.getAndSet(false);
+                isFirstNonViewMeasurement.getAndSet(false);
               }
               schemaComputation.computeMeasurement(index, value);
             }
@@ -210,7 +210,7 @@ public class TimeSeriesSchemaCache {
                                   + "Please check it.",
                               fullPath)));
                 }
-                schemaComputation.computeMeasurement(index, value);
+                schemaComputation.computeMeasurementOfView(index, value, value.isAligned());
               }
             }
           });
