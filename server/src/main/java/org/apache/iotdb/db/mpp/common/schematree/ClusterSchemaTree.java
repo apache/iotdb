@@ -199,7 +199,7 @@ public class ClusterSchemaTree implements ISchemaTree {
    * @param schemaComputation the statement
    * @param indexOfTargetLogicalView the index list of logicalViewSchemaList that you want to check
    */
-  public void computeLogicalView(
+  public void computeSourceOfLogicalView(
       ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView) {
     List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();
     for (Integer index : indexOfTargetLogicalView) {

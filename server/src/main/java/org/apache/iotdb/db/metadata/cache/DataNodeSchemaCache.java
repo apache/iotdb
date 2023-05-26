@@ -128,7 +128,7 @@ public class DataNodeSchemaCache {
 
   public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {
     List<Integer> result = timeSeriesSchemaCache.computeAndRecordLogicalView(schemaComputation);
-    schemaComputation.recordSizeOfLogicalViewSchemaListNow();
+    schemaComputation.recordRangeOfLogicalViewSchemaListNow();
     return result;
   }
 
@@ -141,9 +141,9 @@ public class DataNodeSchemaCache {
    * @param schemaComputation the statement you want to process
    * @return The indexes of missed views and full paths of their source paths will be returned.
    */
-  public Pair<List<Integer>, List<String>> computeLogicalViewWithoutTemplate(
+  public Pair<List<Integer>, List<String>> computeSourceOfLogicalView(
       ISchemaComputation schemaComputation) {
-    return timeSeriesSchemaCache.computeSourceOfLogicalViewInCache(schemaComputation);
+    return timeSeriesSchemaCache.computeSourceOfLogicalView(schemaComputation);
   }
 
   public List<Integer> computeWithTemplate(ISchemaComputation schemaComputation) {

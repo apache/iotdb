@@ -416,13 +416,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @Override
-  public void recordSizeOfLogicalViewSchemaListNow() {
+  public void recordRangeOfLogicalViewSchemaListNow() {
     this.recordedBeginOfLogicalViewSchemaList = this.recordedEndOfLogicalViewSchemaList;
     this.recordedEndOfLogicalViewSchemaList = this.logicalViewSchemaList.size();
   }
 
   @Override
-  public Pair<Integer, Integer> getSizeOfLogicalViewSchemaListRecorded() {
+  public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
     return new Pair<>(
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
   }

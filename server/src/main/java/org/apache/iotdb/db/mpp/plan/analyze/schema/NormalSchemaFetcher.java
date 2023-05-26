@@ -97,7 +97,7 @@ class NormalSchemaFetcher {
         schemaCache.computeWithoutTemplate(schemaComputationWithAutoCreation);
     // [Step 2] Cache 2. process recorded logical views.
     Pair<List<Integer>, List<String>> missedIndexAndPathString =
-        schemaCache.computeLogicalViewWithoutTemplate(schemaComputationWithAutoCreation);
+        schemaCache.computeSourceOfLogicalView(schemaComputationWithAutoCreation);
     List<Integer> indexOfMissingLogicalView = missedIndexAndPathString.left;
     List<String> missedPathStringOfLogicalView = missedIndexAndPathString.right;
     // all schema can be taken from cache
@@ -124,22 +124,22 @@ class NormalSchemaFetcher {
           fetchWithPatternTreeAndFullPaths(patternTree, missedPathStringOfLogicalView);
     }
     // make sure all missed views are computed.
-    remoteSchemaTree.computeLogicalView(
+    remoteSchemaTree.computeSourceOfLogicalView(
         schemaComputationWithAutoCreation, indexOfMissingLogicalView);
     // check and compute the fetched schema
     indexOfMissingMeasurements =
         remoteSchemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
-    schemaComputationWithAutoCreation.recordSizeOfLogicalViewSchemaListNow();
+    schemaComputationWithAutoCreation.recordRangeOfLogicalViewSchemaListNow();
 
     // [Step 4] Fetch 2. Some fetched measurements in [Step 3] are views. Process them.
     missedIndexAndPathString =
-        schemaCache.computeLogicalViewWithoutTemplate(schemaComputationWithAutoCreation);
+        schemaCache.computeSourceOfLogicalView(schemaComputationWithAutoCreation);
     indexOfMissingLogicalView = missedIndexAndPathString.left;
     missedPathStringOfLogicalView = missedIndexAndPathString.right;
     if (!missedPathStringOfLogicalView.isEmpty()) {
       ClusterSchemaTree viewSchemaTree =
           clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(missedPathStringOfLogicalView);
-      viewSchemaTree.computeLogicalView(
+      viewSchemaTree.computeSourceOfLogicalView(
           schemaComputationWithAutoCreation, indexOfMissingLogicalView);
     }
 
@@ -189,7 +189,7 @@ class NormalSchemaFetcher {
     for (ISchemaComputationWithAutoCreation iSchemaComputationWithAutoCreation :
         schemaComputationWithAutoCreationList) {
       Pair<List<Integer>, List<String>> missedIndexAndPathString =
-          schemaCache.computeLogicalViewWithoutTemplate(iSchemaComputationWithAutoCreation);
+          schemaCache.computeSourceOfLogicalView(iSchemaComputationWithAutoCreation);
       if (!missedIndexAndPathString.left.isEmpty()) {
         hasUnFetchedLogicalView = true;
       }
@@ -235,7 +235,7 @@ class NormalSchemaFetcher {
     // make sure all missed views are computed.
     for (int i = 0; i < schemaComputationWithAutoCreationList.size(); i++) {
       schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
-      remoteSchemaTree.computeLogicalView(
+      remoteSchemaTree.computeSourceOfLogicalView(
           schemaComputationWithAutoCreation, missedIndexAndPathStringOfViewList.get(i).left);
     }
     // check and compute the fetched schema
@@ -247,7 +247,7 @@ class NormalSchemaFetcher {
       indexOfMissingMeasurements =
           remoteSchemaTree.compute(
               schemaComputationWithAutoCreation, indexOfMissingMeasurementsList.get(i));
-      schemaComputationWithAutoCreation.recordSizeOfLogicalViewSchemaListNow();
+      schemaComputationWithAutoCreation.recordRangeOfLogicalViewSchemaListNow();
       if (!indexOfMissingMeasurements.isEmpty()) {
         indexOfDevicesNeedAutoCreateSchema.add(indexOfDevicesWithMissingMeasurements.get(i));
         indexOfMeasurementsNeedAutoCreate.add(indexOfMissingMeasurements);
@@ -258,8 +258,7 @@ class NormalSchemaFetcher {
     hasUnFetchedLogicalView = false;
     for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
       Pair<List<Integer>, List<String>> missedIndexAndPathString =
-          schemaCache.computeLogicalViewWithoutTemplate(
-              schemaComputationWithAutoCreationList.get(i));
+          schemaCache.computeSourceOfLogicalView(schemaComputationWithAutoCreationList.get(i));
       if (missedIndexAndPathString.left.size() > 0) {
         hasUnFetchedLogicalView = true;
       }
@@ -275,7 +274,7 @@ class NormalSchemaFetcher {
           clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(fullPathsNeedRefetch);
       for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
         schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
-        viewSchemaTree.computeLogicalView(
+        viewSchemaTree.computeSourceOfLogicalView(
             schemaComputationWithAutoCreation, missedIndexAndPathStringOfViewList.get(i).left);
       }
     }

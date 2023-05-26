@@ -161,12 +161,12 @@ public class TimeSeriesSchemaCache {
     return indexOfMissingMeasurements;
   }
 
-  public Pair<List<Integer>, List<String>> computeSourceOfLogicalViewInCache(
+  public Pair<List<Integer>, List<String>> computeSourceOfLogicalView(
       ISchemaComputation schemaComputation) {
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     List<String> missedPathStringList = new ArrayList<>();
     final AtomicBoolean isFirstMeasurement = new AtomicBoolean(true);
-    Pair<Integer, Integer> beginToEnd = schemaComputation.getSizeOfLogicalViewSchemaListRecorded();
+    Pair<Integer, Integer> beginToEnd = schemaComputation.getRangeOfLogicalViewSchemaListRecorded();
     List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();
     List<Integer> indexListOfLogicalViewPaths = schemaComputation.getIndexListOfLogicalViewPaths();
     for (int i = beginToEnd.left; i < beginToEnd.right; i++) {

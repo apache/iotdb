@@ -70,8 +70,10 @@ public abstract class InsertBaseStatement extends Statement {
    */
   List<Integer> indexOfSourcePathsOfLogicalViews;
 
+  /** it is the end of last range, the beginning of current range. */
   int recordedBeginOfLogicalViewSchemaList = 0;
 
+  /** it is the end of current range. */
   int recordedEndOfLogicalViewSchemaList = 0;
 
   // endregion
