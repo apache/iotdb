@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.leaf;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -104,5 +105,10 @@ public class TimeSeriesOperand extends LeafOperand {
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     path.serialize(stream);
+  }
+
+  @Override
+  protected Expression doCopy() {
+    return new TimeSeriesOperand(path.copy());
   }
 }

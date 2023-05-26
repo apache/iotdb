@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -70,5 +71,10 @@ public class NullOperand extends LeafOperand {
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     // do nothing
+  }
+
+  @Override
+  protected Expression doCopy() {
+    return new NullOperand();
   }
 }

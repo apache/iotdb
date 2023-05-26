@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.expression;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
@@ -133,22 +134,55 @@ public abstract class Expression extends StatementNode {
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // toString
+  // For analyzing logical view
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private String expressionStringCache;
+  protected PartialPath viewPath = null;
 
-  /** Sub-classes must not override this method. */
+  public void setViewPath(PartialPath viewPath) {
+    this.viewPath = viewPath;
+  }
+
+  public PartialPath getViewPath() {
+    return viewPath;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // For representing expression in string
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   @Override
   public final String toString() {
-    return getExpressionString();
+    throw new UnsupportedOperationException(
+        "The Expression class does not support toString() method, please use getOutputSymbol() or getExpressionString().");
+  }
+
+  private String outputSymbolCache;
+
+  /**
+   * Get the output symbol of the expression.
+   *
+   * <p>The hash code of the returned value will be the hash code of this object. See {@link
+   * #hashCode()} and {@link #equals(Object)}.
+   */
+  public String getOutputSymbol() {
+    if (outputSymbolCache == null) {
+      outputSymbolCache = viewPath != null ? viewPath.getFullPath() : getOutputSymbolInternal();
+    }
+    return outputSymbolCache;
   }
 
   /**
-   * Get the representation of the expression in string. The hash code of the returned value will be
-   * the hash code of this object. See {@link #hashCode()} and {@link #equals(Object)}. In other
-   * words, same expressions should have exactly the same string representation, and different
-   * expressions must have different string representations.
+   * Sub-classes should override this method to provide valid output symbol of this object. See
+   * {@link #getOutputSymbol()}
+   */
+  public abstract String getOutputSymbolInternal();
+
+  private String expressionStringCache;
+
+  /**
+   * Get the representation of the expression in string. Compared to output symbol, it does not
+   * consider logical views.
    */
   public final String getExpressionString() {
     if (expressionStringCache == null) {
@@ -170,7 +204,7 @@ public abstract class Expression extends StatementNode {
   /** Sub-classes must not override this method. */
   @Override
   public final int hashCode() {
-    return getExpressionString().hashCode();
+    return getOutputSymbol().hashCode();
   }
 
   /** Sub-classes must not override this method. */
@@ -184,7 +218,7 @@ public abstract class Expression extends StatementNode {
       return false;
     }
 
-    return getExpressionString().equals(((Expression) o).getExpressionString());
+    return getOutputSymbol().equals(((Expression) o).getOutputSymbol());
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -201,6 +235,11 @@ public abstract class Expression extends StatementNode {
     if (expression.inputColumnIndex != null) {
       ReadWriteIOUtils.write(expression.inputColumnIndex, byteBuffer);
     }
+
+    ReadWriteIOUtils.write(expression.viewPath != null, byteBuffer);
+    if (expression.viewPath != null) {
+      expression.viewPath.serialize(byteBuffer);
+    }
   }
 
   public static void serialize(Expression expression, DataOutputStream stream) throws IOException {
@@ -211,6 +250,11 @@ public abstract class Expression extends StatementNode {
     ReadWriteIOUtils.write(expression.inputColumnIndex != null, stream);
     if (expression.inputColumnIndex != null) {
       ReadWriteIOUtils.write(expression.inputColumnIndex, stream);
+    }
+
+    ReadWriteIOUtils.write(expression.viewPath != null, stream);
+    if (expression.viewPath != null) {
+      expression.viewPath.serialize(stream);
     }
   }
 
@@ -323,6 +367,11 @@ public abstract class Expression extends StatementNode {
       expression.inputColumnIndex = ReadWriteIOUtils.readInt(byteBuffer);
     }
 
+    boolean hasViewPath = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasViewPath) {
+      expression.viewPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+    }
+
     return expression;
   }
 
@@ -374,21 +423,16 @@ public abstract class Expression extends StatementNode {
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // For analyzing logical view
+  // copy expression
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  protected PartialPath viewPathOfThisExpression = null;
-
-  public void setViewPathOfThisExpression(PartialPath viewPathOfThisExpression) {
-    this.viewPathOfThisExpression = viewPathOfThisExpression;
-  }
-
-  public String getStringWithViewOfThisExpression() {
-    if (this.viewPathOfThisExpression == null) {
-      return this.getStringWithViewOfThisExpressionInternal();
+  public Expression copy() {
+    Expression copiedExpression = doCopy();
+    if (viewPath != null) {
+      copiedExpression.setViewPath(viewPath.copy());
     }
-    return this.viewPathOfThisExpression.getFullPath();
+    return copiedExpression;
   }
 
-  public abstract String getStringWithViewOfThisExpressionInternal();
+  protected abstract Expression doCopy();
 }

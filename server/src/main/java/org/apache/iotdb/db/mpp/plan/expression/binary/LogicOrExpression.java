@@ -43,4 +43,9 @@ public class LogicOrExpression extends LogicBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.LOGIC_OR;
   }
+
+  @Override
+  protected Expression doCopy() {
+    return new LogicOrExpression(leftExpression.copy(), rightExpression.copy());
+  }
 }

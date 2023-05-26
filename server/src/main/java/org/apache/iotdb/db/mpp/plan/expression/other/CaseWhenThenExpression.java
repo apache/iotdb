@@ -166,20 +166,26 @@ public class CaseWhenThenExpression extends Expression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
+  public String getOutputSymbolInternal() {
     StringBuilder builder = new StringBuilder();
     builder.append("CASE ");
     for (Expression expression : this.whenThenExpressions) {
-      builder.append(expression.getStringWithViewOfThisExpression()).append(" ");
+      builder.append(expression.getOutputSymbol()).append(" ");
     }
     if (!(this.elseExpression instanceof NullOperand)) {
-      builder
-          .append("ELSE ")
-          .append(this.elseExpression.getStringWithViewOfThisExpression())
-          .append(" ");
+      builder.append("ELSE ").append(this.elseExpression.getOutputSymbol()).append(" ");
     }
     builder.append("END");
     return builder.toString();
+  }
+
+  @Override
+  protected Expression doCopy() {
+    List<WhenThenExpression> copiedWhenThenExpressions = new ArrayList<>();
+    for (WhenThenExpression whenThenExpression : whenThenExpressions) {
+      copiedWhenThenExpressions.add((WhenThenExpression) whenThenExpression.copy());
+    }
+    return new CaseWhenThenExpression(copiedWhenThenExpressions, elseExpression.copy());
   }
 
   @Override

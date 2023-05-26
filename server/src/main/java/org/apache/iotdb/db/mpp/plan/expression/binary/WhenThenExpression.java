@@ -67,14 +67,19 @@ public class WhenThenExpression extends BinaryExpression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
-    String when = this.getWhen().getStringWithViewOfThisExpression();
-    String then = this.getThen().getStringWithViewOfThisExpression();
+  public String getOutputSymbolInternal() {
+    String when = this.getWhen().getOutputSymbol();
+    String then = this.getThen().getOutputSymbol();
     return "WHEN " + when + " THEN " + then;
   }
 
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitWhenThenExpression(this, context);
+  }
+
+  @Override
+  protected Expression doCopy() {
+    return new WhenThenExpression(leftExpression.copy(), rightExpression.copy());
   }
 }

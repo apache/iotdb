@@ -176,12 +176,12 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
+  public String getOutputSymbolInternal() {
     StringBuilder builder = new StringBuilder();
     if (!expressions.isEmpty()) {
-      builder.append(expressions.get(0).getStringWithViewOfThisExpression());
+      builder.append(expressions.get(0).getOutputSymbol());
       for (int i = 1; i < expressions.size(); ++i) {
-        builder.append(", ").append(expressions.get(i).getStringWithViewOfThisExpression());
+        builder.append(", ").append(expressions.get(i).getOutputSymbol());
       }
     }
     if (!functionAttributes.isEmpty()) {
@@ -194,6 +194,15 @@ public class FunctionExpression extends Expression {
       }
     }
     return functionName + "(" + builder + ")";
+  }
+
+  @Override
+  protected Expression doCopy() {
+    List<Expression> copiedChildren = new ArrayList<>();
+    for (Expression expression : expressions) {
+      copiedChildren.add(expression.copy());
+    }
+    return new FunctionExpression(functionName, functionAttributes, copiedChildren);
   }
 
   @Override

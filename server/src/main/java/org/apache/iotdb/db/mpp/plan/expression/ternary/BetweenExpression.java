@@ -85,16 +85,22 @@ public class BetweenExpression extends TernaryExpression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
-    return firstExpression.getStringWithViewOfThisExpression()
+  public String getOutputSymbolInternal() {
+    return firstExpression.getOutputSymbol()
         + " BETWEEN "
-        + secondExpression.getStringWithViewOfThisExpression()
+        + secondExpression.getOutputSymbol()
         + " AND "
-        + thirdExpression.getStringWithViewOfThisExpression();
+        + thirdExpression.getOutputSymbol();
   }
 
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitBetweenExpression(this, context);
+  }
+
+  @Override
+  protected Expression doCopy() {
+    return new BetweenExpression(
+        firstExpression.copy(), secondExpression.copy(), thirdExpression.copy());
   }
 }

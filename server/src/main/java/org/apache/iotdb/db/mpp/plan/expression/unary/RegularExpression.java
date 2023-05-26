@@ -90,8 +90,13 @@ public class RegularExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
-    return expression.getStringWithViewOfThisExpression() + " REGEXP '" + patternString + "'";
+  public String getOutputSymbolInternal() {
+    return expression.getOutputSymbol() + " REGEXP '" + patternString + "'";
+  }
+
+  @Override
+  protected Expression doCopy() {
+    return new RegularExpression(expression.copy(), patternString, pattern);
   }
 
   @Override

@@ -43,4 +43,9 @@ public class LogicAndExpression extends LogicBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.LOGIC_AND;
   }
+
+  @Override
+  protected Expression doCopy() {
+    return new LogicAndExpression(leftExpression.copy(), rightExpression.copy());
+  }
 }

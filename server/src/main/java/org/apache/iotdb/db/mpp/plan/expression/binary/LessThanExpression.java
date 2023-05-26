@@ -43,4 +43,9 @@ public class LessThanExpression extends CompareBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.LESS_THAN;
   }
+
+  @Override
+  protected Expression doCopy() {
+    return new LessThanExpression(leftExpression.copy(), rightExpression.copy());
+  }
 }

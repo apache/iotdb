@@ -73,8 +73,13 @@ public class IsNullExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
-    return expression.getStringWithViewOfThisExpression() + " IS " + (isNot ? "NOT " : "") + "NULL";
+  public String getOutputSymbolInternal() {
+    return expression.getOutputSymbol() + " IS " + (isNot ? "NOT " : "") + "NULL";
+  }
+
+  @Override
+  protected Expression doCopy() {
+    return new IsNullExpression(expression.copy(), isNot);
   }
 
   @Override

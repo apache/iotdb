@@ -43,4 +43,9 @@ public class DivisionExpression extends ArithmeticBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.DIVISION;
   }
+
+  @Override
+  protected Expression doCopy() {
+    return new DivisionExpression(leftExpression.copy(), rightExpression.copy());
+  }
 }

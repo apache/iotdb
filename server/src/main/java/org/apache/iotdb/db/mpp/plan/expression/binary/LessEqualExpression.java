@@ -43,4 +43,9 @@ public class LessEqualExpression extends CompareBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.LESS_EQUAL;
   }
+
+  @Override
+  protected Expression doCopy() {
+    return new LessEqualExpression(leftExpression.copy(), rightExpression.copy());
+  }
 }

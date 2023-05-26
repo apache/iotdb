@@ -43,4 +43,9 @@ public class ModuloExpression extends ArithmeticBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.MODULO;
   }
+
+  @Override
+  protected Expression doCopy() {
+    return new ModuloExpression(leftExpression.copy(), rightExpression.copy());
+  }
 }

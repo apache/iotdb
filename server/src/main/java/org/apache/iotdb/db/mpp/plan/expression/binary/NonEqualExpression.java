@@ -43,4 +43,9 @@ public class NonEqualExpression extends CompareBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.NON_EQUAL;
   }
+
+  @Override
+  protected Expression doCopy() {
+    return new NonEqualExpression(leftExpression.copy(), rightExpression.copy());
+  }
 }

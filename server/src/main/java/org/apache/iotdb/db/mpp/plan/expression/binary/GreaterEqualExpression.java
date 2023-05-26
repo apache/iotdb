@@ -43,4 +43,9 @@ public class GreaterEqualExpression extends CompareBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.GREATER_EQUAL;
   }
+
+  @Override
+  protected Expression doCopy() {
+    return new GreaterEqualExpression(leftExpression.copy(), rightExpression.copy());
+  }
 }

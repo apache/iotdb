@@ -121,20 +121,21 @@ public class InExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
+  public String getOutputSymbolInternal() {
     StringBuilder stringBuilder = new StringBuilder();
     if (expression instanceof FunctionExpression
         || expression instanceof ConstantOperand
         || expression instanceof TimeSeriesOperand) {
-      stringBuilder.append(expression.getStringWithViewOfThisExpression()).append(" IN (");
+      stringBuilder.append(expression.getOutputSymbol()).append(" IN (");
     } else {
-      stringBuilder
-          .append('(')
-          .append(expression.getStringWithViewOfThisExpression())
-          .append(')')
-          .append(" IN (");
+      stringBuilder.append('(').append(expression.getOutputSymbol()).append(')').append(" IN (");
     }
     return appendValuesToBuild(stringBuilder).toString();
+  }
+
+  @Override
+  protected Expression doCopy() {
+    return new InExpression(expression.copy(), isNotIn, values);
   }
 
   @Override
