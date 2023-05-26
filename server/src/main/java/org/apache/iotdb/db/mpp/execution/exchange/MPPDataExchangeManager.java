@@ -568,7 +568,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       queue = localSourceHandle.getSharedTsBlockQueue();
     } else {
       LOGGER.debug("Create SharedTsBlockQueue");
-      queue = new SharedTsBlockQueue(localFragmentInstanceId, localPlanNodeId, localMemoryManager);
+      queue =
+          new SharedTsBlockQueue(
+              localFragmentInstanceId, localPlanNodeId, localMemoryManager, executorService);
     }
 
     return new LocalSinkChannel(
@@ -591,7 +593,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         new SharedTsBlockQueue(
             driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
             planNodeId,
-            localMemoryManager);
+            localMemoryManager,
+            executorService);
     queue.allowAddingTsBlock();
     return new LocalSinkChannel(
         queue,
@@ -747,7 +750,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     } else {
       LOGGER.debug("Create SharedTsBlockQueue");
       queue =
-          new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager);
+          new SharedTsBlockQueue(
+              remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager, executorService);
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
