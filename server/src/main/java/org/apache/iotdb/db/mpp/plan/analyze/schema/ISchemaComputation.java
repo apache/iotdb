@@ -46,6 +46,7 @@ public interface ISchemaComputation {
   void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo);
 
   // region used by logical view
+  boolean hasLogicalViewNeedProcess();
 
   /**
    * @return the logical view schema list recorded by this statement. It may be NULL if it is not

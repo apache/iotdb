@@ -71,8 +71,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public InsertTabletStatement() {
     super();
     statementType = StatementType.BATCH_INSERT;
-    this.logicalViewSchemaList = new ArrayList<>();
-    this.indexOfSourcePathsOfLogicalViews = new ArrayList<>();
     this.recordedBeginOfLogicalViewSchemaList = 0;
     this.recordedEndOfLogicalViewSchemaList = 0;
   }
@@ -202,6 +200,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   public boolean isNeedSplit() {
+    if (this.indexOfSourcePathsOfLogicalViews == null) {
+      return false;
+    }
     return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
   }
 
@@ -337,14 +338,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     if (measurementSchemas == null) {
       measurementSchemas = new MeasurementSchema[measurements.length];
     }
-    if (logicalViewSchemaList == null || indexOfSourcePathsOfLogicalViews == null) {
-      logicalViewSchemaList = new ArrayList<>();
-      indexOfSourcePathsOfLogicalViews = new ArrayList<>();
-    }
     if (measurementSchemaInfo == null) {
       measurementSchemas[index] = null;
     } else {
       if (measurementSchemaInfo.isLogicalView()) {
+        if (logicalViewSchemaList == null || indexOfSourcePathsOfLogicalViews == null) {
+          logicalViewSchemaList = new ArrayList<>();
+          indexOfSourcePathsOfLogicalViews = new ArrayList<>();
+        }
         logicalViewSchemaList.add(measurementSchemaInfo.getSchemaAsLogicalViewSchema());
         indexOfSourcePathsOfLogicalViews.add(index);
         return;
@@ -372,6 +373,14 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
+  public boolean hasLogicalViewNeedProcess() {
+    if (this.indexOfSourcePathsOfLogicalViews == null) {
+      return false;
+    }
+    return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
+  }
+
+  @Override
   public List<LogicalViewSchema> getLogicalViewSchemaList() {
     return this.logicalViewSchemaList;
   }
@@ -383,8 +392,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public void recordRangeOfLogicalViewSchemaListNow() {
-    this.recordedBeginOfLogicalViewSchemaList = this.recordedEndOfLogicalViewSchemaList;
-    this.recordedEndOfLogicalViewSchemaList = this.logicalViewSchemaList.size();
+    if (this.logicalViewSchemaList != null) {
+      this.recordedBeginOfLogicalViewSchemaList = this.recordedEndOfLogicalViewSchemaList;
+      this.recordedEndOfLogicalViewSchemaList = this.logicalViewSchemaList.size();
+    }
   }
 
   @Override

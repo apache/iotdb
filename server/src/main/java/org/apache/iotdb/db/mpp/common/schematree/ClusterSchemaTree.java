@@ -201,6 +201,9 @@ public class ClusterSchemaTree implements ISchemaTree {
    */
   public void computeSourceOfLogicalView(
       ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView) {
+    if (!schemaComputation.hasLogicalViewNeedProcess()) {
+      return;
+    }
     List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();
     for (Integer index : indexOfTargetLogicalView) {
       LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(index);

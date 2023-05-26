@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -143,6 +144,9 @@ public class DataNodeSchemaCache {
    */
   public Pair<List<Integer>, List<String>> computeSourceOfLogicalView(
       ISchemaComputation schemaComputation) {
+    if (!schemaComputation.hasLogicalViewNeedProcess()) {
+      return new Pair<>(new ArrayList<>(), new ArrayList<>());
+    }
     return timeSeriesSchemaCache.computeSourceOfLogicalView(schemaComputation);
   }
 

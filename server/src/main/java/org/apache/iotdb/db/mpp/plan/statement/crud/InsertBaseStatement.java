@@ -279,10 +279,12 @@ public abstract class InsertBaseStatement extends Statement {
     boolean[] isLogicalView = new boolean[this.measurements.length];
     int[] indexMapToLogicalViewList = new int[this.measurements.length];
     Arrays.fill(isLogicalView, false);
-    for (int i = 0; i < this.indexOfSourcePathsOfLogicalViews.size(); i++) {
-      int realIndex = this.indexOfSourcePathsOfLogicalViews.get(i);
-      isLogicalView[realIndex] = true;
-      indexMapToLogicalViewList[realIndex] = i;
+    if (this.indexOfSourcePathsOfLogicalViews != null) {
+      for (int i = 0; i < this.indexOfSourcePathsOfLogicalViews.size(); i++) {
+        int realIndex = this.indexOfSourcePathsOfLogicalViews.get(i);
+        isLogicalView[realIndex] = true;
+        indexMapToLogicalViewList[realIndex] = i;
+      }
     }
     // construct map from device to measurements and record the index of its measurement schema
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
