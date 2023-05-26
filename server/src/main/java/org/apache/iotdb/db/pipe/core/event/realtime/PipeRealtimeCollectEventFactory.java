@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 public class PipeRealtimeCollectEventFactory {
 
@@ -34,9 +35,9 @@ public class PipeRealtimeCollectEventFactory {
   }
 
   public static PipeRealtimeCollectEvent createCollectEvent(
-      InsertNode node, TsFileResource resource) {
+      WALEntryHandler walEntryHandler, InsertNode insertNode, TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTabletInsertionEvent(
-        new PipeInsertNodeInsertionEvent(node), node, resource);
+        new PipeInsertNodeInsertionEvent(walEntryHandler), insertNode, resource);
   }
 
   private PipeRealtimeCollectEventFactory() {

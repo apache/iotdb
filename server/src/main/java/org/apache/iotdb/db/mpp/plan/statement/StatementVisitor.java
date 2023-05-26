@@ -92,6 +92,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -251,6 +252,10 @@ public abstract class StatementVisitor<R, C> {
   public R visitDeleteLogicalView(
       DeleteLogicalViewStatement deleteLogicalViewStatement, C context) {
     return visitStatement(deleteLogicalViewStatement, context);
+  }
+
+  public R visitShowLogicalView(ShowLogicalViewStatement showLogicalViewStatement, C context) {
+    return visitStatement(showLogicalViewStatement, context);
   }
 
   // ML Model

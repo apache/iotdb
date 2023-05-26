@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LogicalViewSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
@@ -175,7 +176,8 @@ public enum PlanNodeType {
   CREATE_LOGICAL_VIEW((short) 73),
   CONSTRUCT_LOGICAL_VIEW_BLACK_LIST((short) 74),
   ROLLBACK_LOGICAL_VIEW_BLACK_LIST((short) 75),
-  DELETE_LOGICAL_VIEW((short) 76);
+  DELETE_LOGICAL_VIEW((short) 76),
+  LOGICAL_VIEW_SCHEMA_SCAN((short) 77);
 
   public static final int BYTES = Short.BYTES;
 
@@ -376,6 +378,8 @@ public enum PlanNodeType {
         return RollbackLogicalViewBlackListNode.deserialize(buffer);
       case 76:
         return DeleteLogicalViewNode.deserialize(buffer);
+      case 77:
+        return LogicalViewSchemaScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

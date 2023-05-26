@@ -23,6 +23,9 @@ import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRowIterator;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeRowCollector;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.wal.exception.WALPipeException;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.access.RowIterator;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -164,19 +167,6 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
       }
     }
   }
-
-  //  private Object[][] convertColumnsToRows(Object[] columnRecords) {
-  //    int rowSize = ((Object[]) columnRecords[0]).length;
-  //    int columnSize = columnRecords.length;
-  //    Object[][] rowRecords = new Object[rowSize][columnSize];
-  //
-  //    for (int i = 0; i < rowSize; i++) {
-  //      for (int j = 0; j < columnSize; j++) {
-  //        rowRecords[i][j] = ((Object[]) columnRecords[j])[i];
-  //      }
-  //    }
-  //    return rowRecords;
-  //  }
 
   @Override
   public boolean increaseReferenceCount(String holderMessage) {
