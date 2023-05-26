@@ -807,8 +807,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           }
 
           // create one logical view
-          IMeasurementMNode<IMemMNode> leafMNode;
-          leafMNode = mtree.createLogicalView(path, viewPathToSourceMap.get(path));
+          IMeasurementMNode<IMemMNode> leafMNode =
+              mtree.createLogicalView(path, viewPathToSourceMap.get(path));
         } catch (Throwable t) {
           if (seriesNumberMonitor != null) {
             seriesNumberMonitor.deleteTimeSeries(1);
