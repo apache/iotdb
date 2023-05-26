@@ -23,9 +23,6 @@ import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRowIterator;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeRowCollector;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
-import org.apache.iotdb.db.wal.exception.WALPipeException;
-import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.access.RowIterator;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -37,23 +34,27 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
 public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
 
-  private List<Tablet> tabletList;
+  private Tablet tablet;
 
   private String pattern;
 
   private List<TSDataType> columnTypeList;
   private List<Path> columnNameList;
   private String deviceFullPath;
+  private Object[][] rowRecords;
 
-  public PipeTabletInsertionEvent(List<Tablet> tabletList) {
-    this.tabletList = tabletList;
-    pattern = null;
+  public PipeTabletInsertionEvent(Tablet tablet) {
+    this(tablet, null);
+  }
+
+  public PipeTabletInsertionEvent(Tablet tablet, String pattern) {
+    this.tablet = tablet;
+    this.pattern = pattern;
 
     matchPattern();
   }
@@ -62,109 +63,94 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
 
-    for (Tablet tablet : tabletList) {
-      int rowSize = tablet.rowSize;
-      int columnSize = tablet.values.length;
-
-      for (int i = 0; i < rowSize; i++) {
-        Object[] rowRecord = new Object[columnSize];
-        for (int j = 0; j < columnSize; j++) {
-          rowRecord[j] = ((Object[]) tablet.values[j])[i];
-        }
-        Row row = new PipeRow(columnNameList, columnTypeList).setRowRecord(rowRecord);
-        consumer.accept(row, rowCollector);
-      }
+    for (Object[] rowRecord : rowRecords) {
+      Row row = new PipeRow(columnNameList, columnTypeList).setRowRecord(rowRecord);
+      consumer.accept(row, rowCollector);
     }
+
     return rowCollector.toTabletInsertionEvent();
   }
 
   @Override
   public TabletInsertionEvent processByIterator(BiConsumer<RowIterator, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
+    List<Row> rowList = new ArrayList<>();
 
-    for (Tablet tablet : tabletList) {
-      int rowSize = tablet.rowSize;
-      int columnSize = tablet.values.length;
-      List<Row> rowList = new ArrayList<>();
-
-      for (int i = 0; i < rowSize; i++) {
-        Object[] rowRecord = new Object[columnSize];
-        for (int j = 0; j < columnSize; j++) {
-          rowRecord[j] = ((Object[]) tablet.values[j])[i];
-        }
-
-        rowList.add(new PipeRow(columnNameList, columnTypeList).setRowRecord(rowRecord));
-      }
-
-      RowIterator rowIterator = new PipeRowIterator(rowList, 0, rowList.size());
-      consumer.accept(rowIterator, rowCollector);
+    for (Object[] rowRecord : rowRecords) {
+      Row row = new PipeRow(columnNameList, columnTypeList).setRowRecord(rowRecord);
+      rowList.add(row);
     }
+
+    RowIterator rowIterator = new PipeRowIterator(rowList, 0, rowList.size());
+    consumer.accept(rowIterator, rowCollector);
     return rowCollector.toTabletInsertionEvent();
   }
 
   @Override
   public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
-    for (Tablet tablet : tabletList) {
-      consumer.accept(tablet, rowCollector);
-    }
+
+    consumer.accept(tablet, rowCollector);
     return rowCollector.toTabletInsertionEvent();
   }
 
   public void matchPattern() {
-    if (tabletList.isEmpty()) {
+    if (tablet == null) {
       return;
     }
 
-    Tablet tmpTablet = tabletList.get(0);
-    List<MeasurementSchema> originSchemaList = tmpTablet.getSchemas();
-    this.deviceFullPath = tmpTablet.deviceId;
+    List<MeasurementSchema> originSchemaList = tablet.getSchemas();
+    this.deviceFullPath = tablet.deviceId;
+    List<Integer> indexList = new ArrayList<>();
     this.columnTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
-    List<Integer> indexList = new ArrayList<>();
 
-    if (pattern != null) {
-      if (deviceFullPath.indexOf(pattern) != 0) {
-        tabletList = Collections.emptyList();
-      } else {
-        for (int i = 0; i < originSchemaList.size(); i++) {
-          MeasurementSchema measurementSchema = tmpTablet.getSchemas().get(i);
-          if (pattern.length()
+    boolean collectAllColumns =
+        pattern == null
+            || (pattern.length() <= deviceFullPath.length() && deviceFullPath.startsWith(pattern));
+
+    for (int i = 0; i < originSchemaList.size(); i++) {
+      MeasurementSchema measurementSchema = tablet.getSchemas().get(i);
+      if (collectAllColumns
+          || (pattern.length() > deviceFullPath.length()
+              && pattern.startsWith(deviceFullPath)
+              && pattern.length()
                   == deviceFullPath.length() + measurementSchema.getMeasurementId().length() + 1
               && pattern.endsWith(
-                  TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId())) {
-            this.columnNameList.add(
-                new Path(deviceFullPath, measurementSchema.getMeasurementId(), false));
-            this.columnTypeList.add(measurementSchema.getType());
-            indexList.add(i);
-          }
-        }
-
-        int columnSize = indexList.size();
-        List<Tablet> newTabletList = new ArrayList<>();
-        List<MeasurementSchema> newSchemaList = new ArrayList<>();
-        for (int i = 0; i < columnSize; i++) {
-          newSchemaList.add(
-              new MeasurementSchema(columnNameList.get(i).getMeasurement(), columnTypeList.get(i)));
-        }
-
-        for (Tablet originTablet : tabletList) {
-          int rowSize = originTablet.rowSize;
-          Object[][] columns = new Object[columnSize][rowSize];
-
-          for (int i = 0; i < columnSize; i++) {
-            Object[] columnRecord = (Object[]) originTablet.values[indexList.get(i)];
-            System.arraycopy(columnRecord, 0, columns[i], 0, rowSize);
-          }
-
-          Tablet newTablet = new Tablet(deviceFullPath, newSchemaList);
-          newTablet.rowSize = rowSize;
-          newTablet.values = columns;
-          newTabletList.add(newTablet);
-        }
-
-        tabletList = newTabletList;
+                  TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId()))) {
+        this.columnNameList.add(
+            new Path(deviceFullPath, measurementSchema.getMeasurementId(), false));
+        this.columnTypeList.add(measurementSchema.getType());
+        indexList.add(i);
       }
+    }
+
+    if (!collectAllColumns && !indexList.isEmpty()) {
+      int rowSize = tablet.rowSize;
+      int columnSize = indexList.size();
+      this.rowRecords = new Object[rowSize][columnSize];
+
+      List<MeasurementSchema> newSchemaList = new ArrayList<>();
+      for (int i = 0; i < columnSize; i++) {
+        newSchemaList.add(
+            new MeasurementSchema(columnNameList.get(i).getMeasurement(), columnTypeList.get(i)));
+      }
+
+      Object[][] columns = new Object[columnSize][rowSize];
+      for (int columnIndex = 0; columnIndex < columnSize; columnIndex++) {
+        Object[] column = (Object[]) tablet.values[indexList.get(columnIndex)];
+        System.arraycopy(column, 0, columns[columnIndex], 0, rowSize);
+        for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
+          rowRecords[rowIndex][columnIndex] = column[rowIndex];
+        }
+      }
+
+      Tablet newTablet = new Tablet(deviceFullPath, newSchemaList);
+      newTablet.rowSize = rowSize;
+      newTablet.values = columns;
+      this.tablet = newTablet;
+    } else {
+      this.tablet = null;
     }
   }
 

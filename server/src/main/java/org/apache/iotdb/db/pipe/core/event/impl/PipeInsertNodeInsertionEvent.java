@@ -26,6 +26,9 @@ import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRowIterator;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeRowCollector;
+import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.wal.exception.WALPipeException;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.access.RowIterator;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -37,32 +40,37 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
 
-  private final InsertNode insertNode;
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInsertNodeInsertionEvent.class);
 
-  private final AtomicInteger referenceCount;
+  private final WALEntryHandler walEntryHandler;
+  private final InsertNode insertNode;
 
   private String pattern;
 
   private List<TSDataType> dataTypeList;
   private List<Path> columnNameList;
   private String deviceFullPath;
-  private Object[][] columns;
   private Object[][] rowRecords;
 
-  public PipeInsertNodeInsertionEvent(InsertNode insertNode) {
-    this.insertNode = insertNode;
-    this.referenceCount = new AtomicInteger(0);
-    this.pattern = null;
+  public PipeInsertNodeInsertionEvent(WALEntryHandler walEntryHandler) throws WALPipeException {
+    this(walEntryHandler, null);
+  }
+
+  public PipeInsertNodeInsertionEvent(WALEntryHandler walEntryHandler, String pattern)
+      throws WALPipeException {
+    this.walEntryHandler = walEntryHandler;
+    this.insertNode = walEntryHandler.getValue();
+    this.pattern = pattern;
 
     matchPattern();
   }
@@ -75,18 +83,11 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
 
-    if (insertNode instanceof InsertRowNode) {
-      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecords[0]);
+    for (Object[] rowRecord : rowRecords) {
+      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
       consumer.accept(row, rowCollector);
-    } else if (insertNode instanceof InsertTabletNode) {
-      for (Object[] rowRecord : rowRecords) {
-        Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
-        consumer.accept(row, rowCollector);
-      }
-    } else {
-      throw new UnSupportedDataTypeException(
-          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
     }
+
     return rowCollector.toTabletInsertionEvent();
   }
 
@@ -94,53 +95,32 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
   public TabletInsertionEvent processByIterator(BiConsumer<RowIterator, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
 
-    if (insertNode instanceof InsertRowNode) {
-      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecords[0]);
-
-      PipeRowIterator rowIterator = new PipeRowIterator(Collections.singletonList(row), 0, 1);
-      consumer.accept(rowIterator, rowCollector);
-    } else if (insertNode instanceof InsertTabletNode) {
-      List<Row> rows = new ArrayList<>();
-      for (Object[] rowRecord : rowRecords) {
-        Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
-        rows.add(row);
-      }
-      RowIterator rowIterator = new PipeRowIterator(rows, 0, rows.size());
-      consumer.accept(rowIterator, rowCollector);
-    } else {
-      throw new UnSupportedDataTypeException(
-          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+    List<Row> rows = new ArrayList<>();
+    for (Object[] rowRecord : rowRecords) {
+      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
+      rows.add(row);
     }
 
-    return this;
+    RowIterator rowIterator = new PipeRowIterator(rows, 0, rows.size());
+    consumer.accept(rowIterator, rowCollector);
+    return rowCollector.toTabletInsertionEvent();
   }
 
   @Override
   public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer)
       throws IOException {
-    RowCollector rowCollector = new PipeRowCollector();
+    PipeRowCollector rowCollector = new PipeRowCollector();
     List<MeasurementSchema> schemas = createMeasurementSchemas();
     Tablet tablet = new Tablet(deviceFullPath, schemas);
 
-    if (insertNode instanceof InsertRowNode) {
-      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecords[0]);
-
+    for (Object[] rowRecord : rowRecords) {
+      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
       for (int i = 0; i < row.size(); i++) {
-        tablet.addValue(columnNameList.get(i).getMeasurement(), 0, row.getObject(i));
+        tablet.addValue(columnNameList.get(i).getMeasurement(), i, row.getObject(i));
       }
-      consumer.accept(tablet, rowCollector);
-    } else if (insertNode instanceof InsertTabletNode) {
-      for (Object[] row : rowRecords) {
-        for (int j = 0; j < row.length; j++) {
-          tablet.addValue(columnNameList.get(j).getMeasurement(), j, row[j]);
-        }
-      }
-      consumer.accept(tablet, rowCollector);
-    } else {
-      throw new UnSupportedDataTypeException(
-          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
     }
-    return this;
+
+    return rowCollector.toTabletInsertionEvent();
   }
 
   private List<MeasurementSchema> createMeasurementSchemas() {
@@ -153,107 +133,158 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
   }
 
   private void matchPattern() {
-    // origin schemas from insertNode
-    TSDataType[] originDataTypeList = insertNode.getDataTypes();
-    String[] originMeasurementList = insertNode.getMeasurements();
-    Object[] originColumns;
+    if (pattern == null) {
+      return;
+    }
 
-    if(insertNode instanceof InsertRowNode){
-      originColumns = ((InsertRowNode)insertNode).getValues();
-    } else if(insertNode instanceof InsertTabletNode){
-      originColumns = ((InsertTabletNode) insertNode).getColumns();
+    if (insertNode instanceof InsertRowNode) {
+      processRowNodePattern((InsertRowNode) insertNode);
+    } else if (insertNode instanceof InsertTabletNode) {
+      processTabletNodePattern((InsertTabletNode) insertNode);
     } else {
       throw new UnSupportedDataTypeException(
           String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
     }
+  }
 
+  private void processRowNodePattern(InsertRowNode insertRowNode) {
+    TSDataType[] originDataTypeList = insertRowNode.getDataTypes();
+    String[] originMeasurementList = insertRowNode.getMeasurements();
+    Object[] originValues = insertRowNode.getValues();
+
+    processPattern(originDataTypeList, originMeasurementList, originValues);
+  }
+
+  private void processTabletNodePattern(InsertTabletNode insertTabletNode) {
+    TSDataType[] originDataTypeList = insertTabletNode.getDataTypes();
+    String[] originMeasurementList = insertTabletNode.getMeasurements();
+    Object[] originColumns = insertTabletNode.getColumns();
+    int rowSize = insertTabletNode.getRowCount();
+
+    processPattern(originDataTypeList, originMeasurementList, originColumns, rowSize);
+  }
+
+  private void processPattern(
+      TSDataType[] originDataTypeList, String[] originMeasurementList, Object[] originValues) {
     int originColumnSize = originMeasurementList.length;
-    int rowSize = ((InsertTabletNode) insertNode).getRowCount();
-
     this.deviceFullPath = insertNode.getDevicePath().getFullPath();
     this.dataTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
 
     if (pattern != null) {
-      if (deviceFullPath.indexOf(pattern) != 0) {
-        // TODO：it means match nothing
-      } else {
-        int patternLength = pattern.length();
-        int deviceFullPathLength = deviceFullPath.length();
+      processPatternByDevice(
+          originColumnSize, originMeasurementList, originDataTypeList, indexList);
+    }
 
-        for (int i = 0; i < originColumnSize; i++) {
-          String measurement = originMeasurementList[i];
+    for (int i = 0; i < indexList.size(); i++) {
+      rowRecords[0][i] = originValues[indexList.get(i)];
+    }
+  }
 
-          // 如果匹配成功，就收集元数据
-          if (patternLength == deviceFullPathLength + measurement.length() + 1
-              && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+  private void processPattern(
+      TSDataType[] originDataTypeList,
+      String[] originMeasurementList,
+      Object[] originColumns,
+      int rowSize) {
+    int originColumnSize = originMeasurementList.length;
+    this.deviceFullPath = insertNode.getDevicePath().getFullPath();
+    this.dataTypeList = new ArrayList<>();
+    this.columnNameList = new ArrayList<>();
+    List<Integer> indexList = new ArrayList<>();
 
-            columnNameList.add(new Path(deviceFullPath, measurement, false));
-            dataTypeList.add(originDataTypeList[i]);
-            indexList.add(i);
-          }
-        }
+    if (pattern != null) {
+      processPatternByDevice(
+          originColumnSize, originMeasurementList, originDataTypeList, indexList);
+    }
 
-        int columnSize = indexList.size();
-        this.columns = new Object[columnSize][rowSize];
+    int columnSize = indexList.size();
+    this.rowRecords = new Object[rowSize][columnSize];
 
-        for (int i = 0; i < columnSize; i++) {
-          Object[] column = (Object[]) originColumns[indexList.get(i)];
-          System.arraycopy(column, 0, columns[i], 0, rowSize);
-        }
-
-        convertColumnsToRows();
+    for (int columnIndex = 0; columnIndex < columnSize; columnIndex++) {
+      Object[] column = (Object[]) originColumns[indexList.get(columnIndex)];
+      for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
+        rowRecords[rowIndex][columnIndex] = column[rowIndex];
       }
     }
   }
 
-  private void convertColumnsToRows() {
-    int rowSize = columns[0].length;
-    int columnSize = columns.length;
-    this.rowRecords = new Object[rowSize][columnSize];
-
-    for (int i = 0; i < rowSize; i++) {
-      Object[] row = new Object[columnSize];
-      for (int j = 0; j < columnSize; j++) {
-        row[j] = columns[j][i];
+  private void processPatternByDevice(
+      int originColumnSize,
+      String[] originMeasurementList,
+      TSDataType[] originDataTypeList,
+      List<Integer> indexList) {
+    if (pattern.length() <= deviceFullPath.length() && deviceFullPath.startsWith(pattern)) {
+      // collect all columns
+      for (int i = 0; i < originColumnSize; i++) {
+        columnNameList.add(new Path(deviceFullPath, originMeasurementList[i], false));
+        dataTypeList.add(originDataTypeList[i]);
+        indexList.add(i);
       }
-      rowRecords[i] = row;
+    } else if (pattern.length() > deviceFullPath.length() && pattern.startsWith(deviceFullPath)) {
+      for (int i = 0; i < originColumnSize; i++) {
+        String measurement = originMeasurementList[i];
+
+        // if match successfully, collect metadata
+        if (pattern.length() == deviceFullPath.length() + measurement.length() + 1
+            && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+          columnNameList.add(new Path(deviceFullPath, measurement, false));
+          dataTypeList.add(originDataTypeList[i]);
+          indexList.add(i);
+        }
+      }
     }
   }
 
   @Override
   public boolean increaseReferenceCount(String holderMessage) {
-    // TODO: use WALPipeHandler pinMemtable
-    referenceCount.incrementAndGet();
-    return true;
+    try {
+      PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
+      return true;
+    } catch (Exception e) {
+      LOGGER.warn(
+          String.format(
+              "Increase reference count for memtable %d error. Holder Message: %s",
+              walEntryHandler.getMemTableId(), holderMessage),
+          e);
+      return false;
+    }
   }
 
   @Override
   public boolean decreaseReferenceCount(String holderMessage) {
-    // TODO: use WALPipeHandler unpinMemetable
-    referenceCount.decrementAndGet();
-    return true;
+    try {
+      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
+      return true;
+    } catch (Exception e) {
+      LOGGER.warn(
+          String.format(
+              "Decrease reference count for memtable %d error. Holder Message: %s",
+              walEntryHandler.getMemTableId(), holderMessage),
+          e);
+      return false;
+    }
   }
 
   @Override
   public int getReferenceCount() {
-    // TODO: use WALPipeHandler unpinMemetable
-    return referenceCount.get();
+    return PipeResourceManager.wal().getReferenceCount(walEntryHandler.getMemTableId());
+  }
+
+  @Override
+  public String toString() {
+    return "PipeInsertNodeInsertionEvent{" + "walEntryHandler=" + walEntryHandler + '}';
   }
 
   @Override
   public void setPattern(String pathPattern) {
     this.pattern = pathPattern;
+
+    matchPattern();
   }
 
   @Override
   public String getPattern() {
     return pattern;
-  }
-
-  @Override
-  public String toString() {
-    return "PipeTabletInsertionEvent{" + "insertNode=" + insertNode + '}';
   }
 }

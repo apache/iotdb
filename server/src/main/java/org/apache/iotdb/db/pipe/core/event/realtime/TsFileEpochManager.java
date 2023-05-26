@@ -60,7 +60,7 @@ public class TsFileEpochManager {
             .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)));
   }
 
-  public PipeRealtimeCollectEvent bindPipeTabletInsertionEvent(
+  public PipeRealtimeCollectEvent bindPipeInsertNodeInsertionEvent(
       PipeInsertNodeInsertionEvent event, InsertNode node, TsFileResource resource) {
     return new PipeRealtimeCollectEvent(
         event,

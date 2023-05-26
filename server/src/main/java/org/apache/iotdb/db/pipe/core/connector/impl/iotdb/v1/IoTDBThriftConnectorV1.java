@@ -117,7 +117,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeInsertionEvent)) {
       throw new NotImplementedException(
-          "IoTDBThriftConnectorV1 only support PipeTabletInsertionEvent.");
+          "IoTDBThriftConnectorV1 only support PipeInsertNodeInsertionEvent.");
     }
 
     try {
