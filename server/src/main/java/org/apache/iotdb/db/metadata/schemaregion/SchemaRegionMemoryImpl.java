@@ -1168,6 +1168,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
+      throw new SeriesOverflowException();
+    }
+
     try {
       getDeviceNodeWithAutoCreate(plan.getActivatePath());
 
