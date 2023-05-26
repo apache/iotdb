@@ -145,4 +145,26 @@ public abstract class BinaryExpression extends Expression {
     Expression.serialize(leftExpression, stream);
     Expression.serialize(rightExpression, stream);
   }
+
+  @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    String left = this.getLeftExpression().getStringWithViewOfThisExpression();
+    String right = this.getRightExpression().getStringWithViewOfThisExpression();
+
+    StringBuilder builder = new StringBuilder();
+    if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
+      builder.append("(").append(left).append(")");
+    } else {
+      builder.append(left);
+    }
+    builder.append(" ").append(operator()).append(" ");
+    if (rightExpression.getExpressionType().getPriority()
+        < this.getExpressionType().getPriority()) {
+      builder.append("(").append(right).append(")");
+    } else {
+      builder.append(right);
+    }
+
+    return builder.toString();
+  }
 }

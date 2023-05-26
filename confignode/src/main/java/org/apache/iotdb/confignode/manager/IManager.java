@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -87,7 +88,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -551,6 +551,8 @@ public interface IManager {
    */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
 
+  TSStatus deleteLogicalView(TDeleteLogicalViewReq req);
+
   /**
    * Create Pipe
    *
@@ -597,13 +599,6 @@ public interface IManager {
    * @return All pipe information.
    */
   TGetAllPipeInfoResp getAllPipeInfo();
-
-  /**
-   * Record PipeMessage
-   *
-   * @return TSStatus
-   */
-  TSStatus recordPipeMessage(TRecordPipeMessageReq req);
 
   /**
    * Get RegionId。used for Show cluster slots information in

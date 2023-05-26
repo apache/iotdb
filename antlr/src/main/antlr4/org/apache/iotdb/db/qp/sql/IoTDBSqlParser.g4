@@ -64,7 +64,7 @@ ddlStatement
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
-    | createLogicalView
+    | createLogicalView | dropLogicalView | showLogicalView
     ;
 
 dmlStatement
@@ -224,11 +224,15 @@ deviceContainsExpression
 
 // ---- Timeseries Where Clause
 timeseriesWhereClause
-    : WHERE (timeseriesContainsExpression | tagEqualsExpression | tagContainsExpression)
+    : WHERE (timeseriesContainsExpression | columnEqualsExpression | tagEqualsExpression | tagContainsExpression)
     ;
 
 timeseriesContainsExpression
     : TIMESERIES OPERATOR_CONTAINS value=STRING_LITERAL
+    ;
+
+columnEqualsExpression
+    : attributeKey operator_eq attributeValue
     ;
 
 tagEqualsExpression
@@ -557,6 +561,14 @@ showTrails
 // Create Logical View
 createLogicalView
     : CREATE VIEW viewTargetPaths AS viewSourcePaths
+    ;
+
+showLogicalView
+    : SHOW VIEW prefixPath? timeseriesWhereClause? rowPaginationClause?
+    ;
+
+dropLogicalView
+    : (DELETE | DROP) VIEW prefixPath (COMMA prefixPath)*
     ;
 
 viewSuffixPaths

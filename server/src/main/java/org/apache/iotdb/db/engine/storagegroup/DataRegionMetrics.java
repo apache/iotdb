@@ -59,8 +59,12 @@ public class DataRegionMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DataRegionMetrics that = (DataRegionMetrics) o;
     return Objects.equals(dataRegion, that.dataRegion)
         && Objects.equals(storageGroupName, that.storageGroupName);

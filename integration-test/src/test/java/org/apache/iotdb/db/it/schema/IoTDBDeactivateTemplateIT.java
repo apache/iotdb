@@ -274,4 +274,26 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       }
     }
   }
+
+  @Test
+  public void testPathNotSetAndUsingTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create database root.db.factory0");
+      statement.execute("create database root.db.factory1");
+      statement.execute("create database root.db.factory2");
+
+      statement.execute("set schema template t1 to root.db.factory0");
+      statement.execute("set schema template t1 to root.db.factory1");
+
+      try {
+        statement.execute("deactivate schema template from root.db.**");
+      } catch (SQLException e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Target schema Template is not activated on any path matched by given path pattern"));
+      }
+    }
+  }
 }

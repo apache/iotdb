@@ -1223,4 +1223,30 @@ public class IoTDBOrderByIT {
     int[] ans = {12, 14, 13, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     orderByUDFTest(sql, ans);
   }
+
+  @Test
+  public void errorTest1() {
+    String sql = "select num from root.sg.d order by avg(bigNum)";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        fail();
+      }
+    } catch (Exception e) {
+      assertEquals("701: Raw data and aggregation hybrid query is not supported.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void errorTest2() {
+    String sql = "select avg(num) from root.sg.d order by bigNum";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        fail();
+      }
+    } catch (Exception e) {
+      assertEquals("701: Raw data and aggregation hybrid query is not supported.", e.getMessage());
+    }
+  }
 }

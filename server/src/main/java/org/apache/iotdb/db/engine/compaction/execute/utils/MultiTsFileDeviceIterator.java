@@ -59,14 +59,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<String, Boolean> currentDevice = null;
 
-  /** Used for inner space compaction. */
+  /** Used for compaction with read chunk performer. */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
     // sort the files from the oldest to the newest
     Collections.sort(this.tsFileResourcesSortedByAsc, TsFileResource::compareFileName);
     // sort the files from the newest to the oldest
-    Collections.sort(this.tsFileResourcesSortedByDesc, TsFileResource::compareFileNameByDesc);
+    Collections.sort(
+        this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     try {
       for (TsFileResource tsFileResource : this.tsFileResourcesSortedByDesc) {
         TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
@@ -83,13 +84,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
-  /** Used for cross space compaction with read point performer. */
+  /** Used for compaction with read point performer. */
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
     // sort the files from the newest to the oldest
-    Collections.sort(this.tsFileResourcesSortedByDesc, TsFileResource::compareFileNameByDesc);
+    Collections.sort(
+        this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
@@ -107,7 +109,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
     // sort tsfiles from the newest to the oldest
-    Collections.sort(this.tsFileResourcesSortedByDesc, TsFileResource::compareFileNameByDesc);
+    Collections.sort(
+        this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
@@ -359,7 +362,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (modification.getDevice().equals(currentDevice.left)) {
         for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
           IChunkMetadata chunkMetadata = valueChunkMetadataList.get(i);
-          if (modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
+          if (chunkMetadata != null
+              && modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
             modificationForCurDevice.get(i).add(modification);
           }
         }

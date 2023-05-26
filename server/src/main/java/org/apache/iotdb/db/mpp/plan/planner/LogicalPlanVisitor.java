@@ -34,13 +34,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTem
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.MeasurementGroup;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -70,7 +70,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesState
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
@@ -80,6 +79,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -843,5 +844,41 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         context.getQueryId().genPlanNodeId(),
         createLogicalViewStatement.getTargetPathList(),
         viewExpressionList);
+  }
+
+  @Override
+  public PlanNode visitShowLogicalView(
+      ShowLogicalViewStatement showTimeSeriesStatement, MPPQueryContext context) {
+    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    // If there is only one region, we can push down the offset and limit operation to
+    // source operator.
+    boolean canPushDownOffsetLimit =
+        analysis.getSchemaPartitionInfo() != null
+            && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
+
+    long limit = showTimeSeriesStatement.getLimit();
+    long offset = showTimeSeriesStatement.getOffset();
+    if (!canPushDownOffsetLimit) {
+      limit = showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset();
+      offset = 0;
+    }
+    planBuilder =
+        planBuilder
+            .planLogicalViewSchemaSource(
+                showTimeSeriesStatement.getPathPattern(),
+                showTimeSeriesStatement.getSchemaFilter(),
+                limit,
+                offset)
+            .planSchemaQueryMerge(false);
+
+    if (canPushDownOffsetLimit) {
+      return planBuilder.getRoot();
+    }
+
+    return planBuilder
+        .planOffset(showTimeSeriesStatement.getOffset())
+        .planLimit(showTimeSeriesStatement.getLimit())
+        .getRoot();
   }
 }
