@@ -117,7 +117,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
@@ -164,6 +163,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -1002,6 +1004,43 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     parseViewSourcePaths(ctx.viewSourcePaths(), createLogicalViewStatement);
 
     return createLogicalViewStatement;
+  }
+
+  @Override
+  public Statement visitDropLogicalView(IoTDBSqlParser.DropLogicalViewContext ctx) {
+    DeleteLogicalViewStatement deleteLogicalViewStatement = new DeleteLogicalViewStatement();
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+      partialPaths.add(parsePrefixPath(prefixPathContext));
+    }
+    deleteLogicalViewStatement.setPathPatternList(partialPaths);
+    return deleteLogicalViewStatement;
+  }
+
+  @Override
+  public Statement visitShowLogicalView(IoTDBSqlParser.ShowLogicalViewContext ctx) {
+    ShowLogicalViewStatement showLogicalViewStatement;
+    if (ctx.prefixPath() != null) {
+      showLogicalViewStatement = new ShowLogicalViewStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      showLogicalViewStatement =
+          new ShowLogicalViewStatement(new PartialPath(SqlConstant.getSingleRootArray()));
+    }
+    if (ctx.timeseriesWhereClause() != null) {
+      SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
+      showLogicalViewStatement.setSchemaFilter(schemaFilter);
+    }
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showLogicalViewStatement.setLimit(
+            parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showLogicalViewStatement.setOffset(
+            parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
+    }
+    return showLogicalViewStatement;
   }
 
   // parse suffix paths in logical view

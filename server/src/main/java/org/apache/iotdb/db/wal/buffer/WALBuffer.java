@@ -256,7 +256,7 @@ public class WALBuffer extends AbstractWALBuffer {
       // update related info
       totalSize += size;
       info.metaData.add(size, searchIndex);
-      walEntry.getWalFlushListener().getWalPipeHandler().setSize(size);
+      walEntry.getWalFlushListener().getWalEntryHandler().setSize(size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
     }
 
@@ -495,9 +495,9 @@ public class WALBuffer extends AbstractWALBuffer {
       if (forceSuccess) {
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
-          if (fsyncListener.getWalPipeHandler() != null) {
-            fsyncListener.getWalPipeHandler().setEntryPosition(walFileVersionId, position);
-            position += fsyncListener.getWalPipeHandler().getSize();
+          if (fsyncListener.getWalEntryHandler() != null) {
+            fsyncListener.getWalEntryHandler().setEntryPosition(walFileVersionId, position);
+            position += fsyncListener.getWalEntryHandler().getSize();
           }
         }
       }

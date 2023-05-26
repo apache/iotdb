@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.plan.schemaregion.impl.write;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IActivateTemplateInClusterPlan;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IAutoCreateDeviceMNo
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeAliasPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IChangeTagOffsetPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeleteTimeSeriesPlan;
@@ -34,6 +36,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -73,6 +78,12 @@ public class SchemaRegionWritePlanFactory {
         return new DeactivateTemplatePlanImpl();
       case CREATE_LOGICAL_VIEW:
         return new CreateLogicalViewPlanImpl();
+      case PRE_DELETE_LOGICAL_VIEW:
+        return new PreDeleteLogicalViewPlanImpl();
+      case ROLLBACK_PRE_DELETE_LOGICAL_VIEW:
+        return new RollbackPreDeleteLogicalViewPlanImpl();
+      case DELETE_LOGICAL_VIEW:
+        return new DeleteLogicalViewPlanImpl();
       default:
         throw new UnsupportedOperationException(
             String.format(
@@ -157,5 +168,23 @@ public class SchemaRegionWritePlanFactory {
   public static IDeactivateTemplatePlan getDeactivateTemplatePlan(
       Map<PartialPath, List<Integer>> templateSetInfo) {
     return new DeactivateTemplatePlanImpl(templateSetInfo);
+  }
+
+  public static ICreateLogicalViewPlan getCreateLogicalViewPlan(
+      PartialPath targetPath, ViewExpression sourceExpression) {
+    return new CreateLogicalViewPlanImpl(targetPath, sourceExpression);
+  }
+
+  public static IPreDeleteLogicalViewPlan getPreDeleteLogicalViewPlan(PartialPath path) {
+    return new PreDeleteLogicalViewPlanImpl(path);
+  }
+
+  public static IRollbackPreDeleteLogicalViewPlan getRollbackPreDeleteLogicalViewPlan(
+      PartialPath path) {
+    return new RollbackPreDeleteLogicalViewPlanImpl(path);
+  }
+
+  public static IDeleteLogicalViewPlan getDeleteLogicalViewPlan(PartialPath path) {
+    return new DeleteLogicalViewPlanImpl(path);
   }
 }

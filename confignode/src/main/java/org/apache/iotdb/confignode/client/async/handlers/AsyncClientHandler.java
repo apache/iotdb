@@ -162,6 +162,9 @@ public class AsyncClientHandler<Q, R> {
       case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
       case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
       case DEACTIVATE_TEMPLATE:
+      case CONSTRUCT_VIEW_SCHEMA_BLACK_LIST:
+      case ROLLBACK_VIEW_SCHEMA_BLACK_LIST:
+      case DELETE_VIEW:
         return new DeleteSchemaRPCHandler(
             requestType,
             requestId,
