@@ -63,6 +63,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodes
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.UnsetSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.view.AlterLogicalViewTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.view.DeleteLogicalViewTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.view.RenameLogicalViewTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.AuthorizerTask;
@@ -130,6 +131,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -445,6 +447,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitRenameLogicalView(
       RenameLogicalViewStatement renameLogicalViewStatement, TaskContext context) {
     return new RenameLogicalViewTask(context.queryId, renameLogicalViewStatement);
+  }
+
+  @Override
+  public IConfigTask visitAlterLogicalView(
+      AlterLogicalViewStatement alterLogicalViewStatement, TaskContext context) {
+    return new AlterLogicalViewTask(context.queryId, alterLogicalViewStatement);
   }
 
   @Override

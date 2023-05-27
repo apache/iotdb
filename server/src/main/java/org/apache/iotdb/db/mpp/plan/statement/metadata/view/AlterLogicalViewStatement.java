@@ -20,20 +20,18 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata.view;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.view.ViewPathType;
 import org.apache.iotdb.db.metadata.view.ViewPaths;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
-/** CREATE LOGICAL VIEW statement. */
-public class CreateLogicalViewStatement extends Statement {
+public class AlterLogicalViewStatement extends Statement implements IConfigStatement {
 
   // the paths of this view
   private ViewPaths targetPaths;
@@ -42,12 +40,9 @@ public class CreateLogicalViewStatement extends Statement {
   private ViewPaths sourcePaths;
   private QueryStatement queryStatement;
 
-  // if not null, all related check and generation will be skipped
-  private ViewExpression viewExpression;
-
-  public CreateLogicalViewStatement() {
+  public AlterLogicalViewStatement() {
     super();
-    this.statementType = StatementType.CREATE_LOGICAL_VIEW;
+    this.statementType = StatementType.ALTER_LOGICAL_VIEW;
     this.sourcePaths = new ViewPaths();
     this.targetPaths = new ViewPaths();
   }
@@ -72,24 +67,11 @@ public class CreateLogicalViewStatement extends Statement {
     return this.targetPaths.fullPathList;
   }
 
-  public List<Expression> getSourceExpressionList() {
-    this.sourcePaths.generateExpressionsIfNecessary();
-    return this.sourcePaths.expressionsList;
-  }
-
   public QueryStatement getQueryStatement() {
     return this.queryStatement;
   }
 
-  public ViewExpression getViewExpression() {
-    return viewExpression;
-  }
-
   // set source paths
-  public void setSourcePaths(ViewPaths sourcePaths) {
-    this.sourcePaths = sourcePaths;
-  }
-
   public void setSourceFullPaths(List<PartialPath> paths) {
     this.sourcePaths.setViewPathType(ViewPathType.FULL_PATH_LIST);
     this.sourcePaths.setFullPathList(paths);
@@ -107,21 +89,7 @@ public class CreateLogicalViewStatement extends Statement {
     this.queryStatement = queryStatement;
   }
 
-  /**
-   * This function must be called after analyzing query statement. Expressions that analyzed should
-   * be set through here.
-   *
-   * @param expressionList
-   */
-  public void setSourceExpressions(List<Expression> expressionList) {
-    this.sourcePaths.setExpressionsList(expressionList);
-  }
-
   // set target paths
-  public void setTargetPaths(ViewPaths targetPaths) {
-    this.targetPaths = targetPaths;
-  }
-
   public void setTargetFullPaths(List<PartialPath> paths) {
     this.targetPaths.setViewPathType(ViewPathType.FULL_PATH_LIST);
     this.targetPaths.setFullPathList(paths);
@@ -133,64 +101,15 @@ public class CreateLogicalViewStatement extends Statement {
     this.targetPaths.setSuffixOfPathsGroup(suffixPaths);
     this.targetPaths.generateFullPathsFromPathsGroup();
   }
-
-  public void setViewExpression(ViewExpression viewExpression) {
-    this.viewExpression = viewExpression;
-  }
-
-  // endregion
-
-  // region Interfaces for checking
-  /**
-   * Check errors in targetPaths.
-   *
-   * @return Pair<Boolean, String>. True: checks passed; False: checks failed. if check failed,
-   *     return the string of illegal path.
-   */
-  public Pair<Boolean, String> checkTargetPaths() {
-    for (PartialPath thisPath : this.getTargetPathList()) {
-      if (thisPath.getNodeLength() < 3) {
-        return new Pair<>(false, thisPath.getFullPath());
-      }
-    }
-    return new Pair<>(true, null);
-  }
-
-  /**
-   * Check errors in sourcePaths. Only usable when not using query statement. If this statement is
-   * generated with a query statement, check always pass; if not, check each full paths.
-   *
-   * @return Pair<Boolean, String>. True: checks passed; False: checks failed. if check failed,
-   *     return the string of illegal path.
-   */
-  public Pair<Boolean, String> checkSourcePathsIfNotUsingQueryStatement() {
-    if (this.sourcePaths.viewPathType == ViewPathType.PATHS_GROUP
-        || this.sourcePaths.viewPathType == ViewPathType.FULL_PATH_LIST) {
-      for (PartialPath thisPath : this.sourcePaths.fullPathList) {
-        if (thisPath.getNodeLength() < 3) {
-          return new Pair<>(false, thisPath.getFullPath());
-        }
-      }
-    }
-    return new Pair<>(true, null);
-  }
-
-  /**
-   * @return return true if checks passed; else return false. if check failed, return the string of
-   *     illegal path.
-   */
-  public Pair<Boolean, String> checkAllPaths() {
-    Pair<Boolean, String> result = this.checkTargetPaths();
-    if (result.left == false) return result;
-    result = this.checkSourcePathsIfNotUsingQueryStatement();
-    if (result.left == false) return result;
-    return new Pair<>(true, null);
-  }
-
   // endregion
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateLogicalView(this, context);
+    return visitor.visitAlterLogicalView(this, context);
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
   }
 }

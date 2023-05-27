@@ -177,6 +177,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewStatement;
@@ -1849,6 +1850,74 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterLogicalView(
+      String queryId, AlterLogicalViewStatement alterLogicalViewStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // delete old view
+    TDeleteLogicalViewReq req =
+        new TDeleteLogicalViewReq(
+            queryId,
+            serializePatternListToByteBuffer(alterLogicalViewStatement.getTargetPathList()));
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.deleteLogicalView(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to execute delete view {}, status is {}.",
+            alterLogicalViewStatement.getTargetPathList(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        return future;
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+      return future;
+    }
+
+    // recreate the logical view
+    CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
+    createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
+    createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
+    createLogicalViewStatement.setSourceQueryStatement(
+        alterLogicalViewStatement.getQueryStatement());
+
+    ExecutionResult executionResult =
+        Coordinator.getInstance()
+            .execute(
+                createLogicalViewStatement,
+                0,
+                null,
+                "",
+                ClusterPartitionFetcher.getInstance(),
+                ClusterSchemaFetcher.getInstance(),
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.setException(
+          new IoTDBException(
+              executionResult.status.getMessage(), executionResult.status.getCode()));
+    } else {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    }
+
     return future;
   }
 
