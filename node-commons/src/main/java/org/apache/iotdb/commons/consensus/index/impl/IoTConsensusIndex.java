@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 
 import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.consensus.index.ConsensusIndexType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,16 +37,31 @@ public class IoTConsensusIndex implements ConsensusIndex {
     peerId2SearchIndex = new HashMap<>();
   }
 
+  public void addSearchIndex(Integer peerId, Long searchIndex) {
+    peerId2SearchIndex.put(peerId, searchIndex);
+  }
+
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ConsensusIndexType.IOT_CONSENSUS_INDEX.serialize(byteBuffer);
     // TODO: impl it
+    ReadWriteIOUtils.write(peerId2SearchIndex.size(), byteBuffer);
+    peerId2SearchIndex.forEach(
+        (key, value) -> {
+          ReadWriteIOUtils.write(key, byteBuffer);
+          ReadWriteIOUtils.write(value, byteBuffer);
+        });
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
     ConsensusIndexType.IOT_CONSENSUS_INDEX.serialize(stream);
     // TODO: impl it
+    ReadWriteIOUtils.write(peerId2SearchIndex.size(), stream);
+    for (Map.Entry<Integer, Long> entry : peerId2SearchIndex.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue(), stream);
+    }
   }
 
   @Override
@@ -92,11 +108,23 @@ public class IoTConsensusIndex implements ConsensusIndex {
 
   public static IoTConsensusIndex deserializeFrom(ByteBuffer byteBuffer) {
     // TODO: impl it
-    return new IoTConsensusIndex();
+    IoTConsensusIndex ioTConsensusIndex = new IoTConsensusIndex();
+    int num = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < num; i++) {
+      ioTConsensusIndex.addSearchIndex(
+          ReadWriteIOUtils.readInt(byteBuffer), ReadWriteIOUtils.readLong(byteBuffer));
+    }
+    return ioTConsensusIndex;
   }
 
-  public static IoTConsensusIndex deserializeFrom(InputStream stream) {
+  public static IoTConsensusIndex deserializeFrom(InputStream stream) throws IOException {
     // TODO: impl it
-    return new IoTConsensusIndex();
+    IoTConsensusIndex ioTConsensusIndex = new IoTConsensusIndex();
+    int num = ReadWriteIOUtils.readInt(stream);
+    for (int i = 0; i < num; i++) {
+      ioTConsensusIndex.addSearchIndex(
+          ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream));
+    }
+    return ioTConsensusIndex;
   }
 }
