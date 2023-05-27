@@ -100,9 +100,9 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
-    final PipeTaskMeta PipeTaskMeta =
-        new PipeTaskMeta(
-            ProgressIndexType.deserializeFrom(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
+    final int leaderDataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
+    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final boolean critical = ReadWriteIOUtils.readBool(byteBuffer);
@@ -116,9 +116,9 @@ public class PipeTaskMeta {
   }
 
   public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
-    final PipeTaskMeta PipeTaskMeta =
-        new PipeTaskMeta(
-            ProgressIndexType.deserializeFrom(inputStream), ReadWriteIOUtils.readInt(inputStream));
+    final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
+    final int leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
+    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final boolean critical = ReadWriteIOUtils.readBool(inputStream);

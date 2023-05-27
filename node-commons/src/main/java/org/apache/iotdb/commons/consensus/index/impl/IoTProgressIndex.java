@@ -74,12 +74,14 @@ public class IoTProgressIndex implements ProgressIndex {
       return false;
     }
 
-    return ((IoTProgressIndex) progressIndex)
-        .peerId2SearchIndex.entrySet().stream()
-            .noneMatch(
-                entry ->
-                    !peerId2SearchIndex.containsKey(entry.getKey())
-                        || peerId2SearchIndex.get(entry.getKey()) <= entry.getValue());
+    final IoTProgressIndex thisIoTProgressIndex = this;
+    final IoTProgressIndex thatIoTProgressIndex = (IoTProgressIndex) progressIndex;
+    return thatIoTProgressIndex.peerId2SearchIndex.entrySet().stream()
+        .noneMatch(
+            entry ->
+                !thisIoTProgressIndex.peerId2SearchIndex.containsKey(entry.getKey())
+                    || thisIoTProgressIndex.peerId2SearchIndex.get(entry.getKey())
+                        <= entry.getValue());
   }
 
   @Override
@@ -88,16 +90,25 @@ public class IoTProgressIndex implements ProgressIndex {
       return false;
     }
 
-    return ((IoTProgressIndex) progressIndex)
-        .peerId2SearchIndex.entrySet().stream()
+    final IoTProgressIndex thisIoTProgressIndex = this;
+    final IoTProgressIndex thatIoTProgressIndex = (IoTProgressIndex) progressIndex;
+    return thisIoTProgressIndex.peerId2SearchIndex.size()
+            == thatIoTProgressIndex.peerId2SearchIndex.size()
+        && thatIoTProgressIndex.peerId2SearchIndex.entrySet().stream()
             .allMatch(
                 entry ->
-                    peerId2SearchIndex.containsKey(entry.getKey())
-                        && peerId2SearchIndex.get(entry.getKey()).equals(entry.getValue()));
+                    thisIoTProgressIndex.peerId2SearchIndex.containsKey(entry.getKey())
+                        && thisIoTProgressIndex
+                            .peerId2SearchIndex
+                            .get(entry.getKey())
+                            .equals(entry.getValue()));
   }
 
   @Override
   public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
+    }
     if (this == obj) {
       return true;
     }
@@ -113,11 +124,12 @@ public class IoTProgressIndex implements ProgressIndex {
       return this;
     }
 
-    ((IoTProgressIndex) progressIndex)
-        .peerId2SearchIndex.forEach(
-            (thatK, thatV) ->
-                peerId2SearchIndex.compute(
-                    thatK, (thisK, thisV) -> (thisV == null ? thatV : Math.max(thisV, thatV))));
+    final IoTProgressIndex thisIoTProgressIndex = this;
+    final IoTProgressIndex thatIoTProgressIndex = (IoTProgressIndex) progressIndex;
+    thatIoTProgressIndex.peerId2SearchIndex.forEach(
+        (thatK, thatV) ->
+            thisIoTProgressIndex.peerId2SearchIndex.compute(
+                thatK, (thisK, thisV) -> (thisV == null ? thatV : Math.max(thisV, thatV))));
     return this;
   }
 

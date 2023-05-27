@@ -53,10 +53,13 @@ public class MinimumProgressIndex implements ProgressIndex {
 
   @Override
   public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
+    }
     if (this == obj) {
       return true;
     }
-    return obj != null && getClass() == obj.getClass();
+    return getClass() == obj.getClass();
   }
 
   @Override
