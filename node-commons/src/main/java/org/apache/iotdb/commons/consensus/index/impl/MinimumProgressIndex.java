@@ -63,6 +63,11 @@ public class MinimumProgressIndex implements ProgressIndex {
   }
 
   @Override
+  public int hashCode() {
+    return 0;
+  }
+
+  @Override
   public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
     return progressIndex == null ? this : progressIndex;
   }

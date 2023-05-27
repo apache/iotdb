@@ -119,6 +119,11 @@ public class IoTProgressIndex implements ProgressIndex {
   }
 
   @Override
+  public int hashCode() {
+    return 0;
+  }
+
+  @Override
   public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
     if (!(progressIndex instanceof IoTProgressIndex)) {
       return this;

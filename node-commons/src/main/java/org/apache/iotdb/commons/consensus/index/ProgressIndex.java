@@ -49,6 +49,15 @@ public interface ProgressIndex {
   boolean equals(ProgressIndex progressIndex);
 
   /**
+   * A.equals(B) is true if and only if A is equal to B
+   *
+   * @param obj the object to be compared
+   * @return true if and only if this progress index is equal to the given object
+   */
+  @Override
+  boolean equals(Object obj);
+
+  /**
    * C = A.updateToMinimumIsAfterProgressIndex(B) where C should satisfy:
    *
    * <p>(C.equals(A) || C.isAfter(A)) is true

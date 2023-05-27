@@ -125,6 +125,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       LOGGER.warn(
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
+      Thread.currentThread().interrupt();
       return new MinimumProgressIndex();
     }
   }
