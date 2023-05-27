@@ -1055,12 +1055,6 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "timeseries under this entity is aligned, can not create view under this entity.",
-            device.getFullPath());
-      }
-
       IDeviceMNode<IMemMNode> entityMNode;
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
