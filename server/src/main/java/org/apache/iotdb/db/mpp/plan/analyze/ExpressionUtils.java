@@ -22,19 +22,8 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -42,12 +31,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -63,7 +47,7 @@ public class ExpressionUtils {
       List<? extends PartialPath> actualPaths) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (PartialPath actualPath : actualPaths) {
-      resultExpressions.add(new TimeSeriesOperand(actualPath));
+      resultExpressions.add(reconstructTimeSeriesOperand(actualPath));
     }
     return resultExpressions;
   }
@@ -76,19 +60,16 @@ public class ExpressionUtils {
       FunctionExpression expression, List<List<Expression>> childExpressionsList) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (List<Expression> functionExpressions : childExpressionsList) {
-      resultExpressions.add(
-          new FunctionExpression(
-              expression.getFunctionName(),
-              expression.getFunctionAttributes(),
-              functionExpressions));
+      resultExpressions.add(reconstructFunctionExpression(expression, functionExpressions));
     }
     return resultExpressions;
   }
 
   public static Expression reconstructFunctionExpression(
       FunctionExpression expression, List<Expression> childExpressions) {
-    return new FunctionExpression(
-        expression.getFunctionName(), expression.getFunctionAttributes(), childExpressions);
+    FunctionExpression copiedFunctionExpression = (FunctionExpression) expression.copy();
+    copiedFunctionExpression.setExpressions(childExpressions);
+    return copiedFunctionExpression;
   }
 
   public static List<Expression> reconstructUnaryExpressions(
@@ -111,98 +92,34 @@ public class ExpressionUtils {
 
   public static Expression reconstructUnaryExpression(
       UnaryExpression expression, Expression childExpression) {
-    switch (expression.getExpressionType()) {
-      case IS_NULL:
-        return new IsNullExpression(childExpression, ((IsNullExpression) expression).isNot());
-      case IN:
-        return new InExpression(
-            childExpression,
-            ((InExpression) expression).isNotIn(),
-            ((InExpression) expression).getValues());
-      case LIKE:
-        return new LikeExpression(
-            childExpression,
-            ((LikeExpression) expression).getPatternString(),
-            ((LikeExpression) expression).getPattern());
-      case LOGIC_NOT:
-        return new LogicNotExpression(childExpression);
-
-      case NEGATION:
-        return new NegationExpression(childExpression);
-
-      case REGEXP:
-        return new RegularExpression(
-            childExpression,
-            ((RegularExpression) expression).getPatternString(),
-            ((RegularExpression) expression).getPattern());
-
-      default:
-        throw new IllegalArgumentException(
-            "unsupported expression type: " + expression.getExpressionType());
-    }
+    UnaryExpression copiedUnaryExpression = (UnaryExpression) expression.copy();
+    copiedUnaryExpression.setExpression(childExpression);
+    return copiedUnaryExpression;
   }
 
   public static List<Expression> reconstructBinaryExpressions(
-      ExpressionType expressionType,
+      BinaryExpression expression,
       List<Expression> leftExpressions,
       List<Expression> rightExpressions) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression le : leftExpressions) {
       for (Expression re : rightExpressions) {
-        resultExpressions.add(reconstructBinaryExpression(expressionType, le, re));
+        resultExpressions.add(reconstructBinaryExpression(expression, le, re));
       }
     }
     return resultExpressions;
   }
 
   public static Expression reconstructBinaryExpression(
-      ExpressionType expressionType, Expression leftExpression, Expression rightExpression) {
-    switch (expressionType) {
-      case ADDITION:
-        return new AdditionExpression(leftExpression, rightExpression);
-
-      case SUBTRACTION:
-        return new SubtractionExpression(leftExpression, rightExpression);
-      case MULTIPLICATION:
-        return new MultiplicationExpression(leftExpression, rightExpression);
-      case DIVISION:
-        return new DivisionExpression(leftExpression, rightExpression);
-      case MODULO:
-        return new ModuloExpression(leftExpression, rightExpression);
-
-      case LESS_THAN:
-        return new LessThanExpression(leftExpression, rightExpression);
-      case LESS_EQUAL:
-        return new LessEqualExpression(leftExpression, rightExpression);
-
-      case GREATER_THAN:
-        return new GreaterThanExpression(leftExpression, rightExpression);
-
-      case GREATER_EQUAL:
-        return new GreaterEqualExpression(leftExpression, rightExpression);
-
-      case EQUAL_TO:
-        return new EqualToExpression(leftExpression, rightExpression);
-
-      case NON_EQUAL:
-        return new NonEqualExpression(leftExpression, rightExpression);
-
-      case LOGIC_AND:
-        return new LogicAndExpression(leftExpression, rightExpression);
-
-      case LOGIC_OR:
-        return new LogicOrExpression(leftExpression, rightExpression);
-
-      case WHEN_THEN:
-        return new WhenThenExpression(leftExpression, rightExpression);
-
-      default:
-        throw new IllegalArgumentException("unsupported expression type: " + expressionType);
-    }
+      BinaryExpression expression, Expression leftExpression, Expression rightExpression) {
+    BinaryExpression copiedBinaryExpression = (BinaryExpression) expression.copy();
+    copiedBinaryExpression.setLeftExpression(leftExpression);
+    copiedBinaryExpression.setRightExpression(rightExpression);
+    return copiedBinaryExpression;
   }
 
   public static List<Expression> reconstructTernaryExpressions(
-      Expression expression,
+      TernaryExpression expression,
       List<Expression> firstExpressions,
       List<Expression> secondExpressions,
       List<Expression> thirdExpressions) {
@@ -217,21 +134,15 @@ public class ExpressionUtils {
   }
 
   public static Expression reconstructTernaryExpression(
-      Expression expression,
+      TernaryExpression expression,
       Expression firstExpression,
       Expression secondExpression,
       Expression thirdExpression) {
-    switch (expression.getExpressionType()) {
-      case BETWEEN:
-        return new BetweenExpression(
-            firstExpression,
-            secondExpression,
-            thirdExpression,
-            ((BetweenExpression) expression).isNotBetween());
-      default:
-        throw new IllegalArgumentException(
-            "unsupported expression type: " + expression.getExpressionType());
-    }
+    TernaryExpression copiedTernaryExpression = (TernaryExpression) expression.copy();
+    copiedTernaryExpression.setFirstExpression(firstExpression);
+    copiedTernaryExpression.setFirstExpression(secondExpression);
+    copiedTernaryExpression.setThirdExpression(thirdExpression);
+    return copiedTernaryExpression;
   }
 
   /**

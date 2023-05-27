@@ -17,17 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.constant.SqlConstant;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,29 +35,33 @@ import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
+import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
 
-public class ConcatExpressionWithSuffixPathsVisitor
-    extends CartesianProductVisitor<ConcatExpressionWithSuffixPathsVisitor.Context> {
+public class ConcatDeviceAndBindSchemaForExpressionVisitor
+    extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForExpressionVisitor.Context> {
   @Override
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, Context context) {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression suffixExpression : functionExpression.getExpressions()) {
-      extendedExpressions.add(process(suffixExpression, context));
+      List<Expression> concatedExpression = process(suffixExpression, context);
+      if (concatedExpression != null && !concatedExpression.isEmpty()) {
+        extendedExpressions.add(concatedExpression);
+      }
 
       // We just process first input Expression of AggregationFunction,
-      // keep other input Expressions as origin
+      // keep other input Expressions as origin and bind Type
       // If AggregationFunction need more than one input series,
       // we need to reconsider the process of it
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
         List<Expression> children = functionExpression.getExpressions();
-        for (int i = 1; i < children.size(); i++) {
-          extendedExpressions.add(Collections.singletonList(children.get(i)));
-        }
+        bindTypeForAggregationNonSeriesInputExpressions(
+            functionExpression.getFunctionName(), children, extendedExpressions);
         break;
       }
     }
+
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
     return reconstructFunctionExpressions(functionExpression, childExpressionsList);
@@ -66,19 +70,35 @@ public class ConcatExpressionWithSuffixPathsVisitor
   @Override
   public List<Expression> visitTimeSeriesOperand(
       TimeSeriesOperand timeSeriesOperand, Context context) {
-    PartialPath rawPath = timeSeriesOperand.getPath();
-    List<PartialPath> actualPaths = new ArrayList<>();
-    if (rawPath.getFullPath().startsWith(SqlConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
-      actualPaths.add(rawPath);
-      context.getPatternTree().appendPathPattern(rawPath);
-    } else {
-      for (PartialPath prefixPath : context.getPrefixPaths()) {
-        PartialPath concatPath = prefixPath.concatPath(rawPath);
-        context.getPatternTree().appendPathPattern(concatPath);
-        actualPaths.add(concatPath);
+    PartialPath measurement = timeSeriesOperand.getPath();
+    PartialPath concatPath = context.getDevicePath().concatPath(measurement);
+
+    List<MeasurementPath> actualPaths =
+        context.getSchemaTree().searchMeasurementPaths(concatPath).left;
+    if (actualPaths.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    // process logical view
+    List<MeasurementPath> nonViewActualPaths = new ArrayList<>();
+    List<MeasurementPath> viewPaths = new ArrayList<>();
+    for (MeasurementPath measurementPath : actualPaths) {
+      if (measurementPath.getMeasurementSchema().isLogicalView()) {
+        // this.hasProcessedLogicalView = true;
+        viewPaths.add(measurementPath);
+      } else {
+        nonViewActualPaths.add(measurementPath);
       }
     }
-    return reconstructTimeSeriesOperands(actualPaths);
+    List<Expression> reconstructTimeSeriesOperands =
+        ExpressionUtils.reconstructTimeSeriesOperands(nonViewActualPaths);
+    // handle logical views
+    for (MeasurementPath measurementPath : viewPaths) {
+      Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
+      replacedExpression.setViewPath(measurementPath);
+      reconstructTimeSeriesOperands.add(replacedExpression);
+    }
+    return reconstructTimeSeriesOperands;
   }
 
   @Override
@@ -93,20 +113,20 @@ public class ConcatExpressionWithSuffixPathsVisitor
   }
 
   public static class Context {
-    private final List<PartialPath> prefixPaths;
-    private final PathPatternTree patternTree;
+    private final PartialPath devicePath;
+    private final ISchemaTree schemaTree;
 
-    public Context(List<PartialPath> prefixPaths, PathPatternTree patternTree) {
-      this.prefixPaths = prefixPaths;
-      this.patternTree = patternTree;
+    public Context(PartialPath devicePath, ISchemaTree schemaTree) {
+      this.devicePath = devicePath;
+      this.schemaTree = schemaTree;
     }
 
-    public List<PartialPath> getPrefixPaths() {
-      return prefixPaths;
+    public PartialPath getDevicePath() {
+      return devicePath;
     }
 
-    public PathPatternTree getPatternTree() {
-      return patternTree;
+    public ISchemaTree getSchemaTree() {
+      return schemaTree;
     }
   }
 }

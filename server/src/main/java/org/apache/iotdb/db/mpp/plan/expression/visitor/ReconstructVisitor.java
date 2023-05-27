@@ -48,8 +48,7 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
   @Override
   public Expression visitBinaryExpression(BinaryExpression binaryExpression, C context) {
     List<Expression> childResults = getResultsFromChild(binaryExpression, context);
-    return reconstructBinaryExpression(
-        binaryExpression.getExpressionType(), childResults.get(0), childResults.get(1));
+    return reconstructBinaryExpression(binaryExpression, childResults.get(0), childResults.get(1));
   }
 
   @Override

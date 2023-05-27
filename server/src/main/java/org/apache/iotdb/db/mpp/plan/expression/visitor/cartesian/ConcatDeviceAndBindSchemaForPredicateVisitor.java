@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -37,9 +37,10 @@ import java.util.List;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 
-public class RemoveWildcardInFilterByDeviceVisitor
-    extends CartesianProductVisitor<RemoveWildcardInFilterByDeviceVisitor.Context> {
+public class ConcatDeviceAndBindSchemaForPredicateVisitor
+    extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForPredicateVisitor.Context> {
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
     if (predicate.isBuiltInAggregationFunctionExpression() && context.isWhere()) {
@@ -58,12 +59,29 @@ public class RemoveWildcardInFilterByDeviceVisitor
   public List<Expression> visitTimeSeriesOperand(TimeSeriesOperand predicate, Context context) {
     PartialPath measurement = predicate.getPath();
     PartialPath concatPath = context.getDevicePath().concatPath(measurement);
-    List<MeasurementPath> noStarPaths =
+
+    List<MeasurementPath> nonViewPathList = new ArrayList<>();
+    List<MeasurementPath> viewPathList = new ArrayList<>();
+    List<MeasurementPath> actualPaths =
         context.getSchemaTree().searchMeasurementPaths(concatPath).left;
-    if (noStarPaths.isEmpty()) {
+    if (actualPaths.isEmpty()) {
       return Collections.singletonList(new NullOperand());
     }
-    return reconstructTimeSeriesOperands(noStarPaths);
+    for (MeasurementPath measurementPath : actualPaths) {
+      if (measurementPath.getMeasurementSchema().isLogicalView()) {
+        viewPathList.add(measurementPath);
+      } else {
+        nonViewPathList.add(measurementPath);
+      }
+    }
+
+    List<Expression> reconstructTimeSeriesOperands = reconstructTimeSeriesOperands(nonViewPathList);
+    for (MeasurementPath measurementPath : viewPathList) {
+      Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
+      replacedExpression.setViewPath(measurementPath);
+      reconstructTimeSeriesOperands.add(replacedExpression);
+    }
+    return reconstructTimeSeriesOperands;
   }
 
   @Override

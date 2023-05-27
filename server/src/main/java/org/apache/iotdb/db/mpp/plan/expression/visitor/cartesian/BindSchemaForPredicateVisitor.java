@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -40,10 +40,12 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProd
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
 
-public class RemoveWildcardInFilterVisitor
-    extends CartesianProductVisitor<RemoveWildcardInFilterVisitor.Context> {
+public class BindSchemaForPredicateVisitor
+    extends CartesianProductVisitor<BindSchemaForPredicateVisitor.Context> {
+
   @Override
   public List<Expression> visitBinaryExpression(
       BinaryExpression binaryExpression, Context context) {
@@ -56,8 +58,7 @@ public class RemoveWildcardInFilterVisitor
       resultExpressions.addAll(rightExpressions);
       return resultExpressions;
     }
-    return reconstructBinaryExpressions(
-        binaryExpression.getExpressionType(), leftExpressions, rightExpressions);
+    return reconstructBinaryExpressions(binaryExpression, leftExpressions, rightExpressions);
   }
 
   @Override
@@ -96,16 +97,29 @@ public class RemoveWildcardInFilterVisitor
       concatPaths.add(filterPath);
     }
 
-    List<PartialPath> noStarPaths = new ArrayList<>();
+    List<MeasurementPath> nonViewPathList = new ArrayList<>();
+    List<MeasurementPath> viewPathList = new ArrayList<>();
     for (PartialPath concatPath : concatPaths) {
       List<MeasurementPath> actualPaths =
           context.getSchemaTree().searchMeasurementPaths(concatPath).left;
       if (actualPaths.isEmpty()) {
         return Collections.singletonList(new NullOperand());
       }
-      noStarPaths.addAll(actualPaths);
+      for (MeasurementPath measurementPath : actualPaths) {
+        if (measurementPath.getMeasurementSchema().isLogicalView()) {
+          viewPathList.add(measurementPath);
+        } else {
+          nonViewPathList.add(measurementPath);
+        }
+      }
     }
-    return reconstructTimeSeriesOperands(noStarPaths);
+    List<Expression> reconstructTimeSeriesOperands = reconstructTimeSeriesOperands(nonViewPathList);
+    for (MeasurementPath measurementPath : viewPathList) {
+      Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
+      replacedExpression.setViewPath(measurementPath);
+      reconstructTimeSeriesOperands.add(replacedExpression);
+    }
+    return reconstructTimeSeriesOperands;
   }
 
   @Override
