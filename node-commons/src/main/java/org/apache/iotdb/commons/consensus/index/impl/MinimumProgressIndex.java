@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public class MinimumProgressIndex implements ProgressIndex {
+
   public MinimumProgressIndex() {}
 
   @Override
@@ -51,7 +52,15 @@ public class MinimumProgressIndex implements ProgressIndex {
   }
 
   @Override
-  public ProgressIndex updateToMaximum(ProgressIndex progressIndex) {
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    return obj != null && getClass() == obj.getClass();
+  }
+
+  @Override
+  public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
     return progressIndex == null ? this : progressIndex;
   }
 
@@ -61,14 +70,6 @@ public class MinimumProgressIndex implements ProgressIndex {
 
   public static MinimumProgressIndex deserializeFrom(InputStream stream) {
     return new MinimumProgressIndex();
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    return obj != null && getClass() == obj.getClass();
   }
 
   @Override

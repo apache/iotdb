@@ -158,7 +158,7 @@ public class TsFileResourceProgressIndexTest {
     }
 
     @Override
-    public ProgressIndex updateToMaximum(ProgressIndex progressIndex) {
+    public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
       if (!(progressIndex instanceof MockProgressIndex)) {
         throw new IllegalStateException("Mock update error.");
       }

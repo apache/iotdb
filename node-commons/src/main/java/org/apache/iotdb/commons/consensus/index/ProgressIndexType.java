@@ -52,7 +52,7 @@ public enum ProgressIndexType {
   }
 
   public static ProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
-    short indexType = byteBuffer.getShort();
+    final short indexType = ReadWriteIOUtils.readShort(byteBuffer);
     switch (indexType) {
       case 1:
         return MinimumProgressIndex.deserializeFrom(byteBuffer);
@@ -60,12 +60,12 @@ public enum ProgressIndexType {
         return IoTProgressIndex.deserializeFrom(byteBuffer);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported Consensus Index type %s.", indexType));
+            String.format("Unsupported progress index type %s.", indexType));
     }
   }
 
   public static ProgressIndex deserializeFrom(InputStream stream) throws IOException {
-    short indexType = ReadWriteIOUtils.readShort(stream);
+    final short indexType = ReadWriteIOUtils.readShort(stream);
     switch (indexType) {
       case 1:
         return MinimumProgressIndex.deserializeFrom(stream);
@@ -73,7 +73,7 @@ public enum ProgressIndexType {
         return IoTProgressIndex.deserializeFrom(stream);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported Consensus Index type %s.", indexType));
+            String.format("Unsupported progress index type %s.", indexType));
     }
   }
 }

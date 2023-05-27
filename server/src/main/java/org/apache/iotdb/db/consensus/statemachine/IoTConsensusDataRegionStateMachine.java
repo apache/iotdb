@@ -86,9 +86,9 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
               batchRequest.getEndSyncIndex(),
               batchRequest.getRequests().size());
       for (IndexedConsensusRequest indexedRequest : batchRequest.getRequests()) {
-        PlanNode planNode = grabInsertNode(indexedRequest);
+        final PlanNode planNode = grabInsertNode(indexedRequest);
         if (planNode instanceof ComparableConsensusRequest) {
-          IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
+          final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
           ioTProgressIndex.addSearchIndex(
               Integer.parseInt(batchRequest.getSourcePeerId()), indexedRequest.getSearchIndex());
           ((ComparableConsensusRequest) planNode).setProgressIndex(ioTProgressIndex);

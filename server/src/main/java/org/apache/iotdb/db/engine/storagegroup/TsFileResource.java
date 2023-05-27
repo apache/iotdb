@@ -1145,13 +1145,13 @@ public class TsFileResource {
     maxProgressIndex =
         (maxProgressIndex == null
             ? progressIndex
-            : maxProgressIndex.updateToMaximum(progressIndex));
+            : maxProgressIndex.updateToMinimumIsAfterProgressIndex(progressIndex));
   }
 
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
     if (status.equals(TsFileResourceStatus.UNCLOSED)) {
       throw new IllegalStateException(
-          "Should not get consensus index from a unclosing TsFileResource.");
+          "Should not get progress index from a unclosing TsFileResource.");
     }
     return maxProgressIndex;
   }

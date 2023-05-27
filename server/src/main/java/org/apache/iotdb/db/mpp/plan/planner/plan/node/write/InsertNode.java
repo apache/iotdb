@@ -271,10 +271,10 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   }
   // endregion
 
-  // region consensus index
+  // region progress index
 
   @Override
-  public ProgressIndex getProgressIndex() {
+  public final ProgressIndex getProgressIndex() {
     return progressIndex;
   }
 

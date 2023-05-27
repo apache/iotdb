@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class IoTProgressIndex implements ProgressIndex {
+
   private final Map<Integer, Long> peerId2SearchIndex;
 
   public IoTProgressIndex() {
@@ -44,21 +45,20 @@ public class IoTProgressIndex implements ProgressIndex {
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ProgressIndexType.IOT_CONSENSUS_INDEX.serialize(byteBuffer);
-    // TODO: impl it
+
     ReadWriteIOUtils.write(peerId2SearchIndex.size(), byteBuffer);
-    peerId2SearchIndex.forEach(
-        (key, value) -> {
-          ReadWriteIOUtils.write(key, byteBuffer);
-          ReadWriteIOUtils.write(value, byteBuffer);
-        });
+    for (final Map.Entry<Integer, Long> entry : peerId2SearchIndex.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
+      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
+    }
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
     ProgressIndexType.IOT_CONSENSUS_INDEX.serialize(stream);
-    // TODO: impl it
+
     ReadWriteIOUtils.write(peerId2SearchIndex.size(), stream);
-    for (Map.Entry<Integer, Long> entry : peerId2SearchIndex.entrySet()) {
+    for (final Map.Entry<Integer, Long> entry : peerId2SearchIndex.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -66,6 +66,10 @@ public class IoTProgressIndex implements ProgressIndex {
 
   @Override
   public boolean isAfter(ProgressIndex progressIndex) {
+    if (progressIndex instanceof MinimumProgressIndex) {
+      return true;
+    }
+
     if (!(progressIndex instanceof IoTProgressIndex)) {
       return false;
     }
@@ -74,8 +78,8 @@ public class IoTProgressIndex implements ProgressIndex {
         .peerId2SearchIndex.entrySet().stream()
             .noneMatch(
                 entry ->
-                    !this.peerId2SearchIndex.containsKey(entry.getKey())
-                        || this.peerId2SearchIndex.get(entry.getKey()) <= entry.getValue());
+                    !peerId2SearchIndex.containsKey(entry.getKey())
+                        || peerId2SearchIndex.get(entry.getKey()) <= entry.getValue());
   }
 
   @Override
@@ -88,12 +92,23 @@ public class IoTProgressIndex implements ProgressIndex {
         .peerId2SearchIndex.entrySet().stream()
             .allMatch(
                 entry ->
-                    this.peerId2SearchIndex.containsKey(entry.getKey())
-                        && this.peerId2SearchIndex.get(entry.getKey()).equals(entry.getValue()));
+                    peerId2SearchIndex.containsKey(entry.getKey())
+                        && peerId2SearchIndex.get(entry.getKey()).equals(entry.getValue()));
   }
 
   @Override
-  public ProgressIndex updateToMaximum(ProgressIndex progressIndex) {
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (!(obj instanceof IoTProgressIndex)) {
+      return false;
+    }
+    return this.equals((IoTProgressIndex) obj);
+  }
+
+  @Override
+  public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
     if (!(progressIndex instanceof IoTProgressIndex)) {
       return this;
     }
@@ -101,30 +116,35 @@ public class IoTProgressIndex implements ProgressIndex {
     ((IoTProgressIndex) progressIndex)
         .peerId2SearchIndex.forEach(
             (thatK, thatV) ->
-                this.peerId2SearchIndex.compute(
+                peerId2SearchIndex.compute(
                     thatK, (thisK, thisV) -> (thisV == null ? thatV : Math.max(thisV, thatV))));
     return this;
   }
 
   public static IoTProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
-    // TODO: impl it
-    IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
-    int num = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < num; i++) {
-      ioTProgressIndex.addSearchIndex(
-          ReadWriteIOUtils.readInt(byteBuffer), ReadWriteIOUtils.readLong(byteBuffer));
+    final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; i++) {
+      final int peerId = ReadWriteIOUtils.readInt(byteBuffer);
+      final long searchIndex = ReadWriteIOUtils.readLong(byteBuffer);
+      ioTProgressIndex.addSearchIndex(peerId, searchIndex);
     }
     return ioTProgressIndex;
   }
 
   public static IoTProgressIndex deserializeFrom(InputStream stream) throws IOException {
-    // TODO: impl it
-    IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
-    int num = ReadWriteIOUtils.readInt(stream);
-    for (int i = 0; i < num; i++) {
-      ioTProgressIndex.addSearchIndex(
-          ReadWriteIOUtils.readInt(stream), ReadWriteIOUtils.readLong(stream));
+    final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
+    final int size = ReadWriteIOUtils.readInt(stream);
+    for (int i = 0; i < size; i++) {
+      final int peerId = ReadWriteIOUtils.readInt(stream);
+      final long searchIndex = ReadWriteIOUtils.readLong(stream);
+      ioTProgressIndex.addSearchIndex(peerId, searchIndex);
     }
     return ioTProgressIndex;
+  }
+
+  @Override
+  public String toString() {
+    return "IoTProgressIndex{" + "peerId2SearchIndex=" + peerId2SearchIndex + '}';
   }
 }
