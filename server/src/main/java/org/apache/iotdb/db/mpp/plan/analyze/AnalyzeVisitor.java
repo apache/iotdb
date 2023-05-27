@@ -3323,31 +3323,33 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     context.setQueryType(QueryType.WRITE);
-
-    // analyze query in statement
-    QueryStatement queryStatement = createLogicalViewStatement.getQueryStatement();
-    if (queryStatement != null) {
-      Pair<List<Expression>, Analysis> queryAnalysisPair =
-          this.analyzeQueryInLogicalViewStatement(analysis, queryStatement, context);
-      if (queryAnalysisPair.right.isFinishQueryAfterAnalyze()) {
-        return analysis;
-      } else if (queryAnalysisPair.left != null) {
-        createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
-      }
-    }
     analysis.setStatement(createLogicalViewStatement);
 
-    // check target paths; check source expressions.
-    checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
-    if (analysis.isFinishQueryAfterAnalyze()) {
-      return analysis;
-    }
+    if (createLogicalViewStatement.getViewExpression() == null) {
+      // analyze query in statement
+      QueryStatement queryStatement = createLogicalViewStatement.getQueryStatement();
+      if (queryStatement != null) {
+        Pair<List<Expression>, Analysis> queryAnalysisPair =
+            this.analyzeQueryInLogicalViewStatement(analysis, queryStatement, context);
+        if (queryAnalysisPair.right.isFinishQueryAfterAnalyze()) {
+          return analysis;
+        } else if (queryAnalysisPair.left != null) {
+          createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
+        }
+      }
 
-    // make sure there is no view in source
-    List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
-    checkViewsInSource(analysis, sourceExpressionList, context);
-    if (analysis.isFinishQueryAfterAnalyze()) {
-      return analysis;
+      // check target paths; check source expressions.
+      checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
+      if (analysis.isFinishQueryAfterAnalyze()) {
+        return analysis;
+      }
+
+      // make sure there is no view in source
+      List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
+      checkViewsInSource(analysis, sourceExpressionList, context);
+      if (analysis.isFinishQueryAfterAnalyze()) {
+        return analysis;
+      }
     }
 
     // set schema partition info, this info will be used to split logical plan node.
