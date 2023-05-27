@@ -50,7 +50,6 @@ import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.metadata.view.viewExpression.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -189,6 +188,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.metadata.view.viewExpression.visitor.GetSourcePathsVisitor.getSourcePaths;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
@@ -322,6 +322,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         outputExpressions = new ArrayList<>();
         outputExpressionMap.values().forEach(outputExpressions::addAll);
+        analysis.setOutputExpressions(outputExpressions);
         if (outputExpressions.isEmpty()) {
           return finishQuery(queryStatement, analysis);
         }
@@ -351,7 +352,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         analyzeInto(analysis, queryStatement, outputExpressions);
       }
-      analysis.setOutputExpressions(outputExpressions);
 
       analyzeGroupByTime(analysis, queryStatement);
 
@@ -446,45 +446,43 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (Expression selectExpression : selectExpressions) {
       sourceExpressions.addAll(
-          ExpressionAnalyzer.removeWildcardAndViewInExpression(
-              selectExpression, analysis, schemaTree));
+          ExpressionAnalyzer.bindSchemaForExpression(selectExpression, analysis, schemaTree));
     }
     analysis.setSourceExpressions(sourceExpressions);
   }
 
-  private ISchemaTree findAllViewsInTreeThenReFetchAndMerge(ISchemaTree originSchemaTree) {
-    if (originSchemaTree.hasLogicalViewMeasurement()) {
-      PathPatternTree patternTree = new PathPatternTree();
-      GetSourcePathsVisitor getSourcePathsVisitor = new GetSourcePathsVisitor();
-      boolean needToReFetch = false;
-      try {
-        Pair<List<MeasurementPath>, Integer> tempPair =
-            originSchemaTree.searchMeasurementPaths(new PartialPath("root.**"));
-        for (MeasurementPath measurementPath : tempPair.left) {
-          if (measurementPath.getMeasurementSchema().isLogicalView()) {
-            LogicalViewSchema logicalViewSchema =
-                (LogicalViewSchema) measurementPath.getMeasurementSchema();
-            ViewExpression viewExpression = logicalViewSchema.getExpression();
-            List<PartialPath> pathsNeedToReFetch =
-                getSourcePathsVisitor.process(viewExpression, null);
-            for (PartialPath path : pathsNeedToReFetch) {
-              patternTree.appendFullPath(path);
-              needToReFetch = true;
-            }
+  private void findAllViewsInTreeThenReFetchAndMerge(ISchemaTree originSchemaTree) {
+    if (!originSchemaTree.hasLogicalViewMeasurement()) {
+      return;
+    }
+
+    PathPatternTree patternTree = new PathPatternTree();
+    boolean needToReFetch = false;
+    try {
+      Pair<List<MeasurementPath>, Integer> tempPair =
+          originSchemaTree.searchMeasurementPaths(new PartialPath("root.**"));
+      for (MeasurementPath measurementPath : tempPair.left) {
+        if (measurementPath.getMeasurementSchema().isLogicalView()) {
+          LogicalViewSchema logicalViewSchema =
+              (LogicalViewSchema) measurementPath.getMeasurementSchema();
+          ViewExpression viewExpression = logicalViewSchema.getExpression();
+          List<PartialPath> pathsNeedToReFetch = getSourcePaths(viewExpression);
+          for (PartialPath path : pathsNeedToReFetch) {
+            patternTree.appendFullPath(path);
+            needToReFetch = true;
           }
         }
-      } catch (Exception e) {
-        throw new RuntimeException(e);
       }
-      if (needToReFetch) {
-        ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, null);
-        originSchemaTree.mergeSchemaTree(viewSchemaTree);
-        Set<String> allDatabases = viewSchemaTree.getDatabases();
-        allDatabases.addAll(originSchemaTree.getDatabases());
-        originSchemaTree.setDatabases(allDatabases);
-      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
-    return originSchemaTree;
+    if (needToReFetch) {
+      ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, null);
+      originSchemaTree.mergeSchemaTree(viewSchemaTree);
+      Set<String> allDatabases = viewSchemaTree.getDatabases();
+      allDatabases.addAll(originSchemaTree.getDatabases());
+      originSchemaTree.setDatabases(allDatabases);
+    }
   }
 
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
@@ -507,7 +505,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
-          ExpressionAnalyzer.removeWildcardAndViewInExpression(
+          ExpressionAnalyzer.bindSchemaForExpression(
               resultColumn.getExpression(), analysis, schemaTree);
 
       for (Expression expression : resultExpressions) {
@@ -525,17 +523,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           } else {
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
-            String alias = expression.getStringWithViewOfThisExpression();
-            alias = hasAlias ? resultColumn.getAlias() : alias;
             if (hasAlias) {
+              String alias = resultColumn.getAlias();
               if (aliasSet.contains(alias)) {
                 throw new SemanticException(
                     String.format("alias '%s' can only be matched with one time series", alias));
               }
               aliasSet.add(alias);
             }
+            String outputColumnName =
+                hasAlias ? resultColumn.getAlias() : expression.getOutputSymbol();
             analyzeExpression(analysis, expressionWithoutAlias);
-            outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
+            outputExpressions.add(new Pair<>(expressionWithoutAlias, outputColumnName));
           }
           paginationController.consumeLimit();
         } else {
@@ -585,7 +584,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new LinkedHashMap<>();
       for (PartialPath device : deviceSet) {
         List<Expression> selectExpressionsOfOneDevice =
-            ExpressionAnalyzer.concatDeviceAndRemoveWildcard(selectExpression, device, schemaTree);
+            ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
+                selectExpression, device, schemaTree);
         if (selectExpressionsOfOneDevice.isEmpty()) {
           continue;
         }
@@ -625,13 +625,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           // add outputExpressions
           Expression measurementExpressionWithoutAlias =
               ExpressionAnalyzer.removeAliasFromExpression(measurementExpression);
-          String alias =
-              !Objects.equals(measurementExpressionWithoutAlias, measurementExpression)
-                  ? measurementExpression.getExpressionString()
-                  : null;
-          alias = hasAlias ? resultColumn.getAlias() : alias;
+          String outputColumnName =
+              hasAlias ? resultColumn.getAlias() : measurementExpression.getOutputSymbol();
           analyzeExpression(analysis, measurementExpressionWithoutAlias);
-          outputExpressions.add(new Pair<>(measurementExpressionWithoutAlias, alias));
+          outputExpressions.add(new Pair<>(measurementExpressionWithoutAlias, outputColumnName));
 
           // add deviceToSelectExpressions
           for (String deviceName : deviceToSelectExpressionsOfOneMeasurement.keySet()) {
@@ -665,7 +662,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // get removeWildcard Expressions in Having
     List<Expression> conJunctions =
-        ExpressionAnalyzer.removeWildcardAndViewInFilter(
+        ExpressionAnalyzer.bindSchemaForPredicate(
             queryStatement.getHavingCondition().getPredicate(),
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
@@ -698,7 +695,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (PartialPath device : deviceSet) {
       List<Expression> expressionsInHaving =
-          ExpressionAnalyzer.concatDeviceAndRemoveWildcard(havingExpression, device, schemaTree);
+          ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
+              havingExpression, device, schemaTree);
 
       conJunctions.addAll(
           expressionsInHaving.stream()
@@ -1117,7 +1115,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
     List<Expression> conJunctions =
-        ExpressionAnalyzer.removeWildcardAndViewInFilter(
+        ExpressionAnalyzer.bindSchemaForPredicate(
             queryStatement.getWhereCondition().getPredicate(),
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
@@ -1138,7 +1136,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Expression analyzeWhereSplitByDevice(
       QueryStatement queryStatement, PartialPath devicePath, ISchemaTree schemaTree) {
     List<Expression> conJunctions =
-        ExpressionAnalyzer.removeWildcardInFilterByDevice(
+        ExpressionAnalyzer.concatDeviceAndBindSchemaForPredicate(
             queryStatement.getWhereCondition().getPredicate(), devicePath, schemaTree, true);
     return ExpressionUtils.constructQueryFilter(
         conJunctions.stream().distinct().collect(Collectors.toList()));
@@ -1190,7 +1188,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     List<String> deviceViewOutputColumns =
         deviceViewOutputExpressions.stream()
-            .map(Expression::getExpressionString)
+            .map(Expression::getOutputSymbol)
             .collect(Collectors.toList());
 
     Map<String, Set<String>> deviceToOutputColumnsMap = new LinkedHashMap<>();
@@ -1205,10 +1203,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         outputColumns.add(ENDTIME);
       }
       for (Expression expression : outputExpressionsUnderDevice) {
-        outputColumns.add(ExpressionAnalyzer.getMeasurementExpression(expression).toString());
+        outputColumns.add(
+            ExpressionAnalyzer.getMeasurementExpression(expression).getOutputSymbol());
       }
       deviceToOutputColumnsMap.put(deviceName, outputColumns);
     }
+
+    Map<String, Set<Expression>> deviceToSourceExpressions =
+        analysis.getDeviceToSourceExpressions();
+    Map<String, List<String>> outputDeviceToQueriedDeviceMap = new LinkedHashMap<>();
+    for (String deviceName : deviceToSourceExpressions.keySet()) {
+      Set<Expression> sourceExpressionsUnderDevice = deviceToSourceExpressions.get(deviceName);
+      Set<String> queriedDevices = new HashSet<>();
+      for (Expression expression : sourceExpressionsUnderDevice) {
+        queriedDevices.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
+      }
+      outputDeviceToQueriedDeviceMap.put(deviceName, new ArrayList<>(queriedDevices));
+    }
+    analysis.setOutputDeviceToQueriedDeviceMap(outputDeviceToQueriedDeviceMap);
 
     Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
     for (String deviceName : deviceToOutputColumnsMap.keySet()) {
@@ -1286,8 +1298,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
       // Expression in a sortItem only indicates one column
       List<Expression> expressions =
-          ExpressionAnalyzer.removeWildcardAndViewInExpression(
-              expressionForItem, analysis, schemaTree);
+          ExpressionAnalyzer.bindSchemaForExpression(expressionForItem, analysis, schemaTree);
       if (expressions.size() != 1) {
         throw new SemanticException("One sort item in order by should only indicate one value");
       }
@@ -1324,7 +1335,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Expression expression = groupByComponent.getControlColumnExpression();
       for (PartialPath device : deviceSet) {
         List<Expression> groupByExpressionsOfOneDevice =
-            ExpressionAnalyzer.concatDeviceAndRemoveWildcard(expression, device, schemaTree);
+            ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
+                expression, device, schemaTree);
 
         if (groupByExpressionsOfOneDevice.size() != 1) {
           throw new SemanticException("Expression in group by should indicate one value");
@@ -1395,7 +1407,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Set<Expression> orderByExpressionsForOneDevice = new LinkedHashSet<>();
       for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
         List<Expression> expressions =
-            ExpressionAnalyzer.concatDeviceAndRemoveWildcard(expressionForItem, device, schemaTree);
+            ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
+                expressionForItem, device, schemaTree);
         if (expressions.size() != 1) {
           throw new SemanticException(
               String.format(
@@ -1441,8 +1454,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       groupByExpression = groupByComponent.getControlColumnExpression();
       // Expression in group by variation clause only indicates one column
       List<Expression> expressions =
-          ExpressionAnalyzer.removeWildcardAndViewInExpression(
-              groupByExpression, analysis, schemaTree);
+          ExpressionAnalyzer.bindSchemaForExpression(groupByExpression, analysis, schemaTree);
       if (expressions.size() != 1) {
         throw new SemanticException("Expression in group by should indicate one value");
       }
@@ -1558,7 +1570,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
-      deviceSet = analysis.getDeviceToSourceExpressions().keySet();
+      deviceSet =
+          analysis.getOutputDeviceToQueriedDeviceMap().values().stream()
+              .flatMap(List::stream)
+              .collect(Collectors.toSet());
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));

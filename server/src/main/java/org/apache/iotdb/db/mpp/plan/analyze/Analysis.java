@@ -147,12 +147,14 @@ public class Analysis {
   // expression of order by that need to be calculated
   private Map<String, Set<Expression>> deviceToOrderByExpressions;
 
-  // the sortItems used in order by push down of align  by device
+  // the sortItems used in order by push down of align by device
   private Map<String, List<SortItem>> deviceToSortItems;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceViewInputIndexesMap;
+
+  private Map<String, List<String>> outputDeviceToQueriedDeviceMap;
 
   private Set<Expression> deviceViewOutputExpressions;
 
@@ -435,6 +437,15 @@ public class Analysis {
     return deviceViewInputIndexesMap;
   }
 
+  public Map<String, List<String>> getOutputDeviceToQueriedDeviceMap() {
+    return outputDeviceToQueriedDeviceMap;
+  }
+
+  public void setOutputDeviceToQueriedDeviceMap(
+      Map<String, List<String>> outputDeviceToQueriedDeviceMap) {
+    this.outputDeviceToQueriedDeviceMap = outputDeviceToQueriedDeviceMap;
+  }
+
   public Set<Expression> getSourceExpressions() {
     return sourceExpressions;
   }
@@ -681,7 +692,7 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public void setHasViewsInQuery(boolean hasViewsInQuery) {
-    this.hasViewsInQuery = hasViewsInQuery;
+    this.hasViewsInQuery = this.hasViewsInQuery || hasViewsInQuery;
   }
 
   public boolean hasViewsInQuery() {
