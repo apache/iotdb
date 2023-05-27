@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.core.event.impl;
 
 import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumConsensusIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
@@ -40,9 +41,16 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private final TsFileResource resource;
   private File tsFile;
+
   private final AtomicBoolean isClosed;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
+    this(resource, null);
+  }
+
+  public PipeTsFileInsertionEvent(TsFileResource resource, PipeTaskMeta pipeTaskMeta) {
+    super(pipeTaskMeta);
+
     this.resource = resource;
     tsFile = resource.getTsFile();
 
@@ -76,20 +84,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return tsFile;
   }
 
-  @Override
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    throw new UnsupportedOperationException("Not implemented yet");
-  }
-
-  @Override
-  public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
-    throw new UnsupportedOperationException("Not implemented yet");
-  }
+  /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
   public boolean increaseResourceReferenceCount(String holderMessage) {
     try {
-      // TODO: increase reference count for mods & resource files
       tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
       return true;
     } catch (Exception e) {
@@ -131,12 +130,34 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public PipeTsFileInsertionEvent shallowCopySelf() {
-    return new PipeTsFileInsertionEvent(this.resource);
+  public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      PipeTaskMeta pipeTaskMeta) {
+    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta);
+  }
+
+  /////////////////////////// TsFileInsertionEvent ///////////////////////////
+
+  @Override
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+    throw new UnsupportedOperationException("Not implemented yet");
   }
 
   @Override
+  public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
+    throw new UnsupportedOperationException("Not implemented yet");
+  }
+
+  /////////////////////////// Object ///////////////////////////
+
+  @Override
   public String toString() {
-    return "PipeTsFileInsertionEvent{" + "tsFile=" + tsFile + '}';
+    return "PipeTsFileInsertionEvent{"
+        + "resource="
+        + resource
+        + ", tsFile="
+        + tsFile
+        + ", isClosed="
+        + isClosed
+        + '}';
   }
 }

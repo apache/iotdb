@@ -68,6 +68,14 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     return null;
   }
 
+  @Override
+  public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+    if (this.schema instanceof LogicalViewSchema) {
+      return (LogicalViewSchema) this.getSchema();
+    }
+    return null;
+  }
+
   public Map<String, String> getTagMap() {
     return tagMap;
   }

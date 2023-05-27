@@ -84,7 +84,7 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
                     resource ->
                         resource.getMaxConsensusIndexAfterClose() == null
                             || !startIndex.isAfter(resource.getMaxConsensusIndexAfterClose()))
-                .map(PipeTsFileInsertionEvent::new)
+                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
@@ -92,11 +92,10 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
                     resource ->
                         resource.getMaxConsensusIndexAfterClose() == null
                             || !startIndex.isAfter(resource.getMaxConsensusIndexAfterClose()))
-                .map(PipeTsFileInsertionEvent::new)
+                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
             event -> {
-              event.reportProgressIndexToPipeTaskMetaWhenFinish(pipeTaskMeta);
               event.increaseReferenceCount(PipeHistoricalDataRegionTsFileCollector.class.getName());
             });
       } finally {

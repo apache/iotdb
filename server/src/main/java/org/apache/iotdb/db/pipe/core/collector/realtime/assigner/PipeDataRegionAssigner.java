@@ -53,8 +53,9 @@ public class PipeDataRegionAssigner {
         .match(event)
         .forEach(
             collector -> {
-              PipeRealtimeCollectEvent copiedEvent = event.shallowCopySelf();
-              copiedEvent.reportProgressIndexToPipeTaskMetaWhenFinish(collector.getPipeTaskMeta());
+              final PipeRealtimeCollectEvent copiedEvent =
+                  event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+                      collector.getPipeTaskMeta());
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               collector.collect(copiedEvent);
             });

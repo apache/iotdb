@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -31,25 +30,36 @@ import java.util.concurrent.atomic.AtomicInteger;
  * additional information mainly includes the reference count of the event.
  */
 public abstract class EnrichedEvent implements Event {
-  private final AtomicInteger referenceCount = new AtomicInteger(0);
-  private PipeTaskMeta pipeTaskMeta;
 
-  public EnrichedEvent() {}
+  private final AtomicInteger referenceCount;
 
-  public boolean increaseReferenceCount(String holderMessage) {
-    AtomicBoolean success = new AtomicBoolean(true);
-    referenceCount.getAndUpdate(
-        count -> {
-          if (count == 0) {
-            success.set(increaseResourceReferenceCount(holderMessage));
-          }
-          return count + 1;
-        });
-    return success.get();
+  private final PipeTaskMeta pipeTaskMeta;
+
+  public EnrichedEvent(PipeTaskMeta pipeTaskMeta) {
+    referenceCount = new AtomicInteger(0);
+    this.pipeTaskMeta = pipeTaskMeta;
   }
 
   /**
-   * Increase the reference count of this event.
+   * increase the reference count of this event. when the reference count is positive, the data in
+   * the resource of this event should be safe to use.
+   *
+   * @param holderMessage the message of the invoker
+   * @return true if the reference count is increased successfully, false if the event is not
+   */
+  public final boolean increaseReferenceCount(String holderMessage) {
+    boolean isSuccessful = true;
+    synchronized (this) {
+      if (referenceCount.get() == 0) {
+        isSuccessful = increaseResourceReferenceCount(holderMessage);
+      }
+      referenceCount.incrementAndGet();
+    }
+    return isSuccessful;
+  }
+
+  /**
+   * Increase the reference count of the resource of this event.
    *
    * @param holderMessage the message of the invoker
    * @return true if the reference count is increased successfully, false if the event is not
@@ -57,17 +67,24 @@ public abstract class EnrichedEvent implements Event {
    */
   public abstract boolean increaseResourceReferenceCount(String holderMessage);
 
-  public boolean decreaseReferenceCount(String holderMessage) {
-    AtomicBoolean success = new AtomicBoolean(true);
-    referenceCount.getAndUpdate(
-        count -> {
-          if (count == 1) {
-            success.set(decreaseResourceReferenceCount(holderMessage));
-            reportProgress();
-          }
-          return count - 1;
-        });
-    return success.get();
+  /**
+   * Decrease the reference count of this event. If the reference count is decreased to 0, the event
+   * can be recycled and the data stored in the event is not safe to use, the processing progress of
+   * the event should be reported to the pipe task meta.
+   *
+   * @param holderMessage the message of the invoker
+   * @return true if the reference count is decreased successfully, false otherwise
+   */
+  public final boolean decreaseReferenceCount(String holderMessage) {
+    boolean isSuccessful = true;
+    synchronized (this) {
+      if (referenceCount.get() == 1) {
+        isSuccessful = decreaseResourceReferenceCount(holderMessage);
+        reportProgress();
+      }
+      referenceCount.decrementAndGet();
+    }
+    return isSuccessful;
   }
 
   /**
@@ -85,6 +102,8 @@ public abstract class EnrichedEvent implements Event {
     }
   }
 
+  public abstract ConsensusIndex getConsensusIndex();
+
   /**
    * Get the reference count of this event.
    *
@@ -94,11 +113,6 @@ public abstract class EnrichedEvent implements Event {
     return referenceCount.get();
   }
 
-  public abstract ConsensusIndex getConsensusIndex();
-
-  public void reportProgressIndexToPipeTaskMetaWhenFinish(PipeTaskMeta pipeTaskMeta) {
-    this.pipeTaskMeta = pipeTaskMeta;
-  }
-
-  public abstract EnrichedEvent shallowCopySelf();
+  public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      PipeTaskMeta pipeTaskMeta);
 }

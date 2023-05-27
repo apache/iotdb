@@ -387,6 +387,21 @@ struct TPushPipeMetaReq {
   1: required list<binary> pipeMetas
 }
 
+struct TConstructViewSchemaBlackListReq{
+    1: required list<common.TConsensusGroupId> schemaRegionIdList
+    2: required binary pathPatternTree
+}
+
+struct TRollbackViewSchemaBlackListReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+}
+
+struct TDeleteViewSchemaReq{
+   1: required list<common.TConsensusGroupId> schemaRegionIdList
+   2: required binary pathPatternTree
+}
+
 // ====================================================
 // CQ
 // ====================================================
@@ -763,6 +778,12 @@ service IDataNodeRPCService {
   TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
 
   TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
+
+  common.TSStatus constructViewSchemaBlackList(TConstructViewSchemaBlackListReq req)
+
+  common.TSStatus rollbackViewSchemaBlackList(TRollbackViewSchemaBlackListReq req)
+
+  common.TSStatus deleteViewSchema(TDeleteViewSchemaReq req)
 
  /**
   * Send pipeMetas to DataNodes, for synchronization
