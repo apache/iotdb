@@ -72,6 +72,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -165,31 +166,53 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
     // Step 1: constructs DeviceViewSplit
+    Map<String, List<String>> outputDeviceToQueriedDeviceMap =
+        analysis.getOutputDeviceToQueriedDeviceMap();
     for (int i = 0; i < node.getDevices().size(); i++) {
-      String device = node.getDevices().get(i);
+      String outputDevice = node.getDevices().get(i);
       PlanNode child = node.getChildren().get(i);
-      List<TRegionReplicaSet> regionReplicaSets =
-          analysis.getPartitionInfo(device, analysis.getGlobalTimeFilter());
-      deviceViewSplits.add(new DeviceViewSplit(device, child, regionReplicaSets));
+      List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
+      for (String queriedDevice : outputDeviceToQueriedDeviceMap.get(outputDevice)) {
+        regionReplicaSets.addAll(
+            analysis.getPartitionInfo(queriedDevice, analysis.getGlobalTimeFilter()));
+      }
+      deviceViewSplits.add(new DeviceViewSplit(outputDevice, child, regionReplicaSets));
       relatedDataRegions.addAll(regionReplicaSets);
     }
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
     List<PlanNode> deviceViewNodeList = new ArrayList<>();
-    for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
-      List<String> devices = new ArrayList<>();
-      List<PlanNode> children = new ArrayList<>();
-      for (DeviceViewSplit split : deviceViewSplits) {
-        if (split.needDistributeTo(regionReplicaSet)) {
-          devices.add(split.device);
-          children.add(split.buildPlanNodeInRegion(regionReplicaSet, context.queryContext));
+    Iterator<DeviceViewSplit> deviceViewSplitIterator = deviceViewSplits.listIterator();
+    while (deviceViewSplitIterator.hasNext()) {
+      DeviceViewSplit deviceViewSplit = deviceViewSplitIterator.next();
+      String outputDevice = deviceViewSplit.device;
+
+      if (outputDeviceToQueriedDeviceMap.get(outputDevice).size() > 1) {
+        DeviceViewNode deviceViewNode = cloneDeviceViewNodeWithoutChild(node, context);
+        deviceViewNode.addChildDeviceNode(
+            outputDevice, process(deviceViewSplit.root, context).get(0));
+        deviceViewNodeList.add(deviceViewNode);
+        deviceViewSplitIterator.remove();
+      }
+    }
+    if (deviceViewSplits.size() > 0) {
+      for (TRegionReplicaSet regionReplicaSet : relatedDataRegions) {
+        List<String> devices = new ArrayList<>();
+        List<PlanNode> children = new ArrayList<>();
+        for (DeviceViewSplit split : deviceViewSplits) {
+          if (split.needDistributeTo(regionReplicaSet)) {
+            devices.add(split.device);
+            children.add(split.buildPlanNodeInRegion(regionReplicaSet, context.queryContext));
+          }
+        }
+        DeviceViewNode regionDeviceViewNode = cloneDeviceViewNodeWithoutChild(node, context);
+        for (int i = 0; i < devices.size(); i++) {
+          regionDeviceViewNode.addChildDeviceNode(devices.get(i), children.get(i));
+        }
+        if (regionDeviceViewNode.getChildren().size() > 0) {
+          deviceViewNodeList.add(regionDeviceViewNode);
         }
       }
-      DeviceViewNode regionDeviceViewNode = cloneDeviceViewNodeWithoutChild(node, context);
-      for (int i = 0; i < devices.size(); i++) {
-        regionDeviceViewNode.addChildDeviceNode(devices.get(i), children.get(i));
-      }
-      deviceViewNodeList.add(regionDeviceViewNode);
     }
 
     if (deviceViewNodeList.size() == 1) {
