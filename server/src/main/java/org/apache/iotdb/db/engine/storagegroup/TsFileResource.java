@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -247,11 +248,27 @@ public class TsFileResource {
       if (modFile != null && modFile.exists()) {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
+      } else {
+        // make the first "inputStream.available() > 0" in deserialize() happy.
+        //
+        // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
+        // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
+        // and skip the modFile deserialize.
+        //
+        // this make sure the first and the second "inputStream.available() > 0" in deserialize()
+        // will always be called... which is a bit ugly but allows the following variable
+        // maxProgressIndex to be deserialized correctly.
+        ReadWriteIOUtils.write((String) null, outputStream);
       }
+
       if (maxProgressIndex != null) {
+        ReadWriteIOUtils.write(true, outputStream);
         maxProgressIndex.serialize(outputStream);
+      } else {
+        ReadWriteIOUtils.write(false, outputStream);
       }
     }
+
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
     fsFactory.deleteIfExists(dest);
@@ -266,6 +283,7 @@ public class TsFileResource {
       timeIndex = ITimeIndex.createTimeIndex(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
         if (modFileName != null) {
@@ -273,8 +291,12 @@ public class TsFileResource {
           modFile = new ModificationFile(modF.getPath());
         }
       }
+
       if (inputStream.available() > 0) {
-        maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
+        if (hasMaxProgressIndex) {
+          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        }
       }
     }
 
@@ -322,7 +344,10 @@ public class TsFileResource {
         }
       }
       if (inputStream.available() > 0) {
-        maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
+        if (hasMaxProgressIndex) {
+          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
+        }
       }
     }
   }
@@ -1153,6 +1178,6 @@ public class TsFileResource {
       throw new IllegalStateException(
           "Should not get progress index from a unclosing TsFileResource.");
     }
-    return maxProgressIndex;
+    return maxProgressIndex == null ? new MinimumProgressIndex() : maxProgressIndex;
   }
 }

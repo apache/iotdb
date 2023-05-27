@@ -80,18 +80,12 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(true).stream()
-                .filter(
-                    resource ->
-                        resource.getMaxProgressIndexAfterClose() == null
-                            || !startIndex.isAfter(resource.getMaxProgressIndexAfterClose()))
+                .filter(resource -> !startIndex.isAfter(resource.getMaxProgressIndexAfterClose()))
                 .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
-                .filter(
-                    resource ->
-                        resource.getMaxProgressIndexAfterClose() == null
-                            || !startIndex.isAfter(resource.getMaxProgressIndexAfterClose()))
+                .filter(resource -> !startIndex.isAfter(resource.getMaxProgressIndexAfterClose()))
                 .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(

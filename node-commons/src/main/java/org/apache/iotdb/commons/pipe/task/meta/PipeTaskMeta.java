@@ -26,6 +26,8 @@ import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.sun.istack.NotNull;
+
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -44,7 +46,7 @@ public class PipeTaskMeta {
   private final AtomicInteger leaderDataNodeId = new AtomicInteger(0);
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
-  public PipeTaskMeta(ProgressIndex progressIndex, int leaderDataNodeId) {
+  public PipeTaskMeta(@NotNull ProgressIndex progressIndex, int leaderDataNodeId) {
     this.progressIndex.set(progressIndex);
     this.leaderDataNodeId.set(leaderDataNodeId);
   }
