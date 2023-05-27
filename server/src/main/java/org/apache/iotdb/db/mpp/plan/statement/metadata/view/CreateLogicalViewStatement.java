@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata.view;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -40,6 +41,9 @@ public class CreateLogicalViewStatement extends Statement {
   // the paths of sources
   private viewPaths sourcePaths;
   private QueryStatement queryStatement;
+
+  // if not null, all related check and generation will be skipped
+  private ViewExpression viewExpression;
 
   public CreateLogicalViewStatement() {
     super();
@@ -67,6 +71,10 @@ public class CreateLogicalViewStatement extends Statement {
 
   public QueryStatement getQueryStatement() {
     return this.queryStatement;
+  }
+
+  public ViewExpression getViewExpression() {
+    return viewExpression;
   }
 
   // set source paths
@@ -108,6 +116,10 @@ public class CreateLogicalViewStatement extends Statement {
     this.targetPaths.setPrefixOfPathsGroup(prefixPath);
     this.targetPaths.setSuffixOfPathsGroup(suffixPaths);
     this.targetPaths.generateFullPathsFromPathsGroup();
+  }
+
+  public void setViewExpression(ViewExpression viewExpression) {
+    this.viewExpression = viewExpression;
   }
 
   // endregion

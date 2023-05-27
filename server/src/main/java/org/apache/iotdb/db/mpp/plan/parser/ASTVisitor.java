@@ -165,6 +165,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
@@ -1041,6 +1042,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     return showLogicalViewStatement;
+  }
+
+  @Override
+  public Statement visitRenameLogicalView(IoTDBSqlParser.RenameLogicalViewContext ctx) {
+    RenameLogicalViewStatement renameLogicalViewStatement = new RenameLogicalViewStatement();
+    renameLogicalViewStatement.setOldName(parsePrefixPath(ctx.prefixPath(0)));
+    renameLogicalViewStatement.setNewName(parsePrefixPath(ctx.prefixPath(1)));
+    return renameLogicalViewStatement;
   }
 
   // parse suffix paths in logical view

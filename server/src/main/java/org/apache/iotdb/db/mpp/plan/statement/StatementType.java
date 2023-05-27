@@ -170,4 +170,5 @@ public enum StatementType {
 
   CREATE_LOGICAL_VIEW,
   DELETE_LOGICAL_VIEW,
+  RENAME_LOGICAL_VIEW,
 }
