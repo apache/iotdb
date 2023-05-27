@@ -41,20 +41,28 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeTaskMeta {
 
   private final AtomicReference<ConsensusIndex> progressIndex = new AtomicReference<>();
-  private final AtomicInteger dataNodeId = new AtomicInteger(0);
+  private final AtomicInteger leaderDataNodeId = new AtomicInteger(0);
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
-  public PipeTaskMeta(ConsensusIndex progressIndex, int dataNodeId) {
+  public PipeTaskMeta(ConsensusIndex progressIndex, int leaderDataNodeId) {
     this.progressIndex.set(progressIndex);
-    this.dataNodeId.set(dataNodeId);
+    this.leaderDataNodeId.set(leaderDataNodeId);
   }
 
   public ConsensusIndex getProgressIndex() {
     return progressIndex.get();
   }
 
-  public int getDataNodeId() {
-    return dataNodeId.get();
+  public void updateProgressIndex(ConsensusIndex updateIndex) {
+    progressIndex.updateAndGet(index -> index.updateToMaximum(updateIndex));
+  }
+
+  public int getLeaderDataNodeId() {
+    return leaderDataNodeId.get();
+  }
+
+  public void setLeaderDataNodeId(int leaderDataNodeId) {
+    this.leaderDataNodeId.set(leaderDataNodeId);
   }
 
   public Iterable<PipeRuntimeException> getExceptionMessages() {
@@ -69,17 +77,9 @@ public class PipeTaskMeta {
     exceptionMessages.clear();
   }
 
-  public void updateProgressIndex(ConsensusIndex updateIndex) {
-    progressIndex.updateAndGet(index -> index.updateToMaximum(updateIndex));
-  }
-
-  public void setDataNodeId(int dataNodeId) {
-    this.dataNodeId.set(dataNodeId);
-  }
-
   public void serialize(DataOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
-    ReadWriteIOUtils.write(dataNodeId.get(), outputStream);
+    ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
       ReadWriteIOUtils.write(
@@ -90,7 +90,7 @@ public class PipeTaskMeta {
 
   public void serialize(FileOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
-    ReadWriteIOUtils.write(dataNodeId.get(), outputStream);
+    ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
       ReadWriteIOUtils.write(
@@ -141,13 +141,13 @@ public class PipeTaskMeta {
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
     return progressIndex.get().equals(that.progressIndex.get())
-        && dataNodeId.get() == that.dataNodeId.get()
+        && leaderDataNodeId.get() == that.leaderDataNodeId.get()
         && Arrays.equals(exceptionMessages.toArray(), that.exceptionMessages.toArray());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex, dataNodeId, exceptionMessages);
+    return Objects.hash(progressIndex, leaderDataNodeId, exceptionMessages);
   }
 
   @Override
@@ -156,8 +156,8 @@ public class PipeTaskMeta {
         + "progressIndex='"
         + progressIndex
         + '\''
-        + ", dataNodeId='"
-        + dataNodeId
+        + ", leaderDataNodeId='"
+        + leaderDataNodeId
         + '\''
         + ", exceptionMessages="
         + exceptionMessages

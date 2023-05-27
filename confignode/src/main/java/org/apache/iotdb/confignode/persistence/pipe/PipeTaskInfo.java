@@ -211,7 +211,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             if (newDataRegionLeader != -1) {
                               consensusGroupIdToTaskMetaMap
                                   .get(dataRegionGroupId)
-                                  .setDataNodeId(newDataRegionLeader);
+                                  .setLeaderDataNodeId(newDataRegionLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
                             }
@@ -220,8 +220,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // region group is newly added.
                             if (newDataRegionLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
-                                  // TODO: the progress index should be passed from the leader
-                                  // correctly
                                   dataRegionGroupId,
                                   new PipeTaskMeta(
                                       new MinimumConsensusIndex(), newDataRegionLeader));

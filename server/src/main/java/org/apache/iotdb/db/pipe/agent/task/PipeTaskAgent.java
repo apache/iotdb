@@ -170,8 +170,8 @@ public class PipeTaskAgent {
       }
 
       // if task meta exists on data node, check if it has changed
-      final int dataNodeIdFromConfigNode = taskMetaFromConfigNode.getDataNodeId();
-      final int dataNodeIdOnDataNode = taskMetaOnDataNode.getDataNodeId();
+      final int dataNodeIdFromConfigNode = taskMetaFromConfigNode.getLeaderDataNodeId();
+      final int dataNodeIdOnDataNode = taskMetaOnDataNode.getLeaderDataNodeId();
 
       if (dataNodeIdFromConfigNode != dataNodeIdOnDataNode) {
         dropPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta);
@@ -509,7 +509,7 @@ public class PipeTaskAgent {
       TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
       PipeTaskMeta pipeTaskMeta) {
-    if (pipeTaskMeta.getDataNodeId() == CONFIG.getDataNodeId()) {
+    if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
       final PipeTask pipeTask =
           new PipeTaskBuilder(consensusGroupId, pipeTaskMeta, pipeStaticMeta).build();
       pipeTask.create();
@@ -521,7 +521,7 @@ public class PipeTaskAgent {
         .getConsensusGroupIdToTaskMetaMap()
         .put(
             consensusGroupId,
-            new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getDataNodeId()));
+            new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderDataNodeId()));
   }
 
   private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {

@@ -103,10 +103,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
-            (region, leader) ->
-                // TODO: make index configurable
+            (regionGroup, regionLeaderNodeId) ->
                 consensusGroupIdToTaskMetaMap.put(
-                    region, new PipeTaskMeta(new MinimumConsensusIndex(), leader)));
+                    regionGroup,
+                    new PipeTaskMeta(new MinimumConsensusIndex(), regionLeaderNodeId)));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }
 
