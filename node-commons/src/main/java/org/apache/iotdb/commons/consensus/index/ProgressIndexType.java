@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.commons.consensus.index;
 
-import org.apache.iotdb.commons.consensus.index.impl.IoTConsensusIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -28,14 +28,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public enum ConsensusIndexType {
+public enum ProgressIndexType {
   MINIMUM_CONSENSUS_INDEX((short) 1),
   IOT_CONSENSUS_INDEX((short) 2),
   ;
 
   private final short type;
 
-  ConsensusIndexType(short type) {
+  ProgressIndexType(short type) {
     this.type = type;
   }
 
@@ -51,26 +51,26 @@ public enum ConsensusIndexType {
     ReadWriteIOUtils.write(type, stream);
   }
 
-  public static ConsensusIndex deserializeFrom(ByteBuffer byteBuffer) {
+  public static ProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     short indexType = byteBuffer.getShort();
     switch (indexType) {
       case 1:
-        return MinimumConsensusIndex.deserializeFrom(byteBuffer);
+        return MinimumProgressIndex.deserializeFrom(byteBuffer);
       case 2:
-        return IoTConsensusIndex.deserializeFrom(byteBuffer);
+        return IoTProgressIndex.deserializeFrom(byteBuffer);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported Consensus Index type %s.", indexType));
     }
   }
 
-  public static ConsensusIndex deserializeFrom(InputStream stream) throws IOException {
+  public static ProgressIndex deserializeFrom(InputStream stream) throws IOException {
     short indexType = ReadWriteIOUtils.readShort(stream);
     switch (indexType) {
       case 1:
-        return MinimumConsensusIndex.deserializeFrom(stream);
+        return MinimumProgressIndex.deserializeFrom(stream);
       case 2:
-        return IoTConsensusIndex.deserializeFrom(stream);
+        return IoTProgressIndex.deserializeFrom(stream);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported Consensus Index type %s.", indexType));

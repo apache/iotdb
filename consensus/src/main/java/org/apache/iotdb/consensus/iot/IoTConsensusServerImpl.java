@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
-import org.apache.iotdb.commons.consensus.index.impl.IoTConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -649,9 +649,9 @@ public class IoTConsensusServerImpl {
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     if (request instanceof ComparableConsensusRequest) {
-      IoTConsensusIndex ioTConsensusIndex = new IoTConsensusIndex();
-      ioTConsensusIndex.addSearchIndex(thisNode.getNodeId(), searchIndex.get() + 1);
-      ((ComparableConsensusRequest) request).setConsensusIndex(ioTConsensusIndex);
+      IoTProgressIndex iotProgressIndex = new IoTProgressIndex();
+      iotProgressIndex.addSearchIndex(thisNode.getNodeId(), searchIndex.get() + 1);
+      ((ComparableConsensusRequest) request).setProgressIndex(iotProgressIndex);
     }
     return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request));
   }

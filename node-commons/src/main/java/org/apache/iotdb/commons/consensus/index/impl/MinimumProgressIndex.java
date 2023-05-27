@@ -19,48 +19,48 @@
 
 package org.apache.iotdb.commons.consensus.index.impl;
 
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
-import org.apache.iotdb.commons.consensus.index.ConsensusIndexType;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class MinimumConsensusIndex implements ConsensusIndex {
-  public MinimumConsensusIndex() {}
+public class MinimumProgressIndex implements ProgressIndex {
+  public MinimumProgressIndex() {}
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    ConsensusIndexType.MINIMUM_CONSENSUS_INDEX.serialize(byteBuffer);
+    ProgressIndexType.MINIMUM_CONSENSUS_INDEX.serialize(byteBuffer);
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
-    ConsensusIndexType.MINIMUM_CONSENSUS_INDEX.serialize(stream);
+    ProgressIndexType.MINIMUM_CONSENSUS_INDEX.serialize(stream);
   }
 
   @Override
-  public boolean isAfter(ConsensusIndex consensusIndex) {
+  public boolean isAfter(ProgressIndex progressIndex) {
     return false;
   }
 
   @Override
-  public boolean equals(ConsensusIndex consensusIndex) {
-    return consensusIndex instanceof MinimumConsensusIndex;
+  public boolean equals(ProgressIndex progressIndex) {
+    return progressIndex instanceof MinimumProgressIndex;
   }
 
   @Override
-  public ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex) {
-    return consensusIndex == null ? this : consensusIndex;
+  public ProgressIndex updateToMaximum(ProgressIndex progressIndex) {
+    return progressIndex == null ? this : progressIndex;
   }
 
-  public static MinimumConsensusIndex deserializeFrom(ByteBuffer byteBuffer) {
-    return new MinimumConsensusIndex();
+  public static MinimumProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
+    return new MinimumProgressIndex();
   }
 
-  public static MinimumConsensusIndex deserializeFrom(InputStream stream) {
-    return new MinimumConsensusIndex();
+  public static MinimumProgressIndex deserializeFrom(InputStream stream) {
+    return new MinimumProgressIndex();
   }
 
   @Override
@@ -73,6 +73,6 @@ public class MinimumConsensusIndex implements ConsensusIndex {
 
   @Override
   public String toString() {
-    return "MinimumConsensusIndex{}";
+    return "MinimumProgressIndex{}";
   }
 }

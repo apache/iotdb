@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
-import org.apache.iotdb.commons.consensus.index.ConsensusIndexType;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -155,7 +155,7 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
-  private ConsensusIndex maxConsensusIndex;
+  private ProgressIndex maxProgressIndex;
 
   public TsFileResource() {}
 
@@ -174,7 +174,7 @@ public class TsFileResource {
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.tsFileSize = other.tsFileSize;
-    this.maxConsensusIndex = other.maxConsensusIndex;
+    this.maxProgressIndex = other.maxProgressIndex;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -248,8 +248,8 @@ public class TsFileResource {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
       }
-      if (maxConsensusIndex != null) {
-        maxConsensusIndex.serialize(outputStream);
+      if (maxProgressIndex != null) {
+        maxProgressIndex.serialize(outputStream);
       }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
@@ -274,7 +274,7 @@ public class TsFileResource {
         }
       }
       if (inputStream.available() > 0) {
-        maxConsensusIndex = ConsensusIndexType.deserializeFrom(inputStream);
+        maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
       }
     }
 
@@ -322,7 +322,7 @@ public class TsFileResource {
         }
       }
       if (inputStream.available() > 0) {
-        maxConsensusIndex = ConsensusIndexType.deserializeFrom(inputStream);
+        maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
       }
     }
   }
@@ -1137,22 +1137,22 @@ public class TsFileResource {
     return prev != null || next != null;
   }
 
-  public void updateConsensusIndex(ConsensusIndex consensusIndex) {
-    if (consensusIndex == null) {
+  public void updateProgressIndex(ProgressIndex progressIndex) {
+    if (progressIndex == null) {
       return;
     }
 
-    maxConsensusIndex =
-        (maxConsensusIndex == null
-            ? consensusIndex
-            : maxConsensusIndex.updateToMaximum(consensusIndex));
+    maxProgressIndex =
+        (maxProgressIndex == null
+            ? progressIndex
+            : maxProgressIndex.updateToMaximum(progressIndex));
   }
 
-  public ConsensusIndex getMaxConsensusIndexAfterClose() throws IllegalStateException {
+  public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
     if (status.equals(TsFileResourceStatus.UNCLOSED)) {
       throw new IllegalStateException(
           "Should not get consensus index from a unclosing TsFileResource.");
     }
-    return maxConsensusIndex;
+    return maxProgressIndex;
   }
 }

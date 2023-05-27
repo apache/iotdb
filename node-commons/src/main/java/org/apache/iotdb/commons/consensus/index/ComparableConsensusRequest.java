@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.consensus.index;
 
 public interface ComparableConsensusRequest {
-  ConsensusIndex getConsensusIndex();
+  ProgressIndex getProgressIndex();
 
-  void setConsensusIndex(ConsensusIndex consensusIndex);
+  void setProgressIndex(ProgressIndex progressIndex);
 }

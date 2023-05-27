@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -76,8 +76,8 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
-  public ConsensusIndex getConsensusIndex() {
-    return event.getConsensusIndex();
+  public ProgressIndex getProgressIndex() {
+    return event.getProgressIndex();
   }
 
   @Override

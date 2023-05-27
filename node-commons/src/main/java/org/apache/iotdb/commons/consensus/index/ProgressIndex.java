@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public interface ConsensusIndex {
+public interface ProgressIndex {
 
   /** serialize this consensus index to the given byte buffer */
   void serialize(ByteBuffer byteBuffer);
@@ -34,19 +34,19 @@ public interface ConsensusIndex {
   /**
    * A.isAfter(B) is true if and only if A is strictly greater than B
    *
-   * @param consensusIndex the consensus index to be compared
+   * @param progressIndex the consensus index to be compared
    * @return true if and only if this consensus index is strictly greater than the given consensus
    *     index
    */
-  boolean isAfter(ConsensusIndex consensusIndex);
+  boolean isAfter(ProgressIndex progressIndex);
 
   /**
    * A.equals(B) is true if and only if A is equal to B
    *
-   * @param consensusIndex the consensus index to be compared
+   * @param progressIndex the consensus index to be compared
    * @return true if and only if this consensus index is equal to the given consensus index
    */
-  boolean equals(ConsensusIndex consensusIndex);
+  boolean equals(ProgressIndex progressIndex);
 
   /**
    * C = A.updateToMaximum(B) where C should satisfy:
@@ -62,8 +62,8 @@ public interface ConsensusIndex {
    *
    * <p>Note: this function may modify the caller.
    *
-   * @param consensusIndex the consensus index to be compared
+   * @param progressIndex the consensus index to be compared
    * @return the maximum of the two consensus indexes
    */
-  ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex);
+  ProgressIndex updateToMaximum(ProgressIndex progressIndex);
 }

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
-import org.apache.iotdb.commons.consensus.index.ConsensusIndexType;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
@@ -40,20 +40,20 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskMeta {
 
-  private final AtomicReference<ConsensusIndex> progressIndex = new AtomicReference<>();
+  private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
   private final AtomicInteger leaderDataNodeId = new AtomicInteger(0);
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
-  public PipeTaskMeta(ConsensusIndex progressIndex, int leaderDataNodeId) {
+  public PipeTaskMeta(ProgressIndex progressIndex, int leaderDataNodeId) {
     this.progressIndex.set(progressIndex);
     this.leaderDataNodeId.set(leaderDataNodeId);
   }
 
-  public ConsensusIndex getProgressIndex() {
+  public ProgressIndex getProgressIndex() {
     return progressIndex.get();
   }
 
-  public void updateProgressIndex(ConsensusIndex updateIndex) {
+  public void updateProgressIndex(ProgressIndex updateIndex) {
     progressIndex.updateAndGet(index -> index.updateToMaximum(updateIndex));
   }
 
@@ -102,7 +102,7 @@ public class PipeTaskMeta {
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
     final PipeTaskMeta PipeTaskMeta =
         new PipeTaskMeta(
-            ConsensusIndexType.deserializeFrom(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+            ProgressIndexType.deserializeFrom(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final boolean critical = ReadWriteIOUtils.readBool(byteBuffer);
@@ -118,7 +118,7 @@ public class PipeTaskMeta {
   public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
     final PipeTaskMeta PipeTaskMeta =
         new PipeTaskMeta(
-            ConsensusIndexType.deserializeFrom(inputStream), ReadWriteIOUtils.readInt(inputStream));
+            ProgressIndexType.deserializeFrom(inputStream), ReadWriteIOUtils.readInt(inputStream));
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final boolean critical = ReadWriteIOUtils.readBool(inputStream);

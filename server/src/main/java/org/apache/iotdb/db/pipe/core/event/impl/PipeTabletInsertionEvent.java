@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
@@ -42,17 +42,17 @@ public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletIns
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
-  private final ConsensusIndex consensusIndex;
+  private final ProgressIndex progressIndex;
 
-  public PipeTabletInsertionEvent(WALEntryHandler walEntryHandler, ConsensusIndex consensusIndex) {
-    this(walEntryHandler, consensusIndex, null);
+  public PipeTabletInsertionEvent(WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
+    this(walEntryHandler, progressIndex, null);
   }
 
   private PipeTabletInsertionEvent(
-      WALEntryHandler walEntryHandler, ConsensusIndex consensusIndex, PipeTaskMeta pipeTaskMeta) {
+      WALEntryHandler walEntryHandler, ProgressIndex progressIndex, PipeTaskMeta pipeTaskMeta) {
     super(pipeTaskMeta);
     this.walEntryHandler = walEntryHandler;
-    this.consensusIndex = consensusIndex;
+    this.progressIndex = progressIndex;
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -92,14 +92,14 @@ public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletIns
   }
 
   @Override
-  public ConsensusIndex getConsensusIndex() {
-    return consensusIndex;
+  public ProgressIndex getProgressIndex() {
+    return progressIndex;
   }
 
   @Override
   public PipeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta) {
-    return new PipeTabletInsertionEvent(walEntryHandler, consensusIndex, pipeTaskMeta);
+    return new PipeTabletInsertionEvent(walEntryHandler, progressIndex, pipeTaskMeta);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -126,8 +126,8 @@ public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletIns
     return "PipeTabletInsertionEvent{"
         + "walEntryHandler="
         + walEntryHandler
-        + ", consensusIndex="
-        + consensusIndex
+        + ", progressIndex="
+        + progressIndex
         + '}';
   }
 }

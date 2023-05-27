@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
@@ -75,7 +75,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
 
-  protected ConsensusIndex consensusIndex;
+  protected ProgressIndex progressIndex;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -274,13 +274,13 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   // region consensus index
 
   @Override
-  public ConsensusIndex getConsensusIndex() {
-    return consensusIndex;
+  public ProgressIndex getProgressIndex() {
+    return progressIndex;
   }
 
   @Override
-  public void setConsensusIndex(ConsensusIndex consensusIndex) {
-    this.consensusIndex = consensusIndex;
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
   }
 
   // endregion

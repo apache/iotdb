@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.event;
 
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -98,11 +98,11 @@ public abstract class EnrichedEvent implements Event {
 
   private void reportProgress() {
     if (pipeTaskMeta != null) {
-      pipeTaskMeta.updateProgressIndex(getConsensusIndex());
+      pipeTaskMeta.updateProgressIndex(getProgressIndex());
     }
   }
 
-  public abstract ConsensusIndex getConsensusIndex();
+  public abstract ProgressIndex getProgressIndex();
 
   /**
    * Get the reference count of this event.

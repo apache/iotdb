@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -61,11 +61,11 @@ public class PipeMetaDeSerTest {
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
                     new PipeTaskMeta(
-                        new MinimumConsensusIndex(), 987)); // TODO: replace with IoTConsensusIndex;
+                        new MinimumProgressIndex(), 987)); // TODO: replace with IoTProgressIndex;
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
                     new PipeTaskMeta(
-                        new MinimumConsensusIndex(), 789)); // TODO: replace with IoTConsensusIndex;
+                        new MinimumProgressIndex(), 789)); // TODO: replace with IoTProgressIndex;
               }
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();

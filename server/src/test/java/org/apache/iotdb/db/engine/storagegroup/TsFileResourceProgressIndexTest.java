@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.consensus.index.ConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-public class TsFileResourceConsensusIndexTest {
+public class TsFileResourceProgressIndexTest {
   private final File file =
       new File(
           TsFileNameGenerator.generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, 1, 1, 1, 1));
@@ -50,7 +50,7 @@ public class TsFileResourceConsensusIndexTest {
   private final long[] endTimes = new long[DEVICE_NUM];
   private static final int DEVICE_NUM = 100;
 
-  private final List<ConsensusIndex> indexList = new ArrayList<>();
+  private final List<ProgressIndex> indexList = new ArrayList<>();
   private static final int INDEX_NUM = 1000;
 
   @Before
@@ -66,7 +66,7 @@ public class TsFileResourceConsensusIndexTest {
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
 
-    IntStream.range(0, INDEX_NUM).forEach(i -> indexList.add(new MockConsensusIndex(i)));
+    IntStream.range(0, INDEX_NUM).forEach(i -> indexList.add(new MockProgressIndex(i)));
   }
 
   @After
@@ -82,47 +82,47 @@ public class TsFileResourceConsensusIndexTest {
   }
 
   @Test
-  public void testConsensusIndexRecorder() {
+  public void testProgressIndexRecorder() {
     Assert.assertTrue(
-        new MockConsensusIndex(0).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+        new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
 
-    indexList.forEach(tsFileResource::updateConsensusIndex);
+    indexList.forEach(tsFileResource::updateProgressIndex);
 
     Assert.assertFalse(
-        new MockConsensusIndex(-1).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+        new MockProgressIndex(-1).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
     Assert.assertFalse(
-        new MockConsensusIndex(0).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+        new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
     Assert.assertFalse(
-        new MockConsensusIndex(1).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+        new MockProgressIndex(1).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
     Assert.assertFalse(
-        new MockConsensusIndex(INDEX_NUM - 1)
-            .isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+        new MockProgressIndex(INDEX_NUM - 1)
+            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
 
     Assert.assertTrue(
-        new MockConsensusIndex(INDEX_NUM).isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+        new MockProgressIndex(INDEX_NUM).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
     Assert.assertTrue(
-        new MockConsensusIndex(Integer.MAX_VALUE)
-            .isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+        new MockProgressIndex(Integer.MAX_VALUE)
+            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
 
     Assert.assertFalse(
-        new MockConsensusIndex(1, INDEX_NUM - 1)
-            .isAfter(tsFileResource.getMaxConsensusIndexAfterClose()));
+        new MockProgressIndex(1, INDEX_NUM - 1)
+            .isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
   }
 
   @Test
-  public void testConsensusIndexRecorderSerialize() {
-    // TODO: wait for implements of ConsensusIndex.deserializeFrom
+  public void testProgressIndexRecorderSerialize() {
+    // TODO: wait for implements of ProgressIndex.deserializeFrom
   }
 
-  public static class MockConsensusIndex implements ConsensusIndex {
+  public static class MockProgressIndex implements ProgressIndex {
     private final int type;
     private int val;
 
-    public MockConsensusIndex(int val) {
+    public MockProgressIndex(int val) {
       this(0, val);
     }
 
-    public MockConsensusIndex(int type, int val) {
+    public MockProgressIndex(int type, int val) {
       this.type = type;
       this.val = val;
     }
@@ -138,32 +138,32 @@ public class TsFileResourceConsensusIndexTest {
     }
 
     @Override
-    public boolean isAfter(ConsensusIndex consensusIndex) {
-      if (!(consensusIndex instanceof MockConsensusIndex)) {
+    public boolean isAfter(ProgressIndex progressIndex) {
+      if (!(progressIndex instanceof MockProgressIndex)) {
         return true;
       }
 
-      MockConsensusIndex that = (MockConsensusIndex) consensusIndex;
+      MockProgressIndex that = (MockProgressIndex) progressIndex;
       return this.type == that.type && this.val > that.val;
     }
 
     @Override
-    public boolean equals(ConsensusIndex consensusIndex) {
-      if (!(consensusIndex instanceof MockConsensusIndex)) {
+    public boolean equals(ProgressIndex progressIndex) {
+      if (!(progressIndex instanceof MockProgressIndex)) {
         return false;
       }
 
-      MockConsensusIndex that = (MockConsensusIndex) consensusIndex;
+      MockProgressIndex that = (MockProgressIndex) progressIndex;
       return this.type == that.type && this.val == that.val;
     }
 
     @Override
-    public ConsensusIndex updateToMaximum(ConsensusIndex consensusIndex) {
-      if (!(consensusIndex instanceof MockConsensusIndex)) {
+    public ProgressIndex updateToMaximum(ProgressIndex progressIndex) {
+      if (!(progressIndex instanceof MockProgressIndex)) {
         throw new IllegalStateException("Mock update error.");
       }
 
-      MockConsensusIndex that = (MockConsensusIndex) consensusIndex;
+      MockProgressIndex that = (MockProgressIndex) progressIndex;
       if (that.type == this.type) {
         this.val = Math.max(this.val, that.val);
       }

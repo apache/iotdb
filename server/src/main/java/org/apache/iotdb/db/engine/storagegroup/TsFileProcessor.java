@@ -301,7 +301,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
-    tsFileResource.updateConsensusIndex(insertRowNode.getConsensusIndex());
+    tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
@@ -414,7 +414,7 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
-    tsFileResource.updateConsensusIndex(insertTabletNode.getConsensusIndex());
+    tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 

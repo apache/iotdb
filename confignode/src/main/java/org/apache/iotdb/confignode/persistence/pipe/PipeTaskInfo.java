@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumConsensusIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
@@ -222,7 +222,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap.put(
                                   dataRegionGroupId,
                                   new PipeTaskMeta(
-                                      new MinimumConsensusIndex(), newDataRegionLeader));
+                                      new MinimumProgressIndex(), newDataRegionLeader));
                             } else {
                               LOGGER.warn(
                                   "The pipe task meta does not contain the data region group {} or the data region group has already been removed",
