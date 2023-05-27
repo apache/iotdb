@@ -30,9 +30,10 @@ import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfig
 
 public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
 
+  protected final PipeTaskMeta pipeTaskMeta;
+
   protected String pattern;
   protected String dataRegionId;
-  protected final PipeTaskMeta pipeTaskMeta;
 
   public PipeRealtimeDataRegionCollector(PipeTaskMeta pipeTaskMeta) {
     this.pipeTaskMeta = pipeTaskMeta;

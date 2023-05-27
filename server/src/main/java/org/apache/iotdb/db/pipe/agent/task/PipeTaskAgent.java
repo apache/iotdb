@@ -79,7 +79,6 @@ public class PipeTaskAgent {
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
-  // TODO: handle progress index
   public synchronized void handlePipeMetaChanges(List<PipeMeta> pipeMetaListFromConfigNode) {
     // do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {

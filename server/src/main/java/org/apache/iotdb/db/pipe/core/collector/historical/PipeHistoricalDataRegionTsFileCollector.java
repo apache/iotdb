@@ -41,6 +41,7 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
 
   private final PipeTaskMeta pipeTaskMeta;
   private final ProgressIndex startIndex;
+
   private int dataRegionId;
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
