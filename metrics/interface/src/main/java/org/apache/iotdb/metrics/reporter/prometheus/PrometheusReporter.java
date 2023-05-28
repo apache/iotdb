@@ -152,7 +152,7 @@ public class PrometheusReporter implements Reporter {
               metricInfo.getTags(),
               metricType,
               snapshot,
-              timer.getImmutableRate().getCount(),
+              timer.getCount(),
               prometheusTextWriter);
         }
       }
