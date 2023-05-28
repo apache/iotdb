@@ -836,7 +836,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void preparePipeResources() throws StartupException {
-    PipeAgent.runtime().launchPipePluginAgent(resourcesInformationHolder);
+    PipeAgent.runtime().preparePipeResources(resourcesInformationHolder);
   }
 
   private void getPipeInformationList(List<ByteBuffer> allPipeInformation) {

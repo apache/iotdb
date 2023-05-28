@@ -1,0 +1,108 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.pipe.agent.runtime;
+
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
+
+public class SimpleConsensusProgressIndexAssigner {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SimpleConsensusProgressIndexAssigner.class);
+
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final String PIPE_SYSTEM_DIR =
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+          + File.separator
+          + "pipe"
+          + File.separator;
+  private static final String REBOOT_TIMES_FILE_NAME = "reboot_times.txt";
+
+  private boolean isEnable = false;
+
+  private int rebootTimes = 0;
+  private final AtomicLong memtableFlushOrderId = new AtomicLong(0);
+
+  public void start() throws StartupException {
+    // only works for simple consensus
+    if (!IOTDB_CONFIG.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
+      return;
+    }
+
+    isEnable = true;
+    LOGGER.info("Start SimpleConsensusProgressIndexAssigner ...");
+
+    try {
+      makeDirIfNecessary();
+      parseRebootTimes();
+      recordRebootTimes();
+    } catch (Exception e) {
+      throw new StartupException(e);
+    }
+  }
+
+  private void makeDirIfNecessary() throws IOException {
+    File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR);
+    if (file.exists() && file.isDirectory()) {
+      return;
+    }
+    FileUtils.forceMkdir(file);
+  }
+
+  private void parseRebootTimes() {
+    File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR + REBOOT_TIMES_FILE_NAME);
+    if (!file.exists()) {
+      rebootTimes = 0;
+      return;
+    }
+    try {
+      String content = FileUtils.readFileToString(file, "UTF-8");
+      rebootTimes = Integer.parseInt(content);
+    } catch (IOException e) {
+      LOGGER.error("Cannot parse reboot times from file {}", file.getAbsolutePath(), e);
+      rebootTimes = 0;
+    }
+  }
+
+  private void recordRebootTimes() throws IOException {
+    File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR + REBOOT_TIMES_FILE_NAME);
+    FileUtils.writeStringToFile(file, String.valueOf(rebootTimes + 1), "UTF-8");
+  }
+
+  public SimpleProgressIndex assign() {
+    return isEnable
+        ? new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement())
+        : null;
+  }
+}

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -38,9 +39,15 @@ public class PipeRuntimeAgent implements IService {
 
   private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
-  public synchronized void launchPipePluginAgent(
+  private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
+      new SimpleConsensusProgressIndexAssigner();
+
+  //////////////////////////// System Service Interface ////////////////////////////
+
+  public synchronized void preparePipeResources(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
     PipeLauncher.launchPipePluginAgent(resourcesInformationHolder);
+    simpleConsensusProgressIndexAssigner.start();
   }
 
   @Override
@@ -68,6 +75,14 @@ public class PipeRuntimeAgent implements IService {
   public ServiceType getID() {
     return ServiceType.PIPE_RUNTIME_AGENT;
   }
+
+  ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////
+
+  public SimpleProgressIndex assignSimpleProgressIndex() {
+    return simpleConsensusProgressIndexAssigner.assign();
+  }
+
+  //////////////////////////// Runtime Exception Handlers ////////////////////////////
 
   public void report(PipeSubtask subtask) {
     // TODO: terminate the task by the given taskID
