@@ -204,6 +204,89 @@ public class CommonDescriptor {
     }
   }
 
+  private void loadPipeProps(Properties properties) {
+
+    config.setPipeSubtaskExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_thread_num",
+                Integer.toString(config.getPipeSubtaskExecutorMaxThreadNum()))));
+    if (config.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
+      config.setPipeSubtaskExecutorMaxThreadNum(5);
+    }
+
+    config.setPipeTsFileDirName(
+        properties.getProperty("pipe_tsfile_dir", config.getPipeTsFileDirName()));
+
+    config.setDefaultRingBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_default_ring_buffer_size",
+                String.valueOf(config.getDefaultRingBufferSize()))));
+
+    config.setMatcherCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_matcher_cache_size", String.valueOf(config.getMatcherCacheSize()))));
+
+    config.setRealtimeCollectorPendingQueueCapacity(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realtime_collector_pending_queue_capacity",
+                String.valueOf(config.getRealtimeCollectorPendingQueueCapacity()))));
+
+    config.setRealtimeCollectorPendingQueueTabletLimit(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realtime_collector_pending_queue_tablet_limit",
+                String.valueOf(config.getRealtimeCollectorPendingQueueTabletLimit()))));
+
+    config.setReadFileBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_read_file_buffer_size", String.valueOf(config.getReadFileBufferSize()))));
+
+    config.setHeartbeatLoopCyclesForCollectingPipeMeta(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_heartbeat_loop_cycles_for_collecting_pipe_meta",
+                String.valueOf(config.getHeartbeatLoopCyclesForCollectingPipeMeta()))));
+
+    config.setInitialSyncDelayMinutes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_initial_sync_delay_minutes",
+                String.valueOf(config.getInitialSyncDelayMinutes()))));
+
+    config.setSyncIntervalMinutes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_sync_interval_minutes", String.valueOf(config.getSyncIntervalMinutes()))));
+
+    config.setRetryIntervalMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_retry_interval_ms", String.valueOf(config.getRetryIntervalMs()))));
+
+    config.setConnectorPendingQueueSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_connector_pending_queue_size",
+                String.valueOf(config.getConnectorPendingQueueSize()))));
+
+    config.setBasicCheckPointIntervalByConsumedEventCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_basic_check_point_interval_by_consumed_event_count",
+                String.valueOf(config.getBasicCheckPointIntervalByConsumedEventCount()))));
+
+    config.setBasicCheckPointIntervalByTimeDuration(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_basic_check_point_interval_by_time_duration",
+                String.valueOf(config.getBasicCheckPointIntervalByTimeDuration()))));
+  }
+
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }

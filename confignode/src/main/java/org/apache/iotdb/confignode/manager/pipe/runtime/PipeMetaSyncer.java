@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -40,9 +41,10 @@ public class PipeMetaSyncer {
   private static final ScheduledExecutorService SYNC_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.PIPE_META_SYNC_SERVICE.getName());
-  // TODO: make these configurable
-  private static final long INITIAL_SYNC_DELAY_MINUTES = 3;
-  private static final long SYNC_INTERVAL_MINUTES = 3;
+  private static final long INITIAL_SYNC_DELAY_MINUTES =
+      PipeConfig.getInstance().getInitialSyncDelayMinutes();
+  private static final long SYNC_INTERVAL_MINUTES =
+      PipeConfig.getInstance().getSyncIntervalMinutes();
 
   private final ConfigManager configManager;
 
