@@ -182,6 +182,13 @@ public class DeviceUsingTemplateSchemaCache {
             }
 
             @Override
+            public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+              throw new RuntimeException(
+                  new UnsupportedOperationException(
+                      "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
+            }
+
+            @Override
             public String getAlias() {
               return null;
             }

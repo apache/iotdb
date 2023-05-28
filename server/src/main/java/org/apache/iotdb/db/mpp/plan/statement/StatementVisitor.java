@@ -42,7 +42,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
@@ -91,6 +90,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.AlterLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -245,6 +249,24 @@ public abstract class StatementVisitor<R, C> {
   public R visitCreateLogicalView(
       CreateLogicalViewStatement createLogicalViewStatement, C context) {
     return visitStatement(createLogicalViewStatement, context);
+  }
+
+  public R visitDeleteLogicalView(
+      DeleteLogicalViewStatement deleteLogicalViewStatement, C context) {
+    return visitStatement(deleteLogicalViewStatement, context);
+  }
+
+  public R visitShowLogicalView(ShowLogicalViewStatement showLogicalViewStatement, C context) {
+    return visitStatement(showLogicalViewStatement, context);
+  }
+
+  public R visitRenameLogicalView(
+      RenameLogicalViewStatement renameLogicalViewStatement, C context) {
+    return visitStatement(renameLogicalViewStatement, context);
+  }
+
+  public R visitAlterLogicalView(AlterLogicalViewStatement alterLogicalViewStatement, C context) {
+    return visitStatement(alterLogicalViewStatement, context);
   }
 
   // ML Model

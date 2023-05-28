@@ -34,6 +34,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -1050,7 +1051,7 @@ public class ConfigPhysicalPlanSerDeTest {
     collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(0, 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -1163,10 +1164,12 @@ public class ConfigPhysicalPlanSerDeTest {
               {
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(789, 987));
+                    new PipeTaskMeta(
+                        new MinimumProgressIndex(), 987)); // TODO: replace with IoTConsensus
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(456, 789));
+                    new PipeTaskMeta(
+                        new MinimumProgressIndex(), 789)); // TODO: replace with IoTConsensus
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));

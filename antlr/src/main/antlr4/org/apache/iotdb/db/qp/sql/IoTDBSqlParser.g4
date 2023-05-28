@@ -64,7 +64,7 @@ ddlStatement
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
-    | createLogicalView
+    | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     ;
 
 dmlStatement
@@ -561,6 +561,22 @@ showTrails
 // Create Logical View
 createLogicalView
     : CREATE VIEW viewTargetPaths AS viewSourcePaths
+    ;
+
+showLogicalView
+    : SHOW VIEW prefixPath? timeseriesWhereClause? rowPaginationClause?
+    ;
+
+dropLogicalView
+    : (DELETE | DROP) VIEW prefixPath (COMMA prefixPath)*
+    ;
+
+renameLogicalView
+    : ALTER VIEW prefixPath RENAME TO prefixPath
+    ;
+
+alterLogicalView
+    : ALTER VIEW viewTargetPaths AS viewSourcePaths
     ;
 
 viewSuffixPaths
