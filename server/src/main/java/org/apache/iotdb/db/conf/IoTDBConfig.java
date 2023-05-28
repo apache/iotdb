@@ -1117,10 +1117,8 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  private String receiveFileDir =
-      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-          + File.separator
-          + "pipe"; // TODO: replace with resource manager
+  // TODO: replace with resource manager
+  private String receiveFileDir = systemDir + File.separator + "pipe";
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
