@@ -161,7 +161,7 @@ public abstract class Expression extends StatementNode {
     String outputSymbol = getOutputSymbol();
     String expressionString = getExpressionString();
     if (!Objects.equals(outputSymbol, expressionString)) {
-      return expressionString + "[" + outputSymbol + "]";
+      return expressionString + " [" + outputSymbol + "]";
     }
     return expressionString;
   }
