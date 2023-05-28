@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 
@@ -84,15 +84,7 @@ public class PipeRuntimeAgent implements IService {
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
 
-  public void report(PipeSubtask subtask) {
-    // TODO: terminate the task by the given taskID
-    LOGGER.warn(
-        "Failed to execute task {} after many retries, last failed cause by {}",
-        subtask.getTaskID(),
-        subtask.getLastFailedCause());
-  }
-
-  public void report(PipeRuntimeException pipeRuntimeException) {
-    // TODO: complete this method
+  public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
+    pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
   }
 }

@@ -186,7 +186,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                 "TsFile Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 event.getEvent());
-        PipeAgent.runtime().report(new PipeRuntimeNonCriticalException(errorMessage));
+        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
         return null;
       }
     }

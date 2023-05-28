@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeEventCollector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
@@ -53,6 +54,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   /**
    * @param pipeName pipe name
    * @param dataRegionId data region id
+   * @param taskMeta pipe task meta
    * @param pipeCollectorInputEventSupplier used to input events from pipe collector
    * @param pipeCollectorInputPendingQueue used to listen whether pipe collector event queue is from
    *     empty to not empty or from not empty to empty, null means no need to listen
@@ -62,6 +64,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   public PipeTaskProcessorStage(
       String pipeName,
       TConsensusGroupId dataRegionId,
+      PipeTaskMeta taskMeta,
       EventSupplier pipeCollectorInputEventSupplier,
       @Nullable ListenablePendingQueue<Event> pipeCollectorInputPendingQueue,
       PipeParameters pipeProcessorParameters,
@@ -76,6 +79,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
+            taskMeta,
             pipeCollectorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);
