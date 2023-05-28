@@ -33,8 +33,8 @@ import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.db.wal.utils.WALMode;
-import org.apache.iotdb.db.wal.utils.WALPipeHandler;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -49,7 +49,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class WALPipeHandlerTest {
+public class WALEntryHandlerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
@@ -85,7 +85,7 @@ public class WALPipeHandlerTest {
             memTable.getMemTableId(), getInsertRowNode(devicePath, System.currentTimeMillis()));
     walNode.onMemTableFlushed(memTable);
     // pin flushed memTable
-    WALPipeHandler handler = flushListener.getWalPipeHandler();
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
   }
 
@@ -97,7 +97,7 @@ public class WALPipeHandlerTest {
     node1.setSearchIndex(1);
     WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
     // pin memTable
-    WALPipeHandler handler = flushListener.getWalPipeHandler();
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
     walNode.onMemTableFlushed(memTable);
     // roll wal file
@@ -128,7 +128,7 @@ public class WALPipeHandlerTest {
             memTable.getMemTableId(), getInsertRowNode(devicePath, System.currentTimeMillis()));
     walNode.onMemTableFlushed(memTable);
     // pin flushed memTable
-    WALPipeHandler handler = flushListener.getWalPipeHandler();
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.unpinMemTable();
   }
 
@@ -139,7 +139,7 @@ public class WALPipeHandlerTest {
     WALFlushListener flushListener =
         walNode.log(
             memTable.getMemTableId(), getInsertRowNode(devicePath, System.currentTimeMillis()));
-    WALPipeHandler handler = flushListener.getWalPipeHandler();
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
     // pin twice
     handler.pinMemTable();
     handler.pinMemTable();
@@ -164,7 +164,7 @@ public class WALPipeHandlerTest {
     node1.setSearchIndex(1);
     WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
     // pin memTable
-    WALPipeHandler handler = flushListener.getWalPipeHandler();
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
     walNode.onMemTableFlushed(memTable);
     // roll wal file
@@ -193,7 +193,7 @@ public class WALPipeHandlerTest {
     node1.setSearchIndex(1);
     WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
     // pin memTable
-    WALPipeHandler handler = flushListener.getWalPipeHandler();
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
     walNode.onMemTableFlushed(memTable);
     assertEquals(node1, handler.getValue());
@@ -207,7 +207,7 @@ public class WALPipeHandlerTest {
     node1.setSearchIndex(1);
     WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
     // pin memTable
-    WALPipeHandler handler = flushListener.getWalPipeHandler();
+    WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
     walNode.onMemTableFlushed(memTable);
     // wait until wal flushed
