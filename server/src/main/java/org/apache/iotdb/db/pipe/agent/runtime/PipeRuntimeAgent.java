@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
-import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
@@ -78,8 +78,8 @@ public class PipeRuntimeAgent implements IService {
 
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////
 
-  public SimpleProgressIndex assignSimpleProgressIndex() {
-    return simpleConsensusProgressIndexAssigner.assign();
+  public void assignSimpleProgressIndexIfNeeded(TsFileResource tsFileResource) {
+    simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource);
   }
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////

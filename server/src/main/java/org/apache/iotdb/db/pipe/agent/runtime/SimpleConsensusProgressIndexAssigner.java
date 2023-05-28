@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -100,9 +101,12 @@ public class SimpleConsensusProgressIndexAssigner {
     FileUtils.writeStringToFile(file, String.valueOf(rebootTimes + 1), "UTF-8");
   }
 
-  public SimpleProgressIndex assign() {
-    return isEnable
-        ? new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement())
-        : null;
+  public void assignIfNeeded(TsFileResource tsFileResource) {
+    if (!isEnable) {
+      return;
+    }
+
+    tsFileResource.updateProgressIndex(
+        new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement()));
   }
 }

@@ -1178,6 +1178,10 @@ public class TsFileResource {
       throw new IllegalStateException(
           "Should not get progress index from a unclosing TsFileResource.");
     }
+    return getMaxProgressIndex();
+  }
+
+  public ProgressIndex getMaxProgressIndex() {
     return maxProgressIndex == null ? new MinimumProgressIndex() : maxProgressIndex;
   }
 }
