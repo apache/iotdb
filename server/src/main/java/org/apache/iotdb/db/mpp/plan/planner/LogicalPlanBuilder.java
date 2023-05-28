@@ -149,7 +149,7 @@ public class LogicalPlanBuilder {
               && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
-                .setType(expression.toString(), getPreAnalyzedType.apply(expression));
+                .setType(expression.getExpressionString(), getPreAnalyzedType.apply(expression));
           }
         });
   }
@@ -500,7 +500,8 @@ public class LogicalPlanBuilder {
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
-    String inputExpressionStr = aggregationDescriptor.getInputExpressions().get(0).toString();
+    String inputExpressionStr =
+        aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
     for (TAggregationType aggregation : splitAggregations) {
       String functionName = aggregation.toString().toLowerCase();
       TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
@@ -781,7 +782,7 @@ public class LogicalPlanBuilder {
         tagKeys,
         tagValuesToAggregationDescriptors,
         groupByTagOutputExpressions.stream()
-            .map(Expression::toString)
+            .map(Expression::getExpressionString)
             .collect(Collectors.toList()));
   }
 

@@ -140,7 +140,7 @@ public class ExpressionUtils {
       Expression thirdExpression) {
     TernaryExpression copiedTernaryExpression = (TernaryExpression) expression.copy();
     copiedTernaryExpression.setFirstExpression(firstExpression);
-    copiedTernaryExpression.setFirstExpression(secondExpression);
+    copiedTernaryExpression.setSecondExpression(secondExpression);
     copiedTernaryExpression.setThirdExpression(thirdExpression);
     return copiedTernaryExpression;
   }

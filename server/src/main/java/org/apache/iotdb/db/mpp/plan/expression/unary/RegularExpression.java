@@ -69,7 +69,7 @@ public class RegularExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression + " REGEXP '" + patternString + "'";
+    return expression.getExpressionString() + " REGEXP '" + patternString + "'";
   }
 
   @Override

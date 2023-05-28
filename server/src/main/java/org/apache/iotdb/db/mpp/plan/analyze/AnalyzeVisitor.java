@@ -438,8 +438,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new TreeSet<>(
               (e1, e2) ->
                   isAscending
-                      ? e1.toString().compareTo(e2.toString())
-                      : e2.toString().compareTo(e1.toString()));
+                      ? e1.getExpressionString().compareTo(e2.getExpressionString())
+                      : e2.getExpressionString().compareTo(e1.getExpressionString()));
     } else {
       sourceExpressions = new LinkedHashSet<>();
     }
@@ -1735,16 +1735,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (sourceColumn instanceof TimeSeriesOperand) {
           targetMeasurement =
               constructTargetMeasurement(
-                  sourceDevice.concatNode(sourceColumn.toString()), measurementTemplate);
+                  sourceDevice.concatNode(sourceColumn.getExpressionString()), measurementTemplate);
         } else {
           targetMeasurement = measurementTemplate;
         }
         deviceViewIntoPathDescriptor.specifyTargetDeviceMeasurement(
-            sourceDevice, targetDevice, sourceColumn.toString(), targetMeasurement);
+            sourceDevice, targetDevice, sourceColumn.getExpressionString(), targetMeasurement);
 
         targetPathTree.appendFullPath(targetDevice, targetMeasurement);
         deviceViewIntoPathDescriptor.recordSourceColumnDataType(
-            sourceColumn.toString(), analysis.getType(sourceColumn));
+            sourceColumn.getExpressionString(), analysis.getType(sourceColumn));
 
         intoDeviceMeasurementIterator.nextMeasurement();
       }
@@ -1795,13 +1795,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         targetPath = deviceTemplate.concatNode(measurementTemplate);
       }
-      intoPathDescriptor.specifyTargetPath(sourceColumn.toString(), targetPath);
+      intoPathDescriptor.specifyTargetPath(sourceColumn.getExpressionString(), targetPath);
       intoPathDescriptor.specifyDeviceAlignment(
           targetPath.getDevicePath().toString(), isAlignedDevice);
 
       targetPathTree.appendFullPath(targetPath);
       intoPathDescriptor.recordSourceColumnDataType(
-          sourceColumn.toString(), analysis.getType(sourceColumn));
+          sourceColumn.getExpressionString(), analysis.getType(sourceColumn));
 
       intoPathIterator.next();
     }

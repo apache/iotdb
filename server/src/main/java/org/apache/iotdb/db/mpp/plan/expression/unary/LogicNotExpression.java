@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.unary;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
@@ -45,11 +46,9 @@ public class LogicNotExpression extends UnaryExpression {
 
   @Override
   public String getExpressionStringInternal() {
-    return expression instanceof FunctionExpression
-            || expression instanceof ConstantOperand
-            || expression instanceof TimeSeriesOperand
-        ? "!" + expression
-        : "!(" + expression + ")";
+    return expression instanceof FunctionExpression || expression instanceof LeafOperand
+        ? "!" + expression.getExpressionString()
+        : "!(" + expression.getExpressionString() + ")";
   }
 
   @Override

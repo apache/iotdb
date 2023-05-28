@@ -66,6 +66,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** A skeleton class for expression */
 public abstract class Expression extends StatementNode {
@@ -151,10 +152,18 @@ public abstract class Expression extends StatementNode {
   // For representing expression in string
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * This method is only displayed during debugging, please use {@link #getExpressionString()} or
+   * {@link #getOutputSymbol()} in the code.
+   */
   @Override
   public final String toString() {
-    throw new UnsupportedOperationException(
-        "The Expression class does not support toString() method, please use getOutputSymbol() or getExpressionString().");
+    String outputSymbol = getOutputSymbol();
+    String expressionString = getExpressionString();
+    if (!Objects.equals(outputSymbol, expressionString)) {
+      return expressionString + "[" + outputSymbol + "]";
+    }
+    return expressionString;
   }
 
   private String outputSymbolCache;

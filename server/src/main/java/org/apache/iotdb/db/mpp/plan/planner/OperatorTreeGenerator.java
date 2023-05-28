@@ -1362,7 +1362,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               context
                   .getTypeProvider()
                   // get the type of first inputExpression
-                  .getType(descriptor.getInputExpressions().get(0).toString()),
+                  .getType(descriptor.getInputExpressions().get(0).getExpressionString()),
               descriptor.getInputExpressions(),
               descriptor.getInputAttributes(),
               ascending,
@@ -1437,7 +1437,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   context
                       .getTypeProvider()
                       // get the type of first inputExpression
-                      .getType(descriptor.getInputExpressions().get(0).toString()),
+                      .getType(descriptor.getInputExpressions().get(0).getExpressionString()),
                   descriptor.getInputExpressions(),
                   descriptor.getInputAttributes(),
                   ascending),

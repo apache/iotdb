@@ -1971,10 +1971,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     List<String> queryExpressions = new ArrayList<>();
     for (Expression expression : analysis.getSelectExpressions()) {
-      queryExpressions.add(expression.toString());
+      queryExpressions.add(expression.getExpressionString());
     }
     Expression whereExpression = analysis.getWhereExpression();
-    String queryFilter = whereExpression == null ? null : whereExpression.toString();
+    String queryFilter = whereExpression == null ? null : whereExpression.getExpressionString();
 
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =

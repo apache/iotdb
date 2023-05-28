@@ -64,7 +64,11 @@ public class BetweenExpression extends TernaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return firstExpression + " BETWEEN " + secondExpression + " AND " + thirdExpression;
+    return firstExpression.getExpressionString()
+        + " BETWEEN "
+        + secondExpression.getExpressionString()
+        + " AND "
+        + thirdExpression.getExpressionString();
   }
 
   @Override

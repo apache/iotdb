@@ -93,7 +93,7 @@ public abstract class BinaryExpression extends Expression {
     leftExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
     rightExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
-    final String digest = toString();
+    final String digest = getExpressionString();
 
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
