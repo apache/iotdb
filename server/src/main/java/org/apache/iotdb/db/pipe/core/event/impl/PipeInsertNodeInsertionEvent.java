@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -48,29 +50,35 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
+public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeInsertNodeInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
-  private final InsertNode insertNode;
+  private final ProgressIndex progressIndex;
 
-  private String pattern;
+  private final InsertNode insertNode;
 
   private List<TSDataType> dataTypeList;
   private List<Path> columnNameList;
   private String deviceFullPath;
   private Object[][] rowRecords;
 
-  public PipeInsertNodeInsertionEvent(WALEntryHandler walEntryHandler) throws WALPipeException {
-    this(walEntryHandler, null);
+  public PipeInsertNodeInsertionEvent(WALEntryHandler walEntryHandler, ProgressIndex progressIndex)
+      throws WALPipeException {
+    this(walEntryHandler, progressIndex, null, null);
   }
 
-  public PipeInsertNodeInsertionEvent(WALEntryHandler walEntryHandler, String pattern)
+  private PipeInsertNodeInsertionEvent(
+      WALEntryHandler walEntryHandler,
+      ProgressIndex progressIndex,
+      PipeTaskMeta pipeTaskMeta,
+      String pattern)
       throws WALPipeException {
+    super(pipeTaskMeta, pattern);
     this.walEntryHandler = walEntryHandler;
+    this.progressIndex = progressIndex;
     this.insertNode = walEntryHandler.getValue();
-    this.pattern = pattern;
 
     matchPattern();
   }
@@ -78,6 +86,51 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
   public InsertNode getInsertNode() {
     return insertNode;
   }
+
+  /////////////////////////// EnrichedEvent ///////////////////////////
+
+  @Override
+  public boolean increaseResourceReferenceCount(String holderMessage) {
+    try {
+      PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
+      return true;
+    } catch (Exception e) {
+      LOGGER.warn(
+          String.format(
+              "Increase reference count for memtable %d error. Holder Message: %s",
+              walEntryHandler.getMemTableId(), holderMessage),
+          e);
+      return false;
+    }
+  }
+
+  @Override
+  public boolean decreaseResourceReferenceCount(String holderMessage) {
+    try {
+      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
+      return true;
+    } catch (Exception e) {
+      LOGGER.warn(
+          String.format(
+              "Decrease reference count for memtable %d error. Holder Message: %s",
+              walEntryHandler.getMemTableId(), holderMessage),
+          e);
+      return false;
+    }
+  }
+
+  @Override
+  public ProgressIndex getProgressIndex() {
+    return progressIndex;
+  }
+
+  @Override
+  public PipeInsertNodeInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      PipeTaskMeta pipeTaskMeta) throws WALPipeException {
+    return new PipeInsertNodeInsertionEvent(walEntryHandler, progressIndex, pipeTaskMeta, pattern);
+  }
+
+  /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
@@ -133,10 +186,6 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
   }
 
   private void matchPattern() {
-    if (pattern == null) {
-      return;
-    }
-
     if (insertNode instanceof InsertRowNode) {
       processRowNodePattern((InsertRowNode) insertNode);
     } else if (insertNode instanceof InsertTabletNode) {
@@ -172,10 +221,7 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
 
-    if (pattern != null) {
-      processPatternByDevice(
-          originColumnSize, originMeasurementList, originDataTypeList, indexList);
-    }
+    processPatternByDevice(originColumnSize, originMeasurementList, originDataTypeList, indexList);
 
     for (int i = 0; i < indexList.size(); i++) {
       rowRecords[0][i] = originValues[indexList.get(i)];
@@ -193,10 +239,7 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
 
-    if (pattern != null) {
-      processPatternByDevice(
-          originColumnSize, originMeasurementList, originDataTypeList, indexList);
-    }
+    processPatternByDevice(originColumnSize, originMeasurementList, originDataTypeList, indexList);
 
     int columnSize = indexList.size();
     this.rowRecords = new Object[rowSize][columnSize];
@@ -214,7 +257,8 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
       String[] originMeasurementList,
       TSDataType[] originDataTypeList,
       List<Integer> indexList) {
-    if (pattern.length() <= deviceFullPath.length() && deviceFullPath.startsWith(pattern)) {
+    if (pattern == null
+        || pattern.length() <= deviceFullPath.length() && deviceFullPath.startsWith(pattern)) {
       // collect all columns
       for (int i = 0; i < originColumnSize; i++) {
         columnNameList.add(new Path(deviceFullPath, originMeasurementList[i], false));
@@ -225,7 +269,7 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
       for (int i = 0; i < originColumnSize; i++) {
         String measurement = originMeasurementList[i];
 
-        // if match successfully, collect metadata
+        // if match successfully, collect the measurement
         if (pattern.length() == deviceFullPath.length() + measurement.length() + 1
             && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
           columnNameList.add(new Path(deviceFullPath, measurement, false));
@@ -236,55 +280,15 @@ public class PipeInsertNodeInsertionEvent implements TabletInsertionEvent, Enric
     }
   }
 
-  @Override
-  public boolean increaseReferenceCount(String holderMessage) {
-    try {
-      PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              "Increase reference count for memtable %d error. Holder Message: %s",
-              walEntryHandler.getMemTableId(), holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
-    try {
-      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              "Decrease reference count for memtable %d error. Holder Message: %s",
-              walEntryHandler.getMemTableId(), holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public int getReferenceCount() {
-    return PipeResourceManager.wal().getReferenceCount(walEntryHandler.getMemTableId());
-  }
+  /////////////////////////// Object ///////////////////////////
 
   @Override
   public String toString() {
-    return "PipeInsertNodeInsertionEvent{" + "walEntryHandler=" + walEntryHandler + '}';
-  }
-
-  @Override
-  public void setPattern(String pathPattern) {
-    this.pattern = pathPattern;
-
-    matchPattern();
-  }
-
-  @Override
-  public String getPattern() {
-    return pattern;
+    return "PipeTabletInsertionEvent{"
+        + "walEntryHandler="
+        + walEntryHandler
+        + ", progressIndex="
+        + progressIndex
+        + '}';
   }
 }

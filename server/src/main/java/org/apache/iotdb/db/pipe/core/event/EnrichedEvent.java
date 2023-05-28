@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.core.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,9 +36,12 @@ public abstract class EnrichedEvent implements Event {
 
   private final PipeTaskMeta pipeTaskMeta;
 
-  public EnrichedEvent(PipeTaskMeta pipeTaskMeta) {
+  protected String pattern;
+
+  public EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
     this.pipeTaskMeta = pipeTaskMeta;
+    this.pattern = pattern;
   }
 
   /**
@@ -114,16 +118,20 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /** set the pattern of this event. */
-  void setPattern(String pattern);
+  public void setPattern(String pattern) {
+    this.pattern = pattern;
+  }
 
   /**
    * Get the pattern of this event.
    *
    * @return the pattern
    */
-  String getPattern();
+  public String getPattern() {
+    return pattern;
+  }
 
   // TODO: ConsensusIndex getConsensusIndex();
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta);
+      PipeTaskMeta pipeTaskMeta) throws WALPipeException;
 }

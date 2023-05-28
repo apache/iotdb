@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.core.event.realtime;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
+import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
@@ -42,7 +43,7 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
     // is only used in the realtime event collector, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(null);
+    super(null, null);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -82,7 +83,7 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
 
   @Override
   public PipeRealtimeCollectEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta) {
+      PipeTaskMeta pipeTaskMeta) throws WALPipeException {
     return new PipeRealtimeCollectEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta),
         this.tsFileEpoch,
@@ -91,17 +92,12 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
 
   @Override
   public void setPattern(String pathPattern) {
-    if (event instanceof EnrichedEvent) {
-      ((EnrichedEvent) event).setPattern(pathPattern);
-    }
+    event.setPattern(pathPattern);
   }
 
   @Override
   public String getPattern() {
-    if (event instanceof EnrichedEvent) {
-      return ((EnrichedEvent) event).getPattern();
-    }
-    return null;
+    return event.getPattern();
   }
 
   @Override

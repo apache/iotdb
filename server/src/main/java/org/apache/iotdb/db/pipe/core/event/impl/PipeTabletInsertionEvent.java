@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
-import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRowIterator;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeRowCollector;
@@ -40,7 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
+public class PipeTabletInsertionEvent implements TabletInsertionEvent {
 
   private Tablet tablet;
 
@@ -53,18 +49,6 @@ public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletIns
 
   public PipeTabletInsertionEvent(Tablet tablet) {
     this(tablet, null);
-  private final WALEntryHandler walEntryHandler;
-  private final ProgressIndex progressIndex;
-
-  public PipeTabletInsertionEvent(WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
-    this(walEntryHandler, progressIndex, null);
-  }
-
-  private PipeTabletInsertionEvent(
-      WALEntryHandler walEntryHandler, ProgressIndex progressIndex, PipeTaskMeta pipeTaskMeta) {
-    super(pipeTaskMeta);
-    this.walEntryHandler = walEntryHandler;
-    this.progressIndex = progressIndex;
   }
 
   public PipeTabletInsertionEvent(Tablet tablet, String pattern) {
@@ -72,49 +56,6 @@ public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletIns
     this.pattern = pattern;
 
     matchPattern();
-  }
-
-  /////////////////////////// EnrichedEvent ///////////////////////////
-
-  @Override
-  public boolean increaseResourceReferenceCount(String holderMessage) {
-    try {
-      PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              "Increase reference count for memtable %d error. Holder Message: %s",
-              walEntryHandler.getMemTableId(), holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public boolean decreaseResourceReferenceCount(String holderMessage) {
-    try {
-      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              "Decrease reference count for memtable %d error. Holder Message: %s",
-              walEntryHandler.getMemTableId(), holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public ProgressIndex getProgressIndex() {
-    return progressIndex;
-  }
-
-  @Override
-  public PipeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta) {
-    return new PipeTabletInsertionEvent(walEntryHandler, progressIndex, pipeTaskMeta);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -214,38 +155,11 @@ public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletIns
     }
   }
 
-  @Override
-  public boolean increaseReferenceCount(String holderMessage) {
-    return false;
-  }
-
-  @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
-    return false;
-  }
-
-  @Override
-  public int getReferenceCount() {
-    return 0;
-  }
-
-  @Override
   public void setPattern(String pattern) {
     this.pattern = pattern;
   }
 
-  @Override
   public String getPattern() {
     return pattern;
-  /////////////////////////// Object ///////////////////////////
-
-  @Override
-  public String toString() {
-    return "PipeTabletInsertionEvent{"
-        + "walEntryHandler="
-        + walEntryHandler
-        + ", progressIndex="
-        + progressIndex
-        + '}';
   }
 }

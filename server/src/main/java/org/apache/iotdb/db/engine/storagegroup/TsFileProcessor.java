@@ -65,6 +65,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -232,7 +233,7 @@ public class TsFileProcessor {
    *
    * @param insertRowNode physical plan of insertion
    */
-  public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
+  public void insert(InsertRowNode insertRowNode) throws WriteProcessException, WALPipeException {
 
     if (workMemTable == null) {
       long startTime = System.nanoTime();
@@ -324,7 +325,7 @@ public class TsFileProcessor {
    */
   public void insertTablet(
       InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results)
-      throws WriteProcessException {
+      throws WriteProcessException, WALPipeException {
 
     if (workMemTable == null) {
       long startTime = System.nanoTime();

@@ -43,14 +43,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private File tsFile;
 
   private final AtomicBoolean isClosed;
-  private String pattern;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
-    this(resource, null);
+    this(resource, null, null);
   }
 
-  public PipeTsFileInsertionEvent(TsFileResource resource, PipeTaskMeta pipeTaskMeta) {
-    super(pipeTaskMeta);
+  public PipeTsFileInsertionEvent(
+      TsFileResource resource, PipeTaskMeta pipeTaskMeta, String pattern) {
+    super(pipeTaskMeta, pattern);
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -143,7 +143,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta) {
-    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta);
+    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern);
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////

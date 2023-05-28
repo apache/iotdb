@@ -36,9 +36,10 @@ public class PipeRealtimeCollectEventFactory {
   }
 
   public static PipeRealtimeCollectEvent createCollectEvent(
-      WALEntryHandler walEntryHandler, InsertNode insertNode, TsFileResource resource) {
-    return TS_FILE_EPOCH_MANAGER.bindPipeTabletInsertionEvent(
-        new PipeTabletInsertionEvent(walEntryHandler, insertNode.getProgressIndex()),
+      WALEntryHandler walEntryHandler, InsertNode insertNode, TsFileResource resource)
+      throws WALPipeException {
+    return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeInsertionEvent(
+        new PipeInsertNodeInsertionEvent(walEntryHandler, insertNode.getProgressIndex()),
         insertNode,
         resource);
   }
