@@ -136,4 +136,25 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   public Object getFirstValueOfIndex(int index) {
     throw new NotImplementedException();
   }
+
+  @Override
+  public InsertBaseStatement removeLogicalView() {
+    boolean needSplit = false;
+    for (InsertRowStatement child : this.insertRowStatementList) {
+      if (child.isNeedSplit()) {
+        needSplit = true;
+      }
+    }
+    if (needSplit) {
+      List<InsertRowStatement> mergedList = new ArrayList<>();
+      for (InsertRowStatement child : this.insertRowStatementList) {
+        List<InsertRowStatement> childSplitResult = child.getSplitList();
+        mergedList.addAll(childSplitResult);
+      }
+      InsertRowsStatement splitResult = new InsertRowsStatement();
+      splitResult.setInsertRowStatementList(mergedList);
+      return splitResult;
+    }
+    return this;
+  }
 }

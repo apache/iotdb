@@ -17,24 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.common.schematree;
+package org.apache.iotdb.db.metadata.view;
 
-import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-public interface IMeasurementSchemaInfo {
-
-  String getName();
-
-  IMeasurementSchema getSchema();
-
-  /** @return if the IMeasurementSchema is MeasurementSchema, return itself; else return null. */
-  MeasurementSchema getSchemaAsMeasurementSchema();
-
-  LogicalViewSchema getSchemaAsLogicalViewSchema();
-
-  String getAlias();
-
-  boolean isLogicalView();
+public enum ViewPathType {
+  FULL_PATH_LIST,
+  PATHS_GROUP,
+  QUERY_STATEMENT
 }

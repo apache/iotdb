@@ -102,13 +102,17 @@ public class PipeRealtimeCollectTest {
     // set up realtime collector
 
     try (PipeRealtimeDataRegionHybridCollector collector1 =
-            new PipeRealtimeDataRegionHybridCollector(new ListenableUnblockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(
+                null, new ListenableUnblockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector2 =
-            new PipeRealtimeDataRegionHybridCollector(new ListenableUnblockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(
+                null, new ListenableUnblockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector3 =
-            new PipeRealtimeDataRegionHybridCollector(new ListenableUnblockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(
+                null, new ListenableUnblockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector4 =
-            new PipeRealtimeDataRegionHybridCollector(new ListenableUnblockingPendingQueue<>())) {
+            new PipeRealtimeDataRegionHybridCollector(
+                null, new ListenableUnblockingPendingQueue<>())) {
 
       collector1.customize(
           new PipeParameters(

@@ -19,20 +19,31 @@
 
 package org.apache.iotdb.db.pipe.core.event.realtime;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
 
-public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
+/**
+ * PipeRealtimeCollectEvent is an event that decorates the EnrichedEvent with the information of
+ * TsFileEpoch and schema info. It only exists in the realtime event collector.
+ */
+public class PipeRealtimeCollectEvent extends EnrichedEvent {
 
-  private final Event event;
+  private final EnrichedEvent event;
   private final TsFileEpoch tsFileEpoch;
 
   private Map<String, String[]> device2Measurements;
 
   public PipeRealtimeCollectEvent(
-      Event event, TsFileEpoch tsFileEpoch, Map<String, String[]> device2Measurements) {
+      EnrichedEvent event, TsFileEpoch tsFileEpoch, Map<String, String[]> device2Measurements) {
+    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
+    // is only used in the realtime event collector, which does not need to report the progress
+    // of the event, so the pipeTaskMeta is always null.
+    super(null);
+
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
     this.device2Measurements = device2Measurements;
@@ -55,20 +66,27 @@ public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
   }
 
   @Override
-  public boolean increaseReferenceCount(String holderMessage) {
-    return !(event instanceof EnrichedEvent)
-        || ((EnrichedEvent) event).increaseReferenceCount(holderMessage);
+  public boolean increaseResourceReferenceCount(String holderMessage) {
+    return event.increaseResourceReferenceCount(holderMessage);
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
-    return !(event instanceof EnrichedEvent)
-        || ((EnrichedEvent) event).decreaseReferenceCount(holderMessage);
+  public boolean decreaseResourceReferenceCount(String holderMessage) {
+    return event.decreaseResourceReferenceCount(holderMessage);
   }
 
   @Override
-  public int getReferenceCount() {
-    return event instanceof EnrichedEvent ? ((EnrichedEvent) event).getReferenceCount() : 0;
+  public ProgressIndex getProgressIndex() {
+    return event.getProgressIndex();
+  }
+
+  @Override
+  public PipeRealtimeCollectEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      PipeTaskMeta pipeTaskMeta) {
+    return new PipeRealtimeCollectEvent(
+        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta),
+        this.tsFileEpoch,
+        this.device2Measurements);
   }
 
   @Override
@@ -88,6 +106,13 @@ public class PipeRealtimeCollectEvent implements Event, EnrichedEvent {
 
   @Override
   public String toString() {
-    return "PipeRealtimeCollectEvent{" + "event=" + event + ", tsFileEpoch=" + tsFileEpoch + '}';
+    return "PipeRealtimeCollectEvent{"
+        + "event="
+        + event
+        + ", tsFileEpoch="
+        + tsFileEpoch
+        + ", device2Measurements="
+        + device2Measurements
+        + '}';
   }
 }
