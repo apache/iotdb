@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
@@ -35,19 +37,72 @@ import org.slf4j.LoggerFactory;
 import java.util.Iterator;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
+public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
+  private final ProgressIndex progressIndex;
 
-  public PipeTabletInsertionEvent(WALEntryHandler walEntryHandler) {
+  public PipeTabletInsertionEvent(WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
+    this(walEntryHandler, progressIndex, null);
+  }
+
+  private PipeTabletInsertionEvent(
+      WALEntryHandler walEntryHandler, ProgressIndex progressIndex, PipeTaskMeta pipeTaskMeta) {
+    super(pipeTaskMeta);
     this.walEntryHandler = walEntryHandler;
+    this.progressIndex = progressIndex;
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
     return walEntryHandler.getValue();
   }
+
+  /////////////////////////// EnrichedEvent ///////////////////////////
+
+  @Override
+  public boolean increaseResourceReferenceCount(String holderMessage) {
+    try {
+      PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
+      return true;
+    } catch (Exception e) {
+      LOGGER.warn(
+          String.format(
+              "Increase reference count for memtable %d error. Holder Message: %s",
+              walEntryHandler.getMemTableId(), holderMessage),
+          e);
+      return false;
+    }
+  }
+
+  @Override
+  public boolean decreaseResourceReferenceCount(String holderMessage) {
+    try {
+      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
+      return true;
+    } catch (Exception e) {
+      LOGGER.warn(
+          String.format(
+              "Decrease reference count for memtable %d error. Holder Message: %s",
+              walEntryHandler.getMemTableId(), holderMessage),
+          e);
+      return false;
+    }
+  }
+
+  @Override
+  public ProgressIndex getProgressIndex() {
+    return progressIndex;
+  }
+
+  @Override
+  public PipeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      PipeTaskMeta pipeTaskMeta) {
+    return new PipeTabletInsertionEvent(walEntryHandler, progressIndex, pipeTaskMeta);
+  }
+
+  /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
@@ -64,43 +119,15 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedE
     throw new UnsupportedOperationException("Not implemented yet");
   }
 
-  @Override
-  public boolean increaseReferenceCount(String holderMessage) {
-    try {
-      PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              "Increase reference count for memtable %d error. Holder Message: %s",
-              walEntryHandler.getMemTableId(), holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
-    try {
-      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
-      return true;
-    } catch (Exception e) {
-      LOGGER.warn(
-          String.format(
-              "Decrease reference count for memtable %d error. Holder Message: %s",
-              walEntryHandler.getMemTableId(), holderMessage),
-          e);
-      return false;
-    }
-  }
-
-  @Override
-  public int getReferenceCount() {
-    return PipeResourceManager.wal().getReferenceCount(walEntryHandler.getMemTableId());
-  }
+  /////////////////////////// Object ///////////////////////////
 
   @Override
   public String toString() {
-    return "PipeTabletInsertionEvent{" + "walEntryHandler=" + walEntryHandler + '}';
+    return "PipeTabletInsertionEvent{"
+        + "walEntryHandler="
+        + walEntryHandler
+        + ", progressIndex="
+        + progressIndex
+        + '}';
   }
 }

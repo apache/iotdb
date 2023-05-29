@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.pipe.core.connector.manager;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
@@ -44,7 +45,9 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      PipeConnectorSubtaskExecutor executor, PipeParameters pipeConnectorParameters) {
+      PipeConnectorSubtaskExecutor executor,
+      PipeParameters pipeConnectorParameters,
+      PipeTaskMeta taskMeta) {
     final String attributeSortedString =
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
@@ -74,10 +77,10 @@ public class PipeConnectorSubtaskManager {
 
       // TODO: make pendingQueue size configurable
       // 2. construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
-      final ListenableBlockingPendingQueue<Event> pendingQueue =
-          new ListenableBlockingPendingQueue<>(65535);
+      final ListenableBoundedBlockingPendingQueue<Event> pendingQueue =
+          new ListenableBoundedBlockingPendingQueue<>(1024);
       final PipeConnectorSubtask pipeConnectorSubtask =
-          new PipeConnectorSubtask(attributeSortedString, pendingQueue, pipeConnector);
+          new PipeConnectorSubtask(attributeSortedString, taskMeta, pendingQueue, pipeConnector);
       final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
           new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
       attributeSortedString2SubtaskLifeCycleMap.put(
@@ -127,7 +130,7 @@ public class PipeConnectorSubtaskManager {
     return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).getSubtask();
   }
 
-  public ListenableBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
+  public ListenableBoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
       String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(

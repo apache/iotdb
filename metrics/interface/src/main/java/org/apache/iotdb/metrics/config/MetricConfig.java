@@ -69,6 +69,8 @@ public class MetricConfig {
   /** The id of iotdb node. */
   private int nodeId = 0;
 
+  private long upTimeInNs = 0;
+
   public MetricConfig() {
     // try to get pid of iotdb instance
     try {
@@ -155,6 +157,10 @@ public class MetricConfig {
     return nodeId;
   }
 
+  public long getUpTimeInNs() {
+    return upTimeInNs;
+  }
+
   /** Update rpc address and rpc port of monitored node. */
   public void updateRpcInstance(String clusterName, NodeType nodeType) {
     this.clusterName = clusterName;
@@ -163,6 +169,7 @@ public class MetricConfig {
 
   public void setNodeId(int nodeId) {
     this.nodeId = nodeId;
+    this.upTimeInNs = System.nanoTime();
   }
 
   /** Copy properties from another metric config. */

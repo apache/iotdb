@@ -284,6 +284,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
   /**
    * construct a database processor.
    *
@@ -1609,28 +1610,30 @@ public class DataRegion implements IDataRegionForQuery {
     if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
       return;
     }
-
+    // Try to set the resource to DELETED status and return if it failed
+    if (!resource.setStatus(TsFileResourceStatus.DELETED)) {
+      return;
+    }
+    tsFileManager.remove(resource, isSeq);
     // ensure that the file is not used by any queries
-    if (resource.tryWriteLock()) {
-      try {
-        // try to delete physical data file
-        TsFileMetricManager.getInstance()
-            .deleteFile(
-                Collections.singletonList(resource.getTsFileSize()),
-                isSeq,
-                1,
-                Collections.singletonList(resource.getTsFile().getName()));
-        resource.remove();
-        tsFileManager.remove(resource, isSeq);
-        logger.info(
-            "Removed a file {} before {} by ttl ({} {})",
-            resource.getTsFilePath(),
-            new Date(ttlLowerBound),
-            dataTTL,
-            config.getTimestampPrecision());
-      } finally {
-        resource.writeUnlock();
-      }
+    resource.writeLock();
+    try {
+      // try to delete physical data file
+      resource.remove();
+      TsFileMetricManager.getInstance()
+          .deleteFile(
+              Collections.singletonList(resource.getTsFileSize()),
+              isSeq,
+              1,
+              Collections.singletonList(resource.getTsFile().getName()));
+      logger.info(
+          "Removed a file {} before {} by ttl ({} {})",
+          resource.getTsFilePath(),
+          new Date(ttlLowerBound),
+          dataTTL,
+          config.getTimestampPrecision());
+    } finally {
+      resource.writeUnlock();
     }
   }
 
