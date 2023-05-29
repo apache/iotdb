@@ -157,13 +157,16 @@ public class TsFileIdentifierUT {
   @Test
   public void testGetInfoFromFileFromMultiDirs() throws Exception {
 
-
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     String[][] originDataDirs = config.getTierDataDirs();
     Class configClass = config.getClass();
     Field dataDirsField = configClass.getDeclaredField("tierDataDirs");
     dataDirsField.setAccessible(true);
-    dataDirsField.set(config, new String[][] {{"target" + File.separator + "data1", "target" + File.separator + "data2"}});
+    dataDirsField.set(
+        config,
+        new String[][] {
+          {"target" + File.separator + "data1", "target" + File.separator + "data2"}
+        });
 
     String filePath =
         "sequence"
