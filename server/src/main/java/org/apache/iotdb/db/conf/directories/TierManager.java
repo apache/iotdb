@@ -153,10 +153,6 @@ public class TierManager {
   }
 
   public synchronized void resetFolders() {
-    if (config.getDataNodeId() == -1) {
-      throw new RuntimeException("Cannot reset folders when datanode id hasn't been initialized.");
-    }
-
     seqTiers.clear();
     unSeqTiers.clear();
     seqDir2TierLevel.clear();
