@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.queue;
 
-import org.apache.iotdb.db.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;

@@ -163,6 +163,8 @@ public class CommonConfig {
 
   private long basicCheckPointIntervalByTimeDuration = 10 * 1000L;
 
+  private long pendingQueueMaxBlockingTimeMs = 1000;
+
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
   private int pipeMaxThreadNum = 5;
 
@@ -536,5 +538,13 @@ public class CommonConfig {
 
   public void setPipeSubtaskExecutorMaxThreadNum(int pipeMaxThreadNum) {
     this.pipeMaxThreadNum = pipeMaxThreadNum;
+  }
+
+  public long getPendingQueueMaxBlockingTimeMs() {
+    return pendingQueueMaxBlockingTimeMs;
+  }
+
+  public void setPendingQueueMaxBlockingTimeMs(long pendingQueueMaxBlockingTimeMs) {
+    this.pendingQueueMaxBlockingTimeMs = pendingQueueMaxBlockingTimeMs;
   }
 }

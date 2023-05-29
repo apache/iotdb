@@ -195,6 +195,8 @@ public class CommonDescriptor {
         properties.getProperty(
             "target_ml_node_endpoint",
             NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
+
+    loadPipeProps(properties);
     try {
       config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
     } catch (BadNodeUrlException e) {

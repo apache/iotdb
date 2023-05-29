@@ -77,6 +77,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getBasicCheckPointIntervalByTimeDuration();
   }
 
+  public long getPendingQueueMaxBlockingTimeMs() {
+    return COMMON_CONFIG.getPendingQueueMaxBlockingTimeMs();
+  }
+
   public int getPipeSubtaskExecutorMaxThreadNum() {
     return COMMON_CONFIG.getPipeSubtaskExecutorMaxThreadNum();
   }
