@@ -46,6 +46,7 @@ public class PipeInsertionDataNodeListener {
 
   private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
+
   private final AtomicInteger listenToTsFileCollectorCount = new AtomicInteger(0);
   private final AtomicInteger listenToInsertNodeCollectorCount = new AtomicInteger(0);
 
@@ -56,6 +57,7 @@ public class PipeInsertionDataNodeListener {
     dataRegionId2Assigner
         .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner())
         .startAssignTo(collector);
+
     if (collector.isNeedListenToTsFile()) {
       listenToTsFileCollectorCount.incrementAndGet();
     }
@@ -79,6 +81,7 @@ public class PipeInsertionDataNodeListener {
     if (collector.isNeedListenToInsertNode()) {
       listenToInsertNodeCollectorCount.decrementAndGet();
     }
+
     if (assigner.notMoreCollectorNeededToBeAssigned()) {
       // the removed assigner will is the same as the one referenced by the variable `assigner`
       dataRegionId2Assigner.remove(dataRegionId);
@@ -91,8 +94,8 @@ public class PipeInsertionDataNodeListener {
 
   public void listenToTsFile(String dataRegionId, TsFileResource tsFileResource) {
     // wo don't judge whether listenToTsFileCollectorCount.get() == 0 here, because
-    // when using SimpleProgressIndex, the tsfile needs to be assigned to the collector
-    // even if listenToTsFileCollectorCount.get() == 0 to record the progress
+    // when using SimpleProgressIndex, the tsfile event needs to be assigned to the
+    // collector even if listenToTsFileCollectorCount.get() == 0 to record the progress
 
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
 
