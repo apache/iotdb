@@ -33,12 +33,12 @@ public class MinimumProgressIndex implements ProgressIndex {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    ProgressIndexType.MINIMUM_CONSENSUS_INDEX.serialize(byteBuffer);
+    ProgressIndexType.MINIMUM_PROGRESS_INDEX.serialize(byteBuffer);
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
-    ProgressIndexType.MINIMUM_CONSENSUS_INDEX.serialize(stream);
+    ProgressIndexType.MINIMUM_PROGRESS_INDEX.serialize(stream);
   }
 
   @Override

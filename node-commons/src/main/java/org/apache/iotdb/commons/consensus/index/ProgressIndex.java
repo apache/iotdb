@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.commons.consensus.index;
 
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+
+import com.sun.istack.internal.NotNull;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -75,5 +80,18 @@ public interface ProgressIndex {
    * @param progressIndex the progress index to be compared
    * @return the minimum progress index after the given progress index and this progress index
    */
-  ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
+  ProgressIndex updateToMinimumIsAfterProgressIndex(@NotNull ProgressIndex progressIndex);
+
+  static ProgressIndex blendProgressIndex(
+      ProgressIndex progressIndex, ProgressIndex anotherProgressIndex) {
+    if (progressIndex instanceof MinimumProgressIndex) {
+      return anotherProgressIndex;
+    } else if (anotherProgressIndex instanceof MinimumProgressIndex) {
+      return progressIndex;
+    }
+
+    final HybridProgressIndex hybridProgressIndex =
+        new HybridProgressIndex(progressIndex.getClass().getSimpleName(), progressIndex);
+    return hybridProgressIndex.updateToMinimumIsAfterProgressIndex(anotherProgressIndex);
+  }
 }
