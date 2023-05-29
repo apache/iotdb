@@ -22,7 +22,6 @@ package org.apache.iotdb.metrics.type;
 import java.util.Map;
 
 public interface Gauge extends IMetric {
-
   /** Set value. */
   void set(long value);
 

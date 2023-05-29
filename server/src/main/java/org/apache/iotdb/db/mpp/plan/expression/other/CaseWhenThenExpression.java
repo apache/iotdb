@@ -166,6 +166,23 @@ public class CaseWhenThenExpression extends Expression {
   }
 
   @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("CASE ");
+    for (Expression expression : this.whenThenExpressions) {
+      builder.append(expression.getStringWithViewOfThisExpression()).append(" ");
+    }
+    if (!(this.elseExpression instanceof NullOperand)) {
+      builder
+          .append("ELSE ")
+          .append(this.elseExpression.getStringWithViewOfThisExpression())
+          .append(" ");
+    }
+    builder.append("END");
+    return builder.toString();
+  }
+
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitCaseWhenThenExpression(this, context);
   }

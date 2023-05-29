@@ -21,9 +21,11 @@ package org.apache.iotdb.db.pipe.core.collector.realtime.listener;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEventFactory;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -43,6 +45,8 @@ public class PipeInsertionDataNodeListener {
 
   private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
+
+  //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
       String dataRegionId, PipeRealtimeDataRegionCollector collector) {
@@ -68,12 +72,16 @@ public class PipeInsertionDataNodeListener {
     }
   }
 
+  //////////////////////////// listen to events ////////////////////////////
+
   // TODO: listen to the tsfile synced from the other cluster
   // TODO: check whether the method is called on the right place. what is the meaning of the
   // variable shouldClose before calling this method?
   // TODO: maximum the efficiency of the method when there is no pipe in the system, avoid
   // dataRegionId2Assigner.get(dataRegionId);
   public void listenToTsFile(String dataRegionId, TsFileResource tsFileResource) {
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
+
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
     // only events from registered data region will be collected
@@ -84,9 +92,11 @@ public class PipeInsertionDataNodeListener {
     assigner.publishToAssign(PipeRealtimeCollectEventFactory.createCollectEvent(tsFileResource));
   }
 
-  // TODO: check whether the method is called on the right place.
   public void listenToInsertNode(
-      String dataRegionId, InsertNode insertNode, TsFileResource tsFileResource) {
+      String dataRegionId,
+      WALEntryHandler walEntryHandler,
+      InsertNode insertNode,
+      TsFileResource tsFileResource) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
     // only events from registered data region will be collected
@@ -95,7 +105,8 @@ public class PipeInsertionDataNodeListener {
     }
 
     assigner.publishToAssign(
-        PipeRealtimeCollectEventFactory.createCollectEvent(insertNode, tsFileResource));
+        PipeRealtimeCollectEventFactory.createCollectEvent(
+            walEntryHandler, insertNode, tsFileResource));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

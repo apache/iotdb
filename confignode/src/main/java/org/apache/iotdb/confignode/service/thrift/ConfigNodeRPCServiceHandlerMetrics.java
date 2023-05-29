@@ -56,8 +56,12 @@ public class ConfigNodeRPCServiceHandlerMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     ConfigNodeRPCServiceHandlerMetrics that = (ConfigNodeRPCServiceHandlerMetrics) o;
     return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);
   }
