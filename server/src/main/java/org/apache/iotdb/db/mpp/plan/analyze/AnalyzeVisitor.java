@@ -267,7 +267,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       // make sure paths in logical view is fetched
-      findAllViewsInTreeThenReFetchAndMerge(schemaTree);
+      updateSchemaTreeByViews(schemaTree);
 
       // extract global time filter from query filter and determine if there is a value filter
       analyzeGlobalTimeFilter(analysis, queryStatement);
@@ -451,7 +451,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
   }
 
-  private void findAllViewsInTreeThenReFetchAndMerge(ISchemaTree originSchemaTree) {
+  private void updateSchemaTreeByViews(ISchemaTree originSchemaTree) {
     if (!originSchemaTree.hasLogicalViewMeasurement()) {
       return;
     }
