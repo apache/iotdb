@@ -33,6 +33,9 @@ RUN apt update \
   && sed -i 's/dn_rpc_address=127.0.0.1/dn_rpc_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
   && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
   && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-confignode.properties \
+  && sed -i 's/config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/config_node_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
+  && sed -i 's/schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/schema_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
+  && sed -i 's/data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus/data_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \

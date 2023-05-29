@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
@@ -39,10 +39,10 @@ public class PipeRealtimeDataRegionTsFileCollector extends PipeRealtimeDataRegio
   // TODO: memory control
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final ListenableUnblockingPendingQueue<Event> pendingQueue;
+  private final ListenableUnboundedBlockingPendingQueue<Event> pendingQueue;
 
   public PipeRealtimeDataRegionTsFileCollector(
-      PipeTaskMeta pipeTaskMeta, ListenableUnblockingPendingQueue<Event> pendingQueue) {
+      PipeTaskMeta pipeTaskMeta, ListenableUnboundedBlockingPendingQueue<Event> pendingQueue) {
     super(pipeTaskMeta);
     this.pendingQueue = pendingQueue;
   }
@@ -92,7 +92,7 @@ public class PipeRealtimeDataRegionTsFileCollector extends PipeRealtimeDataRegio
                 "TsFile Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 collectEvent.getEvent());
-        PipeAgent.runtime().report(new PipeRuntimeNonCriticalException(errorMessage));
+        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
       collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionTsFileCollector.class.getName());
