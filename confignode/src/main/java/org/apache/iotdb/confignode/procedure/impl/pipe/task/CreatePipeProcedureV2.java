@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -102,9 +103,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
-            (region, leader) ->
-                // TODO: make index configurable
-                consensusGroupIdToTaskMetaMap.put(region, new PipeTaskMeta(0, leader)));
+            (regionGroup, regionLeaderNodeId) ->
+                consensusGroupIdToTaskMetaMap.put(
+                    regionGroup, new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId)));
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }
 

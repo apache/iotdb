@@ -212,6 +212,7 @@ public class ConfigNodeTestUtils {
     clusterParameters.setSchemaRegionPerDataNode(1.0);
     clusterParameters.setDiskSpaceWarningThreshold(0.05);
     clusterParameters.setReadConsistencyLevel("strong");
+    clusterParameters.setTimestampPrecision("ms");
     return clusterParameters;
   }
 

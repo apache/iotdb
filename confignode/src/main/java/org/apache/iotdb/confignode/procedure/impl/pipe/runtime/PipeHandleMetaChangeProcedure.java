@@ -117,7 +117,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
           pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
       for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
           pipeTaskMetaMapOnConfigNode.entrySet()) {
-        if (runtimeMetaOnConfigNode.getValue().getRegionLeader() != dataNodeId) {
+        if (runtimeMetaOnConfigNode.getValue().getLeaderDataNodeId() != dataNodeId) {
           continue;
         }
 
@@ -132,11 +132,13 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
         }
 
         // update progress index
-        if (runtimeMetaOnConfigNode.getValue().getProgressIndex()
-            < runtimeMetaFromDataNode.getProgressIndex()) {
+        if (!runtimeMetaOnConfigNode
+            .getValue()
+            .getProgressIndex()
+            .isAfter(runtimeMetaFromDataNode.getProgressIndex())) {
           runtimeMetaOnConfigNode
               .getValue()
-              .setProgressIndex(runtimeMetaFromDataNode.getProgressIndex());
+              .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex());
           needWriteConsensusOnConfigNodes = true;
         }
 

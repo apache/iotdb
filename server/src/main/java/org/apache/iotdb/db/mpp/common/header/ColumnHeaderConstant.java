@@ -119,6 +119,8 @@ public class ColumnHeaderConstant {
   public static final String READ_CONSISTENCY_LEVEL = "ReadConsistencyLevel";
   public static final String DISK_SPACE_WARNING_THRESHOLD = "DiskSpaceWarningThreshold";
 
+  public static final String TIMESTAMP_PRECISION = "TimestampPrecision";
+
   // column names for show region statement
   public static final String REGION_ID = "RegionId";
   public static final String TYPE = "Type";
@@ -184,6 +186,7 @@ public class ColumnHeaderConstant {
 
   // column names for views (eg. logical view)
   public static final String VIEW_TYPE = "ViewType";
+  public static final String SOURCE = "Source";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -456,4 +459,14 @@ public class ColumnHeaderConstant {
           new ColumnHeader(TRAIL_ID, TSDataType.TEXT),
           new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
           new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showLogicalViewColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TIMESERIES, TSDataType.TEXT),
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(DATATYPE, TSDataType.TEXT),
+          new ColumnHeader(TAGS, TSDataType.TEXT),
+          new ColumnHeader(ATTRIBUTES, TSDataType.TEXT),
+          new ColumnHeader(VIEW_TYPE, TSDataType.TEXT),
+          new ColumnHeader(SOURCE, TSDataType.TEXT));
 }
