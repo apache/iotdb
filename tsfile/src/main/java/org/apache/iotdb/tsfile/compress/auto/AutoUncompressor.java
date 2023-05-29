@@ -19,53 +19,58 @@
 
 package org.apache.iotdb.tsfile.compress.auto;
 
-import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 public class AutoUncompressor implements IUnCompressor {
 
   @Override
   public int getUncompressedLength(byte[] array, int offset, int length) throws IOException {
     byte realType = array[offset + length - 1];
-    IUnCompressor unCompressor =
-        IUnCompressor.getUnCompressor(CompressionType.deserialize(realType));
-    return unCompressor.getUncompressedLength(array, offset, length);
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
+        CompressionType.deserialize(realType));
+    return unCompressor.getUncompressedLength(array, offset, length - 1);
   }
 
   @Override
   public int getUncompressedLength(ByteBuffer buffer) throws IOException {
     byte realType = buffer.array()[buffer.position() + buffer.remaining() - 1];
-    IUnCompressor unCompressor =
-        IUnCompressor.getUnCompressor(CompressionType.deserialize(realType));
-    return unCompressor.getUncompressedLength(buffer);
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
+        CompressionType.deserialize(realType));
+    ByteBuffer slice = buffer.slice();
+    slice.limit(slice.limit() - 1);
+    return unCompressor.getUncompressedLength(slice);
   }
 
   @Override
   public byte[] uncompress(byte[] byteArray) throws IOException {
     byte realType = byteArray[byteArray.length - 1];
-    IUnCompressor unCompressor =
-        IUnCompressor.getUnCompressor(CompressionType.deserialize(realType));
-    return unCompressor.uncompress(byteArray);
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
+        CompressionType.deserialize(realType));
+    byte[] realData = new byte[byteArray.length - 1];
+    System.arraycopy(byteArray, 0, realData, 0, byteArray.length - 1);
+    return unCompressor.uncompress(realData);
   }
 
   @Override
   public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
       throws IOException {
     byte realType = byteArray[offset + length - 1];
-    IUnCompressor unCompressor =
-        IUnCompressor.getUnCompressor(CompressionType.deserialize(realType));
-    return unCompressor.uncompress(byteArray, offset, length, output, outOffset);
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
+        CompressionType.deserialize(realType));
+    return unCompressor.uncompress(byteArray, offset, length - 1, output, outOffset);
   }
 
   @Override
   public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
     byte realType = compressed.array()[compressed.position() + compressed.remaining() - 1];
-    IUnCompressor unCompressor =
-        IUnCompressor.getUnCompressor(CompressionType.deserialize(realType));
-    return unCompressor.uncompress(compressed, uncompressed);
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
+        CompressionType.deserialize(realType));
+    ByteBuffer slice = compressed.slice();
+    slice.limit(slice.limit() - 1);
+    return unCompressor.uncompress(slice, uncompressed);
   }
 
   @Override
