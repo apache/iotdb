@@ -105,6 +105,6 @@ public class BetweenExpression extends TernaryExpression {
   @Override
   protected Expression doCopy() {
     return new BetweenExpression(
-        firstExpression.copy(), secondExpression.copy(), thirdExpression.copy());
+        firstExpression.copy(), secondExpression.copy(), thirdExpression.copy(), isNotBetween);
   }
 }
