@@ -109,19 +109,6 @@ public class TierManager {
             }
             break;
           case OBJECT_STORAGE:
-            if (!config.isEnableObjectStorage()) {
-              logger.error(
-                  "Cannot configure object storage directory when enable_object_storage is false, use default data dir instead.");
-              tierDirs[i][j] =
-                  IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME;
-            }
-            if (i != tierDirs.length - 1) {
-              logger.error("Object Storage can only exist on the last tier.");
-            }
-            // reset datanode id
-            tierDirs[i][j] =
-                FSUtils.getOSDefaultPath(config.getObjectStorageBucket(), config.getDataNodeId());
-            break;
           case HDFS:
           default:
             break;

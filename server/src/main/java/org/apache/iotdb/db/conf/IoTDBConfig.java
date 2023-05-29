@@ -38,9 +38,6 @@ import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.wal.utils.WALMode;
-import org.apache.iotdb.os.conf.ObjectStorageConfig;
-import org.apache.iotdb.os.conf.ObjectStorageDescriptor;
-import org.apache.iotdb.os.utils.ObjectStorageType;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -1136,17 +1133,6 @@ public class IoTDBConfig {
    * TimeUnit/resources interval.
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
-
-  /** Threads for migration tasks */
-  private int migrateThreadCount = 1;
-
-  private double[] spaceMoveThresholds = {0.15};
-
-  /** Enable hdfs or not */
-  private boolean enableObjectStorage = true;
-
-  /** Config for object storage */
-  private ObjectStorageConfig osConfig = ObjectStorageDescriptor.getInstance().getConfig();
 
   IoTDBConfig() {}
 
@@ -3941,94 +3927,6 @@ public class IoTDBConfig {
     return sortTmpDir;
   }
 
-  public int getMigrateThreadCount() {
-    return migrateThreadCount;
-  }
-
-  public void setMigrateThreadCount(int migrateThreadCount) {
-    this.migrateThreadCount = migrateThreadCount;
-  }
-
-  public double[] getSpaceMoveThresholds() {
-    return spaceMoveThresholds;
-  }
-
-  public void setSpaceMoveThresholds(double[] spaceMoveThresholds) {
-    this.spaceMoveThresholds = spaceMoveThresholds;
-  }
-
-  public boolean isEnableObjectStorage() {
-    return enableObjectStorage;
-  }
-
-  public void setEnableObjectStorage(boolean enableObjectStorage) {
-    this.enableObjectStorage = enableObjectStorage;
-  }
-
-  public String getObjectStorageName() {
-    return osConfig.getOsType().name();
-  }
-
-  public void setObjectStorageName(String objectStorageName) {
-    osConfig.setOsType(ObjectStorageType.valueOf(objectStorageName));
-  }
-
-  public String getObjectStorageBucket() {
-    return osConfig.getBucketName();
-  }
-
-  public void setObjectStorageBucket(String objectStorageBucket) {
-    osConfig.setBucketName(objectStorageBucket);
-  }
-
-  public String getObjectStorageEndpoint() {
-    return osConfig.getEndpoint();
-  }
-
-  public void setObjectStorageEndpoint(String objectStorageEndpoint) {
-    osConfig.setEndpoint(objectStorageEndpoint);
-  }
-
-  public String getObjectStorageAccessKey() {
-    return osConfig.getAccessKeyId();
-  }
-
-  public void setObjectStorageAccessKey(String objectStorageAccessKey) {
-    osConfig.setAccessKeyId(objectStorageAccessKey);
-  }
-
-  public String getObjectStorageAccessSecret() {
-    return osConfig.getAccessKeySecret();
-  }
-
-  public void setObjectStorageAccessSecret(String objectStorageAccessSecret) {
-    osConfig.setAccessKeySecret(objectStorageAccessSecret);
-  }
-
-  public String[] getCacheDirs() {
-    return osConfig.getCacheDirs();
-  }
-
-  public void setCacheDirs(String[] cacheDirs) {
-    osConfig.setCacheDirs(cacheDirs);
-  }
-
-  public long getCacheMaxDiskUsage() {
-    return osConfig.getCacheMaxDiskUsage();
-  }
-
-  public void setCacheMaxDiskUsage(long cacheMaxDiskUsage) {
-    osConfig.setCacheMaxDiskUsage(cacheMaxDiskUsage);
-  }
-
-  public int getCachePageSize() {
-    return osConfig.getCachePageSize();
-  }
-
-  public void setCachePageSize(int cachePageSize) {
-    osConfig.setCachePageSize(cachePageSize);
-  }
-
   public String getClusterSchemaLimitLevel() {
     return clusterSchemaLimitLevel;
   }
@@ -4043,5 +3941,9 @@ public class IoTDBConfig {
 
   public void setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
     this.clusterSchemaLimitThreshold = clusterSchemaLimitThreshold;
+  }
+
+  public String getObjectStorageBucket() {
+    throw new UnsupportedOperationException("object storage is not supported yet");
   }
 }

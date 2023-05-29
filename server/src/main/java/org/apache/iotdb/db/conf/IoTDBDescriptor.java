@@ -976,11 +976,6 @@ public class IoTDBDescriptor {
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);
     if (Boolean.parseBoolean(
-        properties.getProperty(
-            "enable_object_storage", String.valueOf(conf.isEnableObjectStorage())))) {
-      fsTypes.add(FSType.OBJECT_STORAGE);
-    }
-    if (Boolean.parseBoolean(
         properties.getProperty("enable_hdfs", String.valueOf(conf.isEnableHDFS())))) {
       fsTypes.add(FSType.HDFS);
     }
@@ -1083,12 +1078,6 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
-    // object storage
-    loadMigrationProps(properties);
-
-    // object storage
-    loadObjectStorageProps(properties);
-
     conf.setTimePartitionInterval(
         DateTimeUtils.convertMilliTimeWithPrecision(
             conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
@@ -1155,63 +1144,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
-  }
-
-  private void loadMigrationProps(Properties properties) {
-    conf.setMigrateThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "migrate_thread_count", String.valueOf(conf.getMigrateThreadCount()))));
-
-    String[] moveThresholdsStr = new String[conf.getSpaceMoveThresholds().length];
-    for (int i = 0; i < moveThresholdsStr.length; ++i) {
-      moveThresholdsStr[i] = String.valueOf(conf.getSpaceMoveThresholds()[i]);
-    }
-    moveThresholdsStr =
-        properties
-            .getProperty(
-                "dn_default_space_move_thresholds",
-                String.join(IoTDBConstant.TIER_SEPARATOR, moveThresholdsStr))
-            .split(IoTDBConstant.TIER_SEPARATOR);
-    double[] moveThresholds = new double[moveThresholdsStr.length];
-    for (int i = 0; i < moveThresholds.length; ++i) {
-      moveThresholds[i] = Double.parseDouble(moveThresholdsStr[i]);
-      if (moveThresholds[i] < 0) {
-        moveThresholds[i] = 0.15;
-      }
-    }
-    conf.setSpaceMoveThresholds(moveThresholds);
-  }
-
-  private void loadObjectStorageProps(Properties properties) {
-    conf.setEnableObjectStorage(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_object_storage", String.valueOf(conf.isEnableObjectStorage()))));
-    conf.setObjectStorageName(
-        properties.getProperty("object_storage_name", conf.getObjectStorageName()));
-    conf.setObjectStorageBucket(
-        properties.getProperty("object_storage_bucket", conf.getObjectStorageBucket()));
-    conf.setObjectStorageEndpoint(
-        properties.getProperty("object_storage_endpoint", conf.getObjectStorageEndpoint()));
-    conf.setObjectStorageAccessKey(
-        properties.getProperty("object_storage_access_key", conf.getObjectStorageAccessKey()));
-    conf.setObjectStorageAccessSecret(
-        properties.getProperty(
-            "object_storage_access_secret", conf.getObjectStorageAccessSecret()));
-    conf.setCacheDirs(
-        properties
-            .getProperty("remote_tsfile_cache_dirs", String.join(",", conf.getCacheDirs()))
-            .split(","));
-    conf.setCachePageSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "remote_tsfile_cache_page_size_in_kb", String.valueOf(conf.getCachePageSize()))));
-    conf.setCacheMaxDiskUsage(
-        Long.parseLong(
-            properties.getProperty(
-                "remote_tsfile_cache_max_disk_usage_in_mb",
-                String.valueOf(conf.getCacheMaxDiskUsage()))));
   }
 
   private void loadWALProps(Properties properties) {

@@ -187,7 +187,6 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
-    // TODO(zhm) 远端存储介质不支持 file store
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs();
     for (String dataDir : dataDirs) {
       Path path = Paths.get(dataDir);

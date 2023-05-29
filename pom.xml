@@ -120,7 +120,6 @@
         <module>iotdb-api/external-api</module>
         <module>iotdb-client/isession</module>
         <module>mlnode</module>
-        <module>object-storage</module>
         <module>iotdb-api/pipe-api</module>
         <module>iotdb-api/subscription-api</module>
     </modules>

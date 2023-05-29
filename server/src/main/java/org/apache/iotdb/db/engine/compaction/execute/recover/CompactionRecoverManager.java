@@ -67,7 +67,6 @@ public class CompactionRecoverManager {
 
   private void recoverCompaction(boolean isInnerSpace, boolean isLogSequence) {
     List<String> dirs;
-    // TODO(zhm) 当前远端存储介质不开启合并，无需恢复
     if (isLogSequence) {
       dirs = TierManager.getInstance().getAllLocalSequenceFileFolders();
     } else {

@@ -65,7 +65,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.migration.MigrationTaskManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
@@ -84,9 +83,7 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.os.HybridFileInputFactoryDecorator;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.apache.thrift.TException;
@@ -171,7 +168,8 @@ public class DataNode implements DataNodeMBean {
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
       }
-
+      // TierManager need DataNodeId to do some operations so the reset method need to be invoked after DataNode adding
+      TierManager.getInstance().resetFolders();
       // Active DataNode
       active();
 
@@ -393,7 +391,6 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when register success */
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
       config.setDataNodeId(dataNodeID);
-      configOSStorage(dataNodeID);
       IoTDBStartCheck.getInstance()
           .serializeClusterNameAndDataNodeId(config.getClusterName(), dataNodeID);
 
@@ -406,12 +403,6 @@ public class DataNode implements DataNodeMBean {
       logger.error(dataNodeRegisterResp.getStatus().getMessage());
       throw new StartupException("Cannot register to the cluster.");
     }
-  }
-
-  private void configOSStorage(int dataNodeID) {
-    TierManager.getInstance().resetFolders();
-    FSFactoryProducer.setFileInputFactory(new HybridFileInputFactoryDecorator(dataNodeID));
-    // recover OS cache
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {
@@ -459,7 +450,6 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when restart request is accepted */
       storeRuntimeConfigurations(
           dataNodeRestartResp.getConfigNodeList(), dataNodeRestartResp.getRuntimeConfiguration());
-      configOSStorage(config.getDataNodeId());
       logger.info("Restart request to cluster: {} is accepted.", config.getClusterName());
     } else {
       /* Throw exception when restart is rejected */
@@ -552,8 +542,6 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(RegionMigrateService.getInstance());
 
     registerManager.register(CompactionTaskManager.getInstance());
-
-    registerManager.register(MigrationTaskManager.getInstance());
 
     registerManager.register(PipeAgent.runtime());
   }

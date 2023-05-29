@@ -248,7 +248,6 @@ public class CompactionRecoverTask {
    * the file is not found, it will return null.
    */
   private File getFileFromDataDirs(String filePath) {
-    // TODO(zhm) 当前远端存储介质不开启合并，无需恢复
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs();
     for (String dataDir : dataDirs) {
       File f = new File(dataDir, filePath);
