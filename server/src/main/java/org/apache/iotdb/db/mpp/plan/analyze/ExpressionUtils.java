@@ -58,6 +58,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.mpp.plan.expression.ExpressionType.BETWEEN;
+
 public class ExpressionUtils {
   public static List<Expression> reconstructTimeSeriesOperands(
       List<? extends PartialPath> actualPaths) {
@@ -221,16 +223,15 @@ public class ExpressionUtils {
       Expression firstExpression,
       Expression secondExpression,
       Expression thirdExpression) {
-    switch (expression.getExpressionType()) {
-      case BETWEEN:
-        return new BetweenExpression(
-            firstExpression,
-            secondExpression,
-            thirdExpression,
-            ((BetweenExpression) expression).isNotBetween());
-      default:
-        throw new IllegalArgumentException(
-            "unsupported expression type: " + expression.getExpressionType());
+    if (expression.getExpressionType() == BETWEEN) {
+      return new BetweenExpression(
+              firstExpression,
+              secondExpression,
+              thirdExpression,
+              ((BetweenExpression) expression).isNotBetween());
+    } else {
+      throw new IllegalArgumentException(
+              "unsupported expression type: " + expression.getExpressionType());
     }
   }
 
