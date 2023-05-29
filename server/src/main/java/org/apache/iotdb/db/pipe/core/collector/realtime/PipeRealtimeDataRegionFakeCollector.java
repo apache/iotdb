@@ -33,7 +33,7 @@ public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionC
   }
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
+  public void validate(PipeParameterValidator validator) {}
 
   @Override
   public void customize(
@@ -43,7 +43,7 @@ public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionC
   public void start() {}
 
   @Override
-  public Event supply() throws Exception {
+  public Event supply() {
     return null;
   }
 

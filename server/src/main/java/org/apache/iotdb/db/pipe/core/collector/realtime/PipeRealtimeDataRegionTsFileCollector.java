@@ -49,17 +49,20 @@ public class PipeRealtimeDataRegionTsFileCollector extends PipeRealtimeDataRegio
 
   @Override
   public void collect(PipeRealtimeCollectEvent event) {
-    if (event.getEvent() instanceof TsFileInsertionEvent) {
-      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
-      if (!pendingQueue.offer(event)) {
-        LOGGER.warn(
-            String.format(
-                "Pending Queue of TsFile Realtime Collector %s has reached capacity, discard TsFile Event %s, current state %s",
-                this, event, event.getTsFileEpoch().getState(this)));
-        // this would not happen, but just in case.
-        // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
-        // TODO: memory control when elements in queue are too many.
-      }
+    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+
+    if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
+      return;
+    }
+
+    if (!pendingQueue.offer(event)) {
+      LOGGER.warn(
+          String.format(
+              "Pending Queue of TsFile Realtime Collector %s has reached capacity, discard TsFile Event %s, current state %s",
+              this, event, event.getTsFileEpoch().getState(this)));
+      // this would not happen, but just in case.
+      // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
+      // TODO: memory control when elements in queue are too many.
     }
   }
 

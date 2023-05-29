@@ -49,19 +49,20 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
 
   @Override
   public void collect(PipeRealtimeCollectEvent event) {
-    final Event eventToCollect = event.getEvent();
+    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
 
-    if (event.getEvent() instanceof TabletInsertionEvent) {
-      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
-      if (!pendingQueue.offer(event)) {
-        LOGGER.warn(
-            String.format(
-                "Pending Queue of Wal Realtime Collector %s has reached capacity, discard Tablet Event %s, current state %s",
-                this, event, event.getTsFileEpoch().getState(this)));
-        // this would not happen, but just in case.
-        // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
-        // TODO: memory control when elements in queue are too many.
-      }
+    if (!(event.getEvent() instanceof TabletInsertionEvent)) {
+      return;
+    }
+
+    if (!pendingQueue.offer(event)) {
+      LOGGER.warn(
+          String.format(
+              "Pending Queue of Log Realtime Collector %s has reached capacity, discard Tablet Event %s, current state %s",
+              this, event, event.getTsFileEpoch().getState(this)));
+      // this would not happen, but just in case.
+      // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
+      // TODO: memory control when elements in queue are too many.
     }
   }
 
