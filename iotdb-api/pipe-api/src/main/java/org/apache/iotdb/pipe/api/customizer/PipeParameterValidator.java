@@ -52,25 +52,28 @@ public class PipeParameterValidator {
   }
 
   public PipeParameterValidator validateAttributeValueRange(
-      String key, boolean canBeNotSet, String... values) throws PipeAttributeNotProvidedException {
+      String key, boolean canBeOptional, String... optionalValues)
+      throws PipeAttributeNotProvidedException {
     if (!parameters.hasAttribute(key)) {
-      if (!canBeNotSet) {
+      if (!canBeOptional) {
         throw new PipeAttributeNotProvidedException(String.format("%s should be set.", key));
       }
       return this;
     }
 
-    String actualValue = parameters.getString(key);
-    for (String value : values) {
-      if (actualValue.equals(value)) {
+    final String actualValue = parameters.getString(key);
+    for (String optionalValue : optionalValues) {
+      if (actualValue.equals(optionalValue)) {
         return this;
       }
     }
-    if (canBeNotSet) {
+
+    if (canBeOptional) {
       return this;
     }
+
     throw new PipeAttributeNotProvidedException(
-        String.format("%s should be one of %s", key, Arrays.toString(values)));
+        String.format("%s should be one of %s", key, Arrays.toString(optionalValues)));
   }
 
   /**

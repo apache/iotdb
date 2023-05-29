@@ -24,7 +24,7 @@ import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 
-public class PipeHistoricalDataRegionFakeCollector extends PIpeHistoricalDataRegionCollector {
+public class PipeHistoricalDataRegionFakeCollector extends PipeHistoricalDataRegionCollector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {}
 

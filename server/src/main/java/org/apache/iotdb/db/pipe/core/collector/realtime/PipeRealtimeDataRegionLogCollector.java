@@ -31,17 +31,17 @@ import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeRealtimeDataRegionWalCollector extends PipeRealtimeDataRegionCollector {
+public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCollector {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRealtimeDataRegionWalCollector.class);
+      LoggerFactory.getLogger(PipeRealtimeDataRegionLogCollector.class);
 
   // TODO: memory control
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final ListenableUnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionWalCollector(
+  public PipeRealtimeDataRegionLogCollector(
       PipeTaskMeta pipeTaskMeta, ListenableUnboundedBlockingPendingQueue<Event> pendingQueue) {
     super(pipeTaskMeta);
     this.pendingQueue = pendingQueue;
@@ -82,7 +82,7 @@ public class PipeRealtimeDataRegionWalCollector extends PipeRealtimeDataRegionCo
     while (collectEvent != null) {
       Event suppliedEvent = null;
 
-      if (collectEvent.increaseReferenceCount(PipeRealtimeDataRegionWalCollector.class.getName())) {
+      if (collectEvent.increaseReferenceCount(PipeRealtimeDataRegionLogCollector.class.getName())) {
         suppliedEvent = collectEvent.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by
@@ -96,7 +96,7 @@ public class PipeRealtimeDataRegionWalCollector extends PipeRealtimeDataRegionCo
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
-      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionWalCollector.class.getName());
+      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogCollector.class.getName());
       if (suppliedEvent != null) {
         return suppliedEvent;
       }

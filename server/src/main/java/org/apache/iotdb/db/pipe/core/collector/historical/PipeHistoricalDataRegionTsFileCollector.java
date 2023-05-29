@@ -39,7 +39,7 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
-public class PipeHistoricalDataRegionTsFileCollector extends PIpeHistoricalDataRegionCollector {
+public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataRegionCollector {
 
   private final PipeTaskMeta pipeTaskMeta;
   private final ProgressIndex startIndex;

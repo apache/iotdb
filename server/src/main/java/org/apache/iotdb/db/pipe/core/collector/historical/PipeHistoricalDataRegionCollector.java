@@ -21,6 +21,6 @@ package org.apache.iotdb.db.pipe.core.collector.historical;
 
 import org.apache.iotdb.pipe.api.PipeCollector;
 
-public abstract class PIpeHistoricalDataRegionCollector implements PipeCollector {
+public abstract class PipeHistoricalDataRegionCollector implements PipeCollector {
   public abstract boolean hasConsumedAll();
 }
