@@ -25,18 +25,19 @@ import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfig
 import org.apache.iotdb.pipe.api.event.Event;
 
 public class PipeHistoricalDataRegionFakeCollector extends PipeHistoricalDataRegionCollector {
-  @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
 
   @Override
-  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
-      throws Exception {}
+  public void validate(PipeParameterValidator validator) {}
 
   @Override
-  public void start() throws Exception {}
+  public void customize(
+      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {}
 
   @Override
-  public Event supply() throws Exception {
+  public void start() {}
+
+  @Override
+  public Event supply() {
     return null;
   }
 
@@ -46,7 +47,7 @@ public class PipeHistoricalDataRegionFakeCollector extends PipeHistoricalDataReg
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() {}
 
   @Override
   public String toString() {

@@ -45,6 +45,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   private final ProgressIndex startIndex;
 
   private int dataRegionId;
+
   private long collectStartTime;
   private long collectEndTime;
 
@@ -100,7 +101,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                 .filter(
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-                            && isTsFileResourceOverlapWithTimeRange(resource))
+                            && isTsFileResourceOverlappedWithTimeRange(resource))
                 .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
@@ -108,13 +109,13 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                 .filter(
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-                            && isTsFileResourceOverlapWithTimeRange(resource))
+                            && isTsFileResourceOverlappedWithTimeRange(resource))
                 .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
-            event -> {
-              event.increaseReferenceCount(PipeHistoricalDataRegionTsFileCollector.class.getName());
-            });
+            event ->
+                event.increaseReferenceCount(
+                    PipeHistoricalDataRegionTsFileCollector.class.getName()));
       } finally {
         tsFileManager.readUnlock();
       }
@@ -123,9 +124,9 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
     }
   }
 
-  private boolean isTsFileResourceOverlapWithTimeRange(TsFileResource resource) {
+  private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {
     return !(resource.getFileEndTime() < collectStartTime
-        || resource.getFileStartTime() > collectEndTime);
+        || collectEndTime < resource.getFileStartTime());
   }
 
   @Override
