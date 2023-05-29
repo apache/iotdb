@@ -206,8 +206,10 @@ class DispatcherThread extends DynamicThread {
     request.setLeaderId(logDispatcher.member.getThisNode().getNodeId());
     request.setLeaderCommit(logDispatcher.member.getLogManager().getCommitLogIndex());
     request.setTerm(logDispatcher.member.getStatus().getTerm().get());
+    long startTime = Statistic.RAFT_SENDER_COMPRESS_LOG.getOperationStartTime();
     request.setEntryBytes(
         LogUtils.compressEntries(logList, compressor, request, batchLogBuffer, compressionBuffer));
+    Statistic.RAFT_SENDER_COMPRESS_LOG.calOperationCostTimeFromStart(startTime);
     request.setCompressionType((byte) compressor.getType().ordinal());
     return request;
   }

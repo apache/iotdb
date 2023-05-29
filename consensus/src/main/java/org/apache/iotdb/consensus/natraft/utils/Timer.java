@@ -103,6 +103,12 @@ public class Timer {
         TIME_SCALE,
         true,
         DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_COMPRESS_LOG(
+        RAFT_MEMBER_SENDER,
+        "compress entries in dispatcher",
+        TIME_SCALE,
+        true,
+        DATA_GROUP_MEMBER_LOCAL_EXECUTION),
     RAFT_SENDER_SEND_LOG(
         RAFT_MEMBER_SENDER,
         "send log to a follower",
