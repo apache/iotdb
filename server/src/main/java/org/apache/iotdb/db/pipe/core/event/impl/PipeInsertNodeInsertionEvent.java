@@ -32,7 +32,6 @@ import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
-import org.apache.iotdb.pipe.api.access.RowIterator;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -145,7 +144,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   }
 
   @Override
-  public TabletInsertionEvent processByIterator(BiConsumer<RowIterator, RowCollector> consumer) {
+  public TabletInsertionEvent processByIterator(BiConsumer<Iterable<Row>, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
 
     List<Row> rows = new ArrayList<>();
@@ -154,7 +153,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
       rows.add(row);
     }
 
-    RowIterator rowIterator = new PipeRowIterator(rows, 0, rows.size());
+    PipeRowIterator rowIterator = new PipeRowIterator(rows, 0, rows.size());
     consumer.accept(rowIterator, rowCollector);
     return rowCollector.toTabletInsertionEvent();
   }

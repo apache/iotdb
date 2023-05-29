@@ -26,9 +26,10 @@ import org.apache.iotdb.pipe.api.type.Type;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 
-public class PipeRowIterator implements RowIterator {
+public class PipeRowIterator implements RowIterator, Iterable<Row> {
 
   private final List<Row> rowList;
   private final int beginIndex;
@@ -55,6 +56,11 @@ public class PipeRowIterator implements RowIterator {
   public Row next() throws IOException {
     row = rowList.get(++rowIndex + beginIndex);
     return row;
+  }
+
+  @Override
+  public Iterator<Row> iterator() {
+    return rowList.iterator();
   }
 
   @Override

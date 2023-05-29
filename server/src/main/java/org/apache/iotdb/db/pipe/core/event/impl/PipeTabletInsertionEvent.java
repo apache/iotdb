@@ -23,7 +23,6 @@ import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRowIterator;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeRowCollector;
 import org.apache.iotdb.pipe.api.access.Row;
-import org.apache.iotdb.pipe.api.access.RowIterator;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -74,7 +73,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   }
 
   @Override
-  public TabletInsertionEvent processByIterator(BiConsumer<RowIterator, RowCollector> consumer) {
+  public TabletInsertionEvent processByIterator(BiConsumer<Iterable<Row>, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
     List<Row> rowList = new ArrayList<>();
 
@@ -83,7 +82,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
       rowList.add(row);
     }
 
-    RowIterator rowIterator = new PipeRowIterator(rowList, 0, rowList.size());
+    PipeRowIterator rowIterator = new PipeRowIterator(rowList, 0, rowList.size());
     consumer.accept(rowIterator, rowCollector);
     return rowCollector.toTabletInsertionEvent();
   }
