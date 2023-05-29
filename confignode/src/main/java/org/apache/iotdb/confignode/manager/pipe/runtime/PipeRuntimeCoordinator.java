@@ -71,7 +71,10 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
         .forEach(
             (regionId, pair) -> {
               if (regionId.getType().equals(TConsensusGroupType.DataRegion)) {
-                dataRegionGroupToOldAndNewLeaderPairMap.put(regionId, pair);
+                dataRegionGroupToOldAndNewLeaderPairMap.put(
+                    regionId,
+                    new Pair<>( // null or -1 means empty origin leader
+                        pair.left == null ? -1 : pair.left, pair.right == null ? -1 : pair.right));
               }
             });
 

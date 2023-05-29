@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.core.collector.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -37,9 +39,17 @@ import java.util.stream.Collectors;
 
 public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
 
+  private final PipeTaskMeta pipeTaskMeta;
+  private final ProgressIndex startIndex;
+
   private int dataRegionId;
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
+
+  public PipeHistoricalDataRegionTsFileCollector(PipeTaskMeta pipeTaskMeta) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.startIndex = pipeTaskMeta.getProgressIndex();
+  }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -71,16 +81,18 @@ public class PipeHistoricalDataRegionTsFileCollector implements PipeCollector {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(true).stream()
-                .map(PipeTsFileInsertionEvent::new)
+                .filter(resource -> !startIndex.isAfter(resource.getMaxProgressIndexAfterClose()))
+                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
-                .map(PipeTsFileInsertionEvent::new)
+                .filter(resource -> !startIndex.isAfter(resource.getMaxProgressIndexAfterClose()))
+                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
-            event ->
-                event.increaseReferenceCount(
-                    PipeHistoricalDataRegionTsFileCollector.class.getName()));
+            event -> {
+              event.increaseReferenceCount(PipeHistoricalDataRegionTsFileCollector.class.getName());
+            });
       } finally {
         tsFileManager.readUnlock();
       }
