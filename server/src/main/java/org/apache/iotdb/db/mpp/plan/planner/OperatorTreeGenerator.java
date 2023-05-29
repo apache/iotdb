@@ -2208,13 +2208,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQuery(LastQueryNode node, LocalExecutionPlanContext context) {
 
-    List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
-    checkArgument(
-        sortItemList.isEmpty()
-            || (sortItemList.size() == 1
-                && Objects.equals(sortItemList.get(0).getSortKey(), OrderByKey.TIMESERIES)),
-        "Last query only support order by timeseries asc/desc");
-
     context.setLastQueryTimeFilter(node.getTimeFilter());
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(node.getTimeFilter()));
 
@@ -2230,7 +2223,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     int initSize = cachedLastValueAndPathList != null ? cachedLastValueAndPathList.size() : 0;
     // no order by clause
-    if (sortItemList.isEmpty()) {
+    if (!node.needOrderByTimeseries()) {
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(initSize);
       for (int i = 0; i < initSize; i++) {
         TimeValuePair timeValuePair = cachedLastValueAndPathList.get(i).left;
@@ -2253,7 +2246,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else {
       // order by timeseries
       Comparator<Binary> comparator =
-          sortItemList.get(0).getOrdering() == Ordering.ASC
+          node.getTimeseriesOrdering() == Ordering.ASC
               ? ASC_BINARY_COMPARATOR
               : DESC_BINARY_COMPARATOR;
       // sort values from last cache
@@ -2298,9 +2291,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 LastQueryMergeOperator.class.getSimpleName());
 
-    List<SortItem> items = node.getMergeOrderParameter().getSortItemList();
+    Ordering timeseriesOrdering = node.getTimeseriesOrdering();
     Comparator<Binary> comparator =
-        (items.isEmpty() || items.get(0).getOrdering() == Ordering.ASC)
+        (timeseriesOrdering == null || timeseriesOrdering == Ordering.ASC)
             ? ASC_BINARY_COMPARATOR
             : DESC_BINARY_COMPARATOR;
 

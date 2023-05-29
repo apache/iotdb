@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildProcessNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -42,24 +42,24 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   private final Filter timeFilter;
 
-  // The result output order, which could sort by sensor and time.
-  // The size of this list is 2 and the first SortItem in this list has higher priority.
-  private OrderByParameter mergeOrderParameter;
+  // the ordering of timeseries in the result of last query
+  // which is set to null if there is no need to sort
+  private Ordering timeseriesOrdering;
 
-  public LastQueryNode(PlanNodeId id, Filter timeFilter, OrderByParameter mergeOrderParameter) {
+  public LastQueryNode(PlanNodeId id, Filter timeFilter, @Nullable Ordering timeseriesOrdering) {
     super(id);
     this.timeFilter = timeFilter;
-    this.mergeOrderParameter = mergeOrderParameter;
+    this.timeseriesOrdering = timeseriesOrdering;
   }
 
   public LastQueryNode(
       PlanNodeId id,
       List<PlanNode> children,
       Filter timeFilter,
-      OrderByParameter mergeOrderParameter) {
+      @Nullable Ordering timeseriesOrdering) {
     super(id, children);
     this.timeFilter = timeFilter;
-    this.mergeOrderParameter = mergeOrderParameter;
+    this.timeseriesOrdering = timeseriesOrdering;
   }
 
   @Override
@@ -74,7 +74,7 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryNode(getPlanNodeId(), timeFilter, mergeOrderParameter);
+    return new LastQueryNode(getPlanNodeId(), timeFilter, timeseriesOrdering);
   }
 
   @Override
@@ -105,12 +105,12 @@ public class LastQueryNode extends MultiChildProcessNode {
     }
     LastQueryNode that = (LastQueryNode) o;
     return Objects.equals(timeFilter, that.timeFilter)
-        && mergeOrderParameter.equals(that.mergeOrderParameter);
+        && timeseriesOrdering.equals(that.timeseriesOrdering);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), timeFilter, mergeOrderParameter);
+    return Objects.hash(super.hashCode(), timeFilter, timeseriesOrdering);
   }
 
   @Override
@@ -127,7 +127,12 @@ public class LastQueryNode extends MultiChildProcessNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       timeFilter.serialize(byteBuffer);
     }
-    mergeOrderParameter.serializeAttributes(byteBuffer);
+    if (timeseriesOrdering == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      ReadWriteIOUtils.write(timeseriesOrdering.ordinal(), byteBuffer);
+    }
   }
 
   @Override
@@ -139,7 +144,12 @@ public class LastQueryNode extends MultiChildProcessNode {
       ReadWriteIOUtils.write((byte) 1, stream);
       timeFilter.serialize(stream);
     }
-    mergeOrderParameter.serializeAttributes(stream);
+    if (timeseriesOrdering == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      ReadWriteIOUtils.write(timeseriesOrdering.ordinal(), stream);
+    }
   }
 
   public static LastQueryNode deserialize(ByteBuffer byteBuffer) {
@@ -147,9 +157,13 @@ public class LastQueryNode extends MultiChildProcessNode {
     if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
       timeFilter = FilterFactory.deserialize(byteBuffer);
     }
-    OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
+    byte needOrderByTimeseries = ReadWriteIOUtils.readByte(byteBuffer);
+    Ordering timeseriesOrdering = null;
+    if (needOrderByTimeseries == 1) {
+      timeseriesOrdering = Ordering.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryNode(planNodeId, timeFilter, mergeOrderParameter);
+    return new LastQueryNode(planNodeId, timeFilter, timeseriesOrdering);
   }
 
   @Override
@@ -162,11 +176,15 @@ public class LastQueryNode extends MultiChildProcessNode {
     return timeFilter;
   }
 
-  public OrderByParameter getMergeOrderParameter() {
-    return mergeOrderParameter;
+  public Ordering getTimeseriesOrdering() {
+    return timeseriesOrdering;
   }
 
-  public void setMergeOrderParameter(OrderByParameter mergeOrderParameter) {
-    this.mergeOrderParameter = mergeOrderParameter;
+  public void setTimeseriesOrdering(Ordering timeseriesOrdering) {
+    this.timeseriesOrdering = timeseriesOrdering;
+  }
+
+  public boolean needOrderByTimeseries() {
+    return timeseriesOrdering != null;
   }
 }

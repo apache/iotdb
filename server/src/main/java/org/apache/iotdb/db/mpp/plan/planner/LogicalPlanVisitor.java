@@ -48,7 +48,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -116,14 +115,19 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (queryStatement.isLastQuery()) {
-      return planBuilder
-          .planLast(
-              analysis.getSourceExpressions(),
-              analysis.getGlobalTimeFilter(),
-              analysis.getMergeOrderParameter())
-          .planOffset(queryStatement.getRowOffset())
-          .planLimit(queryStatement.getRowLimit())
-          .getRoot();
+      planBuilder =
+          planBuilder
+              .planLast(
+                  analysis.getSourceExpressions(),
+                  analysis.getGlobalTimeFilter(),
+                  analysis.getTimeseriesOrderingForLastQuery())
+              .planOffset(queryStatement.getRowOffset())
+              .planLimit(queryStatement.getRowLimit());
+
+      if (queryStatement.hasOrderBy() && !queryStatement.onlyOrderByTimeseries()) {
+        planBuilder = planBuilder.planOrderBy(queryStatement.getSortItemList());
+      }
+      return planBuilder.getRoot();
     }
 
     if (queryStatement.isAlignByDevice()) {
@@ -523,10 +527,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
       PlanNode lastPlanNode =
           new LogicalPlanBuilder(analysis, context)
-              .planLast(
-                  analysis.getSourceExpressions(),
-                  analysis.getGlobalTimeFilter(),
-                  new OrderByParameter())
+              .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter(), null)
               .getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
     }
