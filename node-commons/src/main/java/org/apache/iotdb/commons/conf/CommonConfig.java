@@ -157,7 +157,7 @@ public class CommonConfig {
 
   private long retryIntervalMs = 1000L;
 
-  private int connectorPendingQueueSize = 65536;
+  private int connectorPendingQueueSize = 1024;
 
   private int basicCheckPointIntervalByConsumedEventCount = 10_000;
 
