@@ -56,15 +56,13 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   private final WALEntryHandler walEntryHandler;
   private final ProgressIndex progressIndex;
 
-  private final InsertNode insertNode;
-
   private List<TSDataType> dataTypeList;
   private List<Path> columnNameList;
   private String deviceId;
   private Object[][] rowRecords;
 
-  public PipeInsertNodeInsertionEvent(WALEntryHandler walEntryHandler, ProgressIndex progressIndex)
-      throws WALPipeException {
+  public PipeInsertNodeInsertionEvent(
+      WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
     this(walEntryHandler, progressIndex, null, null);
   }
 
@@ -72,18 +70,16 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
       WALEntryHandler walEntryHandler,
       ProgressIndex progressIndex,
       PipeTaskMeta pipeTaskMeta,
-      String pattern)
-      throws WALPipeException {
+      String pattern) {
     super(pipeTaskMeta, pattern);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
-    this.insertNode = walEntryHandler.getValue();
 
     matchPattern();
   }
 
-  public InsertNode getInsertNode() {
-    return insertNode;
+  public InsertNode getInsertNode() throws WALPipeException {
+    return walEntryHandler.getValue();
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -125,7 +121,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
 
   @Override
   public PipeInsertNodeInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta) throws WALPipeException {
+      PipeTaskMeta pipeTaskMeta) {
     return new PipeInsertNodeInsertionEvent(walEntryHandler, progressIndex, pipeTaskMeta, pattern);
   }
 
@@ -185,13 +181,18 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   }
 
   private void matchPattern() {
-    if (insertNode instanceof InsertRowNode) {
-      processRowNodePattern((InsertRowNode) insertNode);
-    } else if (insertNode instanceof InsertTabletNode) {
-      processTabletNodePattern((InsertTabletNode) insertNode);
-    } else {
-      throw new UnSupportedDataTypeException(
-          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+    try {
+      InsertNode insertNode = walEntryHandler.getValue();
+      if (insertNode instanceof InsertRowNode) {
+        processRowNodePattern((InsertRowNode) insertNode);
+      } else if (insertNode instanceof InsertTabletNode) {
+        processTabletNodePattern((InsertTabletNode) insertNode);
+      } else {
+        throw new UnSupportedDataTypeException(
+            String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+      }
+    } catch (WALPipeException e) {
+      LOGGER.error("Get InsertNode from WALEntryHandler error.", e);
     }
   }
 
@@ -199,6 +200,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     TSDataType[] originDataTypeList = insertRowNode.getDataTypes();
     String[] originMeasurementList = insertRowNode.getMeasurements();
     Object[] originValues = insertRowNode.getValues();
+    this.deviceId = insertRowNode.getDevicePath().getFullPath();
 
     processPattern(originDataTypeList, originMeasurementList, originValues);
   }
@@ -208,6 +210,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     String[] originMeasurementList = insertTabletNode.getMeasurements();
     Object[] originColumns = insertTabletNode.getColumns();
     int rowSize = insertTabletNode.getRowCount();
+    this.deviceId = insertTabletNode.getDevicePath().getFullPath();
 
     processPattern(originDataTypeList, originMeasurementList, originColumns, rowSize);
   }
@@ -215,7 +218,6 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   private void processPattern(
       TSDataType[] originDataTypeList, String[] originMeasurementList, Object[] originValues) {
     int originColumnSize = originMeasurementList.length;
-    this.deviceId = insertNode.getDevicePath().getFullPath();
     this.dataTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
@@ -233,7 +235,6 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
       Object[] originColumns,
       int rowSize) {
     int originColumnSize = originMeasurementList.length;
-    this.deviceId = insertNode.getDevicePath().getFullPath();
     this.dataTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
@@ -256,19 +257,26 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
       String[] originMeasurementList,
       TSDataType[] originDataTypeList,
       List<Integer> indexList) {
+
+    // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
+    // in this case, all data can be matched without checking the measurements
     if (pattern == null || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
-      // collect all columns
       for (int i = 0; i < originColumnSize; i++) {
         columnNameList.add(new Path(deviceId, originMeasurementList[i], false));
         dataTypeList.add(originDataTypeList[i]);
         indexList.add(i);
       }
-    } else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
+    }
+
+    // case 2: for example, pattern is root.a.b.c and device is root.a.b
+    // in this case, we need to check the full path
+    else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
       for (int i = 0; i < originColumnSize; i++) {
         String measurement = originMeasurementList[i];
 
-        // if match successfully, collect the measurement
+        // low cost check comes first
         if (pattern.length() == deviceId.length() + measurement.length() + 1
+            // high cost check comes later
             && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
           columnNameList.add(new Path(deviceId, measurement, false));
           dataTypeList.add(originDataTypeList[i]);

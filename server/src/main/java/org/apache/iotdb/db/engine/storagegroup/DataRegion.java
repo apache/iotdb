@@ -92,7 +92,6 @@ import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
-import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.db.wal.node.IWALNode;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.wal.recover.file.SealedTsFileRecoverPerformer;
@@ -966,8 +965,6 @@ public class DataRegion implements IDataRegionForQuery {
 
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
-    } catch (WALPipeException e) {
-      throw new RuntimeException(e);
     } finally {
       writeUnlock();
     }
@@ -1138,7 +1135,7 @@ public class DataRegion implements IDataRegionForQuery {
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
-    } catch (WriteProcessException | WALPipeException e) {
+    } catch (WriteProcessException e) {
       logger.error("insert to TsFileProcessor error ", e);
       return false;
     }
@@ -1183,7 +1180,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void insertToTsFileProcessor(
       InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
-      throws WriteProcessException, WALPipeException {
+      throws WriteProcessException {
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
     if (tsFileProcessor == null) {
       return;
@@ -3023,8 +3020,6 @@ public class DataRegion implements IDataRegionForQuery {
           insertRowsOfOneDeviceNode
               .getResults()
               .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        } catch (WALPipeException e) {
-          throw new RuntimeException(e);
         }
       }
     } finally {

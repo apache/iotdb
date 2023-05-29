@@ -25,7 +25,6 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEventFactory;
-import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -97,8 +96,7 @@ public class PipeInsertionDataNodeListener {
       String dataRegionId,
       WALEntryHandler walEntryHandler,
       InsertNode insertNode,
-      TsFileResource tsFileResource)
-      throws WALPipeException {
+      TsFileResource tsFileResource) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
     // only events from registered data region will be collected

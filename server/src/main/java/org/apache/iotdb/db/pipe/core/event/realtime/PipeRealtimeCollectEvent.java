@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.core.event.realtime;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
-import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
@@ -83,7 +82,7 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
 
   @Override
   public PipeRealtimeCollectEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta) throws WALPipeException {
+      PipeTaskMeta pipeTaskMeta) {
     return new PipeRealtimeCollectEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta),
         this.tsFileEpoch,
