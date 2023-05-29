@@ -1186,7 +1186,7 @@ public class TsFileResource {
   }
 
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
-    if (status.equals(TsFileResourceStatus.UNCLOSED)) {
+    if (getStatus().equals(TsFileResourceStatus.UNCLOSED)) {
       throw new IllegalStateException(
           "Should not get progress index from a unclosing TsFileResource.");
     }
