@@ -264,11 +264,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list
+                // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 // the other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
@@ -373,11 +372,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list
+                // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -490,11 +488,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list
+                // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 // the other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
@@ -603,11 +600,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list
+                // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -727,7 +723,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
+
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -797,11 +793,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list, hold read lock
+                // copy candidate source file list and add read lock, hold read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 // other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
@@ -871,7 +866,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
+
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -937,11 +932,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list
+                // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 // the other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
@@ -1047,11 +1041,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list
+                // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -1167,11 +1160,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list
+                // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 // the other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
@@ -1280,11 +1272,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list
+                // copy candidate source file list and add read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
@@ -1399,11 +1390,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list, hold read lock
+                // copy candidate source file list and add read lock, hold read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.addReadLock();
 
                 // other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();

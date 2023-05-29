@@ -45,29 +45,20 @@ public class CrossSpaceCompactionCandidate {
 
   public CrossSpaceCompactionCandidate(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    init(seqFiles, unseqFiles);
+    initAndAddLock(seqFiles, unseqFiles);
   }
 
   public CrossSpaceCompactionCandidate(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
-    init(seqFiles, unseqFiles);
+    initAndAddLock(seqFiles, unseqFiles);
   }
 
-  private void init(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  private void initAndAddLock(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = copySeqResource(seqFiles);
     // it is necessary that unseqFiles are all available
     this.unseqFiles = filterUnseqResource(unseqFiles);
     this.nextUnseqFileIndex = 0;
-  }
-
-  public void addReadLock() {
-    for (TsFileResourceCandidate resourceCandidate : seqFiles) {
-      resourceCandidate.resource.readLock();
-    }
-    for (TsFileResourceCandidate resourceCandidate : unseqFiles) {
-      resourceCandidate.resource.readLock();
-    }
   }
 
   public void releaseReadLock() {
@@ -151,6 +142,7 @@ public class CrossSpaceCompactionCandidate {
   private List<TsFileResourceCandidate> copySeqResource(List<TsFileResource> seqFiles) {
     List<TsFileResourceCandidate> ret = new ArrayList<>();
     for (TsFileResource resource : seqFiles) {
+      resource.readLock();
       ret.add(new TsFileResourceCandidate(resource));
     }
     return ret;
@@ -168,6 +160,7 @@ public class CrossSpaceCompactionCandidate {
       if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
         break;
       } else if (resource.stillLives(ttlLowerBound)) {
+        resource.readLock();
         ret.add(new TsFileResourceCandidate(resource));
       }
     }

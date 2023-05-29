@@ -273,11 +273,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     long startTime = System.currentTimeMillis();
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     // we record the variable `candidate` here is used for selecting more than one
-    // CrossCompactionTaskResources in this method
+    // CrossCompactionTaskResources in this method.
+    // Add read lock for candidate source files to avoid being deleted during the selection.
     CrossSpaceCompactionCandidate candidate =
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
     try {
-      candidate.addReadLock();
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
@@ -312,6 +312,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     } catch (MergeException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     } finally {
+      // release read lock for candidate source files
       candidate.releaseReadLock();
     }
     return Collections.emptyList();
