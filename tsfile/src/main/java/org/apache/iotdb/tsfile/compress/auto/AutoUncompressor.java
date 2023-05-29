@@ -31,7 +31,7 @@ public class AutoUncompressor implements IUnCompressor {
     byte realType = array[offset + length - 1];
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
         CompressionType.deserialize(realType));
-    return unCompressor.getUncompressedLength(array, offset, length);
+    return unCompressor.getUncompressedLength(array, offset, length - 1);
   }
 
   @Override
@@ -39,7 +39,9 @@ public class AutoUncompressor implements IUnCompressor {
     byte realType = buffer.array()[buffer.position() + buffer.remaining() - 1];
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
         CompressionType.deserialize(realType));
-    return unCompressor.getUncompressedLength(buffer);
+    ByteBuffer slice = buffer.slice();
+    slice.limit(slice.limit() - 1);
+    return unCompressor.getUncompressedLength(slice);
   }
 
   @Override
@@ -47,7 +49,9 @@ public class AutoUncompressor implements IUnCompressor {
     byte realType = byteArray[byteArray.length - 1];
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
         CompressionType.deserialize(realType));
-    return unCompressor.uncompress(byteArray);
+    byte[] realData = new byte[byteArray.length - 1];
+    System.arraycopy(byteArray, 0, realData, 0, byteArray.length - 1);
+    return unCompressor.uncompress(realData);
   }
 
   @Override
@@ -56,7 +60,7 @@ public class AutoUncompressor implements IUnCompressor {
     byte realType = byteArray[offset + length - 1];
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
         CompressionType.deserialize(realType));
-    return unCompressor.uncompress(byteArray, offset, length, output, outOffset);
+    return unCompressor.uncompress(byteArray, offset, length - 1, output, outOffset);
   }
 
   @Override
@@ -64,7 +68,9 @@ public class AutoUncompressor implements IUnCompressor {
     byte realType = compressed.array()[compressed.position() + compressed.remaining() - 1];
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(
         CompressionType.deserialize(realType));
-    return unCompressor.uncompress(compressed, uncompressed);
+    ByteBuffer slice = compressed.slice();
+    slice.limit(slice.limit() - 1);
+    return unCompressor.uncompress(slice, uncompressed);
   }
 
   @Override
