@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.compress;
 
+import org.apache.iotdb.tsfile.compress.auto.AutoUncompressor;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
@@ -59,6 +60,8 @@ public interface IUnCompressor {
         return new ZstdUnCompressor();
       case LZMA2:
         return new LZMA2UnCompressor();
+      case AUTO:
+        return new AutoUncompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
