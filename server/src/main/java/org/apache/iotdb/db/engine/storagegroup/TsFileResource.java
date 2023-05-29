@@ -685,9 +685,7 @@ public class TsFileResource {
     switch (status) {
       case NORMAL:
         return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)
-            || compareAndSetStatus(
-                TsFileResourceStatus.COMPACTING,
-                TsFileResourceStatus.NORMAL) // compacting 不能回 normal
+            || compareAndSetStatus(TsFileResourceStatus.COMPACTING, TsFileResourceStatus.NORMAL)
             || compareAndSetStatus(
                 TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.NORMAL);
       case UNCLOSED:
@@ -696,8 +694,7 @@ public class TsFileResource {
       case DELETED:
         return compareAndSetStatus(TsFileResourceStatus.NORMAL, TsFileResourceStatus.DELETED)
             || compareAndSetStatus(
-                TsFileResourceStatus.COMPACTION_CANDIDATE,
-                TsFileResourceStatus.DELETED); // compacting 可以通过合并到 deleted，但是不能通过 TTL 到 deleted
+                TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.DELETED);
       case COMPACTING:
         return compareAndSetStatus(
             TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.COMPACTING);

@@ -276,7 +276,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     // CrossCompactionTaskResources in this method
     CrossSpaceCompactionCandidate candidate =
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
-
     try {
       candidate.addReadLock();
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);

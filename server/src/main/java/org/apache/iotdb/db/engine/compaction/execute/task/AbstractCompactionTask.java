@@ -70,8 +70,6 @@ public abstract class AbstractCompactionTask {
     this.serialId = serialId;
   }
 
-  // public abstract boolean setSourceFilesToCompactionCandidate();
-
   protected abstract List<TsFileResource> getAllSourceTsFiles();
 
   /**

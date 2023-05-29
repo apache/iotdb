@@ -319,18 +319,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         && this.performer.getClass().isInstance(task.performer);
   }
 
-  //  @Override
-  //  public boolean setSourceFilesToCompactionCandidate() {
-  //    for (TsFileResource resource : selectedTsFileResourceList) {
-  //      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-  //        resetCompactionCandidateStatusForAllSourceFiles();
-  //        return false;
-  //      }
-  //      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
-  //    }
-  //    return true;
-  //  }
-
+  @Override
   protected List<TsFileResource> getAllSourceTsFiles() {
     return this.selectedTsFileResourceList;
   }
@@ -411,10 +400,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    for (TsFileResource resource : selectedTsFileResourceList) {
-      // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
-      resource.setStatus(TsFileResourceStatus.NORMAL);
-    }
+    // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
+    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
   /**

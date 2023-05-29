@@ -168,7 +168,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
                   // set file status to COMPACTION_CANDIDATE
-                  if (idx == taskResource.size() - 1) {
+                  if (idx == 0) {
                     if (innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                       throw new RuntimeException("set status should be false");
                     }
@@ -273,7 +273,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                   }
 
                   // set file status to COMPACTION_CANDIDATE
-                  if (idx == taskResource.size() - 1) {
+                  if (idx == 0) {
                     // the other thread holds write lock and delete files successfully before
                     // setting status to COMPACTING
                     cd1.countDown();
@@ -453,7 +453,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           CompactionTaskManager.currentTaskNum,
                           tsFileManager.getNextCompactionTaskId());
                   // set file status to COMPACTION_CANDIDATE
-                  if (idx == taskResource.size() - 1) {
+                  if (idx == 0) {
                     if (innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                       throw new RuntimeException("set status should be false");
                     }
@@ -561,7 +561,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                   }
 
                   // set file status to COMPACTION_CANDIDATE
-                  if (idx == taskResource.size() - 1) {
+                  if (idx == 0) {
                     // the other thread holds write lock and delete files successfully before
                     // setting status to COMPACTING
                     cd1.countDown();

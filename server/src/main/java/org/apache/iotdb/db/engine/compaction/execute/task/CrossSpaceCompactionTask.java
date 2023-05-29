@@ -300,25 +300,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return selectedSequenceFiles;
   }
 
-  //  @Override
-  //  public boolean setSourceFilesToCompactionCandidate() {
-  //    for (TsFileResource resource : selectedSequenceFiles) {
-  //      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-  //        resetCompactionCandidateStatusForAllSourceFiles();
-  //        return false;
-  //      }
-  //      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
-  //    }
-  //    for (TsFileResource resource : selectedUnsequenceFiles) {
-  //      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-  //        resetCompactionCandidateStatusForAllSourceFiles();
-  //        return false;
-  //      }
-  //      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
-  //    }
-  //    return true;
-  //  }
-
+  @Override
   protected List<TsFileResource> getAllSourceTsFiles() {
     List<TsFileResource> allRelatedFiles = new ArrayList<>();
     allRelatedFiles.addAll(selectedSequenceFiles);
@@ -359,14 +341,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    for (TsFileResource resource : selectedSequenceFiles) {
-      // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
-      resource.setStatus(TsFileResourceStatus.NORMAL);
-    }
-    for (TsFileResource resource : unseqTsFileResourceList) {
-      // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
-      resource.setStatus(TsFileResourceStatus.NORMAL);
-    }
+    // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
+    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
+    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
   private long deleteOldFiles(List<TsFileResource> tsFileResourceList) {
