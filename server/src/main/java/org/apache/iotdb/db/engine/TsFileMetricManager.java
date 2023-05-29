@@ -27,12 +27,14 @@ import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,6 +75,10 @@ public class TsFileMetricManager {
   private final AtomicInteger crossCompactionTempFileNum = new AtomicInteger(0);
   private AbstractMetricService metricService;
   private AtomicBoolean hasRemainData = new AtomicBoolean(false);
+  private final Map<Integer, Gauge> seqLevelCountGaugeMap = new HashMap<>();
+  private final Map<Integer, Gauge> seqLevelSizeGaugeMap = new HashMap<>();
+  private final Map<Integer, Gauge> unseqLevelCountGaugeMap = new HashMap<>();
+  private final Map<Integer, Gauge> unseqLevelSizeGaugeMap = new HashMap<>();
 
   private TsFileMetricManager() {}
 
@@ -126,35 +132,64 @@ public class TsFileMetricManager {
   private void updateLevelFileInfoInMetricService(
       long totalSize, int count, boolean seq, int level) {
     if (metricService != null) {
-      metricService
-          .getOrCreateGauge(
-              FILE_LEVEL_COUNT,
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              seq ? SEQUENCE : UNSEQUENCE,
-              LEVEL,
-              String.valueOf(level))
-          .set(count);
-      metricService
-          .getOrCreateGauge(
-              FILE_LEVEL_SIZE,
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              seq ? SEQUENCE : UNSEQUENCE,
-              LEVEL,
-              String.valueOf(level))
-          .set(totalSize);
-      if (hasRemainData.get()) {
-        synchronized (this) {
-          if (hasRemainData.get()) {
-            hasRemainData.set(false);
-            updateRemainData();
-          }
-        }
-      }
+      updateCountGauge(
+          level,
+          count,
+          seq ? seqLevelCountGaugeMap : unseqLevelCountGaugeMap,
+          seq ? SEQUENCE : UNSEQUENCE);
+      updateSizeGauge(
+          level,
+          totalSize,
+          seq ? seqLevelSizeGaugeMap : unseqLevelSizeGaugeMap,
+          seq ? SEQUENCE : UNSEQUENCE);
+      checkIfThereRemainingData();
     } else {
+      // the metric service has not been set yet
       hasRemainData.set(true);
     }
+  }
+
+  private void checkIfThereRemainingData() {
+    if (hasRemainData.get()) {
+      synchronized (this) {
+        if (hasRemainData.get()) {
+          hasRemainData.set(false);
+          updateRemainData();
+        }
+      }
+    }
+  }
+
+  private void updateCountGauge(
+      int level, int count, Map<Integer, Gauge> countGaugeMap, String orderStr) {
+    countGaugeMap
+        .computeIfAbsent(
+            level,
+            l ->
+                metricService.getOrCreateGauge(
+                    FILE_LEVEL_COUNT,
+                    MetricLevel.CORE,
+                    Tag.TYPE.toString(),
+                    orderStr,
+                    LEVEL,
+                    String.valueOf(level)))
+        .set(count);
+  }
+
+  private void updateSizeGauge(
+      int level, long size, Map<Integer, Gauge> sizeGaugeMap, String orderStr) {
+    sizeGaugeMap
+        .computeIfAbsent(
+            level,
+            l ->
+                metricService.getOrCreateGauge(
+                    FILE_LEVEL_SIZE,
+                    MetricLevel.CORE,
+                    Tag.TYPE.toString(),
+                    orderStr,
+                    LEVEL,
+                    String.valueOf(level)))
+        .set(size);
   }
 
   public void deleteFile(List<Long> sizeList, boolean seq, int num, List<String> names) {
@@ -177,48 +212,16 @@ public class TsFileMetricManager {
 
   private void updateRemainData() {
     for (Map.Entry<Integer, Integer> entry : seqLevelTsFileCountMap.entrySet()) {
-      metricService
-          .getOrCreateGauge(
-              FILE_LEVEL_COUNT,
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              SEQUENCE,
-              LEVEL,
-              String.valueOf(entry.getKey()))
-          .set(entry.getValue());
+      updateCountGauge(entry.getKey(), entry.getValue(), seqLevelCountGaugeMap, SEQUENCE);
     }
     for (Map.Entry<Integer, Long> entry : seqLevelTsFileSizeMap.entrySet()) {
-      metricService
-          .getOrCreateGauge(
-              FILE_LEVEL_SIZE,
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              SEQUENCE,
-              LEVEL,
-              String.valueOf(entry.getKey()))
-          .set(entry.getValue());
+      updateSizeGauge(entry.getKey(), entry.getValue(), seqLevelSizeGaugeMap, SEQUENCE);
     }
     for (Map.Entry<Integer, Integer> entry : unseqLevelTsFileCountMap.entrySet()) {
-      metricService
-          .getOrCreateGauge(
-              FILE_LEVEL_COUNT,
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              UNSEQUENCE,
-              LEVEL,
-              String.valueOf(entry.getKey()))
-          .set(entry.getValue());
+      updateCountGauge(entry.getKey(), entry.getValue(), unseqLevelCountGaugeMap, UNSEQUENCE);
     }
     for (Map.Entry<Integer, Long> entry : unseqLevelTsFileSizeMap.entrySet()) {
-      metricService
-          .getOrCreateGauge(
-              FILE_LEVEL_SIZE,
-              MetricLevel.CORE,
-              Tag.TYPE.toString(),
-              UNSEQUENCE,
-              LEVEL,
-              String.valueOf(entry.getKey()))
-          .set(entry.getValue());
+      updateSizeGauge(entry.getKey(), entry.getValue(), unseqLevelSizeGaugeMap, UNSEQUENCE);
     }
   }
 
