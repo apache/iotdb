@@ -58,19 +58,17 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   private PipeRealtimeDataRegionCollector realtimeCollector;
   // TODO: support pattern in historical collector
   private PIpeHistoricalDataRegionCollector historicalCollector;
+
   private final ListenableUnblockingPendingQueue<Event> collectorPendingQueue;
+  private final PipeTaskMeta pipeTaskMeta;
 
   private int dataRegionId;
 
-  public IoTDBDataRegionCollector(ListenableUnblockingPendingQueue<Event> collectorPendingQueue) {
-    this.hasBeenStarted = new AtomicBoolean(false);
-    this.collectorPendingQueue = collectorPendingQueue;
   public IoTDBDataRegionCollector(
       PipeTaskMeta pipeTaskMeta, ListenableUnblockingPendingQueue<Event> collectorPendingQueue) {
-    hasBeenStarted = new AtomicBoolean(false);
-    realtimeCollector =
-        new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
-    historicalCollector = new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta);
+    this.hasBeenStarted = new AtomicBoolean(false);
+    this.collectorPendingQueue = collectorPendingQueue;
+    this.pipeTaskMeta = pipeTaskMeta;
   }
 
   @Override
@@ -112,32 +110,37 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     historicalCollector =
         (Boolean.FALSE.toString().equals(parameters.getString(COLLECTOR_HISTORY_ENABLE_KEY)))
             ? new PipeHistoricalDataRegionFakeCollector()
-            : new PipeHistoricalDataRegionTsFileCollector();
+            : new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta);
   }
 
   private void constructRealtimeCollector(PipeParameters parameters) {
     if (Boolean.FALSE.toString().equals(parameters.getString(COLLECTOR_REALTIME_ENABLE))) {
-      realtimeCollector = new PipeRealtimeDataRegionFakeCollector();
+      realtimeCollector = new PipeRealtimeDataRegionFakeCollector(pipeTaskMeta);
       return;
     }
 
     if (!parameters.hasAttribute(COLLECTOR_REALTIME_MODE)) {
-      realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
+      realtimeCollector =
+          new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
       return;
     }
 
     switch (parameters.getString(COLLECTOR_REALTIME_MODE)) {
       case COLLECTOR_REALTIME_MODE_FILE:
-        realtimeCollector = new PipeRealtimeDataRegionTsFileCollector(collectorPendingQueue);
+        realtimeCollector =
+            new PipeRealtimeDataRegionTsFileCollector(pipeTaskMeta, collectorPendingQueue);
         break;
       case COLLECTOR_REALTIME_MODE_LOG:
-        realtimeCollector = new PipeRealtimeDataRegionWalCollector(collectorPendingQueue);
+        realtimeCollector =
+            new PipeRealtimeDataRegionWalCollector(pipeTaskMeta, collectorPendingQueue);
         break;
       case COLLECTOR_REALTIME_MODE_HYBRID:
-        realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
+        realtimeCollector =
+            new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
         break;
       default:
-        realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
+        realtimeCollector =
+            new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
         LOGGER.warn(
             String.format(
                 "Unsupported collector realtime mode: %s, create a hybrid collector.",

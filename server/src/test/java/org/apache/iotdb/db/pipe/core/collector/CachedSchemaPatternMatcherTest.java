@@ -64,8 +64,6 @@ public class CachedSchemaPatternMatcherTest {
 
   @Test
   public void testCachedMatcher() throws Exception {
-    PipeRealtimeDataRegionCollector databaseCollector = new PipeRealtimeDataRegionFakeCollector();
-  public void testCachedMatcher() throws ExecutionException, InterruptedException {
     PipeRealtimeDataRegionCollector databaseCollector =
         new PipeRealtimeDataRegionFakeCollector(null);
     databaseCollector.customize(

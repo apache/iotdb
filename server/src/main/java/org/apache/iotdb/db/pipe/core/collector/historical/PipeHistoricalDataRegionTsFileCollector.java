@@ -97,16 +97,18 @@ public class PipeHistoricalDataRegionTsFileCollector extends PIpeHistoricalDataR
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(true).stream()
-                .filter(this::isTsFileResourceOverlapWithTimeRange)
-                .map(PipeTsFileInsertionEvent::new)
-                .filter(resource -> !startIndex.isAfter(resource.getMaxProgressIndexAfterClose()))
+                .filter(
+                    resource ->
+                        !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                            && isTsFileResourceOverlapWithTimeRange(resource))
                 .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
-                .filter(this::isTsFileResourceOverlapWithTimeRange)
-                .map(PipeTsFileInsertionEvent::new)
-                .filter(resource -> !startIndex.isAfter(resource.getMaxProgressIndexAfterClose()))
+                .filter(
+                    resource ->
+                        !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                            && isTsFileResourceOverlapWithTimeRange(resource))
                 .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(

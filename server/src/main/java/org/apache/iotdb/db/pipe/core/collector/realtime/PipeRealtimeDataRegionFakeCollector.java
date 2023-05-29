@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -26,6 +27,10 @@ import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfig
 import org.apache.iotdb.pipe.api.event.Event;
 
 public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionCollector {
+
+  public PipeRealtimeDataRegionFakeCollector(PipeTaskMeta pipeTaskMeta) {
+    super(pipeTaskMeta);
+  }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {}

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
@@ -41,7 +42,8 @@ public class PipeRealtimeDataRegionTsFileCollector extends PipeRealtimeDataRegio
   private final ListenableUnblockingPendingQueue<Event> pendingQueue;
 
   public PipeRealtimeDataRegionTsFileCollector(
-      ListenableUnblockingPendingQueue<Event> pendingQueue) {
+      PipeTaskMeta pipeTaskMeta, ListenableUnblockingPendingQueue<Event> pendingQueue) {
+    super(pipeTaskMeta);
     this.pendingQueue = pendingQueue;
   }
 
