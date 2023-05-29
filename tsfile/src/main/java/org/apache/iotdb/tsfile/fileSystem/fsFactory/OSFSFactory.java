@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.fileSystem.fsFactory;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FSUtils;
 
@@ -37,26 +38,26 @@ import java.net.URI;
 
 public class OSFSFactory implements FSFactory {
   private static final Logger logger = LoggerFactory.getLogger(OSFSFactory.class);
-  private static final String OS_FILE_CLASS_NAME = "org.apache.iotdb.os.fileSystem.OSFile";
 
-  private static Constructor constructorWithPathname;
-  private static Constructor constructorWithParentStringAndChild;
-  private static Constructor constructorWithParentFileAndChild;
-  private static Constructor constructorWithUri;
-  private static Method getBufferedReader;
-  private static Method getBufferedWriter;
-  private static Method getBufferedInputStream;
-  private static Method getBufferedOutputStream;
-  private static Method listFilesBySuffix;
-  private static Method listFilesByPrefix;
-  private static Method renameTo;
-  private static Method putFile;
-  private static Method copyTo;
-  private static Method deleteObjectsByPrefix;
+  private Constructor constructorWithPathname;
+  private Constructor constructorWithParentStringAndChild;
+  private Constructor constructorWithParentFileAndChild;
+  private Constructor constructorWithUri;
+  private Method getBufferedReader;
+  private Method getBufferedWriter;
+  private Method getBufferedInputStream;
+  private Method getBufferedOutputStream;
+  private Method listFilesBySuffix;
+  private Method listFilesByPrefix;
+  private Method renameTo;
+  private Method putFile;
+  private Method copyTo;
+  private Method deleteObjectsByPrefix;
 
-  static {
+  public OSFSFactory() {
     try {
-      Class<?> clazz = Class.forName(OS_FILE_CLASS_NAME);
+      Class<?> clazz =
+          Class.forName(TSFileDescriptor.getInstance().getConfig().getObjectStorageFile());
       constructorWithPathname = clazz.getConstructor(String.class);
       constructorWithParentStringAndChild = clazz.getConstructor(String.class, String.class);
       constructorWithParentFileAndChild = clazz.getConstructor(File.class, String.class);

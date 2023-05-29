@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fsFactory;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FSUtils;
 
@@ -39,24 +40,24 @@ import java.net.URI;
 public class HDFSFactory implements FSFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(HDFSFactory.class);
-  private static Constructor constructorWithPathname;
-  private static Constructor constructorWithParentStringAndChild;
-  private static Constructor constructorWithParentFileAndChild;
-  private static Constructor constructorWithUri;
-  private static Method getBufferedReader;
-  private static Method getBufferedWriter;
-  private static Method getBufferedInputStream;
-  private static Method getBufferedOutputStream;
-  private static Method listFilesBySuffix;
-  private static Method listFilesByPrefix;
-  private static Method renameTo;
-  private static Method copyToLocal;
-  private static Method copyFromLocal;
-  private static Method copyTo;
+  private Constructor constructorWithPathname;
+  private Constructor constructorWithParentStringAndChild;
+  private Constructor constructorWithParentFileAndChild;
+  private Constructor constructorWithUri;
+  private Method getBufferedReader;
+  private Method getBufferedWriter;
+  private Method getBufferedInputStream;
+  private Method getBufferedOutputStream;
+  private Method listFilesBySuffix;
+  private Method listFilesByPrefix;
+  private Method renameTo;
+  private Method copyToLocal;
+  private Method copyFromLocal;
+  private Method copyTo;
 
-  static {
+  public HDFSFactory() {
     try {
-      Class<?> clazz = Class.forName("org.apache.iotdb.hadoop.fileSystem.HDFSFile");
+      Class<?> clazz = Class.forName(TSFileDescriptor.getInstance().getConfig().getHdfsFile());
       constructorWithPathname = clazz.getConstructor(String.class);
       constructorWithParentStringAndChild = clazz.getConstructor(String.class, String.class);
       constructorWithParentFileAndChild = clazz.getConstructor(File.class, String.class);

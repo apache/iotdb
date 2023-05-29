@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSPath;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -31,14 +32,16 @@ import java.util.Arrays;
 
 public class FSUtils {
   private static final Logger logger = LoggerFactory.getLogger(FSUtils.class);
+  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final FSType[] fsTypes = {FSType.OBJECT_STORAGE, FSType.HDFS};
   public static final int PATH_FROM_SEQUENCE_LEVEL = 5;
   public static final int PATH_FROM_DATABASE_LEVEL = 4;
   public static final String[] fsPrefix = {"os://", "hdfs://"};
   public static final String OS_FILE_SEPARATOR = "/";
   private static final String[] fsFileClassName = {
-    "org.apache.iotdb.os.fileSystem.OSFile", "org.apache.iotdb.hadoop.fileSystem.HDFSFile"
+    config.getObjectStorageFile(), config.getHdfsFile()
   };
+
   private static final boolean[] isSupported = new boolean[fsTypes.length];
   private static final Class<?>[] fsFileClass = new Class[fsTypes.length];
 
@@ -49,7 +52,9 @@ public class FSUtils {
   }
 
   public static synchronized void reload() {
-    for (FSType fsType : TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs()) {
+    fsFileClassName[0] = config.getObjectStorageFile();
+    fsFileClassName[1] = config.getHdfsFile();
+    for (FSType fsType : config.getTSFileStorageFs()) {
       if (fsType == FSType.OBJECT_STORAGE) {
         isSupported[0] = true;
       } else if (fsType == FSType.HDFS) {

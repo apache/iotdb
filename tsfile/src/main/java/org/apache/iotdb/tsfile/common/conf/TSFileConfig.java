@@ -160,6 +160,18 @@ public class TSFileConfig implements Serializable {
 
   private int patternMatchingThreshold = 1000000;
 
+  private String hdfsFile = "org.apache.iotdb.hadoop.fileSystem.HDFSFile";
+
+  private String hdfsTsFileInput = "org.apache.iotdb.hadoop.fileSystem.HDFSInput";
+
+  private String hdfsTsFileOutput = "org.apache.iotdb.hadoop.fileSystem.HDFSOutput";
+
+  private String objectStorageFile = "org.apache.iotdb.os.fileSystem.OSFile";
+
+  private String objectStorageTsFileInput = "org.apache.iotdb.os.fileSystem.OSTsFileInput";
+
+  private String objectStorageTsFileOutput = "org.apache.iotdb.os.fileSystem.OSTsFileOutput";
+
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
 
@@ -480,5 +492,53 @@ public class TSFileConfig implements Serializable {
 
   public String getSprintzPredictScheme() {
     return "fire";
+  }
+
+  public String getHdfsFile() {
+    return hdfsFile;
+  }
+
+  public void setHdfsFile(String hdfsFile) {
+    this.hdfsFile = hdfsFile;
+  }
+
+  public String getHdfsTsFileInput() {
+    return hdfsTsFileInput;
+  }
+
+  public void setHdfsTsFileInput(String hdfsTsFileInput) {
+    this.hdfsTsFileInput = hdfsTsFileInput;
+  }
+
+  public String getHdfsTsFileOutput() {
+    return hdfsTsFileOutput;
+  }
+
+  public void setHdfsTsFileOutput(String hdfsTsFileOutput) {
+    this.hdfsTsFileOutput = hdfsTsFileOutput;
+  }
+
+  public String getObjectStorageFile() {
+    return objectStorageFile;
+  }
+
+  public void setObjectStorageFile(String objectStorageFile) {
+    this.objectStorageFile = objectStorageFile;
+  }
+
+  public String getObjectStorageTsFileInput() {
+    return objectStorageTsFileInput;
+  }
+
+  public void setObjectStorageTsFileInput(String objectStorageTsFileInput) {
+    this.objectStorageTsFileInput = objectStorageTsFileInput;
+  }
+
+  public String getObjectStorageTsFileOutput() {
+    return objectStorageTsFileOutput;
+  }
+
+  public void setObjectStorageTsFileOutput(String objectStorageTsFileOutput) {
+    this.objectStorageTsFileOutput = objectStorageTsFileOutput;
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.fileSystem.fileInputFactory;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import org.slf4j.Logger;
@@ -29,12 +30,12 @@ import java.lang.reflect.InvocationTargetException;
 
 public class OSFileInputFactory implements FileInputFactory {
   private static final Logger logger = LoggerFactory.getLogger(OSFileInputFactory.class);
-  private static final String OS_INPUT_CLASS_NAME = "org.apache.iotdb.os.fileSystem.OSTsFileInput";
-  private static Constructor constructor;
+  private Constructor constructor;
 
-  static {
+  public OSFileInputFactory() {
     try {
-      Class<?> clazz = Class.forName(OS_INPUT_CLASS_NAME);
+      Class<?> clazz =
+          Class.forName(TSFileDescriptor.getInstance().getConfig().getObjectStorageTsFileInput());
       constructor = clazz.getConstructor(String.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(
