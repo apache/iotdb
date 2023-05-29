@@ -45,8 +45,8 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
   }
 
   @Override
-  public void customize(
-      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
+      throws Exception {
     pattern =
         parameters.getStringOrDefault(
             PipeCollectorConstant.COLLECTOR_PATTERN_KEY,
@@ -55,17 +55,21 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
   }
 
   @Override
-  public void start() {
+  public void start() throws Exception {
     PipeInsertionDataNodeListener.getInstance().startListenAndAssign(dataRegionId, this);
   }
 
   @Override
-  public void close() {
+  public void close() throws Exception {
     PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
   }
 
   /** @param event the event from the storage engine */
   public abstract void collect(PipeRealtimeCollectEvent event);
+
+  public abstract boolean isNeedListenToTsFile();
+
+  public abstract boolean isNeedListenToInsertNode();
 
   public final String getPattern() {
     return pattern;
