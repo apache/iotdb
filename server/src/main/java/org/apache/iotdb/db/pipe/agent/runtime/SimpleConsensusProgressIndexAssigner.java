@@ -50,18 +50,14 @@ public class SimpleConsensusProgressIndexAssigner {
           + File.separator;
   private static final String REBOOT_TIMES_FILE_NAME = "reboot_times.txt";
 
-  private boolean isEnable = false;
+  private boolean isSimpleConsensusEnable = false;
 
   private int rebootTimes = 0;
   private final AtomicLong memtableFlushOrderId = new AtomicLong(0);
 
   public void start() throws StartupException {
-    // only works for simple consensus
-    if (!IOTDB_CONFIG.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
-      return;
-    }
-
-    isEnable = true;
+    isSimpleConsensusEnable =
+        IOTDB_CONFIG.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS);
     LOGGER.info("Start SimpleConsensusProgressIndexAssigner ...");
 
     try {
@@ -102,11 +98,15 @@ public class SimpleConsensusProgressIndexAssigner {
   }
 
   public void assignIfNeeded(TsFileResource tsFileResource) {
-    if (!isEnable) {
+    if (!isSimpleConsensusEnable) {
       return;
     }
 
     tsFileResource.updateProgressIndex(
         new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement()));
+  }
+
+  public SimpleProgressIndex getNextSimpleProgressIndexForRecover() {
+    return new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement());
   }
 }

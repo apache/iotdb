@@ -492,7 +492,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(new JMXService());
     JMXService.registerMBean(getInstance(), mbeanName);
 
-    // get resources for trigger,udf...
+    // get resources for trigger,udf,pipe...
     prepareResources();
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
