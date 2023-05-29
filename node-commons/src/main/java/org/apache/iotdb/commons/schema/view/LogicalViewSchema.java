@@ -164,7 +164,7 @@ public class LogicalViewSchema
   public int serializedSize() {
     throw new RuntimeException(
         new UnsupportedOperationException(
-            "Can not calculate the size of logical view schema before serializing."));
+            "Can not calculate the size of view schema before serializing."));
   }
 
   @Override
@@ -245,7 +245,7 @@ public class LogicalViewSchema
         throw new RuntimeException(
             new UnexpectedException(
                 String.format(
-                    "Logical view with measurementID [%s] is broken. It stores illegal path [%s].",
+                    "View with measurementID [%s] is broken. It stores illegal path [%s].",
                     this.measurementId, this.getSourcePathStringIfWritable())));
       }
     }

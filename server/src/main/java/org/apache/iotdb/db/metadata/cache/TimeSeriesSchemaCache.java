@@ -176,7 +176,7 @@ public class TimeSeriesSchemaCache {
       if (!logicalViewSchema.isWritable()) {
         throw new RuntimeException(
             new UnsupportedOperationException(
-                "You can not insert into a logical view which is not alias series!"));
+                "You can not insert into a view which is not alias series!"));
       }
       PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       dualKeyCache.compute(
