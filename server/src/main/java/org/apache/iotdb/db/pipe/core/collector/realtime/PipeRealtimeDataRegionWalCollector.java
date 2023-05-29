@@ -66,6 +66,16 @@ public class PipeRealtimeDataRegionWalCollector extends PipeRealtimeDataRegionCo
   }
 
   @Override
+  public boolean isNeedListenToTsFile() {
+    return false;
+  }
+
+  @Override
+  public boolean isNeedListenToInsertNode() {
+    return true;
+  }
+
+  @Override
   public Event supply() {
     PipeRealtimeCollectEvent collectEvent = (PipeRealtimeCollectEvent) pendingQueue.poll();
 

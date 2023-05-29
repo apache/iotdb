@@ -67,6 +67,10 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
   /** @param event the event from the storage engine */
   public abstract void collect(PipeRealtimeCollectEvent event);
 
+  public abstract boolean isNeedListenToTsFile();
+
+  public abstract boolean isNeedListenToInsertNode();
+
   public final String getPattern() {
     return pattern;
   }

@@ -66,6 +66,16 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
     }
   }
 
+  @Override
+  public boolean isNeedListenToTsFile() {
+    return true;
+  }
+
+  @Override
+  public boolean isNeedListenToInsertNode() {
+    return true;
+  }
+
   private void collectTabletInsertion(PipeRealtimeCollectEvent event) {
     if (isApproachingCapacity()) {
       event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);

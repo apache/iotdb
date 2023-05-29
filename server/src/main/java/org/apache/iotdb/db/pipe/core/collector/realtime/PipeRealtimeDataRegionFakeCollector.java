@@ -51,6 +51,16 @@ public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionC
   public void collect(PipeRealtimeCollectEvent event) {}
 
   @Override
+  public boolean isNeedListenToTsFile() {
+    return false;
+  }
+
+  @Override
+  public boolean isNeedListenToInsertNode() {
+    return false;
+  }
+
+  @Override
   public void close() {}
 
   @Override

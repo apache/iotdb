@@ -28,6 +28,7 @@ import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * PipeInsertionEventListener is a singleton in each data node.
@@ -44,12 +45,20 @@ public class PipeInsertionDataNodeListener {
 
   private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
+  private final AtomicInteger listenToTsFileCollectorCount = new AtomicInteger(0);
+  private final AtomicInteger listenToInsertNodeCollectorCount = new AtomicInteger(0);
 
   public synchronized void startListenAndAssign(
       String dataRegionId, PipeRealtimeDataRegionCollector collector) {
     dataRegionId2Assigner
         .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner())
         .startAssignTo(collector);
+    if (collector.isNeedListenToTsFile()) {
+      listenToTsFileCollectorCount.incrementAndGet();
+    }
+    if (collector.isNeedListenToInsertNode()) {
+      listenToInsertNodeCollectorCount.incrementAndGet();
+    }
   }
 
   public synchronized void stopListenAndAssign(
@@ -61,6 +70,12 @@ public class PipeInsertionDataNodeListener {
 
     assigner.stopAssignTo(collector);
 
+    if (collector.isNeedListenToTsFile()) {
+      listenToTsFileCollectorCount.decrementAndGet();
+    }
+    if (collector.isNeedListenToInsertNode()) {
+      listenToInsertNodeCollectorCount.decrementAndGet();
+    }
     if (assigner.notMoreCollectorNeededToBeAssigned()) {
       // the removed assigner will is the same as the one referenced by the variable `assigner`
       dataRegionId2Assigner.remove(dataRegionId);
@@ -75,6 +90,10 @@ public class PipeInsertionDataNodeListener {
   // TODO: maximum the efficiency of the method when there is no pipe in the system, avoid
   // dataRegionId2Assigner.get(dataRegionId);
   public void listenToTsFile(String dataRegionId, TsFileResource tsFileResource) {
+    if (listenToTsFileCollectorCount.get() == 0) {
+      return;
+    }
+
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
     // only events from registered data region will be collected
@@ -90,6 +109,10 @@ public class PipeInsertionDataNodeListener {
       WALEntryHandler walEntryHandler,
       InsertNode insertNode,
       TsFileResource tsFileResource) {
+    if (listenToInsertNodeCollectorCount.get() == 0) {
+      return;
+    }
+
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
     // only events from registered data region will be collected
