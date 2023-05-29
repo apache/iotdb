@@ -73,7 +73,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
       throws IOException, MetadataException, WriteProcessException {
     createFiles(1, 2, 3, 50, 0, 10000, 50, 50, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
-    seqResources.get(0).setStatus(TsFileResourceStatus.UNCLOSED);
+    seqResources.get(0).setStatusForTest(TsFileResourceStatus.UNCLOSED);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<CrossCompactionTaskResource> selected =
@@ -106,7 +106,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
       throws IOException, MetadataException, WriteProcessException {
     createFiles(2, 2, 3, 50, 0, 10000, 50, 50, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
-    seqResources.get(1).setStatus(TsFileResourceStatus.UNCLOSED);
+    seqResources.get(1).setStatusForTest(TsFileResourceStatus.UNCLOSED);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<CrossCompactionTaskResource> selected =
@@ -116,8 +116,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
 
     createFiles(1, 2, 3, 200, 200, 10000, 50, 50, false, true);
-    seqResources.get(1).setStatus(TsFileResourceStatus.NORMAL);
-    seqResources.get(2).setStatus(TsFileResourceStatus.UNCLOSED);
+    seqResources.get(1).setStatusForTest(TsFileResourceStatus.NORMAL);
+    seqResources.get(2).setStatusForTest(TsFileResourceStatus.UNCLOSED);
     selected = selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.size());
     Assert.assertEquals(2, selected.get(0).getSeqFiles().size());
@@ -125,8 +125,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
     createFiles(1, 2, 3, 200, 1000, 10000, 50, 50, false, true);
     createFiles(1, 2, 3, 200, 2000, 10000, 50, 50, false, true);
-    seqResources.get(2).setStatus(TsFileResourceStatus.NORMAL);
-    seqResources.get(4).setStatus(TsFileResourceStatus.UNCLOSED);
+    seqResources.get(2).setStatusForTest(TsFileResourceStatus.NORMAL);
+    seqResources.get(4).setStatusForTest(TsFileResourceStatus.UNCLOSED);
     selected = selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.size());
     Assert.assertEquals(4, selected.get(0).getSeqFiles().size());

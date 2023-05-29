@@ -47,6 +47,8 @@ public class PipeConfig {
 
   private final int readFileBufferSize = 8388608;
 
+  private final long pendingQueueMaxBlockingTimeMs = 1000;
+
   public int getDefaultRingBufferSize() {
     return defaultRingBufferSize;
   }
@@ -71,6 +73,10 @@ public class PipeConfig {
 
   public int getReadFileBufferSize() {
     return readFileBufferSize;
+  }
+
+  public long getPendingQueueMaxBlockingTimeMs() {
+    return pendingQueueMaxBlockingTimeMs;
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

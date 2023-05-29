@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.consensus.index;
 
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -31,6 +32,7 @@ import java.nio.ByteBuffer;
 public enum ProgressIndexType {
   MINIMUM_CONSENSUS_INDEX((short) 1),
   IOT_CONSENSUS_INDEX((short) 2),
+  SIMPLE_CONSENSUS_INDEX((short) 3),
   ;
 
   private final short type;
@@ -58,6 +60,8 @@ public enum ProgressIndexType {
         return MinimumProgressIndex.deserializeFrom(byteBuffer);
       case 2:
         return IoTProgressIndex.deserializeFrom(byteBuffer);
+      case 3:
+        return SimpleProgressIndex.deserializeFrom(byteBuffer);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported progress index type %s.", indexType));
@@ -71,6 +75,8 @@ public enum ProgressIndexType {
         return MinimumProgressIndex.deserializeFrom(stream);
       case 2:
         return IoTProgressIndex.deserializeFrom(stream);
+      case 3:
+        return SimpleProgressIndex.deserializeFrom(stream);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported progress index type %s.", indexType));
