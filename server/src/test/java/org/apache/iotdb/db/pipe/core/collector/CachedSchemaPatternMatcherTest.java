@@ -180,5 +180,15 @@ public class CachedSchemaPatternMatcherTest {
               });
       Assert.assertTrue(match[0]);
     }
+
+    @Override
+    public boolean isNeedListenToTsFile() {
+      return true;
+    }
+
+    @Override
+    public boolean isNeedListenToInsertNode() {
+      return true;
+    }
   }
 }
