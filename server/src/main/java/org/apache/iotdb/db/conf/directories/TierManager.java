@@ -72,7 +72,7 @@ public class TierManager {
 
   private TierManager() {}
 
-  public void resetFolders() {
+  public synchronized void resetFolders() {
     if (config.getDataNodeId() == -1) {
       return;
     }

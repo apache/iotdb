@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
@@ -1592,22 +1593,21 @@ public class IoTDBDescriptor {
 
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
-      /* TODO(zhm) 暂时不支持更新data dirs和DirStrategy
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
       if (dataDirs != null) {
         conf.reloadDataDirs(parseDataDirs(dataDirs));
       }
 
-      // update dir strategy, must update after data dirs
+      // update dir strategy
       String multiDirStrategyClassName = properties.getProperty("dn_multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
         conf.confirmMultiDirStrategy();
-        DirectoryManager.getInstance().updateDirectoryStrategy();
       }
-      */
+
+      TierManager.getInstance().resetFolders();
 
       // update timed flush & close conf
       loadTimedService(properties);

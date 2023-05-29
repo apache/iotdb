@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
-import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -1324,7 +1323,6 @@ public class IoTDBConfig {
       }
     }
     this.tierDataDirs = tierDataDirs;
-    TierManager.getInstance().resetFolders();
   }
 
   // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
