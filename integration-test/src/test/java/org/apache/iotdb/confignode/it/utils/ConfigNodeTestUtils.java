@@ -201,7 +201,7 @@ public class ConfigNodeTestUtils {
         "org.apache.iotdb.consensus.simple.SimpleConsensus");
     clusterParameters.setSchemaRegionConsensusProtocolClass(
         "org.apache.iotdb.consensus.simple.SimpleConsensus");
-    clusterParameters.setSeriesPartitionSlotNum(10000);
+    clusterParameters.setSeriesPartitionSlotNum(1000);
     clusterParameters.setSeriesPartitionExecutorClass(
         "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor");
     clusterParameters.setDefaultTTL(Long.MAX_VALUE);
