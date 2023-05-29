@@ -48,13 +48,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-class PipeLauncher {
+class PipeAgentLauncher {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeLauncher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAgentLauncher.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private PipeLauncher() {
+  private PipeAgentLauncher() {
     // forbidding instantiation
   }
 
