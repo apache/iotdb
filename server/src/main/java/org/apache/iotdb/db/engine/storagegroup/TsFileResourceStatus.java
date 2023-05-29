@@ -22,9 +22,7 @@ public enum TsFileResourceStatus {
   UNCLOSED,
   /** The resource in status NORMAL, COMPACTION_CANDIDATE, COMPACTING, DELETED is all CLOSED. */
   NORMAL,
-  NORMAL_ON_REMOTE,
   COMPACTION_CANDIDATE,
   COMPACTING,
-  MIGRATING,
   DELETED
 }

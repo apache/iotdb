@@ -168,7 +168,8 @@ public class DataNode implements DataNodeMBean {
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
       }
-      // TierManager need DataNodeId to do some operations so the reset method need to be invoked after DataNode adding
+      // TierManager need DataNodeId to do some operations so the reset method need to be invoked
+      // after DataNode adding
       TierManager.getInstance().resetFolders();
       // Active DataNode
       active();

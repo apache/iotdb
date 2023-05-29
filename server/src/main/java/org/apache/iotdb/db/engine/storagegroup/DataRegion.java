@@ -143,7 +143,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.SEQUENCE_TSFILE;
 import static org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet.UNSEQUENCE_TSFILE;
@@ -709,38 +708,9 @@ public class DataRegion implements IDataRegionForQuery {
             String partitionName = partitionFolder.getName();
             File[] tsFilesInThisFolder =
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX);
-            File[] resourceFilesInThisFolder =
-                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), RESOURCE_SUFFIX);
             for (File f : tsFilesInThisFolder) {
               String tsFilePartitionPath = partitionName + File.separator + f.getName();
-              if (tsFilePartitionPath2File.containsKey(tsFilePartitionPath)) {
-                // check migration: two same name tsfile exists, only keep one of them
-                File actualFile =
-                    deleteDuplicateMigrationTsFile(
-                        f, tsFilePartitionPath2File.get(tsFilePartitionPath));
-                tsFilePartitionPath2File.put(tsFilePartitionPath, actualFile);
-              } else {
-                tsFilePartitionPath2File.put(tsFilePartitionPath, f);
-              }
-            }
-
-            for (File f : resourceFilesInThisFolder) {
-              String tsFilePartitionPath =
-                  partitionName
-                      + File.separator
-                      + f.getName().substring(0, f.getName().length() - RESOURCE_SUFFIX.length());
-              if (tsFilePartitionPath2File.containsKey(tsFilePartitionPath)) {
-                // check migration: tsfile already added, but this resource file doesn't correspond
-                // to the file, so delete it
-                if (!f.getCanonicalPath()
-                    .startsWith(
-                        tsFilePartitionPath2File.get(tsFilePartitionPath).getCanonicalPath())) {
-                  f.delete();
-                }
-              } else {
-                tsFilePartitionPath2File.put(
-                    tsFilePartitionPath, fsFactory.getFile(fileFolder, tsFilePartitionPath));
-              }
+              tsFilePartitionPath2File.put(tsFilePartitionPath, f);
             }
 
           } else {
@@ -786,39 +756,6 @@ public class DataRegion implements IDataRegionForQuery {
           tempResource.renameTo(originResource);
         }
       }
-    }
-  }
-
-  /** Remove the duplicate TsFile and return the actual TsFile (has .tsfile and .tsfile.resource) */
-  private File deleteDuplicateMigrationTsFile(File f1, File f2) {
-    int f1Tier = TierManager.getInstance().getFileTierLevel(f1);
-    int f2Tier = TierManager.getInstance().getFileTierLevel(f2);
-    File lowerTierFile = f1Tier < f2Tier ? f1 : f2;
-    File higherTierFile = f1Tier < f2Tier ? f2 : f1;
-    File lowerTierFileResource = fsFactory.getFile(lowerTierFile + RESOURCE_SUFFIX);
-    File higherTierFileResource = fsFactory.getFile(higherTierFile + RESOURCE_SUFFIX);
-    if (lowerTierFile.exists() && lowerTierFileResource.exists()) {
-      deleteIfExist(higherTierFile);
-      deleteIfExist(higherTierFileResource);
-      return lowerTierFile;
-    } else if (higherTierFile.exists() && higherTierFileResource.exists()) {
-      deleteIfExist(lowerTierFile);
-      deleteIfExist(lowerTierFileResource);
-      return higherTierFile;
-    } else {
-      logger.error(
-          "TsFile status is abnormal, please check {}, {}, {}, {}.",
-          lowerTierFile,
-          lowerTierFileResource,
-          higherTierFile,
-          higherTierFileResource);
-      return lowerTierFile;
-    }
-  }
-
-  private void deleteIfExist(File file) {
-    if (file.exists()) {
-      file.delete();
     }
   }
 

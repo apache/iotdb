@@ -297,8 +297,7 @@ public class IoTDBConfig {
 
   /** Tiered data directories. It can be settled as dataDirs = {{"data1"}, {"data2", "data3"}}; */
   private String[][] tierDataDirs = {
-    {IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME},
-    {IoTDBConstant.OBJECT_STORAGE_DIR}
+    {IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
   };
 
   private String loadTsFileDir =
@@ -527,7 +526,7 @@ public class IoTDBConfig {
   private int candidateCompactionTaskQueueSize = 50;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
-  private boolean metaDataCacheEnable = false;
+  private boolean metaDataCacheEnable = true;
 
   /** Memory allocated for bloomFilter cache in read process */
   private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
