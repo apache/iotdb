@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -56,6 +57,7 @@ class DispatcherThread extends DynamicThread {
   private long lastDispatchTime;
   private PublicBAOS batchLogBuffer = new PublicBAOS(64 * 1024);
   private AtomicReference<byte[]> compressionBuffer = new AtomicReference<>(new byte[64 * 1024]);
+  protected ICompressor compressor;
 
   protected DispatcherThread(
       LogDispatcher logDispatcher,
@@ -67,6 +69,8 @@ class DispatcherThread extends DynamicThread {
     this.receiver = receiver;
     this.logBlockingDeque = logBlockingDeque;
     this.group = group;
+    this.compressor =
+        ICompressor.getCompressor(logDispatcher.getConfig().getDispatchingCompressionType());
   }
 
   @Override
@@ -203,9 +207,8 @@ class DispatcherThread extends DynamicThread {
     request.setLeaderCommit(logDispatcher.member.getLogManager().getCommitLogIndex());
     request.setTerm(logDispatcher.member.getStatus().getTerm().get());
     request.setEntryBytes(
-        LogUtils.compressEntries(
-            logList, logDispatcher.compressor, request, batchLogBuffer, compressionBuffer));
-    request.setCompressionType((byte) logDispatcher.compressor.getType().ordinal());
+        LogUtils.compressEntries(logList, compressor, request, batchLogBuffer, compressionBuffer));
+    request.setCompressionType((byte) compressor.getType().ordinal());
     return request;
   }
 

@@ -24,7 +24,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
-import org.apache.iotdb.tsfile.compress.ICompressor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +56,6 @@ public class LogDispatcher {
   protected Map<Peer, Double> nodesRate = new HashMap<>();
   protected boolean queueOrdered;
   protected boolean enableCompressedDispatching;
-  protected ICompressor compressor;
   public int bindingThreadNum;
   public int maxBatchSize = 10;
 
@@ -66,7 +64,6 @@ public class LogDispatcher {
     this.config = config;
     this.queueOrdered = !(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance());
     this.enableCompressedDispatching = config.isEnableCompressedDispatching();
-    this.compressor = ICompressor.getCompressor(config.getDispatchingCompressionType());
     this.bindingThreadNum = config.getDispatcherBindingThreadNum();
     this.allNodes = member.getAllNodes();
     this.newNodes = member.getNewNodes();
