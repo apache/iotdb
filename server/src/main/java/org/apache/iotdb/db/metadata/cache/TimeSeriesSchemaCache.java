@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.impl.DualKeyCacheBuilder;
@@ -174,9 +175,9 @@ public class TimeSeriesSchemaCache {
       final int realIndex = indexListOfLogicalViewPaths.get(i);
       final int recordMissingIndex = i;
       if (!logicalViewSchema.isWritable()) {
-        throw new RuntimeException(
-            new UnsupportedOperationException(
-                "You can not insert into a view which is not alias series!"));
+        PartialPath path = schemaComputation.getDevicePath();
+        path = path.concatNode(schemaComputation.getMeasurements()[realIndex]);
+        throw new RuntimeException(new InsertNonWritableViewException(path.getFullPath()));
       }
       PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       dualKeyCache.compute(
