@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.resource.file;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.config.PipeConfig;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
@@ -43,7 +43,8 @@ public class PipeHardlinkFileDirStartupCleaner {
       for (File file :
           FileUtils.listFilesAndDirs(
               new File(dataDir), DirectoryFileFilter.INSTANCE, DirectoryFileFilter.INSTANCE)) {
-        if (file.isDirectory() && file.getName().equals(PipeConfig.PIPE_TSFILE_DIR_NAME)) {
+        if (file.isDirectory()
+            && file.getName().equals(PipeConfig.getInstance().getPipeTsFileDirName())) {
           LOGGER.info(
               "pipe hardlink tsfile dir found, deleting it: {}, result: {}",
               file,
