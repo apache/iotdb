@@ -73,7 +73,12 @@ public enum ProcedureType {
   DROP_PIPE_PROCEDURE_V2((short) 1003),
 
   /** Pipe Runtime */
-  PIPE_HANDLE_LEADER_CHANGE_PROCEDURE((short) 1100);
+  PIPE_HANDLE_LEADER_CHANGE_PROCEDURE((short) 1100),
+  PIPE_META_SYNC_PROCEDURE((short) 1101),
+  PIPE_HANDLE_META_CHANGE_PROCEDURE((short) 1102),
+
+  /** logical view */
+  DELETE_LOGICAL_VIEW_PROCEDURE((short) 1200);
 
   private final short typeCode;
 

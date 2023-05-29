@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -153,6 +156,8 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
+  private ProgressIndex maxProgressIndex;
+
   public TsFileResource() {}
 
   public TsFileResource(TsFileResource other) throws IOException {
@@ -170,6 +175,7 @@ public class TsFileResource {
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.tsFileSize = other.tsFileSize;
+    this.maxProgressIndex = other.maxProgressIndex;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -242,8 +248,27 @@ public class TsFileResource {
       if (modFile != null && modFile.exists()) {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
+      } else {
+        // make the first "inputStream.available() > 0" in deserialize() happy.
+        //
+        // if modFile not exist, write null (-1). the first "inputStream.available() > 0" in
+        // deserialize() and deserializeFromOldFile() detect -1 and deserialize modFileName as null
+        // and skip the modFile deserialize.
+        //
+        // this make sure the first and the second "inputStream.available() > 0" in deserialize()
+        // will always be called... which is a bit ugly but allows the following variable
+        // maxProgressIndex to be deserialized correctly.
+        ReadWriteIOUtils.write((String) null, outputStream);
+      }
+
+      if (maxProgressIndex != null) {
+        ReadWriteIOUtils.write(true, outputStream);
+        maxProgressIndex.serialize(outputStream);
+      } else {
+        ReadWriteIOUtils.write(false, outputStream);
       }
     }
+
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
     fsFactory.deleteIfExists(dest);
@@ -258,11 +283,19 @@ public class TsFileResource {
       timeIndex = ITimeIndex.createTimeIndex(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
         if (modFileName != null) {
           File modF = new File(file.getParentFile(), modFileName);
           modFile = new ModificationFile(modF.getPath());
+        }
+      }
+
+      if (inputStream.available() > 0) {
+        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
+        if (hasMaxProgressIndex) {
+          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
         }
       }
     }
@@ -308,6 +341,12 @@ public class TsFileResource {
         if (modFileName != null) {
           File modF = new File(file.getParentFile(), modFileName);
           modFile = new ModificationFile(modF.getPath());
+        }
+      }
+      if (inputStream.available() > 0) {
+        final boolean hasMaxProgressIndex = ReadWriteIOUtils.readBool(inputStream);
+        if (hasMaxProgressIndex) {
+          maxProgressIndex = ProgressIndexType.deserializeFrom(inputStream);
         }
       }
     }
@@ -461,7 +500,7 @@ public class TsFileResource {
   }
 
   public void close() throws IOException {
-    this.setStatus(TsFileResourceStatus.CLOSED);
+    this.setStatus(TsFileResourceStatus.NORMAL);
     closeWithoutSettingStatus();
   }
 
@@ -482,7 +521,7 @@ public class TsFileResource {
     timeIndex.close();
   }
 
-  TsFileProcessor getProcessor() {
+  public TsFileProcessor getProcessor() {
     return processor;
   }
 
@@ -625,8 +664,8 @@ public class TsFileResource {
 
   public void setStatus(TsFileResourceStatus status) {
     switch (status) {
-      case CLOSED:
-        this.status = TsFileResourceStatus.CLOSED;
+      case NORMAL:
+        this.status = TsFileResourceStatus.NORMAL;
         break;
       case UNCLOSED:
         this.status = TsFileResourceStatus.UNCLOSED;
@@ -645,7 +684,7 @@ public class TsFileResource {
         }
         break;
       case COMPACTION_CANDIDATE:
-        if (this.status == TsFileResourceStatus.CLOSED) {
+        if (this.status == TsFileResourceStatus.NORMAL) {
           this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
         } else {
           throw new RuntimeException(
@@ -1023,24 +1062,31 @@ public class TsFileResource {
   }
 
   /**
-   * Compare the name of TsFiles corresponding to the two {@link TsFileResource}.This method will
-   * first check whether the two names meet the standard naming specifications, and then compare
-   * version of two names.
+   * Compare the creation order of the files and sort them according to the version number from
+   * largest to smallest.This method will first check whether the two names meet the standard naming
+   * specifications, and then compare version of two names. Notice: This method is only used to
+   * compare the creation order of files, which is sorted directly according to version. If you want
+   * to compare the order of the content of the file, you must first sort by timestamp and then by
+   * version.
    *
    * @param o1 a {@link TsFileResource}
    * @param o2 a {@link TsFileResource}
-   * @return -1, if o1 is smaller than o2, 1 if bigger, 0 means o1 equals to o2 or do not meet the
-   *     naming specifications
+   * @return -1, if o1 is smaller than o2, 1 if bigger, 0 means o1 equals to o2
    */
-  public static int compareFileNameByDesc(TsFileResource o1, TsFileResource o2) {
+  public static int compareFileCreationOrderByDesc(TsFileResource o1, TsFileResource o2) {
     try {
       TsFileNameGenerator.TsFileName n1 =
           TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
       TsFileNameGenerator.TsFileName n2 =
           TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
-      return (int) (n2.getVersion() - n1.getVersion());
-    } catch (IOException e) {
+      long versionDiff = n2.getVersion() - n1.getVersion();
+      if (versionDiff != 0) {
+        return versionDiff < 0 ? -1 : 1;
+      }
       return 0;
+    } catch (IOException e) {
+      LOGGER.error("File name may not meet the standard naming specifications.", e);
+      throw new RuntimeException(e.getMessage());
     }
   }
 
@@ -1114,5 +1160,24 @@ public class TsFileResource {
   /** @return is this tsfile resource in a TsFileResourceList */
   public boolean isFileInList() {
     return prev != null || next != null;
+  }
+
+  public void updateProgressIndex(ProgressIndex progressIndex) {
+    if (progressIndex == null) {
+      return;
+    }
+
+    maxProgressIndex =
+        (maxProgressIndex == null
+            ? progressIndex
+            : maxProgressIndex.updateToMinimumIsAfterProgressIndex(progressIndex));
+  }
+
+  public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
+    if (status.equals(TsFileResourceStatus.UNCLOSED)) {
+      throw new IllegalStateException(
+          "Should not get progress index from a unclosing TsFileResource.");
+    }
+    return maxProgressIndex == null ? new MinimumProgressIndex() : maxProgressIndex;
   }
 }

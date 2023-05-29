@@ -32,12 +32,16 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
@@ -55,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -101,12 +106,20 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.metadata.template.alter.TemplateAlterOperationUtil;
+import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountTimeSlotListTask;
@@ -164,6 +177,10 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.AlterLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
@@ -1382,6 +1399,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterSchemaTemplate(
       String queryId, AlterSchemaTemplateStatement alterSchemaTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    if (alterSchemaTemplateStatement
+        .getOperationType()
+        .equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
+      // check duplicate measurement
+      TemplateExtendInfo templateExtendInfo =
+          (TemplateExtendInfo) alterSchemaTemplateStatement.getTemplateAlterInfo();
+      String duplicateMeasurement = templateExtendInfo.getFirstDuplicateMeasurement();
+      if (duplicateMeasurement != null) {
+        future.setException(
+            new MetadataException(
+                String.format(
+                    "Duplicated measurement [%s] in schema template alter request",
+                    duplicateMeasurement)));
+        return future;
+      }
+    }
+
     TAlterSchemaTemplateReq req = new TAlterSchemaTemplateReq();
     req.setQueryId(queryId);
     req.setTemplateAlterInfo(
@@ -1691,6 +1726,198 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> deleteLogicalView(
+      String queryId, DeleteLogicalViewStatement deleteLogicalViewStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TDeleteLogicalViewReq req =
+        new TDeleteLogicalViewReq(
+            queryId,
+            serializePatternListToByteBuffer(deleteLogicalViewStatement.getPathPatternList()));
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.deleteLogicalView(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to execute delete view {}, status is {}.",
+            deleteLogicalViewStatement.getPathPatternList(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> renameLogicalView(
+      String queryId, RenameLogicalViewStatement renameLogicalViewStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    // check path
+    PartialPath oldName = renameLogicalViewStatement.getOldName();
+    if (oldName.hasWildcard()) {
+      future.setException(
+          new MetadataException("Rename logical view doesn't support path pattern with wildcard."));
+      return future;
+    }
+
+    // fetch viewExpression
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendFullPath(oldName);
+    patternTree.constructTree();
+    ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
+    List<MeasurementPath> measurementPathList = schemaTree.searchMeasurementPaths(oldName).left;
+    if (measurementPathList.isEmpty()) {
+      future.setException(new PathNotExistException(oldName.getFullPath()));
+      return future;
+    }
+    LogicalViewSchema logicalViewSchema =
+        (LogicalViewSchema) measurementPathList.get(0).getMeasurementSchema();
+    ViewExpression viewExpression = logicalViewSchema.getExpression();
+
+    // create new view
+    CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
+    createLogicalViewStatement.setTargetFullPaths(
+        Collections.singletonList(renameLogicalViewStatement.getNewName()));
+    createLogicalViewStatement.setViewExpression(viewExpression);
+    ExecutionResult executionResult =
+        Coordinator.getInstance()
+            .execute(
+                createLogicalViewStatement,
+                0,
+                null,
+                "",
+                ClusterPartitionFetcher.getInstance(),
+                ClusterSchemaFetcher.getInstance(),
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.setException(
+          new IoTDBException(
+              executionResult.status.getMessage(), executionResult.status.getCode()));
+      return future;
+    }
+
+    // delete old view
+    TDeleteLogicalViewReq req =
+        new TDeleteLogicalViewReq(
+            queryId, serializePatternListToByteBuffer(Collections.singletonList(oldName)));
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.deleteLogicalView(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn("Failed to execute delete view {}, status is {}.", oldName, tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterLogicalView(
+      String queryId, AlterLogicalViewStatement alterLogicalViewStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // delete old view
+    TDeleteLogicalViewReq req =
+        new TDeleteLogicalViewReq(
+            queryId,
+            serializePatternListToByteBuffer(alterLogicalViewStatement.getTargetPathList()));
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      do {
+        try {
+          tsStatus = client.deleteLogicalView(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to execute delete view {}, status is {}.",
+            alterLogicalViewStatement.getTargetPathList(),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        return future;
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+      return future;
+    }
+
+    // recreate the logical view
+    CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
+    createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
+    createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
+    createLogicalViewStatement.setSourceQueryStatement(
+        alterLogicalViewStatement.getQueryStatement());
+
+    ExecutionResult executionResult =
+        Coordinator.getInstance()
+            .execute(
+                createLogicalViewStatement,
+                0,
+                null,
+                "",
+                ClusterPartitionFetcher.getInstance(),
+                ClusterSchemaFetcher.getInstance(),
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.setException(
+          new IoTDBException(
+              executionResult.status.getMessage(), executionResult.status.getCode()));
+    } else {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    }
+
     return future;
   }
 

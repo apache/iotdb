@@ -50,6 +50,8 @@ import org.apache.iotdb.db.mpp.plan.expression.visitor.ConcatDeviceAndRemoveWild
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardAndViewInExpressionVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardAndViewInFilterVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInFilterByDeviceVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInFilterVisitor;
@@ -415,6 +417,25 @@ public class ExpressionAnalyzer {
   }
 
   /**
+   * Bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+   * Expression. And all logical view will be replaced.
+   *
+   * @param schemaTree interface for querying schema information
+   * @return the expression list after binding schema and whether there is logical view in
+   *     expressions
+   */
+  public static List<Expression> removeWildcardAndViewInExpression(
+      Expression expression, Analysis analysis, ISchemaTree schemaTree) {
+    RemoveWildcardAndViewInExpressionVisitor removeWildcardAndViewInExpressionVisitor =
+        new RemoveWildcardAndViewInExpressionVisitor();
+    List<Expression> expressions =
+        removeWildcardAndViewInExpressionVisitor.process(expression, schemaTree);
+    analysis.setHasViewsInQuery(
+        removeWildcardAndViewInExpressionVisitor.isHasProcessedLogicalView());
+    return expressions;
+  }
+
+  /**
    * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
    * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
    * Expression.
@@ -426,6 +447,22 @@ public class ExpressionAnalyzer {
   public static List<Expression> removeWildcardInFilter(
       Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
     return new RemoveWildcardInFilterVisitor()
+        .process(
+            predicate, new RemoveWildcardInFilterVisitor.Context(prefixPaths, schemaTree, isRoot));
+  }
+
+  /**
+   * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
+   * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+   * Expression. Logical view will be replaced.
+   *
+   * @param prefixPaths prefix paths in the FROM clause
+   * @param schemaTree interface for querying schema information
+   * @return the expression list with full path and after binding schema
+   */
+  public static List<Expression> removeWildcardAndViewInFilter(
+      Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
+    return new RemoveWildcardAndViewInFilterVisitor()
         .process(
             predicate, new RemoveWildcardInFilterVisitor.Context(prefixPaths, schemaTree, isRoot));
   }

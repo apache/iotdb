@@ -725,8 +725,9 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the first target file should be deleted after recovery
-    for (TsFileResource resource : targetResources) {
-      if (resource.getVersion() == 0) {
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource resource = targetResources.get(i);
+      if (i == 0) {
         Assert.assertFalse(resource.getTsFile().exists());
         Assert.assertFalse(resource.resourceFileExists());
       } else {
@@ -808,8 +809,9 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the first target file should be deleted after recovery
-    for (TsFileResource resource : targetResources) {
-      if (resource.getVersion() == 0) {
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource resource = targetResources.get(i);
+      if (i == 0) {
         Assert.assertFalse(resource.getTsFile().exists());
         Assert.assertFalse(resource.resourceFileExists());
       } else {

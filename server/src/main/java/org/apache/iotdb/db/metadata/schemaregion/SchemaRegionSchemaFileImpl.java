@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -903,6 +904,21 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     throw new UnsupportedOperationException("createLogicalView is unsupported.");
   }
 
+  @Override
+  public long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deleteLogicalView(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
       throws MetadataException, IOException {
     IMeasurementMNode<ICachedMNode> measurementMNode = mtree.deleteTimeseries(path);
@@ -1309,7 +1325,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   @Override
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
-    if (showTimeSeriesPlan.getKey() != null && showTimeSeriesPlan.getValue() != null) {
+    if (showTimeSeriesPlan.getSchemaFilter() != null
+        && SchemaFilterType.TAGS_FILTER.equals(
+            showTimeSeriesPlan.getSchemaFilter().getSchemaFilterType())) {
       return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
     } else {
       return mtree.getTimeSeriesReader(

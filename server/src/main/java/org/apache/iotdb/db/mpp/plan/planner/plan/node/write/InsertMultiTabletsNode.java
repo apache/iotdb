@@ -20,16 +20,15 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -40,9 +39,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNode {
+public class InsertMultiTabletsNode extends InsertNode {
 
   /**
    * the value is used to indict the parent InsertTabletNode's index when the parent
@@ -136,11 +134,6 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
-    return false;
-  }
-
-  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {
@@ -191,13 +184,6 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public List<ISchemaValidation> getSchemaValidationList() {
-    return insertTabletNodeList.stream()
-        .map(InsertTabletNode::getSchemaValidation)
-        .collect(Collectors.toList());
   }
 
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {
@@ -280,7 +266,8 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public Object getFirstValueOfIndex(int index) {
-    throw new NotImplementedException();
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+    insertTabletNodeList.forEach(node -> node.setProgressIndex(progressIndex));
   }
 }

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -142,7 +142,7 @@ public class AlignedSeriesCompactionExecutor {
             readerIterator.nextReader();
         summary.increaseProcessChunkNum(nextAlignedChunkInfo.getNotNullChunkNum());
         summary.increaseProcessPointNum(nextAlignedChunkInfo.getTotalPointNum());
-        CompactionMetricsManager.getInstance().recordReadInfo(nextAlignedChunkInfo.getTotalSize());
+        CompactionMetrics.getInstance().recordReadInfo(nextAlignedChunkInfo.getTotalSize());
         compactOneAlignedChunk(
             nextAlignedChunkInfo.getReader(), nextAlignedChunkInfo.getNotNullChunkNum());
       }
@@ -151,7 +151,7 @@ public class AlignedSeriesCompactionExecutor {
     if (remainingPointInChunkWriter != 0L) {
       CompactionTaskManager.mergeRateLimiterAcquire(
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetricsManager.getInstance()
+      CompactionMetrics.getInstance()
           .recordWriteInfo(
               CompactionType.INNER_SEQ_COMPACTION,
               ProcessChunkType.DESERIALIZE_CHUNK,
@@ -193,7 +193,7 @@ public class AlignedSeriesCompactionExecutor {
         || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
       CompactionTaskManager.mergeRateLimiterAcquire(
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetricsManager.getInstance()
+      CompactionMetrics.getInstance()
           .recordWriteInfo(
               CompactionType.INNER_SEQ_COMPACTION,
               ProcessChunkType.DESERIALIZE_CHUNK,

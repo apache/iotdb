@@ -33,7 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -239,7 +239,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               .addFile(targetTsFileResource.getTsFile().length(), sequence);
 
           // set target resource to CLOSED, so that it can be selected to compact
-          targetTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+          targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
         } else {
           // target resource is empty after compaction, then delete it
           targetTsFileResource.remove();
@@ -247,7 +247,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         TsFileMetricManager.getInstance()
             .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
 
-        CompactionMetricsManager.getInstance().updateSummary(summary);
+        CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
         LOGGER.info(
@@ -400,7 +400,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.CLOSED));
+    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
   /**
@@ -418,7 +418,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
       try {
         if (!resource.isDeleted()) {
-          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.CLOSED);
+          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.NORMAL);
         }
       } catch (Throwable e) {
         LOGGER.error("Exception occurs when resetting resource status", e);

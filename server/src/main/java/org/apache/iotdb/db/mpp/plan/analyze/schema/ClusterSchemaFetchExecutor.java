@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -91,7 +92,7 @@ class ClusterSchemaFetchExecutor {
    * @param rawPatternTree the pattern tree consisting of the fullPathList
    * @return fetched schema
    */
-  ClusterSchemaTree fetchSchemaOfPreciseMatch(
+  ClusterSchemaTree fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
       List<PartialPath> fullPathList, PathPatternTree rawPatternTree) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
@@ -126,6 +127,24 @@ class ClusterSchemaFetchExecutor {
             devicePathList.get(deviceIndex), measurementsList.get(deviceIndex)[measurementIndex]);
       }
     }
+    patternTree.constructTree();
+    return fetchSchemaAndCacheResult(patternTree);
+  }
+
+  ClusterSchemaTree fetchSchemaWithFullPaths(List<String> fullPathList) {
+    PathPatternTree patternTree = new PathPatternTree();
+    for (String fullPath : fullPathList) {
+      try {
+        patternTree.appendFullPath(new PartialPath(fullPath));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    patternTree.constructTree();
+    return fetchSchemaAndCacheResult(patternTree);
+  }
+
+  ClusterSchemaTree fetchSchemaWithPatternTreeAndCache(PathPatternTree patternTree) {
     patternTree.constructTree();
     return fetchSchemaAndCacheResult(patternTree);
   }

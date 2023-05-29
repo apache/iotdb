@@ -32,6 +32,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 public class SchemaEngineMemMetric implements ISchemaEngineMetric {
 
   private static final String TIME_SERES_CNT = "timeSeries";
+  public static final String SCHEMA_REGION_TOTAL_USAGE = "schema_region_total_usage";
   private static final String TOTAL_MEM_USAGE = "schema_region_total_mem_usage";
   private static final String MEM_CAPACITY = "schema_region_mem_capacity";
   private static final String REGION_NUMBER = "schema_region_number";
@@ -69,7 +70,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         engineStatistics,
         ISchemaEngineStatistics::getMemoryUsage,
         Tag.NAME.toString(),
-        "schema_region_total_usage");
+        SCHEMA_REGION_TOTAL_USAGE);
     metricService.createAutoGauge(
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
@@ -119,7 +120,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         MetricType.AUTO_GAUGE,
         Metric.MEM.toString(),
         Tag.NAME.toString(),
-        "schema_region_total_usage");
+        SCHEMA_REGION_TOTAL_USAGE);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_ENGINE.toString(),

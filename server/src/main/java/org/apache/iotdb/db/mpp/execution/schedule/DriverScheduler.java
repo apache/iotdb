@@ -41,7 +41,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.DriverTa
 import org.apache.iotdb.db.mpp.execution.schedule.queue.multilevelqueue.MultilevelPriorityQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
@@ -71,7 +71,8 @@ import static org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet.READY_QUEU
 public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final DriverSchedulerMetricSet DRIVER_SCHEDULER_METRIC_SET =
+      DriverSchedulerMetricSet.getInstance();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final double LEVEL_TIME_MULTIPLIER = 2;
@@ -418,6 +419,14 @@ public class DriverScheduler implements IDriverScheduler, IService {
     return blockedTasks.size();
   }
 
+  public long getTimeoutQueueTaskCount() {
+    return timeoutQueue.size();
+  }
+
+  public int getQueryMapSize() {
+    return queryMap.size();
+  }
+
   @TestOnly
   IndexedBlockingQueue<DriverTask> getReadyQueue() {
     return readyQueue;
@@ -461,7 +470,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
 
         task.setStatus(DriverTaskStatus.READY);
-        QUERY_METRICS.recordTaskQueueTime(
+        DRIVER_SCHEDULER_METRIC_SET.recordTaskQueueTime(
             BLOCK_QUEUED_TIME, System.nanoTime() - task.getLastEnterBlockQueueTime());
         task.setLastEnterReadyQueueTime(System.nanoTime());
         task.resetLevelScheduledTime();
@@ -481,7 +490,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
 
         task.setStatus(DriverTaskStatus.RUNNING);
-        QUERY_METRICS.recordTaskQueueTime(
+        DRIVER_SCHEDULER_METRIC_SET.recordTaskQueueTime(
             READY_QUEUED_TIME, System.nanoTime() - task.getLastEnterReadyQueueTime());
       } finally {
         task.unlock();

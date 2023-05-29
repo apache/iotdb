@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 
 import org.slf4j.Logger;
@@ -43,24 +45,24 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
   private final ListenableUnblockingPendingQueue<Event> pendingQueue;
 
   public PipeRealtimeDataRegionHybridCollector(
-      ListenableUnblockingPendingQueue<Event> pendingQueue) {
+      PipeTaskMeta pipeTaskMeta, ListenableUnblockingPendingQueue<Event> pendingQueue) {
+    super(pipeTaskMeta);
     this.pendingQueue = pendingQueue;
   }
 
   @Override
   public void collect(PipeRealtimeCollectEvent event) {
-    switch (event.getEvent().getType()) {
-      case TABLET_INSERTION:
-        collectTabletInsertion(event);
-        break;
-      case TSFILE_INSERTION:
-        collectTsFileInsertion(event);
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                "Unsupported event type %s for Hybrid Realtime Collector %s",
-                event.getEvent().getType(), this));
+    final Event eventToCollect = event.getEvent();
+
+    if (eventToCollect instanceof TabletInsertionEvent) {
+      collectTabletInsertion(event);
+    } else if (eventToCollect instanceof TsFileInsertionEvent) {
+      collectTsFileInsertion(event);
+    } else {
+      throw new UnsupportedOperationException(
+          String.format(
+              "Unsupported event type %s for Hybrid Realtime Collector %s",
+              eventToCollect.getClass(), this));
     }
   }
 
@@ -108,22 +110,21 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
 
     while (collectEvent != null) {
       Event suppliedEvent;
-      switch (collectEvent.getEvent().getType()) {
-        case TABLET_INSERTION:
-          suppliedEvent = supplyTabletInsertion(collectEvent);
-          break;
-        case TSFILE_INSERTION:
-          suppliedEvent = supplyTsFileInsertion(collectEvent);
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              String.format(
-                  "Unsupported event type %s for Hybrid Realtime Collector %s",
-                  collectEvent.getEvent().getType(), this));
+
+      // used to judge type of event, not directly for supplying.
+      final Event eventToSupply = collectEvent.getEvent();
+      if (eventToSupply instanceof TabletInsertionEvent) {
+        suppliedEvent = supplyTabletInsertion(collectEvent);
+      } else if (eventToSupply instanceof TsFileInsertionEvent) {
+        suppliedEvent = supplyTsFileInsertion(collectEvent);
+      } else {
+        throw new UnsupportedOperationException(
+            String.format(
+                "Unsupported event type %s for Hybrid Realtime Collector %s",
+                eventToSupply.getClass(), this));
       }
 
       collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
-
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
@@ -144,7 +145,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                 (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)) {
-      if (event.increaseReferenceCount(PipeProcessorSubtask.class.getName())) {
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
         return event.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by
@@ -174,7 +175,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
             });
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
-      if (event.increaseReferenceCount(PipeProcessorSubtask.class.getName())) {
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
         return event.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
@@ -28,10 +29,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.validation.constraints.NotNull;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,62 +42,40 @@ import java.util.stream.Collectors;
 
 public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
 
-  private final String key;
-  private final String value;
-  private final boolean isContains;
-
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private final boolean orderByHeat;
+
+  private final SchemaFilter schemaFilter;
 
   private final Map<Integer, Template> templateMap;
 
   public TimeSeriesSchemaScanNode(
       PlanNodeId id,
       PartialPath partialPath,
-      String key,
-      String value,
-      int limit,
-      int offset,
-      boolean orderByHeat,
-      boolean isContains,
-      boolean isPrefixPath) {
-    super(id, partialPath, limit, offset, isPrefixPath);
-    this.key = key;
-    this.value = value;
-    this.orderByHeat = orderByHeat;
-    this.isContains = isContains;
-    this.templateMap = Collections.emptyMap();
-  }
-
-  public TimeSeriesSchemaScanNode(
-      PlanNodeId id,
-      PartialPath partialPath,
-      String key,
-      String value,
+      SchemaFilter schemaFilter,
       long limit,
       long offset,
       boolean orderByHeat,
-      boolean isContains,
       boolean isPrefixPath,
-      Map<Integer, Template> templateMap) {
+      @NotNull Map<Integer, Template> templateMap) {
     super(id, partialPath, limit, offset, isPrefixPath);
-    this.key = key;
-    this.value = value;
+    this.schemaFilter = schemaFilter;
     this.orderByHeat = orderByHeat;
-    this.isContains = isContains;
     this.templateMap = templateMap;
+  }
+
+  public SchemaFilter getSchemaFilter() {
+    return schemaFilter;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_SERIES_SCHEMA_SCAN.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
-    ReadWriteIOUtils.write(key, byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
+    SchemaFilter.serialize(schemaFilter, byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(orderByHeat, byteBuffer);
-    ReadWriteIOUtils.write(isContains, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
 
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
@@ -108,12 +88,10 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TIME_SERIES_SCHEMA_SCAN.serialize(stream);
     ReadWriteIOUtils.write(path.getFullPath(), stream);
-    ReadWriteIOUtils.write(key, stream);
-    ReadWriteIOUtils.write(value, stream);
+    SchemaFilter.serialize(schemaFilter, stream);
     ReadWriteIOUtils.write(limit, stream);
     ReadWriteIOUtils.write(offset, stream);
     ReadWriteIOUtils.write(orderByHeat, stream);
-    ReadWriteIOUtils.write(isContains, stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
 
     ReadWriteIOUtils.write(templateMap.size(), stream);
@@ -130,12 +108,10 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize TimeSeriesSchemaScanNode", e);
     }
-    String key = ReadWriteIOUtils.readString(byteBuffer);
-    String value = ReadWriteIOUtils.readString(byteBuffer);
+    SchemaFilter schemaFilter = SchemaFilter.deserialize(byteBuffer);
     long limit = ReadWriteIOUtils.readLong(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean oderByHeat = ReadWriteIOUtils.readBool(byteBuffer);
-    boolean isContains = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
 
     int templateNum = ReadWriteIOUtils.readInt(byteBuffer);
@@ -150,28 +126,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     return new TimeSeriesSchemaScanNode(
-        planNodeId,
-        path,
-        key,
-        value,
-        limit,
-        offset,
-        oderByHeat,
-        isContains,
-        isPrefixPath,
-        templateMap);
-  }
-
-  public String getKey() {
-    return key;
-  }
-
-  public String getValue() {
-    return value;
-  }
-
-  public boolean isContains() {
-    return isContains;
+        planNodeId, path, schemaFilter, limit, offset, oderByHeat, isPrefixPath, templateMap);
   }
 
   public boolean isOrderByHeat() {
@@ -185,16 +140,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   @Override
   public PlanNode clone() {
     return new TimeSeriesSchemaScanNode(
-        getPlanNodeId(),
-        path,
-        key,
-        value,
-        limit,
-        offset,
-        orderByHeat,
-        isContains,
-        isPrefixPath,
-        templateMap);
+        getPlanNodeId(), path, schemaFilter, limit, offset, orderByHeat, isPrefixPath, templateMap);
   }
 
   @Override
@@ -216,15 +162,12 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
       return false;
     }
     TimeSeriesSchemaScanNode that = (TimeSeriesSchemaScanNode) o;
-    return isContains == that.isContains
-        && orderByHeat == that.orderByHeat
-        && Objects.equals(key, that.key)
-        && Objects.equals(value, that.value);
+    return orderByHeat == that.orderByHeat && Objects.equals(schemaFilter, that.schemaFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), key, value, isContains, orderByHeat);
+    return Objects.hash(super.hashCode(), schemaFilter, orderByHeat);
   }
 
   @Override

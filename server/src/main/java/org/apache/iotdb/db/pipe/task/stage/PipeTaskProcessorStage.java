@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeEventCollector;
@@ -60,7 +61,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    */
   public PipeTaskProcessorStage(
       String pipeName,
-      String dataRegionId,
+      TConsensusGroupId dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
       @Nullable ListenablePendingQueue<Event> pipeCollectorInputPendingQueue,
       PipeParameters pipeProcessorParameters,
@@ -79,14 +80,18 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeProcessor,
             pipeConnectorOutputEventCollector);
 
+    final PipeTaskStage pipeTaskStage = this;
     this.pipeCollectorInputPendingQueue =
         pipeCollectorInputPendingQueue != null
             ? pipeCollectorInputPendingQueue
                 .registerEmptyToNotEmptyListener(
                     taskId,
                     () -> {
-                      if (status == PipeStatus.RUNNING) {
-                        executor.start(pipeProcessorSubtask.getTaskID());
+                      // status can be changed by other threads calling pipeTaskStage's methods
+                      synchronized (pipeTaskStage) {
+                        if (status == PipeStatus.RUNNING) {
+                          executor.start(pipeProcessorSubtask.getTaskID());
+                        }
                       }
                     })
                 .registerNotEmptyToEmptyListener(
@@ -99,10 +104,13 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             .registerFullToNotFullListener(
                 taskId,
                 () -> {
-                  // only start when the pipe is running
-                  if (status == PipeStatus.RUNNING) {
-                    pipeConnectorOutputEventCollector.tryCollectBufferedEvents();
-                    executor.start(pipeProcessorSubtask.getTaskID());
+                  // status can be changed by other threads calling pipeTaskStage's methods
+                  synchronized (pipeTaskStage) {
+                    // only start when the pipe is running
+                    if (status == PipeStatus.RUNNING) {
+                      pipeConnectorOutputEventCollector.tryCollectBufferedEvents();
+                      executor.start(pipeProcessorSubtask.getTaskID());
+                    }
                   }
                 });
   }

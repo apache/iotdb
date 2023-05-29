@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -28,31 +33,62 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedEvent {
+public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
+  private final TsFileResource resource;
   private File tsFile;
 
-  public PipeTsFileInsertionEvent(File tsFile) {
-    this.tsFile = tsFile;
+  private final AtomicBoolean isClosed;
+
+  public PipeTsFileInsertionEvent(TsFileResource resource) {
+    this(resource, null);
   }
 
-  @Override
-  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    throw new UnsupportedOperationException("Not implemented yet");
+  public PipeTsFileInsertionEvent(TsFileResource resource, PipeTaskMeta pipeTaskMeta) {
+    super(pipeTaskMeta);
+
+    this.resource = resource;
+    tsFile = resource.getTsFile();
+
+    isClosed = new AtomicBoolean(resource.isClosed());
+    // register close listener if TsFile is not closed
+    if (!isClosed.get()) {
+      final TsFileProcessor processor = resource.getProcessor();
+      if (processor != null) {
+        processor.addCloseFileListener(
+            o -> {
+              synchronized (isClosed) {
+                isClosed.set(true);
+                isClosed.notifyAll();
+              }
+            });
+      }
+    }
   }
 
-  @Override
-  public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
-    throw new UnsupportedOperationException("Not implemented yet");
+  public void waitForTsFileClose() throws InterruptedException {
+    if (!isClosed.get()) {
+      synchronized (isClosed) {
+        while (!isClosed.get()) {
+          isClosed.wait();
+        }
+      }
+    }
   }
 
+  public File getTsFile() {
+    return tsFile;
+  }
+
+  /////////////////////////// EnrichedEvent ///////////////////////////
+
   @Override
-  public boolean increaseReferenceCount(String holderMessage) {
+  public boolean increaseResourceReferenceCount(String holderMessage) {
     try {
-      // TODO: increase reference count for mods & resource files
       tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
       return true;
     } catch (Exception e) {
@@ -66,7 +102,7 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   }
 
   @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.file().decreaseFileReference(tsFile);
       return true;
@@ -81,12 +117,48 @@ public class PipeTsFileInsertionEvent implements TsFileInsertionEvent, EnrichedE
   }
 
   @Override
-  public int getReferenceCount() {
-    return PipeResourceManager.file().getFileReferenceCount(tsFile);
+  public ProgressIndex getProgressIndex() {
+    try {
+      waitForTsFileClose();
+      return resource.getMaxProgressIndexAfterClose();
+    } catch (InterruptedException e) {
+      LOGGER.warn(
+          String.format(
+              "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
+      Thread.currentThread().interrupt();
+      return new MinimumProgressIndex();
+    }
   }
 
   @Override
+  public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      PipeTaskMeta pipeTaskMeta) {
+    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta);
+  }
+
+  /////////////////////////// TsFileInsertionEvent ///////////////////////////
+
+  @Override
+  public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
+    throw new UnsupportedOperationException("Not implemented yet");
+  }
+
+  @Override
+  public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
+    throw new UnsupportedOperationException("Not implemented yet");
+  }
+
+  /////////////////////////// Object ///////////////////////////
+
+  @Override
   public String toString() {
-    return "PipeTsFileInsertionEvent{" + "tsFile=" + tsFile + '}';
+    return "PipeTsFileInsertionEvent{"
+        + "resource="
+        + resource
+        + ", tsFile="
+        + tsFile
+        + ", isClosed="
+        + isClosed
+        + '}';
   }
 }

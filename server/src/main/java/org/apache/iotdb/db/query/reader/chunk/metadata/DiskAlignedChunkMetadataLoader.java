@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.reader.chunk.metadata;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -51,7 +51,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   private final Filter filter;
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
+      SeriesScanCostMetricSet.getInstance();
 
   public DiskAlignedChunkMetadataLoader(
       TsFileResource resource, AlignedPath seriesPath, QueryContext context, Filter filter) {
@@ -88,7 +89,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
         DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
         alignedChunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
       }
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_MODIFICATION_ALIGNED_DISK, System.nanoTime() - t2);
 
       // remove not satisfied ChunkMetaData
@@ -99,7 +100,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
                       && !filter.satisfyStartEndTime(
                           alignedChunkMetaData.getStartTime(), alignedChunkMetaData.getEndTime()))
                   || alignedChunkMetaData.getStartTime() > alignedChunkMetaData.getEndTime());
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_FILTER_ALIGNED_DISK, System.nanoTime() - t3);
 
       // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is
@@ -120,7 +121,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
       return new ArrayList<>(alignedChunkMetadataList);
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           LOAD_CHUNK_METADATA_LIST_ALIGNED_DISK, System.nanoTime() - t1);
     }
   }

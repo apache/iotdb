@@ -81,67 +81,62 @@
     <modules>
         <module>tsfile</module>
         <module>antlr</module>
-        <module>thrift</module>
-        <module>thrift-commons</module>
-        <module>thrift-confignode</module>
-        <module>thrift-iot-consensus</module>
-        <module>thrift-influxdb</module>
-        <module>thrift-mlnode</module>
-        <module>service-rpc</module>
-        <module>jdbc</module>
-        <module>influxdb-protocol</module>
-        <module>session</module>
-        <module>cli</module>
-        <module>openapi</module>
+        <module>iotdb-protocol/thrift</module>
+        <module>iotdb-protocol/thrift-commons</module>
+        <module>iotdb-protocol/thrift-confignode</module>
+        <module>iotdb-protocol/thrift-iot-consensus</module>
+        <module>iotdb-protocol/thrift-influxdb</module>
+        <module>iotdb-protocol/thrift-mlnode</module>
+        <module>iotdb-client/service-rpc</module>
+        <module>iotdb-client/jdbc</module>
+        <module>iotdb-client/session</module>
+        <module>iotdb-client/cli</module>
+        <module>iotdb-protocol/openapi</module>
         <module>server</module>
         <module>example</module>
-        <module>grafana-plugin</module>
-        <module>grafana-connector</module>
-        <module>spark-tsfile</module>
-        <module>hadoop</module>
-        <module>spark-iotdb-connector</module>
-        <module>flink-tsfile-connector</module>
-        <module>flink-iotdb-connector</module>
+        <module>iotdb-connector/grafana-plugin</module>
+        <module>iotdb-connector/grafana-connector</module>
+        <module>iotdb-connector/spark-tsfile</module>
+        <module>iotdb-connector/hadoop</module>
+        <module>iotdb-connector/spark-iotdb-connector/scala_2.11</module>
+        <module>iotdb-connector/spark-iotdb-connector/scala_2.12</module>
+        <module>iotdb-connector/flink-tsfile-connector</module>
+        <module>iotdb-connector/flink-iotdb-connector</module>
         <module>distribution</module>
-        <module>hive-connector</module>
+        <module>iotdb-connector/hive-connector</module>
         <module>node-commons</module>
         <module>confignode</module>
-        <module>zeppelin-interpreter</module>
-        <module>client-py</module>
-        <module>compile-tools</module>
-        <module>client-cpp</module>
+        <module>iotdb-connector/zeppelin-interpreter</module>
+        <module>iotdb-client/client-py</module>
+        <module>iotdb-client/compile-tools</module>
+        <module>iotdb-client/client-cpp</module>
         <module>metrics</module>
-        <!-- Will remove integration at 2023.1.23-->
-        <module>integration</module>
         <module>integration-test</module>
         <module>consensus</module>
-        <module>external-pipe-api</module>
+        <module>iotdb-api/external-pipe-api</module>
         <module>library-udf</module>
-        <module>schema-engine-rocksdb</module>
-        <module>udf-api</module>
-        <module>trigger-api</module>
-        <module>rewrite-tsfile-tool</module>
-        <module>external-api</module>
-        <module>schema-engine-tag</module>
-        <module>isession</module>
+        <module>iotdb-api/udf-api</module>
+        <module>iotdb-api/trigger-api</module>
+        <module>iotdb-api/external-api</module>
+        <module>iotdb-client/isession</module>
         <module>mlnode</module>
-        <module>pipe-api</module>
-        <module>subscription-api</module>
+        <module>iotdb-api/pipe-api</module>
+        <module>iotdb-api/subscription-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.assembly.version>3.1.0</maven.assembly.version>
-        <scala.library.version>2.11</scala.library.version>
-        <scala.version>2.11.12</scala.version>
+        <scala.library.version>2.12</scala.library.version>
+        <scala.version>2.12.10</scala.version>
         <hadoop2.version>2.10.1</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
         <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
         <logback.version>1.2.11</logback.version>
         <joda.version>2.9.9</joda.version>
-        <spark.version>2.4.5</spark.version>
+        <spark.version>3.3.2</spark.version>
         <flink.version>1.14.6</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
@@ -203,7 +198,7 @@
         <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
-        <scalatest_2.11.version>3.0.5</scalatest_2.11.version>
+        <scalatest_2.12.version>3.2.14</scalatest_2.12.version>
         <io.airlift.units.version>1.6</io.airlift.units.version>
         <io.airlift.slice.version>0.41</io.airlift.slice.version>
         <dep.airlift.version>200</dep.airlift.version>
@@ -423,16 +418,6 @@
                 </exclusions>
             </dependency>
             <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-core_2.11</artifactId>
-                <version>${spark.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-sql_2.11</artifactId>
-                <version>${spark.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.codehaus.jackson</groupId>
                 <artifactId>jackson-core-asl</artifactId>
                 <version>${jackson-core-asl.version}</version>
@@ -480,19 +465,9 @@
                 <version>${powermock-core.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.scala-lang</groupId>
-                <artifactId>scala-library</artifactId>
-                <version>${scala.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.scala-lang</groupId>
-                <artifactId>scala-reflect</artifactId>
-                <version>${scala.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.scalatest</groupId>
-                <artifactId>scalatest_2.11</artifactId>
-                <version>${scalatest_2.11.version}</version>
+                <artifactId>scalatest_2.12</artifactId>
+                <version>${scalatest_2.12.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>

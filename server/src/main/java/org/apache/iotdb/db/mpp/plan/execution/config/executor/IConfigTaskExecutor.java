@@ -53,6 +53,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.AlterLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
@@ -170,6 +173,15 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);
+
+  SettableFuture<ConfigTaskResult> deleteLogicalView(
+      String queryId, DeleteLogicalViewStatement deleteLogicalViewStatement);
+
+  SettableFuture<ConfigTaskResult> renameLogicalView(
+      String queryId, RenameLogicalViewStatement renameLogicalViewStatement);
+
+  SettableFuture<ConfigTaskResult> alterLogicalView(
+      String queryId, AlterLogicalViewStatement alterLogicalViewStatement);
 
   SettableFuture<ConfigTaskResult> getRegionId(GetRegionIdStatement getRegionIdStatement);
 

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetada
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
@@ -61,9 +61,12 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.TIMESERIES_
 
 public class FileLoaderUtils {
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
+      SeriesScanCostMetricSet.getInstance();
 
-  private FileLoaderUtils() {}
+  private FileLoaderUtils() {
+    // empty constructor
+  }
 
   public static void updateTsFileResource(
       TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
@@ -101,7 +104,7 @@ public class FileLoaderUtils {
         resource.updateEndTime(device, chunkMetadata.getEndTime());
       }
     }
-    resource.setStatus(TsFileResourceStatus.CLOSED);
+    resource.setStatus(TsFileResourceStatus.NORMAL);
     return resource;
   }
 
@@ -169,13 +172,13 @@ public class FileLoaderUtils {
             return null;
           }
         } finally {
-          QUERY_METRICS.recordSeriesScanCost(
+          SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
               TIMESERIES_METADATA_MODIFICATION_NONALIGNED, System.nanoTime() - t2);
         }
       }
       return timeSeriesMetadata;
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           loadFromMem
               ? LOAD_TIMESERIES_METADATA_NONALIGNED_MEM
               : LOAD_TIMESERIES_METADATA_NONALIGNED_DISK,
@@ -280,13 +283,13 @@ public class FileLoaderUtils {
           }
           alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);
         } finally {
-          QUERY_METRICS.recordSeriesScanCost(
+          SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
               TIMESERIES_METADATA_MODIFICATION_ALIGNED, System.nanoTime() - t2);
         }
       }
       return alignedTimeSeriesMetadata;
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           loadFromMem
               ? LOAD_TIMESERIES_METADATA_ALIGNED_MEM
               : LOAD_TIMESERIES_METADATA_ALIGNED_DISK,

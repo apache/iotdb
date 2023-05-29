@@ -34,12 +34,14 @@ import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -91,9 +93,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -1048,7 +1051,7 @@ public class ConfigPhysicalPlanSerDeTest {
     collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(0, 1);
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
     Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
@@ -1134,6 +1137,48 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         pipeHandleLeaderChangePlan.getConsensusGroupId2NewDataRegionLeaderIdMap(),
         pipeHandleLeaderChangePlan1.getConsensusGroupId2NewDataRegionLeaderIdMap());
+  }
+
+  @Test
+  public void pipeHandleMetaChangePlanTest() throws IOException {
+    List<PipeMeta> pipeMetaList = new ArrayList<>();
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "pipeName",
+            123L,
+            new HashMap() {
+              {
+                put("collector-key", "collector-value");
+              }
+            },
+            new HashMap() {
+              {
+                put("processor-key-1", "processor-value-1");
+                put("processor-key-2", "processor-value-2");
+              }
+            },
+            new HashMap() {});
+    PipeRuntimeMeta pipeRuntimeMeta =
+        new PipeRuntimeMeta(
+            new HashMap() {
+              {
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
+                    new PipeTaskMeta(
+                        new MinimumProgressIndex(), 987)); // TODO: replace with IoTConsensus
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
+                    new PipeTaskMeta(
+                        new MinimumProgressIndex(), 789)); // TODO: replace with IoTConsensus
+              }
+            });
+    pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));
+    PipeHandleMetaChangePlan pipeHandleMetaChangePlan1 = new PipeHandleMetaChangePlan(pipeMetaList);
+    PipeHandleMetaChangePlan pipeHandleMetaChangePlan2 =
+        (PipeHandleMetaChangePlan)
+            ConfigPhysicalPlan.Factory.create(pipeHandleMetaChangePlan1.serializeToByteBuffer());
+    Assert.assertEquals(
+        pipeHandleMetaChangePlan1.getPipeMetaList(), pipeHandleMetaChangePlan2.getPipeMetaList());
   }
 
   @Test

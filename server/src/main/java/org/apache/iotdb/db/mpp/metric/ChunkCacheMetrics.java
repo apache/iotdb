@@ -40,10 +40,10 @@ public class ChunkCacheMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
-        Metric.CACHE_HIT.toString(),
+        Metric.CACHE_HIT_RATE.toString(),
         MetricLevel.IMPORTANT,
         chunkCache,
-        o -> (long) o.getHitRate(),
+        ChunkCache::getHitRate,
         Tag.NAME.toString(),
         "chunk");
   }
@@ -51,13 +51,17 @@ public class ChunkCacheMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "chunk");
+        MetricType.AUTO_GAUGE, Metric.CACHE_HIT_RATE.toString(), Tag.NAME.toString(), "chunk");
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     ChunkCacheMetrics that = (ChunkCacheMetrics) o;
     return Objects.equals(chunkCache, that.chunkCache);
   }

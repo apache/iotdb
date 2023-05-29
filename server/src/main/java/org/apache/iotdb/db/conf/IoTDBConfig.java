@@ -335,7 +335,8 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
-  private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  /** default dop = 1 for now */
+  private int degreeOfParallelism = 1;
 
   private int modeMapSizeThreshold = 10000;
 
@@ -421,7 +422,7 @@ public class IoTDBConfig {
   private boolean enableMLNodeService = false;
 
   /** The buffer for sort operation */
-  private long sortBufferSize = 50 * 1024 * 1024L;
+  private long sortBufferSize = 1024 * 1024L;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -464,8 +465,8 @@ public class IoTDBConfig {
 
   private double chunkMetadataSizeProportion = 0.1;
 
-  /** The target tsfile size in compaction, 1 GB by default */
-  private long targetCompactionFileSize = 1073741824L;
+  /** The target tsfile size in compaction, 2 GB by default */
+  private long targetCompactionFileSize = 2147483648L;
 
   /** The target chunk size in compaction. */
   private long targetChunkSize = 1048576L;
@@ -1604,7 +1605,7 @@ public class IoTDBConfig {
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
-    this.degreeOfParallelism = degreeOfParallelism;
+    this.degreeOfParallelism = Math.max(1, degreeOfParallelism);
   }
 
   public int getDegreeOfParallelism() {

@@ -46,7 +46,7 @@ goto :eof
 @REM -----------------------------------------------------------------------------
 :okClasspath
 
-"%JAVA_HOME%\bin\java" -cp "%CLASSPATH%" %MAIN_CLASS% %*
+"%JAVA_HOME%\bin\java" -cp "%CLASSPATH%" "-Dlogback.configurationFile=%IOTDB_HOME%\conf\logback-tool.xml" %MAIN_CLASS% %*
 
 goto finally
 

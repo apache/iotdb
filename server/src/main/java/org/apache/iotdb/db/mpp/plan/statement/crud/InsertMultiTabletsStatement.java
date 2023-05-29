@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
@@ -94,5 +97,49 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
       result.addAll(insertTabletStatement.getPaths());
     }
     return result;
+  }
+
+  @Override
+  public ISchemaValidation getSchemaValidation() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<ISchemaValidation> getSchemaValidationList() {
+    return insertTabletStatementList.stream()
+        .map(InsertTabletStatement::getSchemaValidation)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
+  }
+
+  @Override
+  public long getMinTime() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public InsertBaseStatement removeLogicalView() {
+    List<InsertTabletStatement> mergedList = new ArrayList<>();
+    boolean needSplit = false;
+    for (InsertTabletStatement child : this.insertTabletStatementList) {
+      List<InsertTabletStatement> childSplitResult = child.getSplitList();
+      needSplit = needSplit || child.isNeedSplit();
+      mergedList.addAll(childSplitResult);
+    }
+    if (!needSplit) {
+      return this;
+    }
+    InsertMultiTabletsStatement splitResult = new InsertMultiTabletsStatement();
+    splitResult.setInsertTabletStatementList(mergedList);
+    return splitResult;
   }
 }

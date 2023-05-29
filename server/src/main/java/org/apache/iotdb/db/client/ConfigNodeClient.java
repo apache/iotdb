@@ -66,6 +66,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
@@ -96,7 +97,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
@@ -1697,6 +1697,27 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.deleteLogicalView(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn(
+            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            configNode,
+            config.getAddressAndPort(),
+            Thread.currentThread().getStackTrace()[1].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TSStatus createPipeSink(TPipeSinkInfo req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -1871,22 +1892,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         TGetAllPipeInfoResp resp = client.getAllPipeInfo();
         if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
-  public TSStatus recordPipeMessage(TRecordPipeMessageReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.recordPipeMessage(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
         }
       } catch (TException e) {
         configLeader = null;

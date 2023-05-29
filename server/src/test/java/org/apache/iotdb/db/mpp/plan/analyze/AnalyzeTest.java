@@ -99,7 +99,7 @@ public class AnalyzeTest {
       expectedAnalysis.setRespDatasetHeader(
           new DatasetHeader(
               Arrays.asList(
-                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32),
+                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, "root.sg.d1.s1"),
                   new ColumnHeader("root.sg.d1.s2", TSDataType.DOUBLE, "root.sg.d1.status"),
                   new ColumnHeader("root.sg.d1.s1 + 1", TSDataType.DOUBLE, "t")),
               false));

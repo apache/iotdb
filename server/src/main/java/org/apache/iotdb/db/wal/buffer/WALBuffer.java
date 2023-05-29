@@ -25,7 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.wal.io.WALMetaData;
@@ -62,7 +62,7 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final int HALF_WAL_BUFFER_SIZE = config.getWalBufferSize() / 2;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
-  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
+  private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   /** whether close method is called */
   private volatile boolean isClosed = false;
@@ -256,7 +256,7 @@ public class WALBuffer extends AbstractWALBuffer {
       // update related info
       totalSize += size;
       info.metaData.add(size, searchIndex);
-      walEntry.getWalFlushListener().getWalPipeHandler().setSize(size);
+      walEntry.getWalFlushListener().getWalEntryHandler().setSize(size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
     }
 
@@ -495,9 +495,9 @@ public class WALBuffer extends AbstractWALBuffer {
       if (forceSuccess) {
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
-          if (fsyncListener.getWalPipeHandler() != null) {
-            fsyncListener.getWalPipeHandler().setEntryPosition(walFileVersionId, position);
-            position += fsyncListener.getWalPipeHandler().getSize();
+          if (fsyncListener.getWalEntryHandler() != null) {
+            fsyncListener.getWalEntryHandler().setEntryPosition(walFileVersionId, position);
+            position += fsyncListener.getWalEntryHandler().getSize();
           }
         }
       }

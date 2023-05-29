@@ -26,16 +26,25 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,6 +67,7 @@ import java.util.stream.Collectors;
 public class PipeTaskAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final PipeMetaKeeper pipeMetaKeeper;
   private final PipeTaskManager pipeTaskManager;
@@ -67,261 +77,14 @@ public class PipeTaskAgent {
     pipeTaskManager = new PipeTaskManager();
   }
 
-  ////////////////////////// Pipe Task Management //////////////////////////
+  ////////////////////////// Pipe Task Management Entry //////////////////////////
 
-  public synchronized void createPipe(PipeMeta pipeMeta) {
-    final String pipeName = pipeMeta.getStaticMeta().getPipeName();
-    final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
-
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    if (existedPipeMeta != null) {
-      if (existedPipeMeta.getStaticMeta().getCreationTime() == creationTime) {
-        switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
-          case STOPPED:
-          case RUNNING:
-            LOGGER.info(
-                "Pipe {} (creation time = {}) has already been created. Current status = {}. Skip creating.",
-                pipeName,
-                creationTime,
-                existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-            return;
-          case DROPPED:
-            LOGGER.info(
-                "Pipe {} (creation time = {}) has already been dropped, but the pipe task meta has not been cleaned up. "
-                    + "Current status = {}. Try dropping the pipe and recreating it.",
-                pipeName,
-                creationTime,
-                existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-            // break to drop the pipe and recreate it
-            break;
-          default:
-            throw new IllegalStateException(
-                "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-        }
-      }
-
-      // drop the pipe if
-      // 1. the pipe with the same name but with different creation time has been created before
-      // 2. the pipe with the same name and the same creation time has been dropped before, but the
-      //  pipe task meta has not been cleaned up
-      dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
-    }
-
-    // create pipe tasks and trigger create() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks = new PipeBuilder(pipeMeta).build();
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.create();
-    }
-    pipeTaskManager.addPipeTasks(pipeMeta.getStaticMeta(), pipeTasks);
-
-    // add pipe meta to pipe meta keeper
-    // note that we do not need to set the status of pipe meta here, because the status of pipe meta
-    // is already set to STOPPED when it is created
-    pipeMetaKeeper.addPipeMeta(pipeName, pipeMeta);
-  }
-
-  public synchronized void dropPipe(String pipeName, long creationTime) {
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-
-    if (existedPipeMeta == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip dropping.",
-          pipeName,
-          creationTime);
-      return;
-    }
-    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in dropPipe request. Skip dropping.",
-          pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
-      return;
-    }
-
-    // mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
-    // but the pipe task meta has not been cleaned up (in case of failure when executing
-    // dropPipeTaskByConsensusGroup).
-    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-
-    // drop pipe tasks and trigger drop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
-        pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
-    if (pipeTasks == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip dropping.",
-          pipeName,
-          creationTime);
-      return;
-    }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.drop();
-    }
-
-    // remove pipe meta from pipe meta keeper
-    pipeMetaKeeper.removePipeMeta(pipeName);
-  }
-
-  public synchronized void dropPipe(String pipeName) {
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-
-    if (existedPipeMeta == null) {
-      LOGGER.info(
-          "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
-      return;
-    }
-
-    // mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
-    // but the pipe task meta has not been cleaned up (in case of failure when executing
-    // dropPipeTaskByConsensusGroup).
-    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
-
-    // drop pipe tasks and trigger drop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
-        pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
-    if (pipeTasks == null) {
-      LOGGER.info(
-          "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
-      return;
-    }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.drop();
-    }
-
-    // remove pipe meta from pipe meta keeper
-    pipeMetaKeeper.removePipeMeta(pipeName);
-  }
-
-  public synchronized void startPipe(String pipeName, long creationTime) {
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-
-    if (existedPipeMeta == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip starting.",
-          pipeName,
-          creationTime);
-      return;
-    }
-    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in startPipe request. Skip starting.",
-          pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
-      return;
-    }
-
-    switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
-      case STOPPED:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has been created. Current status = {}. Starting.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-        break;
-      case RUNNING:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has already been started. Current status = {}. Skip starting.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-        return;
-      case DROPPED:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip starting.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-        return;
-      default:
-        throw new IllegalStateException(
-            "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-    }
-
-    // trigger start() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
-        pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
-    if (pipeTasks == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip starting.",
-          pipeName,
-          creationTime);
-      return;
-    }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.start();
-    }
-
-    // set pipe meta status to RUNNING
-    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
-  }
-
-  public synchronized void stopPipe(String pipeName, long creationTime) {
-    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-
-    if (existedPipeMeta == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip stopping.",
-          pipeName,
-          creationTime);
-      return;
-    }
-    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in stopPipe request. Skip stopping.",
-          pipeName,
-          existedPipeMeta.getStaticMeta().getCreationTime(),
-          creationTime);
-      return;
-    }
-
-    switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
-      case STOPPED:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has already been stopped. Current status = {}. Skip stopping.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-        return;
-      case RUNNING:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has been started. Current status = {}. Stopping.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-        break;
-      case DROPPED:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip stopping.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-        return;
-      default:
-        throw new IllegalStateException(
-            "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
-    }
-
-    // trigger stop() method for each pipe task
-    final Map<TConsensusGroupId, PipeTask> pipeTasks =
-        pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
-    if (pipeTasks == null) {
-      LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip stopping.",
-          pipeName,
-          creationTime);
-      return;
-    }
-    for (PipeTask pipeTask : pipeTasks.values()) {
-      pipeTask.stop();
-    }
-
-    // set pipe meta status to STOPPED
-    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
-  }
-
-  // TODO: handle progress index
   public synchronized void handlePipeMetaChanges(List<PipeMeta> pipeMetaListFromConfigNode) {
+    // do nothing if data node is removing or removed
+    if (PipeAgent.runtime().isShutdown()) {
+      return;
+    }
+
     // iterate through pipe meta list from config node, check if pipe meta exists on data node
     // or has changed
     for (final PipeMeta metaFromConfigNode : pipeMetaListFromConfigNode) {
@@ -395,11 +158,7 @@ public class PipeTaskAgent {
 
       // if task meta does not exist on data node, create a new task
       if (taskMetaOnDataNode == null) {
-        createPipeTask(
-            consensusGroupIdFromConfigNode,
-            pipeStaticMeta,
-            taskMetaFromConfigNode.getProgressIndex(),
-            taskMetaFromConfigNode.getRegionLeader());
+        createPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
         // we keep the new created task's status consistent with the status recorded in data node's
         // pipe runtime meta. please note that the status recorded in data node's pipe runtime meta
         // is not reliable, but we will have a check later to make sure the status is correct.
@@ -410,16 +169,12 @@ public class PipeTaskAgent {
       }
 
       // if task meta exists on data node, check if it has changed
-      final int regionLeaderFromConfigNode = taskMetaFromConfigNode.getRegionLeader();
-      final int regionLeaderOnDataNode = taskMetaOnDataNode.getRegionLeader();
+      final int dataNodeIdFromConfigNode = taskMetaFromConfigNode.getLeaderDataNodeId();
+      final int dataNodeIdOnDataNode = taskMetaOnDataNode.getLeaderDataNodeId();
 
-      if (regionLeaderFromConfigNode != regionLeaderOnDataNode) {
+      if (dataNodeIdFromConfigNode != dataNodeIdOnDataNode) {
         dropPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta);
-        createPipeTask(
-            consensusGroupIdFromConfigNode,
-            pipeStaticMeta,
-            taskMetaFromConfigNode.getProgressIndex(),
-            taskMetaFromConfigNode.getRegionLeader());
+        createPipeTask(consensusGroupIdFromConfigNode, pipeStaticMeta, taskMetaFromConfigNode);
         // we keep the new created task's status consistent with the status recorded in data node's
         // pipe runtime meta. please note that the status recorded in data node's pipe runtime meta
         // is not reliable, but we will have a check later to make sure the status is correct.
@@ -482,20 +237,290 @@ public class PipeTaskAgent {
     }
   }
 
+  public synchronized void dropAllPipeTasks() {
+    for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+      dropPipe(pipeMeta.getStaticMeta().getPipeName(), pipeMeta.getStaticMeta().getCreationTime());
+    }
+  }
+
+  ////////////////////////// Manage by Pipe Name //////////////////////////
+
+  private void createPipe(PipeMeta pipeMeta) {
+    final String pipeName = pipeMeta.getStaticMeta().getPipeName();
+    final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
+
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (existedPipeMeta != null) {
+      if (existedPipeMeta.getStaticMeta().getCreationTime() == creationTime) {
+        switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
+          case STOPPED:
+          case RUNNING:
+            LOGGER.info(
+                "Pipe {} (creation time = {}) has already been created. Current status = {}. Skip creating.",
+                pipeName,
+                creationTime,
+                existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+            return;
+          case DROPPED:
+            LOGGER.info(
+                "Pipe {} (creation time = {}) has already been dropped, but the pipe task meta has not been cleaned up. "
+                    + "Current status = {}. Try dropping the pipe and recreating it.",
+                pipeName,
+                creationTime,
+                existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+            // break to drop the pipe and recreate it
+            break;
+          default:
+            throw new IllegalStateException(
+                "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        }
+      }
+
+      // drop the pipe if
+      // 1. the pipe with the same name but with different creation time has been created before
+      // 2. the pipe with the same name and the same creation time has been dropped before, but the
+      //  pipe task meta has not been cleaned up
+      dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
+    }
+
+    // create pipe tasks and trigger create() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks = new PipeBuilder(pipeMeta).build();
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.create();
+    }
+    pipeTaskManager.addPipeTasks(pipeMeta.getStaticMeta(), pipeTasks);
+
+    // add pipe meta to pipe meta keeper
+    // note that we do not need to set the status of pipe meta here, because the status of pipe meta
+    // is already set to STOPPED when it is created
+    pipeMetaKeeper.addPipeMeta(pipeName, pipeMeta);
+  }
+
+  private void dropPipe(String pipeName, long creationTime) {
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (existedPipeMeta == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip dropping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in dropPipe request. Skip dropping.",
+          pipeName,
+          existedPipeMeta.getStaticMeta().getCreationTime(),
+          creationTime);
+      return;
+    }
+
+    // mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
+    // but the pipe task meta has not been cleaned up (in case of failure when executing
+    // dropPipeTaskByConsensusGroup).
+    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+
+    // drop pipe tasks and trigger drop() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip dropping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.drop();
+    }
+
+    // remove pipe meta from pipe meta keeper
+    pipeMetaKeeper.removePipeMeta(pipeName);
+  }
+
+  private void dropPipe(String pipeName) {
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (existedPipeMeta == null) {
+      LOGGER.info(
+          "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
+      return;
+    }
+
+    // mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
+    // but the pipe task meta has not been cleaned up (in case of failure when executing
+    // dropPipeTaskByConsensusGroup).
+    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
+
+    // drop pipe tasks and trigger drop() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
+      return;
+    }
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.drop();
+    }
+
+    // remove pipe meta from pipe meta keeper
+    pipeMetaKeeper.removePipeMeta(pipeName);
+  }
+
+  private void startPipe(String pipeName, long creationTime) {
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (existedPipeMeta == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip starting.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in startPipe request. Skip starting.",
+          pipeName,
+          existedPipeMeta.getStaticMeta().getCreationTime(),
+          creationTime);
+      return;
+    }
+
+    switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
+      case STOPPED:
+        LOGGER.info(
+            "Pipe {} (creation time = {}) has been created. Current status = {}. Starting.",
+            pipeName,
+            creationTime,
+            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        break;
+      case RUNNING:
+        LOGGER.info(
+            "Pipe {} (creation time = {}) has already been started. Current status = {}. Skip starting.",
+            pipeName,
+            creationTime,
+            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        return;
+      case DROPPED:
+        LOGGER.info(
+            "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip starting.",
+            pipeName,
+            creationTime,
+            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        return;
+      default:
+        throw new IllegalStateException(
+            "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+    }
+
+    // trigger start() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip starting.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.start();
+    }
+
+    // set pipe meta status to RUNNING
+    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+    // clear exception messages if started successfully
+    existedPipeMeta
+        .getRuntimeMeta()
+        .getConsensusGroupIdToTaskMetaMap()
+        .values()
+        .forEach(PipeTaskMeta::clearExceptionMessages);
+  }
+
+  private void stopPipe(String pipeName, long creationTime) {
+    final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    if (existedPipeMeta == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip stopping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in stopPipe request. Skip stopping.",
+          pipeName,
+          existedPipeMeta.getStaticMeta().getCreationTime(),
+          creationTime);
+      return;
+    }
+
+    switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
+      case STOPPED:
+        LOGGER.info(
+            "Pipe {} (creation time = {}) has already been stopped. Current status = {}. Skip stopping.",
+            pipeName,
+            creationTime,
+            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        return;
+      case RUNNING:
+        LOGGER.info(
+            "Pipe {} (creation time = {}) has been started. Current status = {}. Stopping.",
+            pipeName,
+            creationTime,
+            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        break;
+      case DROPPED:
+        LOGGER.info(
+            "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip stopping.",
+            pipeName,
+            creationTime,
+            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        return;
+      default:
+        throw new IllegalStateException(
+            "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+    }
+
+    // trigger stop() method for each pipe task
+    final Map<TConsensusGroupId, PipeTask> pipeTasks =
+        pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
+    if (pipeTasks == null) {
+      LOGGER.info(
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip stopping.",
+          pipeName,
+          creationTime);
+      return;
+    }
+    for (PipeTask pipeTask : pipeTasks.values()) {
+      pipeTask.stop();
+    }
+
+    // set pipe meta status to STOPPED
+    existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+  }
+
+  ///////////////////////// Manage by dataRegionGroupId /////////////////////////
+
   private void createPipeTask(
-      TConsensusGroupId dataRegionGroupId,
+      TConsensusGroupId consensusGroupId,
       PipeStaticMeta pipeStaticMeta,
-      long progressIndex,
-      int dataRegionId) {
-    final PipeTask pipeTask =
-        new PipeTaskBuilder(Integer.toString(dataRegionId), pipeStaticMeta).build();
-    pipeTask.create();
-    pipeTaskManager.addPipeTask(pipeStaticMeta, dataRegionGroupId, pipeTask);
+      PipeTaskMeta pipeTaskMeta) {
+    if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
+      final PipeTask pipeTask =
+          new PipeTaskBuilder(consensusGroupId, pipeTaskMeta, pipeStaticMeta).build();
+      pipeTask.create();
+      pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
+    }
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
         .getConsensusGroupIdToTaskMetaMap()
-        .put(dataRegionGroupId, new PipeTaskMeta(progressIndex, dataRegionId));
+        .put(
+            consensusGroupId,
+            new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderDataNodeId()));
   }
 
   private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
@@ -522,5 +547,24 @@ public class PipeTaskAgent {
     if (pipeTask != null) {
       pipeTask.stop();
     }
+  }
+
+  ///////////////////////// Heartbeat /////////////////////////
+
+  public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
+      throws TException {
+    if (!req.isNeedPipeMetaList()) {
+      return;
+    }
+
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    try {
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        pipeMetaBinaryList.add(pipeMeta.serialize());
+      }
+    } catch (IOException e) {
+      throw new TException(e);
+    }
+    resp.setPipeMetaList(pipeMetaBinaryList);
   }
 }
