@@ -234,6 +234,21 @@ public class CompactionUtils {
     }
   }
 
+  public static void updateProgressIndex(
+      List<TsFileResource> targetResources,
+      List<TsFileResource> seqResources,
+      List<TsFileResource> unseqResources) {
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource targetResource = targetResources.get(i);
+      for (TsFileResource unseqResource : unseqResources) {
+        targetResource.updateProgressIndex(unseqResource.getMaxProgressIndexAfterClose());
+      }
+      for (TsFileResource seqResource : seqResources) {
+        targetResource.updateProgressIndex(seqResource.getMaxProgressIndexAfterClose());
+      }
+    }
+  }
+
   public static void updatePlanIndexes(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqResources,
