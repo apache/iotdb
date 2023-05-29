@@ -238,7 +238,7 @@ class DispatcherThread extends DynamicThread {
             entry.getEntry().createTime);
       }
 
-      if (!logDispatcher.enableCompressedDispatching) {
+      if (!logDispatcher.enableCompressedDispatching && !group.isDelayed()) {
         AppendEntriesRequest appendEntriesRequest = prepareRequest(logList);
         appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
       } else {
