@@ -276,7 +276,7 @@ public enum ThreadName {
     return name;
   }
 
-  @SuppressWarnings("squid:S3776")
+  @SuppressWarnings("java:S6541")
   public static DataNodeThreadModule getModuleTheThreadBelongs(String givenThreadName) {
     for (ThreadName threadName : queryThreadNames) {
       if (givenThreadName.contains(threadName.getName())) {
