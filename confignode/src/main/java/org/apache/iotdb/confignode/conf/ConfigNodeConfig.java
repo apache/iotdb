@@ -68,8 +68,8 @@ public class ConfigNodeConfig {
   /** Default number of DataRegion replicas */
   private int dataReplicationFactor = 1;
 
-  /** Number of SeriesPartitionSlots per StorageGroup */
-  private int seriesSlotNum = 10000;
+  /** Number of SeriesPartitionSlots per Database */
+  private int seriesSlotNum = 1000;
 
   /** SeriesPartitionSlot executor class */
   private String seriesPartitionExecutorClass =
