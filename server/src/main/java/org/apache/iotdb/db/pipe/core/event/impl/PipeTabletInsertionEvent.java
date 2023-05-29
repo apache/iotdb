@@ -40,11 +40,11 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
 
   private Tablet tablet;
 
-  private String pattern;
+  private final String pattern;
 
   private List<TSDataType> columnTypeList;
   private List<Path> columnNameList;
-  private String deviceFullPath;
+  private final String deviceId;
   private Object[][] rowRecords;
 
   public PipeTabletInsertionEvent(Tablet tablet) {
@@ -54,6 +54,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   public PipeTabletInsertionEvent(Tablet tablet, String pattern) {
     this.tablet = tablet;
     this.pattern = pattern;
+    this.deviceId = tablet.deviceId;
 
     matchPattern();
   }
@@ -101,26 +102,23 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
     }
 
     List<MeasurementSchema> originSchemaList = tablet.getSchemas();
-    this.deviceFullPath = tablet.deviceId;
     List<Integer> indexList = new ArrayList<>();
     this.columnTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
 
     boolean collectAllColumns =
-        pattern == null
-            || (pattern.length() <= deviceFullPath.length() && deviceFullPath.startsWith(pattern));
+        pattern == null || (pattern.length() <= deviceId.length() && deviceId.startsWith(pattern));
 
     for (int i = 0; i < originSchemaList.size(); i++) {
       MeasurementSchema measurementSchema = tablet.getSchemas().get(i);
       if (collectAllColumns
-          || (pattern.length() > deviceFullPath.length()
-              && pattern.startsWith(deviceFullPath)
+          || (pattern.length() > deviceId.length()
+              && pattern.startsWith(deviceId)
               && pattern.length()
-                  == deviceFullPath.length() + measurementSchema.getMeasurementId().length() + 1
+                  == deviceId.length() + measurementSchema.getMeasurementId().length() + 1
               && pattern.endsWith(
                   TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId()))) {
-        this.columnNameList.add(
-            new Path(deviceFullPath, measurementSchema.getMeasurementId(), false));
+        this.columnNameList.add(new Path(deviceId, measurementSchema.getMeasurementId(), false));
         this.columnTypeList.add(measurementSchema.getType());
         indexList.add(i);
       }
@@ -146,20 +144,29 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
         }
       }
 
-      Tablet newTablet = new Tablet(deviceFullPath, newSchemaList);
+      Tablet newTablet = new Tablet(deviceId, newSchemaList);
       newTablet.rowSize = rowSize;
       newTablet.values = columns;
+      newTablet.bitMaps = tablet.bitMaps;
       this.tablet = newTablet;
     } else {
       this.tablet = null;
     }
   }
 
-  public void setPattern(String pattern) {
-    this.pattern = pattern;
-  }
-
   public String getPattern() {
     return pattern;
+  }
+
+  public List<MeasurementSchema> getMeasureSchemaList() {
+    return tablet.getSchemas();
+  }
+
+  public String getDeviceId() {
+    return deviceId;
+  }
+
+  public Tablet getTablet() {
+    return tablet;
   }
 }

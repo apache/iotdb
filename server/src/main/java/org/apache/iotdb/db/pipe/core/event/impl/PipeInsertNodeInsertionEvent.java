@@ -61,7 +61,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
 
   private List<TSDataType> dataTypeList;
   private List<Path> columnNameList;
-  private String deviceFullPath;
+  private String deviceId;
   private Object[][] rowRecords;
 
   public PipeInsertNodeInsertionEvent(WALEntryHandler walEntryHandler, ProgressIndex progressIndex)
@@ -164,7 +164,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
       throws IOException {
     PipeRowCollector rowCollector = new PipeRowCollector();
     List<MeasurementSchema> schemas = createMeasurementSchemas();
-    Tablet tablet = new Tablet(deviceFullPath, schemas);
+    Tablet tablet = new Tablet(deviceId, schemas);
 
     for (Object[] rowRecord : rowRecords) {
       Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
@@ -216,7 +216,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   private void processPattern(
       TSDataType[] originDataTypeList, String[] originMeasurementList, Object[] originValues) {
     int originColumnSize = originMeasurementList.length;
-    this.deviceFullPath = insertNode.getDevicePath().getFullPath();
+    this.deviceId = insertNode.getDevicePath().getFullPath();
     this.dataTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
@@ -234,7 +234,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
       Object[] originColumns,
       int rowSize) {
     int originColumnSize = originMeasurementList.length;
-    this.deviceFullPath = insertNode.getDevicePath().getFullPath();
+    this.deviceId = insertNode.getDevicePath().getFullPath();
     this.dataTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
@@ -257,22 +257,21 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
       String[] originMeasurementList,
       TSDataType[] originDataTypeList,
       List<Integer> indexList) {
-    if (pattern == null
-        || pattern.length() <= deviceFullPath.length() && deviceFullPath.startsWith(pattern)) {
+    if (pattern == null || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
       // collect all columns
       for (int i = 0; i < originColumnSize; i++) {
-        columnNameList.add(new Path(deviceFullPath, originMeasurementList[i], false));
+        columnNameList.add(new Path(deviceId, originMeasurementList[i], false));
         dataTypeList.add(originDataTypeList[i]);
         indexList.add(i);
       }
-    } else if (pattern.length() > deviceFullPath.length() && pattern.startsWith(deviceFullPath)) {
+    } else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
       for (int i = 0; i < originColumnSize; i++) {
         String measurement = originMeasurementList[i];
 
         // if match successfully, collect the measurement
-        if (pattern.length() == deviceFullPath.length() + measurement.length() + 1
+        if (pattern.length() == deviceId.length() + measurement.length() + 1
             && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
-          columnNameList.add(new Path(deviceFullPath, measurement, false));
+          columnNameList.add(new Path(deviceId, measurement, false));
           dataTypeList.add(originDataTypeList[i]);
           indexList.add(i);
         }
