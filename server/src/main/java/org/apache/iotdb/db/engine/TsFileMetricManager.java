@@ -85,126 +85,92 @@ public class TsFileMetricManager {
   }
 
   public void addFile(long size, boolean seq, String name) {
-    if (seq) {
-      seqFileSize.getAndAdd(size);
-      seqFileNum.incrementAndGet();
-    } else {
-      unseqFileSize.getAndAdd(size);
-      unseqFileNum.incrementAndGet();
-    }
+    updateGlobalCountAndSize(size, 1, seq);
     try {
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
       int level = tsFileName.getInnerCompactionCnt();
-      int count = -1;
-      long totalSize = 0L;
-      if (seq) {
-        count = seqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 1 : v + 1);
-        totalSize = seqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? size : v + size);
-      } else {
-        count = unseqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 1 : v + 1);
-        totalSize = unseqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? size : v + size);
-      }
-      log.error(
-          "Recovering {}, level is {}, count is {}, size is {}, metricService null : {} ",
-          name,
-          level,
-          count,
-          size,
-          metricService == null);
-      if (metricService != null) {
-        metricService
-            .getOrCreateGauge(
-                FILE_LEVEL_COUNT,
-                MetricLevel.CORE,
-                Tag.TYPE.toString(),
-                seq ? SEQUENCE : UNSEQUENCE,
-                LEVEL,
-                String.valueOf(level))
-            .set(count);
-        metricService
-            .getOrCreateGauge(
-                FILE_LEVEL_SIZE,
-                MetricLevel.CORE,
-                Tag.TYPE.toString(),
-                seq ? SEQUENCE : UNSEQUENCE,
-                LEVEL,
-                String.valueOf(level))
-            .set(totalSize);
-        if (hasRemainData.get()) {
-          synchronized (this) {
-            if (hasRemainData.get()) {
-              hasRemainData.set(false);
-              updateRemainData();
-            }
-          }
-        }
-      } else {
-        hasRemainData.set(true);
-      }
+      updateLevelCountAndSize(size, 1, seq, level);
     } catch (IOException e) {
       log.error("Unexpected error occurred when getting tsfile name", e);
+    }
+  }
+
+  private void updateGlobalCountAndSize(long sizeDelta, int countDelta, boolean seq) {
+    if (seq) {
+      seqFileSize.getAndAdd(sizeDelta);
+      seqFileNum.getAndAdd(countDelta);
+    } else {
+      unseqFileSize.getAndAdd(sizeDelta);
+      unseqFileNum.getAndAdd(countDelta);
+    }
+  }
+
+  private void updateLevelCountAndSize(long sizeDelta, int countDelta, boolean seq, int level) {
+    int count = 0;
+    long totalSize = 0;
+    if (seq) {
+      count =
+          seqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? countDelta : v + countDelta);
+      totalSize =
+          seqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? sizeDelta : v + sizeDelta);
+    } else {
+      count =
+          unseqLevelTsFileCountMap.compute(
+              level, (k, v) -> v == null ? countDelta : v + countDelta);
+      totalSize =
+          unseqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? sizeDelta : v + sizeDelta);
+    }
+    updateLevelFileInfoInMetricService(totalSize, count, seq, level);
+  }
+
+  private void updateLevelFileInfoInMetricService(
+      long totalSize, int count, boolean seq, int level) {
+    if (metricService != null) {
+      metricService
+          .getOrCreateGauge(
+              FILE_LEVEL_COUNT,
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              seq ? SEQUENCE : UNSEQUENCE,
+              LEVEL,
+              String.valueOf(level))
+          .set(count);
+      metricService
+          .getOrCreateGauge(
+              FILE_LEVEL_SIZE,
+              MetricLevel.CORE,
+              Tag.TYPE.toString(),
+              seq ? SEQUENCE : UNSEQUENCE,
+              LEVEL,
+              String.valueOf(level))
+          .set(totalSize);
+      if (hasRemainData.get()) {
+        synchronized (this) {
+          if (hasRemainData.get()) {
+            hasRemainData.set(false);
+            updateRemainData();
+          }
+        }
+      }
+    } else {
+      hasRemainData.set(true);
     }
   }
 
   public void deleteFile(List<Long> sizeList, boolean seq, int num, List<String> names) {
     AtomicLong totalSize = new AtomicLong(0L);
     sizeList.forEach(totalSize::addAndGet);
-    if (seq) {
-      seqFileSize.getAndAdd(-totalSize.get());
-      seqFileNum.getAndAdd(-num);
-    } else {
-      unseqFileSize.getAndAdd(-totalSize.get());
-      unseqFileNum.getAndAdd(-num);
-    }
+    updateGlobalCountAndSize(-totalSize.get(), -num, seq);
     for (int i = 0, length = names.size(); i < length; ++i) {
       int level = -1;
-      int count = -1;
       String name = names.get(i);
       long size = sizeList.get(i);
-      long newSize = 0;
       try {
         TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
         level = tsFileName.getInnerCompactionCnt();
-        count =
-            seq
-                ? seqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 0 : v - 1)
-                : unseqLevelTsFileCountMap.compute(level, (k, v) -> v == null ? 0 : v - 1);
-        newSize =
-            seq
-                ? seqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? 0 : v - size)
-                : unseqLevelTsFileSizeMap.compute(level, (k, v) -> v == null ? 0 : v - size);
+        updateLevelCountAndSize(-size, -1, seq, level);
       } catch (IOException e) {
         log.error("Unexpected error occurred when getting tsfile name", e);
-      }
-      if (metricService != null && level != -1 && count != -1) {
-        metricService
-            .getOrCreateGauge(
-                FILE_LEVEL_COUNT,
-                MetricLevel.CORE,
-                Tag.TYPE.toString(),
-                seq ? SEQUENCE : UNSEQUENCE,
-                LEVEL,
-                String.valueOf(level))
-            .set(count);
-        metricService
-            .getOrCreateGauge(
-                FILE_LEVEL_SIZE,
-                MetricLevel.CORE,
-                Tag.TYPE.toString(),
-                seq ? SEQUENCE : UNSEQUENCE,
-                LEVEL,
-                String.valueOf(level))
-            .set(newSize);
-        if (hasRemainData.get()) {
-          synchronized (this) {
-            if (hasRemainData.get()) {
-              hasRemainData.set(false);
-              updateRemainData();
-            }
-          }
-        }
-      } else {
-        hasRemainData.set(true);
       }
     }
   }

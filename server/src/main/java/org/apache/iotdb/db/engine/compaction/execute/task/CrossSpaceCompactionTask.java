@@ -97,6 +97,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
+  @SuppressWarnings("squid:S6541")
   public boolean doCompaction() {
     boolean isSuccess = true;
     try {
@@ -208,8 +209,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         List<Long> sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
         List<Long> unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
+        List<String> fileNames = new ArrayList<>();
+        selectedSequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
+        TsFileMetricManager.getInstance()
+            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size(), fileNames);
+        fileNames.clear();
+        selectedUnsequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
+        TsFileMetricManager.getInstance()
+            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size(), fileNames);
 
-        // update the metrics finally in case of any exception occurs
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
             TsFileMetricManager.getInstance()
@@ -223,14 +231,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetResource.remove();
           }
         }
-        List<String> fileNames = new ArrayList<>();
-        selectedSequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        TsFileMetricManager.getInstance()
-            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size(), fileNames);
-        fileNames.clear();
-        selectedUnsequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        TsFileMetricManager.getInstance()
-            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size(), fileNames);
 
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
