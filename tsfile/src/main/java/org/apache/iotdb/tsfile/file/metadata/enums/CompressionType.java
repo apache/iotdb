@@ -34,7 +34,8 @@ public enum CompressionType {
   /** ZSTD */
   ZSTD(".zstd", (byte) 8),
   /** LZMA2 */
-  LZMA2(".lzma2", (byte) 9);
+  LZMA2(".lzma2", (byte) 9),
+  AUTO(".auto", (byte) 10);
 
   private final String extensionName;
   private final byte index;
@@ -64,6 +65,8 @@ public enum CompressionType {
         return CompressionType.ZSTD;
       case 9:
         return CompressionType.LZMA2;
+      case 10:
+        return CompressionType.AUTO;
       default:
         throw new IllegalArgumentException("Invalid input: " + compressor);
     }
