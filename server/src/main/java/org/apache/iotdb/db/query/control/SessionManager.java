@@ -42,6 +42,7 @@ import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -375,6 +376,7 @@ public class SessionManager implements SessionManagerMBean {
   public TSConnectionInfoResp getAllConnectionInfo() {
     return new TSConnectionInfoResp(
         sessions.keySet().stream()
+            .filter(s -> StringUtils.isNotEmpty(s.getUsername()))
             .map(IClientSession::convertToTSConnectionInfo)
             .sorted(Comparator.comparingLong(TSConnectionInfo::getLogInTime))
             .collect(Collectors.toList()));
