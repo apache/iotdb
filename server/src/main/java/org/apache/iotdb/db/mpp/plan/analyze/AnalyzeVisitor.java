@@ -269,6 +269,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // make sure paths in logical view is fetched
       updateSchemaTreeByViews(analysis, schemaTree);
+      if (analysis.useLogicalView()) {
+        if (queryStatement.isAlignByDevice()) {
+          throw new SemanticException("Views are not supported in ALIGN BY DEVICE query yet.");
+        }
+        if (queryStatement.isLastQuery()) {
+          throw new SemanticException("Views are not supported in LAST query yet.");
+        }
+      }
 
       // extract global time filter from query filter and determine if there is a value filter
       analyzeGlobalTimeFilter(analysis, queryStatement);
@@ -1211,19 +1219,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       deviceToOutputColumnsMap.put(deviceName, outputColumns);
     }
-
-    Map<String, Set<Expression>> deviceToSourceExpressions =
-        analysis.getDeviceToSourceExpressions();
-    Map<String, List<String>> outputDeviceToQueriedDeviceMap = new LinkedHashMap<>();
-    for (String deviceName : deviceToSourceExpressions.keySet()) {
-      Set<Expression> sourceExpressionsUnderDevice = deviceToSourceExpressions.get(deviceName);
-      Set<String> queriedDevices = new HashSet<>();
-      for (Expression expression : sourceExpressionsUnderDevice) {
-        queriedDevices.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
-      }
-      outputDeviceToQueriedDeviceMap.put(deviceName, new ArrayList<>(queriedDevices));
-    }
-    analysis.setOutputDeviceToQueriedDeviceMap(outputDeviceToQueriedDeviceMap);
 
     Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
     for (String deviceName : deviceToOutputColumnsMap.keySet()) {

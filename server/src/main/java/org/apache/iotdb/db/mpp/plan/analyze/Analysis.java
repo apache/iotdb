@@ -154,8 +154,6 @@ public class Analysis {
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceViewInputIndexesMap;
 
-  private Map<String, List<String>> outputDeviceToQueriedDeviceMap;
-
   private Set<Expression> deviceViewOutputExpressions;
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
@@ -436,15 +434,6 @@ public class Analysis {
 
   public Map<String, List<Integer>> getDeviceViewInputIndexesMap() {
     return deviceViewInputIndexesMap;
-  }
-
-  public Map<String, List<String>> getOutputDeviceToQueriedDeviceMap() {
-    return outputDeviceToQueriedDeviceMap;
-  }
-
-  public void setOutputDeviceToQueriedDeviceMap(
-      Map<String, List<String>> outputDeviceToQueriedDeviceMap) {
-    this.outputDeviceToQueriedDeviceMap = outputDeviceToQueriedDeviceMap;
   }
 
   public Set<Expression> getSourceExpressions() {
