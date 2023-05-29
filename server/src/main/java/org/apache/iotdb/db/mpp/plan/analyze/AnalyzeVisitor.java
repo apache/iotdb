@@ -3314,6 +3314,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               "The number of target and source paths are miss matched! Please check your SQL."));
       return analysis;
     }
+    // make sure all paths are NOt under any template
+    try {
+      for (PartialPath path : createLogicalViewStatement.getTargetPathList()) {
+        checkIsTemplateCompatible(path, null);
+      }
+    } catch (Exception e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "Can not create logical view under template."));
+      return analysis;
+    }
     return analysis;
   }
 
