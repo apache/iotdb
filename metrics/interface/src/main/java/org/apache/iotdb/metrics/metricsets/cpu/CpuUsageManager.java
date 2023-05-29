@@ -172,6 +172,7 @@ public class CpuUsageManager {
             });
   }
 
+  @SuppressWarnings("java:S107")
   private long computeUsageInfoForModuleAndPool(
       Map<String, Long> moduleIncrementCpuTimeMap,
       Map<String, Long> moduleIncrementUserTimeMap,
