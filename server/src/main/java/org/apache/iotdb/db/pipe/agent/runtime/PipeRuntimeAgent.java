@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.resource.file.PipeHardlinkFileDirStartupCleaner;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 
@@ -46,13 +47,14 @@ public class PipeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
-    PipeLauncher.launchPipePluginAgent(resourcesInformationHolder);
+    PipeHardlinkFileDirStartupCleaner.clean();
+    PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();
   }
 
   @Override
   public synchronized void start() throws StartupException {
-    PipeLauncher.launchPipeTaskAgent();
+    PipeAgentLauncher.launchPipeTaskAgent();
 
     isShutdown.set(false);
   }
