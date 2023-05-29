@@ -243,7 +243,7 @@ public class TierManager {
         return entry.getValue();
       }
     }
-    throw new RuntimeException(String.format("%s is not a legal TsFile path", file));
+    return 0;
   }
 
   public long[] getTierDiskTotalSpace() {
