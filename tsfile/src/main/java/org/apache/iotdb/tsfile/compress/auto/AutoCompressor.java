@@ -62,6 +62,7 @@ public class AutoCompressor implements ICompressor {
     byte[] compress = preferredSampler.compress(data);
     byte[] result = new byte[compress.length + 1];
     System.arraycopy(compress, 0, result, 0, compress.length);
+    // the last byte is for the real compression type
     result[compress.length] = preferredSampler.getType().serialize();
     return result;
   }
@@ -75,6 +76,7 @@ public class AutoCompressor implements ICompressor {
     byte[] compress = preferredSampler.compress(data, offset, length);
     byte[] result = new byte[compress.length + 1];
     System.arraycopy(compress, 0, result, 0, compress.length);
+    // the last byte is for the real compression type
     result[compress.length] = preferredSampler.getType().serialize();
     return result;
   }
@@ -86,6 +88,7 @@ public class AutoCompressor implements ICompressor {
     }
     ICompressor preferredSampler = sampler.getPreferredSampler();
     int compressedLength = preferredSampler.compress(data, offset, length, compressed);
+    // the last byte is for the real compression type
     compressed[compressedLength] = preferredSampler.getType().serialize();
     return compressedLength + 1;
   }
@@ -97,6 +100,7 @@ public class AutoCompressor implements ICompressor {
     }
     ICompressor preferredSampler = sampler.getPreferredSampler();
     int compressedLength = preferredSampler.compress(data, compressed);
+    // the last byte is for the real compression type
     compressed.mark();
     compressed.position(compressed.position() + compressedLength);
     compressed.put(preferredSampler.getType().serialize());

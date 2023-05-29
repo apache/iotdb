@@ -93,6 +93,7 @@ public class CompressionSampler {
     lastSampleTimeMS = System.currentTimeMillis();
     updatePreferredIndex();
 
+    // the last byte is for the real compression type
     byte[] result = new byte[bestResult.length + 1];
     System.arraycopy(bestResult, 0, result, 0, bestResult.length);
     result[bestResult.length] = bestType.serialize();
@@ -121,6 +122,7 @@ public class CompressionSampler {
     lastSampleTimeMS = System.currentTimeMillis();
     updatePreferredIndex();
 
+    // the last byte is for the real compression type
     compressed[smallestLength] = bestType.serialize();
     return smallestLength + 1;
   }
@@ -147,6 +149,7 @@ public class CompressionSampler {
     lastSampleTimeMS = System.currentTimeMillis();
     updatePreferredIndex();
 
+    // the last byte is for the real compression type
     compressed.mark();
     compressed.position(compressed.position() + smallestLength);
     compressed.put(bestType.serialize());
@@ -159,7 +162,8 @@ public class CompressionSampler {
     for (ICompressor compressor : compressors) {
       maxBytes = Math.max(maxBytes, compressor.getMaxBytesForCompression(uncompressedDataSize));
     }
-    return maxBytes;
+    // the last byte is for the real compression type
+    return maxBytes + 1;
   }
 
 
