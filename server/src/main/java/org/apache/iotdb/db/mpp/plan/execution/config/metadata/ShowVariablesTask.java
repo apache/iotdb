@@ -117,6 +117,10 @@ public class ShowVariablesTask implements IConfigTask {
         builder,
         new Binary(ColumnHeaderConstant.DISK_SPACE_WARNING_THRESHOLD),
         new Binary(String.valueOf(clusterParameters.getDiskSpaceWarningThreshold())));
+    buildTSBlock(
+        builder,
+        new Binary(ColumnHeaderConstant.TIMESTAMP_PRECISION),
+        new Binary(String.valueOf(clusterParameters.getTimestampPrecision())));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterParametersHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

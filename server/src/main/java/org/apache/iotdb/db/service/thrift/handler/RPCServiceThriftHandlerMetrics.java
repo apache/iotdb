@@ -55,8 +55,12 @@ public class RPCServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     RPCServiceThriftHandlerMetrics that = (RPCServiceThriftHandlerMetrics) o;
     return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);
   }

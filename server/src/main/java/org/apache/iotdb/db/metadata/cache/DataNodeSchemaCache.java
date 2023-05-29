@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -127,7 +128,26 @@ public class DataNodeSchemaCache {
   }
 
   public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {
-    return timeSeriesSchemaCache.compute(schemaComputation);
+    List<Integer> result = timeSeriesSchemaCache.computeAndRecordLogicalView(schemaComputation);
+    schemaComputation.recordRangeOfLogicalViewSchemaListNow();
+    return result;
+  }
+
+  /**
+   * This function is used to process logical view schema list in statement. It will try to find the
+   * source paths of those views in cache. If it found sources, measurement schemas of sources will
+   * be recorded in measurement schema list; else the views will be recorded as missed. The indexes
+   * of missed views and full paths of their source paths will be returned.
+   *
+   * @param schemaComputation the statement you want to process
+   * @return The indexes of missed views and full paths of their source paths will be returned.
+   */
+  public Pair<List<Integer>, List<String>> computeSourceOfLogicalView(
+      ISchemaComputation schemaComputation) {
+    if (!schemaComputation.hasLogicalViewNeedProcess()) {
+      return new Pair<>(new ArrayList<>(), new ArrayList<>());
+    }
+    return timeSeriesSchemaCache.computeSourceOfLogicalView(schemaComputation);
   }
 
   public List<Integer> computeWithTemplate(ISchemaComputation schemaComputation) {

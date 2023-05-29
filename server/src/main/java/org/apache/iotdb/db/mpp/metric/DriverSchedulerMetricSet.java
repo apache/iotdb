@@ -23,49 +23,123 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class DriverSchedulerMetricSet implements IMetricSet {
+  private static final DriverSchedulerMetricSet INSTANCE = new DriverSchedulerMetricSet();
 
-  private static final String metric = Metric.DRIVER_SCHEDULER.toString();
+  private DriverSchedulerMetricSet() {
+    // empty constructor
+  }
 
   public static final String READY_QUEUED_TIME = "ready_queued_time";
   public static final String BLOCK_QUEUED_TIME = "block_queued_time";
-
   public static final String READY_QUEUE_TASK_COUNT = "ready_queue_task_count";
   public static final String BLOCK_QUEUE_TASK_COUNT = "block_queue_task_count";
+  private static final String TIMEOUT_QUEUE_SIZE = "timeout_queue_task_count";
+  private static final String QUERY_MAP_SIZE = "query_map_size";
+
+  private Timer readyQueuedTimeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer blockQueuedTimeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    metricService.getOrCreateTimer(
-        metric, MetricLevel.IMPORTANT, Tag.NAME.toString(), READY_QUEUED_TIME);
-    metricService.getOrCreateTimer(
-        metric, MetricLevel.IMPORTANT, Tag.NAME.toString(), BLOCK_QUEUED_TIME);
+    readyQueuedTimeTimer =
+        metricService.getOrCreateTimer(
+            Metric.DRIVER_SCHEDULER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            READY_QUEUED_TIME);
+    blockQueuedTimeTimer =
+        metricService.getOrCreateTimer(
+            Metric.DRIVER_SCHEDULER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            BLOCK_QUEUED_TIME);
     metricService.createAutoGauge(
-        metric,
+        Metric.DRIVER_SCHEDULER.toString(),
         MetricLevel.IMPORTANT,
         DriverScheduler.getInstance(),
         DriverScheduler::getReadyQueueTaskCount,
         Tag.NAME.toString(),
         READY_QUEUE_TASK_COUNT);
     metricService.createAutoGauge(
-        metric,
+        Metric.DRIVER_SCHEDULER.toString(),
         MetricLevel.IMPORTANT,
         DriverScheduler.getInstance(),
         DriverScheduler::getBlockQueueTaskCount,
         Tag.NAME.toString(),
         BLOCK_QUEUE_TASK_COUNT);
+    metricService.createAutoGauge(
+        Metric.DRIVER_SCHEDULER.toString(),
+        MetricLevel.IMPORTANT,
+        DriverScheduler.getInstance(),
+        DriverScheduler::getTimeoutQueueTaskCount,
+        Tag.NAME.toString(),
+        TIMEOUT_QUEUE_SIZE);
+    metricService.createAutoGauge(
+        Metric.DRIVER_SCHEDULER.toString(),
+        MetricLevel.IMPORTANT,
+        DriverScheduler.getInstance(),
+        DriverScheduler::getQueryMapSize,
+        Tag.NAME.toString(),
+        QUERY_MAP_SIZE);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        TIMEOUT_QUEUE_SIZE);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        QUERY_MAP_SIZE);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(MetricType.TIMER, metric, Tag.NAME.toString(), READY_QUEUED_TIME);
-    metricService.remove(MetricType.TIMER, metric, Tag.NAME.toString(), BLOCK_QUEUED_TIME);
+    readyQueuedTimeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    blockQueuedTimeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     metricService.remove(
-        MetricType.AUTO_GAUGE, metric, Tag.NAME.toString(), READY_QUEUE_TASK_COUNT);
+        MetricType.TIMER,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        READY_QUEUED_TIME);
     metricService.remove(
-        MetricType.AUTO_GAUGE, metric, Tag.NAME.toString(), BLOCK_QUEUE_TASK_COUNT);
+        MetricType.TIMER,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        BLOCK_QUEUED_TIME);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        READY_QUEUE_TASK_COUNT);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        BLOCK_QUEUE_TASK_COUNT);
+  }
+
+  public void recordTaskQueueTime(String name, long queueTimeInNanos) {
+    switch (name) {
+      case READY_QUEUED_TIME:
+        readyQueuedTimeTimer.updateNanos(queueTimeInNanos);
+        break;
+      case BLOCK_QUEUED_TIME:
+        blockQueuedTimeTimer.updateNanos(queueTimeInNanos);
+        break;
+      default:
+        break;
+    }
+  }
+
+  public static DriverSchedulerMetricSet getInstance() {
+    return INSTANCE;
   }
 }

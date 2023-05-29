@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.expression;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
@@ -371,4 +372,23 @@ public abstract class Expression extends StatementNode {
       return current;
     }
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // For analyzing logical view
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected PartialPath viewPathOfThisExpression = null;
+
+  public void setViewPathOfThisExpression(PartialPath viewPathOfThisExpression) {
+    this.viewPathOfThisExpression = viewPathOfThisExpression;
+  }
+
+  public String getStringWithViewOfThisExpression() {
+    if (this.viewPathOfThisExpression == null) {
+      return this.getStringWithViewOfThisExpressionInternal();
+    }
+    return this.viewPathOfThisExpression.getFullPath();
+  }
+
+  public abstract String getStringWithViewOfThisExpressionInternal();
 }

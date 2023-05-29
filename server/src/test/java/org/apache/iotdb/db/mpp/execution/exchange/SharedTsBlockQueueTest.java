@@ -33,6 +33,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.testcontainers.shaded.com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
+
 public class SharedTsBlockQueueTest {
   @Test(timeout = 5000L)
   public void concurrencyTest() {
@@ -46,7 +48,10 @@ public class SharedTsBlockQueueTest {
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(
-            new TFragmentInstanceId(queryId, 0, "0"), "test", mockLocalMemoryManager);
+            new TFragmentInstanceId(queryId, 0, "0"),
+            "test",
+            mockLocalMemoryManager,
+            newDirectExecutorService());
     queue.getCanAddTsBlock().set(null);
     queue.setMaxBytesCanReserve(Long.MAX_VALUE);
 

@@ -28,7 +28,7 @@
     <baseDirectory>apache-iotdb-${project.version}-grafana-plugin-bin</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/grafana-plugin/dist</directory>
+            <directory>${maven.multiModuleProjectDirectory}/iotdb-connector/grafana-plugin/dist</directory>
             <outputDirectory>iotdb-grafana-plugin/${file.separator}</outputDirectory>
         </fileSet>
     </fileSets>
