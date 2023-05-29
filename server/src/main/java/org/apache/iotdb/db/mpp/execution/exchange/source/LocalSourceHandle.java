@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange.source;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.exchange.SharedTsBlockQueue;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -58,9 +58,10 @@ public class LocalSourceHandle implements ISourceHandle {
   private final String threadName;
 
   private static final TsBlockSerde serde = new TsBlockSerde();
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
-
+  private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
+      DataExchangeCostMetricSet.getInstance();
   // For pipeline
+
   public LocalSourceHandle(
       SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
     this.queue = Validate.notNull(queue);
@@ -121,7 +122,7 @@ public class LocalSourceHandle implements ISourceHandle {
       checkAndInvokeOnFinished();
       return tsBlock;
     } finally {
-      QUERY_METRICS.recordDataExchangeCost(
+      DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
           SOURCE_HANDLE_GET_TSBLOCK_LOCAL, System.nanoTime() - startTime);
     }
   }
@@ -136,7 +137,7 @@ public class LocalSourceHandle implements ISourceHandle {
       } catch (Exception e) {
         throw new IoTDBException(e, TSStatusCode.TSBLOCK_SERIALIZE_ERROR.getStatusCode());
       } finally {
-        QUERY_METRICS.recordDataExchangeCost(
+        DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
             SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL, System.nanoTime() - startTime);
       }
     } else {

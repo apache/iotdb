@@ -26,5 +26,5 @@ public enum PipeTaskOperation {
   DROP_PIPE,
   HANDLE_LEADER_CHANGE,
   SYNC_PIPE_META,
-  ;
+  HANDLE_PIPE_META_CHANGE
 }

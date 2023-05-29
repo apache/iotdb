@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -81,18 +80,17 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   }
 
   @Override
-  public synchronized List<TFragmentInstanceId> filterUnFinishedFIs(
-      List<TFragmentInstanceId> instanceIds) {
-    List<TFragmentInstanceId> res = new ArrayList<>();
+  public synchronized List<FragmentInstanceId> filterUnFinishedFIs(
+      List<FragmentInstanceId> instanceIds) {
+    List<FragmentInstanceId> res = new ArrayList<>();
     if (instanceIds == null) {
       return res;
     }
-    for (TFragmentInstanceId tFragmentInstanceId : instanceIds) {
-      InstanceStateMetrics stateMetrics =
-          instanceStateMap.get(FragmentInstanceId.fromThrift(tFragmentInstanceId));
+    for (FragmentInstanceId fragmentInstanceId : instanceIds) {
+      InstanceStateMetrics stateMetrics = instanceStateMap.get(fragmentInstanceId);
       if (stateMetrics != null
           && (stateMetrics.lastState == null || !stateMetrics.lastState.isDone())) {
-        res.add(tFragmentInstanceId);
+        res.add(fragmentInstanceId);
       }
     }
     return res;

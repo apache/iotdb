@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LogicalViewSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
@@ -1143,6 +1144,14 @@ public class LogicalPlanBuilder {
     this.root =
         new PathsUsingTemplateScanNode(
             context.getQueryId().genPlanNodeId(), pathPatternList, templateId);
+    return this;
+  }
+
+  public LogicalPlanBuilder planLogicalViewSchemaSource(
+      PartialPath pathPattern, SchemaFilter schemaFilter, long limit, long offset) {
+    this.root =
+        new LogicalViewSchemaScanNode(
+            context.getQueryId().genPlanNodeId(), pathPattern, schemaFilter, limit, offset);
     return this;
   }
 

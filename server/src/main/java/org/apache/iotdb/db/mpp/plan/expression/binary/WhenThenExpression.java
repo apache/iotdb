@@ -67,6 +67,13 @@ public class WhenThenExpression extends BinaryExpression {
   }
 
   @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    String when = this.getWhen().getStringWithViewOfThisExpression();
+    String then = this.getThen().getStringWithViewOfThisExpression();
+    return "WHEN " + when + " THEN " + then;
+  }
+
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitWhenThenExpression(this, context);
   }

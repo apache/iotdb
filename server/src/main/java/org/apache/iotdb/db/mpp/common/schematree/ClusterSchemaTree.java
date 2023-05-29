@@ -21,8 +21,10 @@ package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -38,6 +40,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.rmi.UnexpectedException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -55,6 +58,9 @@ public class ClusterSchemaTree implements ISchemaTree {
   private Set<String> databases;
 
   private final SchemaNode root;
+
+  /** a flag recording whether there is logical view in this schema tree. */
+  private boolean hasLogicalMeasurementPath = false;
 
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
@@ -186,6 +192,46 @@ public class ClusterSchemaTree implements ISchemaTree {
     return indexOfMissingMeasurements;
   }
 
+  /**
+   * This function compute logical view and fill source of these views. It returns nothing ! If some
+   * source paths are missed, throw errors.
+   *
+   * @param schemaComputation the statement
+   * @param indexOfTargetLogicalView the index list of logicalViewSchemaList that you want to check
+   */
+  public void computeSourceOfLogicalView(
+      ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView) {
+    if (!schemaComputation.hasLogicalViewNeedProcess()) {
+      return;
+    }
+    List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();
+    for (Integer index : indexOfTargetLogicalView) {
+      LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(index);
+      PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
+      Pair<List<MeasurementPath>, Integer> searchResult = this.searchMeasurementPaths(fullPath);
+      List<MeasurementPath> measurementPathList = searchResult.left;
+      if (measurementPathList.size() <= 0) {
+        throw new RuntimeException(
+            new PathNotExistException(
+                String.format(
+                    "The source path of view [%s] does not exist.", fullPath.getFullPath())));
+      } else if (measurementPathList.size() > 1) {
+        throw new RuntimeException(
+            new UnexpectedException(
+                String.format(
+                    "The source paths of view [%s] are multiple.", fullPath.getFullPath())));
+      } else {
+        Integer realIndex = schemaComputation.getIndexListOfLogicalViewPaths().get(index);
+        MeasurementPath measurementPath = measurementPathList.get(0);
+        schemaComputation.computeMeasurementOfView(
+            realIndex,
+            new MeasurementSchemaInfo(
+                measurementPath.getMeasurement(), measurementPath.getMeasurementSchema(), null),
+            measurementPath.isUnderAlignedEntity());
+      }
+    }
+  }
+
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {
     for (MeasurementPath measurementPath : measurementPathList) {
       appendSingleMeasurementPath(measurementPath);
@@ -221,6 +267,7 @@ public class ClusterSchemaTree implements ISchemaTree {
           }
           measurementNode.setTagMap(tagMap);
           child = measurementNode;
+          this.hasLogicalMeasurementPath = true;
         } else if (i == nodes.length - 2) {
           SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
           entityNode.setAligned(isAligned);
@@ -241,7 +288,21 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
   }
 
+  @Override
+  public void mergeSchemaTree(ISchemaTree schemaTree) {
+    if (schemaTree instanceof ClusterSchemaTree) {
+      this.mergeSchemaTree((ClusterSchemaTree) schemaTree);
+    }
+  }
+
+  @Override
+  public boolean hasLogicalViewMeasurement() {
+    return this.hasLogicalMeasurementPath;
+  }
+
   public void mergeSchemaTree(ClusterSchemaTree schemaTree) {
+    this.hasLogicalMeasurementPath =
+        this.hasLogicalMeasurementPath || schemaTree.hasLogicalViewMeasurement();
     traverseAndMerge(this.root, null, schemaTree.root);
   }
 
@@ -285,12 +346,16 @@ public class ClusterSchemaTree implements ISchemaTree {
     int childNum;
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
+    boolean hasLogicalView = false;
 
     while (inputStream.available() > 0) {
       nodeType = ReadWriteIOUtils.readByte(inputStream);
       if (nodeType == SCHEMA_MEASUREMENT_NODE) {
         SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);
         stack.push(measurementNode);
+        if (measurementNode.isLogicalView()) {
+          hasLogicalView = true;
+        }
       } else {
         SchemaInternalNode internalNode;
         if (nodeType == SCHEMA_ENTITY_NODE) {
@@ -316,7 +381,9 @@ public class ClusterSchemaTree implements ISchemaTree {
         stack.push(internalNode);
       }
     }
-    return new ClusterSchemaTree(stack.poll());
+    ClusterSchemaTree result = new ClusterSchemaTree(stack.poll());
+    result.hasLogicalMeasurementPath = hasLogicalView;
+    return result;
   }
 
   /**
@@ -347,6 +414,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     return databases;
   }
 
+  @Override
   public void setDatabases(Set<String> databases) {
     this.databases = databases;
   }

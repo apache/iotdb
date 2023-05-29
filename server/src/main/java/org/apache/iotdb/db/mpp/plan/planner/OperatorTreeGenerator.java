@@ -142,6 +142,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LogicalViewSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
@@ -531,6 +532,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       return visitNodePathsSchemaScan((NodePathsSchemaScanNode) node, context);
     } else if (node instanceof PathsUsingTemplateScanNode) {
       return visitPathsUsingTemplateScan((PathsUsingTemplateScanNode) node, context);
+    } else if (node instanceof LogicalViewSchemaScanNode) {
+      return visitLogicalViewSchemaScan((LogicalViewSchemaScanNode) node, context);
     }
     return visitPlan(node, context);
   }
@@ -2371,6 +2374,23 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         SchemaSourceFactory.getPathsUsingTemplateSource(
             node.getPathPatternList(), node.getTemplateId()));
+  }
+
+  public Operator visitLogicalViewSchemaScan(
+      LogicalViewSchemaScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                SchemaQueryScanOperator.class.getSimpleName());
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
+        operatorContext,
+        SchemaSourceFactory.getLogicalViewSchemaSource(
+            node.getPath(), node.getLimit(), node.getOffset(), node.getSchemaFilter()));
   }
 
   public List<Operator> dealWithConsumeAllChildrenPipelineBreaker(
