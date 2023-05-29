@@ -272,14 +272,13 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     // TODO: (xingtanzjr) need to confirm what this ttl is used for
     long startTime = System.currentTimeMillis();
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+    // we record the variable `candidate` here is used for selecting more than one
+    // CrossCompactionTaskResources in this method
+    CrossSpaceCompactionCandidate candidate =
+        new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
 
     try {
-      addReadLock(sequenceFileList);
-      addReadLock(unsequenceFileList);
-      // we record the variable `candidate` here is used for selecting more than one
-      // CrossCompactionTaskResources in this method
-      CrossSpaceCompactionCandidate candidate =
-          new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
+      candidate.addReadLock();
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
@@ -314,21 +313,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     } catch (MergeException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     } finally {
-      releaseReadLock(sequenceFileList);
-      releaseReadLock(unsequenceFileList);
+      candidate.releaseReadLock();
     }
     return Collections.emptyList();
-  }
-
-  public void addReadLock(List<TsFileResource> resources) {
-    for (TsFileResource resource : resources) {
-      resource.readLock();
-    }
-  }
-
-  public void releaseReadLock(List<TsFileResource> resources) {
-    for (TsFileResource resource : resources) {
-      resource.readUnlock();
-    }
   }
 }
