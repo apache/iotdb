@@ -42,18 +42,17 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProd
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
 
-public class BindSchemaForExpressionVisitor
-    extends CartesianProductVisitor<BindSchemaForExpressionVisitor.Context> {
+public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISchemaTree> {
 
   @Override
   public List<Expression> visitFunctionExpression(
-      FunctionExpression functionExpression, Context context) {
+      FunctionExpression functionExpression, ISchemaTree schemaTree) {
     // One by one, remove the wildcards from the input expressions. In most cases, an expression
     // will produce multiple expressions after removing the wildcards. We use extendedExpressions
     // to collect the produced expressions.
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression originExpression : functionExpression.getExpressions()) {
-      List<Expression> actualExpressions = process(originExpression, context);
+      List<Expression> actualExpressions = process(originExpression, schemaTree);
       if (actualExpressions.isEmpty()) {
         // Let's ignore the eval of the function which has at least one non-existence series as
         // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
@@ -83,16 +82,15 @@ public class BindSchemaForExpressionVisitor
 
   @Override
   public List<Expression> visitTimeSeriesOperand(
-      TimeSeriesOperand timeSeriesOperand, Context context) {
+      TimeSeriesOperand timeSeriesOperand, ISchemaTree schemaTree) {
     PartialPath timeSeriesOperandPath = timeSeriesOperand.getPath();
     List<MeasurementPath> actualPaths =
-        context.getSchemaTree().searchMeasurementPaths(timeSeriesOperandPath).left;
+        schemaTree.searchMeasurementPaths(timeSeriesOperandPath).left;
     // process logical view
     List<MeasurementPath> nonViewActualPaths = new ArrayList<>();
     List<MeasurementPath> viewPaths = new ArrayList<>();
     for (MeasurementPath measurementPath : actualPaths) {
       if (measurementPath.getMeasurementSchema().isLogicalView()) {
-        context.setHasProcessedLogicalView();
         viewPaths.add(measurementPath);
       } else {
         nonViewActualPaths.add(measurementPath);
@@ -102,7 +100,7 @@ public class BindSchemaForExpressionVisitor
         ExpressionUtils.reconstructTimeSeriesOperands(nonViewActualPaths);
     // handle logical views
     for (MeasurementPath measurementPath : viewPaths) {
-      Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
+      Expression replacedExpression = transformViewPath(measurementPath, schemaTree);
       replacedExpression.setViewPath(measurementPath);
       reconstructTimeSeriesOperands.add(replacedExpression);
     }
@@ -111,12 +109,13 @@ public class BindSchemaForExpressionVisitor
 
   @Override
   public List<Expression> visitTimeStampOperand(
-      TimestampOperand timestampOperand, Context context) {
+      TimestampOperand timestampOperand, ISchemaTree schemaTree) {
     return Collections.singletonList(timestampOperand);
   }
 
   @Override
-  public List<Expression> visitConstantOperand(ConstantOperand constantOperand, Context context) {
+  public List<Expression> visitConstantOperand(
+      ConstantOperand constantOperand, ISchemaTree schemaTree) {
     return Collections.singletonList(constantOperand);
   }
 
@@ -133,27 +132,6 @@ public class BindSchemaForExpressionVisitor
       throw new RuntimeException(
           new UnsupportedOperationException(
               "Can not construct expression using non view path in transformViewPath!"));
-    }
-  }
-
-  public static class Context {
-    private final ISchemaTree schemaTree;
-    private boolean isHasProcessedLogicalView = false;
-
-    public Context(ISchemaTree schemaTree) {
-      this.schemaTree = schemaTree;
-    }
-
-    public ISchemaTree getSchemaTree() {
-      return schemaTree;
-    }
-
-    public boolean isHasProcessedLogicalView() {
-      return isHasProcessedLogicalView;
-    }
-
-    public void setHasProcessedLogicalView() {
-      isHasProcessedLogicalView = true;
     }
   }
 }

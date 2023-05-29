@@ -267,7 +267,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       // make sure paths in logical view is fetched
-      updateSchemaTreeByViews(schemaTree);
+      updateSchemaTreeByViews(analysis, schemaTree);
 
       // extract global time filter from query filter and determine if there is a value filter
       analyzeGlobalTimeFilter(analysis, queryStatement);
@@ -446,23 +446,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (Expression selectExpression : selectExpressions) {
       sourceExpressions.addAll(
-          ExpressionAnalyzer.bindSchemaForExpression(selectExpression, analysis, schemaTree));
+          ExpressionAnalyzer.bindSchemaForExpression(selectExpression, schemaTree));
     }
     analysis.setSourceExpressions(sourceExpressions);
   }
 
-  private void updateSchemaTreeByViews(ISchemaTree originSchemaTree) {
+  private void updateSchemaTreeByViews(Analysis analysis, ISchemaTree originSchemaTree) {
     if (!originSchemaTree.hasLogicalViewMeasurement()) {
       return;
     }
 
     PathPatternTree patternTree = new PathPatternTree();
     boolean needToReFetch = false;
+    boolean useLogicalView = false;
     try {
       Pair<List<MeasurementPath>, Integer> tempPair =
           originSchemaTree.searchMeasurementPaths(new PartialPath("root.**"));
       for (MeasurementPath measurementPath : tempPair.left) {
         if (measurementPath.getMeasurementSchema().isLogicalView()) {
+          useLogicalView = true;
           LogicalViewSchema logicalViewSchema =
               (LogicalViewSchema) measurementPath.getMeasurementSchema();
           ViewExpression viewExpression = logicalViewSchema.getExpression();
@@ -483,6 +485,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       allDatabases.addAll(originSchemaTree.getDatabases());
       originSchemaTree.setDatabases(allDatabases);
     }
+    analysis.setUseLogicalView(useLogicalView);
   }
 
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
@@ -505,8 +508,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
-          ExpressionAnalyzer.bindSchemaForExpression(
-              resultColumn.getExpression(), analysis, schemaTree);
+          ExpressionAnalyzer.bindSchemaForExpression(resultColumn.getExpression(), schemaTree);
 
       for (Expression expression : resultExpressions) {
         if (paginationController.hasCurOffset()) {
@@ -1298,7 +1300,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
       // Expression in a sortItem only indicates one column
       List<Expression> expressions =
-          ExpressionAnalyzer.bindSchemaForExpression(expressionForItem, analysis, schemaTree);
+          ExpressionAnalyzer.bindSchemaForExpression(expressionForItem, schemaTree);
       if (expressions.size() != 1) {
         throw new SemanticException("One sort item in order by should only indicate one value");
       }
@@ -1454,7 +1456,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       groupByExpression = groupByComponent.getControlColumnExpression();
       // Expression in group by variation clause only indicates one column
       List<Expression> expressions =
-          ExpressionAnalyzer.bindSchemaForExpression(groupByExpression, analysis, schemaTree);
+          ExpressionAnalyzer.bindSchemaForExpression(groupByExpression, schemaTree);
       if (expressions.size() != 1) {
         throw new SemanticException("Expression in group by should indicate one value");
       }
@@ -3214,7 +3216,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               "Columns in the query statement is empty. Please check your SQL."));
       return new Pair<>(null, analysis);
     }
-    if (queryAnalysis.hasViewsInQuery()) {
+    if (queryAnalysis.useLogicalView()) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(
@@ -3229,7 +3231,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return new Pair<>(expressionList, analysis);
   }
 
-  private Analysis checkViewsInSource(
+  private void checkViewsInSource(
       Analysis analysis, List<Expression> sourceExpressionList, MPPQueryContext context) {
     List<PartialPath> pathsNeedCheck = new ArrayList<>();
     for (Expression expression : sourceExpressionList) {
@@ -3246,7 +3248,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "Can not create a logical view based on non-exist time series."));
-      return analysis;
+      return;
     }
     Pair<List<PartialPath>, PartialPath> viewInSourceCheckResult =
         findAllViewsInPaths(pathsNeedCheck, schemaOfNeedToCheck.left);
@@ -3259,7 +3261,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               "Path "
                   + viewInSourceCheckResult.right.toString()
                   + " does not exist! You can not create a logical view based on non-exist time series."));
-      return analysis;
+      return;
     }
     if (viewInSourceCheckResult.left.size() > 0) {
       // some source paths is logical view
@@ -3268,9 +3270,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "Can not create a logical view based on existing views."));
-      return analysis;
     }
-    return analysis;
   }
 
   private Analysis checkPathsInCreateLogicalView(

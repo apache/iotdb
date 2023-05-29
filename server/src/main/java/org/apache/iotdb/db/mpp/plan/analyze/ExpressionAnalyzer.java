@@ -411,14 +411,8 @@ public class ExpressionAnalyzer {
    *     expressions
    */
   public static List<Expression> bindSchemaForExpression(
-      Expression expression, Analysis analysis, ISchemaTree schemaTree) {
-    BindSchemaForExpressionVisitor bindSchemaForExpressionVisitor =
-        new BindSchemaForExpressionVisitor();
-    BindSchemaForExpressionVisitor.Context context =
-        new BindSchemaForExpressionVisitor.Context(schemaTree);
-    List<Expression> expressions = bindSchemaForExpressionVisitor.process(expression, context);
-    analysis.setHasViewsInQuery(context.isHasProcessedLogicalView());
-    return expressions;
+      Expression expression, ISchemaTree schemaTree) {
+    return new BindSchemaForExpressionVisitor().process(expression, schemaTree);
   }
 
   /**

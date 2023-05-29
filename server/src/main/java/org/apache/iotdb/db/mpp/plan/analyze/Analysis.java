@@ -236,7 +236,8 @@ public class Analysis {
   // Logical View Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private boolean hasViewsInQuery = false;
+  private boolean useLogicalView = false;
+
   private List<Pair<Expression, String>> outputExpressions = null;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -691,12 +692,12 @@ public class Analysis {
   // Logical View Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public void setHasViewsInQuery(boolean hasViewsInQuery) {
-    this.hasViewsInQuery = this.hasViewsInQuery || hasViewsInQuery;
+  public void setUseLogicalView(boolean useLogicalView) {
+    this.useLogicalView = useLogicalView;
   }
 
-  public boolean hasViewsInQuery() {
-    return this.hasViewsInQuery;
+  public boolean useLogicalView() {
+    return this.useLogicalView;
   }
 
   public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {
