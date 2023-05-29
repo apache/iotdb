@@ -70,6 +70,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
@@ -807,8 +810,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           }
 
           // create one logical view
-          IMeasurementMNode<IMemMNode> leafMNode;
-          leafMNode = mtree.createLogicalView(path, viewPathToSourceMap.get(path));
+          IMeasurementMNode<IMemMNode> leafMNode =
+              mtree.createLogicalView(path, viewPathToSourceMap.get(path));
         } catch (Throwable t) {
           if (seriesNumberMonitor != null) {
             seriesNumberMonitor.deleteTimeSeries(1);
@@ -826,6 +829,54 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // update statistics
     regionStatistics.addTimeseries(1L);
     // TODO: CRTODO: shall we update id table?
+  }
+
+  @Override
+  public long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
+    long preDeletedNum = 0;
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      // Given pathPatterns may match one logical view multi times, which may results in the
+      // preDeletedNum larger than the actual num of logical view. It doesn't matter since the main
+      // purpose is to check whether there's logical view to be deleted.
+      List<PartialPath> paths = mtree.constructLogicalViewBlackList(pathPattern);
+      preDeletedNum += paths.size();
+      for (PartialPath path : paths) {
+        try {
+          writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+    return preDeletedNum;
+  }
+
+  @Override
+  public void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      List<PartialPath> paths = mtree.rollbackLogicalViewBlackList(pathPattern);
+      for (PartialPath path : paths) {
+        try {
+          writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void deleteLogicalView(PathPatternTree patternTree) throws MetadataException {
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (PartialPath path : mtree.getPreDeletedLogicalView(pathPattern)) {
+        try {
+          deleteSingleTimeseriesInBlackList(path);
+          writeToMLog(SchemaRegionWritePlanFactory.getDeleteLogicalViewPlan(path));
+        } catch (IOException e) {
+          throw new MetadataException(e);
+        }
+      }
+    }
   }
 
   private void deleteSingleTimeseriesInBlackList(PartialPath path)
@@ -1117,6 +1168,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
+      throw new SeriesOverflowException();
+    }
+
     try {
       getDeviceNodeWithAutoCreate(plan.getActivatePath());
 
@@ -1381,6 +1436,50 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         deactivateTemplateInBlackList(deactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
       } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    public RecoverOperationResult visitCreateLogicalView(
+        ICreateLogicalViewPlan createLogicalViewPlan, SchemaRegionMemoryImpl context) {
+      try {
+        createLogicalView(createLogicalViewPlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitPreDeleteLogicalView(
+        IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, SchemaRegionMemoryImpl context) {
+      try {
+        recoverPreDeleteTimeseries(preDeleteLogicalViewPlan.getPath());
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitRollbackPreDeleteLogicalView(
+        IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan,
+        SchemaRegionMemoryImpl context) {
+      try {
+        recoverRollbackPreDeleteTimeseries(rollbackPreDeleteLogicalViewPlan.getPath());
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitDeleteLogicalView(
+        IDeleteLogicalViewPlan deleteLogicalViewPlan, SchemaRegionMemoryImpl context) {
+      try {
+        deleteOneTimeseriesUpdateStatistics(deleteLogicalViewPlan.getPath());
+        return RecoverOperationResult.SUCCESS;
+      } catch (MetadataException | IOException e) {
         return new RecoverOperationResult(e);
       }
     }

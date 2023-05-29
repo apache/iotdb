@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -109,7 +109,8 @@ public class SeriesScanUtil {
   protected SeriesScanOptions scanOptions;
   protected PaginationController paginationController;
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
+      SeriesScanCostMetricSet.getInstance();
 
   public SeriesScanUtil(
       PartialPath seriesPath,
@@ -843,7 +844,7 @@ public class SeriesScanUtil {
         }
       }
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           isAligned
               ? BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED
               : BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED,
@@ -1160,7 +1161,7 @@ public class SeriesScanUtil {
         }
         return tsBlock;
       } finally {
-        QUERY_METRICS.recordSeriesScanCost(
+        SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
             isAligned
                 ? (isMem
                     ? BUILD_TSBLOCK_FROM_PAGE_READER_ALIGNED_MEM

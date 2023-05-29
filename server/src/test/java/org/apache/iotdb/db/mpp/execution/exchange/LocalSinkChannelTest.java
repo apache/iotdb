@@ -32,6 +32,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static org.testcontainers.shaded.com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
+
 public class LocalSinkChannelTest {
   @Test
   public void testSend() {
@@ -50,7 +52,11 @@ public class LocalSinkChannelTest {
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct a shared TsBlock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
+            mockLocalMemoryManager,
+            newDirectExecutorService());
 
     // Construct Sink.
     LocalSinkChannel localSinkChannel =
@@ -137,7 +143,11 @@ public class LocalSinkChannelTest {
     SinkListener mockSinkListener = Mockito.mock(SinkListener.class);
     // Construct a shared tsblock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(remoteFragmentInstanceId, remotePlanNodeId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
+            mockLocalMemoryManager,
+            newDirectExecutorService());
 
     // Construct SinkChannel.
     LocalSinkChannel localSinkChannel =

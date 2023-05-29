@@ -41,6 +41,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -159,13 +162,13 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
       List<TSDataType> dataTypes = new ArrayList<>();
       for (int i = 0; i < size; i++) {
-        dataTypes.add(TSDataType.values()[buffer.get()]);
+        dataTypes.add(TSDataType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setDataTypes(dataTypes);
 
       List<TSEncoding> encodings = new ArrayList<>();
       for (int i = 0; i < size; i++) {
-        encodings.add(TSEncoding.values()[buffer.get()]);
+        encodings.add(TSEncoding.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setEncodings(encodings);
 
@@ -226,8 +229,8 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
 
-      createTimeSeriesPlan.setDataType(TSDataType.values()[buffer.get()]);
-      createTimeSeriesPlan.setEncoding(TSEncoding.values()[buffer.get()]);
+      createTimeSeriesPlan.setDataType(TSDataType.deserialize(buffer.get()));
+      createTimeSeriesPlan.setEncoding(TSEncoding.deserialize(buffer.get()));
       createTimeSeriesPlan.setCompressor(CompressionType.deserialize(buffer.get()));
       createTimeSeriesPlan.setTagOffset(buffer.getLong());
 
@@ -360,6 +363,28 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       }
       createLogicalViewPlan.setViewPathToSourceExpressionMap(viewPathToSourceMap);
       return createLogicalViewPlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitPreDeleteLogicalView(
+        IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, ByteBuffer buffer) {
+      preDeleteLogicalViewPlan.setPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
+      return preDeleteLogicalViewPlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitRollbackPreDeleteLogicalView(
+        IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan, ByteBuffer buffer) {
+      rollbackPreDeleteLogicalViewPlan.setPath(
+          (PartialPath) PathDeserializeUtil.deserialize(buffer));
+      return rollbackPreDeleteLogicalViewPlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitDeleteLogicalView(
+        IDeleteLogicalViewPlan deleteLogicalViewPlan, ByteBuffer buffer) {
+      deleteLogicalViewPlan.setPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
+      return deleteLogicalViewPlan;
     }
   }
 }

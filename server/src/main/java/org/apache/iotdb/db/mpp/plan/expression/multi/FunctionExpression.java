@@ -176,6 +176,27 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    StringBuilder builder = new StringBuilder();
+    if (!expressions.isEmpty()) {
+      builder.append(expressions.get(0).getStringWithViewOfThisExpression());
+      for (int i = 1; i < expressions.size(); ++i) {
+        builder.append(", ").append(expressions.get(i).getStringWithViewOfThisExpression());
+      }
+    }
+    if (!functionAttributes.isEmpty()) {
+      // Some built-in scalar functions may have different header.
+      if (BuiltinScalarFunction.contains(functionName)) {
+        BuiltInScalarFunctionHelperFactory.createHelper(functionName)
+            .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
+      } else {
+        appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
+      }
+    }
+    return functionName + "(" + builder + ")";
+  }
+
+  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     String expressionString = getExpressionString();

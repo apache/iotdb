@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,8 +104,8 @@ public abstract class AbstractCompactionTask {
       this.currentTaskNum.decrementAndGet();
       summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
-      CompactionMetricsManager.getInstance()
-          .reportTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
+      CompactionMetrics.getInstance()
+          .recordTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
       return isSuccess;
     }
   }

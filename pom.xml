@@ -81,54 +81,48 @@
     <modules>
         <module>tsfile</module>
         <module>antlr</module>
-        <module>thrift</module>
-        <module>thrift-commons</module>
-        <module>thrift-confignode</module>
-        <module>thrift-iot-consensus</module>
-        <module>thrift-influxdb</module>
-        <module>thrift-mlnode</module>
-        <module>service-rpc</module>
-        <module>jdbc</module>
-        <module>influxdb-protocol</module>
-        <module>session</module>
-        <module>cli</module>
-        <module>openapi</module>
+        <module>iotdb-protocol/thrift</module>
+        <module>iotdb-protocol/thrift-commons</module>
+        <module>iotdb-protocol/thrift-confignode</module>
+        <module>iotdb-protocol/thrift-iot-consensus</module>
+        <module>iotdb-protocol/thrift-influxdb</module>
+        <module>iotdb-protocol/thrift-mlnode</module>
+        <module>iotdb-client/service-rpc</module>
+        <module>iotdb-client/jdbc</module>
+        <module>iotdb-client/session</module>
+        <module>iotdb-client/cli</module>
+        <module>iotdb-protocol/openapi</module>
         <module>server</module>
         <module>example</module>
-        <module>grafana-plugin</module>
-        <module>grafana-connector</module>
-        <module>spark-tsfile</module>
-        <module>hadoop</module>
-        <module>spark-iotdb-connector/scala_2.11</module>
-        <module>spark-iotdb-connector/scala_2.12</module>
-        <module>flink-tsfile-connector</module>
-        <module>flink-iotdb-connector</module>
+        <module>iotdb-connector/grafana-plugin</module>
+        <module>iotdb-connector/grafana-connector</module>
+        <module>iotdb-connector/spark-tsfile</module>
+        <module>iotdb-connector/hadoop</module>
+        <module>iotdb-connector/spark-iotdb-connector/scala_2.11</module>
+        <module>iotdb-connector/spark-iotdb-connector/scala_2.12</module>
+        <module>iotdb-connector/flink-tsfile-connector</module>
+        <module>iotdb-connector/flink-iotdb-connector</module>
         <module>distribution</module>
-        <module>hive-connector</module>
+        <module>iotdb-connector/hive-connector</module>
         <module>node-commons</module>
         <module>confignode</module>
-        <module>zeppelin-interpreter</module>
-        <module>client-py</module>
-        <module>compile-tools</module>
-        <module>client-cpp</module>
+        <module>iotdb-connector/zeppelin-interpreter</module>
+        <module>iotdb-client/client-py</module>
+        <module>iotdb-client/compile-tools</module>
+        <module>iotdb-client/client-cpp</module>
         <module>metrics</module>
-        <!-- Will remove integration at 2023.1.23-->
-        <module>integration</module>
         <module>integration-test</module>
         <module>consensus</module>
-        <module>external-pipe-api</module>
+        <module>iotdb-api/external-pipe-api</module>
         <module>library-udf</module>
-        <module>schema-engine-rocksdb</module>
-        <module>udf-api</module>
-        <module>trigger-api</module>
-        <module>rewrite-tsfile-tool</module>
-        <module>external-api</module>
-        <module>schema-engine-tag</module>
-        <module>isession</module>
+        <module>iotdb-api/udf-api</module>
+        <module>iotdb-api/trigger-api</module>
+        <module>iotdb-api/external-api</module>
+        <module>iotdb-client/isession</module>
         <module>mlnode</module>
-        <module>pipe-api</module>
-        <module>subscription-api</module>
         <module>object-storage</module>
+        <module>iotdb-api/pipe-api</module>
+        <module>iotdb-api/subscription-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>

@@ -125,4 +125,21 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   public Object getFirstValueOfIndex(int index) {
     throw new NotImplementedException();
   }
+
+  @Override
+  public InsertBaseStatement removeLogicalView() {
+    List<InsertTabletStatement> mergedList = new ArrayList<>();
+    boolean needSplit = false;
+    for (InsertTabletStatement child : this.insertTabletStatementList) {
+      List<InsertTabletStatement> childSplitResult = child.getSplitList();
+      needSplit = needSplit || child.isNeedSplit();
+      mergedList.addAll(childSplitResult);
+    }
+    if (!needSplit) {
+      return this;
+    }
+    InsertMultiTabletsStatement splitResult = new InsertMultiTabletsStatement();
+    splitResult.setInsertTabletStatementList(mergedList);
+    return splitResult;
+  }
 }

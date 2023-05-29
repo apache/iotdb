@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskId;
+import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -67,6 +68,8 @@ public abstract class Driver implements IDriver {
   protected final DriverLock exclusiveLock = new DriverLock();
 
   protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  protected final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+      QueryExecutionMetricSet.getInstance();
 
   protected enum State {
     ALIVE,
@@ -246,7 +249,7 @@ public abstract class Driver implements IDriver {
       driverContext.failed(newException);
       throw newException;
     } finally {
-      QUERY_METRICS.recordExecutionCost(
+      QUERY_EXECUTION_METRICS.recordExecutionCost(
           DRIVER_INTERNAL_PROCESS, System.nanoTime() - startTimeNanos);
     }
   }

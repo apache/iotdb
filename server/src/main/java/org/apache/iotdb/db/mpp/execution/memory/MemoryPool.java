@@ -149,6 +149,22 @@ public class MemoryPool {
     return id;
   }
 
+  public long getMaxBytes() {
+    return maxBytes;
+  }
+
+  public long getRemainingBytes() {
+    return remainingBytes.get();
+  }
+
+  public int getQueryMemoryReservationSize() {
+    return queryMemoryReservations.size();
+  }
+
+  public int getMemoryReservationSize() {
+    return memoryReservationFutures.size();
+  }
+
   /**
    * Before executing, we register memory map which is related to queryId, fragmentInstanceId, and
    * planNodeId to queryMemoryReservationsMap first.
@@ -175,10 +191,14 @@ public class MemoryPool {
     Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
     if (queryRelatedMemory != null) {
       Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
-      for (Long memoryReserved : fragmentRelatedMemory.values()) {
-        if (memoryReserved != 0) {
-          throw new MemoryLeakException(
-              "PlanNode related memory is not zero when deregister fragment instance from query memory pool.");
+      // fragmentRelatedMemory could be null if the FI has not reserved any memory(For example,
+      // next() of root operator returns no data)
+      if (fragmentRelatedMemory != null) {
+        for (Long memoryReserved : fragmentRelatedMemory.values()) {
+          if (memoryReserved != 0) {
+            throw new MemoryLeakException(
+                "PlanNode related memory is not zero when deregister fragment instance from query memory pool.");
+          }
         }
       }
       synchronized (queryMemoryReservations) {
