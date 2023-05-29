@@ -206,16 +206,16 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         }
 
         List<Long> sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
-        List<Long> unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-        CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
         List<String> fileNames = new ArrayList<>();
         selectedSequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
         TsFileMetricManager.getInstance()
             .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size(), fileNames);
         fileNames.clear();
         selectedUnsequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
+        List<Long> unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
         TsFileMetricManager.getInstance()
             .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size(), fileNames);
+        CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
