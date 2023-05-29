@@ -143,6 +143,11 @@ public class LikeExpression extends UnaryExpression {
   }
 
   @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    return expression.getStringWithViewOfThisExpression() + " LIKE '" + pattern + "'";
+  }
+
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitLikeExpression(this, context);
   }

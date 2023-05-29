@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
+import org.apache.iotdb.confignode.manager.pipe.runtime.PipeRuntimeCoordinator;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -42,13 +43,16 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
   private final Consumer<Map<Integer, Long>> schemaQuotaRespProcess;
 
+  private final PipeRuntimeCoordinator pipeRuntimeCoordinator;
+
   public DataNodeHeartbeatHandler(
       int nodeId,
       LoadCache loadCache,
       Map<Integer, Long> deviceNum,
       Map<Integer, Long> timeSeriesNum,
       Map<Integer, Long> regionDisk,
-      Consumer<Map<Integer, Long>> schemaQuotaRespProcess) {
+      Consumer<Map<Integer, Long>> schemaQuotaRespProcess,
+      PipeRuntimeCoordinator pipeRuntimeCoordinator) {
 
     this.nodeId = nodeId;
     this.loadCache = loadCache;
@@ -56,6 +60,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
     this.timeSeriesNum = timeSeriesNum;
     this.regionDisk = regionDisk;
     this.schemaQuotaRespProcess = schemaQuotaRespProcess;
+    this.pipeRuntimeCoordinator = pipeRuntimeCoordinator;
   }
 
   @Override
@@ -105,6 +110,9 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
           schemaQuotaRespProcess.accept(heartbeatResp.getRegionTimeSeriesNumMap());
           break;
       }
+    }
+    if (heartbeatResp.getPipeMetaList() != null) {
+      pipeRuntimeCoordinator.parseHeartbeat(nodeId, heartbeatResp.getPipeMetaList());
     }
   }
 

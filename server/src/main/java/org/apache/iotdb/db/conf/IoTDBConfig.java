@@ -335,7 +335,8 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
-  private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  /** default dop = 1 for now */
+  private int degreeOfParallelism = 1;
 
   private int modeMapSizeThreshold = 10000;
 
@@ -1623,7 +1624,7 @@ public class IoTDBConfig {
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
-    this.degreeOfParallelism = degreeOfParallelism;
+    this.degreeOfParallelism = Math.max(1, degreeOfParallelism);
   }
 
   public int getDegreeOfParallelism() {

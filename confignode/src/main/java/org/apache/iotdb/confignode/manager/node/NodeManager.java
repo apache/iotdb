@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -246,7 +247,8 @@ public class NodeManager {
     getConsensusManager().write(registerDataNodePlan);
 
     // Bind DataNode metrics
-    PartitionMetrics.bindDataNodePartitionMetrics(configManager, dataNodeId);
+    PartitionMetrics.bindDataNodePartitionMetrics(
+        MetricService.getInstance(), configManager, dataNodeId);
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     getClusterSchemaManager().adjustMaxRegionGroupNum();

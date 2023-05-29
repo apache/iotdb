@@ -121,6 +121,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -291,12 +292,14 @@ public class ConfigManager implements IManager {
     this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
 
+    // 1. keep PipeManager initialization before LoadManager initialization, because
+    // LoadManager will register PipeManager as a listener.
+    // 2. keep RetryFailedTasksThread initialization after LoadManager initialization,
+    // because RetryFailedTasksThread will keep a reference of LoadManager.
+    this.loadManager = new LoadManager(this);
+
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
     this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
-
-    // Please keep loadManager initializing at last because it may require other managers to
-    // register the eventBus
-    this.loadManager = new LoadManager(this);
   }
 
   public void initConsensusManager() throws IOException {
@@ -478,6 +481,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setSchemaRegionPerDataNode(CONF.getSchemaRegionPerDataNode());
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
     clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
+    clusterParameters.setTimestampPrecision(COMMON_CONF.getTimestampPrecision());
     return clusterParameters;
   }
 
@@ -1574,6 +1578,16 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.deleteTimeSeries(req);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.deleteLogicalView(req);
     } else {
       return status;
     }

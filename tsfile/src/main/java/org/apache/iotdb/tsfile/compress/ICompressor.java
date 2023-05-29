@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.compress;
 
+import org.apache.iotdb.tsfile.compress.auto.AutoCompressor;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.exception.compress.GZIPCompressOverflowException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -75,6 +76,8 @@ public interface ICompressor extends Serializable {
         return new ZstdCompressor();
       case LZMA2:
         return new LZMA2Compressor();
+      case AUTO:
+        return new AutoCompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }

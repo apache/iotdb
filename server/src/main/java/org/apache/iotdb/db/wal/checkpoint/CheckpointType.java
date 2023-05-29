@@ -21,17 +21,18 @@ package org.apache.iotdb.db.wal.checkpoint;
 /** Type of {@link Checkpoint} */
 public enum CheckpointType {
   /** record all existing memtables' info */
-  GLOBAL_MEMORY_TABLE_INFO((byte) 0),
+  GLOBAL_MEMORY_TABLE_INFO((byte) 0, "global memory table info"),
   /** record create info of one memtable */
-  CREATE_MEMORY_TABLE((byte) 1),
+  CREATE_MEMORY_TABLE((byte) 1, "create memory table"),
   /** record flush info of one memtable */
-  FLUSH_MEMORY_TABLE((byte) 2),
-  ;
+  FLUSH_MEMORY_TABLE((byte) 2, "flush memory table");
 
   private final byte code;
+  private final String name;
 
-  CheckpointType(byte code) {
+  CheckpointType(byte code, String name) {
     this.code = code;
+    this.name = name;
   }
 
   public byte getCode() {
@@ -45,5 +46,10 @@ public enum CheckpointType {
       }
     }
     return null;
+  }
+
+  @Override
+  public String toString() {
+    return name;
   }
 }

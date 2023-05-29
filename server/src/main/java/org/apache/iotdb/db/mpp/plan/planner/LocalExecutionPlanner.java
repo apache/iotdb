@@ -51,6 +51,10 @@ public class LocalExecutionPlanner {
   private long freeMemoryForOperators =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForOperators();
 
+  public long getFreeMemoryForOperators() {
+    return freeMemoryForOperators;
+  }
+
   public static LocalExecutionPlanner getInstance() {
     return InstanceHolder.INSTANCE;
   }

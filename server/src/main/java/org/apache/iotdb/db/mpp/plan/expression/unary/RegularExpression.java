@@ -90,6 +90,11 @@ public class RegularExpression extends UnaryExpression {
   }
 
   @Override
+  public String getStringWithViewOfThisExpressionInternal() {
+    return expression.getStringWithViewOfThisExpression() + " REGEXP '" + patternString + "'";
+  }
+
+  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitRegularExpression(this, context);
   }

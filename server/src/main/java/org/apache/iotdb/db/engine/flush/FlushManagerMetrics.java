@@ -77,8 +77,12 @@ public class FlushManagerMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     FlushManagerMetrics that = (FlushManagerMetrics) o;
     return Objects.equals(flushManager, that.flushManager);
   }

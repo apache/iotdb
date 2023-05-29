@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.flush.tasks;
 
 import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.util.List;
@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FlushContext {
-  private final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
+  private final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
   private List<FlushDeviceContext> deviceContexts;
   private AtomicInteger cursor = new AtomicInteger();
   private RestorableTsFileIOWriter writer;
@@ -52,7 +52,7 @@ public class FlushContext {
     this.cursor.set(cursor);
   }
 
-  public WritingMetricsManager getWritingMetrics() {
+  public WritingMetrics getWritingMetrics() {
     return WRITING_METRICS;
   }
 

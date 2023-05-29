@@ -27,7 +27,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
@@ -113,7 +114,10 @@ public class SourceHandle implements ISourceHandle {
    */
   private boolean canGetTsBlockFromRemote = false;
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
+      DataExchangeCostMetricSet.getInstance();
+  private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
+      DataExchangeCountMetricSet.getInstance();
 
   public SourceHandle(
       TEndPoint remoteEndpoint,
@@ -156,7 +160,7 @@ public class SourceHandle implements ISourceHandle {
       try {
         return serde.deserialize(tsBlock);
       } finally {
-        QUERY_METRICS.recordDataExchangeCost(
+        DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
             SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE, System.nanoTime() - startTime);
       }
     } else {
@@ -200,7 +204,7 @@ public class SourceHandle implements ISourceHandle {
       trySubmitGetDataBlocksTask();
       return tsBlock;
     } finally {
-      QUERY_METRICS.recordDataExchangeCost(
+      DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
           SOURCE_HANDLE_GET_TSBLOCK_REMOTE, System.nanoTime() - startTime);
     }
   }
@@ -529,7 +533,8 @@ public class SourceHandle implements ISourceHandle {
             tsBlocks.addAll(resp.getTsBlocks());
 
             LOGGER.debug("[EndPullTsBlocksFromRemote] Count:{}", tsBlockNum);
-            QUERY_METRICS.recordDataBlockNum(GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
+            DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
+                GET_DATA_BLOCK_NUM_CALLER, tsBlockNum);
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
             synchronized (SourceHandle.this) {
@@ -570,7 +575,7 @@ public class SourceHandle implements ISourceHandle {
               return;
             }
           } finally {
-            QUERY_METRICS.recordDataExchangeCost(
+            DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
                 GET_DATA_BLOCK_TASK_CALLER, System.nanoTime() - startTime);
           }
         }
@@ -644,9 +649,9 @@ public class SourceHandle implements ISourceHandle {
               }
             }
           } finally {
-            QUERY_METRICS.recordDataExchangeCost(
+            DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
                 ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER, System.nanoTime() - startTime);
-            QUERY_METRICS.recordDataBlockNum(
+            DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
                 ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER, endSequenceId - startSequenceId);
           }
         }

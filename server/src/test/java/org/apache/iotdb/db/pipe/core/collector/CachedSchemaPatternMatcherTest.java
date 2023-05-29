@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.collector;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedSchemaPatternMatcher;
@@ -64,7 +65,8 @@ public class CachedSchemaPatternMatcherTest {
 
   @Test
   public void testCachedMatcher() throws ExecutionException, InterruptedException {
-    PipeRealtimeDataRegionCollector databaseCollector = new PipeRealtimeDataRegionFakeCollector();
+    PipeRealtimeDataRegionCollector databaseCollector =
+        new PipeRealtimeDataRegionFakeCollector(null);
     databaseCollector.customize(
         new PipeParameters(
             new HashMap<String, String>() {
@@ -79,7 +81,8 @@ public class CachedSchemaPatternMatcherTest {
     int deviceCollectorNum = 10;
     int seriesCollectorNum = 10;
     for (int i = 0; i < deviceCollectorNum; i++) {
-      PipeRealtimeDataRegionCollector deviceCollector = new PipeRealtimeDataRegionFakeCollector();
+      PipeRealtimeDataRegionCollector deviceCollector =
+          new PipeRealtimeDataRegionFakeCollector(null);
       int finalI1 = i;
       deviceCollector.customize(
           new PipeParameters(
@@ -92,7 +95,8 @@ public class CachedSchemaPatternMatcherTest {
           null);
       collectorList.add(deviceCollector);
       for (int j = 0; j < seriesCollectorNum; j++) {
-        PipeRealtimeDataRegionCollector seriesCollector = new PipeRealtimeDataRegionFakeCollector();
+        PipeRealtimeDataRegionCollector seriesCollector =
+            new PipeRealtimeDataRegionFakeCollector(null);
         int finalI = i;
         int finalJ = j;
         seriesCollector.customize(
@@ -148,6 +152,10 @@ public class CachedSchemaPatternMatcherTest {
   }
 
   public static class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionCollector {
+
+    public PipeRealtimeDataRegionFakeCollector(PipeTaskMeta pipeTaskMeta) {
+      super(pipeTaskMeta);
+    }
 
     @Override
     public Event supply() {

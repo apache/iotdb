@@ -23,7 +23,6 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -40,6 +39,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
   private final ListenableBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
 
+  private static final int HEARTBEAT_CHECK_INTERVAL = 1000;
+  private int executeOnceInvokedTimes;
+
   /** @param taskID connectorAttributeSortedString */
   public PipeConnectorSubtask(
       String taskID,
@@ -48,14 +50,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
+    executeOnceInvokedTimes = 0;
   }
 
-  // TODO: for a while
   @Override
-  protected synchronized void executeForAWhile() {
+  protected synchronized boolean executeOnce() {
     try {
-      // TODO: reduce the frequency of heartbeat
-      outputPipeConnector.heartbeat();
+      if (executeOnceInvokedTimes++ % HEARTBEAT_CHECK_INTERVAL == 0) {
+        outputPipeConnector.heartbeat();
+      }
     } catch (Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: failed to connect to the target system.", e);
@@ -65,23 +68,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
     // record this event for retrying on connection failure or other exceptions
     lastEvent = event;
     if (event == null) {
-      return;
+      return false;
     }
 
     try {
-      switch (event.getType()) {
-        case TABLET_INSERTION:
-          outputPipeConnector.transfer((TabletInsertionEvent) event);
-          break;
-        case TSFILE_INSERTION:
-          outputPipeConnector.transfer((TsFileInsertionEvent) event);
-          break;
-        case DELETION:
-          outputPipeConnector.transfer((DeletionEvent) event);
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              "Unsupported event type: " + event.getClass().getName());
+      if (event instanceof TabletInsertionEvent) {
+        outputPipeConnector.transfer((TabletInsertionEvent) event);
+      } else if (event instanceof TsFileInsertionEvent) {
+        outputPipeConnector.transfer((TsFileInsertionEvent) event);
+      } else {
+        outputPipeConnector.transfer(event);
       }
 
       releaseLastEvent();
@@ -93,6 +89,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
           "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
           e);
     }
+
+    return true;
   }
 
   @Override
