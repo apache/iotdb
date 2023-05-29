@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ThreadPoolMetrics implements IMetricSet {
-  private static volatile ThreadPoolMetrics instance = null;
   private static final String THREAD_POOL_ACTIVE_THREAD_COUNT = "thread_pool_active_thread_count";
   private static final String THREAD_POOL_DONE_TASK_COUNT = "thread_pool_done_task_count";
   private static final String THREAD_POOL_WAITING_TASK_COUNT = "thread_pool_waiting_task_count";
@@ -40,14 +39,7 @@ public class ThreadPoolMetrics implements IMetricSet {
   private Map<String, IThreadPoolMBean> registeredPoolMap = new HashMap<>();
 
   public static ThreadPoolMetrics getInstance() {
-    if (instance == null) {
-      synchronized (ThreadPoolMetrics.class) {
-        if (instance == null) {
-          instance = new ThreadPoolMetrics();
-        }
-      }
-    }
-    return instance;
+    return ThreadPoolMetricsHolder.INSTANCE;
   }
 
   private ThreadPoolMetrics() {}
@@ -140,5 +132,11 @@ public class ThreadPoolMetrics implements IMetricSet {
       metricService.remove(
           MetricType.GAUGE, THREAD_POOL_DONE_TASK_COUNT, POOL_NAME, entry.getKey());
     }
+  }
+
+  private static class ThreadPoolMetricsHolder {
+    private static final ThreadPoolMetrics INSTANCE = new ThreadPoolMetrics();
+
+    private ThreadPoolMetricsHolder() {}
   }
 }
