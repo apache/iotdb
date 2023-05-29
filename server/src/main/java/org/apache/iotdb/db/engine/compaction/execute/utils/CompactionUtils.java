@@ -238,8 +238,7 @@ public class CompactionUtils {
       List<TsFileResource> targetResources,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources) {
-    for (int i = 0; i < targetResources.size(); i++) {
-      TsFileResource targetResource = targetResources.get(i);
+    for (TsFileResource targetResource : targetResources) {
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updateProgressIndex(unseqResource.getMaxProgressIndexAfterClose());
       }
@@ -259,8 +258,7 @@ public class CompactionUtils {
     // however, since the data of unseq files are mixed together, we won't be able to know
     // which files are exactly contained in the new file, so we have to record all unseq files
     // in the new file
-    for (int i = 0; i < targetResources.size(); i++) {
-      TsFileResource targetResource = targetResources.get(i);
+    for (TsFileResource targetResource : targetResources) {
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updatePlanIndexes(unseqResource);
       }
