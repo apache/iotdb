@@ -113,7 +113,8 @@ carefully evaluated. The current Core-level metrics are as follows:
 #### 4.1.1. Cluster
 
 | Metric                    | Tags                                            | Type      | Description                                         |
-| ------------------------- | ----------------------------------------------- | --------- | --------------------------------------------------- |
+|---------------------------|-------------------------------------------------| --------- |-----------------------------------------------------|
+| up_time                   | -                                               | AutoGauge | The time IoTDB has been running                     |
 | config_node               | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
 | data_node                 | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
 | cluster_node_leader_count | name="{ip}:{port}"                              | Gauge     | The count of consensus group leader on each node    |

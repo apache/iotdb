@@ -35,7 +35,7 @@ public class PipeSubtaskExecutorManager {
   private final PipeConnectorSubtaskExecutor connectorSubtaskExecutor;
 
   public PipeAssignerSubtaskExecutor getAssignerSubtaskExecutor() {
-    return assignerSubtaskExecutor;
+    throw new UnsupportedOperationException("currently not needed");
   }
 
   public PipeProcessorSubtaskExecutor getProcessorSubtaskExecutor() {
@@ -49,7 +49,7 @@ public class PipeSubtaskExecutorManager {
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeSubtaskExecutorManager() {
-    assignerSubtaskExecutor = new PipeAssignerSubtaskExecutor();
+    assignerSubtaskExecutor = null;
     processorSubtaskExecutor = new PipeProcessorSubtaskExecutor();
     connectorSubtaskExecutor = new PipeConnectorSubtaskExecutor();
   }

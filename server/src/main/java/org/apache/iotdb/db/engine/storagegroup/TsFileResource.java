@@ -711,6 +711,9 @@ public class TsFileResource {
   }
 
   public boolean setStatus(TsFileResourceStatus status) {
+    if (status == getStatus()) {
+      return true;
+    }
     switch (status) {
       case NORMAL:
         return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)
@@ -1225,6 +1228,10 @@ public class TsFileResource {
       throw new IllegalStateException(
           "Should not get progress index from a unclosing TsFileResource.");
     }
+    return getMaxProgressIndex();
+  }
+
+  public ProgressIndex getMaxProgressIndex() {
     return maxProgressIndex == null ? new MinimumProgressIndex() : maxProgressIndex;
   }
 }
