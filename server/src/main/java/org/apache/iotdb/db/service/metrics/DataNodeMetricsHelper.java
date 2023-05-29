@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
 import org.apache.iotdb.metrics.metricsets.cpu.CpuUsageMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
@@ -46,6 +47,7 @@ import java.util.List;
 public class DataNodeMetricsHelper {
   /** Bind predefined metric sets into DataNode. */
   public static void bind() {
+    MetricService.getInstance().addMetricSet(new UpTimeMetrics());
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());

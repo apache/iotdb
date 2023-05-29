@@ -245,7 +245,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     createFiles(2, 5, 10, 1000, 4200, 4200, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 6500, 6500, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 6301, 6301, 100, 100, true, false);
-    seqResources.get(4).setStatus(TsFileResourceStatus.UNCLOSED);
+    seqResources.get(4).setStatusForTest(TsFileResourceStatus.UNCLOSED);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -1871,7 +1871,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
 
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
-    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (String deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
@@ -1925,7 +1925,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
 
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
-    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (String deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
@@ -1972,7 +1972,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     createFiles(1, 5, 5, 3000, 1500, 1500, 100, 100, false, false);
 
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
-    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (String deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
@@ -2025,7 +2025,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     createFiles(1, 5, 5, 50, 4310, 4310, 100, 100, false, false);
 
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
-    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (String deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
@@ -2079,7 +2079,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     createFiles(1, 5, 5, 3000, 1500, 1500, 100, 100, false, false);
 
     TsFileResource unclosedUnSeqResource = new TsFileResource(unseqResources.get(1).getTsFile());
-    unclosedUnSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedUnSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastUnSeqResource = unseqResources.get(1);
     for (String deviceID : lastUnSeqResource.getDevices()) {
       unclosedUnSeqResource.updateStartTime(deviceID, lastUnSeqResource.getStartTime(deviceID));

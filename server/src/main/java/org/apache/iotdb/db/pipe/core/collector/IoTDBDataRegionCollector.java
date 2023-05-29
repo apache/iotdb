@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.pipe.core.collector;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionTsFileCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -44,10 +45,13 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
   private int dataRegionId;
 
-  public IoTDBDataRegionCollector(ListenableUnblockingPendingQueue<Event> collectorPendingQueue) {
+  public IoTDBDataRegionCollector(
+      PipeTaskMeta pipeTaskMeta,
+      ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue) {
     hasBeenStarted = new AtomicBoolean(false);
-    realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
-    historicalCollector = new PipeHistoricalDataRegionTsFileCollector();
+    realtimeCollector =
+        new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
+    historicalCollector = new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta);
   }
 
   @Override

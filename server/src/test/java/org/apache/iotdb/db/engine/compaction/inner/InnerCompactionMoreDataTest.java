@@ -93,7 +93,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.updatePlanIndexes((long) i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);

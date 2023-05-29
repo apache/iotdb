@@ -258,8 +258,9 @@ public class TsFileProcessor {
     }
 
     long startTime = System.nanoTime();
+    WALFlushListener walFlushListener;
     try {
-      WALFlushListener walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowNode);
+      walFlushListener = walNode.log(workMemTable.getMemTableId(), insertRowNode);
       if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
@@ -277,16 +278,19 @@ public class TsFileProcessor {
     }
 
     startTime = System.nanoTime();
+
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToInsertNode(
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            walFlushListener.getWalEntryHandler(),
+            insertRowNode,
+            tsFileResource);
+
     if (insertRowNode.isAligned()) {
       workMemTable.insertAlignedRow(insertRowNode);
     } else {
       workMemTable.insert(insertRowNode);
     }
-
-    // collect plan node in pipe
-    PipeInsertionDataNodeListener.getInstance()
-        .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(), insertRowNode, tsFileResource);
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
@@ -297,6 +301,9 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
+
+    tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
+
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
@@ -358,9 +365,9 @@ public class TsFileProcessor {
     }
 
     long startTime = System.nanoTime();
+    WALFlushListener walFlushListener;
     try {
-      WALFlushListener walFlushListener =
-          walNode.log(workMemTable.getMemTableId(), insertTabletNode, start, end);
+      walFlushListener = walNode.log(workMemTable.getMemTableId(), insertTabletNode, start, end);
       if (walFlushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
         throw walFlushListener.getCause();
       }
@@ -377,6 +384,14 @@ public class TsFileProcessor {
     }
 
     startTime = System.nanoTime();
+
+    PipeInsertionDataNodeListener.getInstance()
+        .listenToInsertNode(
+            dataRegionInfo.getDataRegion().getDataRegionId(),
+            walFlushListener.getWalEntryHandler(),
+            insertTabletNode,
+            tsFileResource);
+
     try {
       if (insertTabletNode.isAligned()) {
         workMemTable.insertAlignedTablet(insertTabletNode, start, end);
@@ -393,11 +408,6 @@ public class TsFileProcessor {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
 
-    // collect plan node in pipe
-    PipeInsertionDataNodeListener.getInstance()
-        .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(), insertTabletNode, tsFileResource);
-
     tsFileResource.updateStartTime(
         insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[start]);
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
@@ -406,6 +416,9 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
+
+    tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
+
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
@@ -820,13 +833,14 @@ public class TsFileProcessor {
         if (workMemTable != null) {
           logger.info(
               "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile "
-                  + "size: {}, plan index: [{}, {}]",
+                  + "size: {}, plan index: [{}, {}], progress index: {}",
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
               workMemTable.memSize(),
               tsFileResource.getTsFileSize(),
               workMemTable.getMinPlanIndex(),
-              workMemTable.getMaxPlanIndex());
+              workMemTable.getMaxPlanIndex(),
+              tsFileResource.getMaxProgressIndex());
         } else {
           logger.info(
               "{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",

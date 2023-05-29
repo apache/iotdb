@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
@@ -40,7 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-public abstract class InsertNode extends WritePlanNode {
+public abstract class InsertNode extends WritePlanNode implements ComparableConsensusRequest {
 
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
@@ -72,6 +74,8 @@ public abstract class InsertNode extends WritePlanNode {
 
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
+
+  protected ProgressIndex progressIndex;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -265,6 +269,20 @@ public abstract class InsertNode extends WritePlanNode {
   public int getFailedMeasurementNumber() {
     return failedMeasurementNumber;
   }
+  // endregion
+
+  // region progress index
+
+  @Override
+  public final ProgressIndex getProgressIndex() {
+    return progressIndex;
+  }
+
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+  }
+
   // endregion
 
   @Override

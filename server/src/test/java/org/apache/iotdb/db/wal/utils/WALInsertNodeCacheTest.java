@@ -79,7 +79,7 @@ public class WALInsertNodeCacheTest {
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
     WALFlushListener flushListener = walNode.log(memTable.getMemTableId(), node1);
-    WALEntryPosition position = flushListener.getWalPipeHandler().getWalEntryPosition();
+    WALEntryPosition position = flushListener.getWalEntryHandler().getWalEntryPosition();
     // wait until wal flushed
     while (!walNode.isAllWALEntriesConsumed() || !position.canRead()) {
       Thread.sleep(50);
@@ -96,18 +96,18 @@ public class WALInsertNodeCacheTest {
     InsertRowNode node1 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(1);
     WALFlushListener flushListener1 = walNode.log(memTable1.getMemTableId(), node1);
-    WALEntryPosition position1 = flushListener1.getWalPipeHandler().getWalEntryPosition();
+    WALEntryPosition position1 = flushListener1.getWalEntryHandler().getWalEntryPosition();
     InsertRowNode node2 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(2);
     WALFlushListener flushListener2 = walNode.log(memTable1.getMemTableId(), node2);
-    WALEntryPosition position2 = flushListener2.getWalPipeHandler().getWalEntryPosition();
+    WALEntryPosition position2 = flushListener2.getWalEntryHandler().getWalEntryPosition();
     // write memTable2
     IMemTable memTable2 = new PrimitiveMemTable();
     walNode.onMemTableCreated(memTable2, logDirectory + "/" + "fake2.tsfile");
     InsertRowNode node3 = getInsertRowNode(devicePath, System.currentTimeMillis());
     node1.setSearchIndex(3);
     WALFlushListener flushListener3 = walNode.log(memTable2.getMemTableId(), node3);
-    WALEntryPosition position3 = flushListener3.getWalPipeHandler().getWalEntryPosition();
+    WALEntryPosition position3 = flushListener3.getWalEntryHandler().getWalEntryPosition();
     // wait until wal flushed
     walNode.rollWALFile();
     while (!walNode.isAllWALEntriesConsumed() || !position3.canRead()) {

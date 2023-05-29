@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -96,7 +98,7 @@ public class IoTConsensusServerImpl {
   private final Logger logger = LoggerFactory.getLogger(IoTConsensusServerImpl.class);
   private final Peer thisNode;
   private final IStateMachine stateMachine;
-  private final ConcurrentHashMap<String, SyncLogCacheQueue> cacheQueueMap;
+  private final ConcurrentHashMap<Integer, SyncLogCacheQueue> cacheQueueMap;
   private final Lock stateMachineLock = new ReentrantLock();
   private final Condition stateMachineCondition = stateMachineLock.newCondition();
   private final String storageDir;
@@ -646,6 +648,11 @@ public class IoTConsensusServerImpl {
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
+    if (request instanceof ComparableConsensusRequest) {
+      final IoTProgressIndex iotProgressIndex = new IoTProgressIndex();
+      iotProgressIndex.addSearchIndex(thisNode.getNodeId(), searchIndex.get() + 1);
+      ((ComparableConsensusRequest) request).setProgressIndex(iotProgressIndex);
+    }
     return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request));
   }
 
@@ -782,7 +789,7 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public TSStatus syncLog(String sourcePeerId, IConsensusRequest request) {
+  public TSStatus syncLog(int sourcePeerId, IConsensusRequest request) {
     return cacheQueueMap
         .computeIfAbsent(sourcePeerId, SyncLogCacheQueue::new)
         .cacheAndInsertLatestNode((DeserializedBatchIndexedConsensusRequest) request);
@@ -798,13 +805,13 @@ public class IoTConsensusServerImpl {
    * deserialization of PlanNode to be concurrent
    */
   private class SyncLogCacheQueue {
-    private final String sourcePeerId;
+    private final int sourcePeerId;
     private final Lock queueLock = new ReentrantLock();
     private final Condition queueSortCondition = queueLock.newCondition();
     private final PriorityQueue<DeserializedBatchIndexedConsensusRequest> requestCache;
     private long nextSyncIndex = -1;
 
-    public SyncLogCacheQueue(String sourcePeerId) {
+    public SyncLogCacheQueue(int sourcePeerId) {
       this.sourcePeerId = sourcePeerId;
       this.requestCache = new PriorityQueue<>();
     }

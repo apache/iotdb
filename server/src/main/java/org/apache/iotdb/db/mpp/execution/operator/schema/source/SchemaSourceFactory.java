@@ -81,4 +81,9 @@ public class SchemaSourceFactory {
       List<PartialPath> pathPatternList, int templateId) {
     return new PathsUsingTemplateSource(pathPatternList, templateId);
   }
+
+  public static ISchemaSource<ITimeSeriesSchemaInfo> getLogicalViewSchemaSource(
+      PartialPath pathPattern, long limit, long offset, SchemaFilter schemaFilter) {
+    return new LogicalViewSchemaSource(pathPattern, limit, offset, schemaFilter);
+  }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.cache.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo;
@@ -126,6 +127,14 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   public MeasurementSchema getSchemaAsMeasurementSchema() {
     if (this.iMeasurementSchema instanceof MeasurementSchema) {
       return (MeasurementSchema) this.getSchema();
+    }
+    return null;
+  }
+
+  @Override
+  public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+    if (this.iMeasurementSchema instanceof LogicalViewSchema) {
+      return (LogicalViewSchema) this.getSchema();
     }
     return null;
   }
