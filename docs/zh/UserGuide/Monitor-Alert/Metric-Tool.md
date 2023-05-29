@@ -90,14 +90,15 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.1.1. 集群运行状态
 
-| Metric                    | Tags                                            | Type      | Description                            |
-| ------------------------- | ----------------------------------------------- | --------- | -------------------------------------- |
+| Metric                    | Tags                                            | Type      | Description                |
+| ------------------------- | ----------------------------------------------- | --------- |----------------------------|
+| up_time                   | -                                               | AutoGauge | IoTDB 启动的运行时间              |
 | config_node               | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
 | data_node                 | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
-| cluster_node_leader_count | name="{ip}:{port}"                              | Gauge     | 节点上共识组Leader的数量               |
-| cluster_node_status       | name="{ip}:{port}",type="ConfigNode/DataNode"   | Gauge     | 节点的状态，0=Unkonwn 1=online         |
-| entry                     | name="{interface}"                              | Timer     | Client 建立的 Thrift 的耗时情况        |
-| mem                       | name="IoTConsensus"                             | AutoGauge | IoT共识协议的内存占用，单位为byte      |
+| cluster_node_leader_count | name="{ip}:{port}"                              | Gauge     | 节点上共识组Leader的数量            |
+| cluster_node_status       | name="{ip}:{port}",type="ConfigNode/DataNode"   | Gauge     | 节点的状态，0=Unkonwn 1=online   |
+| entry                     | name="{interface}"                              | Timer     | Client 建立的 Thrift 的耗时情况    |
+| mem                       | name="IoTConsensus"                             | AutoGauge | IoT共识协议的内存占用，单位为byte       |
 
 #### 4.1.2. 接口层统计
 

@@ -58,7 +58,7 @@ public class LogDispatcher {
   private static final long DEFAULT_INITIAL_SYNC_INDEX = 0L;
   private final IoTConsensusServerImpl impl;
   private final List<LogDispatcherThread> threads;
-  private final String selfPeerId;
+  private final int selfPeerId;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private ExecutorService executorService;
 
@@ -73,7 +73,7 @@ public class LogDispatcher {
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IoTConsensusServerMetrics ioTConsensusServerMetrics) {
     this.impl = impl;
-    this.selfPeerId = impl.getThisNode().getEndpoint().toString();
+    this.selfPeerId = impl.getThisNode().getNodeId();
     this.clientManager = clientManager;
     this.threads =
         impl.getConfiguration().stream()

@@ -21,13 +21,14 @@ package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeEventCollector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.queue.ListenablePendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
@@ -47,12 +48,13 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   protected final PipeProcessor pipeProcessor;
   protected final PipeProcessorSubtask pipeProcessorSubtask;
 
-  protected final ListenablePendingQueue<Event> pipeCollectorInputPendingQueue;
-  protected final ListenablePendingQueue<Event> pipeConnectorOutputPendingQueue;
+  protected final ListenableBlockingPendingQueue<Event> pipeCollectorInputPendingQueue;
+  protected final ListenableBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue;
 
   /**
    * @param pipeName pipe name
    * @param dataRegionId data region id
+   * @param taskMeta pipe task meta
    * @param pipeCollectorInputEventSupplier used to input events from pipe collector
    * @param pipeCollectorInputPendingQueue used to listen whether pipe collector event queue is from
    *     empty to not empty or from not empty to empty, null means no need to listen
@@ -62,10 +64,11 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   public PipeTaskProcessorStage(
       String pipeName,
       TConsensusGroupId dataRegionId,
+      PipeTaskMeta taskMeta,
       EventSupplier pipeCollectorInputEventSupplier,
-      @Nullable ListenablePendingQueue<Event> pipeCollectorInputPendingQueue,
+      @Nullable ListenableBlockingPendingQueue<Event> pipeCollectorInputPendingQueue,
       PipeParameters pipeProcessorParameters,
-      ListenableBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
+      ListenableBoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     this.pipeProcessorParameters = pipeProcessorParameters;
 
     final String taskId = pipeName + "_" + dataRegionId;
@@ -76,6 +79,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
+            taskMeta,
             pipeCollectorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);
