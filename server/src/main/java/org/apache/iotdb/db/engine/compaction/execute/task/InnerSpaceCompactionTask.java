@@ -103,6 +103,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
+  @SuppressWarnings("squid:S6541")
   protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
       return true;

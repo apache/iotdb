@@ -42,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -354,7 +353,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
-  private List<Long> deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
+  private List<Long> deleteOldFiles(List<TsFileResource> tsFileResourceList) {
     List<Long> size = new ArrayList<>();
     for (TsFileResource tsFileResource : tsFileResourceList) {
       size.add(tsFileResource.getTsFileSize());
