@@ -128,6 +128,8 @@ public class CommonConfig {
   /** Ip and port of target ML node. */
   private TEndPoint targetMLNodeEndPoint = new TEndPoint("127.0.0.1", 10810);
 
+  private String timestampPrecision = "ms";
+
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
@@ -375,5 +377,13 @@ public class CommonConfig {
 
   public void setStopping(boolean stopping) {
     isStopping = stopping;
+  }
+
+  public void setTimestampPrecision(String timestampPrecision) {
+    this.timestampPrecision = timestampPrecision;
+  }
+
+  public String getTimestampPrecision() {
+    return timestampPrecision;
   }
 }
