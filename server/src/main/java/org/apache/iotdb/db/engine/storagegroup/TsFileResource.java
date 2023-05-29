@@ -68,6 +68,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.getTsFileName;
@@ -103,7 +104,8 @@ public class TsFileResource {
 
   private volatile ModificationFile compactionModFile;
 
-  protected volatile TsFileResourceStatus status = TsFileResourceStatus.UNCLOSED;
+  protected AtomicReference<TsFileResourceStatus> atomicStatus =
+      new AtomicReference<>(TsFileResourceStatus.UNCLOSED);
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -165,7 +167,7 @@ public class TsFileResource {
     this.processor = other.processor;
     this.timeIndex = other.timeIndex;
     this.modFile = other.modFile;
-    this.status = other.status;
+    this.setAtomicStatus(other.getStatus());
     this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
     this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
     this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
@@ -188,7 +190,7 @@ public class TsFileResource {
   /** Used for compaction to create target files. */
   public TsFileResource(File file, TsFileResourceStatus status) {
     this(file);
-    this.status = status;
+    this.setAtomicStatus(status);
   }
 
   /** unsealed TsFile, for writter */
@@ -496,7 +498,7 @@ public class TsFileResource {
   }
 
   public boolean isClosed() {
-    return this.status != TsFileResourceStatus.UNCLOSED;
+    return getStatus() != TsFileResourceStatus.UNCLOSED;
   }
 
   public void close() throws IOException {
@@ -583,7 +585,7 @@ public class TsFileResource {
    * file physically.
    */
   public boolean remove() {
-    setStatus(TsFileResourceStatus.DELETED);
+    forceMarkDeleted();
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -630,7 +632,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format("file is %s, status: %s", file.toString(), status);
+    return String.format("file is %s, status: %s", file.toString(), getStatus());
   }
 
   @Override
@@ -651,55 +653,65 @@ public class TsFileResource {
   }
 
   public boolean isDeleted() {
-    return this.status == TsFileResourceStatus.DELETED;
+    return getStatus() == TsFileResourceStatus.DELETED;
   }
 
   public boolean isCompacting() {
-    return this.status == TsFileResourceStatus.COMPACTING;
+    return getStatus() == TsFileResourceStatus.COMPACTING;
   }
 
   public boolean isCompactionCandidate() {
-    return this.status == TsFileResourceStatus.COMPACTION_CANDIDATE;
+    return getStatus() == TsFileResourceStatus.COMPACTION_CANDIDATE;
   }
 
-  public void setStatus(TsFileResourceStatus status) {
+  private boolean compareAndSetStatus(
+      TsFileResourceStatus expectedValue, TsFileResourceStatus newValue) {
+    return atomicStatus.compareAndSet(expectedValue, newValue);
+  }
+
+  private void setAtomicStatus(TsFileResourceStatus status) {
+    atomicStatus.set(status);
+  }
+
+  @TestOnly
+  public void setStatusForTest(TsFileResourceStatus status) {
+    setAtomicStatus(status);
+  }
+
+  public boolean setStatus(TsFileResourceStatus status) {
+    if (status == getStatus()) {
+      return true;
+    }
     switch (status) {
       case NORMAL:
-        this.status = TsFileResourceStatus.NORMAL;
-        break;
+        return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)
+            || compareAndSetStatus(TsFileResourceStatus.COMPACTING, TsFileResourceStatus.NORMAL)
+            || compareAndSetStatus(
+                TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.NORMAL);
       case UNCLOSED:
-        this.status = TsFileResourceStatus.UNCLOSED;
-        break;
+        // TsFile cannot be set back to UNCLOSED so false is always returned
+        return false;
       case DELETED:
-        this.status = TsFileResourceStatus.DELETED;
-        break;
+        return compareAndSetStatus(TsFileResourceStatus.NORMAL, TsFileResourceStatus.DELETED)
+            || compareAndSetStatus(
+                TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.DELETED);
       case COMPACTING:
-        if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
-          this.status = TsFileResourceStatus.COMPACTING;
-        } else {
-          throw new RuntimeException(
-              this.file.getAbsolutePath()
-                  + " Cannot set the status of TsFileResource to COMPACTING while its status is "
-                  + this.status);
-        }
-        break;
+        return compareAndSetStatus(
+            TsFileResourceStatus.COMPACTION_CANDIDATE, TsFileResourceStatus.COMPACTING);
       case COMPACTION_CANDIDATE:
-        if (this.status == TsFileResourceStatus.NORMAL) {
-          this.status = TsFileResourceStatus.COMPACTION_CANDIDATE;
-        } else {
-          throw new RuntimeException(
-              this.file.getAbsolutePath()
-                  + " Cannot set the status of TsFileResource to COMPACTION_CANDIDATE while its status is "
-                  + this.status);
-        }
-        break;
+        return compareAndSetStatus(
+            TsFileResourceStatus.NORMAL, TsFileResourceStatus.COMPACTION_CANDIDATE);
       default:
-        break;
+        return false;
     }
   }
 
+  public void forceMarkDeleted() {
+    atomicStatus.set(TsFileResourceStatus.DELETED);
+  }
+
   public TsFileResourceStatus getStatus() {
-    return this.status;
+    return this.atomicStatus.get();
   }
 
   /**
@@ -923,6 +935,7 @@ public class TsFileResource {
   }
 
   public void delete() throws IOException {
+    forceMarkDeleted();
     if (file.exists()) {
       Files.delete(file.toPath());
       Files.delete(
@@ -930,7 +943,6 @@ public class TsFileResource {
               .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX)
               .toPath());
     }
-    setStatus(TsFileResourceStatus.DELETED);
   }
 
   public long getMaxPlanIndex() {
@@ -1174,7 +1186,7 @@ public class TsFileResource {
   }
 
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
-    if (status.equals(TsFileResourceStatus.UNCLOSED)) {
+    if (getStatus().equals(TsFileResourceStatus.UNCLOSED)) {
       throw new IllegalStateException(
           "Should not get progress index from a unclosing TsFileResource.");
     }
