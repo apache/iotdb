@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -72,7 +72,7 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -279,10 +279,12 @@ public class DataRegion implements IDataRegionForQuery {
 
   private IDTable idTable;
 
-  private final QueryMetricsManager queryMetricsManager = QueryMetricsManager.getInstance();
+  private final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
+      QueryResourceMetricSet.getInstance();
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
   /**
    * construct a database processor.
    *
@@ -1603,22 +1605,25 @@ public class DataRegion implements IDataRegionForQuery {
     if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
       return;
     }
-
+    // Try to set the resource to DELETED status and return if it failed
+    if (!resource.setStatus(TsFileResourceStatus.DELETED)) {
+      return;
+    }
+    tsFileManager.remove(resource, isSeq);
     // ensure that the file is not used by any queries
-    if (resource.tryWriteLock()) {
-      try {
-        // try to delete physical data file
-        resource.remove();
-        tsFileManager.remove(resource, isSeq);
-        logger.info(
-            "Removed a file {} before {} by ttl ({} {})",
-            resource.getTsFilePath(),
-            new Date(ttlLowerBound),
-            dataTTL,
-            config.getTimestampPrecision());
-      } finally {
-        resource.writeUnlock();
-      }
+
+    resource.writeLock();
+    try {
+      // try to delete physical data file
+      resource.remove();
+      logger.info(
+          "Removed a file {} before {} by ttl ({} {})",
+          resource.getTsFilePath(),
+          new Date(ttlLowerBound),
+          dataTTL,
+          config.getTimestampPrecision());
+    } finally {
+      resource.writeUnlock();
     }
   }
 
@@ -1760,8 +1765,8 @@ public class DataRegion implements IDataRegionForQuery {
               timeFilter,
               false);
 
-      queryMetricsManager.recordQueryResourceNum(SEQUENCE_TSFILE, seqResources.size());
-      queryMetricsManager.recordQueryResourceNum(UNSEQUENCE_TSFILE, unseqResources.size());
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqResources.size());
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(UNSEQUENCE_TSFILE, unseqResources.size());
 
       QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
       dataSource.setDataTTL(dataTTL);
@@ -2187,17 +2192,21 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("signal closing database condition in {}", databaseName + "-" + dataRegionId);
   }
 
-  protected void executeCompaction() {
+  protected int executeCompaction() {
+    // the name of this variable is trySubmitCount, because the task submitted to the queue could be
+    // evicted due to the low priority of the task
+    int trySubmitCount = 0;
     try {
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
       for (long timePartition : timePartitions) {
-        CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
+        trySubmitCount += CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
       }
     } catch (Throwable e) {
       logger.error("Meet error in compaction schedule.", e);
     }
+    return trySubmitCount;
   }
 
   /**
@@ -2328,10 +2337,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** merge file under this database processor */
-  public void compact() {
+  public int compact() {
     writeLock("merge");
     try {
-      executeCompaction();
+      return executeCompaction();
     } finally {
       writeUnlock();
     }

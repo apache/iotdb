@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
 
 import org.slf4j.Logger;
@@ -39,27 +42,27 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
   // TODO: memory control
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final ListenableUnblockingPendingQueue<Event> pendingQueue;
+  private final ListenableUnboundedBlockingPendingQueue<Event> pendingQueue;
 
   public PipeRealtimeDataRegionHybridCollector(
-      ListenableUnblockingPendingQueue<Event> pendingQueue) {
+      PipeTaskMeta pipeTaskMeta, ListenableUnboundedBlockingPendingQueue<Event> pendingQueue) {
+    super(pipeTaskMeta);
     this.pendingQueue = pendingQueue;
   }
 
   @Override
   public void collect(PipeRealtimeCollectEvent event) {
-    switch (event.getEvent().getType()) {
-      case TABLET_INSERTION:
-        collectTabletInsertion(event);
-        break;
-      case TSFILE_INSERTION:
-        collectTsFileInsertion(event);
-        break;
-      default:
-        throw new UnsupportedOperationException(
-            String.format(
-                "Unsupported event type %s for Hybrid Realtime Collector %s",
-                event.getEvent().getType(), this));
+    final Event eventToCollect = event.getEvent();
+
+    if (eventToCollect instanceof TabletInsertionEvent) {
+      collectTabletInsertion(event);
+    } else if (eventToCollect instanceof TsFileInsertionEvent) {
+      collectTsFileInsertion(event);
+    } else {
+      throw new UnsupportedOperationException(
+          String.format(
+              "Unsupported event type %s for Hybrid Realtime Collector %s",
+              eventToCollect.getClass(), this));
     }
   }
 
@@ -107,18 +110,18 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
 
     while (collectEvent != null) {
       Event suppliedEvent;
-      switch (collectEvent.getEvent().getType()) {
-        case TABLET_INSERTION:
-          suppliedEvent = supplyTabletInsertion(collectEvent);
-          break;
-        case TSFILE_INSERTION:
-          suppliedEvent = supplyTsFileInsertion(collectEvent);
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              String.format(
-                  "Unsupported event type %s for Hybrid Realtime Collector %s",
-                  collectEvent.getEvent().getType(), this));
+
+      // used to judge type of event, not directly for supplying.
+      final Event eventToSupply = collectEvent.getEvent();
+      if (eventToSupply instanceof TabletInsertionEvent) {
+        suppliedEvent = supplyTabletInsertion(collectEvent);
+      } else if (eventToSupply instanceof TsFileInsertionEvent) {
+        suppliedEvent = supplyTsFileInsertion(collectEvent);
+      } else {
+        throw new UnsupportedOperationException(
+            String.format(
+                "Unsupported event type %s for Hybrid Realtime Collector %s",
+                eventToSupply.getClass(), this));
       }
 
       collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
@@ -183,7 +186,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                 "TsFile Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 event.getEvent());
-        PipeAgent.runtime().report(new PipeRuntimeNonCriticalException(errorMessage));
+        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
         return null;
       }
     }

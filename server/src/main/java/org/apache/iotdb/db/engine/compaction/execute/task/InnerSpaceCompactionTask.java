@@ -33,7 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -247,7 +247,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         TsFileMetricManager.getInstance()
             .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
 
-        CompactionMetricsManager.getInstance().updateSummary(summary);
+        CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
         LOGGER.info(
@@ -319,16 +319,20 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         && this.performer.getClass().isInstance(task.performer);
   }
 
-  @Override
-  public boolean setSourceFilesToCompactionCandidate() {
-    for (TsFileResource resource : selectedTsFileResourceList) {
-      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-        resetCompactionCandidateStatusForAllSourceFiles();
-        return false;
-      }
-      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
-    }
-    return true;
+  //  @Override
+  //  public boolean setSourceFilesToCompactionCandidate() {
+  //    for (TsFileResource resource : selectedTsFileResourceList) {
+  //      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+  //        resetCompactionCandidateStatusForAllSourceFiles();
+  //        return false;
+  //      }
+  //      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
+  //    }
+  //    return true;
+  //  }
+
+  protected List<TsFileResource> getAllSourceTsFiles() {
+    return this.selectedTsFileResourceList;
   }
 
   private void collectSelectedFilesInfo() {
@@ -408,11 +412,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
     for (TsFileResource resource : selectedTsFileResourceList) {
-      if (resource.getStatus() == TsFileResourceStatus.COMPACTION_CANDIDATE
-          || resource.getStatus() == TsFileResourceStatus.COMPACTING) {
-        // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
-        resource.setStatus(TsFileResourceStatus.NORMAL);
-      }
+      // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
+      resource.setStatus(TsFileResourceStatus.NORMAL);
     }
   }
 
@@ -443,14 +444,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         TsFileResource resource = selectedTsFileResourceList.get(i);
         resource.readLock();
         isHoldingReadLock[i] = true;
-        if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE
-            || !resource.getTsFile().exists()) {
-          // this source file cannot be compacted
-          // release the lock of locked files, and return
+        if (!resource.setStatus(TsFileResourceStatus.COMPACTING)) {
           releaseAllLocksAndResetStatus();
           return false;
         }
-        resource.setStatus(TsFileResourceStatus.COMPACTING);
       }
     } catch (Throwable e) {
       releaseAllLocksAndResetStatus();

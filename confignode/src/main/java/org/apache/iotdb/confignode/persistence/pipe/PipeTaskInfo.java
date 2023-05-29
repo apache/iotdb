@@ -20,12 +20,14 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -209,7 +211,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             if (newDataRegionLeader != -1) {
                               consensusGroupIdToTaskMetaMap
                                   .get(dataRegionGroupId)
-                                  .setRegionLeader(newDataRegionLeader);
+                                  .setLeaderDataNodeId(newDataRegionLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
                             }
@@ -218,9 +220,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // region group is newly added.
                             if (newDataRegionLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(
-                                  // TODO: the progress index should be passed from the leader
-                                  // correctly
-                                  dataRegionGroupId, new PipeTaskMeta(0, newDataRegionLeader));
+                                  dataRegionGroupId,
+                                  new PipeTaskMeta(
+                                      new MinimumProgressIndex(), newDataRegionLeader));
                             } else {
                               LOGGER.warn(
                                   "The pipe task meta does not contain the data region group {} or the data region group has already been removed",
@@ -228,6 +230,16 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             }
                           }
                         }));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
+    pipeMetaKeeper.clear();
+    plan.getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
+            });
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

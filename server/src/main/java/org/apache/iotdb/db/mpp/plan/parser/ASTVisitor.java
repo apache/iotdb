@@ -117,7 +117,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreatePipePluginStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTriggerStatement;
@@ -164,6 +163,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.AlterLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -225,6 +229,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.constant.SqlConstant.CAST_FUNCTION;
@@ -997,11 +1003,81 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitCreateLogicalView(IoTDBSqlParser.CreateLogicalViewContext ctx) {
     CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
     // parse target
-    parseViewTargetPaths(ctx.viewTargetPaths(), createLogicalViewStatement);
+    parseViewTargetPaths(
+        ctx.viewTargetPaths(),
+        createLogicalViewStatement::setTargetFullPaths,
+        createLogicalViewStatement::setTargetPathsGroup);
     // parse source
-    parseViewSourcePaths(ctx.viewSourcePaths(), createLogicalViewStatement);
+    parseViewSourcePaths(
+        ctx.viewSourcePaths(),
+        createLogicalViewStatement::setSourceFullPaths,
+        createLogicalViewStatement::setSourcePathsGroup,
+        createLogicalViewStatement::setSourceQueryStatement);
 
     return createLogicalViewStatement;
+  }
+
+  @Override
+  public Statement visitDropLogicalView(IoTDBSqlParser.DropLogicalViewContext ctx) {
+    DeleteLogicalViewStatement deleteLogicalViewStatement = new DeleteLogicalViewStatement();
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+      partialPaths.add(parsePrefixPath(prefixPathContext));
+    }
+    deleteLogicalViewStatement.setPathPatternList(partialPaths);
+    return deleteLogicalViewStatement;
+  }
+
+  @Override
+  public Statement visitShowLogicalView(IoTDBSqlParser.ShowLogicalViewContext ctx) {
+    ShowLogicalViewStatement showLogicalViewStatement;
+    if (ctx.prefixPath() != null) {
+      showLogicalViewStatement = new ShowLogicalViewStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      showLogicalViewStatement =
+          new ShowLogicalViewStatement(new PartialPath(SqlConstant.getSingleRootArray()));
+    }
+    if (ctx.timeseriesWhereClause() != null) {
+      SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
+      showLogicalViewStatement.setSchemaFilter(schemaFilter);
+    }
+    if (ctx.rowPaginationClause() != null) {
+      if (ctx.rowPaginationClause().limitClause() != null) {
+        showLogicalViewStatement.setLimit(
+            parseLimitClause(ctx.rowPaginationClause().limitClause()));
+      }
+      if (ctx.rowPaginationClause().offsetClause() != null) {
+        showLogicalViewStatement.setOffset(
+            parseOffsetClause(ctx.rowPaginationClause().offsetClause()));
+      }
+    }
+    return showLogicalViewStatement;
+  }
+
+  @Override
+  public Statement visitRenameLogicalView(IoTDBSqlParser.RenameLogicalViewContext ctx) {
+    RenameLogicalViewStatement renameLogicalViewStatement = new RenameLogicalViewStatement();
+    renameLogicalViewStatement.setOldName(parsePrefixPath(ctx.prefixPath(0)));
+    renameLogicalViewStatement.setNewName(parsePrefixPath(ctx.prefixPath(1)));
+    return renameLogicalViewStatement;
+  }
+
+  @Override
+  public Statement visitAlterLogicalView(IoTDBSqlParser.AlterLogicalViewContext ctx) {
+    AlterLogicalViewStatement alterLogicalViewStatement = new AlterLogicalViewStatement();
+    // parse target
+    parseViewTargetPaths(
+        ctx.viewTargetPaths(),
+        alterLogicalViewStatement::setTargetFullPaths,
+        alterLogicalViewStatement::setTargetPathsGroup);
+    // parse source
+    parseViewSourcePaths(
+        ctx.viewSourcePaths(),
+        alterLogicalViewStatement::setSourceFullPaths,
+        alterLogicalViewStatement::setSourcePathsGroup,
+        alterLogicalViewStatement::setSourceQueryStatement);
+
+    return alterLogicalViewStatement;
   }
 
   // parse suffix paths in logical view
@@ -1018,7 +1094,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // parse target paths in CreateLogicalView statement
   private void parseViewTargetPaths(
       IoTDBSqlParser.ViewTargetPathsContext ctx,
-      CreateLogicalViewStatement createLogicalViewStatement) {
+      Consumer<List<PartialPath>> setTargetFullPaths,
+      BiConsumer<PartialPath, List<PartialPath>> setTargetPathsGroup) {
     // full paths
     if (ctx.fullPath() != null && ctx.fullPath().size() > 0) {
       List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
@@ -1026,7 +1103,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (IoTDBSqlParser.FullPathContext pathContext : fullPathContextList) {
         pathList.add(parseFullPath(pathContext));
       }
-      createLogicalViewStatement.setTargetFullPaths(pathList);
+      setTargetFullPaths.accept(pathList);
     }
     // prefix path and suffix paths
     if (ctx.prefixPath() != null
@@ -1039,14 +1116,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
         suffixPathList.add(parseViewSuffixPath(suffixPathContext));
       }
-      createLogicalViewStatement.setTargetPathsGroup(prefixPath, suffixPathList);
+      setTargetPathsGroup.accept(prefixPath, suffixPathList);
     }
   }
 
   // parse source paths in CreateLogicalView statement
   private void parseViewSourcePaths(
       IoTDBSqlParser.ViewSourcePathsContext ctx,
-      CreateLogicalViewStatement createLogicalViewStatement) {
+      Consumer<List<PartialPath>> setSourceFullPaths,
+      BiConsumer<PartialPath, List<PartialPath>> setSourcePathsGroup,
+      Consumer<QueryStatement> setSourceQueryStatement) {
     // full paths
     if (ctx.fullPath() != null && ctx.fullPath().size() > 0) {
       List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
@@ -1054,7 +1133,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (IoTDBSqlParser.FullPathContext pathContext : fullPathContextList) {
         pathList.add(parseFullPath(pathContext));
       }
-      createLogicalViewStatement.setSourceFullPaths(pathList);
+      setSourceFullPaths.accept(pathList);
     }
     // prefix path and suffix paths
     if (ctx.prefixPath() != null
@@ -1067,13 +1146,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
         suffixPathList.add(parseViewSuffixPath(suffixPathContext));
       }
-      createLogicalViewStatement.setSourcePathsGroup(prefixPath, suffixPathList);
+      setSourcePathsGroup.accept(prefixPath, suffixPathList);
     }
     if (ctx.selectClause() != null && ctx.fromClause() != null) {
       QueryStatement queryStatement = new QueryStatement();
       queryStatement.setSelectComponent(parseSelectClause(ctx.selectClause(), queryStatement));
       queryStatement.setFromComponent(parseFromClause(ctx.fromClause()));
-      createLogicalViewStatement.setSourceQueryStatement(queryStatement);
+      setSourceQueryStatement.accept(queryStatement);
     }
   }
 

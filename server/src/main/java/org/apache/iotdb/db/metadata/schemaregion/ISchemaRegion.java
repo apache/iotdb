@@ -176,6 +176,13 @@ public interface ISchemaRegion {
 
   // region Interfaces for Logical View
   void createLogicalView(ICreateLogicalViewPlan createLogicalViewPlan) throws MetadataException;
+
+  long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException;
+
+  void deleteLogicalView(PathPatternTree patternTree) throws MetadataException;
+
   // endregion
 
   // region Interfaces for metadata info Query

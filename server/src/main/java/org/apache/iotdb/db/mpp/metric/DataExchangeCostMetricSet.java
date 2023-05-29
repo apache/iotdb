@@ -22,166 +22,287 @@ package org.apache.iotdb.db.mpp.metric;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
-import org.apache.iotdb.metrics.utils.MetricInfo;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
 
 public class DataExchangeCostMetricSet implements IMetricSet {
+  private static final DataExchangeCostMetricSet INSTANCE = new DataExchangeCostMetricSet();
 
-  private static final String metric = Metric.DATA_EXCHANGE_COST.toString();
+  private DataExchangeCostMetricSet() {
+    // empty constructor
+  }
 
-  public static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
-
-  public static final String SOURCE_HANDLE_GET_TSBLOCK_LOCAL = "source_handle_get_tsblock_local";
-  public static final String SOURCE_HANDLE_GET_TSBLOCK_REMOTE = "source_handle_get_tsblock_remote";
+  // region tsblock related
+  public static final String LOCAL = "local";
+  public static final String REMOTE = "remote";
+  private static final String SOURCE_HANDLE_GET_TSBLOCK = "source_handle_get_tsblock";
+  public static final String SOURCE_HANDLE_GET_TSBLOCK_LOCAL =
+      SOURCE_HANDLE_GET_TSBLOCK + "_" + LOCAL;
+  public static final String SOURCE_HANDLE_GET_TSBLOCK_REMOTE =
+      SOURCE_HANDLE_GET_TSBLOCK + "_" + REMOTE;
+  private static final String SOURCE_HANDLE_DESERIALIZE_TSBLOCK =
+      "source_handle_deserialize_tsblock";
   public static final String SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL =
-      "source_handle_deserialize_tsblock_local";
+      SOURCE_HANDLE_DESERIALIZE_TSBLOCK + "_" + LOCAL;
   public static final String SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE =
-      "source_handle_deserialize_tsblock_remote";
-  public static final String SINK_HANDLE_SEND_TSBLOCK_LOCAL = "sink_handle_send_tsblock_local";
-  public static final String SINK_HANDLE_SEND_TSBLOCK_REMOTE = "sink_handle_send_tsblock_remote";
+      SOURCE_HANDLE_DESERIALIZE_TSBLOCK + "_" + REMOTE;
+  private static final String SINK_HANDLE_SEND_TSBLOCK = "sink_handle_send_tsblock";
+  public static final String SINK_HANDLE_SEND_TSBLOCK_LOCAL =
+      SINK_HANDLE_SEND_TSBLOCK + "_" + LOCAL;
+  public static final String SINK_HANDLE_SEND_TSBLOCK_REMOTE =
+      SINK_HANDLE_SEND_TSBLOCK + "_" + REMOTE;
+  private Timer sourceHandleGetTsBlockLocalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sourceHandleGetTsBlockRemoteTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sourceHandleDeserializeTsBlockLocalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sourceHandleDeserializeTsBlockRemoteTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sinkHandleSendTsBlockLocalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sinkHandleSendTsBlockRemoteTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  static {
-    metricInfoMap.put(
-        SOURCE_HANDLE_GET_TSBLOCK_LOCAL,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+  private void bindTsBlock(AbstractMetricService metricService) {
+    sourceHandleGetTsBlockLocalTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "source_handle_get_tsblock",
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK,
             Tag.TYPE.toString(),
-            "local"));
-    metricInfoMap.put(
-        SOURCE_HANDLE_GET_TSBLOCK_REMOTE,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            LOCAL);
+    sourceHandleGetTsBlockRemoteTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "source_handle_get_tsblock",
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK,
             Tag.TYPE.toString(),
-            "remote"));
-    metricInfoMap.put(
-        SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            REMOTE);
+    sourceHandleDeserializeTsBlockLocalTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "source_handle_deserialize_tsblock",
+            SOURCE_HANDLE_GET_TSBLOCK,
             Tag.TYPE.toString(),
-            "local"));
-    metricInfoMap.put(
-        SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            LOCAL);
+    sourceHandleDeserializeTsBlockRemoteTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "source_handle_deserialize_tsblock",
+            SOURCE_HANDLE_GET_TSBLOCK,
             Tag.TYPE.toString(),
-            "remote"));
-    metricInfoMap.put(
-        SINK_HANDLE_SEND_TSBLOCK_LOCAL,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            REMOTE);
+    sinkHandleSendTsBlockLocalTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "sink_handle_send_tsblock",
+            SINK_HANDLE_SEND_TSBLOCK,
             Tag.TYPE.toString(),
-            "local"));
-    metricInfoMap.put(
-        SINK_HANDLE_SEND_TSBLOCK_REMOTE,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            LOCAL);
+    sinkHandleSendTsBlockRemoteTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "sink_handle_send_tsblock",
+            SINK_HANDLE_SEND_TSBLOCK,
             Tag.TYPE.toString(),
-            "remote"));
+            REMOTE);
   }
 
+  private void unbindTsBlock(AbstractMetricService metricService) {
+    sourceHandleGetTsBlockLocalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sourceHandleGetTsBlockRemoteTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sourceHandleDeserializeTsBlockLocalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sourceHandleDeserializeTsBlockRemoteTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sinkHandleSendTsBlockLocalTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sinkHandleSendTsBlockRemoteTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    Arrays.asList(
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK,
+            SOURCE_HANDLE_DESERIALIZE_TSBLOCK,
+            SINK_HANDLE_SEND_TSBLOCK)
+        .forEach(
+            operation -> {
+              Arrays.asList(LOCAL, REMOTE)
+                  .forEach(
+                      type -> {
+                        metricService.remove(
+                            MetricType.TIMER,
+                            Metric.DATA_EXCHANGE_COST.toString(),
+                            Tag.OPERATION.toString(),
+                            operation,
+                            Tag.TYPE.toString(),
+                            type);
+                      });
+            });
+  }
+
+  // endregion
+
+  // region data block related
+  public static final String CALLER = "caller";
+  public static final String SERVER = "server";
+  private static final String SEND_NEW_DATA_BLOCK_EVENT_TASK = "send_new_data_block_event_task";
   public static final String SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER =
-      "send_new_data_block_event_task_caller";
+      SEND_NEW_DATA_BLOCK_EVENT_TASK + "_" + CALLER;
   public static final String SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER =
-      "send_new_data_block_event_task_server";
+      SEND_NEW_DATA_BLOCK_EVENT_TASK + "_" + SERVER;
+  private static final String ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK =
+      "on_acknowledge_data_block_event_task";
   public static final String ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER =
-      "on_acknowledge_data_block_event_task_caller";
+      ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK + "_" + CALLER;
   public static final String ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER =
-      "on_acknowledge_data_block_event_task_server";
-  public static final String GET_DATA_BLOCK_TASK_CALLER = "get_data_block_task_caller";
-  public static final String GET_DATA_BLOCK_TASK_SERVER = "get_data_block_task_server";
+      ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK + "_" + SERVER;
+  private static final String GET_DATA_BLOCK_TASK = "get_data_block_task";
+  public static final String GET_DATA_BLOCK_TASK_CALLER = GET_DATA_BLOCK_TASK + "_" + CALLER;
+  public static final String GET_DATA_BLOCK_TASK_SERVER = GET_DATA_BLOCK_TASK + "_" + SERVER;
 
-  static {
-    metricInfoMap.put(
-        SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+  private Timer sendNewDataBlockEventCallerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer sendNewDataBlockEventServerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer onAcknowledgeDataBlockEventCallerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer onAcknowledgeDataBlockEventServerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer getDataBlockCallerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer getDataBlockServerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  private void bindDataBlock(AbstractMetricService metricService) {
+    sendNewDataBlockEventCallerTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "send_new_data_block_event_task",
+            SEND_NEW_DATA_BLOCK_EVENT_TASK,
             Tag.TYPE.toString(),
-            "caller"));
-    metricInfoMap.put(
-        SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            CALLER);
+    sendNewDataBlockEventServerTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "send_new_data_block_event_task",
+            SEND_NEW_DATA_BLOCK_EVENT_TASK,
             Tag.TYPE.toString(),
-            "server"));
-    metricInfoMap.put(
-        ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            SERVER);
+    onAcknowledgeDataBlockEventCallerTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "on_acknowledge_data_block_event_task",
+            ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK,
             Tag.TYPE.toString(),
-            "caller"));
-    metricInfoMap.put(
-        ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            CALLER);
+    onAcknowledgeDataBlockEventServerTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "on_acknowledge_data_block_event_task",
+            ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK,
             Tag.TYPE.toString(),
-            "server"));
-    metricInfoMap.put(
-        GET_DATA_BLOCK_TASK_CALLER,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            SERVER);
+    getDataBlockCallerTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "get_data_block_task",
+            GET_DATA_BLOCK_TASK,
             Tag.TYPE.toString(),
-            "caller"));
-    metricInfoMap.put(
-        GET_DATA_BLOCK_TASK_SERVER,
-        new MetricInfo(
-            MetricType.TIMER,
-            metric,
+            CALLER);
+    getDataBlockServerTimer =
+        metricService.getOrCreateTimer(
+            Metric.DATA_EXCHANGE_COST.toString(),
+            MetricLevel.IMPORTANT,
             Tag.OPERATION.toString(),
-            "get_data_block_task",
+            GET_DATA_BLOCK_TASK,
             Tag.TYPE.toString(),
-            "server"));
+            SERVER);
   }
+
+  private void unbindDataBlock(AbstractMetricService metricService) {
+    sendNewDataBlockEventCallerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    sendNewDataBlockEventServerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    onAcknowledgeDataBlockEventCallerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    onAcknowledgeDataBlockEventServerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    getDataBlockCallerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    getDataBlockServerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    Arrays.asList(
+            SEND_NEW_DATA_BLOCK_EVENT_TASK,
+            ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK,
+            GET_DATA_BLOCK_TASK)
+        .forEach(
+            operation -> {
+              Arrays.asList(CALLER, SERVER)
+                  .forEach(
+                      type -> {
+                        metricService.remove(
+                            MetricType.TIMER,
+                            Metric.DATA_EXCHANGE_COST.toString(),
+                            Tag.OPERATION.toString(),
+                            operation,
+                            Tag.TYPE.toString(),
+                            type);
+                      });
+            });
+  }
+  // endregion
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    for (MetricInfo metricInfo : metricInfoMap.values()) {
-      metricService.getOrCreateTimer(
-          metricInfo.getName(), MetricLevel.IMPORTANT, metricInfo.getTagsInArray());
-    }
+    bindTsBlock(metricService);
+    bindDataBlock(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    for (MetricInfo metricInfo : metricInfoMap.values()) {
-      metricService.remove(MetricType.TIMER, metric, metricInfo.getTagsInArray());
+    unbindTsBlock(metricService);
+    unbindDataBlock(metricService);
+  }
+
+  public void recordDataExchangeCost(String stage, long costTimeInNanos) {
+    switch (stage) {
+      case SOURCE_HANDLE_GET_TSBLOCK_LOCAL:
+        sourceHandleGetTsBlockLocalTimer.updateNanos(costTimeInNanos);
+        break;
+      case SOURCE_HANDLE_GET_TSBLOCK_REMOTE:
+        sourceHandleGetTsBlockRemoteTimer.updateNanos(costTimeInNanos);
+        break;
+      case SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL:
+        sourceHandleDeserializeTsBlockLocalTimer.updateNanos(costTimeInNanos);
+        break;
+      case SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE:
+        sourceHandleDeserializeTsBlockRemoteTimer.updateNanos(costTimeInNanos);
+        break;
+      case SINK_HANDLE_SEND_TSBLOCK_LOCAL:
+        sinkHandleSendTsBlockLocalTimer.updateNanos(costTimeInNanos);
+        break;
+      case SINK_HANDLE_SEND_TSBLOCK_REMOTE:
+        sinkHandleSendTsBlockRemoteTimer.updateNanos(costTimeInNanos);
+        break;
+      case GET_DATA_BLOCK_TASK_SERVER:
+        getDataBlockServerTimer.updateNanos(costTimeInNanos);
+        break;
+      case GET_DATA_BLOCK_TASK_CALLER:
+        getDataBlockCallerTimer.updateNanos(costTimeInNanos);
+        break;
+      case ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_SERVER:
+        onAcknowledgeDataBlockEventServerTimer.updateNanos(costTimeInNanos);
+        break;
+      case ON_ACKNOWLEDGE_DATA_BLOCK_EVENT_TASK_CALLER:
+        onAcknowledgeDataBlockEventCallerTimer.updateNanos(costTimeInNanos);
+        break;
+      case SEND_NEW_DATA_BLOCK_EVENT_TASK_SERVER:
+        sendNewDataBlockEventServerTimer.updateNanos(costTimeInNanos);
+        break;
+      case SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER:
+        sendNewDataBlockEventCallerTimer.updateNanos(costTimeInNanos);
+        break;
+      default:
+        break;
     }
+  }
+
+  public static DataExchangeCostMetricSet getInstance() {
+    return INSTANCE;
   }
 }

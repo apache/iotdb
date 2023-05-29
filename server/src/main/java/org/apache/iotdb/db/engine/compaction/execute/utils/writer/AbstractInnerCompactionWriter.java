@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.writer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -90,8 +89,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   public void endFile() throws IOException {
     fileWriter.endFile();
     if (isEmptyFile) {
-      // set target file to DELETED
-      targetResource.setStatus(TsFileResourceStatus.DELETED);
+      targetResource.forceMarkDeleted();
     }
   }
 

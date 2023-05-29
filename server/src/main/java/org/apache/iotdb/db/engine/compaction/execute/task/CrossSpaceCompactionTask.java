@@ -35,7 +35,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -225,7 +225,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         TsFileMetricManager.getInstance()
             .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size());
 
-        CompactionMetricsManager.getInstance().updateSummary(summary);
+        CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
 
@@ -300,23 +300,30 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return selectedSequenceFiles;
   }
 
-  @Override
-  public boolean setSourceFilesToCompactionCandidate() {
-    for (TsFileResource resource : selectedSequenceFiles) {
-      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-        resetCompactionCandidateStatusForAllSourceFiles();
-        return false;
-      }
-      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
-    }
-    for (TsFileResource resource : selectedUnsequenceFiles) {
-      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
-        resetCompactionCandidateStatusForAllSourceFiles();
-        return false;
-      }
-      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
-    }
-    return true;
+  //  @Override
+  //  public boolean setSourceFilesToCompactionCandidate() {
+  //    for (TsFileResource resource : selectedSequenceFiles) {
+  //      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+  //        resetCompactionCandidateStatusForAllSourceFiles();
+  //        return false;
+  //      }
+  //      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
+  //    }
+  //    for (TsFileResource resource : selectedUnsequenceFiles) {
+  //      if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+  //        resetCompactionCandidateStatusForAllSourceFiles();
+  //        return false;
+  //      }
+  //      resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE);
+  //    }
+  //    return true;
+  //  }
+
+  protected List<TsFileResource> getAllSourceTsFiles() {
+    List<TsFileResource> allRelatedFiles = new ArrayList<>();
+    allRelatedFiles.addAll(selectedSequenceFiles);
+    allRelatedFiles.addAll(selectedUnsequenceFiles);
+    return allRelatedFiles;
   }
 
   public List<TsFileResource> getSelectedUnsequenceFiles() {
@@ -353,18 +360,12 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
     for (TsFileResource resource : selectedSequenceFiles) {
-      if (resource.getStatus() == TsFileResourceStatus.COMPACTION_CANDIDATE
-          || resource.getStatus() == TsFileResourceStatus.COMPACTING) {
-        // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
-        resource.setStatus(TsFileResourceStatus.NORMAL);
-      }
+      // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
+      resource.setStatus(TsFileResourceStatus.NORMAL);
     }
     for (TsFileResource resource : unseqTsFileResourceList) {
-      if (resource.getStatus() == TsFileResourceStatus.COMPACTION_CANDIDATE
-          || resource.getStatus() == TsFileResourceStatus.COMPACTING) {
-        // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
-        resource.setStatus(TsFileResourceStatus.NORMAL);
-      }
+      // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
+      resource.setStatus(TsFileResourceStatus.NORMAL);
     }
   }
 
@@ -416,12 +417,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       for (TsFileResource tsFileResource : tsFileResourceList) {
         tsFileResource.readLock();
         holdReadLockList.add(tsFileResource);
-        if (tsFileResource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE
-            || !tsFileResource.getTsFile().exists()) {
+        if (!tsFileResource.setStatus(TsFileResourceStatus.COMPACTING)) {
           releaseAllLocksAndResetStatus();
           return false;
         }
-        tsFileResource.setStatus(TsFileResourceStatus.COMPACTING);
       }
     } catch (Throwable e) {
       releaseAllLocksAndResetStatus();

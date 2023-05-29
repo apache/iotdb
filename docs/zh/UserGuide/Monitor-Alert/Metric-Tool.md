@@ -90,14 +90,15 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.1.1. 集群运行状态
 
-| Metric                    | Tags                                            | Type      | Description                            |
-| ------------------------- | ----------------------------------------------- | --------- | -------------------------------------- |
+| Metric                    | Tags                                            | Type      | Description                |
+| ------------------------- | ----------------------------------------------- | --------- |----------------------------|
+| up_time                   | -                                               | AutoGauge | IoTDB 启动的运行时间              |
 | config_node               | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 confignode 的节点数量 |
 | data_node                 | name="total",status="Registered/Online/Unknown" | AutoGauge | 已注册/在线/离线 datanode 的节点数量   |
-| cluster_node_leader_count | name="{ip}:{port}"                              | Gauge     | 节点上共识组Leader的数量               |
-| cluster_node_status       | name="{ip}:{port}",type="ConfigNode/DataNode"   | Gauge     | 节点的状态，0=Unkonwn 1=online         |
-| entry                     | name="{interface}"                              | Timer     | Client 建立的 Thrift 的耗时情况        |
-| mem                       | name="IoTConsensus"                             | AutoGauge | IoT共识协议的内存占用，单位为byte      |
+| cluster_node_leader_count | name="{ip}:{port}"                              | Gauge     | 节点上共识组Leader的数量            |
+| cluster_node_status       | name="{ip}:{port}",type="ConfigNode/DataNode"   | Gauge     | 节点的状态，0=Unkonwn 1=online   |
+| entry                     | name="{interface}"                              | Timer     | Client 建立的 Thrift 的耗时情况    |
+| mem                       | name="IoTConsensus"                             | AutoGauge | IoT共识协议的内存占用，单位为byte       |
 
 #### 4.1.2. 接口层统计
 
@@ -372,27 +373,29 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.13. 数据传输模块统计
 
-| Metric              | Tags                                                                   | Type      | Description                             |
-| ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------- |
-| data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | source handle 接收 TsBlock 耗时         |
+| Metric              | Tags                                                                   | Type      | Description                       |
+|---------------------|------------------------------------------------------------------------|-----------|-----------------------------------|
+| data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | source handle 接收 TsBlock 耗时       |
 | data_exchange_cost  | operation="source_handle_deserialize_tsblock", type="local/remote"     | Timer     | source handle 反序列化 TsBlock 耗时     |
-| data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | sink handle 发送 TsBlock 耗时           |
-| data_exchange_cost  | operation="send_new_data_block_event_task", type="server/caller"       | Timer     | sink handle 发送 TsBlock RPC 耗时       |
-| data_exchange_cost  | operation="get_data_block_task", type="server/caller"                  | Timer     | source handle 接收 TsBlock RPC 耗时     |
+| data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | sink handle 发送 TsBlock 耗时         |
+| data_exchange_cost  | operation="send_new_data_block_event_task", type="server/caller"       | Timer     | sink handle 发送 TsBlock RPC 耗时     |
+| data_exchange_cost  | operation="get_data_block_task", type="server/caller"                  | Timer     | source handle 接收 TsBlock RPC 耗时   |
 | data_exchange_cost  | operation="on_acknowledge_data_block_event_task", type="server/caller" | Timer     | source handle 确认接收 TsBlock RPC 耗时 |
-| data_exchange_count | name="send_new_data_block_num", type="server/caller"                   | Histogram | sink handle 发送 TsBlock数量            |
-| data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量         |
+| data_exchange_count | name="send_new_data_block_num", type="server/caller"                   | Histogram | sink handle 发送 TsBlock数量          |
+| data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | source handle 接收 TsBlock 数量       |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | source handle 确认接收 TsBlock 数量     |
-
+| data_exchange_count | name="shuffle_sink_handle_size"                                        | AutoGauge | sink handle 数量                    |
+| data_exchange_count | name="source_handle_size"                                              | AutoGauge | source handle 数量                  |
 #### 4.2.14. 查询任务调度统计
 
-| Metric           | Tags                           | Type      | Description        |
-| ---------------- | ------------------------------ | --------- | ------------------ |
-| driver_scheduler | name="ready_queued_time"       | Timer     | 就绪队列排队时间   |
-| driver_scheduler | name="block_queued_time"       | Timer     | 阻塞队列排队时间   |
-| driver_scheduler | name="ready_queue_task_count"  | AutoGauge | 就绪队列排队任务数 |
-| driver_scheduler | name="block_queued_task_count" | AutoGauge | 阻塞队列排队任务数 |
-
+| Metric           | Tags                             | Type      | Description   |
+|------------------|----------------------------------|-----------|---------------|
+| driver_scheduler | name="ready_queued_time"         | Timer     | 就绪队列排队时间      |
+| driver_scheduler | name="block_queued_time"         | Timer     | 阻塞队列排队时间      |
+| driver_scheduler | name="ready_queue_task_count"    | AutoGauge | 就绪队列排队任务数     |
+| driver_scheduler | name="block_queued_task_count"   | AutoGauge | 阻塞队列排队任务数     |
+| driver_scheduler | name="timeout_queued_task_count" | AutoGauge | 超时队列排队任务数     |
+| driver_scheduler | name="query_map_size"            | AutoGauge | 记录在查询调度器中的查询数 |
 #### 4.2.15. 查询执行耗时统计
 
 | Metric                   | Tags                                                                                | Type    | Description                                    |
@@ -418,7 +421,35 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | 从 PageReader 构造 Tsblock 耗时                |
 | series_scan_cost         | stage="build_tsblock_from_merge_reader", type="aligned/non_aligned", from="null"    | Timer   | 从 MergeReader 构造 Tsblock （解乱序数据）耗时 |
 
-#### 4.2.16 元数据引擎统计
+#### 4.2.16. 协调模块统计
+
+| Metric      | Tags                            | Type      | Description       |
+|-------------|---------------------------------|-----------|-------------------|
+| coordinator | name="query_execution_map_size" | AutoGauge | 当前DataNode上记录的查询数 |
+
+#### 4.2.17. 查询实例管理模块统计
+
+| Metric                    | Tags                           | Type      | Description                                      |
+|---------------------------|--------------------------------|-----------|--------------------------------------------------|
+| fragment_instance_manager | name="instance_context_size"   | AutoGauge | 当前 DataNode 上的查询分片 context 数                     |
+| fragment_instance_manager | name="instance_execution_size" | AutoGauge | 当前 DataNode 上的查询分片数 |
+
+#### 4.2.18. 内存池统计
+
+| Metric      | Tags                                 | Type      | Description                         |
+|-------------|--------------------------------------|-----------|-------------------------------------|
+| memory_pool | name="max_bytes"                     | Gauge     | 用于数据交换的最大内存                         |
+| memory_pool | name="remaining_bytes"               | AutoGauge | 用于数据交换的剩余内存                         |
+| memory_pool | name="query_memory_reservation_size" | AutoGauge | 申请内存的查询数                            |
+| memory_pool | name="memory_reservation_size"       | AutoGauge | 申请内存的 sink handle 和 source handle 数 |
+
+#### 4.2.19. 本地查询分片调度模块统计
+
+| Metric                  | Tags                             | Type      | Description         |
+|-------------------------|----------------------------------|-----------|---------------------|
+| local_execution_planner | name="free_memory_for_operators" | AutoGauge | 可分配给operator执行的剩余内存 |
+
+#### 4.2.20. 元数据引擎统计
 
 | Metric        | Tags                                                         | Type      | Description                        |
 | ------------- | ------------------------------------------------------------ | --------- | ---------------------------------- |
@@ -433,7 +464,7 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 | schema_region | name="activated_template_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 激活的模板数     |
 | schema_region | name="template_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | 每个 SchemaRegion 的模板序列数     |
 
-#### 4.2.17 写入指标统计
+#### 4.2.21. 写入指标统计
 
 | Metric                    | Tags                                                                  | Type      | Description                              |
 |---------------------------|:----------------------------------------------------------------------|-----------|------------------------------------------|

@@ -29,10 +29,11 @@ import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.EventType;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.junit.After;
@@ -56,6 +57,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+
+import static org.mockito.Mockito.mock;
 
 public class PipeRealtimeCollectTest {
 
@@ -99,13 +102,17 @@ public class PipeRealtimeCollectTest {
     // set up realtime collector
 
     try (PipeRealtimeDataRegionHybridCollector collector1 =
-            new PipeRealtimeDataRegionHybridCollector(new ListenableUnblockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(
+                null, new ListenableUnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector2 =
-            new PipeRealtimeDataRegionHybridCollector(new ListenableUnblockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(
+                null, new ListenableUnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector3 =
-            new PipeRealtimeDataRegionHybridCollector(new ListenableUnblockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(
+                null, new ListenableUnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector4 =
-            new PipeRealtimeDataRegionHybridCollector(new ListenableUnblockingPendingQueue<>())) {
+            new PipeRealtimeDataRegionHybridCollector(
+                null, new ListenableUnboundedBlockingPendingQueue<>())) {
 
       collector1.customize(
           new PipeParameters(
@@ -163,9 +170,9 @@ public class PipeRealtimeCollectTest {
           Arrays.asList(
               listen(
                   collectors[0],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[1], typ2 -> 1, writeNum));
+              listen(collectors[1], event -> 1, writeNum));
 
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
@@ -199,14 +206,14 @@ public class PipeRealtimeCollectTest {
           Arrays.asList(
               listen(
                   collectors[0],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[1], typ2 -> 1, writeNum),
+              listen(collectors[1], event -> 1, writeNum),
               listen(
                   collectors[2],
-                  type -> type.equals(EventType.TABLET_INSERTION) ? 1 : 2,
+                  event -> event instanceof TabletInsertionEvent ? 1 : 2,
                   writeNum << 1),
-              listen(collectors[3], typ2 -> 1, writeNum));
+              listen(collectors[3], event -> 1, writeNum));
       try {
         listenFutures.get(0).get(10, TimeUnit.MINUTES);
         listenFutures.get(1).get(10, TimeUnit.MINUTES);
@@ -229,6 +236,7 @@ public class PipeRealtimeCollectTest {
   }
 
   private Future<?> write2DataRegion(int writeNum, String dataRegionId, int startNum) {
+
     File dataRegionDir =
         new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
     boolean ignored = dataRegionDir.mkdirs();
@@ -249,6 +257,7 @@ public class PipeRealtimeCollectTest {
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
                     dataRegionId,
+                    mock(WALEntryHandler.class),
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
                         new PartialPath(device),
@@ -262,6 +271,7 @@ public class PipeRealtimeCollectTest {
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
                     dataRegionId,
+                    mock(WALEntryHandler.class),
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
                         new PartialPath(device),
@@ -278,9 +288,7 @@ public class PipeRealtimeCollectTest {
   }
 
   private Future<?> listen(
-      PipeRealtimeDataRegionCollector collector,
-      Function<EventType, Integer> weight,
-      int expectNum) {
+      PipeRealtimeDataRegionCollector collector, Function<Event, Integer> weight, int expectNum) {
     return listenerService.submit(
         () -> {
           int eventNum = 0;
@@ -293,7 +301,7 @@ public class PipeRealtimeCollectTest {
                 throw new RuntimeException(e);
               }
               if (event != null) {
-                eventNum += weight.apply(event.getType());
+                eventNum += weight.apply(event);
               }
             }
           } finally {
