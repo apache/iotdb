@@ -1083,6 +1083,9 @@ public class IoTDBDescriptor {
     loadAuthorCache(properties);
 
     // object storage
+    loadMigrationProps(properties);
+
+    // object storage
     loadObjectStorageProps(properties);
 
     conf.setTimePartitionInterval(
@@ -1153,35 +1156,61 @@ public class IoTDBDescriptor {
                 "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
   }
 
+  private void loadMigrationProps(Properties properties) {
+    conf.setMigrateThreadCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "migrate_thread_count", String.valueOf(conf.getMigrateThreadCount()))));
+
+    String[] moveThresholdsStr = new String[conf.getSpaceMoveThresholds().length];
+    for (int i = 0; i < moveThresholdsStr.length; ++i) {
+      moveThresholdsStr[i] = String.valueOf(conf.getSpaceMoveThresholds()[i]);
+    }
+    moveThresholdsStr =
+        properties
+            .getProperty(
+                "dn_default_space_move_thresholds",
+                String.join(IoTDBConstant.TIER_SEPARATOR, moveThresholdsStr))
+            .split(IoTDBConstant.TIER_SEPARATOR);
+    double[] moveThresholds = new double[moveThresholdsStr.length];
+    for (int i = 0; i < moveThresholds.length; ++i) {
+      moveThresholds[i] = Double.parseDouble(moveThresholdsStr[i]);
+      if (moveThresholds[i] < 0) {
+        moveThresholds[i] = 0.15;
+      }
+    }
+    conf.setSpaceMoveThresholds(moveThresholds);
+  }
+
   private void loadObjectStorageProps(Properties properties) {
     conf.setEnableObjectStorage(
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_object_storage", String.valueOf(conf.isEnableObjectStorage()))));
-    conf.setCacheDirs(
-        properties
-            .getProperty("remote_tsfile_cache_dirs", String.join(",", conf.getCacheDirs()))
-            .split(","));
-    conf.setCacheMaxDiskUsage(
-        Long.parseLong(
-            properties.getProperty(
-                "remote_tsfile_cache_max_disk_usage",
-                String.valueOf(conf.getCacheMaxDiskUsage()))));
-    conf.setCachePageSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "remote_tsfile_cache_page_size", String.valueOf(conf.getCachePageSize()))));
     conf.setObjectStorageName(
         properties.getProperty("object_storage_name", conf.getObjectStorageName()));
-    conf.setObjectStorageEndpoint(
-        properties.getProperty("object_storage_endpoint", conf.getObjectStorageEndpoint()));
     conf.setObjectStorageBucket(
         properties.getProperty("object_storage_bucket", conf.getObjectStorageBucket()));
+    conf.setObjectStorageEndpoint(
+        properties.getProperty("object_storage_endpoint", conf.getObjectStorageEndpoint()));
     conf.setObjectStorageAccessKey(
         properties.getProperty("object_storage_access_key", conf.getObjectStorageAccessKey()));
     conf.setObjectStorageAccessSecret(
         properties.getProperty(
             "object_storage_access_secret", conf.getObjectStorageAccessSecret()));
+    conf.setCacheDirs(
+        properties
+            .getProperty("remote_tsfile_cache_dirs", String.join(",", conf.getCacheDirs()))
+            .split(","));
+    conf.setCachePageSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "remote_tsfile_cache_page_size_in_kb", String.valueOf(conf.getCachePageSize()))));
+    conf.setCacheMaxDiskUsage(
+        Long.parseLong(
+            properties.getProperty(
+                "remote_tsfile_cache_max_disk_usage_in_mb",
+                String.valueOf(conf.getCacheMaxDiskUsage()))));
   }
 
   private void loadWALProps(Properties properties) {

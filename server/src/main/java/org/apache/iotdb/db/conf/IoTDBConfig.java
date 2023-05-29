@@ -1140,6 +1140,8 @@ public class IoTDBConfig {
   /** Threads for migration tasks */
   private int migrateThreadCount = 1;
 
+  private double[] spaceMoveThresholds = {0.15};
+
   /** Enable hdfs or not */
   private boolean enableObjectStorage = true;
 
@@ -3946,6 +3948,14 @@ public class IoTDBConfig {
 
   public void setMigrateThreadCount(int migrateThreadCount) {
     this.migrateThreadCount = migrateThreadCount;
+  }
+
+  public double[] getSpaceMoveThresholds() {
+    return spaceMoveThresholds;
+  }
+
+  public void setSpaceMoveThresholds(double[] spaceMoveThresholds) {
+    this.spaceMoveThresholds = spaceMoveThresholds;
   }
 
   public boolean isEnableObjectStorage() {

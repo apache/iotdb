@@ -53,10 +53,7 @@ public class MigrationTaskManager implements IService {
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
   private static final TierManager tierManager = TierManager.getInstance();
   private static final long CHECK_INTERVAL_IN_SECONDS = 10;
-  private static final double TIER_DISK_SPACE_WARN_THRESHOLD =
-      commonConfig.getDiskSpaceWarningThreshold() + 0.1;
-  private static final double TIER_DISK_SPACE_SAFE_THRESHOLD =
-      commonConfig.getDiskSpaceWarningThreshold() + 0.2;
+  private static final double MOVE_THRESHOLD_SAFE_LIMIT = 0.1;
   private static final int MIGRATION_TASK_LIMIT = 20;
   /** max concurrent migration tasks */
   private final AtomicInteger migrationTasksNum = new AtomicInteger(0);
@@ -93,7 +90,7 @@ public class MigrationTaskManager implements IService {
     public MigrationScheduleTask() {
       for (int i = 0; i < tierManager.getTiersNum(); i++) {
         double usage = tierDiskUsableSpace[i] * 1.0 / tierDiskTotalSpace[i];
-        if (usage <= TIER_DISK_SPACE_WARN_THRESHOLD) {
+        if (usage <= iotdbConfig.getSpaceMoveThresholds()[i]) {
           needMigrationTiers.add(i);
         }
       }
@@ -158,7 +155,7 @@ public class MigrationTaskManager implements IService {
       tierDiskUsableSpace[tierLevel] -= sourceTsFile.getTsFileSize();
       if (needMigrationTiers.contains(tierLevel)) {
         double usage = tierDiskUsableSpace[tierLevel] * 1.0 / tierDiskTotalSpace[tierLevel];
-        if (usage > TIER_DISK_SPACE_SAFE_THRESHOLD) {
+        if (usage > iotdbConfig.getSpaceMoveThresholds()[tierLevel] + MOVE_THRESHOLD_SAFE_LIMIT) {
           needMigrationTiers.remove(tierLevel);
         }
       }
