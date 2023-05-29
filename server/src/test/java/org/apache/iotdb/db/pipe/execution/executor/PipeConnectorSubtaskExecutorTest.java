@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.execution.executor;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 
@@ -40,7 +40,7 @@ public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
             new PipeConnectorSubtask(
                 "PipeConnectorSubtaskExecutorTest",
                 mock(PipeTaskMeta.class),
-                mock(ListenableBlockingPendingQueue.class),
+                mock(ListenableBoundedBlockingPendingQueue.class),
                 mock(PipeConnector.class)));
   }
 }
