@@ -26,6 +26,11 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
   public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
 
+  public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
+  public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
+  public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
+  public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

@@ -20,15 +20,17 @@
 package org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.sync.SyncConnectionException;
-import org.apache.iotdb.commons.exception.sync.SyncHandshakeException;
-import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
@@ -39,118 +41,109 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
-import static org.apache.iotdb.commons.sync.utils.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
+import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 
-public class IoTDBOldSyncConnectorV1 implements PipeConnector {
+public class IoTDBSyncConnectorV1 implements PipeConnector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1.class);
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBOldSyncConnectorV1.class);
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  private static final int TRANSFER_BUFFER_SIZE_IN_BYTES = 1 * 1024 * 1024;
-
-  private TTransport transport = null;
-  private volatile IClientRPCService.Client serviceClient = null;
+  private IoTDBThriftConnectorClient client = null;
 
   private String ipAddress;
   private int port;
 
-  // TODO: Get user and password
-  private String user = "root";
-  private String password = "root";
+  private String user;
+  private String password;
+
+  public static final String IOTDB_SYNC_CONNECTOR_VERSION = "1.1";
 
   // TODO: Get pipeName and createTime
   private String pipeName = "defaultPipe";
-  private Long createTime = 0L;
+  private Long createTime = 11L;
 
   // TODO: Get databaseName
-  private String databaseName = "newPipe";
+  private String databaseName = "root.sg";
 
   private static SessionPool sessionPool;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator
-        .validateRequiredAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY)
-        .validateRequiredAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY);
+        .validateRequiredAttribute(CONNECTOR_IOTDB_IP_KEY)
+        .validateRequiredAttribute(CONNECTOR_IOTDB_PORT_KEY);
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    this.ipAddress = parameters.getString(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY);
-    this.port = parameters.getInt(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY);
+    this.ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
+    this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
+    this.user =
+        parameters.getStringOrDefault(CONNECTOR_IOTDB_USER_KEY, CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
+    this.password =
+        parameters.getStringOrDefault(
+            CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
   }
 
   @Override
   public void handshake() throws Exception {
     // Create transport for old pipe
-    if (transport != null && transport.isOpen()) {
-      transport.close();
+    if (client != null) {
+      client.close();
+    }
+    if (sessionPool != null) {
+      sessionPool.close();
     }
 
+    client =
+        new IoTDBThriftConnectorClient(
+            new ThriftClientProperty.Builder()
+                .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
+                .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
+                .build(),
+            ipAddress,
+            port);
+
     try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              new TSocket(
-                  TConfigurationConst.defaultTConfiguration,
-                  ipAddress,
-                  port,
-                  SyncConstant.SOCKET_TIMEOUT_MILLISECONDS,
-                  SyncConstant.CONNECT_TIMEOUT_MILLISECONDS));
-      TProtocol protocol;
-      if (config.isRpcThriftCompressionEnable()) {
-        protocol = new TCompactProtocol(transport);
-      } else {
-        protocol = new TBinaryProtocol(transport);
-      }
-      serviceClient = new IClientRPCService.Client(protocol);
-
-      // Underlay socket open.
-      if (!transport.isOpen()) {
-        transport.open();
-      }
-
       TSyncIdentityInfo identityInfo =
-          new TSyncIdentityInfo(pipeName, createTime, config.getIoTDBMajorVersion(), databaseName);
-      TSStatus status = serviceClient.handshake(identityInfo);
+          new TSyncIdentityInfo(pipeName, createTime, IOTDB_SYNC_CONNECTOR_VERSION, databaseName);
+      TSStatus status = client.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new SyncHandshakeException(
+        String errorMsg =
             String.format(
-                "the receiver rejected the synchronization task because %s", status.message));
+                "The receiver %s:%s rejected the pipe task because %s",
+                ipAddress, port, status.message);
+        LOGGER.warn(errorMsg);
+        throw new PipeRuntimeCriticalException(errorMsg);
       }
     } catch (TException e) {
-      throw new SyncConnectionException(
-          String.format("cannot connect to the receiver because %s", e.getMessage()));
+      LOGGER.warn(String.format("Connect to receiver %s:%s error.", ipAddress, port), e);
+      throw new PipeConnectionException(e.getMessage(), e);
     }
 
     // Build session pool
@@ -160,7 +153,7 @@ public class IoTDBOldSyncConnectorV1 implements PipeConnector {
             .port(port)
             .user(user)
             .password(password)
-            .maxSize(3)
+            .maxSize(1)
             .build();
   }
 
@@ -173,7 +166,7 @@ public class IoTDBOldSyncConnectorV1 implements PipeConnector {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeTabletInsertionEvent)) {
       throw new NotImplementedException(
-          "IoTDBThriftConnectorV1 only support PipeTabletInsertionEvent.");
+          "IoTDBSyncConnectorV1 only support PipeTabletInsertionEvent.");
     }
 
     try {
@@ -181,19 +174,14 @@ public class IoTDBOldSyncConnectorV1 implements PipeConnector {
     } catch (TException e) {
       LOGGER.error(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
-      // the connection may be broken, try to reconnect by catching PipeConnectionException
+      // The connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException("Network error when transfer tablet insertion event.", e);
     }
   }
 
   private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException, IoTDBConnectionException,
-          StatementExecutionException {
-    InsertNode node = pipeTabletInsertionEvent.getInsertNode();
-    Tablet tablet =
-        new Tablet(node.getDeviceID().toStringID(), Arrays.asList(node.getMeasurementSchemas()));
-    sessionPool.insertTablet(tablet);
-  }
+          StatementExecutionException {}
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
@@ -201,16 +189,16 @@ public class IoTDBOldSyncConnectorV1 implements PipeConnector {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
-          "IoTDBThriftConnectorV1 only support PipeTsFileInsertionEvent.");
+          "IoTDBSyncConnectorV1 only support PipeTsFileInsertionEvent.");
     }
 
     try {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       LOGGER.error(
-          "Network error when transfer tsfile insertion event: {}.", tsFileInsertionEvent, e);
-      // the connection may be broken, try to reconnect by catching PipeConnectionException
-      throw new PipeConnectionException("Network error when transfer tsfile insertion event.", e);
+          "Network error when transfer tsFile insertion event: {}.", tsFileInsertionEvent, e);
+      // The connection may be broken, try to reconnect by catching PipeConnectionException
+      throw new PipeConnectionException("Network error when transfer tsFile insertion event.", e);
     }
   }
 
@@ -219,87 +207,59 @@ public class IoTDBOldSyncConnectorV1 implements PipeConnector {
     pipeTsFileInsertionEvent.waitForTsFileClose();
 
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
-    if (!transportSingleFilePieceByPiece(tsFile)) {
-      throw new PipeConnectionException(
-          "Network error when transfer tsfile " + tsFile + " piece by piece.");
-    }
+    transportSingleFilePieceByPiece(tsFile);
+    client.sendPipeData(ByteBuffer.wrap(new TsFilePipeData("", tsFile.getName(), -1).serialize()));
   }
 
-  /**
-   * Transport file piece by piece.
-   *
-   * @return true if success; false if failed.
-   * @throws SyncConnectionException Connection exception, wait for a while and try again
-   * @throws IOException Serialize error.
-   */
-  private boolean transportSingleFilePieceByPiece(File file)
-      throws SyncConnectionException, IOException {
+  private void transportSingleFilePieceByPiece(File file) throws IOException {
     // Cut the file into pieces to send
     long position = 0;
-    long limit = getFileSizeLimit(file);
 
     // Try small piece to rebase the file position.
-    byte[] buffer = new byte[TRANSFER_BUFFER_SIZE_IN_BYTES];
-    int dataLength;
+    byte[] buffer = new byte[PipeConfig.getInstance().getReadFileBufferSize()];
     try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
-      while (position < limit) {
-        // Normal piece.
-        if (position != 0L && buffer.length != DATA_CHUNK_SIZE) {
-          buffer = new byte[DATA_CHUNK_SIZE];
-        }
-        dataLength =
-            randomAccessFile.read(buffer, 0, Math.min(buffer.length, (int) (limit - position)));
+      while (true) {
+        final int dataLength = randomAccessFile.read(buffer);
         if (dataLength == -1) {
           break;
         }
+
         ByteBuffer buffToSend = ByteBuffer.wrap(buffer, 0, dataLength);
         TSyncTransportMetaInfo metaInfo = new TSyncTransportMetaInfo(file.getName(), position);
 
-        TSStatus status = serviceClient.sendFile(metaInfo, buffToSend);
+        TSStatus status = client.sendFile(metaInfo, buffToSend);
 
         if ((status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           // Success
           position += dataLength;
         } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
           position = Long.parseLong(status.message);
+          randomAccessFile.seek(position);
+          LOGGER.info(
+              String.format("Redirect to position %s in transferring tsFile %s.", position, file));
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
-          LOGGER.error(
-              "Receiver failed to receive data from {} because {}, abort.",
-              file.getAbsoluteFile(),
-              status.message);
-          return false;
+          String errorMsg =
+              String.format("Network failed to receive tsFile %s, status: %s", file, status);
+          LOGGER.warn(errorMsg);
+          throw new PipeConnectionException(errorMsg);
         }
       }
     } catch (TException e) {
-      LOGGER.error("Cannot sync data with receiver. ", e);
-      throw new SyncConnectionException(e);
+      LOGGER.error(String.format("Cannot send pipe data to receiver %s:%s.", ipAddress, port), e);
+      throw new PipeConnectionException(e.getMessage(), e);
     }
-    return true;
-  }
-
-  private long getFileSizeLimit(File file) {
-    File offset = new File(file.getPath() + SyncConstant.MODS_OFFSET_FILE_SUFFIX);
-    if (offset.exists()) {
-      try (BufferedReader br = new BufferedReader(new FileReader(offset))) {
-        return Long.parseLong(br.readLine());
-      } catch (IOException e) {
-        LOGGER.error(
-            String.format("Deserialize offset of file %s error, because %s.", file.getPath(), e));
-      }
-    }
-    return file.length();
   }
 
   @Override
   public void transfer(Event event) throws Exception {
-    LOGGER.warn("IoTDBOldSyncConnectorV1 does not support transfer generic event: {}.", event);
+    LOGGER.warn("IoTDBSyncConnectorV1 does not support transfer generic event: {}.", event);
   }
 
   @Override
   public void close() throws Exception {
-    if (transport != null) {
-      transport.close();
-      transport = null;
+    if (client != null) {
+      client.close();
+      client = null;
     }
     if (sessionPool != null) {
       sessionPool.close();
