@@ -1914,9 +1914,10 @@ public class IoTDBDescriptor {
   }
 
   private void loadPipeProps(Properties properties) {
-    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
+    conf.setPipeLibDir(properties.getProperty("pipe_lib_dir", conf.getPipeLibDir()));
 
-    conf.setReceiveFileDir(properties.getProperty("receive_file_dir", conf.getReceiveFileDir()));
+    conf.setPipeReceiverFileDir(
+        properties.getProperty("pipe_receiver_file_dir", conf.getPipeReceiverFileDir()));
   }
 
   private void loadCQProps(Properties properties) {

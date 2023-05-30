@@ -1117,11 +1117,7 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  // TODO: replace with resource manager
-  private String receiveFileDir = systemDir + File.separator + "pipe";
-
-  /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
-  private int pipeMaxThreadNum = 5;
+  private String pipeReceiveFileDir = systemDir + File.separator + "pipe";
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -1529,11 +1525,11 @@ public class IoTDBConfig {
     this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
   }
 
-  public String getPipeDir() {
+  public String getPipeLibDir() {
     return pipeDir;
   }
 
-  public void setPipeDir(String pipeDir) {
+  public void setPipeLibDir(String pipeDir) {
     this.pipeDir = pipeDir;
     updatePipeTemporaryLibDir();
   }
@@ -3859,20 +3855,12 @@ public class IoTDBConfig {
     return modeMapSizeThreshold;
   }
 
-  public void setReceiveFileDir(String receiveFileDir) {
-    this.receiveFileDir = receiveFileDir;
+  public void setPipeReceiverFileDir(String pipeReceiveFileDir) {
+    this.pipeReceiveFileDir = pipeReceiveFileDir;
   }
 
-  public String getReceiveFileDir() {
-    return receiveFileDir;
-  }
-
-  public void setPipeSubtaskExecutorMaxThreadNum(int pipeMaxThreadNum) {
-    this.pipeMaxThreadNum = pipeMaxThreadNum;
-  }
-
-  public int getPipeSubtaskExecutorMaxThreadNum() {
-    return pipeMaxThreadNum;
+  public String getPipeReceiverFileDir() {
+    return pipeReceiveFileDir;
   }
 
   public boolean isQuotaEnable() {
