@@ -142,6 +142,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
     if (!schemaReader.isSuccess()) {
       throw new RuntimeException(schemaReader.getFailure());
     }
+    schemaSource.processDelayedTask(tsBlockBuilder, getDatabase());
     return tsBlockBuilder.build();
   }
 

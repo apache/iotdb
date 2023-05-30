@@ -51,4 +51,14 @@ public interface ISchemaSource<T extends ISchemaInfo> {
   boolean hasSchemaStatistic(ISchemaRegion schemaRegion);
 
   long getSchemaStatistic(ISchemaRegion schemaRegion);
+
+  /**
+   * Some tasks may be delayed, and will be processed before building and returning of
+   * tsBlockBuilder. Those delayed tasks will be processed here. For example, in 'show timeseries'
+   * statement, tasks of processing series of views will be delayed. These tasks will be processed
+   * here, make counts of schema fetching come down.
+   *
+   * @param tsBlockBuilder complete delayed tasks on given tsBlock builder.
+   */
+  void processDelayedTask(TsBlockBuilder tsBlockBuilder, String database);
 }

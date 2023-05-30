@@ -86,6 +86,10 @@ public class PipeRuntimeAgent implements IService {
     simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource);
   }
 
+  public void assignSimpleProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+    simpleConsensusProgressIndexAssigner.assignSimpleProgressIndexForTsFileRecovery(tsFileResource);
+  }
+
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
 
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {

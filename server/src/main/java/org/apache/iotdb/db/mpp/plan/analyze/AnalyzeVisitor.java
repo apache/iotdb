@@ -3240,7 +3240,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a logical view based on existing views. Check the query in your SQL."));
+              "Can not create a view based on existing views. Check the query in your SQL."));
       return new Pair<>(null, analysis);
     }
     List<Expression> expressionList = new ArrayList<>();
@@ -3266,7 +3266,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a logical view based on non-exist time series."));
+              "Can not create a view based on non-exist time series."));
       return analysis;
     }
     Pair<List<PartialPath>, PartialPath> viewInSourceCheckResult =
@@ -3279,7 +3279,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "Path "
                   + viewInSourceCheckResult.right.toString()
-                  + " does not exist! You can not create a logical view based on non-exist time series."));
+                  + " does not exist! You can not create a view based on non-exist time series."));
       return analysis;
     }
     if (viewInSourceCheckResult.left.size() > 0) {
@@ -3288,7 +3288,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a logical view based on existing views."));
+              "Can not create a view based on existing views."));
       return analysis;
     }
     return analysis;
@@ -3312,6 +3312,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "The number of target and source paths are miss matched! Please check your SQL."));
+      return analysis;
+    }
+    // make sure all paths are NOt under any template
+    try {
+      for (PartialPath path : createLogicalViewStatement.getTargetPathList()) {
+        checkIsTemplateCompatible(path, null);
+      }
+    } catch (Exception e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "Can not create view under template."));
       return analysis;
     }
     return analysis;
