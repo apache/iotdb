@@ -220,7 +220,7 @@ public class Coordinator {
           if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
             SLOW_SQL_LOGGER.info(
                 "Cost: {} ms, sql is {}",
-                costTime,
+                costTime / 1_000_000,
                 queryExecution.getExecuteSQL().orElse("UNKNOWN"));
           }
         }
