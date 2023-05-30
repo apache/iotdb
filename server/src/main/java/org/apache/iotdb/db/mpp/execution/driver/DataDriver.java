@@ -102,7 +102,7 @@ public class DataDriver extends Driver {
 
   @Override
   protected void releaseResource() {
-    // do nothing
+    driverContext.getFragmentInstanceContext().decrementNumOfUnclosedDriver();
   }
 
   /**

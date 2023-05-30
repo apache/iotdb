@@ -77,6 +77,9 @@ public class FragmentInstanceContext extends QueryContext {
   // session info
   private SessionInfo sessionInfo;
 
+  // it's safe to call releaseResource only when this count down to 0
+  private Integer numOfUnclosedDriver;
+
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
   //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
@@ -350,6 +353,33 @@ public class FragmentInstanceContext extends QueryContext {
       pathSet.add(tsFile);
       FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
     }
+  }
+
+  public void setNumOfUnclosedDriver(Integer numOfUnclosedDriver) {
+    this.numOfUnclosedDriver = numOfUnclosedDriver;
+  }
+
+  public void decrementNumOfUnclosedDriver() {
+    synchronized (numOfUnclosedDriver) {
+      numOfUnclosedDriver--;
+      if (numOfUnclosedDriver == 0) {
+        numOfUnclosedDriver.notify();
+      }
+    }
+  }
+
+  public void releaseResourceWhenAllDriversClosed() {
+    synchronized (numOfUnclosedDriver) {
+      if (numOfUnclosedDriver != 0) {
+        try {
+          numOfUnclosedDriver.wait();
+        } catch (InterruptedException e) {
+          LOGGER.warn("Interrupted when waiting on numOfUnclosedDriver");
+          throw new RuntimeException(e);
+        }
+      }
+    }
+    releaseResource();
   }
 
   /**

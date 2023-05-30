@@ -147,6 +147,8 @@ public class FragmentInstanceManager {
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                  // initialize numOfUnclosedDriver
+                  context.setNumOfUnclosedDriver(drivers.size());
                   // get the sink of last driver
                   ISink sink = drivers.get(drivers.size() - 1).getSink();
 
