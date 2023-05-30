@@ -215,23 +215,22 @@ public class TabletIterator implements Iterator<Tablet> {
     }
 
     // Fill in the timestamps, values, and bitMap with the information for this measurement.
-    if (!isSetTimestamp) {
+    if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
       for (long[] timeBatch : timeBatches) {
         for (long time : timeBatch) {
           timestamps.add(time);
         }
       }
-      isSetTimestamp = true;
-    }
+    } else {
+      // when the timeseriesMetadata tsDataType is VECTOR, we do not need to fill the values and
+      // bitMap
+      values.add(measurementValues.toArray());
 
-    // values
-    values.add(measurementValues.toArray());
-
-    // bitMap
-    byte[] byteArray = new byte[bitMapBytes.size()];
-    for (int i = 0; i < bitMapBytes.size(); i++) {
-      byteArray[i] = bitMapBytes.get(i);
+      byte[] byteArray = new byte[bitMapBytes.size()];
+      for (int i = 0; i < bitMapBytes.size(); i++) {
+        byteArray[i] = bitMapBytes.get(i);
+      }
+      bitMap.add(new BitMap(bitMapBytes.size() * 8, byteArray));
     }
-    bitMap.add(new BitMap(bitMapBytes.size() * 8, byteArray));
   }
 }

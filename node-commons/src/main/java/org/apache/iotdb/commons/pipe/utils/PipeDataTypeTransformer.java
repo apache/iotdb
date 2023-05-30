@@ -56,8 +56,6 @@ public class PipeDataTypeTransformer {
         return Type.DOUBLE;
       case 5:
         return Type.TEXT;
-      case 6:
-        return Type.VECTOR;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
