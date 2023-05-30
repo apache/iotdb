@@ -1214,12 +1214,13 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planOrderBy(List<SortItem> sortItemList) {
-    OrderByParameter orderByParameter = new OrderByParameter(sortItemList);
-    if (orderByParameter.isEmpty()) {
+    if (sortItemList.isEmpty()) {
       return this;
     }
 
-    this.root = new SortNode(context.getQueryId().genPlanNodeId(), root, orderByParameter);
+    this.root =
+        new SortNode(
+            context.getQueryId().genPlanNodeId(), root, new OrderByParameter(sortItemList));
     return this;
   }
 

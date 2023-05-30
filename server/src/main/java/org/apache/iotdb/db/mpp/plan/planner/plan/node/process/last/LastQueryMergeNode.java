@@ -132,7 +132,7 @@ public class LastQueryMergeNode extends MultiChildProcessNode {
     byte needOrderByTimeseries = ReadWriteIOUtils.readByte(byteBuffer);
     Ordering timeseriesOrdering = null;
     if (needOrderByTimeseries == 1) {
-      timeseriesOrdering = Ordering.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+      timeseriesOrdering = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LastQueryMergeNode(planNodeId, timeseriesOrdering);

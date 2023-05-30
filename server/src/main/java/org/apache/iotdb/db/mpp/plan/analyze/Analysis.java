@@ -196,6 +196,8 @@ public class Analysis {
 
   private OrderByParameter mergeOrderParameter;
 
+  // This field will be set and used when the order by in last query only indicates the ordering of
+  // timeseries, otherwise it will be null
   private Ordering timeseriesOrderingForLastQuery = null;
 
   // header of result dataset

@@ -2225,7 +2225,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context.getCachedLastValueAndPathList();
 
     int initSize = cachedLastValueAndPathList != null ? cachedLastValueAndPathList.size() : 0;
-    // no order by clause
+    // no need to order by timeseries at first
     if (!node.needOrderByTimeseries()) {
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(initSize);
       for (int i = 0; i < initSize; i++) {
