@@ -528,22 +528,22 @@ public class PartitionManager {
   }
 
   /**
-   * Only leader use this interface. Checks whether the specified DataPartition has a predecessor
-   * and returns if it does
+   * Only leader use this interface. Checks whether the specified DataPartition has a predecessor or
+   * successor and returns if it does
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
    * @param timePartitionInterval Time partition interval
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getPrecededDataPartition(
-      String storageGroup,
+  public TConsensusGroupId getAdjacentDataPartition(
+      String database,
       TSeriesPartitionSlot seriesPartitionSlot,
       TTimePartitionSlot timePartitionSlot,
       long timePartitionInterval) {
-    return partitionInfo.getPrecededDataPartition(
-        storageGroup, seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+    return partitionInfo.getAdjacentDataPartition(
+        database, seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
   }
 
   /**

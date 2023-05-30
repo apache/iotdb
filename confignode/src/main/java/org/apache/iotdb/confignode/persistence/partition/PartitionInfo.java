@@ -370,23 +370,24 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   * Checks whether the specified DataPartition has a predecessor or successor and returns if it
+   * does
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
    * @param timePartitionInterval Time partition interval
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getPrecededDataPartition(
-      String storageGroup,
+  public TConsensusGroupId getAdjacentDataPartition(
+      String database,
       TSeriesPartitionSlot seriesPartitionSlot,
       TTimePartitionSlot timePartitionSlot,
       long timePartitionInterval) {
-    if (databasePartitionTables.containsKey(storageGroup)) {
+    if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables
-          .get(storageGroup)
-          .getPrecededDataPartition(seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+          .get(database)
+          .getAdjacentDataPartition(seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
     } else {
       return null;
     }

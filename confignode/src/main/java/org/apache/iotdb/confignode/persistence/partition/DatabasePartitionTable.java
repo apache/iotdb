@@ -228,11 +228,11 @@ public class DatabasePartitionTable {
    * @param timePartitionInterval Time partition interval
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getPrecededDataPartition(
+  public TConsensusGroupId getAdjacentDataPartition(
       TSeriesPartitionSlot seriesPartitionSlot,
       TTimePartitionSlot timePartitionSlot,
       long timePartitionInterval) {
-    return dataPartitionTable.getPrecededDataPartition(
+    return dataPartitionTable.getAdjacentDataPartition(
         seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
   }
 

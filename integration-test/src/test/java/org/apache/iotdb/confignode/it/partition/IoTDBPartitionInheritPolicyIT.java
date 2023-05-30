@@ -59,9 +59,9 @@ public class IoTDBPartitionInheritPolicyIT {
 
   private static final String sg = "root.sg";
   private static final int storageGroupNum = 2;
-  private static final int testSeriesPartitionSlotNum = 1000;
+  private static final int testSeriesPartitionSlotNum = 100;
   private static final int seriesPartitionBatchSize = 10;
-  private static final int testTimePartitionSlotsNum = 10;
+  private static final int testTimePartitionSlotsNum = 100;
   private static final int timePartitionBatchSize = 10;
 
   @BeforeClass
@@ -105,7 +105,11 @@ public class IoTDBPartitionInheritPolicyIT {
       for (int i = 0; i < storageGroupNum; i++) {
         String storageGroup = sg + i;
         for (int j = 0; j < testSeriesPartitionSlotNum; j += seriesPartitionBatchSize) {
-          for (long k = 0; k < testTimePartitionSlotsNum; k += timePartitionBatchSize) {
+          // Test inherit predecessor or successor
+          boolean isAscending = (j / 10) % 2 == 0;
+          int step = isAscending ? timePartitionBatchSize : -timePartitionBatchSize;
+          int k = isAscending ? 0 : testTimePartitionSlotsNum - timePartitionBatchSize;
+          while (0 <= k && k < testTimePartitionSlotsNum) {
             partitionSlotsMap =
                 ConfigNodeTestUtils.constructPartitionSlotsMap(
                     storageGroup,
@@ -114,7 +118,6 @@ public class IoTDBPartitionInheritPolicyIT {
                     k,
                     k + timePartitionBatchSize,
                     testTimePartitionInterval);
-
             // Let ConfigNode create DataPartition
             dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
             for (int retry = 0; retry < 5; retry++) {
@@ -124,7 +127,19 @@ public class IoTDBPartitionInheritPolicyIT {
                       EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
                 dataPartitionTableResp =
                     configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-                if (dataPartitionTableResp != null) {
+                if (dataPartitionTableResp != null
+                    && dataPartitionTableResp.getStatus().getCode()
+                        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  ConfigNodeTestUtils.checkDataPartitionTable(
+                      storageGroup,
+                      j,
+                      j + seriesPartitionBatchSize,
+                      k,
+                      k + timePartitionBatchSize,
+                      testTimePartitionInterval,
+                      configNodeClient
+                          .getDataPartitionTable(dataPartitionReq)
+                          .getDataPartitionTable());
                   break;
                 }
               } catch (Exception e) {
@@ -133,6 +148,7 @@ public class IoTDBPartitionInheritPolicyIT {
                 TimeUnit.SECONDS.sleep(1);
               }
             }
+            k += step;
           }
         }
       }
