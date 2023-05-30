@@ -42,7 +42,7 @@ public interface IWritableMemChunk extends WALEntryValue {
 
   void putBoolean(long t, boolean v);
 
-  boolean putAlignedValueWithFlushCheck(long t, Object[] v, int[] columnIndexArray);
+  boolean putAlignedValueWithFlushCheck(long t, Object[] v);
 
   void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
 
@@ -57,7 +57,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
   boolean putAlignedValuesWithFlushCheck(
-      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end);
+      long[] t, Object[] v, BitMap[] bitMaps, int start, int end);
 
   boolean writeWithFlushCheck(long insertTime, Object objectValue);
 
