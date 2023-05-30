@@ -81,13 +81,16 @@ public class RecoverProgressIndex implements ProgressIndex {
         return true;
       }
 
+      if (progressIndex instanceof HybridProgressIndex) {
+        return ((HybridProgressIndex) progressIndex).isGivenProgressIndexAfterSelf(this);
+      }
+
       if (!(progressIndex instanceof RecoverProgressIndex)) {
         return false;
       }
 
       final RecoverProgressIndex thisRecoverProgressIndex = this;
       final RecoverProgressIndex thatRecoverProgressIndex = (RecoverProgressIndex) progressIndex;
-
       return thatRecoverProgressIndex.dataNodeId2LocalIndex.entrySet().stream()
           .noneMatch(
               entry ->

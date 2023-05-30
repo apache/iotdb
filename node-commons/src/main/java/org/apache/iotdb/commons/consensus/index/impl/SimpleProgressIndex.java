@@ -75,6 +75,10 @@ public class SimpleProgressIndex implements ProgressIndex {
         return true;
       }
 
+      if (progressIndex instanceof HybridProgressIndex) {
+        return ((HybridProgressIndex) progressIndex).isGivenProgressIndexAfterSelf(this);
+      }
+
       if (!(progressIndex instanceof SimpleProgressIndex)) {
         return false;
       }

@@ -93,7 +93,6 @@ public class HybridProgressIndex implements ProgressIndex {
 
       final HybridProgressIndex thisHybridProgressIndex = this;
       final HybridProgressIndex thatHybridProgressIndex = (HybridProgressIndex) progressIndex;
-
       return thatHybridProgressIndex.type2Index.entrySet().stream()
           .noneMatch(
               entry ->
@@ -105,6 +104,12 @@ public class HybridProgressIndex implements ProgressIndex {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  public boolean isGivenProgressIndexAfterSelf(ProgressIndex progressIndex) {
+    return type2Index.size() == 1
+        && type2Index.containsKey(progressIndex.getType().getType())
+        && progressIndex.isAfter(type2Index.get(progressIndex.getType().getType()));
   }
 
   @Override

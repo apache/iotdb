@@ -86,6 +86,10 @@ public class IoTProgressIndex implements ProgressIndex {
         return true;
       }
 
+      if (progressIndex instanceof HybridProgressIndex) {
+        return ((HybridProgressIndex) progressIndex).isGivenProgressIndexAfterSelf(this);
+      }
+
       if (!(progressIndex instanceof IoTProgressIndex)) {
         return false;
       }

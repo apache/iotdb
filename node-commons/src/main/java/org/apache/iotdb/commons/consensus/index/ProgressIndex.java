@@ -112,10 +112,10 @@ public interface ProgressIndex {
       return new MinimumProgressIndex();
     }
     if (progressIndex1 == null || progressIndex1 instanceof MinimumProgressIndex) {
-      return progressIndex2;
+      return progressIndex2 == null ? new MinimumProgressIndex() : progressIndex2;
     }
     if (progressIndex2 == null || progressIndex2 instanceof MinimumProgressIndex) {
-      return progressIndex1;
+      return progressIndex1; // progressIndex1 is not null
     }
 
     return new HybridProgressIndex(progressIndex1.getType().getType(), progressIndex1)
