@@ -1808,12 +1808,11 @@ public class IoTDBDescriptor {
 
     int proportionSum = 10;
     int schemaRegionProportion = 5;
-    int schemaCacheProportion = 3;
+    int schemaCacheProportion = 4;
     int partitionCacheProportion = 1;
-    int lastCacheProportion = 1;
+    int lastCacheProportion = 0;
 
-    String schemaMemoryAllocatePortion =
-        properties.getProperty("schema_memory_allocate_proportion");
+    String schemaMemoryAllocatePortion = properties.getProperty("schema_memory_proportion");
     if (schemaMemoryAllocatePortion != null) {
       String[] proportions = schemaMemoryAllocatePortion.split(":");
       int loadedProportionSum = 0;
@@ -1826,7 +1825,24 @@ public class IoTDBDescriptor {
         schemaRegionProportion = Integer.parseInt(proportions[0].trim());
         schemaCacheProportion = Integer.parseInt(proportions[1].trim());
         partitionCacheProportion = Integer.parseInt(proportions[2].trim());
-        lastCacheProportion = Integer.parseInt(proportions[3].trim());
+      }
+
+    } else {
+      schemaMemoryAllocatePortion = properties.getProperty("schema_memory_allocate_proportion");
+      if (schemaMemoryAllocatePortion != null) {
+        String[] proportions = schemaMemoryAllocatePortion.split(":");
+        int loadedProportionSum = 0;
+        for (String proportion : proportions) {
+          loadedProportionSum += Integer.parseInt(proportion.trim());
+        }
+
+        if (loadedProportionSum != 0) {
+          proportionSum = loadedProportionSum;
+          schemaRegionProportion = Integer.parseInt(proportions[0].trim());
+          schemaCacheProportion = Integer.parseInt(proportions[1].trim());
+          partitionCacheProportion = Integer.parseInt(proportions[2].trim());
+          lastCacheProportion = Integer.parseInt(proportions[3].trim());
+        }
       }
     }
 
