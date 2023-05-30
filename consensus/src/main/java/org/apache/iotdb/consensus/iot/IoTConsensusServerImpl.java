@@ -649,8 +649,8 @@ public class IoTConsensusServerImpl {
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     if (request instanceof ComparableConsensusRequest) {
-      final IoTProgressIndex iotProgressIndex = new IoTProgressIndex();
-      iotProgressIndex.addSearchIndex(thisNode.getNodeId(), searchIndex.get() + 1);
+      final IoTProgressIndex iotProgressIndex =
+          new IoTProgressIndex(thisNode.getNodeId(), searchIndex.get() + 1);
       ((ComparableConsensusRequest) request).setProgressIndex(iotProgressIndex);
     }
     return new IndexedConsensusRequest(searchIndex.get() + 1, Collections.singletonList(request));
