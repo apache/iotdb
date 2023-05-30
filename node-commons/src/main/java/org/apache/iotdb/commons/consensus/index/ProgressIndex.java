@@ -22,8 +22,6 @@ package org.apache.iotdb.commons.consensus.index;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 
-import javax.annotation.Nonnull;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -80,18 +78,47 @@ public interface ProgressIndex {
    * @param progressIndex the progress index to be compared
    * @return the minimum progress index after the given progress index and this progress index
    */
-  ProgressIndex updateToMinimumIsAfterProgressIndex(@Nonnull ProgressIndex progressIndex);
+  ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex);
 
+  /** @return the type of this progress index */
+  ProgressIndexType getType();
+
+  /**
+   * blend two progress index together, the result progress index should satisfy:
+   *
+   * <p>(result.equals(progressIndex1) || result.isAfter(progressIndex1)) is true
+   *
+   * <p>(result.equals(progressIndex2) || result.isAfter(progressIndex2)) is true
+   *
+   * <p>There is no R, such that R satisfies the above conditions and result.isAfter(R) is true
+   *
+   * @param progressIndex1 the first progress index. if it is null, the result progress index should
+   *     be the second progress index. if it is a minimum progress index, the result progress index
+   *     should be the second progress index. (if the second progress index is null, the result
+   *     should be a minimum progress index). if it is a hybrid progress index, the result progress
+   *     index should be the minimum progress index after the second progress index and the first
+   *     progress index
+   * @param progressIndex2 the second progress index. if it is null, the result progress index
+   *     should be the first progress index. if it is a minimum progress index, the result progress
+   *     index should be the first progress index. (if the first progress index is null, the result
+   *     should be a minimum progress index). if it is a hybrid progress index, the result progress
+   *     index should be the minimum progress index after the first progress index and the second
+   *     progress index
+   * @return the minimum progress index after the first progress index and the second progress index
+   */
   static ProgressIndex blendProgressIndex(
-      ProgressIndex progressIndex, ProgressIndex anotherProgressIndex) {
-    if (progressIndex instanceof MinimumProgressIndex) {
-      return anotherProgressIndex;
-    } else if (anotherProgressIndex instanceof MinimumProgressIndex) {
-      return progressIndex;
+      ProgressIndex progressIndex1, ProgressIndex progressIndex2) {
+    if (progressIndex1 == null && progressIndex2 == null) {
+      return new MinimumProgressIndex();
+    }
+    if (progressIndex1 == null || progressIndex1 instanceof MinimumProgressIndex) {
+      return progressIndex2;
+    }
+    if (progressIndex2 == null || progressIndex2 instanceof MinimumProgressIndex) {
+      return progressIndex1;
     }
 
-    final HybridProgressIndex hybridProgressIndex =
-        new HybridProgressIndex(progressIndex.getClass().getSimpleName(), progressIndex);
-    return hybridProgressIndex.updateToMinimumIsAfterProgressIndex(anotherProgressIndex);
+    return new HybridProgressIndex(progressIndex1.getType().getType(), progressIndex1)
+        .updateToMinimumIsAfterProgressIndex(progressIndex2);
   }
 }

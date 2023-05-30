@@ -72,6 +72,11 @@ public class MinimumProgressIndex implements ProgressIndex {
     return progressIndex == null ? this : progressIndex;
   }
 
+  @Override
+  public ProgressIndexType getType() {
+    return ProgressIndexType.MINIMUM_PROGRESS_INDEX;
+  }
+
   public static MinimumProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     return new MinimumProgressIndex();
   }

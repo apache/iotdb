@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.consensus.index.impl;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -33,17 +32,18 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class HybridProgressIndex implements ProgressIndex {
+
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private final Map<String, ProgressIndex> className2Index;
+  private final Map<Short, ProgressIndex> type2Index;
 
   public HybridProgressIndex() {
-    this.className2Index = new HashMap<>();
+    this.type2Index = new HashMap<>();
   }
 
-  public HybridProgressIndex(String className, ProgressIndex progressIndex) {
-    this.className2Index = new HashMap<>();
-    className2Index.put(className, progressIndex);
+  public HybridProgressIndex(short type, ProgressIndex progressIndex) {
+    this.type2Index = new HashMap<>();
+    type2Index.put(type, progressIndex);
   }
 
   @Override
@@ -52,9 +52,9 @@ public class HybridProgressIndex implements ProgressIndex {
     try {
       ProgressIndexType.HYBRID_PROGRESS_INDEX.serialize(byteBuffer);
 
-      ReadWriteIOUtils.write(className2Index.size(), byteBuffer);
-      for (final Map.Entry<String, ProgressIndex> entry : className2Index.entrySet()) {
-        ReadWriteIOUtils.write(new Binary(entry.getKey()), byteBuffer);
+      ReadWriteIOUtils.write(type2Index.size(), byteBuffer);
+      for (final Map.Entry<Short, ProgressIndex> entry : type2Index.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
         entry.getValue().serialize(byteBuffer);
       }
     } finally {
@@ -68,9 +68,9 @@ public class HybridProgressIndex implements ProgressIndex {
     try {
       ProgressIndexType.HYBRID_PROGRESS_INDEX.serialize(stream);
 
-      ReadWriteIOUtils.write(className2Index.size(), stream);
-      for (final Map.Entry<String, ProgressIndex> entry : className2Index.entrySet()) {
-        ReadWriteIOUtils.write(new Binary(entry.getKey()), stream);
+      ReadWriteIOUtils.write(type2Index.size(), stream);
+      for (final Map.Entry<Short, ProgressIndex> entry : type2Index.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), stream);
         entry.getValue().serialize(stream);
       }
     } finally {
@@ -87,20 +87,19 @@ public class HybridProgressIndex implements ProgressIndex {
       }
 
       if (!(progressIndex instanceof HybridProgressIndex)) {
-        String className = progressIndex.getClass().getSimpleName();
-        return className2Index.containsKey(className)
-            && className2Index.get(className).isAfter(progressIndex);
+        final short type = progressIndex.getType().getType();
+        return type2Index.containsKey(type) && type2Index.get(type).isAfter(progressIndex);
       }
 
       final HybridProgressIndex thisHybridProgressIndex = this;
       final HybridProgressIndex thatHybridProgressIndex = (HybridProgressIndex) progressIndex;
 
-      return thatHybridProgressIndex.className2Index.entrySet().stream()
+      return thatHybridProgressIndex.type2Index.entrySet().stream()
           .noneMatch(
               entry ->
-                  !thisHybridProgressIndex.className2Index.containsKey(entry.getKey())
+                  !thisHybridProgressIndex.type2Index.containsKey(entry.getKey())
                       || !thisHybridProgressIndex
-                          .className2Index
+                          .type2Index
                           .get(entry.getKey())
                           .isAfter(entry.getValue()));
     } finally {
@@ -118,14 +117,13 @@ public class HybridProgressIndex implements ProgressIndex {
 
       final HybridProgressIndex thisHybridProgressIndex = this;
       final HybridProgressIndex thatHybridProgressIndex = (HybridProgressIndex) progressIndex;
-      return thisHybridProgressIndex.className2Index.size()
-              == thatHybridProgressIndex.className2Index.size()
-          && thatHybridProgressIndex.className2Index.entrySet().stream()
+      return thisHybridProgressIndex.type2Index.size() == thatHybridProgressIndex.type2Index.size()
+          && thatHybridProgressIndex.type2Index.entrySet().stream()
               .allMatch(
                   entry ->
-                      thisHybridProgressIndex.className2Index.containsKey(entry.getKey())
+                      thisHybridProgressIndex.type2Index.containsKey(entry.getKey())
                           && thisHybridProgressIndex
-                              .className2Index
+                              .type2Index
                               .get(entry.getKey())
                               .equals(entry.getValue()));
     } finally {
@@ -161,8 +159,8 @@ public class HybridProgressIndex implements ProgressIndex {
       }
 
       if (!(progressIndex instanceof HybridProgressIndex)) {
-        className2Index.compute(
-            progressIndex.getClass().getSimpleName(),
+        type2Index.compute(
+            progressIndex.getType().getType(),
             (thisK, thisV) ->
                 (thisV == null
                     ? progressIndex
@@ -172,9 +170,9 @@ public class HybridProgressIndex implements ProgressIndex {
 
       final HybridProgressIndex thisHybridProgressIndex = this;
       final HybridProgressIndex thatHybridProgressIndex = (HybridProgressIndex) progressIndex;
-      thatHybridProgressIndex.className2Index.forEach(
+      thatHybridProgressIndex.type2Index.forEach(
           (thatK, thatV) ->
-              thisHybridProgressIndex.className2Index.compute(
+              thisHybridProgressIndex.type2Index.compute(
                   thatK,
                   (thisK, thisV) ->
                       (thisV == null ? thatV : thisV.updateToMinimumIsAfterProgressIndex(thatV))));
@@ -184,13 +182,18 @@ public class HybridProgressIndex implements ProgressIndex {
     }
   }
 
+  @Override
+  public ProgressIndexType getType() {
+    return ProgressIndexType.HYBRID_PROGRESS_INDEX;
+  }
+
   public static HybridProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; i++) {
-      final String className = ReadWriteIOUtils.readBinary(byteBuffer).getStringValue();
+      final short type = ReadWriteIOUtils.readShort(byteBuffer);
       final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
-      hybridProgressIndex.className2Index.put(className, progressIndex);
+      hybridProgressIndex.type2Index.put(type, progressIndex);
     }
     return hybridProgressIndex;
   }
@@ -199,15 +202,15 @@ public class HybridProgressIndex implements ProgressIndex {
     final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
     final int size = ReadWriteIOUtils.readInt(stream);
     for (int i = 0; i < size; i++) {
-      final String className = ReadWriteIOUtils.readBinary(stream).getStringValue();
+      final short type = ReadWriteIOUtils.readShort(stream);
       final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(stream);
-      hybridProgressIndex.className2Index.put(className, progressIndex);
+      hybridProgressIndex.type2Index.put(type, progressIndex);
     }
     return hybridProgressIndex;
   }
 
   @Override
   public String toString() {
-    return "HybridProgressIndex{" + "className2Index=" + className2Index + '}';
+    return "HybridProgressIndex{" + "type2Index=" + type2Index + '}';
   }
 }

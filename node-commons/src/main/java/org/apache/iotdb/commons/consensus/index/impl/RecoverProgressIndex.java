@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class RecoverProgressIndex implements ProgressIndex {
+
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex;
@@ -167,6 +168,10 @@ public class RecoverProgressIndex implements ProgressIndex {
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  public ProgressIndexType getType() {
+    return ProgressIndexType.RECOVER_PROGRESS_INDEX;
   }
 
   public static RecoverProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

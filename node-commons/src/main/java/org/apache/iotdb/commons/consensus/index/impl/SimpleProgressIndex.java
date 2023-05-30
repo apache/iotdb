@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SimpleProgressIndex implements ProgressIndex {
+
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final int rebootTimes;
@@ -162,6 +163,10 @@ public class SimpleProgressIndex implements ProgressIndex {
     } finally {
       lock.writeLock().lock();
     }
+  }
+
+  public ProgressIndexType getType() {
+    return ProgressIndexType.SIMPLE_PROGRESS_INDEX;
   }
 
   public static SimpleProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

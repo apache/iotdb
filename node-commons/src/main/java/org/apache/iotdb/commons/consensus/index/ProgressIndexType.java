@@ -35,9 +35,7 @@ public enum ProgressIndexType {
   MINIMUM_PROGRESS_INDEX((short) 1),
   IOT_PROGRESS_INDEX((short) 2),
   SIMPLE_PROGRESS_INDEX((short) 3),
-
   RECOVER_PROGRESS_INDEX((short) 4),
-
   HYBRID_PROGRESS_INDEX((short) 5),
   ;
 

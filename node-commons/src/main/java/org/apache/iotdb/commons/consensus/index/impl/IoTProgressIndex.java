@@ -32,16 +32,17 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class IoTProgressIndex implements ProgressIndex {
-  private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final Map<Integer, Long> peerId2SearchIndex;
 
   public IoTProgressIndex() {
-    this.peerId2SearchIndex = new HashMap<>();
+    peerId2SearchIndex = new HashMap<>();
   }
 
   public IoTProgressIndex(Integer peerId, Long searchIndex) {
-    this.peerId2SearchIndex = new HashMap<>();
+    peerId2SearchIndex = new HashMap<>();
     peerId2SearchIndex.put(peerId, searchIndex);
   }
 
@@ -164,6 +165,11 @@ public class IoTProgressIndex implements ProgressIndex {
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  @Override
+  public ProgressIndexType getType() {
+    return ProgressIndexType.IOT_PROGRESS_INDEX;
   }
 
   public static IoTProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
