@@ -459,7 +459,7 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(
-          testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
+          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.ConfigRegion);
 
@@ -467,7 +467,7 @@ public class IoTDBPartitionGetterIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getSeriesSlotListResp.status.getCode());
       Assert.assertEquals(
-          testSeriesPartitionSlotNum + 2, getSeriesSlotListResp.getSeriesSlotListSize());
+          testSeriesPartitionSlotNum, getSeriesSlotListResp.getSeriesSlotListSize());
 
       getSeriesSlotListReq.setType(TConsensusGroupType.SchemaRegion);
 
