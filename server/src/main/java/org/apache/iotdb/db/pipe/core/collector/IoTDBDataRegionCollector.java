@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionCollector;
-import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionFakeCollector;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionTsFileCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionFakeCollector;
@@ -59,6 +58,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   private final AtomicBoolean hasBeenStarted;
 
   private final ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue;
+  private final long creationTime;
   private final PipeTaskMeta pipeTaskMeta;
 
   // TODO: support pattern in historical collector
@@ -68,14 +68,16 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   private int dataRegionId;
 
   public IoTDBDataRegionCollector(
+      long creationTime,
       PipeTaskMeta pipeTaskMeta,
       ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue) {
-    hasBeenStarted = new AtomicBoolean(false);
+    this.hasBeenStarted = new AtomicBoolean(false);
 
+    this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
     this.collectorPendingQueue = collectorPendingQueue;
 
-    historicalCollector = new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta);
+    historicalCollector = new PipeHistoricalDataRegionTsFileCollector(Long.MIN_VALUE, pipeTaskMeta);
     realtimeCollector =
         new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
   }
@@ -119,8 +121,8 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     // enable historical collector by default
     historicalCollector =
         parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true)
-            ? new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta)
-            : new PipeHistoricalDataRegionFakeCollector();
+            ? new PipeHistoricalDataRegionTsFileCollector(Long.MIN_VALUE, pipeTaskMeta)
+            : new PipeHistoricalDataRegionTsFileCollector(creationTime, pipeTaskMeta);
   }
 
   private void constructRealtimeCollector(PipeParameters parameters) {
