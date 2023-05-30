@@ -3302,7 +3302,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private Analysis checkPathsInCreateLogicalView(
+  private void checkPathsInCreateLogicalView(
       Analysis analysis, CreateLogicalViewStatement createLogicalViewStatement) {
     Pair<Boolean, String> checkResult = createLogicalViewStatement.checkAllPaths();
     if (!checkResult.left) {
@@ -3311,7 +3311,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           RpcUtils.getStatus(
               TSStatusCode.ILLEGAL_PATH.getStatusCode(),
               "The path " + checkResult.right + " is illegal."));
-      return analysis;
+      return;
     }
     if (createLogicalViewStatement.getSourceExpressionList().size()
         != createLogicalViewStatement.getTargetPathList().size()) {
@@ -3320,7 +3320,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "The number of target and source paths are miss matched! Please check your SQL."));
-      return analysis;
+      return;
     }
     // make sure all paths are NOt under any template
     try {
@@ -3333,9 +3333,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "Can not create view under template."));
-      return analysis;
     }
-    return analysis;
   }
 
   // create Logical View
