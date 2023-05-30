@@ -92,7 +92,7 @@ public class CommonConfig {
    * Notice: if this property is changed, previous created database which are not set TTL will also
    * be affected. Unit: millisecond
    */
-  private long[] tierTTLInMs = {2 * 24 * 60 * 60 * 1000L, Long.MAX_VALUE};
+  private long[] tierTTLInMs = {Long.MAX_VALUE};
 
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);

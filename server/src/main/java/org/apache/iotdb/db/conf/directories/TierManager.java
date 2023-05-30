@@ -70,13 +70,10 @@ public class TierManager {
   /** total space of each tier, Long.MAX_VALUE when one tier contains remote storage */
   private long[] tierDiskTotalSpace;
 
-  private TierManager() {}
-
-  public synchronized void resetFolders() {
-    if (config.getDataNodeId() == -1) {
-      return;
-    }
-
+  private TierManager() {
+    initFolders();
+  }
+  public synchronized void initFolders() {
     try {
       String strategyName = Class.forName(config.getMultiDirStrategyClassName()).getSimpleName();
       if (strategyName.equals(MaxDiskUsableSpaceFirstStrategy.class.getSimpleName())) {
@@ -90,11 +87,6 @@ public class TierManager {
       logger.error(
           "Can't find strategy {} for mult-directories.", config.getMultiDirStrategyClassName(), e);
     }
-
-    seqTiers.clear();
-    unSeqTiers.clear();
-    seqDir2TierLevel.clear();
-    unSeqDir2TierLevel.clear();
 
     config.updatePath();
     String[][] tierDirs = config.getTierDataDirs();
@@ -170,6 +162,15 @@ public class TierManager {
     }
 
     tierDiskTotalSpace = getTierDiskSpace(DiskSpaceType.TOTAL);
+  }
+
+  public synchronized void resetFolders() {
+    seqTiers.clear();
+    unSeqTiers.clear();
+    seqDir2TierLevel.clear();
+    unSeqDir2TierLevel.clear();
+
+    initFolders();
   }
 
   private void mkDataDirs(List<String> folders) {
@@ -250,7 +251,7 @@ public class TierManager {
         return entry.getValue();
       }
     }
-    throw new RuntimeException(String.format("%s is not a legal TsFile path", file));
+    return 0;
   }
 
   public long[] getTierDiskTotalSpace() {

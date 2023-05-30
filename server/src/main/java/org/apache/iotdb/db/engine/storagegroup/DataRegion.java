@@ -762,7 +762,7 @@ public class DataRegion implements IDataRegionForQuery {
       checkTsFileTime(f, currentTime);
       ret.add(new TsFileResource(f));
     }
-
+    upgradeFiles.sort(this::compareFileName);
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       checkTsFileTime(f, currentTime);

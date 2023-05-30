@@ -171,7 +171,10 @@ public class DataNode implements DataNodeMBean {
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
       }
-
+      // TierManager need DataNodeId to do some operations so the reset method need to be invoked
+      // after DataNode adding
+      TierManager.getInstance().resetFolders();
+      configOSStorage(config.getDataNodeId());
       // Active DataNode
       active();
 
@@ -393,7 +396,6 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when register success */
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
       config.setDataNodeId(dataNodeID);
-      configOSStorage(dataNodeID);
       IoTDBStartCheck.getInstance()
           .serializeClusterNameAndDataNodeId(config.getClusterName(), dataNodeID);
 
@@ -409,9 +411,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void configOSStorage(int dataNodeID) {
-    TierManager.getInstance().resetFolders();
     FSFactoryProducer.setFileInputFactory(new HybridFileInputFactoryDecorator(dataNodeID));
-    // recover OS cache
   }
 
   private void sendRestartRequestToConfigNode() throws StartupException {
@@ -459,7 +459,6 @@ public class DataNode implements DataNodeMBean {
       /* Store runtime configurations when restart request is accepted */
       storeRuntimeConfigurations(
           dataNodeRestartResp.getConfigNodeList(), dataNodeRestartResp.getRuntimeConfiguration());
-      configOSStorage(config.getDataNodeId());
       logger.info("Restart request to cluster: {} is accepted.", config.getClusterName());
     } else {
       /* Throw exception when restart is rejected */

@@ -66,7 +66,7 @@ public class IoTDBSnapshotTest {
     List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
       String filePath =
-          testDataDirs[i % 3]
+          testDataDirs[0][i % 3]
               + File.separator
               + "sequence"
               + File.separator

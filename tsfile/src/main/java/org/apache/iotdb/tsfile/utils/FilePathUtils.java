@@ -67,6 +67,10 @@ public class FilePathUtils {
 
   public static boolean isSequence(String tsFileAbsolutePath) {
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
+    // If path is not a regular IoTDB TsFile path, then process it as an unsequence file
+    if (pathSegments.length < 5) {
+      return false;
+    }
     return pathSegments[pathSegments.length - 5].equals("sequence");
   }
 

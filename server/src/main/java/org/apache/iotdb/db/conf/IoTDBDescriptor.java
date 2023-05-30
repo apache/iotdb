@@ -1083,7 +1083,7 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
-    // object storage
+    // migration
     loadMigrationProps(properties);
 
     // object storage
