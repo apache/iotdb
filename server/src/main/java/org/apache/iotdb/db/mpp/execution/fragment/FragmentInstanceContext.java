@@ -41,7 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -75,11 +75,11 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
-  private final Semaphore allDriversClosed = new Semaphore(0);
+  private CountDownLatch allDriversClosed;
+  // private final Semaphore allDriversClosed = new Semaphore(0);
 
   // session info
   private SessionInfo sessionInfo;
-  private Integer numOfDrivers;
 
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
@@ -357,21 +357,20 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void setNumOfDrivers(Integer numOfDrivers) {
-    this.numOfDrivers = numOfDrivers;
+    // initialize with the num of Drivers
+    allDriversClosed = new CountDownLatch(numOfDrivers);
   }
 
-  public void incrementNumOfClosedDriver() {
-    this.allDriversClosed.release();
+  public void decrementNumOfUnClosedDriver() {
+    allDriversClosed.countDown();
   }
 
   public void releaseResourceWhenAllDriversClosed() {
     try {
-      // Acquiring numOfDrivers successfully means all drivers have been closed
-      allDriversClosed.acquire(numOfDrivers);
+      allDriversClosed.await();
     } catch (InterruptedException e) {
       LOGGER.warn(
-          "Interrupted when invoking allDriversClosed.acquire, FragmentInstance Id is {}",
-          this.getId());
+          "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
       throw new RuntimeException(e);
     }
     releaseResource();
