@@ -325,7 +325,7 @@ public class AbstractCompactionTest {
             startTime + pointNum * i + timeInterval * i + pointNum - 1);
       }
       resource.updatePlanIndexes(fileVersion);
-      resource.setStatus(TsFileResourceStatus.NORMAL);
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
       resource.serialize();
       if (isSeq) {
         seqResources.add(resource);
@@ -353,7 +353,7 @@ public class AbstractCompactionTest {
     }
 
     resource.updatePlanIndexes(fileVersion);
-    resource.setStatus(TsFileResourceStatus.NORMAL);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     resource.serialize();
     if (isSeq) {
       seqResources.add(resource);
@@ -595,7 +595,7 @@ public class AbstractCompactionTest {
     }
     TsFileResource resource = new TsFileResource(new File(filePath));
     resource.updatePlanIndexes(fileVersion);
-    resource.setStatus(TsFileResourceStatus.NORMAL);
+    resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     return resource;
   }
 

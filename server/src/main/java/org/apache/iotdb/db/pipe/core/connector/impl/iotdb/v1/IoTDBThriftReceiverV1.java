@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
-import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFilePieceReq;
@@ -54,7 +53,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverV1.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final String RECEIVE_DIR = PipeConfig.getInstance().getReceiveFileDir();
+  private static final String RECEIVER_FILE_DIR = IOTDB_CONFIG.getPipeReceiverFileDir();
 
   private File writingFile;
   private RandomAccessFile writingFileWriter;
@@ -179,11 +178,11 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       writingFile = null;
     }
 
-    final File receiveDir = new File(RECEIVE_DIR);
+    final File receiveDir = new File(RECEIVER_FILE_DIR);
     if (!receiveDir.exists()) {
       boolean ignored = receiveDir.mkdirs();
     }
-    writingFile = new File(RECEIVE_DIR, fileName);
+    writingFile = new File(RECEIVER_FILE_DIR, fileName);
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
     LOGGER.info(String.format("start to write transferring file %s.", writingFile.getPath()));
   }

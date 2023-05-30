@@ -32,7 +32,6 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResul
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -276,7 +275,7 @@ public class TagManager {
                 new ShowTimeSeriesResult(
                     node.getFullPath(),
                     node.getAlias(),
-                    (MeasurementSchema) node.getSchema(),
+                    node.getSchema(),
                     tagAndAttributePair.left,
                     tagAndAttributePair.right,
                     node.getParent().getAsDeviceMNode().isAligned());

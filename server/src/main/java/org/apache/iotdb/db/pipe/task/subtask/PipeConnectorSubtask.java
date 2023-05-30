@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableBoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
 
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -36,7 +39,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  private final ListenableBlockingPendingQueue<Event> inputPendingQueue;
+  private final ListenableBoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
 
   private static final int HEARTBEAT_CHECK_INTERVAL = 1000;
@@ -45,9 +48,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
   /** @param taskID connectorAttributeSortedString */
   public PipeConnectorSubtask(
       String taskID,
-      ListenableBlockingPendingQueue<Event> inputPendingQueue,
+      PipeTaskMeta taskMeta,
+      ListenableBoundedBlockingPendingQueue<Event> inputPendingQueue,
       PipeConnector outputPipeConnector) {
-    super(taskID);
+    super(taskID, taskMeta);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
     executeOnceInvokedTimes = 0;
@@ -106,8 +110,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
           retry++;
           LOGGER.error("Failed to reconnect to the target system, retrying... ({} time(s))", retry);
           try {
-            // TODO: make the retry interval configurable
-            Thread.sleep(retry * 1000L);
+            Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
           } catch (InterruptedException interruptedException) {
             LOGGER.info(
                 "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.");
@@ -119,13 +122,14 @@ public class PipeConnectorSubtask extends PipeSubtask {
       // stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
       // times
       if (retry == MAX_RETRY_TIMES) {
-        LOGGER.error(
-            "Failed to reconnect to the target system after {} times, stopping current pipe task {}...",
-            MAX_RETRY_TIMES,
-            taskID);
+        final String errorMessage =
+            String.format(
+                "Failed to reconnect to the target system after %d times, stopping current pipe task %s...",
+                MAX_RETRY_TIMES, taskID);
+        LOGGER.error(errorMessage);
         lastFailedCause = throwable;
 
-        PipeAgent.runtime().report(this);
+        PipeAgent.runtime().report(taskMeta, new PipeRuntimeCriticalException(errorMessage));
 
         // although the pipe task will be stopped, we still don't release the last event here
         // because we need to keep it for the next retry. if user wants to restart the task,

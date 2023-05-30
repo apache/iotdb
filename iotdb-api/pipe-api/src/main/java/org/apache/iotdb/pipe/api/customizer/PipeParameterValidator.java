@@ -22,6 +22,8 @@ package org.apache.iotdb.pipe.api.customizer;
 import org.apache.iotdb.pipe.api.exception.PipeAttributeNotProvidedException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
+import java.util.Arrays;
+
 public class PipeParameterValidator {
 
   private final PipeParameters parameters;
@@ -47,6 +49,31 @@ public class PipeParameterValidator {
       throw new PipeAttributeNotProvidedException(key);
     }
     return this;
+  }
+
+  public PipeParameterValidator validateAttributeValueRange(
+      String key, boolean canBeOptional, String... optionalValues)
+      throws PipeAttributeNotProvidedException {
+    if (!parameters.hasAttribute(key)) {
+      if (!canBeOptional) {
+        throw new PipeAttributeNotProvidedException(String.format("%s should be set.", key));
+      }
+      return this;
+    }
+
+    final String actualValue = parameters.getString(key);
+    for (String optionalValue : optionalValues) {
+      if (actualValue.equals(optionalValue)) {
+        return this;
+      }
+    }
+
+    if (canBeOptional) {
+      return this;
+    }
+
+    throw new PipeAttributeNotProvidedException(
+        String.format("%s should be one of %s", key, Arrays.toString(optionalValues)));
   }
 
   /**

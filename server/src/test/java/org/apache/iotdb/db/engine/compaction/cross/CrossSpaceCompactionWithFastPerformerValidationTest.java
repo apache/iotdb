@@ -245,7 +245,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     createFiles(2, 5, 10, 1000, 4200, 4200, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 6500, 6500, 100, 100, true, true);
     createFiles(1, 5, 10, 1000, 6301, 6301, 100, 100, true, false);
-    seqResources.get(4).setStatus(TsFileResourceStatus.UNCLOSED);
+    seqResources.get(4).setStatusForTest(TsFileResourceStatus.UNCLOSED);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -1871,7 +1871,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
 
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
-    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (String deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
@@ -1925,7 +1925,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
 
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
-    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (String deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
@@ -1972,7 +1972,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     createFiles(1, 5, 5, 3000, 1500, 1500, 100, 100, false, false);
 
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
-    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (String deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
@@ -2025,7 +2025,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     createFiles(1, 5, 5, 50, 4310, 4310, 100, 100, false, false);
 
     TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
-    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastSeqResource = seqResources.get(4);
     for (String deviceID : lastSeqResource.getDevices()) {
       unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
@@ -2079,7 +2079,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     createFiles(1, 5, 5, 3000, 1500, 1500, 100, 100, false, false);
 
     TsFileResource unclosedUnSeqResource = new TsFileResource(unseqResources.get(1).getTsFile());
-    unclosedUnSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    unclosedUnSeqResource.setStatusForTest(TsFileResourceStatus.UNCLOSED);
     TsFileResource lastUnSeqResource = unseqResources.get(1);
     for (String deviceID : lastUnSeqResource.getDevices()) {
       unclosedUnSeqResource.updateStartTime(deviceID, lastUnSeqResource.getStartTime(deviceID));
@@ -2124,9 +2124,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
    * task.
    */
   @Test
-  public void testSelectingFilesWhenSomeFilesBeingDeleted()
-      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
-          InterruptedException, MergeException {
+  public void testSelectingFilesWhenSomeFilesBeingDeleted() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 10, 4500, 500, 500, 0, 100, false, false);
@@ -2149,7 +2147,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     CompactionUtils.combineModsInInnerCompaction(sourceFiles, targetResources.get(0));
     tsFileManager.replace(sourceFiles, Collections.emptyList(), targetResources, 0, true);
     CompactionUtils.deleteTsFilesInDisk(sourceFiles, COMPACTION_TEST_SG + "-" + "0");
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
+    targetResources.forEach(x -> x.setStatusForTest(TsFileResourceStatus.NORMAL));
 
     // start selecting files and then start a cross space compaction task
     ICrossSpaceSelector selector =
@@ -2289,7 +2287,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     Assert.assertEquals(0, innerSelector.selectInnerSpaceTask(targetResources).size());
 
     // first compaction task finishes successfully
-    targetResources.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
+    targetResources.forEach(x -> x.setStatusForTest(TsFileResourceStatus.NORMAL));
 
     // target file of first compaction task can be selected to participate in another cross
     // compaction task

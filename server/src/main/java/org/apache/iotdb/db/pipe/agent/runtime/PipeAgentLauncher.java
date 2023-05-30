@@ -48,13 +48,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-class PipeLauncher {
+class PipeAgentLauncher {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeLauncher.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAgentLauncher.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private PipeLauncher() {
+  private PipeAgentLauncher() {
     // forbidding instantiation
   }
 
@@ -98,8 +98,8 @@ class PipeLauncher {
   private static void initPipePluginRelatedInstances() throws StartupException {
     try {
       PipePluginExecutableManager.setupAndGetInstance(
-          IOTDB_CONFIG.getPipeTemporaryLibDir(), IOTDB_CONFIG.getPipeDir());
-      PipePluginClassLoaderManager.setupAndGetInstance(IOTDB_CONFIG.getPipeDir());
+          IOTDB_CONFIG.getPipeTemporaryLibDir(), IOTDB_CONFIG.getPipeLibDir());
+      PipePluginClassLoaderManager.setupAndGetInstance(IOTDB_CONFIG.getPipeLibDir());
     } catch (IOException e) {
       throw new StartupException(e);
     }

@@ -119,14 +119,14 @@ public class SizeTieredCompactionRecoverTest {
   static final MeasurementSchema[] schemas = new MeasurementSchema[fullPaths.length];
   static String logFilePath =
       TestConstant.BASE_OUTPUT_PATH + File.separator + "test-compaction.compaction.log";
-  static String[] originDataDirs = null;
-  static String[] testDataDirs = new String[] {TestConstant.BASE_OUTPUT_PATH + "data"};
+  static String[][] originDataDirs = null;
+  static String[][] testDataDirs = new String[][] {{TestConstant.BASE_OUTPUT_PATH + "data"}};
   static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   @Before
   public void setUp() throws Exception {
     CompactionTaskManager.getInstance().start();
-    originDataDirs = config.getDataDirs();
+    originDataDirs = config.getTierDataDirs();
     setDataDirs(testDataDirs);
     if (!new File(SEQ_FILE_DIR).exists()) {
       Assert.assertTrue(new File(SEQ_FILE_DIR).mkdirs());
@@ -142,7 +142,7 @@ public class SizeTieredCompactionRecoverTest {
     new CompactionConfigRestorer().restoreCompactionConfig();
     CompactionTaskManager.getInstance().stop();
     setDataDirs(originDataDirs);
-    File dataDir = new File(testDataDirs[0]);
+    File dataDir = new File(testDataDirs[0][0]);
     if (dataDir.exists()) {
       FileUtils.forceDelete(dataDir);
     }
@@ -166,9 +166,9 @@ public class SizeTieredCompactionRecoverTest {
     }
   }
 
-  public void setDataDirs(String[] dataDirs) throws Exception {
+  public void setDataDirs(String[][] dataDirs) throws Exception {
     Class configClass = config.getClass();
-    Field dataDirsField = configClass.getDeclaredField("dataDirs");
+    Field dataDirsField = configClass.getDeclaredField("tierDataDirs");
     dataDirsField.setAccessible(true);
     dataDirsField.set(config, dataDirs);
   }
@@ -470,7 +470,7 @@ public class SizeTieredCompactionRecoverTest {
       FileUtils.moveDirectory(
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
-      setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
+      setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
               COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
@@ -573,7 +573,7 @@ public class SizeTieredCompactionRecoverTest {
       FileUtils.moveDirectory(
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
-      setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
+      setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
               COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
@@ -667,7 +667,7 @@ public class SizeTieredCompactionRecoverTest {
       FileUtils.moveDirectory(
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
-      setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
+      setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
               COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);
@@ -770,7 +770,7 @@ public class SizeTieredCompactionRecoverTest {
       FileUtils.moveDirectory(
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
-      setDataDirs(new String[] {TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"});
+      setDataDirs(new String[][] {{TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"}});
       CompactionRecoverTask recoverTask =
           new CompactionRecoverTask(
               COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), true);

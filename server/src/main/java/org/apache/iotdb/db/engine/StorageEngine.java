@@ -674,7 +674,7 @@ public class StorageEngine implements IService {
               .deleteWALNode(
                   region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
           // delete snapshot
-          for (String dataDir : config.getDataDirs()) {
+          for (String dataDir : config.getLocalDataDirs()) {
             File regionSnapshotDir =
                 new File(
                     dataDir + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME,

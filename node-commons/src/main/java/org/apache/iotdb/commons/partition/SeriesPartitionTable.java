@@ -119,24 +119,30 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   * Checks whether the specified DataPartition has a predecessor or successor and returns if it
+   * does
    *
    * @param timePartitionSlot Corresponding TimePartitionSlot
    * @param timePartitionInterval Time partition interval
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getPrecededDataPartition(
+  public TConsensusGroupId getAdjacentDataPartition(
       TTimePartitionSlot timePartitionSlot, long timePartitionInterval) {
-    if (timePartitionSlot.getStartTime() < timePartitionInterval) {
-      // The first DataPartition doesn't have predecessor
-      return null;
-    } else {
+    if (timePartitionSlot.getStartTime() >= timePartitionInterval) {
+      // Check predecessor first
       TTimePartitionSlot predecessorSlot =
           new TTimePartitionSlot(timePartitionSlot.getStartTime() - timePartitionInterval);
-      return seriesPartitionMap
-          .getOrDefault(predecessorSlot, Collections.singletonList(null))
-          .get(0);
+      TConsensusGroupId predecessor =
+          seriesPartitionMap.getOrDefault(predecessorSlot, Collections.singletonList(null)).get(0);
+      if (predecessor != null) {
+        return predecessor;
+      }
     }
+
+    // Check successor
+    TTimePartitionSlot successorSlot =
+        new TTimePartitionSlot(timePartitionSlot.getStartTime() + timePartitionInterval);
+    return seriesPartitionMap.getOrDefault(successorSlot, Collections.singletonList(null)).get(0);
   }
 
   /**
