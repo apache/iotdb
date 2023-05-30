@@ -37,7 +37,6 @@ import java.util.List;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
-import static org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 
 public class ConcatDeviceAndBindSchemaForPredicateVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForPredicateVisitor.Context> {
@@ -59,29 +58,12 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
   public List<Expression> visitTimeSeriesOperand(TimeSeriesOperand predicate, Context context) {
     PartialPath measurement = predicate.getPath();
     PartialPath concatPath = context.getDevicePath().concatPath(measurement);
-
-    List<MeasurementPath> nonViewPathList = new ArrayList<>();
-    List<MeasurementPath> viewPathList = new ArrayList<>();
-    List<MeasurementPath> actualPaths =
+    List<MeasurementPath> noStarPaths =
         context.getSchemaTree().searchMeasurementPaths(concatPath).left;
-    if (actualPaths.isEmpty()) {
+    if (noStarPaths.isEmpty()) {
       return Collections.singletonList(new NullOperand());
     }
-    for (MeasurementPath measurementPath : actualPaths) {
-      if (measurementPath.getMeasurementSchema().isLogicalView()) {
-        viewPathList.add(measurementPath);
-      } else {
-        nonViewPathList.add(measurementPath);
-      }
-    }
-
-    List<Expression> reconstructTimeSeriesOperands = reconstructTimeSeriesOperands(nonViewPathList);
-    for (MeasurementPath measurementPath : viewPathList) {
-      Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
-      replacedExpression.setViewPath(measurementPath);
-      reconstructTimeSeriesOperands.add(replacedExpression);
-    }
-    return reconstructTimeSeriesOperands;
+    return reconstructTimeSeriesOperands(noStarPaths);
   }
 
   @Override
