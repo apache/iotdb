@@ -159,7 +159,7 @@ public class FragmentInstanceExecution {
             for (IDriver driver : drivers) {
               driver.close();
             }
-            context.releaseResourceWhenAllDriversClosed();
+            context.releaseResourceWhenAllDriversAreClosed();
             // help for gc
             drivers = null;
             MPPDataExchangeService.getInstance()

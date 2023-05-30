@@ -364,7 +364,7 @@ public class FragmentInstanceContext extends QueryContext {
     allDriversClosed.countDown();
   }
 
-  public void releaseResourceWhenAllDriversClosed() {
+  public void releaseResourceWhenAllDriversAreClosed() {
     try {
       allDriversClosed.await();
     } catch (InterruptedException e) {
