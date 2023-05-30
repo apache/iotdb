@@ -488,13 +488,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       } finally {
         task.unlock();
       }
-      // wrap this clearDriverTask to avoid that status is changed to Aborted during clearDriverTask
-      task.lock();
-      try {
-        clearDriverTask(task);
-      } finally {
-        task.unlock();
-      }
+      clearDriverTask(task);
     }
 
     @Override
