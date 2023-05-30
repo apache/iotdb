@@ -79,7 +79,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
 
       collectorPendingQueue = new ListenableUnboundedBlockingPendingQueue<>();
       this.pipeCollector =
-          new IoTDBDataRegionCollector(creationTime, pipeTaskMeta, collectorPendingQueue);
+          new IoTDBDataRegionCollector(pipeTaskMeta, creationTime, collectorPendingQueue);
     } else {
       this.collectorParameters = collectorParameters;
 

@@ -48,6 +48,7 @@ import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_HI
 import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.DATA_REGION_KEY;
 
 public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataRegionCollector {
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileCollector.class);
 
@@ -56,18 +57,18 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
   private int dataRegionId;
 
-  private long historicalDataStartTime;
-  private long historicalDataEndTime;
-
-  private final long historicalDataGenerationStartTime;
+  private final long historicalDataCollectionTimeLowerBound;
+  private long historicalDataCollectionStartTime;
+  private long historicalDataCollectionEndTime;
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
   public PipeHistoricalDataRegionTsFileCollector(
-      long historicalDataGenerationStartTime, PipeTaskMeta pipeTaskMeta) {
-    this.historicalDataGenerationStartTime = historicalDataGenerationStartTime;
+      PipeTaskMeta pipeTaskMeta, long historicalDataCollectionTimeLowerBound) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.startIndex = pipeTaskMeta.getProgressIndex();
+
+    this.historicalDataCollectionTimeLowerBound = historicalDataCollectionTimeLowerBound;
   }
 
   @Override
@@ -79,21 +80,40 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   public void customize(
       PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
     dataRegionId = parameters.getInt(DATA_REGION_KEY);
-    historicalDataStartTime =
+    historicalDataCollectionStartTime =
         parameters.hasAttribute(COLLECTOR_HISTORY_START_TIME)
             ? DateTimeUtils.convertDatetimeStrToLong(
                 parameters.getString(COLLECTOR_HISTORY_START_TIME), ZoneId.systemDefault())
             : Long.MIN_VALUE;
-    historicalDataEndTime =
+    historicalDataCollectionEndTime =
         parameters.hasAttribute(COLLECTOR_HISTORY_END_TIME)
             ? DateTimeUtils.convertDatetimeStrToLong(
                 parameters.getString(COLLECTOR_HISTORY_END_TIME), ZoneId.systemDefault())
             : Long.MAX_VALUE;
 
-    flushDataRegionAllTsFile();
+    // Only invoke flushDataRegionAllTsFiles() when the pipe runs in the realtime only mode.
+    // realtime only mode -> (historicalDataCollectionTimeLowerBound != Long.MIN_VALUE)
+    //
+    // Ensure that all data in the data region is flushed to disk before collecting data.
+    // This ensures the generation time of all newly generated TsFiles (realtime data) after the
+    // invocation of flushDataRegionAllTsFiles() is later than the creationTime of the pipe
+    // (historicalDataCollectionTimeLowerBound).
+    //
+    // Note that: the generation time of the TsFile is the time when the TsFile is created, not
+    // the time when the data is flushed to the TsFile.
+    //
+    // Then we can use the generation time of the TsFile to determine whether the data in the
+    // TsFile should be collected by comparing the generation time of the TsFile with the
+    // historicalDataCollectionTimeLowerBound when starting the pipe in realtime only mode.
+    //
+    // If we don't invoke flushDataRegionAllTsFiles() in the realtime only mode, the data generated
+    // between the creation time of the pipe the time when the pipe starts will be lost.
+    if (historicalDataCollectionTimeLowerBound != Long.MIN_VALUE) {
+      flushDataRegionAllTsFiles();
+    }
   }
 
-  private void flushDataRegionAllTsFile() {
+  private void flushDataRegionAllTsFiles() {
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (dataRegion == null) {
@@ -102,9 +122,6 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
     dataRegion.writeLock("Pipe: create historical TsFile collector");
     try {
-      // Ensure that the generation time of the pipe matches the generation time of the TsFile, so
-      // that in possible realtime-only mode, data can be correctly obtained by pipe generation
-      // time.
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     } finally {
       dataRegion.writeUnlock();
@@ -134,7 +151,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterRequiredTime(resource))
+                            && isTsFileGeneratedAfterCollectionTimeLowerBound(resource))
                 .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
@@ -143,7 +160,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterRequiredTime(resource))
+                            && isTsFileGeneratedAfterCollectionTimeLowerBound(resource))
                 .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
@@ -159,17 +176,20 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {
-    return !(resource.getFileEndTime() < historicalDataStartTime
-        || historicalDataEndTime < resource.getFileStartTime());
+    return !(resource.getFileEndTime() < historicalDataCollectionStartTime
+        || historicalDataCollectionEndTime < resource.getFileStartTime());
   }
 
-  private boolean isTsFileGeneratedAfterRequiredTime(TsFileResource resource) {
+  private boolean isTsFileGeneratedAfterCollectionTimeLowerBound(TsFileResource resource) {
     try {
-      return historicalDataGenerationStartTime
+      return historicalDataCollectionTimeLowerBound
           <= TsFileNameGenerator.getTsFileName(resource.getTsFile().getName()).getTime();
     } catch (IOException e) {
       LOGGER.warn(
-          String.format("Get generation time from TsFile %s error.", resource.getTsFilePath()), e);
+          String.format("failed to get the generation time of TsFile %s", resource.getTsFilePath()),
+          e);
+      // If failed to get the generation time of the TsFile, we will collect the data in the TsFile
+      // anyway.
       return true;
     }
   }

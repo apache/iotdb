@@ -57,9 +57,9 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
   private final AtomicBoolean hasBeenStarted;
 
-  private final ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue;
-  private final long creationTime;
   private final PipeTaskMeta pipeTaskMeta;
+  private final long creationTime;
+  private final ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   // TODO: support pattern in historical collector
   private PipeHistoricalDataRegionCollector historicalCollector;
@@ -68,18 +68,14 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   private int dataRegionId;
 
   public IoTDBDataRegionCollector(
-      long creationTime,
       PipeTaskMeta pipeTaskMeta,
+      long creationTime,
       ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue) {
     this.hasBeenStarted = new AtomicBoolean(false);
 
-    this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
+    this.creationTime = creationTime;
     this.collectorPendingQueue = collectorPendingQueue;
-
-    historicalCollector = new PipeHistoricalDataRegionTsFileCollector(Long.MIN_VALUE, pipeTaskMeta);
-    realtimeCollector =
-        new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
   }
 
   @Override
@@ -121,8 +117,14 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     // enable historical collector by default
     historicalCollector =
         parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true)
-            ? new PipeHistoricalDataRegionTsFileCollector(Long.MIN_VALUE, pipeTaskMeta)
-            : new PipeHistoricalDataRegionTsFileCollector(creationTime, pipeTaskMeta);
+            ? new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta, Long.MIN_VALUE)
+            // We define the realtime data as the data generated after the creation time
+            // of the pipe from user's perspective. But we still need to use
+            // PipeHistoricalDataRegionCollector to collect the realtime data generated between the
+            // creation time of the pipe and the time when the pipe starts, because those data
+            // can not be listened by PipeRealtimeDataRegionCollector, and should be collected by
+            // PipeHistoricalDataRegionCollector from implementation perspective.
+            : new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta, creationTime);
   }
 
   private void constructRealtimeCollector(PipeParameters parameters) {
