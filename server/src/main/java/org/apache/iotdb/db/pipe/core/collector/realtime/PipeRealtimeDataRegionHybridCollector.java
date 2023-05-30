@@ -111,7 +111,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
 
   private boolean isApproachingCapacity() {
     return pendingQueue.size()
-        >= PipeConfig.getInstance().getRealtimeCollectorPendingQueueTabletLimit();
+        >= PipeConfig.getInstance().getPipeCollectorPendingQueueTabletLimit();
   }
 
   @Override

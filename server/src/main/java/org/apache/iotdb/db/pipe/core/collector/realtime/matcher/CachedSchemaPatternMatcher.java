@@ -47,7 +47,9 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     this.lock = new ReentrantReadWriteLock();
     this.collectors = new HashSet<>();
     this.deviceToCollectorsCache =
-        Caffeine.newBuilder().maximumSize(PipeConfig.getInstance().getMatcherCacheSize()).build();
+        Caffeine.newBuilder()
+            .maximumSize(PipeConfig.getInstance().getPipeCollectorMatcherCacheSize())
+            .build();
   }
 
   @Override

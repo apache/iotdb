@@ -170,7 +170,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
     // 1. transfer file piece by piece
-    final int readFileBufferSize = PipeConfig.getInstance().getReadFileBufferSize();
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {

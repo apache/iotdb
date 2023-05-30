@@ -23,66 +23,77 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 public class PipeConfig {
+
   final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  public String getPipeTsFileDirName() {
-    return COMMON_CONFIG.getPipeTsFileDirName();
+  /////////////////////////////// File ///////////////////////////////
+
+  public String getPipeHardlinkTsFileDirName() {
+    return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
   }
 
-  public int getDefaultRingBufferSize() {
-    return COMMON_CONFIG.getDefaultRingBufferSize();
-  }
-
-  public int getMatcherCacheSize() {
-    return COMMON_CONFIG.getMatcherCacheSize();
-  }
-
-  public int getRealtimeCollectorPendingQueueCapacity() {
-    return COMMON_CONFIG.getRealtimeCollectorPendingQueueCapacity();
-  }
-
-  public int getRealtimeCollectorPendingQueueTabletLimit() {
-    return COMMON_CONFIG.getRealtimeCollectorPendingQueueTabletLimit();
-  }
-
-  public int getReadFileBufferSize() {
-    return COMMON_CONFIG.getReadFileBufferSize();
-  }
-
-  public int getHeartbeatLoopCyclesForCollectingPipeMeta() {
-    return COMMON_CONFIG.getHeartbeatLoopCyclesForCollectingPipeMeta();
-  }
-
-  public long getInitialSyncDelayMinutes() {
-    return COMMON_CONFIG.getInitialSyncDelayMinutes();
-  }
-
-  public long getSyncIntervalMinutes() {
-    return COMMON_CONFIG.getSyncIntervalMinutes();
-  }
-
-  public long getRetryIntervalMs() {
-    return COMMON_CONFIG.getRetryIntervalMs();
-  }
-
-  public int getConnectorPendingQueueSize() {
-    return COMMON_CONFIG.getConnectorPendingQueueSize();
-  }
-
-  public int getBasicCheckPointIntervalByConsumedEventCount() {
-    return COMMON_CONFIG.getBasicCheckPointIntervalByConsumedEventCount();
-  }
-
-  public long getBasicCheckPointIntervalByTimeDuration() {
-    return COMMON_CONFIG.getBasicCheckPointIntervalByTimeDuration();
-  }
-
-  public long getPendingQueueMaxBlockingTimeMs() {
-    return COMMON_CONFIG.getPendingQueueMaxBlockingTimeMs();
-  }
+  /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
     return COMMON_CONFIG.getPipeSubtaskExecutorMaxThreadNum();
+  }
+
+  public int getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount() {
+    return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount();
+  }
+
+  public long getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration() {
+    return COMMON_CONFIG.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration();
+  }
+
+  public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {
+    return COMMON_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
+  }
+
+  /////////////////////////////// Collector ///////////////////////////////
+
+  public int getPipeCollectorAssignerDisruptorRingBufferSize() {
+    return COMMON_CONFIG.getPipeCollectorAssignerDisruptorRingBufferSize();
+  }
+
+  public int getPipeCollectorMatcherCacheSize() {
+    return COMMON_CONFIG.getPipeCollectorMatcherCacheSize();
+  }
+
+  public int getPipeCollectorPendingQueueCapacity() {
+    return COMMON_CONFIG.getPipeCollectorPendingQueueCapacity();
+  }
+
+  public int getPipeCollectorPendingQueueTabletLimit() {
+    return COMMON_CONFIG.getPipeCollectorPendingQueueTabletLimit();
+  }
+
+  /////////////////////////////// Connector ///////////////////////////////
+
+  public int getPipeConnectorReadFileBufferSize() {
+    return COMMON_CONFIG.getPipeConnectorReadFileBufferSize();
+  }
+
+  public long getPipeConnectorRetryIntervalMs() {
+    return COMMON_CONFIG.getPipeConnectorRetryIntervalMs();
+  }
+
+  public int getPipeConnectorPendingQueueSize() {
+    return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
+  }
+
+  /////////////////////////////// Meta Consistency ///////////////////////////////
+
+  public int getHeartbeatLoopCyclesForCollectingPipeMeta() {
+    return COMMON_CONFIG.getPipeHeartbeatLoopCyclesForCollectingPipeMeta();
+  }
+
+  public long getPipeMetaSyncerInitialSyncDelayMinutes() {
+    return COMMON_CONFIG.getPipeMetaSyncerInitialSyncDelayMinutes();
+  }
+
+  public long getPipeMetaSyncerSyncIntervalMinutes() {
+    return COMMON_CONFIG.getPipeMetaSyncerSyncIntervalMinutes();
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

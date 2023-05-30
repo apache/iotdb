@@ -110,7 +110,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
           retry++;
           LOGGER.error("Failed to reconnect to the target system, retrying... ({} time(s))", retry);
           try {
-            Thread.sleep(retry * PipeConfig.getInstance().getRetryIntervalMs());
+            Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
           } catch (InterruptedException interruptedException) {
             LOGGER.info(
                 "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.");

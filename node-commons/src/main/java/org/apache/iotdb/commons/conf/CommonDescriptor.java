@@ -207,86 +207,88 @@ public class CommonDescriptor {
   }
 
   private void loadPipeProps(Properties properties) {
+    config.setPipeHardlinkTsFileDirName(
+        properties.getProperty(
+            "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
 
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_max_thread_num",
+                "pipe_subtask_executor_max_thread_num",
                 Integer.toString(config.getPipeSubtaskExecutorMaxThreadNum()))));
     if (config.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
       config.setPipeSubtaskExecutorMaxThreadNum(5);
     }
-
-    config.setPipeTsFileDirName(
-        properties.getProperty("pipe_tsfile_dir", config.getPipeTsFileDirName()));
-
-    config.setDefaultRingBufferSize(
+    config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_default_ring_buffer_size",
-                String.valueOf(config.getDefaultRingBufferSize()))));
-
-    config.setMatcherCacheSize(
+                "pipe_subtask_executor_basic_check_point_interval_by_consumed_event_count",
+                String.valueOf(
+                    config.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount()))));
+    config.setPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_matcher_cache_size", String.valueOf(config.getMatcherCacheSize()))));
-
-    config.setRealtimeCollectorPendingQueueCapacity(
+                "pipe_subtask_executor_basic_check_point_interval_by_time_duration",
+                String.valueOf(
+                    config.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration()))));
+    config.setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_realtime_collector_pending_queue_capacity",
-                String.valueOf(config.getRealtimeCollectorPendingQueueCapacity()))));
+                "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
+                String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
 
-    config.setRealtimeCollectorPendingQueueTabletLimit(
+    config.setPipeCollectorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_realtime_collector_pending_queue_tablet_limit",
-                String.valueOf(config.getRealtimeCollectorPendingQueueTabletLimit()))));
-
-    config.setReadFileBufferSize(
+                "pipe_collector_assigner_disruptor_ring_buffer_size",
+                String.valueOf(config.getPipeCollectorAssignerDisruptorRingBufferSize()))));
+    config.setPipeCollectorMatcherCacheSize(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_read_file_buffer_size", String.valueOf(config.getReadFileBufferSize()))));
-
-    config.setHeartbeatLoopCyclesForCollectingPipeMeta(
+                "pipe_collector_matcher_cache_size",
+                String.valueOf(config.getPipeCollectorMatcherCacheSize()))));
+    config.setPipeCollectorPendingQueueCapacity(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_heartbeat_loop_cycles_for_collecting_pipe_meta",
-                String.valueOf(config.getHeartbeatLoopCyclesForCollectingPipeMeta()))));
-
-    config.setInitialSyncDelayMinutes(
+                "pipe_collector_pending_queue_capacity",
+                String.valueOf(config.getPipeCollectorPendingQueueCapacity()))));
+    config.setPipeCollectorPendingQueueTabletLimit(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_initial_sync_delay_minutes",
-                String.valueOf(config.getInitialSyncDelayMinutes()))));
+                "pipe_collector_pending_queue_tablet_limit",
+                String.valueOf(config.getPipeCollectorPendingQueueTabletLimit()))));
 
-    config.setSyncIntervalMinutes(
+    config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_sync_interval_minutes", String.valueOf(config.getSyncIntervalMinutes()))));
-
-    config.setRetryIntervalMs(
+                "pipe_connector_read_file_buffer_size",
+                String.valueOf(config.getPipeConnectorReadFileBufferSize()))));
+    config.setPipeConnectorRetryIntervalMs(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_retry_interval_ms", String.valueOf(config.getRetryIntervalMs()))));
-
-    config.setConnectorPendingQueueSize(
+                "pipe_connector_retry_interval_ms",
+                String.valueOf(config.getPipeConnectorRetryIntervalMs()))));
+    config.setPipeConnectorPendingQueueSize(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
-                String.valueOf(config.getConnectorPendingQueueSize()))));
+                String.valueOf(config.getPipeConnectorPendingQueueSize()))));
 
-    config.setBasicCheckPointIntervalByConsumedEventCount(
+    config.setPipeHeartbeatLoopCyclesForCollectingPipeMeta(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_basic_check_point_interval_by_consumed_event_count",
-                String.valueOf(config.getBasicCheckPointIntervalByConsumedEventCount()))));
-
-    config.setBasicCheckPointIntervalByTimeDuration(
+                "pipe_heartbeat_loop_cycles_for_collecting_pipe_meta",
+                String.valueOf(config.getPipeHeartbeatLoopCyclesForCollectingPipeMeta()))));
+    config.setPipeMetaSyncerInitialSyncDelayMinutes(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_basic_check_point_interval_by_time_duration",
-                String.valueOf(config.getBasicCheckPointIntervalByTimeDuration()))));
+                "pipe_meta_syncer_initial_sync_delay_minutes",
+                String.valueOf(config.getPipeMetaSyncerInitialSyncDelayMinutes()))));
+    config.setPipeMetaSyncerSyncIntervalMinutes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_syncer_sync_interval_minutes",
+                String.valueOf(config.getPipeMetaSyncerSyncIntervalMinutes()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

@@ -79,7 +79,7 @@ public class PipeConnectorSubtaskManager {
       // 2. construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
       final ListenableBoundedBlockingPendingQueue<Event> pendingQueue =
           new ListenableBoundedBlockingPendingQueue<>(
-              PipeConfig.getInstance().getConnectorPendingQueueSize());
+              PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
       final PipeConnectorSubtask pipeConnectorSubtask =
           new PipeConnectorSubtask(attributeSortedString, taskMeta, pendingQueue, pipeConnector);
       final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =

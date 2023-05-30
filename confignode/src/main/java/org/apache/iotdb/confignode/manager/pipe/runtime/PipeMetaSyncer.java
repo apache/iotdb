@@ -42,9 +42,9 @@ public class PipeMetaSyncer {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.PIPE_META_SYNC_SERVICE.getName());
   private static final long INITIAL_SYNC_DELAY_MINUTES =
-      PipeConfig.getInstance().getInitialSyncDelayMinutes();
+      PipeConfig.getInstance().getPipeMetaSyncerInitialSyncDelayMinutes();
   private static final long SYNC_INTERVAL_MINUTES =
-      PipeConfig.getInstance().getSyncIntervalMinutes();
+      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes();
 
   private final ConfigManager configManager;
 

@@ -102,19 +102,19 @@ public class PipeFileResourceManager {
   private static String getPipeTsFileDirPath(File file) throws IOException {
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
         && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-        && !file.getName().equals(PipeConfig.getInstance().getPipeTsFileDirName())) {
+        && !file.getName().equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
       file = file.getParentFile();
     }
     return file.getParentFile().getCanonicalPath()
         + File.separator
-        + PipeConfig.getInstance().getPipeTsFileDirName();
+        + PipeConfig.getInstance().getPipeHardlinkTsFileDirName();
   }
 
   private static String getRelativeFilePath(File file) {
     StringBuilder builder = new StringBuilder(file.getName());
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
         && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-        && !file.getName().equals(PipeConfig.getInstance().getPipeTsFileDirName())) {
+        && !file.getName().equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
       file = file.getParentFile();
       builder =
           new StringBuilder(file.getName())
@@ -168,7 +168,7 @@ public class PipeFileResourceManager {
    * <p>this method can be only invoked when the system is booting up.
    */
   public synchronized void clear(String dataDir) {
-    File pipeTsFileDir = new File(dataDir, PipeConfig.getInstance().getPipeTsFileDirName());
+    File pipeTsFileDir = new File(dataDir, PipeConfig.getInstance().getPipeHardlinkTsFileDirName());
     if (pipeTsFileDir.exists()) {
       FileUtils.deleteDirectory(pipeTsFileDir);
     }
