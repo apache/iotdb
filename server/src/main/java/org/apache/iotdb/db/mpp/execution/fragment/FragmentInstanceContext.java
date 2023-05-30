@@ -41,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -74,11 +75,11 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
+  private final Semaphore allDriversClosed = new Semaphore(0);
+
   // session info
   private SessionInfo sessionInfo;
-
-  // it's safe to call releaseResource only when this count down to 0
-  private Integer numOfUnclosedDriver;
+  private Integer numOfDrivers;
 
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
@@ -355,29 +356,22 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public void setNumOfUnclosedDriver(Integer numOfUnclosedDriver) {
-    this.numOfUnclosedDriver = numOfUnclosedDriver;
+  public void setNumOfDrivers(Integer numOfDrivers) {
+    this.numOfDrivers = numOfDrivers;
   }
 
   public void decrementNumOfUnclosedDriver() {
-    synchronized (numOfUnclosedDriver) {
-      numOfUnclosedDriver--;
-      if (numOfUnclosedDriver == 0) {
-        numOfUnclosedDriver.notify();
-      }
-    }
+    this.allDriversClosed.release();
   }
 
   public void releaseResourceWhenAllDriversClosed() {
-    synchronized (numOfUnclosedDriver) {
-      if (numOfUnclosedDriver != 0) {
-        try {
-          numOfUnclosedDriver.wait();
-        } catch (InterruptedException e) {
-          LOGGER.warn("Interrupted when waiting on numOfUnclosedDriver");
-          throw new RuntimeException(e);
-        }
-      }
+    try {
+      allDriversClosed.acquire(numOfDrivers);
+    } catch (InterruptedException e) {
+      LOGGER.warn(
+          "Interrupted when invoking allDriversClosed.acquire, FragmentInstance Id is {}",
+          this.getId());
+      throw new RuntimeException(e);
     }
     releaseResource();
   }
