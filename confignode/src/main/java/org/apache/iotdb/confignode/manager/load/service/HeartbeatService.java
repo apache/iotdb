@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
@@ -124,8 +125,11 @@ public class HeartbeatService {
     // We sample DataNode's load in every 10 heartbeat loop
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
     heartbeatReq.setSchemaQuotaCount(configManager.getClusterSchemaManager().getSchemaQuotaCount());
-    // We collect pipe meta in every 100 heartbeat loop, TODO: make this configurable
-    heartbeatReq.setNeedPipeMetaList(heartbeatCounter.get() % 100 == 0);
+    // We collect pipe meta in every 100 heartbeat loop
+    heartbeatReq.setNeedPipeMetaList(
+        heartbeatCounter.get()
+                % PipeConfig.getInstance().getHeartbeatLoopCyclesForCollectingPipeMeta()
+            == 0);
     if (!configManager.getClusterQuotaManager().hasSpaceQuotaLimit()) {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());

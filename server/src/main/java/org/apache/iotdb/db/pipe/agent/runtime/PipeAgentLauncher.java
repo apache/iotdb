@@ -98,8 +98,8 @@ class PipeAgentLauncher {
   private static void initPipePluginRelatedInstances() throws StartupException {
     try {
       PipePluginExecutableManager.setupAndGetInstance(
-          IOTDB_CONFIG.getPipeTemporaryLibDir(), IOTDB_CONFIG.getPipeDir());
-      PipePluginClassLoaderManager.setupAndGetInstance(IOTDB_CONFIG.getPipeDir());
+          IOTDB_CONFIG.getPipeTemporaryLibDir(), IOTDB_CONFIG.getPipeLibDir());
+      PipePluginClassLoaderManager.setupAndGetInstance(IOTDB_CONFIG.getPipeLibDir());
     } catch (IOException e) {
       throw new StartupException(e);
     }

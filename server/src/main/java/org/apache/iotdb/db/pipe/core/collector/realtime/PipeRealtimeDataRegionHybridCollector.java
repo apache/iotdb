@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
@@ -111,7 +111,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
 
   private boolean isApproachingCapacity() {
     return pendingQueue.size()
-        >= PipeConfig.getInstance().getRealtimeCollectorPendingQueueTabletLimit();
+        >= PipeConfig.getInstance().getPipeCollectorPendingQueueTabletLimit();
   }
 
   @Override

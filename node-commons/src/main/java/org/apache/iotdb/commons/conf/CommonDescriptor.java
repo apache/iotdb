@@ -207,6 +207,8 @@ public class CommonDescriptor {
         properties.getProperty(
             "target_ml_node_endpoint",
             NodeUrlUtils.convertTEndPointUrl(config.getTargetMLNodeEndPoint()));
+
+    loadPipeProps(properties);
     try {
       config.setTargetMLNodeEndPoint(NodeUrlUtils.parseTEndPointUrl(endPointUrl));
     } catch (BadNodeUrlException e) {
@@ -214,6 +216,91 @@ public class CommonDescriptor {
           "Illegal target MLNode endpoint url format in config file: {}, use default configuration.",
           endPointUrl);
     }
+  }
+
+  private void loadPipeProps(Properties properties) {
+    config.setPipeHardlinkTsFileDirName(
+        properties.getProperty(
+            "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
+
+    config.setPipeSubtaskExecutorMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_subtask_executor_max_thread_num",
+                Integer.toString(config.getPipeSubtaskExecutorMaxThreadNum()))));
+    if (config.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
+      config.setPipeSubtaskExecutorMaxThreadNum(5);
+    }
+    config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_subtask_executor_basic_check_point_interval_by_consumed_event_count",
+                String.valueOf(
+                    config.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount()))));
+    config.setPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_subtask_executor_basic_check_point_interval_by_time_duration",
+                String.valueOf(
+                    config.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration()))));
+    config.setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
+                String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
+
+    config.setPipeCollectorAssignerDisruptorRingBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_collector_assigner_disruptor_ring_buffer_size",
+                String.valueOf(config.getPipeCollectorAssignerDisruptorRingBufferSize()))));
+    config.setPipeCollectorMatcherCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_collector_matcher_cache_size",
+                String.valueOf(config.getPipeCollectorMatcherCacheSize()))));
+    config.setPipeCollectorPendingQueueCapacity(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_collector_pending_queue_capacity",
+                String.valueOf(config.getPipeCollectorPendingQueueCapacity()))));
+    config.setPipeCollectorPendingQueueTabletLimit(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_collector_pending_queue_tablet_limit",
+                String.valueOf(config.getPipeCollectorPendingQueueTabletLimit()))));
+
+    config.setPipeConnectorReadFileBufferSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_connector_read_file_buffer_size",
+                String.valueOf(config.getPipeConnectorReadFileBufferSize()))));
+    config.setPipeConnectorRetryIntervalMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_connector_retry_interval_ms",
+                String.valueOf(config.getPipeConnectorRetryIntervalMs()))));
+    config.setPipeConnectorPendingQueueSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_connector_pending_queue_size",
+                String.valueOf(config.getPipeConnectorPendingQueueSize()))));
+
+    config.setPipeHeartbeatLoopCyclesForCollectingPipeMeta(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_heartbeat_loop_cycles_for_collecting_pipe_meta",
+                String.valueOf(config.getPipeHeartbeatLoopCyclesForCollectingPipeMeta()))));
+    config.setPipeMetaSyncerInitialSyncDelayMinutes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_syncer_initial_sync_delay_minutes",
+                String.valueOf(config.getPipeMetaSyncerInitialSyncDelayMinutes()))));
+    config.setPipeMetaSyncerSyncIntervalMinutes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_meta_syncer_sync_interval_minutes",
+                String.valueOf(config.getPipeMetaSyncerSyncIntervalMinutes()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
