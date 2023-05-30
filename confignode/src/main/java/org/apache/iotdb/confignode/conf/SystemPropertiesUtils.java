@@ -124,11 +124,11 @@ public class SystemPropertiesUtils {
       needReWrite = true;
     } else if (!configNodeConsensusProtocolClass.equals(
         conf.getConfigNodeConsensusProtocolClass())) {
-      throw new ConfigurationException(
-          "config_node_consensus_protocol_class",
+      LOGGER.warn(
+          "[SystemProperties] The parameter \"config_node_consensus_protocol_class\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
           conf.getConfigNodeConsensusProtocolClass(),
-          configNodeConsensusProtocolClass,
-          "config_node_consensus_protocol_class can't be modified after first startup");
+          configNodeConsensusProtocolClass);
+      conf.setConfigNodeConsensusProtocolClass(configNodeConsensusProtocolClass);
     }
 
     String dataRegionConsensusProtocolClass =
@@ -137,11 +137,11 @@ public class SystemPropertiesUtils {
       needReWrite = true;
     } else if (!dataRegionConsensusProtocolClass.equals(
         conf.getDataRegionConsensusProtocolClass())) {
-      throw new ConfigurationException(
-          "data_region_consensus_protocol_class",
+      LOGGER.warn(
+          "[SystemProperties] The parameter \"data_region_consensus_protocol_class\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
           conf.getDataRegionConsensusProtocolClass(),
-          dataRegionConsensusProtocolClass,
-          "data_region_consensus_protocol_class can't be modified after first startup");
+          dataRegionConsensusProtocolClass);
+      conf.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
     }
 
     String schemaRegionConsensusProtocolClass =
@@ -150,11 +150,11 @@ public class SystemPropertiesUtils {
       needReWrite = true;
     } else if (!schemaRegionConsensusProtocolClass.equals(
         conf.getSchemaRegionConsensusProtocolClass())) {
-      throw new ConfigurationException(
-          "schema_region_consensus_protocol_class",
+      LOGGER.warn(
+          "[SystemProperties] The parameter \"schema_region_consensus_protocol_class\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
           conf.getSchemaRegionConsensusProtocolClass(),
-          schemaRegionConsensusProtocolClass,
-          "schema_region_consensus_protocol_class can't be modified after first startup");
+          schemaRegionConsensusProtocolClass);
+      conf.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
     }
 
     // PartitionSlot configuration
@@ -164,11 +164,11 @@ public class SystemPropertiesUtils {
       int seriesPartitionSlotNum =
           Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
       if (seriesPartitionSlotNum != conf.getSeriesSlotNum()) {
-        throw new ConfigurationException(
-            "series_partition_slot_num",
-            String.valueOf(conf.getSeriesSlotNum()),
-            String.valueOf(seriesPartitionSlotNum),
-            "series_partition_slot_num can't be modified after first startup");
+        LOGGER.warn(
+            "[SystemProperties] The parameter \"series_slot_num\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
+            conf.getSeriesSlotNum(),
+            seriesPartitionSlotNum);
+        conf.setSeriesSlotNum(seriesPartitionSlotNum);
       }
     }
 
@@ -178,11 +178,11 @@ public class SystemPropertiesUtils {
       needReWrite = true;
     } else if (!Objects.equals(
         seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
-      throw new ConfigurationException(
-          "series_partition_executor_class",
+      LOGGER.warn(
+          "[SystemProperties] The parameter \"seriesPartitionSlotExecutorClass\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
           conf.getSeriesPartitionExecutorClass(),
-          seriesPartitionSlotExecutorClass,
-          "series_partition_executor_class can't be modified after first startup");
+          seriesPartitionSlotExecutorClass);
+      conf.setSeriesPartitionExecutorClass(seriesPartitionSlotExecutorClass);
     }
 
     if (needReWrite) {
