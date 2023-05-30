@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,10 +41,6 @@ public class PipeBuilder {
 
   public Map<TConsensusGroupId, PipeTask> build() {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
-    final String pipeName = pipeStaticMeta.getPipeName();
-    final PipeParameters collectorParameters = pipeStaticMeta.getCollectorParameters();
-    final PipeParameters processorParameters = pipeStaticMeta.getProcessorParameters();
-    final PipeParameters connectorParameters = pipeStaticMeta.getConnectorParameters();
 
     final Map<TConsensusGroupId, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
 
@@ -57,12 +52,9 @@ public class PipeBuilder {
         consensusGroupIdToPipeTaskMap.put(
             consensusGroupIdToPipeTaskMeta.getKey(),
             new PipeTaskBuilder(
-                    pipeName,
+                    pipeStaticMeta,
                     consensusGroupIdToPipeTaskMeta.getKey(),
-                    consensusGroupIdToPipeTaskMeta.getValue(),
-                    collectorParameters,
-                    processorParameters,
-                    connectorParameters)
+                    consensusGroupIdToPipeTaskMeta.getValue())
                 .build());
       }
     }
