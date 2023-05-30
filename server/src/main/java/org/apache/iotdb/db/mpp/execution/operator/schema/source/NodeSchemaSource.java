@@ -88,4 +88,9 @@ public class NodeSchemaSource implements ISchemaSource<INodeSchemaInfo> {
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
     return 0;
   }
+
+  @Override
+  public void processDelayedTask(TsBlockBuilder tsBlockBuilder, String database) {
+    // There is no delayed tasks. So, do nothing.
+  }
 }
