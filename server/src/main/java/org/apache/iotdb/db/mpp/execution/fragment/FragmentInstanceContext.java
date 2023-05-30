@@ -360,12 +360,13 @@ public class FragmentInstanceContext extends QueryContext {
     this.numOfDrivers = numOfDrivers;
   }
 
-  public void decrementNumOfUnclosedDriver() {
+  public void incrementNumOfClosedDriver() {
     this.allDriversClosed.release();
   }
 
   public void releaseResourceWhenAllDriversClosed() {
     try {
+      // Acquiring numOfDrivers successfully means all drivers have been closed
       allDriversClosed.acquire(numOfDrivers);
     } catch (InterruptedException e) {
       LOGGER.warn(
