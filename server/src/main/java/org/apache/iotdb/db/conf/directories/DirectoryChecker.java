@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf.directories;
 
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.utils.ProcessIdUtils;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -93,6 +94,10 @@ public class DirectoryChecker {
     }
     Path root = mountOf(new File(dirs[0]).toPath());
     for (int i = 1; i < dirs.length; i++) {
+      // cross storage media
+      if (!FSUtils.isLocal(dirs[i])) {
+        return true;
+      }
       Path path = mountOf(new File(dirs[i]).toPath());
       if (!path.equals(root)) {
         return true;

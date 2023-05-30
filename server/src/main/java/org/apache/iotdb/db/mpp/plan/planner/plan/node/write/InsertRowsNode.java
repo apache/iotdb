@@ -217,11 +217,11 @@ public class InsertRowsNode extends InsertNode {
                   TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
       // collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
-      if (splitMap.containsKey(dataRegionReplicaSet)) {
-        InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+      InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+      if (tmpNode != null) {
         tmpNode.addOneInsertRowNode(insertRowNode, i);
       } else {
-        InsertRowsNode tmpNode = new InsertRowsNode(this.getPlanNodeId());
+        tmpNode = new InsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);

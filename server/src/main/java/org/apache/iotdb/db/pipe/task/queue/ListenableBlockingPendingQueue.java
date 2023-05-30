@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.queue;
 
-import org.apache.iotdb.db.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -37,7 +37,7 @@ public abstract class ListenableBlockingPendingQueue<E extends Event> {
       LoggerFactory.getLogger(ListenableBlockingPendingQueue.class);
 
   private static final long MAX_BLOCKING_TIME_MS =
-      PipeConfig.getInstance().getPendingQueueMaxBlockingTimeMs();
+      PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
 
   private final BlockingQueue<E> pendingQueue;
 
