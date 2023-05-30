@@ -22,9 +22,12 @@ package org.apache.iotdb.commons.pipe.config;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeConfig {
 
-  final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   /////////////////////////////// File ///////////////////////////////
 
@@ -94,6 +97,44 @@ public class PipeConfig {
 
   public long getPipeMetaSyncerSyncIntervalMinutes() {
     return COMMON_CONFIG.getPipeMetaSyncerSyncIntervalMinutes();
+  }
+
+  /////////////////////////////// Utils ///////////////////////////////
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
+
+  public void printAllConfigs() {
+    LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
+
+    LOGGER.info("PipeSubtaskExecutorMaxThreadNum: {}", getPipeSubtaskExecutorMaxThreadNum());
+    LOGGER.info(
+        "PipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount: {}",
+        getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount());
+    LOGGER.info(
+        "PipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration: {}",
+        getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration());
+    LOGGER.info(
+        "PipeSubtaskExecutorPendingQueueMaxBlockingTimeMs: {}",
+        getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs());
+
+    LOGGER.info(
+        "PipeCollectorAssignerDisruptorRingBufferSize: {}",
+        getPipeCollectorAssignerDisruptorRingBufferSize());
+    LOGGER.info("PipeCollectorMatcherCacheSize: {}", getPipeCollectorMatcherCacheSize());
+    LOGGER.info("PipeCollectorPendingQueueCapacity: {}", getPipeCollectorPendingQueueCapacity());
+    LOGGER.info(
+        "PipeCollectorPendingQueueTabletLimit: {}", getPipeCollectorPendingQueueTabletLimit());
+
+    LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
+    LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());
+    LOGGER.info("PipeConnectorPendingQueueSize: {}", getPipeConnectorPendingQueueSize());
+
+    LOGGER.info(
+        "HeartbeatLoopCyclesForCollectingPipeMeta: {}",
+        getHeartbeatLoopCyclesForCollectingPipeMeta());
+    LOGGER.info(
+        "PipeMetaSyncerInitialSyncDelayMinutes: {}", getPipeMetaSyncerInitialSyncDelayMinutes());
+    LOGGER.info("PipeMetaSyncerSyncIntervalMinutes: {}", getPipeMetaSyncerSyncIntervalMinutes());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////
