@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -236,7 +236,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
         // inner space compaction task has only one target file
         if (!targetTsFileResource.isDeleted()) {
-          TsFileMetricManager.getInstance()
+          FileMetrics.getInstance()
               .addFile(
                   targetTsFileResource.getTsFile().length(),
                   sequence,
@@ -252,7 +252,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource resource : selectedTsFileResourceList) {
           fileNames.add(resource.getTsFile().getName());
         }
-        TsFileMetricManager.getInstance()
+        FileMetrics.getInstance()
             .deleteFile(sizeList, sequence, selectedTsFileResourceList.size(), fileNames);
 
         CompactionMetrics.getInstance().recordSummaryInfo(summary);

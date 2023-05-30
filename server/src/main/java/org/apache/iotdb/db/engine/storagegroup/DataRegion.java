@@ -39,7 +39,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -85,6 +84,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
@@ -471,12 +471,11 @@ public class DataRegion implements IDataRegionForQuery {
         // tsFiles without resource file are unsealed
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
-            TsFileMetricManager.getInstance()
+            FileMetrics.getInstance()
                 .addFile(resource.getTsFile().length(), true, resource.getTsFile().getName());
             if (resource.getModFile().exists()) {
-              TsFileMetricManager.getInstance().increaseModFileNum(1);
-              TsFileMetricManager.getInstance()
-                  .increaseModFileSize(resource.getModFile().getSize());
+              FileMetrics.getInstance().increaseModFileNum(1);
+              FileMetrics.getInstance().increaseModFileSize(resource.getModFile().getSize());
             }
           }
         }
@@ -498,12 +497,12 @@ public class DataRegion implements IDataRegionForQuery {
         // tsFiles without resource file are unsealed
         for (TsFileResource resource : value) {
           if (resource.resourceFileExists()) {
-            TsFileMetricManager.getInstance()
+            FileMetrics.getInstance()
                 .addFile(resource.getTsFile().length(), false, resource.getTsFile().getName());
           }
           if (resource.getModFile().exists()) {
-            TsFileMetricManager.getInstance().increaseModFileNum(1);
-            TsFileMetricManager.getInstance().increaseModFileSize(resource.getModFile().getSize());
+            FileMetrics.getInstance().increaseModFileNum(1);
+            FileMetrics.getInstance().increaseModFileSize(resource.getModFile().getSize());
           }
         }
         while (!value.isEmpty()) {
@@ -799,7 +798,7 @@ public class DataRegion implements IDataRegionForQuery {
         }
         updateLastFlushTime(tsFileResource, isSeq);
         tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
-        TsFileMetricManager.getInstance()
+        FileMetrics.getInstance()
             .addFile(
                 tsFileResource.getTsFile().length(),
                 recoverPerformer.isSequence(),
@@ -1555,8 +1554,8 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.forEach(
           x -> {
             if (x.getModFile().exists()) {
-              TsFileMetricManager.getInstance().decreaseModFileNum(1);
-              TsFileMetricManager.getInstance().decreaseModFileSize(x.getModFile().getSize());
+              FileMetrics.getInstance().decreaseModFileNum(1);
+              FileMetrics.getInstance().decreaseModFileSize(x.getModFile().getSize());
             }
           });
       deleteAllSGFolders(DirectoryManager.getInstance().getAllFilesFolders());
@@ -1620,7 +1619,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       // try to delete physical data file
       resource.remove();
-      TsFileMetricManager.getInstance()
+      FileMetrics.getInstance()
           .deleteFile(
               Collections.singletonList(resource.getTsFileSize()),
               isSeq,
@@ -2110,9 +2109,9 @@ public class DataRegion implements IDataRegionForQuery {
           // remember to close mod file
           tsFileResource.getModFile().close();
           if (!modFileExists) {
-            TsFileMetricManager.getInstance().increaseModFileNum(1);
+            FileMetrics.getInstance().increaseModFileNum(1);
           }
-          TsFileMetricManager.getInstance()
+          FileMetrics.getInstance()
               .increaseModFileSize(tsFileResource.getModFile().getSize() - originSize);
         }
         logger.info(
@@ -2197,7 +2196,7 @@ public class DataRegion implements IDataRegionForQuery {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
-    TsFileMetricManager.getInstance()
+    FileMetrics.getInstance()
         .addFile(
             tsFileProcessor.getTsFileResource().getTsFileSize(),
             tsFileProcessor.isSequence(),
@@ -2403,7 +2402,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       loadTsFileToUnSequence(
           tsfileToBeInserted, newTsFileResource, newFilePartitionId, deleteOriginFile);
-      TsFileMetricManager.getInstance()
+      FileMetrics.getInstance()
           .addFile(
               newTsFileResource.getTsFile().length(),
               false,
@@ -2743,7 +2742,7 @@ public class DataRegion implements IDataRegionForQuery {
         if (sequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
           tsFileResourceToBeMoved = sequenceResource;
           tsFileManager.remove(tsFileResourceToBeMoved, true);
-          TsFileMetricManager.getInstance()
+          FileMetrics.getInstance()
               .deleteFile(
                   Collections.singletonList(tsFileResourceToBeMoved.getTsFileSize()),
                   true,
@@ -2759,7 +2758,7 @@ public class DataRegion implements IDataRegionForQuery {
           if (unsequenceResource.getTsFile().getName().equals(fileToBeUnloaded.getName())) {
             tsFileResourceToBeMoved = unsequenceResource;
             tsFileManager.remove(tsFileResourceToBeMoved, false);
-            TsFileMetricManager.getInstance()
+            FileMetrics.getInstance()
                 .deleteFile(
                     Collections.singletonList(tsFileResourceToBeMoved.getTsFileSize()),
                     false,

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
@@ -36,6 +35,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -191,16 +191,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
         for (TsFileResource sequenceResource : selectedSequenceFiles) {
           if (sequenceResource.getModFile().exists()) {
-            TsFileMetricManager.getInstance().decreaseModFileNum(1);
-            TsFileMetricManager.getInstance()
-                .decreaseModFileSize(sequenceResource.getModFile().getSize());
+            FileMetrics.getInstance().decreaseModFileNum(1);
+            FileMetrics.getInstance().decreaseModFileSize(sequenceResource.getModFile().getSize());
           }
         }
 
         for (TsFileResource unsequenceResource : selectedUnsequenceFiles) {
           if (unsequenceResource.getModFile().exists()) {
-            TsFileMetricManager.getInstance().decreaseModFileNum(1);
-            TsFileMetricManager.getInstance()
+            FileMetrics.getInstance().decreaseModFileNum(1);
+            FileMetrics.getInstance()
                 .decreaseModFileSize(unsequenceResource.getModFile().getSize());
           }
         }
@@ -208,18 +207,18 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         List<Long> sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
         List<String> fileNames = new ArrayList<>();
         selectedSequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        TsFileMetricManager.getInstance()
+        FileMetrics.getInstance()
             .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size(), fileNames);
         fileNames.clear();
         selectedUnsequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
         List<Long> unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-        TsFileMetricManager.getInstance()
+        FileMetrics.getInstance()
             .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size(), fileNames);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
-            TsFileMetricManager.getInstance()
+            FileMetrics.getInstance()
                 .addFile(
                     targetResource.getTsFileSize(), true, targetResource.getTsFile().getName());
 
