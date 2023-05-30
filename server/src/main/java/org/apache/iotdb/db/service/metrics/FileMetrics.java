@@ -339,7 +339,7 @@ public class FileMetrics implements IMetricSet {
       int level = tsFileName.getInnerCompactionCnt();
       updateLevelCountAndSize(size, 1, seq, level);
     } catch (IOException e) {
-      log.error("Unexpected error occurred when getting tsfile name", e);
+      log.warn("Unexpected error occurred when getting tsfile name", e);
     }
   }
 
@@ -447,7 +447,7 @@ public class FileMetrics implements IMetricSet {
         level = tsFileName.getInnerCompactionCnt();
         updateLevelCountAndSize(-size, -1, seq, level);
       } catch (IOException e) {
-        log.error("Unexpected error occurred when getting tsfile name", e);
+        log.warn("Unexpected error occurred when getting tsfile name", e);
       }
     }
   }
