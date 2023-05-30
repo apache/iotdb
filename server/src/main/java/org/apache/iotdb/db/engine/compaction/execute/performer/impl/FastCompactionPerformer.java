@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.execute.performer.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ISeqCompactionPerformer;
@@ -36,7 +35,6 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.writer.FastInnerCompa
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -100,8 +98,7 @@ public class FastCompactionPerformer
   }
 
   @Override
-  public void perform()
-      throws IOException, MetadataException, StorageEngineException, InterruptedException {
+  public void perform() throws Exception {
     this.subTaskSummary.setTemporalFileNum(targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
             new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
@@ -140,8 +137,6 @@ public class FastCompactionPerformer
       }
       compactionWriter.endFile();
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     } finally {
       // readers of source files have been closed in MultiTsFileDeviceIterator
       // clean cache

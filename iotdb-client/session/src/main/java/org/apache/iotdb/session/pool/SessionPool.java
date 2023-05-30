@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1324,6 +1325,42 @@ public class SessionPool implements ISessionPool {
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        session.insertRecord(deviceId, time, measurements, types, values);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecord failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in insertRecord", e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  /**
+   * insert data in one row, if you want improve your performance, please use insertRecords method
+   * or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  @Override
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -1345,6 +1382,32 @@ public class SessionPool implements ISessionPool {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  @Override
+  public String getTimestampPrecision()
+      throws IoTDBConnectionException, StatementExecutionException {
+    String timestampPrecision = "ms";
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        timestampPrecision = session.getTimestampPrecision();
+        putBack(session);
+        return timestampPrecision;
+      } catch (TException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("getTimestampPrecision failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, new IoTDBConnectionException(e));
+      } catch (RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in getTimestampPrecision", e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+    return timestampPrecision;
   }
 
   /**
@@ -2044,6 +2107,77 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
+  public void createAlignedTimeseries(
+      String deviceId,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<String> measurementAliasList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        session.createAlignedTimeseries(
+            deviceId, measurements, dataTypes, encodings, compressors, measurementAliasList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("createAlignedTimeseries failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createAlignedTimeseries", e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  @Override
+  public void createAlignedTimeseries(
+      String deviceId,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<String> measurementAliasList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        session.createAlignedTimeseries(
+            deviceId,
+            measurements,
+            dataTypes,
+            encodings,
+            compressors,
+            measurementAliasList,
+            tagsList,
+            attributesList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("createAlignedTimeseries failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in createAlignedTimeseries", e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  @Override
   public void createMultiTimeseries(
       List<String> paths,
       List<TSDataType> dataTypes,
@@ -2575,6 +2709,13 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
+  public void sortTablet(Tablet tablet) throws IoTDBConnectionException {
+    ISession session = getSession();
+    session.sortTablet(tablet);
+    putBack(session);
+  }
+
+  @Override
   public void setSchemaTemplate(String templateName, String prefixPath)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
@@ -2797,6 +2938,33 @@ public class SessionPool implements ISessionPool {
         throw e;
       } catch (Throwable e) {
         logger.error("unexpected error in executeRawDataQuery", e);
+        putBack(session);
+        throw new RuntimeException(e);
+      }
+    }
+    // never go here
+    return null;
+  }
+
+  @Override
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      ISession session = getSession();
+      try {
+        SessionDataSet resp = session.executeLastDataQuery(paths, LastTime);
+        SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
+        occupy(session);
+        return wrapper;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("executeLastDataQuery failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      } catch (Throwable e) {
+        logger.error("unexpected error in executeLastDataQuery", e);
         putBack(session);
         throw new RuntimeException(e);
       }

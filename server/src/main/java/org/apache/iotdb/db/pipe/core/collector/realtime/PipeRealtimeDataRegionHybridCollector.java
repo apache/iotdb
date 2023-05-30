@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
@@ -66,6 +66,16 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
     }
   }
 
+  @Override
+  public boolean isNeedListenToTsFile() {
+    return true;
+  }
+
+  @Override
+  public boolean isNeedListenToInsertNode() {
+    return true;
+  }
+
   private void collectTabletInsertion(PipeRealtimeCollectEvent event) {
     if (isApproachingCapacity()) {
       event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
@@ -101,7 +111,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
 
   private boolean isApproachingCapacity() {
     return pendingQueue.size()
-        >= PipeConfig.getInstance().getRealtimeCollectorPendingQueueTabletLimit();
+        >= PipeConfig.getInstance().getPipeCollectorPendingQueueTabletLimit();
   }
 
   @Override
@@ -120,7 +130,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "Unsupported event type %s for Hybrid Realtime Collector %s",
+                "Unsupported event type %s for Hybrid Realtime Collector %s to supply.",
                 eventToSupply.getClass(), this));
       }
 
@@ -195,7 +205,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
   }
 
   @Override
-  public void close() {
+  public void close() throws Exception {
     super.close();
     pendingQueue.clear();
   }

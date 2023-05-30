@@ -220,10 +220,15 @@ public class SystemPropertiesUtils {
 
     // Cluster configuration
     systemProperties.setProperty("cluster_name", conf.getClusterName());
+    LOGGER.info("[SystemProperties] store cluster_name: {}", conf.getClusterName());
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
+    LOGGER.info("[SystemProperties] store config_node_id: {}", conf.getConfigNodeId());
     systemProperties.setProperty(
         "is_seed_config_node",
         String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
+    LOGGER.info(
+        "[SystemProperties] store is_seed_config_node: {}",
+        ConfigNodeDescriptor.getInstance().isSeedConfigNode());
 
     // Startup configuration
     systemProperties.setProperty("cn_internal_address", String.valueOf(conf.getInternalAddress()));

@@ -29,10 +29,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VectorTVListTest {
+public class AlignedTVListTest {
 
   @Test
-  public void testVectorTVList1() {
+  public void testAlignedTVList1() {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
@@ -40,18 +40,16 @@ public class VectorTVListTest {
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
     for (long i = 0; i < 1000; i++) {
       Object[] value = new Object[5];
-      int[] columnOrder = new int[5];
       for (int j = 0; j < 5; j++) {
         value[j] = i;
-        columnOrder[j] = j;
       }
-      tvList.putAlignedValue(i, value, columnOrder);
+      tvList.putAlignedValue(i, value);
     }
     for (int i = 0; i < tvList.rowCount; i++) {
       StringBuilder builder = new StringBuilder("[");
-      builder.append(String.valueOf(i));
+      builder.append(i);
       for (int j = 1; j < 5; j++) {
-        builder.append(", ").append(String.valueOf(i));
+        builder.append(", ").append(i);
       }
       builder.append("]");
       Assert.assertEquals(builder.toString(), tvList.getAlignedValue(i).toString());
@@ -60,7 +58,7 @@ public class VectorTVListTest {
   }
 
   @Test
-  public void testVectorTVList2() {
+  public void testAlignedTVList2() {
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.BOOLEAN);
     dataTypes.add(TSDataType.INT32);
@@ -77,11 +75,7 @@ public class VectorTVListTest {
       value[3] = 0.1f;
       value[4] = 0.2d;
       value[5] = new Binary("Test");
-      int[] columnOrder = new int[6];
-      for (int j = 0; j < 6; j++) {
-        columnOrder[j] = j;
-      }
-      tvList.putAlignedValue(i, value, columnOrder);
+      tvList.putAlignedValue(i, value);
     }
     tvList.sort();
     for (int i = 0; i < tvList.rowCount; i++) {
@@ -94,7 +88,7 @@ public class VectorTVListTest {
   }
 
   @Test
-  public void testVectorTVLists() {
+  public void testAlignedTVLists() {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       dataTypes.add(TSDataType.INT64);
@@ -102,29 +96,22 @@ public class VectorTVListTest {
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
     long[][] vectorArray = new long[5][1001];
     List<Long> timeList = new ArrayList<>();
-    int[] columnOrder = new int[5];
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
       for (int j = 0; j < 5; j++) {
         vectorArray[j][i] = (long) i;
-        columnOrder[j] = j;
       }
     }
 
     tvList.putAlignedValues(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        vectorArray,
-        null,
-        columnOrder,
-        0,
-        1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, null, 0, 1000);
     for (long i = 0; i < tvList.rowCount; i++) {
       Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
     }
   }
 
   @Test
-  public void testVectorTVListsWithBitMaps() {
+  public void testAlignedTVListsWithBitMaps() {
     List<TSDataType> dataTypes = new ArrayList<>();
     BitMap[] bitMaps = new BitMap[5];
     for (int i = 0; i < 5; i++) {
@@ -133,7 +120,6 @@ public class VectorTVListTest {
     }
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
     long[][] vectorArray = new long[5][1001];
-    int[] columnOrder = new int[5];
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
@@ -142,17 +128,11 @@ public class VectorTVListTest {
         if (i % 100 == 0) {
           bitMaps[j].mark(i);
         }
-        columnOrder[j] = j;
       }
     }
 
     tvList.putAlignedValues(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        vectorArray,
-        bitMaps,
-        columnOrder,
-        0,
-        1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 1000);
     for (long i = 0; i < tvList.rowCount; i++) {
       Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
       if (i % 100 == 0) {
@@ -172,7 +152,6 @@ public class VectorTVListTest {
     }
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
     long[][] vectorArray = new long[5][1001];
-    int[] columnOrder = new int[5];
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
@@ -181,17 +160,11 @@ public class VectorTVListTest {
         if (i % 100 == 0) {
           bitMaps[j].mark(i);
         }
-        columnOrder[j] = j;
       }
     }
 
     tvList.putAlignedValues(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        vectorArray,
-        bitMaps,
-        columnOrder,
-        0,
-        1000);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 1000);
 
     AlignedTVList clonedTvList = tvList.clone();
     for (long i = 0; i < tvList.rowCount; i++) {
@@ -217,14 +190,11 @@ public class VectorTVListTest {
     dataTypes.add(TSDataType.TEXT);
     AlignedTVList tvList = AlignedTVList.newAlignedList(dataTypes);
 
-    int[] columnOrder = new int[2];
-    columnOrder[0] = 0;
-    columnOrder[1] = 1;
     for (int i = 0; i < 10; i++) {
       Object[] value = new Object[2];
       value[0] = i;
       value[1] = new Binary(String.valueOf(i));
-      tvList.putAlignedValue(i, value, columnOrder);
+      tvList.putAlignedValue(i, value);
     }
 
     Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
@@ -250,12 +220,7 @@ public class VectorTVListTest {
     }
 
     tvList.putAlignedValues(
-        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        vectorArray,
-        bitMaps,
-        columnOrder,
-        0,
-        10);
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), vectorArray, bitMaps, 0, 10);
     Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
 
     tvList.delete(5, 15);

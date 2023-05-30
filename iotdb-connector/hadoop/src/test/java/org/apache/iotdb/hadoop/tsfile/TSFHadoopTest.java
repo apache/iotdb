@@ -71,7 +71,7 @@ public class TSFHadoopTest {
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
 
-  private FSType beforeFSType;
+  private FSType[] beforeFSType;
 
   @Before
   public void setUp() {
@@ -152,7 +152,7 @@ public class TSFHadoopTest {
       TSFInputFormat.setInputPaths(job, tsfilePath);
       List<InputSplit> inputSplits = inputFormat.getSplits(job);
       beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
-      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
+      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(new FSType[] {FSType.HDFS});
       TsFileSequenceReader reader =
           new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
       System.out.println(reader.readFileMetadata());
@@ -184,7 +184,7 @@ public class TSFHadoopTest {
       TSFInputFormat.setReadTime(job, false);
       List<InputSplit> inputSplits = inputFormat.getSplits(job);
       beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
-      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
+      TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(new FSType[] {FSType.HDFS});
       TsFileSequenceReader reader =
           new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
 
