@@ -169,7 +169,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   protected void releaseLastEvent() {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).decreaseReferenceCount(PipeSubtask.class.getName());
+        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName());
       }
       lastEvent = null;
     }

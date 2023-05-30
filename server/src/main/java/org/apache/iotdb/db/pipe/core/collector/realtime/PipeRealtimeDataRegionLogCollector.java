@@ -94,6 +94,7 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
                 "Tablet Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 collectEvent.getEvent());
+        LOGGER.warn(errorMessage);
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
