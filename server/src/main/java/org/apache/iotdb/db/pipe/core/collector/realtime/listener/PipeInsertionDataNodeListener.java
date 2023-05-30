@@ -29,6 +29,7 @@ import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * PipeInsertionEventListener is a singleton in each data node.
@@ -46,6 +47,9 @@ public class PipeInsertionDataNodeListener {
   private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
 
+  private final AtomicInteger listenToTsFileCollectorCount = new AtomicInteger(0);
+  private final AtomicInteger listenToInsertNodeCollectorCount = new AtomicInteger(0);
+
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
@@ -53,6 +57,13 @@ public class PipeInsertionDataNodeListener {
     dataRegionId2Assigner
         .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner())
         .startAssignTo(collector);
+
+    if (collector.isNeedListenToTsFile()) {
+      listenToTsFileCollectorCount.incrementAndGet();
+    }
+    if (collector.isNeedListenToInsertNode()) {
+      listenToInsertNodeCollectorCount.incrementAndGet();
+    }
   }
 
   public synchronized void stopListenAndAssign(
@@ -64,6 +75,13 @@ public class PipeInsertionDataNodeListener {
 
     assigner.stopAssignTo(collector);
 
+    if (collector.isNeedListenToTsFile()) {
+      listenToTsFileCollectorCount.decrementAndGet();
+    }
+    if (collector.isNeedListenToInsertNode()) {
+      listenToInsertNodeCollectorCount.decrementAndGet();
+    }
+
     if (assigner.notMoreCollectorNeededToBeAssigned()) {
       // the removed assigner will is the same as the one referenced by the variable `assigner`
       dataRegionId2Assigner.remove(dataRegionId);
@@ -74,12 +92,11 @@ public class PipeInsertionDataNodeListener {
 
   //////////////////////////// listen to events ////////////////////////////
 
-  // TODO: listen to the tsfile synced from the other cluster
-  // TODO: check whether the method is called on the right place. what is the meaning of the
-  // variable shouldClose before calling this method?
-  // TODO: maximum the efficiency of the method when there is no pipe in the system, avoid
-  // dataRegionId2Assigner.get(dataRegionId);
   public void listenToTsFile(String dataRegionId, TsFileResource tsFileResource) {
+    // wo don't judge whether listenToTsFileCollectorCount.get() == 0 here, because
+    // when using SimpleProgressIndex, the tsfile event needs to be assigned to the
+    // collector even if listenToTsFileCollectorCount.get() == 0 to record the progress
+
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
 
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
@@ -97,6 +114,10 @@ public class PipeInsertionDataNodeListener {
       WALEntryHandler walEntryHandler,
       InsertNode insertNode,
       TsFileResource tsFileResource) {
+    if (listenToInsertNodeCollectorCount.get() == 0) {
+      return;
+    }
+
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
     // only events from registered data region will be collected
