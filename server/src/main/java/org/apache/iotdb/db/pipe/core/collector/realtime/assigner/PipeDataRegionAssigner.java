@@ -23,7 +23,6 @@ import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCo
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.core.collector.realtime.matcher.PipeDataRegionMatcher;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
-import org.apache.iotdb.db.wal.exception.WALPipeException;
 
 import com.lmax.disruptor.dsl.ProducerType;
 

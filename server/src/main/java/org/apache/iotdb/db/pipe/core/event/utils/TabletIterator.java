@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
 import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -83,14 +85,21 @@ public class TabletIterator implements Iterator<Tablet> {
     values = new ArrayList<>();
     bitMap = new ArrayList<>();
     timestamps = new ArrayList<>();
+    List<long[]> timeBatches = new ArrayList<>();
+    int pageIndex = 0;
 
     for (TimeseriesMetadata timeseriesMetadata : currentEntry.getValue()) {
-      MeasurementSchema measurementSchema =
-          new MeasurementSchema(
-              timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getTSDataType());
-      measurementSchemas.add(measurementSchema);
+
+      if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+        timeBatches.clear();
+      } else {
+        MeasurementSchema measurementSchema =
+            new MeasurementSchema(
+                timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getTSDataType());
+        measurementSchemas.add(measurementSchema);
+      }
+
       List<Byte> bitMapBytes = new ArrayList<>();
-      List<long[]> measurementTimestamps = new ArrayList<>();
       List<Object> measurementValues = new ArrayList<>();
 
       List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
@@ -100,7 +109,6 @@ public class TabletIterator implements Iterator<Tablet> {
           reader.position(offset);
           ChunkHeader header = reader.readChunkHeader(reader.readMarker());
           int dataSize = header.getDataSize();
-          int pageIndex = 0;
 
           Decoder defaultTimeDecoder =
               Decoder.getDecoderByType(
@@ -108,7 +116,10 @@ public class TabletIterator implements Iterator<Tablet> {
                   TSDataType.INT64);
           Decoder valueDecoder =
               Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
-
+          pageIndex = 0;
+          if (header.getDataType() == TSDataType.VECTOR) {
+            timeBatches.clear();
+          }
           while (dataSize > 0) {
             PageHeader pageHeader =
                 reader.readPageHeader(
@@ -121,7 +132,8 @@ public class TabletIterator implements Iterator<Tablet> {
                 == TsFileConstant.TIME_COLUMN_MASK) {
               TimePageReader timePageReader =
                   new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
-              measurementTimestamps.add(timePageReader.nextTimeBatch());
+              long[] timeBatch = timePageReader.getNextTimeBatch();
+              timeBatches.add(timeBatch);
             }
             // Value column chunk
             else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
@@ -134,28 +146,54 @@ public class TabletIterator implements Iterator<Tablet> {
               }
 
               for (TsPrimitiveType value :
-                  valuePageReader.nextValueBatch(measurementTimestamps.get(pageIndex))) {
+                  valuePageReader.nextValueBatch(timeBatches.get(pageIndex))) {
                 measurementValues.add(value.getValue());
               }
             }
 
-            dataSize -= pageHeader.getSerializedPageSize();
-            pageIndex++;
-          }
+            // NonAligned Chunk
+            else {
+              PageReader pageReader =
+                  new PageReader(
+                      pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+              BatchData batchData = pageReader.getAllSatisfiedPageData();
+              List<Integer> isNullList = new ArrayList<>();
+              int index = 0;
+              while (batchData.hasCurrent()) {
+                timestamps.add(batchData.currentTime());
+                Object value = batchData.currentValue();
 
+                if (value == null) {
+                  isNullList.add(index);
+                }
+                measurementValues.add(value);
+                index++;
+                batchData.next();
+              }
+
+              BitMap bitmap = new BitMap(bitMap.size());
+              for (int isNull : isNullList) {
+                bitmap.mark(isNull);
+              }
+              byte[] bytes = bitmap.getByteArray();
+              for (byte value : bytes) {
+                bitMapBytes.add(value);
+              }
+            }
+            pageIndex++;
+            dataSize -= pageHeader.getSerializedPageSize();
+          }
         } catch (IOException e) {
           throw new UncheckedIOException(e);
         }
       }
 
       // Fill in the timestamps, values, and bitMap with the information for this measurement.
-      // timestamps
-      for (long[] time : measurementTimestamps) {
-        for (long t : time) {
-          timestamps.add(t);
+      for (long[] timeBatch : timeBatches) {
+        for (long time : timeBatch) {
+          timestamps.add(time);
         }
       }
-
       // values
       values.add(measurementValues.toArray());
 
@@ -172,11 +210,13 @@ public class TabletIterator implements Iterator<Tablet> {
     tablet.timestamps = timestamps.stream().mapToLong(Long::longValue).toArray();
     tablet.values = values.toArray();
     tablet.rowSize = tablet.timestamps.length;
+
     BitMap[] bitMapArray = new BitMap[bitMap.size()];
     for (int i = 0; i < bitMap.size(); i++) {
       bitMapArray[i] = bitMap.get(i);
     }
     tablet.bitMaps = bitMapArray;
+
     return new Tablet(currentEntry.getKey(), measurementSchemas);
   }
 }

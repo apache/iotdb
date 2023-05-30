@@ -233,10 +233,6 @@ public class Tablet {
     return schemas;
   }
 
-  public int getIndexOfSchema(String measurementId) {
-    return measurementIndex.get(measurementId);
-  }
-
   /** Return the maximum number of rows for this tablet */
   public int getMaxRowNumber() {
     return maxRowNumber;

@@ -54,9 +54,13 @@ public class PipeRowCollector implements RowCollector {
       tablet = new Tablet(deviceId, schemaList);
     }
 
-    int rowIndex = tablet.rowSize++;
+    int rowIndex = (tablet.rowSize++) - 1;
+    tablet.addTimestamp(rowIndex, row.getTime());
     for (int i = 0; i < row.size(); i++) {
       tablet.addValue(measurementIds.get(i).getMeasurement(), rowIndex, row.getObject(i));
+      if (row.getObject(i) == null) {
+        tablet.bitMaps[i].mark(rowIndex);
+      }
     }
   }
 

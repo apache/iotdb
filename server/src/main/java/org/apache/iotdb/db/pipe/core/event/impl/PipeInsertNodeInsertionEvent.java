@@ -61,6 +61,8 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   private String deviceId;
   private Object[][] rowRecords;
 
+  private long[] timestamps;
+
   public PipeInsertNodeInsertionEvent(
       WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
     this(walEntryHandler, progressIndex, null, null);
@@ -131,8 +133,9 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
 
-    for (Object[] rowRecord : rowRecords) {
-      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
+    for (int i = 0; i < timestamps.length; i++) {
+      Row row =
+          new PipeRow(columnNameList, dataTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
       consumer.accept(row, rowCollector);
     }
 
@@ -144,8 +147,10 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     PipeRowCollector rowCollector = new PipeRowCollector();
 
     List<Row> rows = new ArrayList<>();
-    for (Object[] rowRecord : rowRecords) {
-      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
+
+    for (int i = 0; i < timestamps.length; i++) {
+      Row row =
+          new PipeRow(columnNameList, dataTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
       rows.add(row);
     }
 
@@ -161,10 +166,11 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     List<MeasurementSchema> schemas = createMeasurementSchemas();
     Tablet tablet = new Tablet(deviceId, schemas);
 
-    for (Object[] rowRecord : rowRecords) {
-      Row row = new PipeRow(columnNameList, dataTypeList).setRowRecord(rowRecord);
-      for (int i = 0; i < row.size(); i++) {
-        tablet.addValue(columnNameList.get(i).getMeasurement(), i, row.getObject(i));
+    for (int i = 0; i < timestamps.length; i++) {
+      Row row =
+          new PipeRow(columnNameList, dataTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
+      for (int rowIndex = 0; rowIndex < row.size(); rowIndex++) {
+        tablet.addValue(columnNameList.get(i).getMeasurement(), rowIndex, row.getObject(i));
       }
     }
 
@@ -184,9 +190,9 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     try {
       InsertNode insertNode = walEntryHandler.getValue();
       if (insertNode instanceof InsertRowNode) {
-        processRowNodePattern((InsertRowNode) insertNode);
+        processRowNode((InsertRowNode) insertNode);
       } else if (insertNode instanceof InsertTabletNode) {
-        processTabletNodePattern((InsertTabletNode) insertNode);
+        processTabletNode((InsertTabletNode) insertNode);
       } else {
         throw new UnSupportedDataTypeException(
             String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
@@ -196,33 +202,34 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     }
   }
 
-  private void processRowNodePattern(InsertRowNode insertRowNode) {
+  private void processRowNode(InsertRowNode insertRowNode) {
     TSDataType[] originDataTypeList = insertRowNode.getDataTypes();
     String[] originMeasurementList = insertRowNode.getMeasurements();
     Object[] originValues = insertRowNode.getValues();
     this.deviceId = insertRowNode.getDevicePath().getFullPath();
+    this.timestamps = new long[] {insertRowNode.getTime()};
 
     processPattern(originDataTypeList, originMeasurementList, originValues);
   }
 
-  private void processTabletNodePattern(InsertTabletNode insertTabletNode) {
+  private void processTabletNode(InsertTabletNode insertTabletNode) {
     TSDataType[] originDataTypeList = insertTabletNode.getDataTypes();
     String[] originMeasurementList = insertTabletNode.getMeasurements();
     Object[] originColumns = insertTabletNode.getColumns();
     int rowSize = insertTabletNode.getRowCount();
     this.deviceId = insertTabletNode.getDevicePath().getFullPath();
+    this.timestamps = insertTabletNode.getTimes();
 
     processPattern(originDataTypeList, originMeasurementList, originColumns, rowSize);
   }
 
   private void processPattern(
       TSDataType[] originDataTypeList, String[] originMeasurementList, Object[] originValues) {
-    int originColumnSize = originMeasurementList.length;
     this.dataTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
 
-    processPatternByDevice(originColumnSize, originMeasurementList, originDataTypeList, indexList);
+    processPatternByDevice(originMeasurementList, originDataTypeList, indexList);
 
     for (int i = 0; i < indexList.size(); i++) {
       rowRecords[0][i] = originValues[indexList.get(i)];
@@ -234,12 +241,11 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
       String[] originMeasurementList,
       Object[] originColumns,
       int rowSize) {
-    int originColumnSize = originMeasurementList.length;
     this.dataTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
 
-    processPatternByDevice(originColumnSize, originMeasurementList, originDataTypeList, indexList);
+    processPatternByDevice(originMeasurementList, originDataTypeList, indexList);
 
     int columnSize = indexList.size();
     this.rowRecords = new Object[rowSize][columnSize];
@@ -253,11 +259,8 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   }
 
   private void processPatternByDevice(
-      int originColumnSize,
-      String[] originMeasurementList,
-      TSDataType[] originDataTypeList,
-      List<Integer> indexList) {
-
+      String[] originMeasurementList, TSDataType[] originDataTypeList, List<Integer> indexList) {
+    int originColumnSize = originMeasurementList.length;
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
     if (pattern == null || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {

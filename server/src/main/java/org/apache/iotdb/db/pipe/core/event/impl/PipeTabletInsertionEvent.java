@@ -41,6 +41,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
 
   private final String pattern;
 
+  private long[] timestamps;
   private List<TSDataType> columnTypeList;
   private List<Path> columnNameList;
   private final String deviceId;
@@ -54,6 +55,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
     this.tablet = tablet;
     this.pattern = pattern;
     this.deviceId = tablet.deviceId;
+    this.timestamps = tablet.timestamps;
 
     matchPattern();
   }
@@ -64,8 +66,9 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
 
-    for (Object[] rowRecord : rowRecords) {
-      Row row = new PipeRow(columnNameList, columnTypeList).setRowRecord(rowRecord);
+    for (int i = 0; i < timestamps.length; i++) {
+      Row row =
+          new PipeRow(columnNameList, columnTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
       consumer.accept(row, rowCollector);
     }
 
@@ -77,8 +80,9 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
     PipeRowCollector rowCollector = new PipeRowCollector();
     List<Row> rowList = new ArrayList<>();
 
-    for (Object[] rowRecord : rowRecords) {
-      Row row = new PipeRow(columnNameList, columnTypeList).setRowRecord(rowRecord);
+    for (int i = 0; i < timestamps.length; i++) {
+      Row row =
+          new PipeRow(columnNameList, columnTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
       rowList.add(row);
     }
 
@@ -147,9 +151,8 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
       newTablet.rowSize = rowSize;
       newTablet.values = columns;
       newTablet.bitMaps = tablet.bitMaps;
+      newTablet.timestamps = tablet.timestamps;
       this.tablet = newTablet;
-    } else {
-      this.tablet = null;
     }
   }
 

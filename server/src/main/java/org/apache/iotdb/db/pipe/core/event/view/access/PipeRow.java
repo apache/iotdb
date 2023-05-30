@@ -33,20 +33,22 @@ import java.util.List;
 
 public class PipeRow implements Row {
 
+  private final long timestamp;
   private final List<Path> columnNameList;
   private final List<TSDataType> columnTypeList;
   private Object[] rowRecord;
   private final int columnSize;
 
-  public PipeRow(List<Path> columnNames, List<TSDataType> columnTypeList) {
+  public PipeRow(List<Path> columnNames, List<TSDataType> columnTypeList, long timestamp) {
     this.columnTypeList = columnTypeList;
     this.columnNameList = columnNames;
     columnSize = columnTypeList.size();
+    this.timestamp = timestamp;
   }
 
   @Override
   public long getTime() throws IOException {
-    return (long) rowRecord[columnSize];
+    return timestamp;
   }
 
   @Override
