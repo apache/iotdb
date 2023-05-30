@@ -53,6 +53,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -154,6 +155,7 @@ public class LastQuerySortOperatorTest {
               seriesAggregationScanOperator1,
               measurementPath1,
               measurementPath1.getSeriesType(),
+              Collections.singletonList(measurementPath1.getFullPath()),
               null,
               false);
 
@@ -177,6 +179,7 @@ public class LastQuerySortOperatorTest {
               seriesAggregationScanOperator2,
               measurementPath2,
               measurementPath2.getSeriesType(),
+              Collections.singletonList(measurementPath2.getFullPath()),
               null,
               false);
 
@@ -278,6 +281,7 @@ public class LastQuerySortOperatorTest {
               seriesAggregationScanOperator1,
               measurementPath1,
               measurementPath1.getSeriesType(),
+              Collections.singletonList(measurementPath1.getFullPath()),
               null,
               false);
 
@@ -301,6 +305,7 @@ public class LastQuerySortOperatorTest {
               seriesAggregationScanOperator2,
               measurementPath2,
               measurementPath2.getSeriesType(),
+              Collections.singletonList(measurementPath2.getFullPath()),
               null,
               false);
 

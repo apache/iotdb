@@ -53,6 +53,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -231,6 +232,7 @@ public class UpdateLastCacheOperatorTest {
         seriesAggregationScanOperator,
         measurementPath,
         measurementPath.getSeriesType(),
+        Collections.singletonList(measurementPath.getFullPath()),
         null,
         false);
   }

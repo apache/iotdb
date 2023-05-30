@@ -2022,7 +2022,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
     TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
     if (timeValuePair == null) { // last value is not cached
-      return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
+      return createUpdateLastCacheOperator(
+          node, context, node.getSeriesPath(), node.getOutputPathSymbols());
     } else if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
         timeValuePair)) { // cached last value is not satisfied
@@ -2032,18 +2033,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               || context.getLastQueryTimeFilter() instanceof GtEq);
       // time filter is not > or >=, we still need to read from disk
       if (!isFilterGtOrGe) {
-        return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
+        return createUpdateLastCacheOperator(
+            node, context, node.getSeriesPath(), node.getOutputPathSymbols());
       } else { // otherwise, we just ignore it and return null
         return null;
       }
     } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-      context.addCachedLastValue(timeValuePair, seriesPath.getFullPath());
+      for (String outputPathSymbol : node.getOutputPathSymbols()) {
+        context.addCachedLastValue(timeValuePair, outputPathSymbol);
+      }
       return null;
     }
   }
 
   private UpdateLastCacheOperator createUpdateLastCacheOperator(
-      LastQueryScanNode node, LocalExecutionPlanContext context, MeasurementPath fullPath) {
+      LastQueryScanNode node,
+      LocalExecutionPlanContext context,
+      MeasurementPath fullPath,
+      List<String> outputPathSymbols) {
     SeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
 
     OperatorContext operatorContext =
@@ -2059,6 +2066,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         lastQueryScan,
         fullPath,
         node.getSeriesPath().getSeriesType(),
+        outputPathSymbols,
         DATA_NODE_SCHEMA_CACHE,
         context.isNeedUpdateLastCache());
   }
@@ -2112,6 +2120,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // get series under aligned entity that has not been cached
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
     List<String> measurementList = alignedPath.getMeasurementList();
+    Map<String, List<String>> measurementToOutputSymbolsMap =
+        node.getMeasurementToOutputSymbolsMap();
     for (int i = 0; i < measurementList.size(); i++) {
       PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
       TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
@@ -2129,7 +2139,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           unCachedMeasurementIndexes.add(i);
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-        context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
+        for (String outputPathSymbol :
+            measurementToOutputSymbolsMap.get(measurementPath.getMeasurement())) {
+          context.addCachedLastValue(timeValuePair, outputPathSymbol);
+        }
       }
     }
     if (unCachedMeasurementIndexes.isEmpty()) {
@@ -2160,6 +2173,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         lastQueryScan,
         unCachedPath,
+        node.getMeasurementToOutputSymbolsMap(),
         DATA_NODE_SCHEMA_CACHE,
         context.isNeedUpdateLastCache());
   }

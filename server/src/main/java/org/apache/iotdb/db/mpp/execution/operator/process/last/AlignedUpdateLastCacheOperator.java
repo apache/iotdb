@@ -29,6 +29,9 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.util.List;
+import java.util.Map;
+
 import static org.weakref.jmx.internal.guava.base.Preconditions.checkArgument;
 
 /** update last cache for aligned series */
@@ -38,15 +41,19 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
 
   private final PartialPath devicePath;
 
+  private final Map<String, List<String>> measurementToOutputSymbolsMap;
+
   public AlignedUpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
       AlignedPath seriesPath,
+      Map<String, List<String>> measurementToOutputSymbolsMap,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache) {
     super(operatorContext, child, dataNodeSchemaCache, needUpdateCache);
     this.seriesPath = seriesPath;
     this.devicePath = seriesPath.getDevicePath();
+    this.measurementToOutputSymbolsMap = measurementToOutputSymbolsMap;
   }
 
   @Override
@@ -76,12 +83,16 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
           lastCache.updateLastCache(
               getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
         }
-        LastQueryUtil.appendLastValue(
-            tsBlockBuilder,
-            lastTime,
-            measurementPath.getFullPath(),
-            lastValue.getStringValue(),
-            seriesPath.getSchemaList().get(i / 2).getType().name());
+
+        for (String outputSymbol :
+            measurementToOutputSymbolsMap.get(measurementPath.getMeasurement())) {
+          LastQueryUtil.appendLastValue(
+              tsBlockBuilder,
+              lastTime,
+              outputSymbol,
+              lastValue.getStringValue(),
+              seriesPath.getSchemaList().get(i / 2).getType().name());
+        }
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;

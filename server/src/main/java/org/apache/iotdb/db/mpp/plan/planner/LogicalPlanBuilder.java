@@ -207,11 +207,15 @@ public class LogicalPlanBuilder {
       Filter globalTimeFilter,
       OrderByParameter mergeOrderParameter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    List<PartialPath> selectedPaths =
-        sourceExpressions.stream()
-            .map(expression -> ((TimeSeriesOperand) expression).getPath())
-            .collect(Collectors.toList());
+    Map<PartialPath, List<String>> selectedPathToOutputSymbolsMap = new LinkedHashMap<>();
+    for (Expression sourceExpression : sourceExpressions) {
+      PartialPath selectedPath = ((TimeSeriesOperand) sourceExpression).getPath();
+      selectedPathToOutputSymbolsMap
+          .computeIfAbsent(selectedPath, k -> new ArrayList<>())
+          .add(sourceExpression.getOutputSymbol());
+    }
 
+    List<PartialPath> selectedPaths = new ArrayList<>(selectedPathToOutputSymbolsMap.keySet());
     List<PartialPath> groupedPaths =
         mergeOrderParameter.getSortItemList().isEmpty()
             ? MetaUtils.groupAlignedSeries(selectedPaths)
@@ -219,10 +223,17 @@ public class LogicalPlanBuilder {
     for (PartialPath path : groupedPaths) {
       if (path instanceof MeasurementPath) { // non-aligned series
         sourceNodeList.add(
-            new LastQueryScanNode(context.getQueryId().genPlanNodeId(), (MeasurementPath) path));
+            new LastQueryScanNode(
+                context.getQueryId().genPlanNodeId(),
+                (MeasurementPath) path,
+                selectedPathToOutputSymbolsMap.get(path)));
       } else if (path instanceof AlignedPath) { // aligned series
         sourceNodeList.add(
-            new AlignedLastQueryScanNode(context.getQueryId().genPlanNodeId(), (AlignedPath) path));
+            new AlignedLastQueryScanNode(
+                context.getQueryId().genPlanNodeId(),
+                (AlignedPath) path,
+                getMeasurementToOutputSymbolsMap(
+                    selectedPathToOutputSymbolsMap, (AlignedPath) path)));
       } else {
         throw new IllegalArgumentException("unexpected path type");
       }
@@ -241,6 +252,17 @@ public class LogicalPlanBuilder {
                 .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
 
     return this;
+  }
+
+  private Map<String, List<String>> getMeasurementToOutputSymbolsMap(
+      Map<PartialPath, List<String>> selectedPathToOutputSymbolsMap, AlignedPath path) {
+    Map<String, List<String>> measurementToOutputSymbolsMap = new HashMap<>();
+    for (String measurement : path.getMeasurementList()) {
+      measurementToOutputSymbolsMap
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
+          .addAll(selectedPathToOutputSymbolsMap.get(path.getDevicePath().concatNode(measurement)));
+    }
+    return measurementToOutputSymbolsMap;
   }
 
   public LogicalPlanBuilder planAggregationSource(

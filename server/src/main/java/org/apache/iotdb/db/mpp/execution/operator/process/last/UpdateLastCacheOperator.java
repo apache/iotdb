@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.util.List;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
@@ -34,21 +36,25 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   // fullPath for queried time series
   // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
   // accept PartialPath
-  private MeasurementPath fullPath;
+  private final MeasurementPath fullPath;
 
   // dataType for queried time series;
-  private String dataType;
+  private final String dataType;
+
+  private final List<String> outputPathSymbols;
 
   public UpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
       MeasurementPath fullPath,
       TSDataType dataType,
+      List<String> outputPathSymbols,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache) {
     super(operatorContext, child, dataNodeSchemaCache, needUpdateCache);
     this.fullPath = fullPath;
     this.dataType = dataType.name();
+    this.outputPathSymbols = outputPathSymbols;
   }
 
   @Override
@@ -78,8 +84,10 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
 
     tsBlockBuilder.reset();
 
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
+    for (String outputPathSymbol : outputPathSymbols) {
+      LastQueryUtil.appendLastValue(
+          tsBlockBuilder, lastTime, outputPathSymbol, lastValue.getStringValue(), dataType);
+    }
 
     return tsBlockBuilder.build();
   }

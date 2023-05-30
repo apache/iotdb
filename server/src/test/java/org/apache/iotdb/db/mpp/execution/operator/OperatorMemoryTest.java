@@ -534,7 +534,8 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
     UpdateLastCacheOperator updateLastCacheOperator =
-        new UpdateLastCacheOperator(null, child, null, TSDataType.BOOLEAN, null, false);
+        new UpdateLastCacheOperator(
+            null, child, null, TSDataType.BOOLEAN, Collections.emptyList(), null, false);
 
     assertEquals(2048, updateLastCacheOperator.calculateMaxPeekMemory());
     assertEquals(1024, updateLastCacheOperator.calculateMaxReturnSize());

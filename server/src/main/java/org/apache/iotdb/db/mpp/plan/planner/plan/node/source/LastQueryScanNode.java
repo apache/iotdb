@@ -29,12 +29,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -49,18 +51,26 @@ public class LastQueryScanNode extends SeriesSourceNode {
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
 
+  private final List<String> outputPathSymbols;
+
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public LastQueryScanNode(PlanNodeId id, MeasurementPath seriesPath) {
+  public LastQueryScanNode(
+      PlanNodeId id, MeasurementPath seriesPath, List<String> outputPathSymbols) {
     super(id);
     this.seriesPath = seriesPath;
+    this.outputPathSymbols = outputPathSymbols;
   }
 
   public LastQueryScanNode(
-      PlanNodeId id, MeasurementPath seriesPath, TRegionReplicaSet regionReplicaSet) {
+      PlanNodeId id,
+      MeasurementPath seriesPath,
+      List<String> outputPathSymbols,
+      TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.seriesPath = seriesPath;
+    this.outputPathSymbols = outputPathSymbols;
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -81,6 +91,10 @@ public class LastQueryScanNode extends SeriesSourceNode {
     return seriesPath;
   }
 
+  public List<String> getOutputPathSymbols() {
+    return outputPathSymbols;
+  }
+
   @Override
   public void close() throws Exception {}
 
@@ -96,7 +110,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryScanNode(getPlanNodeId(), seriesPath, regionReplicaSet);
+    return new LastQueryScanNode(getPlanNodeId(), seriesPath, outputPathSymbols, regionReplicaSet);
   }
 
   @Override
@@ -121,12 +135,13 @@ public class LastQueryScanNode extends SeriesSourceNode {
     if (!super.equals(o)) return false;
     LastQueryScanNode that = (LastQueryScanNode) o;
     return Objects.equals(seriesPath, that.seriesPath)
+        && Objects.equals(outputPathSymbols, that.outputPathSymbols)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), seriesPath, regionReplicaSet);
+    return Objects.hash(super.hashCode(), seriesPath, outputPathSymbols, regionReplicaSet);
   }
 
   @Override
@@ -142,18 +157,31 @@ public class LastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputPathSymbols.size(), byteBuffer);
+    for (String symbol : outputPathSymbols) {
+      ReadWriteIOUtils.write(symbol, byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LAST_QUERY_SCAN.serialize(stream);
     seriesPath.serialize(stream);
+    ReadWriteIOUtils.write(outputPathSymbols.size(), stream);
+    for (String symbol : outputPathSymbols) {
+      ReadWriteIOUtils.write(symbol, stream);
+    }
   }
 
   public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
+    int listSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> outputPathSymbols = new ArrayList<>();
+    for (int i = 0; i < listSize; i++) {
+      outputPathSymbols.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryScanNode(planNodeId, partialPath);
+    return new LastQueryScanNode(planNodeId, partialPath, outputPathSymbols);
   }
 
   @Override
