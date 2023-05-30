@@ -248,4 +248,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         + isClosed
         + '}';
   }
+
+  public static void main(String[] args) throws IOException {
+    String filename = "alignedTablet.tsfile";
+
+    Iterable<TabletInsertionEvent> tabletInsertionEventIterable =
+        new PipeTsFileInsertionEvent(new TsFileResource(new File(filename)))
+            .toTabletInsertionEvents();
+    for (TabletInsertionEvent tabletInsertionEvent : tabletInsertionEventIterable) {
+      System.out.println(tabletInsertionEvent);
+    }
+  }
 }

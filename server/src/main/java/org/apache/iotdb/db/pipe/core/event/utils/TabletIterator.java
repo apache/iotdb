@@ -57,6 +57,8 @@ public class TabletIterator implements Iterator<Tablet> {
   private List<BitMap> bitMap;
   private List<Long> timestamps;
 
+  private boolean isSetTimestamp;
+
   public TabletIterator(
       TsFileSequenceReader reader,
       Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap) {
@@ -67,6 +69,7 @@ public class TabletIterator implements Iterator<Tablet> {
     this.values = null;
     this.bitMap = null;
     this.timestamps = null;
+    this.isSetTimestamp = false;
   }
 
   @Override
@@ -86,125 +89,15 @@ public class TabletIterator implements Iterator<Tablet> {
     bitMap = new ArrayList<>();
     timestamps = new ArrayList<>();
     List<long[]> timeBatches = new ArrayList<>();
-    int pageIndex = 0;
 
     for (TimeseriesMetadata timeseriesMetadata : currentEntry.getValue()) {
-
-      if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-        timeBatches.clear();
-      } else {
-        MeasurementSchema measurementSchema =
-            new MeasurementSchema(
-                timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getTSDataType());
-        measurementSchemas.add(measurementSchema);
-      }
-
-      List<Byte> bitMapBytes = new ArrayList<>();
-      List<Object> measurementValues = new ArrayList<>();
-
-      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
-      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-        long offset = chunkMetadata.getOffsetOfChunkHeader();
-        try {
-          reader.position(offset);
-          ChunkHeader header = reader.readChunkHeader(reader.readMarker());
-          int dataSize = header.getDataSize();
-
-          Decoder defaultTimeDecoder =
-              Decoder.getDecoderByType(
-                  TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                  TSDataType.INT64);
-          Decoder valueDecoder =
-              Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
-          pageIndex = 0;
-          if (header.getDataType() == TSDataType.VECTOR) {
-            timeBatches.clear();
-          }
-          while (dataSize > 0) {
-            PageHeader pageHeader =
-                reader.readPageHeader(
-                    header.getDataType(),
-                    (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
-            ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-
-            // Time column chunk
-            if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
-                == TsFileConstant.TIME_COLUMN_MASK) {
-              TimePageReader timePageReader =
-                  new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
-              long[] timeBatch = timePageReader.getNextTimeBatch();
-              timeBatches.add(timeBatch);
-            }
-            // Value column chunk
-            else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
-                == TsFileConstant.VALUE_COLUMN_MASK) {
-              ValuePageReader valuePageReader =
-                  new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
-
-              for (byte value : valuePageReader.getBitmap()) {
-                bitMapBytes.add(value);
-              }
-
-              for (TsPrimitiveType value :
-                  valuePageReader.nextValueBatch(timeBatches.get(pageIndex))) {
-                measurementValues.add(value.getValue());
-              }
-            }
-
-            // NonAligned Chunk
-            else {
-              PageReader pageReader =
-                  new PageReader(
-                      pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
-              BatchData batchData = pageReader.getAllSatisfiedPageData();
-              List<Integer> isNullList = new ArrayList<>();
-              int index = 0;
-              while (batchData.hasCurrent()) {
-                timestamps.add(batchData.currentTime());
-                Object value = batchData.currentValue();
-
-                if (value == null) {
-                  isNullList.add(index);
-                }
-                measurementValues.add(value);
-                index++;
-                batchData.next();
-              }
-
-              BitMap bitmap = new BitMap(bitMap.size());
-              for (int isNull : isNullList) {
-                bitmap.mark(isNull);
-              }
-              byte[] bytes = bitmap.getByteArray();
-              for (byte value : bytes) {
-                bitMapBytes.add(value);
-              }
-            }
-            pageIndex++;
-            dataSize -= pageHeader.getSerializedPageSize();
-          }
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
-      }
-
-      // Fill in the timestamps, values, and bitMap with the information for this measurement.
-      for (long[] timeBatch : timeBatches) {
-        for (long time : timeBatch) {
-          timestamps.add(time);
-        }
-      }
-      // values
-      values.add(measurementValues.toArray());
-
-      // bitMap
-      byte[] byteArray = new byte[bitMapBytes.size()];
-      for (int i = 0; i < bitMapBytes.size(); i++) {
-        byteArray[i] = bitMapBytes.get(i);
-      }
-      bitMap.add(new BitMap(bitMapBytes.size() * 8, byteArray));
+      processTimeseriesMetadata(timeseriesMetadata, timeBatches);
     }
 
+    return createTablet();
+  }
+
+  private Tablet createTablet() {
     // create tablet
     Tablet tablet = new Tablet(currentEntry.getKey(), measurementSchemas);
     tablet.timestamps = timestamps.stream().mapToLong(Long::longValue).toArray();
@@ -216,7 +109,129 @@ public class TabletIterator implements Iterator<Tablet> {
       bitMapArray[i] = bitMap.get(i);
     }
     tablet.bitMaps = bitMapArray;
+    return tablet;
+  }
 
-    return new Tablet(currentEntry.getKey(), measurementSchemas);
+  private void processTimeseriesMetadata(
+      TimeseriesMetadata timeseriesMetadata, List<long[]> timeBatches) {
+    int pageIndex = 0;
+    if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+      timeBatches.clear();
+    } else {
+      MeasurementSchema measurementSchema =
+          new MeasurementSchema(
+              timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getTSDataType());
+      measurementSchemas.add(measurementSchema);
+    }
+
+    List<Byte> bitMapBytes = new ArrayList<>();
+    List<Object> measurementValues = new ArrayList<>();
+
+    List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      long offset = chunkMetadata.getOffsetOfChunkHeader();
+      try {
+        reader.position(offset);
+        ChunkHeader header = reader.readChunkHeader(reader.readMarker());
+        int dataSize = header.getDataSize();
+
+        Decoder defaultTimeDecoder =
+            Decoder.getDecoderByType(
+                TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                TSDataType.INT64);
+        Decoder valueDecoder =
+            Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
+        pageIndex = 0;
+        if (header.getDataType() == TSDataType.VECTOR) {
+          timeBatches.clear();
+        }
+
+        while (dataSize > 0) {
+          PageHeader pageHeader =
+              reader.readPageHeader(
+                  header.getDataType(), (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+          ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+
+          // Time column chunk
+          if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+              == TsFileConstant.TIME_COLUMN_MASK) {
+            TimePageReader timePageReader =
+                new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
+            long[] timeBatch = timePageReader.getNextTimeBatch();
+            timeBatches.add(timeBatch);
+          }
+          // Value column chunk
+          else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
+              == TsFileConstant.VALUE_COLUMN_MASK) {
+            ValuePageReader valuePageReader =
+                new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
+
+            for (byte value : valuePageReader.getBitmap()) {
+              bitMapBytes.add(value);
+            }
+
+            for (TsPrimitiveType value :
+                valuePageReader.nextValueBatch(timeBatches.get(pageIndex))) {
+              measurementValues.add(value.getValue());
+            }
+          }
+
+          // NonAligned Chunk
+          else {
+            PageReader pageReader =
+                new PageReader(
+                    pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+            BatchData batchData = pageReader.getAllSatisfiedPageData();
+            List<Integer> isNullList = new ArrayList<>();
+            int index = 0;
+            while (batchData.hasCurrent()) {
+              timestamps.add(batchData.currentTime());
+              Object value = batchData.currentValue();
+
+              if (value == null) {
+                isNullList.add(index);
+              }
+              measurementValues.add(value);
+              index++;
+              batchData.next();
+            }
+
+            BitMap bitmap = new BitMap(bitMap.size());
+            for (int isNull : isNullList) {
+              bitmap.mark(isNull);
+            }
+            byte[] bytes = bitmap.getByteArray();
+            for (byte value : bytes) {
+              bitMapBytes.add(value);
+            }
+          }
+          pageIndex++;
+          dataSize -= pageHeader.getSerializedPageSize();
+        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+
+    // Fill in the timestamps, values, and bitMap with the information for this measurement.
+    if (!isSetTimestamp) {
+      for (long[] timeBatch : timeBatches) {
+        for (long time : timeBatch) {
+          timestamps.add(time);
+        }
+      }
+      isSetTimestamp = true;
+    }
+
+    // values
+    values.add(measurementValues.toArray());
+
+    // bitMap
+    byte[] byteArray = new byte[bitMapBytes.size()];
+    for (int i = 0; i < bitMapBytes.size(); i++) {
+      byteArray[i] = bitMapBytes.get(i);
+    }
+    bitMap.add(new BitMap(bitMapBytes.size() * 8, byteArray));
   }
 }

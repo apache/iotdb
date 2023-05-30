@@ -102,7 +102,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource))
-                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
+                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta, null))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
@@ -110,7 +110,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource))
-                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
+                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta, null))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
             event ->
