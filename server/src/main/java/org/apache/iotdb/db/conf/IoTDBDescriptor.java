@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
@@ -67,6 +67,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
 
@@ -369,9 +371,14 @@ public class IoTDBDescriptor {
 
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
-
-    conf.setDataDirs(
-        properties.getProperty("dn_data_dirs", String.join(",", conf.getDataDirs())).split(","));
+    String[] defaultTierDirs = new String[conf.getTierDataDirs().length];
+    for (int i = 0; i < defaultTierDirs.length; ++i) {
+      defaultTierDirs[i] = String.join(",", conf.getTierDataDirs()[i]);
+    }
+    conf.setTierDataDirs(
+        parseDataDirs(
+            properties.getProperty(
+                "dn_data_dirs", String.join(IoTDBConstant.TIER_SEPARATOR, defaultTierDirs))));
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
@@ -768,6 +775,9 @@ public class IoTDBDescriptor {
 
     conf.setTsFileStorageFs(
         properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()));
+    conf.setEnableHDFS(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_hdfs", String.valueOf(conf.isEnableHDFS()))));
     conf.setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
     conf.setHdfsSitePath(properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
     conf.setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
@@ -963,11 +973,13 @@ public class IoTDBDescriptor {
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
     // At the same time, set TSFileConfig
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setTSFileStorageFs(
-            FSType.valueOf(
-                properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name())));
+    List<FSType> fsTypes = new ArrayList<>();
+    fsTypes.add(FSType.LOCAL);
+    if (Boolean.parseBoolean(
+        properties.getProperty("enable_hdfs", String.valueOf(conf.isEnableHDFS())))) {
+      fsTypes.add(FSType.HDFS);
+    }
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(fsTypes.toArray(new FSType[0]));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
@@ -1502,22 +1514,32 @@ public class IoTDBDescriptor {
     }
   }
 
+  private String[][] parseDataDirs(String dataDirs) {
+    String[] tiers = dataDirs.split(IoTDBConstant.TIER_SEPARATOR);
+    String[][] tierDataDirs = new String[tiers.length][];
+    for (int i = 0; i < tiers.length; ++i) {
+      tierDataDirs[i] = tiers[i].split(",");
+    }
+    return tierDataDirs;
+  }
+
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
       if (dataDirs != null) {
-        conf.reloadDataDirs(dataDirs.split(","));
+        conf.reloadDataDirs(parseDataDirs(dataDirs));
       }
 
-      // update dir strategy, must update after data dirs
+      // update dir strategy
       String multiDirStrategyClassName = properties.getProperty("dn_multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
         conf.confirmMultiDirStrategy();
-        DirectoryManager.getInstance().updateDirectoryStrategy();
       }
+
+      TierManager.getInstance().resetFolders();
 
       // update timed flush & close conf
       loadTimedService(properties);

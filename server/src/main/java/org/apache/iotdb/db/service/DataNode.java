@@ -57,6 +57,7 @@ import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -167,7 +168,9 @@ public class DataNode implements DataNodeMBean {
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
       }
-
+      // TierManager need DataNodeId to do some operations so the reset method need to be invoked
+      // after DataNode adding
+      TierManager.getInstance().resetFolders();
       // Active DataNode
       active();
 

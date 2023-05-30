@@ -87,12 +87,12 @@ public class CommonConfig {
   private FSType systemFileStorageFs = FSType.LOCAL;
 
   /**
-   * default TTL for databases that are not set TTL by statements, in ms.
-   *
-   * <p>Notice: if this property is changed, previous created database which are not set TTL will
-   * also be affected. Unit: millisecond
+   * Default TTL for databases that are not set TTL by statements. If tiered storage is enabled,
+   * data matches the last ttl will be deleted and other data will be migrated to the next tier.
+   * Notice: if this property is changed, previous created database which are not set TTL will also
+   * be affected. Unit: millisecond
    */
-  private long defaultTTLInMs = Long.MAX_VALUE;
+  private long[] tierTTLInMs = {Long.MAX_VALUE};
 
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -250,11 +250,15 @@ public class CommonConfig {
   }
 
   public long getDefaultTTLInMs() {
-    return defaultTTLInMs;
+    return tierTTLInMs[tierTTLInMs.length - 1];
   }
 
-  public void setDefaultTTLInMs(long defaultTTLInMs) {
-    this.defaultTTLInMs = defaultTTLInMs;
+  public long[] getTierTTLInMs() {
+    return tierTTLInMs;
+  }
+
+  public void setTierTTLInMs(long[] tierTTLInMs) {
+    this.tierTTLInMs = tierTTLInMs;
   }
 
   public int getConnectionTimeoutInMS() {

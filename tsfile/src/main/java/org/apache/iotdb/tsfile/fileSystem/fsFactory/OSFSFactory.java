@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.fileSystem.fsFactory;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -37,9 +36,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 
-public class HDFSFactory implements FSFactory {
+public class OSFSFactory implements FSFactory {
+  private static final Logger logger = LoggerFactory.getLogger(OSFSFactory.class);
 
-  private static final Logger logger = LoggerFactory.getLogger(HDFSFactory.class);
   private Constructor constructorWithPathname;
   private Constructor constructorWithParentStringAndChild;
   private Constructor constructorWithParentFileAndChild;
@@ -51,44 +50,44 @@ public class HDFSFactory implements FSFactory {
   private Method listFilesBySuffix;
   private Method listFilesByPrefix;
   private Method renameTo;
-  private Method copyToLocal;
-  private Method copyFromLocal;
+  private Method putFile;
   private Method copyTo;
+  private Method deleteObjectsByPrefix;
 
-  public HDFSFactory() {
+  public OSFSFactory() {
     try {
-      Class<?> clazz = Class.forName(TSFileDescriptor.getInstance().getConfig().getHdfsFile());
+      Class<?> clazz =
+          Class.forName(TSFileDescriptor.getInstance().getConfig().getObjectStorageFile());
       constructorWithPathname = clazz.getConstructor(String.class);
       constructorWithParentStringAndChild = clazz.getConstructor(String.class, String.class);
       constructorWithParentFileAndChild = clazz.getConstructor(File.class, String.class);
       constructorWithUri = clazz.getConstructor(URI.class);
-      getBufferedReader = clazz.getMethod("getBufferedReader", String.class);
-      getBufferedWriter = clazz.getMethod("getBufferedWriter", String.class, boolean.class);
-      getBufferedInputStream = clazz.getMethod("getBufferedInputStream", String.class);
-      getBufferedOutputStream = clazz.getMethod("getBufferedOutputStream", String.class);
+      getBufferedReader = clazz.getMethod("getBufferedReader");
+      getBufferedWriter = clazz.getMethod("getBufferedWriter", boolean.class);
+      getBufferedInputStream = clazz.getMethod("getBufferedInputStream");
+      getBufferedOutputStream = clazz.getMethod("getBufferedOutputStream");
       listFilesBySuffix = clazz.getMethod("listFilesBySuffix", String.class, String.class);
       listFilesByPrefix = clazz.getMethod("listFilesByPrefix", String.class, String.class);
       renameTo = clazz.getMethod("renameTo", File.class);
-      copyToLocal = clazz.getMethod("copyToLocal", File.class);
-      copyFromLocal = clazz.getMethod("copyFromLocal", File.class);
+      putFile = clazz.getMethod("putFile", File.class);
       copyTo = clazz.getMethod("copyTo", File.class);
+      deleteObjectsByPrefix = clazz.getMethod("deleteObjectsByPrefix");
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(
-          "Failed to get Hadoop file system. Please check your dependency of Hadoop module.", e);
+          "Failed to get object storage. Please check your dependency of object storage module.",
+          e);
     }
   }
 
   @Override
   public File getFileWithParent(String pathname) {
     try {
-      File res = (File) constructorWithPathname.newInstance(pathname);
-      if (!res.exists()) {
-        res.getParentFile().mkdirs();
-      }
-      return res;
+      return (File) constructorWithPathname.newInstance(pathname);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to get file: {}. Please check your dependency of Hadoop module.", pathname, e);
+          "Failed to get file: {}. Please check your dependency of object storage module.",
+          pathname,
+          e);
       return null;
     }
   }
@@ -136,7 +135,7 @@ public class HDFSFactory implements FSFactory {
       return (File) constructorWithUri.newInstance(uri);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to get file: {}. Please check your dependency of Hadoop module.", uri, e);
+          "Failed to get file: {}. Please check your dependency of object storage module.", uri, e);
       return null;
     }
   }
@@ -145,10 +144,10 @@ public class HDFSFactory implements FSFactory {
   public BufferedReader getBufferedReader(String filePath) {
     try {
       return (BufferedReader)
-          getBufferedReader.invoke(constructorWithPathname.newInstance(filePath), filePath);
+          getBufferedReader.invoke(constructorWithPathname.newInstance(filePath));
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to get buffered reader for {}. Please check your dependency of Hadoop module.",
+          "Failed to get buffered reader for {}. Please check your dependency of object storage module.",
           filePath,
           e);
       return null;
@@ -159,10 +158,10 @@ public class HDFSFactory implements FSFactory {
   public BufferedWriter getBufferedWriter(String filePath, boolean append) {
     try {
       return (BufferedWriter)
-          getBufferedWriter.invoke(constructorWithPathname.newInstance(filePath), filePath, append);
+          getBufferedWriter.invoke(constructorWithPathname.newInstance(filePath), append);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to get buffered writer for {}. Please check your dependency of Hadoop module.",
+          "Failed to get buffered writer for {}. Please check your dependency of object storage module.",
           filePath,
           e);
       return null;
@@ -173,10 +172,10 @@ public class HDFSFactory implements FSFactory {
   public BufferedInputStream getBufferedInputStream(String filePath) {
     try {
       return (BufferedInputStream)
-          getBufferedInputStream.invoke(constructorWithPathname.newInstance(filePath), filePath);
+          getBufferedInputStream.invoke(constructorWithPathname.newInstance(filePath));
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to get buffered input stream for {}. Please check your dependency of Hadoop module.",
+          "Failed to get buffered input stream for {}. Please check your dependency of object storage module.",
           filePath,
           e);
       return null;
@@ -187,10 +186,10 @@ public class HDFSFactory implements FSFactory {
   public BufferedOutputStream getBufferedOutputStream(String filePath) {
     try {
       return (BufferedOutputStream)
-          getBufferedOutputStream.invoke(constructorWithPathname.newInstance(filePath), filePath);
+          getBufferedOutputStream.invoke(constructorWithPathname.newInstance(filePath));
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to get buffered output stream for {}. Please check your dependency of Hadoop module.",
+          "Failed to get buffered output stream for {}. Please check your dependency of object storage module.",
           filePath,
           e);
       return null;
@@ -200,10 +199,10 @@ public class HDFSFactory implements FSFactory {
   @Override
   public void moveFile(File srcFile, File destFile) throws IOException {
     try {
-      renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
-    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      renameTo.invoke(srcFile, destFile);
+    } catch (InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to rename file from {} to {}. Please check your dependency of Hadoop module.",
+          "Failed to rename file from {} to {}. Please check your dependency of object storage module.",
           srcFile.getName(),
           destFile.getName());
       throw new IOException(e);
@@ -213,18 +212,17 @@ public class HDFSFactory implements FSFactory {
   @Override
   public void copyFile(File srcFile, File destFile) throws IOException {
     FSType srcType = FSUtils.getFSType(srcFile);
-    FSType destType = FSUtils.getFSType(destFile);
     try {
-      if (srcType == FSType.HDFS && destType == FSType.HDFS) {
-        copyTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
-      } else if (srcType == FSType.LOCAL) {
-        copyFromLocal.invoke(
-            constructorWithPathname.newInstance(destFile.getAbsolutePath()), srcFile);
+      if (srcType == FSType.LOCAL) {
+        putFile.invoke(destFile, srcFile);
+      } else if (srcType == FSType.OBJECT_STORAGE) {
+        copyTo.invoke(srcFile, destFile);
       } else {
-        copyToLocal.invoke(
-            constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
+        throw new IOException(
+            String.format(
+                "Doesn't support copy file from %s to %s.", srcType, FSType.OBJECT_STORAGE));
       }
-    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+    } catch (InvocationTargetException | IllegalAccessException e) {
       logger.error(
           "Failed to copy file from {} to {}. Please check your dependency of object storage module.",
           srcFile.getName(),
@@ -241,7 +239,7 @@ public class HDFSFactory implements FSFactory {
               constructorWithPathname.newInstance(fileFolder), fileFolder, suffix);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to list files in {} with SUFFIX {}. Please check your dependency of Hadoop module.",
+          "Failed to list files in {} with SUFFIX {}. Please check your dependency of object storage module.",
           fileFolder,
           suffix,
           e);
@@ -257,7 +255,7 @@ public class HDFSFactory implements FSFactory {
               constructorWithPathname.newInstance(fileFolder), fileFolder, prefix);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
       logger.error(
-          "Failed to list files in {} with PREFIX {}. Please check your dependency of Hadoop module.",
+          "Failed to list files in {} with PREFIX {}. Please check your dependency of object storage module.",
           fileFolder,
           prefix,
           e);
@@ -272,6 +270,13 @@ public class HDFSFactory implements FSFactory {
 
   @Override
   public void deleteDirectory(String dir) throws IOException {
-    getFile(dir).delete();
+    try {
+      deleteObjectsByPrefix.invoke(constructorWithPathname.newInstance(dir));
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to delete directory {}. Please check your dependency of object storage module.",
+          dir,
+          e);
+    }
   }
 }

@@ -82,11 +82,23 @@ public class CommonDescriptor {
             "iotdb_server_encrypt_decrypt_provider_parameter",
             config.getEncryptDecryptProviderParameter()));
 
-    config.setDefaultTTLInMs(
-        Long.parseLong(
-            properties
-                .getProperty("default_ttl_in_ms", String.valueOf(config.getDefaultTTLInMs()))
-                .trim()));
+    String[] tierTTLStr = new String[config.getTierTTLInMs().length];
+    for (int i = 0; i < tierTTLStr.length; ++i) {
+      tierTTLStr[i] = String.valueOf(config.getTierTTLInMs()[i]);
+    }
+    tierTTLStr =
+        properties
+            .getProperty("default_ttl_in_ms", String.join(IoTDBConstant.TIER_SEPARATOR, tierTTLStr))
+            .split(IoTDBConstant.TIER_SEPARATOR);
+    long[] tierTTL = new long[tierTTLStr.length];
+    for (int i = 0; i < tierTTL.length; ++i) {
+      tierTTL[i] = Long.parseLong(tierTTLStr[i]);
+      if (tierTTL[i] < 0) {
+        tierTTL[i] = Long.MAX_VALUE;
+      }
+    }
+    config.setTierTTLInMs(tierTTL);
+
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(
