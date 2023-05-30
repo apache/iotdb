@@ -269,13 +269,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // make sure paths in logical view is fetched
       updateSchemaTreeByViews(analysis, schemaTree);
-      if (analysis.useLogicalView()) {
-        if (queryStatement.isAlignByDevice()) {
-          throw new SemanticException("Views are not supported in ALIGN BY DEVICE query yet.");
-        }
-        if (queryStatement.isLastQuery()) {
-          throw new SemanticException("Views are not supported in LAST query yet.");
-        }
+      if (analysis.useLogicalView() && queryStatement.isAlignByDevice()) {
+        throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
       }
 
       // extract global time filter from query filter and determine if there is a value filter
@@ -447,15 +442,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           new TreeSet<>(
               (e1, e2) ->
                   isAscending
-                      ? e1.getExpressionString().compareTo(e2.getExpressionString())
-                      : e2.getExpressionString().compareTo(e1.getExpressionString()));
+                      ? e1.getOutputSymbol().compareTo(e2.getOutputSymbol())
+                      : e2.getOutputSymbol().compareTo(e1.getOutputSymbol()));
     } else {
       sourceExpressions = new LinkedHashSet<>();
     }
 
     for (Expression selectExpression : selectExpressions) {
-      sourceExpressions.addAll(
-          ExpressionAnalyzer.bindSchemaForExpression(selectExpression, schemaTree));
+      for (Expression sourceExpression :
+          ExpressionAnalyzer.bindSchemaForExpression(selectExpression, schemaTree)) {
+        if (!(sourceExpression instanceof TimeSeriesOperand)) {
+          throw new SemanticException(
+              "Views with functions and expressions cannot be used in LAST query");
+        }
+        sourceExpressions.add(sourceExpression);
+      }
     }
     analysis.setSourceExpressions(sourceExpressions);
   }
@@ -1568,10 +1569,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
-      deviceSet =
-          analysis.getOutputDeviceToQueriedDeviceMap().values().stream()
-              .flatMap(List::stream)
-              .collect(Collectors.toSet());
+      deviceSet = analysis.getDeviceToSourceExpressions().keySet();
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
