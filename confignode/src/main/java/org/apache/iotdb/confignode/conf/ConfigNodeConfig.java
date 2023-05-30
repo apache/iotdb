@@ -111,9 +111,9 @@ public class ConfigNodeConfig {
 
   /**
    * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
-   * previous TimePartitionSlot if set true
+   * predecessor or successor TimePartitionSlot if set true
    */
-  private boolean enableDataPartitionInheritPolicy = false;
+  private boolean enableDataPartitionInheritPolicy = true;
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
