@@ -76,7 +76,6 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
   private CountDownLatch allDriversClosed;
-  // private final Semaphore allDriversClosed = new Semaphore(0);
 
   // session info
   private SessionInfo sessionInfo;
@@ -356,7 +355,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public void setNumOfDrivers(Integer numOfDrivers) {
+  public void initializeNumOfDrivers(Integer numOfDrivers) {
     // initialize with the num of Drivers
     allDriversClosed = new CountDownLatch(numOfDrivers);
   }
