@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -118,11 +119,15 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
           String.format(
               "Subtask %s failed, has been retried for %d times, last failed because of %s",
               taskID, retryCount.get(), throwable);
-      LOGGER.warn(errorMessage);
+      LOGGER.warn(errorMessage, throwable);
       lastFailedCause = throwable;
 
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).reportException(new PipeRuntimeCriticalException(errorMessage));
+        ((EnrichedEvent) lastEvent)
+            .reportException(
+                throwable instanceof PipeRuntimeException
+                    ? (PipeRuntimeException) throwable
+                    : new PipeRuntimeCriticalException(errorMessage));
       }
 
       // although the pipe task will be stopped, we still don't release the last event here

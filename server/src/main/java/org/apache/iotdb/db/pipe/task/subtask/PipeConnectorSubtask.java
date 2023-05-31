@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
@@ -124,12 +125,12 @@ public class PipeConnectorSubtask extends PipeSubtask {
             String.format(
                 "Failed to reconnect to the target system after %d times, stopping current pipe task %s...",
                 MAX_RETRY_TIMES, taskID);
-        LOGGER.warn(errorMessage);
+        LOGGER.warn(errorMessage, throwable);
         lastFailedCause = throwable;
 
         if (lastEvent instanceof EnrichedEvent) {
           ((EnrichedEvent) lastEvent)
-              .reportException(new PipeRuntimeCriticalException(errorMessage));
+              .reportException(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
         }
 
         // although the pipe task will be stopped, we still don't release the last event here
@@ -141,7 +142,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
 
     // handle other exceptions as usual
-    super.onFailure(throwable);
+    super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
   @Override
