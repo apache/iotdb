@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.Callable;
@@ -34,17 +33,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class WrappedSingleThreadScheduledExecutor
     implements ScheduledExecutorService, WrappedSingleThreadScheduledExecutorMBean {
   private final String mbeanName;
   ScheduledExecutorService service;
-  private final AtomicInteger taskCount = new AtomicInteger(0);
-  private final AtomicInteger runCount = new AtomicInteger(0);
 
   public WrappedSingleThreadScheduledExecutor(ScheduledExecutorService service, String mbeanName) {
     this.service = service;
@@ -57,32 +54,26 @@ public class WrappedSingleThreadScheduledExecutor
 
   @Override
   public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
-    taskCount.incrementAndGet();
-    return service.schedule(WrappedRunnable.wrapWithCount(command, runCount), delay, unit);
+    return service.schedule(WrappedRunnable.wrap(command), delay, unit);
   }
 
   @Override
   public <V> ScheduledFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
-    taskCount.incrementAndGet();
-    return service.schedule(WrappedCallable.wrapWithCount(callable, runCount), delay, unit);
+    return service.schedule(WrappedCallable.wrap(callable), delay, unit);
   }
 
   @Override
   @SuppressWarnings("unsafeThreadSchedule")
   public ScheduledFuture<?> scheduleAtFixedRate(
       Runnable command, long initialDelay, long period, TimeUnit unit) {
-    taskCount.incrementAndGet();
-    return service.scheduleAtFixedRate(
-        WrappedRunnable.wrapWithCount(command, runCount), initialDelay, period, unit);
+    return service.scheduleAtFixedRate(WrappedRunnable.wrap(command), initialDelay, period, unit);
   }
 
   @Override
   @SuppressWarnings("unsafeThreadSchedule")
   public ScheduledFuture<?> scheduleWithFixedDelay(
       Runnable command, long initialDelay, long delay, TimeUnit unit) {
-    taskCount.incrementAndGet();
-    return service.scheduleWithFixedDelay(
-        WrappedRunnable.wrapWithCount(command, runCount), initialDelay, delay, unit);
+    return service.scheduleWithFixedDelay(WrappedRunnable.wrap(command), initialDelay, delay, unit);
   }
 
   @Override
@@ -114,26 +105,24 @@ public class WrappedSingleThreadScheduledExecutor
 
   @Override
   public <T> Future<T> submit(Callable<T> task) {
-    return service.submit(WrappedCallable.wrapWithCount(task, runCount));
+    return service.submit(WrappedCallable.wrap(task));
   }
 
   @Override
   public <T> Future<T> submit(Runnable task, T result) {
-    return service.submit(WrappedRunnable.wrapWithCount(task, runCount), result);
+    return service.submit(WrappedRunnable.wrap(task), result);
   }
 
   @Override
   public Future<?> submit(Runnable task) {
-    return service.submit(WrappedRunnable.wrapWithCount(task, runCount));
+    return service.submit(WrappedRunnable.wrap(task));
   }
 
   @Override
   public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
       throws InterruptedException {
     return service.invokeAll(
-        tasks.stream()
-            .map(x -> WrappedCallable.wrapWithCount(x, runCount))
-            .collect(Collectors.toList()));
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()));
   }
 
   @Override
@@ -141,85 +130,75 @@ public class WrappedSingleThreadScheduledExecutor
       Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
       throws InterruptedException {
     return service.invokeAll(
-        tasks.stream()
-            .map(x -> WrappedCallable.wrapWithCount(x, runCount))
-            .collect(Collectors.toList()),
-        timeout,
-        unit);
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()), timeout, unit);
   }
 
   @Override
   public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
       throws InterruptedException, ExecutionException {
     return service.invokeAny(
-        tasks.stream()
-            .map(x -> WrappedCallable.wrapWithCount(x, runCount))
-            .collect(Collectors.toList()));
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()));
   }
 
   @Override
   public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
       throws InterruptedException, ExecutionException, TimeoutException {
     return service.invokeAny(
-        tasks.stream()
-            .map(x -> WrappedCallable.wrapWithCount(x, runCount))
-            .collect(Collectors.toList()),
-        timeout,
-        unit);
+        tasks.stream().map(WrappedCallable::wrap).collect(Collectors.toList()), timeout, unit);
   }
 
   @Override
   public void execute(Runnable command) {
-    service.execute(WrappedRunnable.wrapWithCount(command, runCount));
+    service.execute(WrappedRunnable.wrap(command));
   }
 
   @Override
   public int getCorePoolSize() {
-    return 1;
+    return ((ThreadPoolExecutor) service).getCorePoolSize();
   }
 
   @Override
   public boolean prestartCoreThread() {
-    return false;
+    return ((ThreadPoolExecutor) service).prestartCoreThread();
   }
 
   @Override
   public int getMaximumPoolSize() {
-    return 1;
+    return ((ThreadPoolExecutor) service).getMaximumPoolSize();
   }
 
   @Override
   public Queue<Runnable> getQueue() {
-    return new LinkedList<>();
+    return ((ThreadPoolExecutor) service).getQueue();
   }
 
   @Override
   public int getQueueLength() {
-    return 0;
+    return ((ThreadPoolExecutor) service).getQueue().size();
   }
 
   @Override
   public int getPoolSize() {
-    return 1;
+    return ((ThreadPoolExecutor) service).getPoolSize();
   }
 
   @Override
   public int getActiveCount() {
-    return 1;
+    return ((ThreadPoolExecutor) service).getActiveCount();
   }
 
   @Override
   public int getLargestPoolSize() {
-    return 1;
+    return ((ThreadPoolExecutor) service).getLargestPoolSize();
   }
 
   @Override
   public long getTaskCount() {
-    return taskCount.get();
+    return ((ThreadPoolExecutor) service).getTaskCount();
   }
 
   @Override
   public long getCompletedTaskCount() {
-    return runCount.get();
+    return ((ThreadPoolExecutor) service).getCompletedTaskCount();
   }
 }

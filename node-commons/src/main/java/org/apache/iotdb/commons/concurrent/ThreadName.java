@@ -145,7 +145,8 @@ public enum ThreadName {
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   PIPE_META_SYNC_SERVICE("Pipe-Meta-Sync-Service"),
   PIPE_WAL_RESOURCE_TTL_CHECKER_SERVICE("Pipe-WAL-Resource-TTL-Checker-Service"),
-  ;
+  // the unknown thread name is used for metrics
+  UNKOWN("UNKNOWN");
 
   private final String name;
   private static Set<ThreadName> queryThreadNames =
@@ -354,6 +355,6 @@ public enum ThreadName {
         }
       }
     }
-    return null;
+    return ThreadName.UNKOWN;
   }
 }

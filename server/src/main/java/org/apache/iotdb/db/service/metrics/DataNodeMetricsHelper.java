@@ -57,20 +57,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
-    List<String> threadModules = new ArrayList<>();
-    Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
-    List<String> pools = new ArrayList<>();
-    Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
-    MetricService.getInstance()
-        .addMetricSet(
-            new CpuUsageMetrics(
-                threadModules,
-                pools,
-                x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
-                x -> {
-                  ThreadName pool = ThreadName.getThreadPoolTheThreadBelongs(x);
-                  return pool == null ? "UNKNOWN" : pool.name();
-                }));
+    initCpuMetrics();
     MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
 
     // bind query related metrics
@@ -85,5 +72,19 @@ public class DataNodeMetricsHelper {
 
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());
+  }
+
+  private static void initCpuMetrics() {
+    List<String> threadModules = new ArrayList<>();
+    Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
+    List<String> pools = new ArrayList<>();
+    Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
+    MetricService.getInstance()
+        .addMetricSet(
+            new CpuUsageMetrics(
+                threadModules,
+                pools,
+                x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
+                x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 }
