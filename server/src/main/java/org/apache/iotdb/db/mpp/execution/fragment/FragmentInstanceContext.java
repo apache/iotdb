@@ -355,7 +355,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public void initializeNumOfDrivers(Integer numOfDrivers) {
+  public void initializeNumOfDrivers(int numOfDrivers) {
     // initialize with the num of Drivers
     allDriversClosed = new CountDownLatch(numOfDrivers);
   }
@@ -365,12 +365,14 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void releaseResourceWhenAllDriversAreClosed() {
-    try {
-      allDriversClosed.await();
-    } catch (InterruptedException e) {
-      LOGGER.warn(
-          "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
-      throw new RuntimeException(e);
+    while (true) {
+      try {
+        allDriversClosed.await();
+        break;
+      } catch (InterruptedException e) {
+        LOGGER.warn(
+            "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
+      }
     }
     releaseResource();
   }
