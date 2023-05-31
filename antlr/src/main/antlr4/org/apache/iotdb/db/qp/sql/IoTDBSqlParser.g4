@@ -64,7 +64,7 @@ ddlStatement
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
-    | createLogicalView | dropLogicalView | showLogicalView
+    | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
     ;
 
 dmlStatement
@@ -569,6 +569,14 @@ showLogicalView
 
 dropLogicalView
     : (DELETE | DROP) VIEW prefixPath (COMMA prefixPath)*
+    ;
+
+renameLogicalView
+    : ALTER VIEW prefixPath RENAME TO prefixPath
+    ;
+
+alterLogicalView
+    : ALTER VIEW viewTargetPaths AS viewSourcePaths
     ;
 
 viewSuffixPaths

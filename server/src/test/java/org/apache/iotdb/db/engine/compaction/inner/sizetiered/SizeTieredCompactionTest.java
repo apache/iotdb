@@ -114,7 +114,7 @@ public class SizeTieredCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.updatePlanIndexes((long) i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
@@ -133,7 +133,7 @@ public class SizeTieredCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
@@ -152,7 +152,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+    tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
     tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
@@ -227,7 +227,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource1 = new TsFileResource(file1);
-    tsFileResource1.setStatus(TsFileResourceStatus.NORMAL);
+    tsFileResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
     tsFileResource1.updatePlanIndexes((long) 0);
     TsFileWriter fileWriter1 = new TsFileWriter(tsFileResource1.getTsFile());
     fileWriter1.registerTimeseries(
@@ -255,7 +255,7 @@ public class SizeTieredCompactionTest {
                         + 0
                         + ".tsfile"));
     TsFileResource tsFileResource2 = new TsFileResource(file2);
-    tsFileResource2.setStatus(TsFileResourceStatus.NORMAL);
+    tsFileResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
     tsFileResource2.updatePlanIndexes((long) 1);
     TsFileWriter fileWriter2 = new TsFileWriter(tsFileResource2.getTsFile());
     fileWriter2.registerTimeseries(

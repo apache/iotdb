@@ -21,11 +21,12 @@ package org.apache.iotdb.db.pipe.task.queue;
 
 import org.apache.iotdb.pipe.api.event.Event;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
-public class ListenableUnblockingPendingQueue<E extends Event> extends ListenablePendingQueue<E> {
+public class ListenableUnboundedBlockingPendingQueue<E extends Event>
+    extends ListenableBlockingPendingQueue<E> {
 
-  public ListenableUnblockingPendingQueue() {
-    super(new ConcurrentLinkedQueue<>());
+  public ListenableUnboundedBlockingPendingQueue() {
+    super(new LinkedBlockingQueue<>());
   }
 }

@@ -19,40 +19,24 @@
 
 package org.apache.iotdb.db.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskCollectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 
 public class PipeTaskBuilder {
 
-  private final String pipeName;
-  private final String dataRegionId;
-  private final PipeParameters pipeCollectorParameters;
-  private final PipeParameters pipeProcessorParameters;
-  private final PipeParameters pipeConnectorParameters;
+  private final PipeStaticMeta pipeStaticMeta;
+  private final TConsensusGroupId dataRegionId;
+  private final PipeTaskMeta pipeTaskMeta;
 
-  PipeTaskBuilder(
-      String pipeName,
-      String dataRegionId,
-      PipeParameters pipeCollectorParameters,
-      PipeParameters pipeProcessorParameters,
-      PipeParameters pipeConnectorParameters) {
-    this.pipeName = pipeName;
+  public PipeTaskBuilder(
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId dataRegionId, PipeTaskMeta pipeTaskMeta) {
+    this.pipeStaticMeta = pipeStaticMeta;
     this.dataRegionId = dataRegionId;
-    this.pipeCollectorParameters = pipeCollectorParameters;
-    this.pipeProcessorParameters = pipeProcessorParameters;
-    this.pipeConnectorParameters = pipeConnectorParameters;
-  }
-
-  public PipeTaskBuilder(String dataRegionId, PipeStaticMeta pipeStaticMeta) {
-    this(
-        pipeStaticMeta.getPipeName(),
-        dataRegionId,
-        pipeStaticMeta.getCollectorParameters(),
-        pipeStaticMeta.getProcessorParameters(),
-        pipeStaticMeta.getConnectorParameters());
+    this.pipeTaskMeta = pipeTaskMeta;
   }
 
   public PipeTask build() {
@@ -60,20 +44,26 @@ public class PipeTaskBuilder {
 
     // we first build the collector and connector, then build the processor.
     final PipeTaskCollectorStage collectorStage =
-        new PipeTaskCollectorStage(dataRegionId, pipeCollectorParameters);
+        new PipeTaskCollectorStage(
+            dataRegionId,
+            pipeTaskMeta,
+            pipeStaticMeta.getCreationTime(),
+            pipeStaticMeta.getCollectorParameters());
     final PipeTaskConnectorStage connectorStage =
-        new PipeTaskConnectorStage(pipeConnectorParameters);
+        new PipeTaskConnectorStage(pipeStaticMeta.getConnectorParameters(), pipeTaskMeta);
 
     // the processor connects the collector and connector.
     final PipeTaskProcessorStage processorStage =
         new PipeTaskProcessorStage(
-            pipeName,
+            pipeStaticMeta.getPipeName(),
             dataRegionId,
+            pipeTaskMeta,
             collectorStage.getEventSupplier(),
             collectorStage.getCollectorPendingQueue(),
-            pipeProcessorParameters,
+            pipeStaticMeta.getProcessorParameters(),
             connectorStage.getPipeConnectorPendingQueue());
 
-    return new PipeTask(pipeName, dataRegionId, collectorStage, processorStage, connectorStage);
+    return new PipeTask(
+        pipeStaticMeta.getPipeName(), dataRegionId, collectorStage, processorStage, connectorStage);
   }
 }

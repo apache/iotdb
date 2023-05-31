@@ -19,36 +19,17 @@
 
 package org.apache.iotdb.tsfile.fileSystem;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.FileInputFactory;
-import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.HDFSInputFactory;
-import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.LocalFSInputFactory;
+import org.apache.iotdb.tsfile.fileSystem.fileInputFactory.HybridFileInputFactory;
 import org.apache.iotdb.tsfile.fileSystem.fileOutputFactory.FileOutputFactory;
-import org.apache.iotdb.tsfile.fileSystem.fileOutputFactory.HDFSOutputFactory;
-import org.apache.iotdb.tsfile.fileSystem.fileOutputFactory.LocalFSOutputFactory;
+import org.apache.iotdb.tsfile.fileSystem.fileOutputFactory.HybridFileOutputFactory;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.HDFSFactory;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.LocalFSFactory;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.HybridFSFactory;
 
 public class FSFactoryProducer {
-
-  private static FSType fSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
-
-  private static FSFactory fsFactory;
-  private static FileInputFactory fileInputFactory;
-  private static FileOutputFactory fileOutputFactory;
-
-  static {
-    if (fSType.equals(FSType.HDFS)) {
-      fsFactory = new HDFSFactory();
-      fileInputFactory = new HDFSInputFactory();
-      fileOutputFactory = new HDFSOutputFactory();
-    } else {
-      fsFactory = new LocalFSFactory();
-      fileInputFactory = new LocalFSInputFactory();
-      fileOutputFactory = new LocalFSOutputFactory();
-    }
-  }
+  private static FSFactory fsFactory = new HybridFSFactory();
+  private static FileInputFactory fileInputFactory = new HybridFileInputFactory();
+  private static FileOutputFactory fileOutputFactory = new HybridFileOutputFactory();
 
   public static FSFactory getFSFactory() {
     return fsFactory;
@@ -56,6 +37,10 @@ public class FSFactoryProducer {
 
   public static FileInputFactory getFileInputFactory() {
     return fileInputFactory;
+  }
+
+  public static void setFileInputFactory(FileInputFactory fileInputFactory) {
+    FSFactoryProducer.fileInputFactory = fileInputFactory;
   }
 
   public static FileOutputFactory getFileOutputFactory() {

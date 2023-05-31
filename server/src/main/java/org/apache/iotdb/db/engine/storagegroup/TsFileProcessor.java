@@ -189,11 +189,13 @@ public class TsFileProcessor {
       boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
+    // this.sequence should be assigned at first because `this` will be passed as parameter to other
+    // val later
+    this.sequence = sequence;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.dataRegionInfo = dataRegionInfo;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
-    this.sequence = sequence;
     this.walNode =
         WALManager.getInstance()
             .applyForWALNode(WALManager.getApplicantUniqueId(storageGroupName, sequence));
@@ -301,6 +303,9 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertRowNode.getDeviceID().toStringID(), insertRowNode.getTime());
     }
+
+    tsFileResource.updateProgressIndex(insertRowNode.getProgressIndex());
+
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
@@ -413,6 +418,9 @@ public class TsFileProcessor {
       tsFileResource.updateEndTime(
           insertTabletNode.getDeviceID().toStringID(), insertTabletNode.getTimes()[end - 1]);
     }
+
+    tsFileResource.updateProgressIndex(insertTabletNode.getProgressIndex());
+
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(System.nanoTime() - startTime);
   }
 
@@ -827,13 +835,14 @@ public class TsFileProcessor {
         if (workMemTable != null) {
           logger.info(
               "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile "
-                  + "size: {}, plan index: [{}, {}]",
+                  + "size: {}, plan index: [{}, {}], progress index: {}",
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
               workMemTable.memSize(),
               tsFileResource.getTsFileSize(),
               workMemTable.getMinPlanIndex(),
-              workMemTable.getMaxPlanIndex());
+              workMemTable.getMaxPlanIndex(),
+              tsFileResource.getMaxProgressIndex());
         } else {
           logger.info(
               "{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",

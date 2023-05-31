@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.task.stage;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -49,11 +51,15 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
    * processing, and it also can notify the PipeTaskProcessorStage to start processing data when the
    * queue is not empty.
    */
-  private ListenableUnblockingPendingQueue<Event> collectorPendingQueue;
+  private ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   private final PipeCollector pipeCollector;
 
-  public PipeTaskCollectorStage(String dataRegionId, PipeParameters collectorParameters) {
+  public PipeTaskCollectorStage(
+      TConsensusGroupId dataRegionId,
+      PipeTaskMeta pipeTaskMeta,
+      long creationTime,
+      PipeParameters collectorParameters) {
     // TODO: avoid if-else, use reflection to create collector all the time
     if (collectorParameters
         .getStringOrDefault(
@@ -69,10 +75,11 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       // collector
       this.collectorParameters
           .getAttribute()
-          .put(PipeCollectorConstant.DATA_REGION_KEY, dataRegionId);
+          .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
 
-      collectorPendingQueue = new ListenableUnblockingPendingQueue<>();
-      this.pipeCollector = new IoTDBDataRegionCollector(collectorPendingQueue);
+      collectorPendingQueue = new ListenableUnboundedBlockingPendingQueue<>();
+      this.pipeCollector =
+          new IoTDBDataRegionCollector(pipeTaskMeta, creationTime, collectorPendingQueue);
     } else {
       this.collectorParameters = collectorParameters;
 
@@ -123,7 +130,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
     return pipeCollector::supply;
   }
 
-  public ListenableUnblockingPendingQueue<Event> getCollectorPendingQueue() {
+  public ListenableUnboundedBlockingPendingQueue<Event> getCollectorPendingQueue() {
     return collectorPendingQueue;
   }
 }

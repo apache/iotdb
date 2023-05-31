@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.DeserializedBatchIndexedConsensusRequest;
@@ -84,7 +86,13 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
               batchRequest.getEndSyncIndex(),
               batchRequest.getRequests().size());
       for (IndexedConsensusRequest indexedRequest : batchRequest.getRequests()) {
-        deserializedRequest.add(grabInsertNode(indexedRequest));
+        final PlanNode planNode = grabInsertNode(indexedRequest);
+        if (planNode instanceof ComparableConsensusRequest) {
+          final IoTProgressIndex ioTProgressIndex =
+              new IoTProgressIndex(batchRequest.getSourcePeerId(), indexedRequest.getSearchIndex());
+          ((ComparableConsensusRequest) planNode).setProgressIndex(ioTProgressIndex);
+        }
+        deserializedRequest.add(planNode);
       }
       result = deserializedRequest;
     } else {

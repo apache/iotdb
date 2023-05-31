@@ -188,6 +188,14 @@ public interface ISessionPool {
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException;
 
@@ -201,6 +209,8 @@ public interface ISessionPool {
 
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException;
+
+  String getTimestampPrecision() throws IoTDBConnectionException, StatementExecutionException;
 
   void insertAlignedRecord(
       String multiSeriesId, long time, List<String> multiMeasurementComponents, List<String> values)
@@ -289,6 +299,26 @@ public interface ISessionPool {
       Map<String, String> tags,
       Map<String, String> attributes,
       String measurementAlias)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void createAlignedTimeseries(
+      String deviceId,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<String> measurementAliasList)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void createAlignedTimeseries(
+      String deviceId,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      List<String> measurementAliasList,
+      List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void createMultiTimeseries(
@@ -415,6 +445,9 @@ public interface ISessionPool {
       List<String> paths, long startTime, long endTime, long timeOut)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime)
+      throws StatementExecutionException, IoTDBConnectionException;
+
   SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
@@ -477,6 +510,8 @@ public interface ISessionPool {
   boolean isEnableQueryRedirection();
 
   int getConnectionTimeoutInMs();
+
+  void sortTablet(Tablet tablet) throws IoTDBConnectionException;
 
   TSBackupConfigurationResp getBackupConfiguration()
       throws IoTDBConnectionException, StatementExecutionException;

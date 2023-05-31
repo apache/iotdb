@@ -331,17 +331,16 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     int range = 0;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
+      if (range == 0) {
+        pageRange.add(sortedRowIndex);
+      }
+      range++;
+      if (range == maxNumberOfPointsInPage) {
+        pageRange.add(sortedRowIndex);
+        range = 0;
+      }
 
-      if (sortedRowIndex == list.rowCount() - 1 || time != list.getTime(sortedRowIndex + 1)) {
-        if (range == 0) {
-          pageRange.add(sortedRowIndex);
-        }
-        range++;
-        if (range == maxNumberOfPointsInPage) {
-          pageRange.add(sortedRowIndex);
-          range = 0;
-        }
-      } else {
+      if (sortedRowIndex != list.rowCount() - 1 && time == list.getTime(sortedRowIndex + 1)) {
         if (Objects.isNull(timeDuplicateInfo)) {
           timeDuplicateInfo = new boolean[list.rowCount()];
         }

@@ -156,14 +156,18 @@ public class TsFileIdentifierUT {
 
   @Test
   public void testGetInfoFromFileFromMultiDirs() throws Exception {
+
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    String[] originDataDirs = config.getDataDirs();
+    String[][] originDataDirs = config.getTierDataDirs();
     Class configClass = config.getClass();
-    Field dataDirField = configClass.getDeclaredField("dataDirs");
-    dataDirField.setAccessible(true);
-    dataDirField.set(
+    Field dataDirsField = configClass.getDeclaredField("tierDataDirs");
+    dataDirsField.setAccessible(true);
+    dataDirsField.set(
         config,
-        new String[] {"target" + File.separator + "data1", "target" + File.separator + "data2"});
+        new String[][] {
+          {"target" + File.separator + "data1", "target" + File.separator + "data2"}
+        });
+
     String filePath =
         "sequence"
             + File.separator
@@ -187,7 +191,7 @@ public class TsFileIdentifierUT {
       Assert.assertTrue(testFile.createNewFile());
       Assert.assertTrue(Files.isSameFile(testFile.toPath(), info.getFileFromDataDirs().toPath()));
     } finally {
-      dataDirField.set(config, originDataDirs);
+      dataDirsField.set(config, originDataDirs);
       Files.deleteIfExists(testFile.toPath());
       FileUtils.deleteDirectory(new File("target" + File.separator + "data2"));
     }

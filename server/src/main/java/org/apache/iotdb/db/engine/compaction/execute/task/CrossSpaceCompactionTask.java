@@ -155,6 +155,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         performer.setSummary(summary);
         performer.perform();
 
+        CompactionUtils.updateProgressIndex(
+            targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
         CompactionUtils.moveTargetFile(
             targetTsfileResourceList, false, storageGroupName + "-" + dataRegionId);
         CompactionUtils.combineModsInCrossCompaction(
@@ -305,10 +307,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public void setSourceFilesToCompactionCandidate() {
-    this.selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
-    this.selectedUnsequenceFiles.forEach(
-        x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+  protected List<TsFileResource> getAllSourceTsFiles() {
+    List<TsFileResource> allRelatedFiles = new ArrayList<>();
+    allRelatedFiles.addAll(selectedSequenceFiles);
+    allRelatedFiles.addAll(selectedUnsequenceFiles);
+    return allRelatedFiles;
   }
 
   public List<TsFileResource> getSelectedUnsequenceFiles() {
@@ -396,14 +399,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       for (TsFileResource tsFileResource : tsFileResourceList) {
         tsFileResource.readLock();
         holdReadLockList.add(tsFileResource);
-        if (tsFileResource.isCompacting()
-            || !tsFileResource.isClosed()
-            || !tsFileResource.getTsFile().exists()
-            || tsFileResource.isDeleted()) {
+        if (!tsFileResource.setStatus(TsFileResourceStatus.COMPACTING)) {
           releaseAllLock();
           return false;
         }
-        tsFileResource.setStatus(TsFileResourceStatus.COMPACTING);
       }
     } catch (Throwable e) {
       releaseAllLock();

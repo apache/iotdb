@@ -20,32 +20,36 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata.view;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.metadata.view.ViewPathType;
+import org.apache.iotdb.db.metadata.view.ViewPaths;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /** CREATE LOGICAL VIEW statement. */
 public class CreateLogicalViewStatement extends Statement {
 
   // the paths of this view
-  private viewPaths targetPaths;
+  private ViewPaths targetPaths;
 
   // the paths of sources
-  private viewPaths sourcePaths;
+  private ViewPaths sourcePaths;
   private QueryStatement queryStatement;
+
+  // if not null, all related check and generation will be skipped
+  private ViewExpression viewExpression;
 
   public CreateLogicalViewStatement() {
     super();
     this.statementType = StatementType.CREATE_LOGICAL_VIEW;
-    this.sourcePaths = new viewPaths();
-    this.targetPaths = new viewPaths();
+    this.sourcePaths = new ViewPaths();
+    this.targetPaths = new ViewPaths();
   }
 
   // region Interfaces about setting and getting
@@ -54,6 +58,14 @@ public class CreateLogicalViewStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return this.getTargetPathList();
+  }
+
+  public ViewPaths getTargetPaths() {
+    return targetPaths;
+  }
+
+  public ViewPaths getSourcePaths() {
+    return sourcePaths;
   }
 
   public List<PartialPath> getTargetPathList() {
@@ -69,7 +81,15 @@ public class CreateLogicalViewStatement extends Statement {
     return this.queryStatement;
   }
 
+  public ViewExpression getViewExpression() {
+    return viewExpression;
+  }
+
   // set source paths
+  public void setSourcePaths(ViewPaths sourcePaths) {
+    this.sourcePaths = sourcePaths;
+  }
+
   public void setSourceFullPaths(List<PartialPath> paths) {
     this.sourcePaths.setViewPathType(ViewPathType.FULL_PATH_LIST);
     this.sourcePaths.setFullPathList(paths);
@@ -98,6 +118,10 @@ public class CreateLogicalViewStatement extends Statement {
   }
 
   // set target paths
+  public void setTargetPaths(ViewPaths targetPaths) {
+    this.targetPaths = targetPaths;
+  }
+
   public void setTargetFullPaths(List<PartialPath> paths) {
     this.targetPaths.setViewPathType(ViewPathType.FULL_PATH_LIST);
     this.targetPaths.setFullPathList(paths);
@@ -108,6 +132,10 @@ public class CreateLogicalViewStatement extends Statement {
     this.targetPaths.setPrefixOfPathsGroup(prefixPath);
     this.targetPaths.setSuffixOfPathsGroup(suffixPaths);
     this.targetPaths.generateFullPathsFromPathsGroup();
+  }
+
+  public void setViewExpression(ViewExpression viewExpression) {
+    this.viewExpression = viewExpression;
   }
 
   // endregion
@@ -165,84 +193,4 @@ public class CreateLogicalViewStatement extends Statement {
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateLogicalView(this, context);
   }
-
-  // region private classes
-
-  private enum ViewPathType {
-    FULL_PATH_LIST,
-    PATHS_GROUP,
-    QUERY_STATEMENT
-  }
-
-  /**
-   * A private class to save all paths' info in targetPaths and sourcePaths except query statement.
-   *
-   * <p>fullPathList: CREATE VIEW root.db.device.temp AS root.ln.d.s01 PathGroup: CREATE VIEW
-   * root.db(device.temp, status) AS root.ln(d.s01, wf.abc.s02)
-   */
-  private class viewPaths {
-    public ViewPathType viewPathType = ViewPathType.FULL_PATH_LIST;
-    public List<PartialPath> fullPathList = null;
-    public PartialPath prefixOfPathsGroup = null;
-    public List<PartialPath> suffixOfPathsGroup = null;
-
-    public List<Expression> expressionsList = null;
-
-    public void addPath(PartialPath path) {
-      if (this.fullPathList == null) {
-        this.fullPathList = new ArrayList<>();
-        this.fullPathList.add(path);
-      } else {
-        this.fullPathList.add(path);
-      }
-    }
-
-    public void setFullPathList(List<PartialPath> pathList) {
-      this.fullPathList = pathList;
-    }
-
-    public void setPrefixOfPathsGroup(PartialPath path) {
-      this.prefixOfPathsGroup = path;
-    }
-
-    public void setSuffixOfPathsGroup(List<PartialPath> pathList) {
-      this.suffixOfPathsGroup = pathList;
-    }
-
-    public void setViewPathType(ViewPathType viewPathType) {
-      this.viewPathType = viewPathType;
-    }
-
-    public void generateFullPathsFromPathsGroup() {
-      if (prefixOfPathsGroup != null && suffixOfPathsGroup != null) {
-        this.fullPathList = new ArrayList<>();
-        for (PartialPath suffixPath : suffixOfPathsGroup) {
-          PartialPath pathToAdd = prefixOfPathsGroup.concatPath(suffixPath);
-          this.addPath(pathToAdd);
-        }
-      }
-    }
-
-    public void generateExpressionsIfNecessary() {
-      if (this.viewPathType == ViewPathType.FULL_PATH_LIST
-          || this.viewPathType == ViewPathType.PATHS_GROUP) {
-        if (this.fullPathList != null) {
-          this.expressionsList = new ArrayList<>();
-          for (PartialPath path : this.fullPathList) {
-            TimeSeriesOperand tsExpression = new TimeSeriesOperand(path);
-            this.expressionsList.add(tsExpression);
-          }
-        }
-      } else if (this.viewPathType == ViewPathType.QUERY_STATEMENT) {
-        // no nothing. expressions should be set by setExpressionsList
-      }
-    }
-
-    public void setExpressionsList(List<Expression> expressionsList) {
-      this.expressionsList = expressionsList;
-    }
-    // end of viewPaths
-  }
-
-  // endregion
 }
