@@ -41,8 +41,6 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.TraverserWithLimitOffsetWrapper;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
@@ -59,6 +57,7 @@ import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.query.reader.SchemaReaderLimitOffsetWrapper;
 import org.apache.iotdb.db.metadata.query.reader.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -1031,42 +1030,46 @@ public class MTreeBelowSGCachedImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
-    TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, ICachedMNode> traverser =
-        new TraverserWithLimitOffsetWrapper<>(
-            collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
-    return new ISchemaReader<IDeviceSchemaInfo>() {
+    ISchemaReader<IDeviceSchemaInfo> reader =
+        new ISchemaReader<IDeviceSchemaInfo>() {
 
-      private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
-      private IDeviceSchemaInfo next;
+          private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
+          private IDeviceSchemaInfo next;
 
-      public boolean isSuccess() {
-        return traverser.isSuccess();
-      }
-
-      public Throwable getFailure() {
-        return traverser.getFailure();
-      }
-
-      public void close() {
-        traverser.close();
-      }
-
-      public boolean hasNext() {
-        while (next == null && traverser.hasNext()) {
-          IDeviceSchemaInfo temp = traverser.next();
-          if (filterVisitor.process(showDevicesPlan.getSchemaFilter(), temp)) {
-            next = temp;
+          public boolean isSuccess() {
+            return collector.isSuccess();
           }
-        }
-        return next != null;
-      }
 
-      public IDeviceSchemaInfo next() {
-        IDeviceSchemaInfo result = next;
-        next = null;
-        return result;
-      }
-    };
+          public Throwable getFailure() {
+            return collector.getFailure();
+          }
+
+          public void close() {
+            collector.close();
+          }
+
+          public boolean hasNext() {
+            while (next == null && collector.hasNext()) {
+              IDeviceSchemaInfo temp = collector.next();
+              if (filterVisitor.process(showDevicesPlan.getSchemaFilter(), temp)) {
+                next = temp;
+              }
+            }
+            return next != null;
+          }
+
+          public IDeviceSchemaInfo next() {
+            IDeviceSchemaInfo result = next;
+            next = null;
+            return result;
+          }
+        };
+    if (showDevicesPlan.getLimit() > 0 || showDevicesPlan.getOffset() > 0) {
+      return new SchemaReaderLimitOffsetWrapper<>(
+          reader, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
+    } else {
+      return reader;
+    }
   }
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
@@ -1131,15 +1134,14 @@ public class MTreeBelowSGCachedImpl {
         };
 
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
-    Traverser<ITimeSeriesSchemaInfo, ICachedMNode> traverser;
+    ISchemaReader<ITimeSeriesSchemaInfo> reader =
+        new TimeseriesReaderWithViewFetch(collector, showTimeSeriesPlan.getSchemaFilter());
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
-      traverser =
-          new TraverserWithLimitOffsetWrapper<>(
-              collector, showTimeSeriesPlan.getLimit(), showTimeSeriesPlan.getOffset());
+      return new SchemaReaderLimitOffsetWrapper<>(
+          reader, showTimeSeriesPlan.getLimit(), showTimeSeriesPlan.getOffset());
     } else {
-      traverser = collector;
+      return reader;
     }
-    return new TimeseriesReaderWithViewFetch(traverser, showTimeSeriesPlan.getSchemaFilter());
   }
 
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
