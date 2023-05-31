@@ -118,7 +118,7 @@ public abstract class TernaryExpression extends Expression {
     secondExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
     thirdExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
-    final String digest = toString();
+    final String digest = getExpressionString();
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }

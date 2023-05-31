@@ -90,7 +90,7 @@ public class PrimitiveArrayManager {
     int totalDataTypeSize = 0;
     for (TSDataType dataType : TSDataType.values()) {
       // VECTOR is ignored
-      if (dataType.equals(TSDataType.VECTOR)) {
+      if (dataType.equals(TSDataType.VECTOR) || dataType.equals(TSDataType.UNKNOWN)) {
         continue;
       }
       totalDataTypeSize += dataType.getDataTypeSize();

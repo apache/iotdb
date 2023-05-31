@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.core.connector.manager;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.IoTDBThriftConnectorV1;
@@ -46,9 +45,7 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      PipeConnectorSubtaskExecutor executor,
-      PipeParameters pipeConnectorParameters,
-      PipeTaskMeta taskMeta) {
+      PipeConnectorSubtaskExecutor executor, PipeParameters pipeConnectorParameters) {
     final String attributeSortedString =
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
@@ -81,7 +78,7 @@ public class PipeConnectorSubtaskManager {
           new BoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
       final PipeConnectorSubtask pipeConnectorSubtask =
-          new PipeConnectorSubtask(attributeSortedString, taskMeta, pendingQueue, pipeConnector);
+          new PipeConnectorSubtask(attributeSortedString, pendingQueue, pipeConnector);
       final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
           new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
       attributeSortedString2SubtaskLifeCycleMap.put(

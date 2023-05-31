@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -46,16 +47,27 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public AlignedLastQueryScanNode(PlanNodeId id, AlignedPath seriesPath) {
+  private final String outputViewPath;
+
+  public AlignedLastQueryScanNode(PlanNodeId id, AlignedPath seriesPath, String outputViewPath) {
     super(id);
     this.seriesPath = seriesPath;
+    this.outputViewPath = outputViewPath;
   }
 
   public AlignedLastQueryScanNode(
-      PlanNodeId id, AlignedPath seriesPath, TRegionReplicaSet regionReplicaSet) {
+      PlanNodeId id,
+      AlignedPath seriesPath,
+      String outputViewPath,
+      TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.seriesPath = seriesPath;
+    this.outputViewPath = outputViewPath;
     this.regionReplicaSet = regionReplicaSet;
+  }
+
+  public String getOutputViewPath() {
+    return outputViewPath;
   }
 
   @Override
@@ -86,7 +98,8 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new AlignedLastQueryScanNode(getPlanNodeId(), seriesPath, regionReplicaSet);
+    return new AlignedLastQueryScanNode(
+        getPlanNodeId(), seriesPath, outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -111,12 +124,13 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
     if (!super.equals(o)) return false;
     AlignedLastQueryScanNode that = (AlignedLastQueryScanNode) o;
     return Objects.equals(seriesPath, that.seriesPath)
+        && Objects.equals(outputViewPath, that.outputViewPath)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), seriesPath, regionReplicaSet);
+    return Objects.hash(super.hashCode(), seriesPath, outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -132,22 +146,42 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.ALIGNED_LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
+    if (outputViewPath != null) {
+      ReadWriteIOUtils.write(outputViewPath, byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.ALIGNED_LAST_QUERY_SCAN.serialize(stream);
     seriesPath.serialize(stream);
+    ReadWriteIOUtils.write(outputViewPath == null, stream);
+    if (outputViewPath != null) {
+      ReadWriteIOUtils.write(outputViewPath, stream);
+    }
   }
 
   public static AlignedLastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     AlignedPath partialPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
+    boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
+    String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AlignedLastQueryScanNode(planNodeId, partialPath);
+    return new AlignedLastQueryScanNode(planNodeId, partialPath, outputPathSymbol);
   }
 
   public AlignedPath getSeriesPath() {
     return seriesPath;
+  }
+
+  public String getOutputSymbolForSort() {
+    if (outputViewPath != null) {
+      return outputViewPath;
+    }
+    if (seriesPath.getMeasurementList().size() > 1) {
+      return seriesPath.getDevice();
+    }
+    return seriesPath.transformToPartialPath().getFullPath();
   }
 
   @Override

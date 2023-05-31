@@ -16,25 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.visitor;
 
-package org.apache.iotdb.pipe.api.exception;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 
-import java.util.Objects;
-
-public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
-
-  public PipeRuntimeNonCriticalException(String message) {
-    super(message);
+public class DeviceFilterVisitor extends SchemaFilterVisitor<Boolean, IDeviceSchemaInfo> {
+  @Override
+  public Boolean visitNode(SchemaFilter filter, IDeviceSchemaInfo info) {
+    return true;
   }
 
   @Override
-  public boolean equals(Object obj) {
-    return obj instanceof PipeRuntimeNonCriticalException
-        && Objects.equals(getMessage(), ((PipeRuntimeNonCriticalException) obj).getMessage());
-  }
-
-  @Override
-  public int hashCode() {
-    return getMessage().hashCode();
+  public Boolean visitPathContainsFilter(
+      PathContainsFilter pathContainsFilter, IDeviceSchemaInfo info) {
+    if (pathContainsFilter.getContainString() == null) {
+      return true;
+    }
+    return info.getFullPath().toLowerCase().contains(pathContainsFilter.getContainString());
   }
 }

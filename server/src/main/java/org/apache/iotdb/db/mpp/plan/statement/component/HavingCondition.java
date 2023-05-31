@@ -44,6 +44,6 @@ public class HavingCondition extends StatementNode {
   }
 
   public String toSQLString() {
-    return "HAVING " + predicate.toString();
+    return "HAVING " + predicate.getExpressionString();
   }
 }

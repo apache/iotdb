@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -37,22 +37,17 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFu
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
 
-public class RemoveWildcardInExpressionVisitor extends CartesianProductVisitor<ISchemaTree> {
+public class ConcatDeviceAndBindSchemaForExpressionVisitor
+    extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForExpressionVisitor.Context> {
   @Override
   public List<Expression> visitFunctionExpression(
-      FunctionExpression functionExpression, ISchemaTree schemaTree) {
-    // One by one, remove the wildcards from the input expressions. In most cases, an expression
-    // will produce multiple expressions after removing the wildcards. We use extendedExpressions
-    // to collect the produced expressions.
+      FunctionExpression functionExpression, Context context) {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
-    for (Expression originExpression : functionExpression.getExpressions()) {
-      List<Expression> actualExpressions = process(originExpression, schemaTree);
-      if (actualExpressions.isEmpty()) {
-        // Let's ignore the eval of the function which has at least one non-existence series as
-        // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
-        return Collections.emptyList();
+    for (Expression suffixExpression : functionExpression.getExpressions()) {
+      List<Expression> concatedExpression = process(suffixExpression, context);
+      if (concatedExpression != null && !concatedExpression.isEmpty()) {
+        extendedExpressions.add(concatedExpression);
       }
-      extendedExpressions.add(actualExpressions);
 
       // We just process first input Expression of AggregationFunction,
       // keep other input Expressions as origin and bind Type
@@ -61,39 +56,57 @@ public class RemoveWildcardInExpressionVisitor extends CartesianProductVisitor<I
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
         List<Expression> children = functionExpression.getExpressions();
         bindTypeForAggregationNonSeriesInputExpressions(
-            ((FunctionExpression) functionExpression).getFunctionName(),
-            children,
-            extendedExpressions);
+            functionExpression.getFunctionName(), children, extendedExpressions);
         break;
       }
     }
 
-    // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
-    // removing all wildcards. We use actualExpressions to collect them.
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-
-    return reconstructFunctionExpressions(
-        (FunctionExpression) functionExpression, childExpressionsList);
+    return reconstructFunctionExpressions(functionExpression, childExpressionsList);
   }
 
   @Override
   public List<Expression> visitTimeSeriesOperand(
-      TimeSeriesOperand timeSeriesOperand, ISchemaTree schemaTree) {
-    PartialPath path = timeSeriesOperand.getPath();
-    List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
-    return reconstructTimeSeriesOperands(actualPaths);
+      TimeSeriesOperand timeSeriesOperand, Context context) {
+    PartialPath measurement = timeSeriesOperand.getPath();
+    PartialPath concatPath = context.getDevicePath().concatPath(measurement);
+
+    List<MeasurementPath> actualPaths =
+        context.getSchemaTree().searchMeasurementPaths(concatPath).left;
+    if (actualPaths.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
+    return reconstructTimeSeriesOperands(timeSeriesOperand, noStarPaths);
   }
 
   @Override
   public List<Expression> visitTimeStampOperand(
-      TimestampOperand timestampOperand, ISchemaTree context) {
+      TimestampOperand timestampOperand, Context context) {
     return Collections.singletonList(timestampOperand);
   }
 
   @Override
-  public List<Expression> visitConstantOperand(
-      ConstantOperand constantOperand, ISchemaTree context) {
+  public List<Expression> visitConstantOperand(ConstantOperand constantOperand, Context context) {
     return Collections.singletonList(constantOperand);
+  }
+
+  public static class Context {
+    private final PartialPath devicePath;
+    private final ISchemaTree schemaTree;
+
+    public Context(PartialPath devicePath, ISchemaTree schemaTree) {
+      this.devicePath = devicePath;
+      this.schemaTree = schemaTree;
+    }
+
+    public PartialPath getDevicePath() {
+      return devicePath;
+    }
+
+    public ISchemaTree getSchemaTree() {
+      return schemaTree;
+    }
   }
 }

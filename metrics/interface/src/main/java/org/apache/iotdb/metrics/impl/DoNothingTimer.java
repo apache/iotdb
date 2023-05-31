@@ -20,7 +20,6 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
-import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 
 import java.util.concurrent.TimeUnit;
@@ -37,7 +36,7 @@ public class DoNothingTimer implements Timer, DoNothingMetric {
   }
 
   @Override
-  public Rate getImmutableRate() {
-    return new DoNothingRate();
+  public long getCount() {
+    return 0;
   }
 }

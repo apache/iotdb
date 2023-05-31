@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -78,7 +78,7 @@ public class ConcatExpressionWithSuffixPathsVisitor
         actualPaths.add(concatPath);
       }
     }
-    return reconstructTimeSeriesOperands(actualPaths);
+    return reconstructTimeSeriesOperands(timeSeriesOperand, actualPaths);
   }
 
   @Override

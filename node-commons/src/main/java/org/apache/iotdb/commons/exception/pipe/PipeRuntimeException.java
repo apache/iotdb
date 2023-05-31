@@ -17,8 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.exception;
+package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public abstract class PipeRuntimeException extends PipeException {
@@ -37,4 +42,8 @@ public abstract class PipeRuntimeException extends PipeException {
   public int hashCode() {
     return Objects.hash(getMessage());
   }
+
+  public abstract void serialize(ByteBuffer byteBuffer);
+
+  public abstract void serialize(OutputStream stream) throws IOException;
 }
