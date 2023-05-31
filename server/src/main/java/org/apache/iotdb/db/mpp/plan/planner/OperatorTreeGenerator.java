@@ -96,12 +96,14 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColum
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AlignedUpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.AlignedUpdateViewPathLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateViewPathLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
@@ -2022,8 +2024,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
     TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
     if (timeValuePair == null) { // last value is not cached
-      return createUpdateLastCacheOperator(
-          node, context, node.getSeriesPath(), node.getOutputPathSymbols());
+      return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
     } else if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
         timeValuePair)) { // cached last value is not satisfied
@@ -2033,42 +2034,53 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               || context.getLastQueryTimeFilter() instanceof GtEq);
       // time filter is not > or >=, we still need to read from disk
       if (!isFilterGtOrGe) {
-        return createUpdateLastCacheOperator(
-            node, context, node.getSeriesPath(), node.getOutputPathSymbols());
+        return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
       } else { // otherwise, we just ignore it and return null
         return null;
       }
     } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-      for (String outputPathSymbol : node.getOutputPathSymbols()) {
-        context.addCachedLastValue(timeValuePair, outputPathSymbol);
-      }
+      context.addCachedLastValue(timeValuePair, node.outputPathSymbol());
       return null;
     }
   }
 
   private UpdateLastCacheOperator createUpdateLastCacheOperator(
-      LastQueryScanNode node,
-      LocalExecutionPlanContext context,
-      MeasurementPath fullPath,
-      List<String> outputPathSymbols) {
+      LastQueryScanNode node, LocalExecutionPlanContext context, MeasurementPath fullPath) {
     SeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
-
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                UpdateLastCacheOperator.class.getSimpleName());
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new UpdateLastCacheOperator(
-        operatorContext,
-        lastQueryScan,
-        fullPath,
-        node.getSeriesPath().getSeriesType(),
-        outputPathSymbols,
-        DATA_NODE_SCHEMA_CACHE,
-        context.isNeedUpdateLastCache());
+    if (node.getOutputViewPath() == null) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  UpdateLastCacheOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new UpdateLastCacheOperator(
+          operatorContext,
+          lastQueryScan,
+          fullPath,
+          node.getSeriesPath().getSeriesType(),
+          DATA_NODE_SCHEMA_CACHE,
+          context.isNeedUpdateLastCache());
+    } else {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  UpdateViewPathLastCacheOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new UpdateViewPathLastCacheOperator(
+          operatorContext,
+          lastQueryScan,
+          fullPath,
+          node.getSeriesPath().getSeriesType(),
+          DATA_NODE_SCHEMA_CACHE,
+          context.isNeedUpdateLastCache(),
+          node.getOutputViewPath());
+    }
   }
 
   private SeriesAggregationScanOperator createLastQueryScanOperator(
@@ -2120,8 +2132,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // get series under aligned entity that has not been cached
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
     List<String> measurementList = alignedPath.getMeasurementList();
-    Map<String, List<String>> measurementToOutputSymbolsMap =
-        node.getMeasurementToOutputSymbolsMap();
     for (int i = 0; i < measurementList.size(); i++) {
       PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
       TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
@@ -2139,9 +2149,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           unCachedMeasurementIndexes.add(i);
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-        for (String outputPathSymbol :
-            measurementToOutputSymbolsMap.get(measurementPath.getMeasurement())) {
-          context.addCachedLastValue(timeValuePair, outputPathSymbol);
+        if (node.getOutputViewPath() != null) {
+          context.addCachedLastValue(timeValuePair, node.getOutputViewPath());
+        } else {
+          context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
         }
       }
     }
@@ -2161,21 +2172,38 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     AlignedSeriesAggregationScanOperator lastQueryScan =
         createLastQueryScanOperator(node, unCachedPath, context);
 
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                AlignedUpdateLastCacheOperator.class.getSimpleName());
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new AlignedUpdateLastCacheOperator(
-        operatorContext,
-        lastQueryScan,
-        unCachedPath,
-        node.getMeasurementToOutputSymbolsMap(),
-        DATA_NODE_SCHEMA_CACHE,
-        context.isNeedUpdateLastCache());
+    if (node.getOutputViewPath() == null) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  AlignedUpdateLastCacheOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new AlignedUpdateLastCacheOperator(
+          operatorContext,
+          lastQueryScan,
+          unCachedPath,
+          DATA_NODE_SCHEMA_CACHE,
+          context.isNeedUpdateLastCache());
+    } else {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  AlignedUpdateViewPathLastCacheOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new AlignedUpdateViewPathLastCacheOperator(
+          operatorContext,
+          lastQueryScan,
+          unCachedPath,
+          DATA_NODE_SCHEMA_CACHE,
+          context.isNeedUpdateLastCache(),
+          node.getOutputViewPath());
+    }
   }
 
   private AlignedSeriesAggregationScanOperator createLastQueryScanOperator(

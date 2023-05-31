@@ -111,6 +111,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -205,35 +206,90 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planLast(
       Set<Expression> sourceExpressions, Filter globalTimeFilter, Ordering timeseriesOrdering) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    Map<PartialPath, List<String>> selectedPathToOutputSymbolsMap = new LinkedHashMap<>();
+
+    Map<String, Boolean> deviceAlignedMap = new HashMap<>();
+    Map<String, Boolean> deviceExistViewMap = new HashMap<>();
+    Map<String, Map<String, Expression>> outputPathToSourceExpressionMap =
+        timeseriesOrdering != null
+            ? new TreeMap<>(
+                (s1, s2) ->
+                    timeseriesOrdering == Ordering.ASC ? s1.compareTo(s2) : s2.compareTo(s1))
+            : new LinkedHashMap<>();
     for (Expression sourceExpression : sourceExpressions) {
-      PartialPath selectedPath = ((TimeSeriesOperand) sourceExpression).getPath();
-      selectedPathToOutputSymbolsMap
-          .computeIfAbsent(selectedPath, k -> new ArrayList<>())
-          .add(sourceExpression.getOutputSymbol());
+      MeasurementPath outputPath =
+          (MeasurementPath)
+              (sourceExpression.isViewExpression()
+                  ? sourceExpression.getViewPath()
+                  : ((TimeSeriesOperand) sourceExpression).getPath());
+      String outputDevice = outputPath.getDevice();
+      outputPathToSourceExpressionMap
+          .computeIfAbsent(
+              outputDevice,
+              k ->
+                  timeseriesOrdering != null
+                      ? new TreeMap<>(
+                          (s1, s2) ->
+                              timeseriesOrdering == Ordering.ASC
+                                  ? s1.compareTo(s2)
+                                  : s2.compareTo(s1))
+                      : new LinkedHashMap<>())
+          .put(outputPath.getMeasurement(), sourceExpression);
+      if (!deviceAlignedMap.containsKey(outputDevice)) {
+        deviceAlignedMap.put(outputDevice, outputPath.isUnderAlignedEntity());
+      }
+      deviceExistViewMap.put(
+          outputDevice,
+          deviceExistViewMap.getOrDefault(outputDevice, false)
+              || sourceExpression.isViewExpression());
     }
 
-    List<PartialPath> selectedPaths = new ArrayList<>(selectedPathToOutputSymbolsMap.keySet());
-    List<PartialPath> groupedPaths =
-        timeseriesOrdering == null
-            ? MetaUtils.groupAlignedSeries(selectedPaths)
-            : MetaUtils.groupAlignedSeriesWithOrder(selectedPaths, timeseriesOrdering);
-    for (PartialPath path : groupedPaths) {
-      if (path instanceof MeasurementPath) { // non-aligned series
-        sourceNodeList.add(
-            new LastQueryScanNode(
-                context.getQueryId().genPlanNodeId(),
-                (MeasurementPath) path,
-                selectedPathToOutputSymbolsMap.get(path)));
-      } else if (path instanceof AlignedPath) { // aligned series
-        sourceNodeList.add(
-            new AlignedLastQueryScanNode(
-                context.getQueryId().genPlanNodeId(),
-                (AlignedPath) path,
-                getMeasurementToOutputSymbolsMap(
-                    selectedPathToOutputSymbolsMap, (AlignedPath) path)));
+    for (Map.Entry<String, Map<String, Expression>> deviceMeasurementExpressionEntry :
+        outputPathToSourceExpressionMap.entrySet()) {
+      String outputDevice = deviceMeasurementExpressionEntry.getKey();
+      if (deviceExistViewMap.get(outputDevice)) {
+        // exist view
+        for (Expression sourceExpression : deviceMeasurementExpressionEntry.getValue().values()) {
+          MeasurementPath selectedPath =
+              (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+          if (selectedPath.isUnderAlignedEntity()) { // aligned series
+            sourceNodeList.add(
+                new AlignedLastQueryScanNode(
+                    context.getQueryId().genPlanNodeId(),
+                    new AlignedPath(selectedPath),
+                    sourceExpression.isViewExpression()
+                        ? sourceExpression.getViewPath().getFullPath()
+                        : null));
+          } else { // non-aligned series
+            sourceNodeList.add(
+                new LastQueryScanNode(
+                    context.getQueryId().genPlanNodeId(),
+                    selectedPath,
+                    sourceExpression.isViewExpression()
+                        ? sourceExpression.getViewPath().getFullPath()
+                        : null));
+          }
+        }
       } else {
-        throw new IllegalArgumentException("unexpected path type");
+        if (deviceAlignedMap.get(outputDevice)) {
+          // aligned series
+          AlignedPath alignedPath = new AlignedPath();
+          for (Expression sourceExpression : deviceMeasurementExpressionEntry.getValue().values()) {
+            MeasurementPath selectedPath =
+                (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+            alignedPath.addMeasurement(selectedPath);
+          }
+          sourceNodeList.add(
+              new AlignedLastQueryScanNode(
+                  context.getQueryId().genPlanNodeId(), alignedPath, null));
+        } else {
+          // non-aligned series
+          for (Expression sourceExpression : deviceMeasurementExpressionEntry.getValue().values()) {
+            MeasurementPath selectedPath =
+                (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+            sourceNodeList.add(
+                new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectedPath, null));
+          }
+        }
       }
     }
 

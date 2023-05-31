@@ -36,7 +36,6 @@ import com.google.common.collect.ImmutableList;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -51,26 +50,25 @@ public class LastQueryScanNode extends SeriesSourceNode {
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
 
-  private final List<String> outputPathSymbols;
+  private final String outputViewPath;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public LastQueryScanNode(
-      PlanNodeId id, MeasurementPath seriesPath, List<String> outputPathSymbols) {
+  public LastQueryScanNode(PlanNodeId id, MeasurementPath seriesPath, String outputViewPath) {
     super(id);
     this.seriesPath = seriesPath;
-    this.outputPathSymbols = outputPathSymbols;
+    this.outputViewPath = outputViewPath;
   }
 
   public LastQueryScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
-      List<String> outputPathSymbols,
+      String outputViewPath,
       TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.seriesPath = seriesPath;
-    this.outputPathSymbols = outputPathSymbols;
+    this.outputViewPath = outputViewPath;
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -91,8 +89,8 @@ public class LastQueryScanNode extends SeriesSourceNode {
     return seriesPath;
   }
 
-  public List<String> getOutputPathSymbols() {
-    return outputPathSymbols;
+  public String getOutputViewPath() {
+    return outputViewPath;
   }
 
   @Override
@@ -110,7 +108,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryScanNode(getPlanNodeId(), seriesPath, outputPathSymbols, regionReplicaSet);
+    return new LastQueryScanNode(getPlanNodeId(), seriesPath, outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -135,13 +133,13 @@ public class LastQueryScanNode extends SeriesSourceNode {
     if (!super.equals(o)) return false;
     LastQueryScanNode that = (LastQueryScanNode) o;
     return Objects.equals(seriesPath, that.seriesPath)
-        && Objects.equals(outputPathSymbols, that.outputPathSymbols)
+        && Objects.equals(outputViewPath, that.outputViewPath)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), seriesPath, outputPathSymbols, regionReplicaSet);
+    return Objects.hash(super.hashCode(), seriesPath, outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -157,31 +155,24 @@ public class LastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
-    ReadWriteIOUtils.write(outputPathSymbols.size(), byteBuffer);
-    for (String symbol : outputPathSymbols) {
-      ReadWriteIOUtils.write(symbol, byteBuffer);
-    }
+    ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
+    ReadWriteIOUtils.write(outputViewPath, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LAST_QUERY_SCAN.serialize(stream);
     seriesPath.serialize(stream);
-    ReadWriteIOUtils.write(outputPathSymbols.size(), stream);
-    for (String symbol : outputPathSymbols) {
-      ReadWriteIOUtils.write(symbol, stream);
-    }
+    ReadWriteIOUtils.write(outputViewPath == null, stream);
+    ReadWriteIOUtils.write(outputViewPath, stream);
   }
 
   public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
-    int listSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputPathSymbols = new ArrayList<>();
-    for (int i = 0; i < listSize; i++) {
-      outputPathSymbols.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
+    boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
+    String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryScanNode(planNodeId, partialPath, outputPathSymbols);
+    return new LastQueryScanNode(planNodeId, partialPath, outputPathSymbol);
   }
 
   @Override
@@ -192,5 +183,13 @@ public class LastQueryScanNode extends SeriesSourceNode {
   @Override
   public Filter getPartitionTimeFilter() {
     return null;
+  }
+
+  public String outputPathSymbol() {
+    if (outputViewPath == null) {
+      return seriesPath.getFullPath();
+    } else {
+      return outputViewPath;
+    }
   }
 }

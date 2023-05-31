@@ -35,10 +35,7 @@ import com.google.common.collect.ImmutableList;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
@@ -50,30 +47,27 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  private final Map<String, List<String>> measurementToOutputSymbolsMap;
+  private final String outputViewPath;
 
-  public AlignedLastQueryScanNode(
-      PlanNodeId id,
-      AlignedPath seriesPath,
-      Map<String, List<String>> measurementToOutputSymbolsMap) {
+  public AlignedLastQueryScanNode(PlanNodeId id, AlignedPath seriesPath, String outputViewPath) {
     super(id);
     this.seriesPath = seriesPath;
-    this.measurementToOutputSymbolsMap = measurementToOutputSymbolsMap;
+    this.outputViewPath = outputViewPath;
   }
 
   public AlignedLastQueryScanNode(
       PlanNodeId id,
       AlignedPath seriesPath,
-      Map<String, List<String>> measurementToOutputSymbolsMap,
+      String outputViewPath,
       TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.seriesPath = seriesPath;
-    this.measurementToOutputSymbolsMap = measurementToOutputSymbolsMap;
+    this.outputViewPath = outputViewPath;
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  public Map<String, List<String>> getMeasurementToOutputSymbolsMap() {
-    return measurementToOutputSymbolsMap;
+  public String getOutputViewPath() {
+    return outputViewPath;
   }
 
   @Override
@@ -105,7 +99,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   @Override
   public PlanNode clone() {
     return new AlignedLastQueryScanNode(
-        getPlanNodeId(), seriesPath, measurementToOutputSymbolsMap, regionReplicaSet);
+        getPlanNodeId(), seriesPath, outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -130,14 +124,13 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
     if (!super.equals(o)) return false;
     AlignedLastQueryScanNode that = (AlignedLastQueryScanNode) o;
     return Objects.equals(seriesPath, that.seriesPath)
-        && Objects.equals(measurementToOutputSymbolsMap, that.measurementToOutputSymbolsMap)
+        && Objects.equals(outputViewPath, that.outputViewPath)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        super.hashCode(), seriesPath, measurementToOutputSymbolsMap, regionReplicaSet);
+    return Objects.hash(super.hashCode(), seriesPath, outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -153,45 +146,24 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.ALIGNED_LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
-    ReadWriteIOUtils.write(measurementToOutputSymbolsMap.size(), byteBuffer);
-    for (Map.Entry<String, List<String>> entry : measurementToOutputSymbolsMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
-      ReadWriteIOUtils.write(entry.getValue().size(), byteBuffer);
-      for (String symbol : entry.getValue()) {
-        ReadWriteIOUtils.write(symbol, byteBuffer);
-      }
-    }
+    ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
+    ReadWriteIOUtils.write(outputViewPath, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.ALIGNED_LAST_QUERY_SCAN.serialize(stream);
     seriesPath.serialize(stream);
-    ReadWriteIOUtils.write(measurementToOutputSymbolsMap.size(), stream);
-    for (Map.Entry<String, List<String>> entry : measurementToOutputSymbolsMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      ReadWriteIOUtils.write(entry.getValue().size(), stream);
-      for (String symbol : entry.getValue()) {
-        ReadWriteIOUtils.write(symbol, stream);
-      }
-    }
+    ReadWriteIOUtils.write(outputViewPath == null, stream);
+    ReadWriteIOUtils.write(outputViewPath, stream);
   }
 
   public static AlignedLastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     AlignedPath partialPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
-    Map<String, List<String>> measurementToOutputSymbolsMap = new HashMap<>();
-    int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < mapSize; i++) {
-      String measurement = ReadWriteIOUtils.readString(byteBuffer);
-      int listSize = ReadWriteIOUtils.readInt(byteBuffer);
-      List<String> outputSymbols = new ArrayList<>(listSize);
-      for (int j = 0; j < listSize; j++) {
-        outputSymbols.add(ReadWriteIOUtils.readString(byteBuffer));
-      }
-      measurementToOutputSymbolsMap.put(measurement, outputSymbols);
-    }
+    boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
+    String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AlignedLastQueryScanNode(planNodeId, partialPath, measurementToOutputSymbolsMap);
+    return new AlignedLastQueryScanNode(planNodeId, partialPath, outputPathSymbol);
   }
 
   public AlignedPath getSeriesPath() {

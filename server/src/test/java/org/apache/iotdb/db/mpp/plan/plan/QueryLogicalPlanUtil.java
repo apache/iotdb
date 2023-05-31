@@ -112,46 +112,34 @@ public class QueryLogicalPlanUtil {
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    MeasurementPath d1s1 = (MeasurementPath) schemaMap.get("root.sg.d1.s1");
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), d1s1, Collections.singletonList(d1s1.getFullPath())));
-    MeasurementPath d1s2 = (MeasurementPath) schemaMap.get("root.sg.d1.s2");
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), d1s2, Collections.singletonList(d1s2.getFullPath())));
-    MeasurementPath d1s3 = (MeasurementPath) schemaMap.get("root.sg.d1.s3");
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), d1s3, Collections.singletonList(d1s3.getFullPath())));
-
-    Map<String, List<String>> measurementToOutputSymbolsMap1 = new HashMap<>();
-    measurementToOutputSymbolsMap1.put("s1", Collections.singletonList("root.sg.d2.a.s1"));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null));
     sourceNodeList.add(
         new AlignedLastQueryScanNode(
             queryId.genPlanNodeId(),
             new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1")),
-            measurementToOutputSymbolsMap1));
-    Map<String, List<String>> measurementToOutputSymbolsMap2 = new HashMap<>();
-    measurementToOutputSymbolsMap1.put("s2", Collections.singletonList("root.sg.d2.a.s2"));
+            null));
     sourceNodeList.add(
         new AlignedLastQueryScanNode(
             queryId.genPlanNodeId(),
             new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s2")),
-            measurementToOutputSymbolsMap2));
-
-    MeasurementPath d2s1 = (MeasurementPath) schemaMap.get("root.sg.d2.s1");
+            null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), d2s1, Collections.singletonList(d2s1.getFullPath())));
-    MeasurementPath d2s2 = (MeasurementPath) schemaMap.get("root.sg.d2.s2");
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1"), null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), d2s2, Collections.singletonList(d2s2.getFullPath())));
-    MeasurementPath d2s4 = (MeasurementPath) schemaMap.get("root.sg.d2.s4");
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2"), null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), d2s4, Collections.singletonList(d2s4.getFullPath())));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4"), null));
 
     LastQueryNode lastQueryNode =
         new LastQueryNode(

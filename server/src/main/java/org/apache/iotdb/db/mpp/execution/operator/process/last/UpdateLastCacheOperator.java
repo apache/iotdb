@@ -27,8 +27,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.util.List;
-
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
@@ -39,22 +37,18 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   private final MeasurementPath fullPath;
 
   // dataType for queried time series;
-  private final String dataType;
-
-  private final List<String> outputPathSymbols;
+  protected final String dataType;
 
   public UpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
       MeasurementPath fullPath,
       TSDataType dataType,
-      List<String> outputPathSymbols,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache) {
     super(operatorContext, child, dataNodeSchemaCache, needUpdateCache);
     this.fullPath = fullPath;
     this.dataType = dataType.name();
-    this.outputPathSymbols = outputPathSymbols;
   }
 
   @Override
@@ -83,12 +77,12 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
     }
 
     tsBlockBuilder.reset();
-
-    for (String outputPathSymbol : outputPathSymbols) {
-      LastQueryUtil.appendLastValue(
-          tsBlockBuilder, lastTime, outputPathSymbol, lastValue.getStringValue(), dataType);
-    }
-
+    appendLastValueToTsBlockBuilder(lastTime, lastValue);
     return tsBlockBuilder.build();
+  }
+
+  protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
+    LastQueryUtil.appendLastValue(
+        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
   }
 }

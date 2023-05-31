@@ -201,20 +201,16 @@ public class LastQueryTest {
     for (String path : paths) {
       MeasurementPath selectPath = new MeasurementPath(path);
       if (selectPath.isUnderAlignedEntity()) {
-        Map<String, List<String>> measurementToOutputSymbolsMap = new HashMap<>();
-        measurementToOutputSymbolsMap.put(
-            selectPath.getMeasurement(), Collections.singletonList(selectPath.getFullPath()));
         sourceNodeList.add(
             new AlignedLastQueryScanNode(
                 context.getQueryId().genPlanNodeId(),
                 new AlignedPath(selectPath),
-                measurementToOutputSymbolsMap));
+                null));
       } else {
         sourceNodeList.add(
             new LastQueryScanNode(
                 context.getQueryId().genPlanNodeId(),
-                selectPath,
-                Collections.singletonList(selectPath.getFullPath())));
+                selectPath,null));
       }
     }
 
