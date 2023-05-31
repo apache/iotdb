@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.queue;
+package org.apache.iotdb.metrics;
 
-@FunctionalInterface
-public interface PendingQueueNotEmptyToEmptyListener {
-
-  void onPendingQueueNotEmptyToEmpty();
+public class MetricConstant {
+  // Minimum sampling interval for certain monitoring items
+  // to avoid damage to system performance
+  public static final long UPDATE_INTERVAL = 10_000L;
 }

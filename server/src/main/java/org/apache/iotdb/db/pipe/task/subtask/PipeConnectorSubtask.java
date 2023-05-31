@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.task.queue.ListenableBoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.task.queue.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -38,7 +39,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  private final ListenableBoundedBlockingPendingQueue<Event> inputPendingQueue;
+  private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
 
   private static final int HEARTBEAT_CHECK_INTERVAL = 1000;
@@ -47,7 +48,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
   /** @param taskID connectorAttributeSortedString */
   public PipeConnectorSubtask(
       String taskID,
-      ListenableBoundedBlockingPendingQueue<Event> inputPendingQueue,
+      BoundedBlockingPendingQueue<Event> inputPendingQueue,
       PipeConnector outputPipeConnector) {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;

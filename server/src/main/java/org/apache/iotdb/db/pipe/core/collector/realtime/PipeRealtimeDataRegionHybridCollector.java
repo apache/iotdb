@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -39,13 +39,12 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridCollector.class);
 
-  // TODO: memory control
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
-  private final ListenableUnboundedBlockingPendingQueue<Event> pendingQueue;
+  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
   public PipeRealtimeDataRegionHybridCollector(
-      PipeTaskMeta pipeTaskMeta, ListenableUnboundedBlockingPendingQueue<Event> pendingQueue) {
+      PipeTaskMeta pipeTaskMeta, UnboundedBlockingPendingQueue<Event> pendingQueue) {
     super(pipeTaskMeta);
     this.pendingQueue = pendingQueue;
   }
@@ -86,7 +85,14 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
     }
 
     if (!event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
-      pendingQueue.offer(event);
+      if (!pendingQueue.offer(event)) {
+        LOGGER.warn(
+            String.format(
+                "collectTabletInsertion: pending queue of PipeRealtimeDataRegionHybridCollector %s has reached capacity, discard tablet event %s, current state %s",
+                this, event, event.getTsFileEpoch().getState(this)));
+        // this would not happen, but just in case.
+        // UnboundedBlockingPendingQueue is unbounded, so it should never reach capacity.
+      }
     }
   }
 
@@ -101,11 +107,10 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
           String.format(
-              "Pending Queue of Hybrid Realtime Collector %s has reached capacity, discard TsFile Event %s, current state %s",
+              "collectTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridCollector %s has reached capacity, discard TsFile event %s, current state %s",
               this, event, event.getTsFileEpoch().getState(this)));
       // this would not happen, but just in case.
       // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
-      // TODO: memory control when elements in queue are too many.
     }
   }
 

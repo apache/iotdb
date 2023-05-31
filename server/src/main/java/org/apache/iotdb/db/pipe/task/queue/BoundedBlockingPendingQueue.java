@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.pipe.task.queue;
 
-@FunctionalInterface
-public interface PendingQueueNotFullToFullListener {
+import org.apache.iotdb.pipe.api.event.Event;
 
-  void onPendingQueueNotFullToFull();
+import java.util.concurrent.ArrayBlockingQueue;
+
+public class BoundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
+
+  public BoundedBlockingPendingQueue(int pendingQueueSize) {
+    super(new ArrayBlockingQueue<>(pendingQueueSize));
+  }
 }
