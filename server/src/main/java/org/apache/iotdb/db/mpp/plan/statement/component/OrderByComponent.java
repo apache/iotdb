@@ -106,7 +106,7 @@ public class OrderByComponent extends StatementNode {
   }
 
   public Ordering getTimeseriesOrder() {
-    checkState(timeOrderPriority != -1, "The timeseries order is not specified.");
+    checkState(timeseriesOrderPriority != -1, "The timeseries order is not specified.");
     return sortItemList.get(timeseriesOrderPriority).getOrdering();
   }
 

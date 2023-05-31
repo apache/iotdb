@@ -50,6 +50,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final SchemaFilter schemaFilter;
 
   private final Map<Integer, Template> templateMap;
+  private static final String viewTypeOfLogicalView = "logical";
+  private static final String viewTypeOfNonView = "";
 
   TimeSeriesSchemaSource(
       PartialPath pathPattern,
@@ -97,7 +99,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     if (series.isLogicalView()) {
       builder.writeNullableText(4, null);
       builder.writeNullableText(5, null);
-      builder.writeNullableText(10, "logical");
+      builder.writeNullableText(10, viewTypeOfLogicalView);
     } else {
       builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
       builder.writeNullableText(5, series.getSchema().getCompressor().toString());
@@ -107,6 +109,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     builder.writeNullableText(7, mapToString(series.getAttributes()));
     builder.writeNullableText(8, deadbandInfo.left);
     builder.writeNullableText(9, deadbandInfo.right);
+    builder.writeNullableText(10, viewTypeOfNonView);
     builder.declarePosition();
   }
 

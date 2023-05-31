@@ -32,7 +32,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
 
   private FlushTaskPoolManager() {
     int threadCnt = IoTDBDescriptor.getInstance().getConfig().getFlushThreadCount();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
+    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH.getName());
   }
 
   public static FlushTaskPoolManager getInstance() {
@@ -53,8 +53,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
   public void start() {
     if (pool == null) {
       int threadCnt = IoTDBDescriptor.getInstance().getConfig().getFlushThreadCount();
-      pool =
-          IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
+      pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH.getName());
     }
 
     LOGGER.info("Flush task manager started.");

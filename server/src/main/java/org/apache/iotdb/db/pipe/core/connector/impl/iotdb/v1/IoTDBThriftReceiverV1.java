@@ -228,9 +228,19 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
                     req.getFileLength(), writingFileWriter.length())));
       }
 
-      writingFileWriter.close();
-
       final LoadTsFileStatement statement = new LoadTsFileStatement(writingFile.getAbsolutePath());
+
+      // 1.The writing file writer must be closed, otherwise it may cause concurrent errors during
+      // the process of loading tsfile when parsing tsfile.
+      //
+      // 2.The writing file must be set to null, otherwise if the next passed tsfile has the same
+      // name as the current tsfile, it will bypass the judgment logic of
+      // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
+      // loaded file. Since the writing file writer has already been closed, it will throw a Stream
+      // Close exception.
+      writingFileWriter.close();
+      writingFile = null;
+
       statement.setDeleteAfterLoad(true);
       statement.setVerifySchema(true);
       statement.setAutoCreateDatabase(false);

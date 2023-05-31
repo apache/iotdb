@@ -162,13 +162,19 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
     for (int i = 0; i < delayedLogicalViewList.size(); i++) {
       ViewExpression viewExpression = viewExpressionList.get(i);
-      Expression expression = transformToExpressionVisitor.process(viewExpression, null);
-      expression = completeMeasurementSchemaVisitor.process(expression, schemaTree);
-      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, expression);
+      Expression expression = null;
+      boolean viewIsBroken = false;
+      try {
+        expression = transformToExpressionVisitor.process(viewExpression, null);
+        expression = completeMeasurementSchemaVisitor.process(expression, schemaTree);
+        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, expression);
+      } catch (Exception e) {
+        viewIsBroken = true;
+      }
       delayedLogicalViewList
           .get(i)
           .getSchema()
-          .setType(expressionTypes.get(NodeRef.of(expression)));
+          .setType(viewIsBroken ? TSDataType.UNKNOWN : expressionTypes.get(NodeRef.of(expression)));
       if (FILTER_VISITOR.process(schemaFilter, delayedLogicalViewList.get(i))) {
         cachedViewList.add(delayedLogicalViewList.get(i));
       }

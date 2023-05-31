@@ -300,15 +300,13 @@ public class TsFileResourceList implements List<TsFileResource> {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     while (currIndex != index) {
-      if (currTsFileResource.next == null) {
+      if (currTsFileResource != null && currTsFileResource.next == null) {
         if (currIndex == index - 1) {
           insertAfter(currTsFileResource, element);
           return element;
         } else {
           throw new ArrayIndexOutOfBoundsException(currIndex);
         }
-      } else {
-        currTsFileResource = currTsFileResource.next;
       }
       currIndex++;
     }
@@ -357,15 +355,11 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   public List<TsFileResource> getArrayList() {
     List<TsFileResource> list = new ArrayList<>();
-    if (header == null) {
-      return list;
-    }
     TsFileResource current = header;
-    while (current.next != null) {
+    while (current != null) {
       list.add(current);
       current = current.next;
     }
-    list.add(current);
     return list;
   }
 

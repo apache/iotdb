@@ -304,7 +304,7 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 		}
 		times := make([]time.Time, len(queryDataResp.Timestamps))
 		for c := 0; c < len(queryDataResp.Timestamps); c++ {
-			times[c] = time.Unix(queryDataResp.Timestamps[c]/1000, 0)
+			times[c] = time.Unix(0,queryDataResp.Timestamps[c]*1000000)
 		}
 		values := recoverType(queryDataResp.Values[i])
 		frame.Fields = append(frame.Fields,

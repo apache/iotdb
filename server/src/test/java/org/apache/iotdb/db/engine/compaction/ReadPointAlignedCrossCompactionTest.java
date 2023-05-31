@@ -72,7 +72,7 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After

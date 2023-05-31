@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.core.event.view.collector;
 
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.task.queue.ListenableBoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -29,7 +29,7 @@ import java.util.Queue;
 
 public class PipeEventCollector implements EventCollector {
 
-  private final ListenableBoundedBlockingPendingQueue<Event> pendingQueue;
+  private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
   // buffer queue is used to store events that are not offered to pending queue
   // because the pending queue is full. when pending queue is full, pending queue
@@ -39,7 +39,7 @@ public class PipeEventCollector implements EventCollector {
   // events before events in buffer queue are offered to pending queue.
   private final Queue<Event> bufferQueue;
 
-  public PipeEventCollector(ListenableBoundedBlockingPendingQueue<Event> pendingQueue) {
+  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
     bufferQueue = new LinkedList<>();
   }
@@ -62,17 +62,6 @@ public class PipeEventCollector implements EventCollector {
 
     if (!pendingQueue.offer(event)) {
       bufferQueue.offer(event);
-    }
-  }
-
-  public synchronized void tryCollectBufferedEvents() {
-    while (!bufferQueue.isEmpty()) {
-      final Event bufferedEvent = bufferQueue.peek();
-      if (pendingQueue.offer(bufferedEvent)) {
-        bufferQueue.poll();
-      } else {
-        return;
-      }
     }
   }
 }

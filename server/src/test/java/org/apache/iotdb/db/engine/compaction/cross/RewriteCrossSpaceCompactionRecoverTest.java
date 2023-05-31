@@ -64,7 +64,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After

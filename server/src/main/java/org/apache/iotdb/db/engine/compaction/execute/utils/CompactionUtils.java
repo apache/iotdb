@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.engine.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -122,9 +122,8 @@ public class CompactionUtils {
       modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
       if (modifications.size() > 0) {
-        TsFileMetricManager.getInstance().increaseModFileNum(1);
-        TsFileMetricManager.getInstance()
-            .increaseModFileSize(targetResource.getModFile().getSize());
+        FileMetrics.getInstance().increaseModFileNum(1);
+        FileMetrics.getInstance().increaseModFileSize(targetResource.getModFile().getSize());
       }
       modifications.removeAll(seqModifications);
     }
@@ -145,8 +144,8 @@ public class CompactionUtils {
     }
     updateOneTargetMods(targetTsFile, modifications);
     if (modifications.size() > 0) {
-      TsFileMetricManager.getInstance().increaseModFileNum(1);
-      TsFileMetricManager.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
+      FileMetrics.getInstance().increaseModFileNum(1);
+      FileMetrics.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
     }
   }
 
@@ -209,9 +208,8 @@ public class CompactionUtils {
 
       ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
       if (normalModification.exists()) {
-        TsFileMetricManager.getInstance().decreaseModFileNum(1);
-        TsFileMetricManager.getInstance()
-            .decreaseModFileSize(tsFileResource.getModFile().getSize());
+        FileMetrics.getInstance().decreaseModFileNum(1);
+        FileMetrics.getInstance().decreaseModFileSize(tsFileResource.getModFile().getSize());
         normalModification.remove();
       }
     }
