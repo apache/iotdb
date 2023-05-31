@@ -62,10 +62,13 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowNodesResult;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.query.reader.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.visitor.DeviceFilterVisitor;
 import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -867,11 +870,13 @@ public class MTreeBelowSGMemoryImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
-    collector.setSchemaFilter(showDevicesPlan.getSchemaFilter());
     TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, IMemMNode> traverser =
         new TraverserWithLimitOffsetWrapper<>(
             collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
     return new ISchemaReader<IDeviceSchemaInfo>() {
+
+      private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
+      private IDeviceSchemaInfo next;
 
       public boolean isSuccess() {
         return traverser.isSuccess();
@@ -886,11 +891,19 @@ public class MTreeBelowSGMemoryImpl {
       }
 
       public boolean hasNext() {
-        return traverser.hasNext();
+        while (next == null && traverser.hasNext()) {
+          IDeviceSchemaInfo temp = traverser.next();
+          if (filterVisitor.process(showDevicesPlan.getSchemaFilter(), temp)) {
+            next = temp;
+          }
+        }
+        return next != null;
       }
 
       public IDeviceSchemaInfo next() {
-        return traverser.next();
+        IDeviceSchemaInfo result = next;
+        next = null;
+        return result;
       }
     };
   }
@@ -946,11 +959,16 @@ public class MTreeBelowSGMemoryImpl {
               public PartialPath getPartialPath() {
                 return getPartialPathFromRootToNode(node.getAsMNode());
               }
+
+              @Override
+              public ITimeSeriesSchemaInfo snapshot() {
+                return new TimeseriesSchemaInfo(
+                    node, getPartialPath(), getTags(), getAttributes(), isUnderAlignedDevice());
+              }
             };
           }
         };
 
-    collector.setSchemaFilter(showTimeSeriesPlan.getSchemaFilter());
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     Traverser<ITimeSeriesSchemaInfo, IMemMNode> traverser;
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
@@ -960,28 +978,7 @@ public class MTreeBelowSGMemoryImpl {
     } else {
       traverser = collector;
     }
-    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-
-      public boolean isSuccess() {
-        return traverser.isSuccess();
-      }
-
-      public Throwable getFailure() {
-        return traverser.getFailure();
-      }
-
-      public void close() {
-        traverser.close();
-      }
-
-      public boolean hasNext() {
-        return traverser.hasNext();
-      }
-
-      public ITimeSeriesSchemaInfo next() {
-        return traverser.next();
-      }
-    };
+    return new TimeseriesReaderWithViewFetch(traverser, showTimeSeriesPlan.getSchemaFilter());
   }
 
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
