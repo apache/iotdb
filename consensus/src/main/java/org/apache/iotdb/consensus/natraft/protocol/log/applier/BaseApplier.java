@@ -28,6 +28,7 @@ import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.ConfigChangeEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.RequestEntry;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /** BaseApplier use PlanExecutor to execute PhysicalPlans. */
@@ -53,6 +54,10 @@ public class BaseApplier implements LogApplier {
       if (e instanceof RequestEntry) {
         RequestEntry requestLog = (RequestEntry) e;
         IConsensusRequest request = requestLog.getRequest();
+        if (e.createTime > 0) {
+          Statistic.LOG_DISPATCHER_FROM_CREATE_TO_APPLYING.calOperationCostTimeFromStart(
+              e.createTime);
+        }
         if (!member.getConfig().isIgnoreStateMachine()) {
           TSStatus status = applyRequest(request);
           if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

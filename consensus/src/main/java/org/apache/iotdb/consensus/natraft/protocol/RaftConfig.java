@@ -41,7 +41,7 @@ public class RaftConfig {
   private int minNumOfLogsInMem = 1000;
   private int entryDefaultSerializationBufferSize = 16 * 1024;
   private long maxMemorySizeForRaftLog = 512 * 1024 * 1024L;
-  private int logDeleteCheckIntervalSecond = 1;
+  private int logDeleteCheckIntervalSecond = 5;
   private boolean enableRaftLogPersistence = true;
   private int catchUpTimeoutMS = 60_000;
   private boolean useFollowerSlidingWindow = false;

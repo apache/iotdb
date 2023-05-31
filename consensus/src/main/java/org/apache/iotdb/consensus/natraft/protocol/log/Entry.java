@@ -140,8 +140,7 @@ public abstract class Entry implements Comparable<Entry> {
     this.applied = applied;
 
     if (createTime != 0) {
-      applyTime = System.nanoTime();
-      Statistic.LOG_DISPATCHER_FROM_CREATE_TO_APPLIED.add(applyTime - createTime);
+      Statistic.LOG_DISPATCHER_FROM_CREATE_TO_APPLIED.calOperationCostTimeFromStart(createTime);
     }
     if (fromThisNode) {
       synchronized (this) {

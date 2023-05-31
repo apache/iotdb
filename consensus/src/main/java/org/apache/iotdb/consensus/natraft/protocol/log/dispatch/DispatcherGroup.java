@@ -132,4 +132,18 @@ public class DispatcherGroup {
   public RateLimiter getRateLimiter() {
     return rateLimiter;
   }
+
+  @Override
+  public String toString() {
+    return "{"
+        + "rate="
+        + rateLimiter.getRate()
+        + ", delayed="
+        + isDelayed()
+        + ", queueSize="
+        + entryQueue.size()
+        + ", dispatcherNum="
+        + dynamicThreadGroup.getThreadCnt().get()
+        + "}";
+  }
 }

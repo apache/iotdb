@@ -360,6 +360,12 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_APPLYING(
+        LOG_DISPATCHER,
+        "from create to applying",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     LOG_DISPATCHER_FROM_CREATE_TO_APPLIED(
         LOG_DISPATCHER,
         "from create to applied",
@@ -421,8 +427,22 @@ public class Timer {
     RAFT_FOLLOWER_STRONG_ACCEPT(
         RAFT_MEMBER_SENDER, "follower strong accept", TIME_SCALE, true, ROOT),
     ENGINE_INSERT_TABLET(ENGINE_INSERTION, "insert tablet", TIME_SCALE, true, ROOT),
-    ENGINE_INSERT_TABLET_LOCK(ENGINE_INSERTION, "insert tablet: lock", TIME_SCALE, true, ROOT),
-    ENGINE_INSERT_TABLET_LOOP(ENGINE_INSERTION, "insert tablet: loop", TIME_SCALE, true, ROOT);
+    ENGINE_INSERT_TABLET_LOCK(
+        ENGINE_INSERTION, "insert tablet: lock", TIME_SCALE, true, ENGINE_INSERT_TABLET),
+    ENGINE_INSERT_TABLET_LOOP(
+        ENGINE_INSERTION, "insert tablet: loop", TIME_SCALE, true, ENGINE_INSERT_TABLET),
+    ENGINE_INSERT_TABLET_PROCESSOR(
+        ENGINE_INSERTION, "insert tablet: processor", TIME_SCALE, true, ENGINE_INSERT_TABLET_LOOP),
+    ENGINE_INSERT_TABLET_MEMCON(
+        ENGINE_INSERTION,
+        "insert tablet: memory control",
+        TIME_SCALE,
+        true,
+        ENGINE_INSERT_TABLET_LOOP),
+    ENGINE_INSERT_TABLET_WAL(
+        ENGINE_INSERTION, "insert tablet: wal flush", TIME_SCALE, true, ENGINE_INSERT_TABLET_LOOP),
+    ENGINE_INSERT_TABLET_MEMTABLE(
+        ENGINE_INSERTION, "insert tablet: MemTable", TIME_SCALE, true, ENGINE_INSERT_TABLET_LOOP);
 
     String className;
     String blockName;

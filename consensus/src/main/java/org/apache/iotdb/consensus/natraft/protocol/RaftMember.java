@@ -1402,19 +1402,16 @@ public class RaftMember {
   public RaftMemberReport genMemberReport() {
     long prevLastLogIndex = lastReportIndex;
     lastReportIndex = logManager.getLastLogIndex();
+    String dispatcherReport = isLeader() ? logDispatcher.toString() : "";
     return new RaftMemberReport(
         status.role,
         status.getLeader(),
         status.getTerm().get(),
-        logManager.getLastLogTerm(),
-        lastReportIndex,
-        logManager.getCommitLogIndex(),
-        logManager.getCommitLogTerm(),
-        logManager.getPersistedLogIndex(),
+        logManager.toString(),
+        dispatcherReport,
         readOnly,
         heartbeatThread.getLastHeartbeatReceivedTime(),
-        prevLastLogIndex,
-        logManager.getAppliedIndex(),
+        lastReportIndex - prevLastLogIndex,
         requestEntryAllocator.toString());
   }
 }

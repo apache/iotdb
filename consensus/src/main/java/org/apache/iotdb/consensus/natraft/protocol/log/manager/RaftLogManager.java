@@ -143,6 +143,7 @@ public abstract class RaftLogManager {
     int logDeleteCheckIntervalSecond = config.getLogDeleteCheckIntervalSecond();
 
     if (logDeleteCheckIntervalSecond > 0) {
+      logger.info("{}: starting log delete service", name);
       this.deleteLogFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               deleteLogExecutorService,
@@ -778,6 +779,7 @@ public abstract class RaftLogManager {
   }
 
   public void close() {
+    logger.info("{}: closing log manager", name);
     getStableEntryManager().updateMeta(commitIndex, appliedIndex);
     getStableEntryManager().close();
     if (deleteLogExecutorService != null) {
@@ -842,7 +844,12 @@ public abstract class RaftLogManager {
     } finally {
       lock.writeLock().unlock();
     }
-    recycleEntries(removedEntries);
+
+    try {
+      recycleEntries(removedEntries);
+    } catch (Exception e) {
+      logger.error("{}, error occurred when checking delete log", name, e);
+    }
   }
 
   private List<Entry> innerDeleteLog(int sizeToReserve) {
@@ -852,23 +859,23 @@ public abstract class RaftLogManager {
     if (removeSize <= 0) {
       return Collections.emptyList();
     }
-
-    long compactIndex = getFirstIndex() + removeSize;
-    logger.debug(
-        "{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, committedLogSize "
+    logger.info(
+        "{}: Before compaction index {}-{}, removeSize {}, committedLogSize "
             + "{}, maxAppliedLog {}",
         name,
         getFirstIndex(),
         getLastLogIndex(),
-        compactIndex,
         removeSize,
         commitIndex - getFirstIndex(),
         appliedIndex);
+
+    long compactIndex = getFirstIndex() + removeSize;
+
     List<Entry> removedEntries = compactEntries(compactIndex);
     if (config.isEnableRaftLogPersistence()) {
       getStableEntryManager().removeCompactedEntries(compactIndex);
     }
-    logger.debug(
+    logger.info(
         "{}: After compaction index {}-{}, committedLogSize {}",
         name,
         getFirstIndex(),
@@ -893,7 +900,7 @@ public abstract class RaftLogManager {
     }
     int index = (int) (compactIndex - firstIndex);
     for (int i = 0; i < index; i++) {
-      committedEntrySize -= entries.get(0).estimateSize();
+      committedEntrySize -= entries.get(i).estimateSize();
     }
     List<Entry> removedEntries = Collections.emptyList();
     if (index > 0) {
@@ -997,5 +1004,28 @@ public abstract class RaftLogManager {
 
   public long getPersistedLogIndex() {
     return stableEntryManager.getPersistedLogIndex();
+  }
+
+  @Override
+  public String toString() {
+    Entry lastEntry = getLastEntry();
+    return "RaftLogManager{"
+        + "firstIndex="
+        + getFirstIndex()
+        + ", lastIndex="
+        + lastEntry.getCurrLogIndex()
+        + ", lastTerm="
+        + lastEntry.getCurrLogIndex()
+        + ", persistedIndex="
+        + getPersistedLogIndex()
+        + ", commitIndex="
+        + commitIndex
+        + ", appliedIndex="
+        + appliedIndex
+        + ", entryNum="
+        + entries.size()
+        + ", logApplier="
+        + logApplier
+        + '}';
   }
 }

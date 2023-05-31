@@ -394,7 +394,7 @@ public class RaftConsensus implements IConsensus {
         List<RaftMemberReport> reports = new ArrayList<>();
         for (RaftMember value : stateMachineMap.values()) {
           RaftMemberReport raftMemberReport = value.genMemberReport();
-          if (raftMemberReport.getPrevLastLogIndex() != raftMemberReport.getLastLogIndex()) {
+          if (raftMemberReport.getLogIncrement() > 0) {
             reports.add(raftMemberReport);
           }
         }

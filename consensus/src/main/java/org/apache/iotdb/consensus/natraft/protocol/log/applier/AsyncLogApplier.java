@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.logtype.RequestEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -48,6 +49,7 @@ public class AsyncLogApplier implements LogApplier {
   // consumers nonempty, and each time a consumer becomes empty, this will be notified so the
   // waiting log can start another round of check
   private final Object consumerEmptyCondition = new Object();
+  private volatile boolean waitingForDraining = false;
 
   public AsyncLogApplier(LogApplier embeddedApplier, String name, RaftConfig config) {
     this.embeddedApplier = embeddedApplier;
@@ -100,6 +102,7 @@ public class AsyncLogApplier implements LogApplier {
   }
 
   private void drainConsumers() {
+    waitingForDraining = true;
     synchronized (consumerEmptyCondition) {
       while (!allConsumersEmpty()) {
         // wait until all consumers empty
@@ -107,10 +110,12 @@ public class AsyncLogApplier implements LogApplier {
           consumerEmptyCondition.wait(5);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
+          waitingForDraining = false;
           return;
         }
       }
     }
+    waitingForDraining = false;
   }
 
   private boolean allConsumersEmpty() {
@@ -125,6 +130,11 @@ public class AsyncLogApplier implements LogApplier {
     return true;
   }
 
+  @Override
+  public String toString() {
+    return "AsyncLogApplier{" + "consumers=" + Arrays.toString(consumers) + '}';
+  }
+
   private void applyInternal(Entry e) {
     embeddedApplier.apply(e);
   }
@@ -132,8 +142,6 @@ public class AsyncLogApplier implements LogApplier {
   private class DataLogConsumer implements Runnable, Consumer<Entry> {
 
     private BlockingQueue<Entry> logQueue;
-    private volatile long lastLogIndex;
-    private volatile long lastAppliedLogIndex;
     private String name;
 
     public DataLogConsumer(String name, int queueCapacity) {
@@ -142,15 +150,11 @@ public class AsyncLogApplier implements LogApplier {
     }
 
     public boolean isEmpty() {
-      return lastLogIndex == lastAppliedLogIndex;
+      return logQueue.isEmpty();
     }
 
     @Override
     public void run() {
-      // appliers have a higher priority than normal threads (like client threads and low
-      // priority background threads), to assure fast ingestion, but a lower priority than
-      // heartbeat threads
-      Thread.currentThread().setPriority(8);
       if (logger.isDebugEnabled()) {
         Thread.currentThread().setName(name);
       }
@@ -160,8 +164,7 @@ public class AsyncLogApplier implements LogApplier {
           try {
             applyInternal(e);
           } finally {
-            lastAppliedLogIndex = e.getCurrLogIndex();
-            if (isEmpty()) {
+            if (waitingForDraining && isEmpty()) {
               synchronized (consumerEmptyCondition) {
                 consumerEmptyCondition.notifyAll();
               }
@@ -181,29 +184,17 @@ public class AsyncLogApplier implements LogApplier {
     @Override
     public void accept(Entry e) {
       try {
-        lastLogIndex = e.getCurrLogIndex();
         logQueue.put(e);
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
         e.setException(ex);
         e.setApplied(true);
-        lastAppliedLogIndex = e.getCurrLogIndex();
       }
     }
 
     @Override
     public String toString() {
-      return "DataLogConsumer{"
-          + "logQueue="
-          + logQueue.size()
-          + ", lastLogIndex="
-          + lastLogIndex
-          + ", lastAppliedLogIndex="
-          + lastAppliedLogIndex
-          + ", name='"
-          + name
-          + '\''
-          + '}';
+      return "DataLogConsumer{" + "logQueue=" + logQueue.size() + ", name='" + name + '\'' + '}';
     }
   }
 

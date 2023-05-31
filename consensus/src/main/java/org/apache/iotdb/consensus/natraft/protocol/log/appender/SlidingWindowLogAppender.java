@@ -123,7 +123,7 @@ public class SlidingWindowLogAppender implements LogAppender {
         logs.get(0),
         logs.get(logs.size() - 1));
 
-    long startWaitingTime = System.currentTimeMillis();
+    long startWaitingTime = System.nanoTime();
     boolean success;
     while (true) {
       // TODO: Consider memory footprint to execute a precise rejection
@@ -135,8 +135,8 @@ public class SlidingWindowLogAppender implements LogAppender {
       }
       try {
         TimeUnit.MILLISECONDS.sleep(10);
-        if (System.currentTimeMillis() - startWaitingTime
-            > config.getMaxWaitingTimeWhenInsertBlocked()) {
+        if (System.nanoTime() - startWaitingTime
+            > config.getMaxWaitingTimeWhenInsertBlocked() * 100_000L) {
           result.status = Response.RESPONSE_TOO_BUSY;
           return false;
         }
@@ -144,6 +144,7 @@ public class SlidingWindowLogAppender implements LogAppender {
         Thread.currentThread().interrupt();
       }
     }
+    Statistic.RAFT_APPLY_BLOCK.calOperationCostTimeFromStart(startWaitingTime);
     if (success) {
       moveWindowRightward(flushPos, logs.get(logs.size() - 1).getCurrLogIndex());
       result.status = Response.RESPONSE_STRONG_ACCEPT;

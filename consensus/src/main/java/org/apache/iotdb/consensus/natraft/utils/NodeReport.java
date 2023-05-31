@@ -63,43 +63,31 @@ public class NodeReport {
     RaftRole character;
     Peer leader;
     long term;
-    long lastLogTerm;
-    long lastLogIndex;
-    long commitIndex;
-    long commitTerm;
-    long persistedIndex;
+    String logManagerReport;
+    String dispatcherReport;
     boolean isReadOnly;
     long lastHeartbeatReceivedTime;
-    long prevLastLogIndex;
-    long maxAppliedLogIndex;
+    long logIncrement;
     String allocatorReport;
 
     public RaftMemberReport(
         RaftRole character,
         Peer leader,
         long term,
-        long lastLogTerm,
-        long lastLogIndex,
-        long commitIndex,
-        long commitTerm,
-        long persistedIndex,
+        String logManagerReport,
+        String dispatcherReport,
         boolean isReadOnly,
         long lastHeartbeatReceivedTime,
-        long prevLastLogIndex,
-        long maxAppliedLogIndex,
+        long logIncrement,
         String allocatorReport) {
       this.character = character;
       this.leader = leader;
       this.term = term;
-      this.lastLogTerm = lastLogTerm;
-      this.lastLogIndex = lastLogIndex;
-      this.commitIndex = commitIndex;
-      this.commitTerm = commitTerm;
-      this.persistedIndex = persistedIndex;
+      this.logManagerReport = logManagerReport;
+      this.dispatcherReport = dispatcherReport;
       this.isReadOnly = isReadOnly;
       this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
-      this.prevLastLogIndex = prevLastLogIndex;
-      this.maxAppliedLogIndex = maxAppliedLogIndex;
+      this.logIncrement = logIncrement;
       this.allocatorReport = allocatorReport;
     }
 
@@ -112,18 +100,10 @@ public class NodeReport {
           + leader
           + ", term="
           + term
-          + ", lastLogTerm="
-          + lastLogTerm
-          + ", lastLogIndex="
-          + lastLogIndex
-          + ", commitIndex="
-          + commitIndex
-          + ", commitTerm="
-          + commitTerm
-          + ", persistedIndex="
-          + persistedIndex
-          + ", appliedLogIndex="
-          + maxAppliedLogIndex
+          + ", "
+          + logManagerReport
+          + ", "
+          + dispatcherReport
           + ", readOnly="
           + isReadOnly
           + ", lastHeartbeat="
@@ -132,52 +112,12 @@ public class NodeReport {
           + ", "
           + allocatorReport
           + ", logIncrement="
-          + (lastLogIndex - prevLastLogIndex)
+          + logIncrement
           + '}';
     }
 
-    public RaftRole getCharacter() {
-      return character;
-    }
-
-    public Peer getLeader() {
-      return leader;
-    }
-
-    public long getTerm() {
-      return term;
-    }
-
-    public long getLastLogTerm() {
-      return lastLogTerm;
-    }
-
-    public long getLastLogIndex() {
-      return lastLogIndex;
-    }
-
-    public long getCommitIndex() {
-      return commitIndex;
-    }
-
-    public long getCommitTerm() {
-      return commitTerm;
-    }
-
-    public boolean isReadOnly() {
-      return isReadOnly;
-    }
-
-    public long getLastHeartbeatReceivedTime() {
-      return lastHeartbeatReceivedTime;
-    }
-
-    public long getPrevLastLogIndex() {
-      return prevLastLogIndex;
-    }
-
-    public long getMaxAppliedLogIndex() {
-      return maxAppliedLogIndex;
+    public long getLogIncrement() {
+      return logIncrement;
     }
   }
 }

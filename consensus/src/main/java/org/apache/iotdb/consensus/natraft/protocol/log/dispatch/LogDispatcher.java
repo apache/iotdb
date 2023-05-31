@@ -187,4 +187,13 @@ public class LogDispatcher {
       value.wakeUp();
     }
   }
+
+  @Override
+  public String toString() {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (Entry<Peer, DispatcherGroup> entry : dispatcherGroupMap.entrySet()) {
+      stringBuilder.append(entry.getKey()).append("->").append(entry.getValue()).append(";");
+    }
+    return "LogDispatcher{" + stringBuilder + "}";
+  }
 }
