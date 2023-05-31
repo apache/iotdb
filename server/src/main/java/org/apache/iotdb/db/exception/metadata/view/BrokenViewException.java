@@ -16,18 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.metadata.view;
 
-package org.apache.iotdb.db.metadata.schemaregion;
-
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 
-public interface ISchemaRegionParams {
+import java.util.List;
 
-  PartialPath getDatabase();
+public class BrokenViewException extends MetadataException {
+  public BrokenViewException(String sourcePath, List<MeasurementPath> matchedPaths) {
+    super(
+        String.format(
+            "View is broken! The source path [%s] maps to unmatched %s path(s): %s.",
+            sourcePath, matchedPaths.size(), matchedPaths.toString()));
+  }
 
-  SchemaRegionId getSchemaRegionId();
-
-  ISchemaEngineStatistics getSchemaEngineStatistics();
+  public BrokenViewException(String viewPath, String sourcePath, List<PartialPath> matchedPaths) {
+    super(
+        String.format(
+            "View [%s] is broken! The source path [%s] maps to unmatched %s path(s): %s.",
+            viewPath, sourcePath, matchedPaths.size(), matchedPaths.toString()));
+  }
 }

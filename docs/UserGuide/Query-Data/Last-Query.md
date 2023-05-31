@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -40,10 +40,10 @@ which means: Query and return the last data points of timeseries prefixPath.path
     ```
     | Time | timeseries | value | dataType |
     ```
-    
+
     **Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore, the column `dataType` is returned also which contains the _real_ type how the value should be interpreted.
 
-- We can use `ORDER BY TIMESERIES (DESC | ASC)` to specify that the result set is sorted in descending/ascending order by timeseries name.
+- We can use `TIME/TIMESERIES/VALUE/DATATYPE (DESC | ASC)` to specify that the result set is sorted in descending/ascending order based on a particular column. When the value column contains multiple types of data, the sorting is based on the string representation of the values.
 
 **Example 1:** get the last point of root.ln.wf01.wt01.status:
 
@@ -72,10 +72,24 @@ Total line number = 2
 It costs 0.002s
 ```
 
-**Example 3:** get the last points of all sensor in root.ln.wf01.wt01, and order the result by the timeseries column desc
+**Example 3:** get the last points of all sensor in root.ln.wf01.wt01, and order the result by the timeseries column in descending order
 
 ```
 IoTDB> select last * from root.ln.wf01.wt01 order by timeseries desc;
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
++-----------------------------+-----------------------------+---------+--------+
+Total line number = 2
+It costs 0.002s
+```
+
+**Example 4：** get the last points of all sensor in root.ln.wf01.wt01, and order the result by the dataType column in descending order
+
+```
+IoTDB> select last * from root.ln.wf01.wt01 order by dataType desc;
 +-----------------------------+-----------------------------+---------+--------+
 |                         Time|                   timeseries|    value|dataType|
 +-----------------------------+-----------------------------+---------+--------+
