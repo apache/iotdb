@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.sync.SyncConnectionException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
@@ -216,7 +216,7 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
     long position = 0;
 
     // Try small piece to rebase the file position.
-    byte[] buffer = new byte[PipeConfig.getInstance().getReadFileBufferSize()];
+    byte[] buffer = new byte[PipeConfig.getInstance().getPipeConnectorReadFileBufferSize()];
     try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);
