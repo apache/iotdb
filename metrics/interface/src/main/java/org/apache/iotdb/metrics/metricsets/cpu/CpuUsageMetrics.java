@@ -25,9 +25,6 @@ import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
@@ -39,7 +36,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.UnaryOperator;
 
 public class CpuUsageMetrics implements IMetricSet {
-  private static final Logger log = LoggerFactory.getLogger(CpuUsageMetrics.class);
   private static final String MODULE_CPU_USAGE = "module_cpu_usage";
   private static final String POOL_CPU_USAGE = "pool_cpu_usage";
   private static final String POOL = "pool";

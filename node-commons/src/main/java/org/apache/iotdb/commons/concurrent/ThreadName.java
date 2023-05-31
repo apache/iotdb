@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -151,7 +148,6 @@ public enum ThreadName {
   ;
 
   private final String name;
-  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
   private static Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -276,88 +272,71 @@ public enum ThreadName {
     return name;
   }
 
-  @SuppressWarnings("java:S6541")
   public static DataNodeThreadModule getModuleTheThreadBelongs(String givenThreadName) {
-    for (ThreadName threadName : queryThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.QUERY;
+    Set<ThreadName>[] threadNameSetList =
+        new Set[] {
+          queryThreadNames,
+          compactionThreadNames,
+          walThreadNames,
+          flushThreadNames,
+          schemaEngineThreadNames,
+          clientServiceThreadNames,
+          iotConsensusThrreadNames,
+          ratisThreadNames,
+          computeThreadNames,
+          syncThreadNames,
+          jvmThreadNames,
+          metricsThreadNames,
+          otherThreadNames
+        };
+    DataNodeThreadModule[] modules =
+        new DataNodeThreadModule[] {
+          DataNodeThreadModule.QUERY,
+          DataNodeThreadModule.COMPACTION,
+          DataNodeThreadModule.WAL,
+          DataNodeThreadModule.FLUSH,
+          DataNodeThreadModule.SCHEMA_ENGINE,
+          DataNodeThreadModule.CLIENT_SERVICE,
+          DataNodeThreadModule.IOT_CONSENSUS,
+          DataNodeThreadModule.RATIS_CONSENSUS,
+          DataNodeThreadModule.COMPUTE,
+          DataNodeThreadModule.SYNC,
+          DataNodeThreadModule.JVM,
+          DataNodeThreadModule.METRICS,
+          DataNodeThreadModule.OTHER
+        };
+
+    for (int i = 0, length = modules.length; i < length; ++i) {
+      if (matchModuleWithThreadNames(threadNameSetList[i], modules[i], givenThreadName) != null) {
+        return modules[i];
       }
     }
+
     if (givenThreadName.contains(MPP_COORDINATOR_SCHEDULED_EXECUTOR.getName())) {
       return DataNodeThreadModule.MPP_SCHEDULE;
-    }
-    for (ThreadName threadName : compactionThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.COMPACTION;
-      }
-    }
-    for (ThreadName threadName : walThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.WAL;
-      }
     }
     if (givenThreadName.contains(MPP_COORDINATOR_WRITE_EXECUTOR.getName())) {
       return DataNodeThreadModule.MPP_WRITE;
     }
-    for (ThreadName threadName : flushThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.FLUSH;
-      }
-    }
-    for (ThreadName threadName : schemaEngineThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.SCHEMA_ENGINE;
-      }
-    }
-    for (ThreadName threadName : clientServiceThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.CLIENT_SERVICE;
-      }
-    }
-    for (ThreadName threadName : iotConsensusThrreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.IOT_CONSENSUS;
-      }
-    }
-    for (ThreadName threadName : ratisThreadNames) {
-      if (threadName.getName().contains("\\d")) {
-        if (Pattern.compile(threadName.getName()).matcher(givenThreadName).find()) {
-          return DataNodeThreadModule.RATIS_CONSENSUS;
-        }
-      } else if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.RATIS_CONSENSUS;
-      }
-    }
-    for (ThreadName threadName : computeThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.COMPUTE;
-      }
-    }
-    for (ThreadName threadName : syncThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.SYNC;
-      }
-    }
-    for (ThreadName threadName : jvmThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.JVM;
-      }
-    }
     if (givenThreadName.contains(LOG_BACK.getName())) {
       return DataNodeThreadModule.LOG_BACK;
     }
-    for (ThreadName threadName : metricsThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.METRICS;
-      }
-    }
-    for (ThreadName threadName : otherThreadNames) {
-      if (givenThreadName.contains(threadName.getName())) {
-        return DataNodeThreadModule.OTHER;
-      }
-    }
-    log.error("Unknown thread name {}", givenThreadName);
+
     return DataNodeThreadModule.UNKNOWN;
+  }
+
+  private static DataNodeThreadModule matchModuleWithThreadNames(
+      Set<ThreadName> threadNames, DataNodeThreadModule module, String givenThreadName) {
+    for (ThreadName threadName : threadNames) {
+      if (threadName.getName().contains("\\d")) {
+        if (Pattern.compile(threadName.getName()).matcher(givenThreadName).find()) {
+          return module;
+        }
+      } else if (givenThreadName.contains(threadName.getName())) {
+        return module;
+      }
+    }
+    return null;
   }
 
   public static ThreadName getThreadPoolTheThreadBelongs(String givenThreadName) {

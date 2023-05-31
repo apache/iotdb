@@ -28,6 +28,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.HashMap;
 import java.util.Map;
 
+@SuppressWarnings("java:S6548")
 public class ThreadPoolMetrics implements IMetricSet {
   private static final String THREAD_POOL_ACTIVE_THREAD_COUNT = "thread_pool_active_thread_count";
   private static final String THREAD_POOL_DONE_TASK_COUNT = "thread_pool_done_task_count";
