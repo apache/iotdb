@@ -228,6 +228,7 @@ public class TabletInsertionDataContainer {
         // low cost check comes first
         if (pattern.length() == deviceId.length() + measurement.length() + 1
             // high cost check comes later
+            && pattern.startsWith(deviceId)
             && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
           originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
         }

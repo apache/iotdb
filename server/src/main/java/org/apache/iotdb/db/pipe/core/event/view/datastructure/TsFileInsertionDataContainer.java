@@ -45,6 +45,8 @@ public class TsFileInsertionDataContainer {
   private final File tsFile;
   private final String pattern;
 
+  private TimeseriesMetadata vectorTimeseriesMetadata;
+
   private final Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap;
 
   public TsFileInsertionDataContainer(File tsFile, String pattern) {
@@ -62,6 +64,7 @@ public class TsFileInsertionDataContainer {
       for (Map.Entry<String, List<TimeseriesMetadata>> entry :
           reader.getAllTimeseriesMetadata(true).entrySet()) {
         final String device = entry.getKey();
+        boolean isVector = false;
 
         // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
         // in this case, all data can be matched without checking the measurements
@@ -77,7 +80,8 @@ public class TsFileInsertionDataContainer {
           for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
             // TODO: test me!!!
             if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-              timeseriesMetadataList.add(timeseriesMetadata);
+              vectorTimeseriesMetadata = timeseriesMetadata;
+              isVector = false;
               continue;
             }
 
@@ -85,12 +89,19 @@ public class TsFileInsertionDataContainer {
             // low cost check comes first
             if (pattern.length() == measurement.length() + device.length() + 1
                 // high cost check comes later
+                && pattern.startsWith(device)
                 && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+              if (!isVector) {
+                isVector = true;
+                timeseriesMetadataList.add(vectorTimeseriesMetadata);
+              }
               timeseriesMetadataList.add(timeseriesMetadata);
             }
           }
 
-          result.put(device, timeseriesMetadataList);
+          if (!timeseriesMetadataList.isEmpty()) {
+            result.put(device, timeseriesMetadataList);
+          }
         }
       }
     } catch (IOException e) {

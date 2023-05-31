@@ -88,6 +88,19 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
     if (entriesIterator.hasNext()) {
       currentEntry = entriesIterator.next();
       timeseriesMetadataIterator = currentEntry.getValue().iterator();
+    } else {
+      timeseriesMetadataIterator =
+          new Iterator<TimeseriesMetadata>() {
+            @Override
+            public boolean hasNext() {
+              return false;
+            }
+
+            @Override
+            public TimeseriesMetadata next() {
+              return null;
+            }
+          };
     }
   }
 
