@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -38,8 +38,8 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProd
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 
-public class RemoveWildcardInFilterByDeviceVisitor
-    extends CartesianProductVisitor<RemoveWildcardInFilterByDeviceVisitor.Context> {
+public class ConcatDeviceAndBindSchemaForPredicateVisitor
+    extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForPredicateVisitor.Context> {
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
     if (predicate.isBuiltInAggregationFunctionExpression() && context.isWhere()) {
@@ -63,7 +63,7 @@ public class RemoveWildcardInFilterByDeviceVisitor
     if (noStarPaths.isEmpty()) {
       return Collections.singletonList(new NullOperand());
     }
-    return reconstructTimeSeriesOperands(noStarPaths);
+    return reconstructTimeSeriesOperands(predicate, noStarPaths);
   }
 
   @Override

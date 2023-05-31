@@ -97,7 +97,7 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder(outputExpression.getExpressionString());
       for (int i = 1; i < expressionNumOfOneInput; i++) {
-        builder.append(", ").append(inputExpressions.get(i).toString());
+        builder.append(", ").append(inputExpressions.get(i).getExpressionString());
       }
       appendAttributes(builder);
       parametersString = builder.toString();
@@ -135,9 +135,9 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
   private String getInputString(Expression[] expressions) {
     StringBuilder builder = new StringBuilder();
     if (!(expressions.length == 0)) {
-      builder.append(expressions[0].toString());
+      builder.append(expressions[0].getExpressionString());
       for (int i = 1; i < expressions.length; ++i) {
-        builder.append(", ").append(expressions[i].toString());
+        builder.append(", ").append(expressions[i].getExpressionString());
       }
     }
     appendAttributes(builder);

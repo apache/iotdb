@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.visitor;
+package org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionAnalyzeVisitor;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,7 +33,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWhenThenExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
 
@@ -52,7 +53,7 @@ public abstract class CartesianProductVisitor<C>
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(binaryExpression, context);
     return reconstructBinaryExpressions(
-        binaryExpression.getExpressionType(), childResultsList.get(0), childResultsList.get(1));
+        binaryExpression, childResultsList.get(0), childResultsList.get(1));
   }
 
   @Override
@@ -72,7 +73,7 @@ public abstract class CartesianProductVisitor<C>
     }
     List<Expression> result = new ArrayList<>();
     for (List<Expression> cartesianResult : cartesianResults) {
-      result.add(reconstructCaseWHenThenExpression(cartesianResult));
+      result.add(reconstructCaseWhenThenExpression(caseWhenThenExpression, cartesianResult));
     }
     return result;
   }

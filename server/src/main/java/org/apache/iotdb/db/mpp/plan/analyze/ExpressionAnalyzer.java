@@ -46,16 +46,14 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectSourceExpressionsVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.ConcatDeviceAndRemoveWildcardVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardAndViewInExpressionVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardAndViewInFilterVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInExpressionVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInFilterByDeviceVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveWildcardInFilterVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForExpressionVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForPredicateVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -406,49 +404,15 @@ public class ExpressionAnalyzer {
 
   /**
    * Bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
-   * Expression.
-   *
-   * @param schemaTree interface for querying schema information
-   * @return the expression list after binding schema
-   */
-  public static List<Expression> removeWildcardInExpression(
-      Expression expression, ISchemaTree schemaTree) {
-    return new RemoveWildcardInExpressionVisitor().process(expression, schemaTree);
-  }
-
-  /**
-   * Bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
    * Expression. And all logical view will be replaced.
    *
    * @param schemaTree interface for querying schema information
    * @return the expression list after binding schema and whether there is logical view in
    *     expressions
    */
-  public static List<Expression> removeWildcardAndViewInExpression(
-      Expression expression, Analysis analysis, ISchemaTree schemaTree) {
-    RemoveWildcardAndViewInExpressionVisitor removeWildcardAndViewInExpressionVisitor =
-        new RemoveWildcardAndViewInExpressionVisitor();
-    List<Expression> expressions =
-        removeWildcardAndViewInExpressionVisitor.process(expression, schemaTree);
-    analysis.setHasViewsInQuery(
-        removeWildcardAndViewInExpressionVisitor.isHasProcessedLogicalView());
-    return expressions;
-  }
-
-  /**
-   * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
-   * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
-   * Expression.
-   *
-   * @param prefixPaths prefix paths in the FROM clause
-   * @param schemaTree interface for querying schema information
-   * @return the expression list with full path and after binding schema
-   */
-  public static List<Expression> removeWildcardInFilter(
-      Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
-    return new RemoveWildcardInFilterVisitor()
-        .process(
-            predicate, new RemoveWildcardInFilterVisitor.Context(prefixPaths, schemaTree, isRoot));
+  public static List<Expression> bindSchemaForExpression(
+      Expression expression, ISchemaTree schemaTree) {
+    return new BindSchemaForExpressionVisitor().process(expression, schemaTree);
   }
 
   /**
@@ -460,11 +424,11 @@ public class ExpressionAnalyzer {
    * @param schemaTree interface for querying schema information
    * @return the expression list with full path and after binding schema
    */
-  public static List<Expression> removeWildcardAndViewInFilter(
+  public static List<Expression> bindSchemaForPredicate(
       Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
-    return new RemoveWildcardAndViewInFilterVisitor()
+    return new BindSchemaForPredicateVisitor()
         .process(
-            predicate, new RemoveWildcardInFilterVisitor.Context(prefixPaths, schemaTree, isRoot));
+            predicate, new BindSchemaForPredicateVisitor.Context(prefixPaths, schemaTree, isRoot));
   }
 
   public static Expression replaceRawPathWithGroupedPath(
@@ -481,11 +445,12 @@ public class ExpressionAnalyzer {
    * @param devicePath device path in the FROM clause
    * @return expression list with full path and after binding schema
    */
-  public static List<Expression> concatDeviceAndRemoveWildcard(
+  public static List<Expression> concatDeviceAndBindSchemaForExpression(
       Expression expression, PartialPath devicePath, ISchemaTree schemaTree) {
-    return new ConcatDeviceAndRemoveWildcardVisitor()
+    return new ConcatDeviceAndBindSchemaForExpressionVisitor()
         .process(
-            expression, new ConcatDeviceAndRemoveWildcardVisitor.Context(devicePath, schemaTree));
+            expression,
+            new ConcatDeviceAndBindSchemaForExpressionVisitor.Context(devicePath, schemaTree));
   }
 
   /**
@@ -494,12 +459,13 @@ public class ExpressionAnalyzer {
    *
    * @return the expression list with full path and after binding schema
    */
-  public static List<Expression> removeWildcardInFilterByDevice(
+  public static List<Expression> concatDeviceAndBindSchemaForPredicate(
       Expression predicate, PartialPath devicePath, ISchemaTree schemaTree, boolean isWhere) {
-    return new RemoveWildcardInFilterByDeviceVisitor()
+    return new ConcatDeviceAndBindSchemaForPredicateVisitor()
         .process(
             predicate,
-            new RemoveWildcardInFilterByDeviceVisitor.Context(devicePath, schemaTree, isWhere));
+            new ConcatDeviceAndBindSchemaForPredicateVisitor.Context(
+                devicePath, schemaTree, isWhere));
   }
 
   /**

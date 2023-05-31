@@ -25,6 +25,7 @@ import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -227,7 +228,7 @@ public class TypeInferenceUtils {
             outputExpressionLists.add(
                 Collections.singletonList(
                     ExpressionUtils.reconstructBinaryExpression(
-                        keepExpression.getExpressionType(),
+                        (BinaryExpression) keepExpression,
                         new TimeSeriesOperand(
                             new MeasurementPath(
                                 ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64)),
