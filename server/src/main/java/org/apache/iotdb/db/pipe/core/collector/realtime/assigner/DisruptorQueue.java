@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime.assigner;
 
-import org.apache.iotdb.db.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.EventHandler;
@@ -48,7 +48,8 @@ public class DisruptorQueue<E> {
   }
 
   public static class Builder<E> {
-    private int ringBufferSize = PipeConfig.getInstance().getDefaultRingBufferSize();
+    private int ringBufferSize =
+        PipeConfig.getInstance().getPipeCollectorAssignerDisruptorRingBufferSize();
     private ThreadFactory threadFactory = DaemonThreadFactory.INSTANCE;
     private ProducerType producerType = ProducerType.MULTI;
     private WaitStrategy waitStrategy = new BlockingWaitStrategy();

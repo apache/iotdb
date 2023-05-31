@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fileInputFactory;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import org.slf4j.Logger;
@@ -31,11 +32,12 @@ import java.lang.reflect.InvocationTargetException;
 public class HDFSInputFactory implements FileInputFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(HDFSInputFactory.class);
-  private static Constructor constructor;
+  private Constructor constructor;
 
-  static {
+  public HDFSInputFactory() {
     try {
-      Class<?> clazz = Class.forName("org.apache.iotdb.hadoop.fileSystem.HDFSInput");
+      Class<?> clazz =
+          Class.forName(TSFileDescriptor.getInstance().getConfig().getHdfsTsFileInput());
       constructor = clazz.getConstructor(String.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(

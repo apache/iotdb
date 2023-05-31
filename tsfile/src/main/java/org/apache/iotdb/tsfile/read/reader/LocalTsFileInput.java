@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,21 +102,6 @@ public class LocalTsFileInput implements TsFileInput {
   }
 
   @Override
-  public int read() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public int read(byte[] b, int off, int len) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public FileChannel wrapAsFileChannel() {
-    return channel;
-  }
-
-  @Override
   public InputStream wrapAsInputStream() {
     return Channels.newInputStream(channel);
   }
@@ -130,37 +113,6 @@ public class LocalTsFileInput implements TsFileInput {
     } catch (IOException e) {
       logger.error("Error happened while closing {}", filePath);
       throw e;
-    }
-  }
-
-  @Override
-  public int readInt() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public String readVarIntString(long offset) throws IOException {
-    try {
-      ByteBuffer byteBuffer = ByteBuffer.allocate(5);
-      channel.read(byteBuffer, offset);
-      byteBuffer.flip();
-      int strLength = ReadWriteForEncodingUtils.readVarInt(byteBuffer);
-      if (strLength < 0) {
-        return null;
-      } else if (strLength == 0) {
-        return "";
-      }
-      ByteBuffer strBuffer = ByteBuffer.allocate(strLength);
-      int varIntLength = ReadWriteForEncodingUtils.varIntSize(strLength);
-      byte[] bytes = new byte[strLength];
-      channel.read(strBuffer, offset + varIntLength);
-      strBuffer.flip();
-      strBuffer.get(bytes, 0, strLength);
-      return new String(bytes, 0, strLength);
-    } catch (ClosedByInterruptException e) {
-      logger.warn(
-          "Current thread is interrupted by another thread when it is blocked in an I/O operation upon a channel.");
-      return null;
     }
   }
 

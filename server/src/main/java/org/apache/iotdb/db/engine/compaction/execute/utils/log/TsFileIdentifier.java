@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.log;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import java.io.File;
 
@@ -192,7 +193,7 @@ public class TsFileIdentifier {
             + File.separator
             + filename;
     for (String dataDir : dataDirs) {
-      File file = new File(dataDir, partialFileString);
+      File file = FSFactoryProducer.getFSFactory().getFile(dataDir, partialFileString);
       if (file.exists()) {
         return file;
       }

@@ -35,7 +35,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMerg
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQueryScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -209,8 +208,7 @@ public class LastQueryTest {
     }
 
     PlanNode root =
-        new LastQueryNode(
-            context.getQueryId().genPlanNodeId(), sourceNodeList, null, new OrderByParameter());
+        new LastQueryNode(context.getQueryId().genPlanNodeId(), sourceNodeList, null, null);
     return new LogicalQueryPlan(context, root);
   }
 }

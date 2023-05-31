@@ -16,31 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.external.api;
+package org.apache.iotdb.db.exception.metadata.view;
 
-import java.util.Properties;
+import org.apache.iotdb.commons.exception.MetadataException;
 
-/** An interface for series number monitoring, users can implement their own limitation strategy */
-public interface ISeriesNumerMonitor {
+public class InsertNonWritableViewException extends MetadataException {
+  public InsertNonWritableViewException(String path) {
+    super(
+        String.format(
+            "Can not insert data to a view which is not alias series. (View path: %s)", path));
+  }
 
-  /**
-   * do the necessary initialization
-   *
-   * @param properties Properties containing all the parameters needed to init
-   */
-  void init(Properties properties);
-  /**
-   * add time series
-   *
-   * @param number time series number for current createTimeSeries operation
-   * @return true if we want to allow the operation, otherwise false
-   */
-  boolean addTimeSeries(int number);
-
-  /**
-   * delete time series
-   *
-   * @param number time series number for current deleteTimeSeries operation
-   */
-  void deleteTimeSeries(int number);
+  public InsertNonWritableViewException() {
+    super("Can not insert data to a view which is not alias series.");
+  }
 }

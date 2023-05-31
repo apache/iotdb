@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import org.slf4j.Logger;
@@ -30,11 +31,12 @@ import java.lang.reflect.InvocationTargetException;
 public class HDFSOutputFactory implements FileOutputFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(HDFSOutputFactory.class);
-  private static Constructor constructor;
+  private Constructor constructor;
 
-  static {
+  public HDFSOutputFactory() {
     try {
-      Class<?> clazz = Class.forName("org.apache.iotdb.hadoop.fileSystem.HDFSOutput");
+      Class<?> clazz =
+          Class.forName(TSFileDescriptor.getInstance().getConfig().getHdfsTsFileOutput());
       constructor = clazz.getConstructor(String.class, boolean.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(

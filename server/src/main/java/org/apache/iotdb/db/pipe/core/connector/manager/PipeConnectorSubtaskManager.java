@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.connector.manager;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -75,10 +76,10 @@ public class PipeConnectorSubtaskManager {
             "Failed to construct PipeConnector, because of " + e.getMessage(), e);
       }
 
-      // TODO: make pendingQueue size configurable
       // 2. construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
       final ListenableBoundedBlockingPendingQueue<Event> pendingQueue =
-          new ListenableBoundedBlockingPendingQueue<>(1024);
+          new ListenableBoundedBlockingPendingQueue<>(
+              PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
       final PipeConnectorSubtask pipeConnectorSubtask =
           new PipeConnectorSubtask(attributeSortedString, taskMeta, pendingQueue, pipeConnector);
       final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =

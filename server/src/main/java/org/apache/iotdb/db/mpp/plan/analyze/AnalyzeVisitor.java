@@ -91,7 +91,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupBySessionComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
@@ -182,7 +181,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -427,23 +425,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, List<Expression> selectExpressions, ISchemaTree schemaTree) {
     Set<Expression> sourceExpressions;
 
-    OrderByParameter orderByParameter = analysis.getMergeOrderParameter();
-    if (orderByParameter != null && !orderByParameter.getSortItemList().isEmpty()) {
-      List<SortItem> sortItemList = orderByParameter.getSortItemList();
-      checkState(
-          sortItemList.size() == 1
-              && sortItemList.get(0).getSortKey().equals(OrderByKey.TIMESERIES),
-          "Last queries only support sorting by timeseries now.");
-      boolean isAscending = sortItemList.get(0).getOrdering() == Ordering.ASC;
-      sourceExpressions =
-          new TreeSet<>(
-              (e1, e2) ->
-                  isAscending
-                      ? e1.toString().compareTo(e2.toString())
-                      : e2.toString().compareTo(e1.toString()));
-    } else {
-      sourceExpressions = new LinkedHashSet<>();
-    }
+    sourceExpressions = new LinkedHashSet<>();
 
     for (Expression selectExpression : selectExpressions) {
       sourceExpressions.addAll(
@@ -1276,7 +1258,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   // For last query
   private void analyzeOrderBy(Analysis analysis, QueryStatement queryStatement) {
-    analysis.setMergeOrderParameter(new OrderByParameter(queryStatement.getSortItemList()));
+    if (!queryStatement.hasOrderBy()) return;
+
+    if (queryStatement.onlyOrderByTimeseries()) {
+      analysis.setTimeseriesOrderingForLastQuery(
+          queryStatement.getOrderByComponent().getTimeseriesOrder());
+    }
   }
 
   private void analyzeOrderBy(
@@ -3240,7 +3227,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a logical view based on existing views. Check the query in your SQL."));
+              "Can not create a view based on existing views. Check the query in your SQL."));
       return new Pair<>(null, analysis);
     }
     List<Expression> expressionList = new ArrayList<>();
@@ -3266,7 +3253,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a logical view based on non-exist time series."));
+              "Can not create a view based on non-exist time series."));
       return analysis;
     }
     Pair<List<PartialPath>, PartialPath> viewInSourceCheckResult =
@@ -3279,7 +3266,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "Path "
                   + viewInSourceCheckResult.right.toString()
-                  + " does not exist! You can not create a logical view based on non-exist time series."));
+                  + " does not exist! You can not create a view based on non-exist time series."));
       return analysis;
     }
     if (viewInSourceCheckResult.left.size() > 0) {
@@ -3288,7 +3275,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a logical view based on existing views."));
+              "Can not create a view based on existing views."));
       return analysis;
     }
     return analysis;
@@ -3312,6 +3299,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
               "The number of target and source paths are miss matched! Please check your SQL."));
+      return analysis;
+    }
+    // make sure all paths are NOt under any template
+    try {
+      for (PartialPath path : createLogicalViewStatement.getTargetPathList()) {
+        checkIsTemplateCompatible(path, null);
+      }
+    } catch (Exception e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+              "Can not create view under template."));
       return analysis;
     }
     return analysis;

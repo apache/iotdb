@@ -38,7 +38,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
@@ -356,6 +355,10 @@ public class QueryStatement extends Statement {
     return orderByComponent != null && orderByComponent.isOrderByTimeseries();
   }
 
+  public boolean onlyOrderByTimeseries() {
+    return isOrderByTimeseries() && orderByComponent.getSortItemList().size() == 1;
+  }
+
   public boolean isOrderByDevice() {
     return orderByComponent != null && orderByComponent.isOrderByDevice();
   }
@@ -585,10 +588,6 @@ public class QueryStatement extends Statement {
     }
 
     if (isLastQuery()) {
-      if (getSortItemList().size() == 1
-          && !getSortItemList().get(0).getSortKey().equals(OrderByKey.TIMESERIES)) {
-        throw new SemanticException("Last query only support sorting by timeseries now.");
-      }
       if (isAlignByDevice()) {
         throw new SemanticException("Last query doesn't support align by device.");
       }
@@ -604,9 +603,6 @@ public class QueryStatement extends Statement {
       if (isOrderByDevice()) {
         throw new SemanticException(
             "Sorting by device is only supported in ALIGN BY DEVICE queries.");
-      }
-      if (isOrderByTime()) {
-        throw new SemanticException("Sorting by time is not yet supported in last queries.");
       }
       if (seriesLimit != 0 || seriesOffset != 0) {
         throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");

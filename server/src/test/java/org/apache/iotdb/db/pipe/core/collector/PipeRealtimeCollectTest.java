@@ -232,6 +232,8 @@ public class PipeRealtimeCollectTest {
               throw new RuntimeException(e);
             }
           });
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -168,6 +169,11 @@ public class TsFileResourceProgressIndexTest {
         this.val = Math.max(this.val, that.val);
       }
       return this;
+    }
+
+    @Override
+    public ProgressIndexType getType() {
+      throw new UnsupportedOperationException("method not implemented.");
     }
   }
 }
