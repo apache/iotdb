@@ -47,7 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-public class TabletIterator implements Iterator<Tablet> {
+public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
   //  private final TsFileSequenceReader reader;
   private final String filePath;
   private final Iterator<Map.Entry<String, List<TimeseriesMetadata>>> entriesIterator;
@@ -60,7 +60,7 @@ public class TabletIterator implements Iterator<Tablet> {
   private List<long[]> timeBatches;
   private long[] timestampsForAligned;
 
-  public TabletIterator(
+  public TsFileInsertionDataTabletIterator(
       String filePath, Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap) {
     this.filePath = filePath;
     this.entriesIterator = device2TimeseriesMetadataMap.entrySet().iterator();

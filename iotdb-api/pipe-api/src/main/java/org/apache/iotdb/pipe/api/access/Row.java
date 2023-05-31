@@ -131,9 +131,9 @@ public interface Row {
   boolean isNull(int columnIndex);
 
   /**
-   * Returns the number of columns
+   * Returns the number of columns (excluding the timestamp column)
    *
-   * @return the number of columns
+   * @return the number of columns (excluding the timestamp column)
    */
   int size();
 
@@ -147,16 +147,16 @@ public interface Row {
   int getColumnIndex(Path columnName) throws PipeParameterNotValidException;
 
   /**
-   * Returns the column names in the Row
-   *
-   * @return the column names in the Row
-   */
-  List<Path> getColumnNames();
-
-  /**
    * Returns the column data types in the Row
    *
    * @return the column data types in the Row
    */
   List<Type> getColumnTypes();
+
+  /**
+   * Returns the device id of the Row
+   *
+   * @return the device id of the Row
+   */
+  String getDeviceId();
 }

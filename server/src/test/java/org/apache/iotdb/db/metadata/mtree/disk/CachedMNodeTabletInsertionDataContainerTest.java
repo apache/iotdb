@@ -29,7 +29,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-public class CachedMNodeContainerTest {
+public class CachedMNodeTabletInsertionDataContainerTest {
 
   private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
 

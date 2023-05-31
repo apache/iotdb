@@ -25,26 +25,15 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.core.event.view.datastructure.TabletIterator;
+import org.apache.iotdb.db.pipe.core.event.view.datastructure.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -56,7 +45,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private final AtomicBoolean isClosed;
 
-  private final Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap;
+  private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
     this(resource, null, null);
@@ -83,8 +72,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             });
       }
     }
-
-    this.device2TimeseriesMetadataMap = matchPattern();
   }
 
   public void waitForTsFileClose() throws InterruptedException {
@@ -148,11 +135,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public String getPattern() {
-    return pattern;
-  }
-
-  @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern);
@@ -162,75 +144,16 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    return () ->
-        new Iterator<TabletInsertionEvent>() {
-          private Iterator<Tablet> tabletIterator = readTsFile().iterator();
-
-          @Override
-          public boolean hasNext() {
-            return tabletIterator.hasNext();
-          }
-
-          @Override
-          public TabletInsertionEvent next() {
-            return new PipeTabletInsertionEvent(tabletIterator.next());
-          }
-        };
+    if (dataContainer == null) {
+      dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern());
+    }
+    return dataContainer.toTabletInsertionEvents();
   }
 
   @Override
   public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
     throw new UnsupportedOperationException("Not implemented yet");
   }
-
-  private Map<String, List<TimeseriesMetadata>> matchPattern() {
-    Map<String, List<TimeseriesMetadata>> result = new HashMap<>();
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getPath())) {
-
-      // match pattern
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          reader.getAllTimeseriesMetadata(true).entrySet()) {
-        String device = entry.getKey();
-
-        // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
-        // in this case, all data can be matched without checking the measurements
-        if (pattern == null || pattern.length() <= device.length() && device.startsWith(pattern)) {
-          result.put(device, entry.getValue());
-        }
-
-        // case 2: for example, pattern is root.a.b.c and device is root.a.b
-        // in this case, we need to check the full path
-        else {
-          List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-          for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-
-            if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-              timeseriesMetadataList.add(timeseriesMetadata);
-              continue;
-            }
-
-            String measurement = timeseriesMetadata.getMeasurementId();
-            // low cost check comes first
-            if (pattern.length() == measurement.length() + device.length() + 1
-                // high cost check comes later
-                && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
-              timeseriesMetadataList.add(timeseriesMetadata);
-            }
-          }
-          result.put(device, timeseriesMetadataList);
-        }
-      }
-    } catch (IOException e) {
-      LOGGER.error("Cannot read TsFile {}.", tsFile.getPath(), e);
-    }
-    return result;
-  }
-
-  private Iterable<Tablet> readTsFile() {
-    return () -> {
-      return new TabletIterator(tsFile.getPath(), device2TimeseriesMetadataMap);
-    };
-  };
 
   /////////////////////////// Object ///////////////////////////
 
@@ -244,16 +167,5 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         + ", isClosed="
         + isClosed
         + '}';
-  }
-
-  public static void main(String[] args) throws IOException {
-    String filename = "Tablet2.tsfile";
-
-    Iterable<TabletInsertionEvent> tabletInsertionEventIterable =
-        new PipeTsFileInsertionEvent(new TsFileResource(new File(filename)))
-            .toTabletInsertionEvents();
-    for (TabletInsertionEvent tabletInsertionEvent : tabletInsertionEventIterable) {
-      System.out.println(tabletInsertionEvent);
-    }
   }
 }

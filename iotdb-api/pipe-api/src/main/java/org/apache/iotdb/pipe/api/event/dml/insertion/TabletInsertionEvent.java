@@ -38,26 +38,10 @@ public interface TabletInsertionEvent extends Event {
   TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer);
 
   /**
-   * The consumer processes the data by the Iterator and collects the results by RowCollector.
-   *
-   * @return TabletInsertionEvent a new TabletInsertionEvent contains the results collected by the
-   *     RowCollector
-   */
-  TabletInsertionEvent processByIterator(BiConsumer<Iterable<Row>, RowCollector> consumer);
-
-  /**
    * The consumer processes the Tablet directly and collects the results by RowCollector.
    *
    * @return TabletInsertionEvent a new TabletInsertionEvent contains the results collected by the
    *     RowCollector
    */
   TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer);
-
-  /**
-   * Filter the data by the prefix path pattern.
-   *
-   * @param pattern the prefix path pattern
-   * @return TabletInsertionEvent a new TabletInsertionEvent contains the filtered data
-   */
-  TabletInsertionEvent filterByPrefix(String pattern);
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.access;
 
-import org.apache.iotdb.commons.pipe.utils.PipeBinaryTransformer;
 import org.apache.iotdb.commons.pipe.utils.PipeDataTypeTransformer;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
@@ -27,104 +26,123 @@ import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.pipe.api.type.Type;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class PipeRow implements Row {
 
-  private final long timestamp;
-  private final List<Path> columnNameList;
-  private final List<TSDataType> columnTypeList;
-  private Object[] rowRecord;
-  private final int columnSize;
+  private final int rowIndex;
+
+  private final String deviceId;
+  private final MeasurementSchema[] measurementSchemaList;
+
+  private final long[] timestampColumn;
+  private final Object[][] valueColumns;
+  private final TSDataType[] valueColumnTypes;
+
+  private final String[] columnNameStringList;
 
   public PipeRow(
-      Object[] rowRecord, List<Path> columnNames, List<TSDataType> columnTypeList, long timestamp) {
-    this.columnTypeList = columnTypeList;
-    this.columnNameList = columnNames;
-    columnSize = columnTypeList.size();
-    this.timestamp = timestamp;
-    this.rowRecord = rowRecord;
+      int rowIndex,
+      String deviceId,
+      MeasurementSchema[] measurementSchemaList,
+      long[] timestampColumn,
+      Object[][] valueColumns,
+      TSDataType[] valueColumnTypes,
+      String[] columnNameStringList) {
+    this.rowIndex = rowIndex;
+    this.deviceId = deviceId;
+    this.measurementSchemaList = measurementSchemaList;
+    this.timestampColumn = timestampColumn;
+    this.valueColumns = valueColumns;
+    this.valueColumnTypes = valueColumnTypes;
+    this.columnNameStringList = columnNameStringList;
   }
 
   @Override
   public long getTime() {
-    return timestamp;
+    return timestampColumn[rowIndex];
   }
 
   @Override
   public int getInt(int columnIndex) {
-    return (int) rowRecord[columnIndex];
+    return (int) valueColumns[columnIndex][rowIndex];
   }
 
   @Override
   public long getLong(int columnIndex) {
-    return (long) rowRecord[columnIndex];
+    return (long) valueColumns[columnIndex][rowIndex];
   }
 
   @Override
   public float getFloat(int columnIndex) {
-    return (float) rowRecord[columnIndex];
+    return (float) valueColumns[columnIndex][rowIndex];
   }
 
   @Override
   public double getDouble(int columnIndex) {
-    return (double) rowRecord[columnIndex];
+    return (double) valueColumns[columnIndex][rowIndex];
   }
 
   @Override
   public boolean getBoolean(int columnIndex) {
-    return (boolean) rowRecord[columnIndex];
+    return (boolean) valueColumns[columnIndex][rowIndex];
   }
 
   @Override
   public Binary getBinary(int columnIndex) {
-    return PipeBinaryTransformer.transformToPipeBinary(
-        (org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex]);
+    return Binary.valueOf((String) valueColumns[columnIndex][rowIndex]);
   }
 
   @Override
   public String getString(int columnIndex) {
-    return ((org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex]).getStringValue();
+    return (String) valueColumns[columnIndex][rowIndex];
   }
 
   @Override
   public Object getObject(int columnIndex) {
-    return rowRecord[columnIndex];
+    return valueColumns[columnIndex][rowIndex];
   }
 
   @Override
   public Type getDataType(int columnIndex) {
-    return PipeDataTypeTransformer.transformToPipeDataType(columnTypeList.get(columnIndex));
+    return PipeDataTypeTransformer.transformToPipeDataType(valueColumnTypes[columnIndex]);
   }
 
   @Override
   public boolean isNull(int columnIndex) {
-    return rowRecord[columnIndex] == null;
+    return valueColumns[columnIndex][rowIndex] == null;
   }
 
   @Override
   public int size() {
-    return columnSize;
+    return valueColumns.length;
   }
 
   @Override
   public int getColumnIndex(Path columnName) throws PipeParameterNotValidException {
-    for (int i = 0; i < columnNameList.size(); i++) {
-      if (columnNameList.get(i).equals(columnName)) {
+    for (int i = 0; i < columnNameStringList.length; i++) {
+      if (columnNameStringList[i].equals(columnName.getFullPath())) {
         return i;
       }
     }
-    return -1;
-  }
-
-  @Override
-  public List<Path> getColumnNames() {
-    return columnNameList;
+    throw new PipeParameterNotValidException(
+        String.format("column %s not found", columnName.getFullPath()));
   }
 
   @Override
   public List<Type> getColumnTypes() {
-    return PipeDataTypeTransformer.transformToPipeDataTypeList(columnTypeList);
+    return PipeDataTypeTransformer.transformToPipeDataTypeList(Arrays.asList(valueColumnTypes));
+  }
+
+  @Override
+  public String getDeviceId() {
+    return deviceId;
+  }
+
+  public MeasurementSchema[] getMeasurementSchemaList() {
+    return measurementSchemaList;
   }
 }

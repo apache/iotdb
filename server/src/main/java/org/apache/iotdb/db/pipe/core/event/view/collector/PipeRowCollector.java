@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.collector;
 
-import org.apache.iotdb.commons.pipe.utils.PipeDataTypeTransformer;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.type.Type;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class PipeRowCollector implements RowCollector {
@@ -38,29 +38,29 @@ public class PipeRowCollector implements RowCollector {
 
   @Override
   public void collectRow(Row row) {
-    List<Path> measurementIds = row.getColumnNames();
-    List<Type> dataTypeList = row.getColumnTypes();
-
-    if (tablet == null) {
-      String deviceId = measurementIds.get(0).getDevice();
-      List<MeasurementSchema> schemaList = new ArrayList<>();
-      for (int i = 0; i < row.size(); i++) {
-        schemaList.add(
-            new MeasurementSchema(
-                measurementIds.get(i).getMeasurement(),
-                PipeDataTypeTransformer.transformToTsDataType(dataTypeList.get(i))));
-      }
-      tablet = new Tablet(deviceId, schemaList);
+    if (!(row instanceof PipeRow)) {
+      throw new PipeException("Row can not be customized");
     }
 
-    int rowIndex = (tablet.rowSize++) - 1;
+    final PipeRow pipeRow = (PipeRow) row;
+    final MeasurementSchema[] measurementSchemaArray = pipeRow.getMeasurementSchemaList();
+
+    if (tablet == null) {
+      final String deviceId = pipeRow.getDeviceId();
+      final List<MeasurementSchema> measurementSchemaList =
+          new ArrayList<>(Arrays.asList(measurementSchemaArray));
+      tablet = new Tablet(deviceId, measurementSchemaList);
+    }
+
+    final int rowIndex = tablet.rowSize;
     tablet.addTimestamp(rowIndex, row.getTime());
     for (int i = 0; i < row.size(); i++) {
-      tablet.addValue(measurementIds.get(i).getMeasurement(), rowIndex, row.getObject(i));
-      if (row.getObject(i) == null) {
+      tablet.addValue(measurementSchemaArray[i].getMeasurementId(), rowIndex, row.getObject(i));
+      if (row.isNull(i)) {
         tablet.bitMaps[i].mark(rowIndex);
       }
     }
+    tablet.rowSize++;
   }
 
   public TabletInsertionEvent toTabletInsertionEvent() {

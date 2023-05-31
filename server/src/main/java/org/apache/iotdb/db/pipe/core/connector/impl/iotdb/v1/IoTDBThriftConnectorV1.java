@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTSInsertTabletReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferHandshakeReq;
@@ -48,10 +49,6 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.session.util.SessionUtils;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.thrift.TException;
@@ -61,9 +58,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class IoTDBThriftConnectorV1 implements PipeConnector {
 
@@ -149,42 +144,27 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Transfer tablet insertion event %s error, result status %s",
+              "Transfer PipeInsertNodeInsertionEvent %s error, result status %s",
               pipeInsertNodeInsertionEvent, resp.status));
     }
   }
 
   private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
       throws PipeException, TException {
-    Tablet tablet = pipeTabletInsertionEvent.getTablet();
-    List<String> measurements = new ArrayList<>();
-    List<Integer> types = new ArrayList<>();
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      measurements.add(measurementSchema.getMeasurementId());
-      types.add(measurementSchema.getType().ordinal());
-    }
     final TSStatus status =
         client.insertTablet(
-            new TSInsertTabletReq(
-                PipeConfig.getInstance().getPipeConnectorSessionId(),
-                tablet.deviceId,
-                measurements,
-                SessionUtils.getValueBuffer(tablet),
-                SessionUtils.getTimeBuffer(tablet),
-                types,
-                tablet.rowSize));
+            PipeTSInsertTabletReq.toTSInsertTabletReq(pipeTabletInsertionEvent.convertToTablet()));
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Transfer tablet insertion event %s error, result status %s",
+              "Transfer PipeTabletInsertionEvent %s error, result status %s",
               pipeTabletInsertionEvent, status));
     }
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // TODO: support more TsFileInsertionEvent
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
