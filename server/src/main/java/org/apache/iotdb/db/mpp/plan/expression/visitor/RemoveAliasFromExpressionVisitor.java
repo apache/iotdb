@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -51,7 +52,7 @@ public class RemoveAliasFromExpressionVisitor extends ReconstructVisitor<Void> {
     PartialPath rawPath = timeSeriesOperand.getPath();
     PartialPath newPath = rawPath.copy();
     if (newPath.isMeasurementAliasExists()) {
-      newPath.setMeasurementAlias(null);
+      ((MeasurementPath) newPath).removeMeasurementAlias();
     }
     return new TimeSeriesOperand(newPath);
   }
