@@ -55,6 +55,7 @@ public interface TabletInsertionEvent extends Event {
 
   /**
    * Filter the data by the prefix path pattern.
+   *
    * @param pattern the prefix path pattern
    * @return TabletInsertionEvent a new TabletInsertionEvent contains the filtered data
    */

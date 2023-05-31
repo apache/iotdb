@@ -165,7 +165,8 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
 
   @Override
   public TabletInsertionEvent filterByPrefix(String pattern) {
-    // Based on the pattern in the custom Processor. if not set, the pattern from EnrichedEvent will be used.
+    // Based on the pattern in the custom Processor. if not set, the pattern from EnrichedEvent will
+    // be used.
     this.pattern = pattern;
 
     // filter by prefix

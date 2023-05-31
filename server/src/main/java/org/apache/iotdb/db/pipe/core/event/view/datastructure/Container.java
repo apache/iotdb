@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +63,7 @@ public class Container {
         return processTabletNode((InsertTabletNode) insertNode);
       } else {
         throw new UnSupportedDataTypeException(
-                  String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
+            String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
       }
     } catch (IllegalPathException ignored) {
       // TODO:
@@ -78,39 +79,41 @@ public class Container {
     Object[] originValues = insertRowNode.getValues();
     MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
     this.deviceId = insertRowNode.getDevicePath().getFullPath();
-    this.timestamps = new long[]{insertRowNode.getTime()};
+    this.timestamps = new long[] {insertRowNode.getTime()};
 
-    processPatternWithSingleRow(originDataTypeList, originMeasurementList, originValues, originMeasurementSchemaList);
-
+    processPatternWithSingleRow(
+        originDataTypeList, originMeasurementList, originValues, originMeasurementSchemaList);
 
     return new InsertRowNode(
-              insertRowNode.getPlanNodeId(),
-              new PartialPath(deviceId),
-              insertRowNode.isAligned(),
-              columnNameStringList.toArray(new String[0]),
-              columnTypeList.toArray(new TSDataType[0]),
-              measurementSchemaList.toArray(new MeasurementSchema[0]),
-              insertRowNode.getTime(),
-              columns,
-              insertRowNode.isNeedInferType());
+        insertRowNode.getPlanNodeId(),
+        new PartialPath(deviceId),
+        insertRowNode.isAligned(),
+        columnNameStringList.toArray(new String[0]),
+        columnTypeList.toArray(new TSDataType[0]),
+        measurementSchemaList.toArray(new MeasurementSchema[0]),
+        insertRowNode.getTime(),
+        columns,
+        insertRowNode.isNeedInferType());
   }
 
   private void processPatternWithSingleRow(
-            TSDataType[] originDataTypeList, String[] originMeasurementList, Object[] originValues, MeasurementSchema[]
-            originMeasurementSchemaList) {
+      TSDataType[] originDataTypeList,
+      String[] originMeasurementList,
+      Object[] originValues,
+      MeasurementSchema[] originMeasurementSchemaList) {
     this.columnTypeList = new ArrayList<>();
-//    this.columnNameList = new ArrayList<>();
+    //    this.columnNameList = new ArrayList<>();
     this.columnNameStringList = new ArrayList<>();
     this.measurementSchemaList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
 
-    processPatternByDevice(originMeasurementList, originDataTypeList, originMeasurementSchemaList, indexList);
+    processPatternByDevice(
+        originMeasurementList, originDataTypeList, originMeasurementSchemaList, indexList);
 
     for (int i = 0; i < indexList.size(); i++) {
       columns[0][i] = originValues[indexList.get(i)];
     }
   }
-
 
   //////////////////////////// InsertTabletNode ////////////////////////////
   private InsertNode processTabletNode(InsertTabletNode insertTabletNode) {
@@ -122,7 +125,12 @@ public class Container {
     this.deviceId = insertTabletNode.getDevicePath().getFullPath();
     this.timestamps = insertTabletNode.getTimes();
 
-    processPatternWithColumns(originDataTypeList, originMeasurementList, originColumns, originMeasurementSchemaList, rowSize);
+    processPatternWithColumns(
+        originDataTypeList,
+        originMeasurementList,
+        originColumns,
+        originMeasurementSchemaList,
+        rowSize);
 
     BitMap[] filterBitMaps = new BitMap[indexList.size()];
     BitMap[] originBitMaps = insertTabletNode.getBitMaps();
@@ -132,30 +140,31 @@ public class Container {
       }
     }
     return new InsertTabletNode(
-              insertTabletNode.getPlanNodeId(),
-              new PartialPath(deviceId),
-              insertTabletNode.isAligned(),
-              columnNameStringList.toArray(new String[0]),
-              columnTypeList.toArray(new TSDataType[0]),
-              measurementSchemaList.toArray(new MeasurementSchema[0]),
-              timestamps,
-              filterBitMaps,
-              columns,
-              rowSize);
+        insertTabletNode.getPlanNodeId(),
+        new PartialPath(deviceId),
+        insertTabletNode.isAligned(),
+        columnNameStringList.toArray(new String[0]),
+        columnTypeList.toArray(new TSDataType[0]),
+        measurementSchemaList.toArray(new MeasurementSchema[0]),
+        timestamps,
+        filterBitMaps,
+        columns,
+        rowSize);
   }
 
   private void processPatternWithColumns(
-            TSDataType[] originDataTypeList,
-            String[] originMeasurementList,
-            Object[] originColumns,
-            MeasurementSchema[] originMeasurementSchemaList,
-            int rowSize) {
+      TSDataType[] originDataTypeList,
+      String[] originMeasurementList,
+      Object[] originColumns,
+      MeasurementSchema[] originMeasurementSchemaList,
+      int rowSize) {
     this.columnTypeList = new ArrayList<>();
     this.columnNameStringList = new ArrayList<>();
     this.measurementSchemaList = new ArrayList<>();
     this.indexList = new ArrayList<>();
 
-    processPatternByDevice(originMeasurementList, originDataTypeList, originMeasurementSchemaList,indexList);
+    processPatternByDevice(
+        originMeasurementList, originDataTypeList, originMeasurementSchemaList, indexList);
 
     int columnSize = indexList.size();
     this.columns = new Object[columnSize][rowSize];
@@ -168,8 +177,10 @@ public class Container {
   //////////////////////////// Common ////////////////////////////
 
   private void processPatternByDevice(
-            String[] originMeasurementList, TSDataType[] originDataTypeList, MeasurementSchema[]
-            originMeasurementSchemaList, List<Integer> indexList) {
+      String[] originMeasurementList,
+      TSDataType[] originDataTypeList,
+      MeasurementSchema[] originMeasurementSchemaList,
+      List<Integer> indexList) {
     int originColumnSize = originMeasurementList.length;
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
     // in this case, all data can be matched without checking the measurements
@@ -190,8 +201,8 @@ public class Container {
 
         // low cost check comes first
         if (pattern.length() == deviceId.length() + measurement.length() + 1
-                  // high cost check comes later
-                  && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+            // high cost check comes later
+            && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
           columnTypeList.add(originDataTypeList[i]);
           columnNameStringList.add(originMeasurementList[i]);
           measurementSchemaList.add(originMeasurementSchemaList[i]);

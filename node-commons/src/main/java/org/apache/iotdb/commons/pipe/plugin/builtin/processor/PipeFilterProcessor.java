@@ -42,27 +42,23 @@ public class PipeFilterProcessor implements PipeProcessor {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) throws Exception {
-  }
+  public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
+      throws Exception {}
 
   @Override
-  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector) throws Exception {
+  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
+      throws Exception {
     TabletInsertionEvent newTabletInsertionEvent = tabletInsertionEvent.filterByPrefix(pattern);
     eventCollector.collect(newTabletInsertionEvent);
   }
 
   @Override
-  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector) throws Exception {
-
-  }
-
-  @Override
-  public void process(Event event, EventCollector eventCollector) throws Exception {
-
-  }
+  public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+      throws Exception {}
 
   @Override
-  public void close() throws Exception {
+  public void process(Event event, EventCollector eventCollector) throws Exception {}
 
-  }
+  @Override
+  public void close() throws Exception {}
 }
