@@ -42,7 +42,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new UpTimeMetrics());
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
-    MetricService.getInstance().addMetricSet(new FileMetrics());
+    MetricService.getInstance().addMetricSet(FileMetrics.getInstance());
     MetricService.getInstance().addMetricSet(CompactionMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
