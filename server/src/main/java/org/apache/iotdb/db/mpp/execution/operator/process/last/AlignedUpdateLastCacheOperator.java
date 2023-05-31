@@ -75,8 +75,8 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
           TimeValuePair timeValuePair = new TimeValuePair(lastTime, lastValue);
           lastCache.updateLastCache(
               getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
-          appendLastValueToTsBlockBuilder(lastTime, lastValue, measurementPath);
         }
+        appendLastValueToTsBlockBuilder(lastTime, lastValue, measurementPath);
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;
