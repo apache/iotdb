@@ -21,6 +21,7 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -44,6 +45,10 @@ import org.slf4j.LoggerFactory;
 public class IoTDBShutdownHook extends Thread {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
+
+  public IoTDBShutdownHook() {
+    super(ThreadName.IOTDB_SHUTDOWN_HOOK.getName());
+  }
 
   @Override
   public void run() {

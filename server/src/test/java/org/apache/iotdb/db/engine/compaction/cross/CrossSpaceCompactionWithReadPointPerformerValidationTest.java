@@ -85,7 +85,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
