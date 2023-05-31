@@ -101,10 +101,4 @@ public class BetweenExpression extends TernaryExpression {
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitBetweenExpression(this, context);
   }
-
-  @Override
-  protected Expression doCopy() {
-    return new BetweenExpression(
-        firstExpression.copy(), secondExpression.copy(), thirdExpression.copy(), isNotBetween);
-  }
 }

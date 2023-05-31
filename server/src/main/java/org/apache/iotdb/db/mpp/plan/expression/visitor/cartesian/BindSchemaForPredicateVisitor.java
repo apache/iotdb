@@ -113,7 +113,8 @@ public class BindSchemaForPredicateVisitor
         }
       }
     }
-    List<Expression> reconstructTimeSeriesOperands = reconstructTimeSeriesOperands(nonViewPathList);
+    List<Expression> reconstructTimeSeriesOperands =
+        reconstructTimeSeriesOperands(predicate, nonViewPathList);
     for (MeasurementPath measurementPath : viewPathList) {
       Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
       replacedExpression.setViewPath(measurementPath);

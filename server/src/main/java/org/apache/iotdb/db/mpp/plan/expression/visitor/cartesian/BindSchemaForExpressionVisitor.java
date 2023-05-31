@@ -97,7 +97,7 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
       }
     }
     List<Expression> reconstructTimeSeriesOperands =
-        ExpressionUtils.reconstructTimeSeriesOperands(nonViewActualPaths);
+        ExpressionUtils.reconstructTimeSeriesOperands(timeSeriesOperand, nonViewActualPaths);
     // handle logical views
     for (MeasurementPath measurementPath : viewPaths) {
       Expression replacedExpression = transformViewPath(measurementPath, schemaTree);

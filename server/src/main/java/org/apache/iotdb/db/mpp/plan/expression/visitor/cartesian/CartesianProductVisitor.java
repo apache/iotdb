@@ -33,7 +33,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWhenThenExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
 
@@ -73,7 +73,7 @@ public abstract class CartesianProductVisitor<C>
     }
     List<Expression> result = new ArrayList<>();
     for (List<Expression> cartesianResult : cartesianResults) {
-      result.add(reconstructCaseWHenThenExpression(cartesianResult));
+      result.add(reconstructCaseWhenThenExpression(caseWhenThenExpression, cartesianResult));
     }
     return result;
   }

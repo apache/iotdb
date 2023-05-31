@@ -197,15 +197,6 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  protected Expression doCopy() {
-    List<Expression> copiedChildren = new ArrayList<>();
-    for (Expression expression : expressions) {
-      copiedChildren.add(expression.copy());
-    }
-    return new FunctionExpression(functionName, functionAttributes, copiedChildren);
-  }
-
-  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     String expressionString = getExpressionString();

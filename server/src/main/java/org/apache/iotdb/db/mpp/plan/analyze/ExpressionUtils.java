@@ -22,8 +22,20 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -32,6 +44,12 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -43,17 +61,20 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ExpressionUtils {
+
   public static List<Expression> reconstructTimeSeriesOperands(
-      List<? extends PartialPath> actualPaths) {
+      TimeSeriesOperand rawExpression, List<? extends PartialPath> actualPaths) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (PartialPath actualPath : actualPaths) {
-      resultExpressions.add(reconstructTimeSeriesOperand(actualPath));
+      resultExpressions.add(reconstructTimeSeriesOperand(rawExpression, actualPath));
     }
     return resultExpressions;
   }
 
-  public static Expression reconstructTimeSeriesOperand(PartialPath actualPath) {
-    return new TimeSeriesOperand(actualPath);
+  public static Expression reconstructTimeSeriesOperand(
+      TimeSeriesOperand rawExpression, PartialPath actualPath) {
+    Expression resultExpression = new TimeSeriesOperand(actualPath);
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static List<Expression> reconstructFunctionExpressions(
@@ -66,10 +87,13 @@ public class ExpressionUtils {
   }
 
   public static Expression reconstructFunctionExpression(
-      FunctionExpression expression, List<Expression> childExpressions) {
-    FunctionExpression copiedFunctionExpression = (FunctionExpression) expression.copy();
-    copiedFunctionExpression.setExpressions(childExpressions);
-    return copiedFunctionExpression;
+      FunctionExpression rawExpression, List<Expression> childExpressions) {
+    Expression resultExpression =
+        new FunctionExpression(
+            rawExpression.getFunctionName(),
+            rawExpression.getFunctionAttributes(),
+            childExpressions);
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static List<Expression> reconstructUnaryExpressions(
@@ -81,20 +105,58 @@ public class ExpressionUtils {
     return resultExpressions;
   }
 
-  public static Expression reconstructCaseWHenThenExpression(List<Expression> childExpressions) {
-    return new CaseWhenThenExpression(
-        childExpressions // transform to List<WhenThenExpression>
-            .subList(0, childExpressions.size() - 1).stream()
-            .map(expression -> (WhenThenExpression) expression)
-            .collect(Collectors.toList()),
-        childExpressions.get(childExpressions.size() - 1));
+  public static Expression reconstructCaseWhenThenExpression(
+      CaseWhenThenExpression rawExpression, List<Expression> childExpressions) {
+    Expression resultExpression =
+        new CaseWhenThenExpression(
+            childExpressions // transform to List<WhenThenExpression>
+                .subList(0, childExpressions.size() - 1).stream()
+                .map(expression -> (WhenThenExpression) expression)
+                .collect(Collectors.toList()),
+            childExpressions.get(childExpressions.size() - 1));
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static Expression reconstructUnaryExpression(
-      UnaryExpression expression, Expression childExpression) {
-    UnaryExpression copiedUnaryExpression = (UnaryExpression) expression.copy();
-    copiedUnaryExpression.setExpression(childExpression);
-    return copiedUnaryExpression;
+      UnaryExpression rawExpression, Expression childExpression) {
+    Expression resultExpression;
+    switch (rawExpression.getExpressionType()) {
+      case IS_NULL:
+        resultExpression =
+            new IsNullExpression(childExpression, ((IsNullExpression) rawExpression).isNot());
+        break;
+      case IN:
+        resultExpression =
+            new InExpression(
+                childExpression,
+                ((InExpression) rawExpression).isNotIn(),
+                ((InExpression) rawExpression).getValues());
+        break;
+      case LIKE:
+        resultExpression =
+            new LikeExpression(
+                childExpression,
+                ((LikeExpression) rawExpression).getPatternString(),
+                ((LikeExpression) rawExpression).getPattern());
+        break;
+      case LOGIC_NOT:
+        resultExpression = new LogicNotExpression(childExpression);
+        break;
+      case NEGATION:
+        resultExpression = new NegationExpression(childExpression);
+        break;
+      case REGEXP:
+        resultExpression =
+            new RegularExpression(
+                childExpression,
+                ((RegularExpression) rawExpression).getPatternString(),
+                ((RegularExpression) rawExpression).getPattern());
+        break;
+      default:
+        throw new IllegalArgumentException(
+            "unsupported expression type: " + rawExpression.getExpressionType());
+    }
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static List<Expression> reconstructBinaryExpressions(
@@ -111,11 +173,56 @@ public class ExpressionUtils {
   }
 
   public static Expression reconstructBinaryExpression(
-      BinaryExpression expression, Expression leftExpression, Expression rightExpression) {
-    BinaryExpression copiedBinaryExpression = (BinaryExpression) expression.copy();
-    copiedBinaryExpression.setLeftExpression(leftExpression);
-    copiedBinaryExpression.setRightExpression(rightExpression);
-    return copiedBinaryExpression;
+      Expression rawExpression, Expression leftExpression, Expression rightExpression) {
+    Expression resultExpression;
+    switch (rawExpression.getExpressionType()) {
+      case ADDITION:
+        resultExpression = new AdditionExpression(leftExpression, rightExpression);
+        break;
+      case SUBTRACTION:
+        resultExpression = new SubtractionExpression(leftExpression, rightExpression);
+        break;
+      case MULTIPLICATION:
+        resultExpression = new MultiplicationExpression(leftExpression, rightExpression);
+        break;
+      case DIVISION:
+        resultExpression = new DivisionExpression(leftExpression, rightExpression);
+        break;
+      case MODULO:
+        resultExpression = new ModuloExpression(leftExpression, rightExpression);
+        break;
+      case LESS_THAN:
+        resultExpression = new LessThanExpression(leftExpression, rightExpression);
+        break;
+      case LESS_EQUAL:
+        resultExpression = new LessEqualExpression(leftExpression, rightExpression);
+        break;
+      case GREATER_THAN:
+        resultExpression = new GreaterThanExpression(leftExpression, rightExpression);
+        break;
+      case GREATER_EQUAL:
+        resultExpression = new GreaterEqualExpression(leftExpression, rightExpression);
+        break;
+      case EQUAL_TO:
+        resultExpression = new EqualToExpression(leftExpression, rightExpression);
+        break;
+      case NON_EQUAL:
+        resultExpression = new NonEqualExpression(leftExpression, rightExpression);
+        break;
+      case LOGIC_AND:
+        resultExpression = new LogicAndExpression(leftExpression, rightExpression);
+        break;
+      case LOGIC_OR:
+        resultExpression = new LogicOrExpression(leftExpression, rightExpression);
+        break;
+      case WHEN_THEN:
+        resultExpression = new WhenThenExpression(leftExpression, rightExpression);
+        break;
+      default:
+        throw new IllegalArgumentException(
+            "unsupported rawExpression type: " + rawExpression.getExpressionType());
+    }
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static List<Expression> reconstructTernaryExpressions(
@@ -134,15 +241,29 @@ public class ExpressionUtils {
   }
 
   public static Expression reconstructTernaryExpression(
-      TernaryExpression expression,
+      TernaryExpression rawExpression,
       Expression firstExpression,
       Expression secondExpression,
       Expression thirdExpression) {
-    TernaryExpression copiedTernaryExpression = (TernaryExpression) expression.copy();
-    copiedTernaryExpression.setFirstExpression(firstExpression);
-    copiedTernaryExpression.setSecondExpression(secondExpression);
-    copiedTernaryExpression.setThirdExpression(thirdExpression);
-    return copiedTernaryExpression;
+    Expression resultExpression;
+    if (rawExpression.getExpressionType() == ExpressionType.BETWEEN) {
+      resultExpression =
+          new BetweenExpression(
+              firstExpression,
+              secondExpression,
+              thirdExpression,
+              ((BetweenExpression) rawExpression).isNotBetween());
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + rawExpression.getExpressionType());
+    }
+    return cloneCommonFields(rawExpression, resultExpression);
+  }
+
+  private static Expression cloneCommonFields(
+      Expression rawExpression, Expression resultExpression) {
+    resultExpression.setViewPath(rawExpression.getViewPath());
+    return resultExpression;
   }
 
   /**

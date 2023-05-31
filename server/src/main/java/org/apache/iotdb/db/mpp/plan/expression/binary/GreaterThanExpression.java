@@ -43,9 +43,4 @@ public class GreaterThanExpression extends CompareBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.GREATER_THAN;
   }
-
-  @Override
-  protected Expression doCopy() {
-    return new GreaterThanExpression(leftExpression.copy(), rightExpression.copy());
-  }
 }

@@ -78,7 +78,7 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
       return Collections.emptyList();
     }
     List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
-    return reconstructTimeSeriesOperands(noStarPaths);
+    return reconstructTimeSeriesOperands(timeSeriesOperand, noStarPaths);
   }
 
   @Override

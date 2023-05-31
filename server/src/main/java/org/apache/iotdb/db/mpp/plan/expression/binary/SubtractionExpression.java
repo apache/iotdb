@@ -43,9 +43,4 @@ public class SubtractionExpression extends ArithmeticBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.SUBTRACTION;
   }
-
-  @Override
-  protected Expression doCopy() {
-    return new SubtractionExpression(leftExpression.copy(), rightExpression.copy());
-  }
 }

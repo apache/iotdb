@@ -61,11 +61,6 @@ public class LogicNotExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression doCopy() {
-    return new LogicNotExpression(expression.copy());
-  }
-
-  @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.LOGIC_NOT;
   }

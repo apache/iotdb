@@ -67,11 +67,6 @@ public class NegationExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression doCopy() {
-    return new NegationExpression(expression.copy());
-  }
-
-  @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.NEGATION;
   }

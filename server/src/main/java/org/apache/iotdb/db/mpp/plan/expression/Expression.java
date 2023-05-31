@@ -148,6 +148,10 @@ public abstract class Expression extends StatementNode {
     return viewPath;
   }
 
+  public boolean isViewExpression() {
+    return viewPath != null;
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // For representing expression in string
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -430,18 +434,4 @@ public abstract class Expression extends StatementNode {
       return current;
     }
   }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // copy expression
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public Expression copy() {
-    Expression copiedExpression = doCopy();
-    if (viewPath != null) {
-      copiedExpression.setViewPath(viewPath.copy());
-    }
-    return copiedExpression;
-  }
-
-  protected abstract Expression doCopy();
 }

@@ -148,11 +148,6 @@ public class LikeExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression doCopy() {
-    return new LikeExpression(expression.copy(), patternString, pattern);
-  }
-
-  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitLikeExpression(this, context);
   }

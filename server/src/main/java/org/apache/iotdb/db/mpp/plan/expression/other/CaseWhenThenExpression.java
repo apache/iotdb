@@ -180,15 +180,6 @@ public class CaseWhenThenExpression extends Expression {
   }
 
   @Override
-  protected Expression doCopy() {
-    List<WhenThenExpression> copiedWhenThenExpressions = new ArrayList<>();
-    for (WhenThenExpression whenThenExpression : whenThenExpressions) {
-      copiedWhenThenExpressions.add((WhenThenExpression) whenThenExpression.copy());
-    }
-    return new CaseWhenThenExpression(copiedWhenThenExpressions, elseExpression.copy());
-  }
-
-  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitCaseWhenThenExpression(this, context);
   }

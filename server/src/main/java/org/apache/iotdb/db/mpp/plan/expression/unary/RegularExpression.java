@@ -95,11 +95,6 @@ public class RegularExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression doCopy() {
-    return new RegularExpression(expression.copy(), patternString, pattern);
-  }
-
-  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitRegularExpression(this, context);
   }

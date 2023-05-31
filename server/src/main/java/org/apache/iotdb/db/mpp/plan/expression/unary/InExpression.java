@@ -137,11 +137,6 @@ public class InExpression extends UnaryExpression {
   }
 
   @Override
-  protected Expression doCopy() {
-    return new InExpression(expression.copy(), isNotIn, values);
-  }
-
-  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitInExpression(this, context);
   }

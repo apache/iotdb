@@ -43,9 +43,4 @@ public class EqualToExpression extends CompareBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.EQUAL_TO;
   }
-
-  @Override
-  protected Expression doCopy() {
-    return new EqualToExpression(leftExpression.copy(), rightExpression.copy());
-  }
 }

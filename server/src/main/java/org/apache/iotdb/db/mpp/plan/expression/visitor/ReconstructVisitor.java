@@ -29,7 +29,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpression;
-import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWHenThenExpression;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructCaseWhenThenExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpression;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpression;
 
@@ -61,7 +61,7 @@ public abstract class ReconstructVisitor<C> extends ExpressionAnalyzeVisitor<Exp
   public Expression visitCaseWhenThenExpression(
       CaseWhenThenExpression caseWhenThenExpression, C context) {
     List<Expression> childResults = getResultsFromChild(caseWhenThenExpression, context);
-    return reconstructCaseWHenThenExpression(childResults);
+    return reconstructCaseWhenThenExpression(caseWhenThenExpression, childResults);
   }
 
   @Override

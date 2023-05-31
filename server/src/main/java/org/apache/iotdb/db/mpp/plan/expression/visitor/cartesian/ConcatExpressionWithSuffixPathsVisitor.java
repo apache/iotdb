@@ -78,7 +78,7 @@ public class ConcatExpressionWithSuffixPathsVisitor
         actualPaths.add(concatPath);
       }
     }
-    return reconstructTimeSeriesOperands(actualPaths);
+    return reconstructTimeSeriesOperands(timeSeriesOperand, actualPaths);
   }
 
   @Override

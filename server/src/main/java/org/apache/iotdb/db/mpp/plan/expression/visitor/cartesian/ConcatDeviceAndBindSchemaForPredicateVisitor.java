@@ -63,7 +63,7 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
     if (noStarPaths.isEmpty()) {
       return Collections.singletonList(new NullOperand());
     }
-    return reconstructTimeSeriesOperands(noStarPaths);
+    return reconstructTimeSeriesOperands(predicate, noStarPaths);
   }
 
   @Override

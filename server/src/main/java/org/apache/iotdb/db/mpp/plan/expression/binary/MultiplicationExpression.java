@@ -43,9 +43,4 @@ public class MultiplicationExpression extends ArithmeticBinaryExpression {
   public ExpressionType getExpressionType() {
     return ExpressionType.MULTIPLICATION;
   }
-
-  @Override
-  protected Expression doCopy() {
-    return new MultiplicationExpression(leftExpression.copy(), rightExpression.copy());
-  }
 }
