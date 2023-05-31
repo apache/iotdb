@@ -102,6 +102,7 @@ public abstract class ListenableBlockingPendingQueue<E extends Event> {
     fullToNotFullListeners
         .values()
         .forEach(PendingQueueFullToNotFullListener::onPendingQueueFullToNotFull);
+    LOGGER.info("notifyFullToNotFullListeners");
   }
 
   public ListenableBlockingPendingQueue<E> registerNotFullToFullListener(
@@ -118,6 +119,7 @@ public abstract class ListenableBlockingPendingQueue<E extends Event> {
     notFullToFullListeners
         .values()
         .forEach(PendingQueueNotFullToFullListener::onPendingQueueNotFullToFull);
+    LOGGER.info("notifyNotFullToFullListeners");
   }
 
   public boolean offer(E event) {

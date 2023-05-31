@@ -41,16 +41,6 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     this.subtask = subtask;
     this.pendingQueue = pendingQueue;
 
-    pendingQueue.registerEmptyToNotEmptyListener(
-        subtask.getTaskID(),
-        () -> {
-          if (hasRunningTasks()) {
-            executor.start(subtask.getTaskID());
-          }
-        });
-    this.pendingQueue.registerNotEmptyToEmptyListener(
-        subtask.getTaskID(), () -> executor.stop(subtask.getTaskID()));
-
     runningTaskCount = 0;
     aliveTaskCount = 0;
   }

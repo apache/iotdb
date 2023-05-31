@@ -37,9 +37,14 @@ import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfig
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nullable;
 
 public class PipeTaskProcessorStage extends PipeTaskStage {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskProcessorStage.class);
 
   protected final PipeProcessorSubtaskExecutor executor =
       PipeSubtaskExecutorManager.getInstance().getProcessorSubtaskExecutor();
@@ -85,26 +90,15 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeConnectorOutputEventCollector);
 
     final PipeTaskStage pipeTaskStage = this;
-    this.pipeCollectorInputPendingQueue =
-        pipeCollectorInputPendingQueue != null
-            ? pipeCollectorInputPendingQueue
-                .registerEmptyToNotEmptyListener(
-                    taskId,
-                    () -> {
-                      // status can be changed by other threads calling pipeTaskStage's methods
-                      synchronized (pipeTaskStage) {
-                        if (status == PipeStatus.RUNNING) {
-                          executor.start(pipeProcessorSubtask.getTaskID());
-                        }
-                      }
-                    })
-                .registerNotEmptyToEmptyListener(
-                    taskId, () -> executor.stop(pipeProcessorSubtask.getTaskID()))
-            : null;
+    this.pipeCollectorInputPendingQueue = pipeCollectorInputPendingQueue;
     this.pipeConnectorOutputPendingQueue =
         pipeConnectorOutputPendingQueue
             .registerNotFullToFullListener(
-                taskId, () -> executor.stop(pipeProcessorSubtask.getTaskID()))
+                taskId,
+                () -> {
+                  executor.stop(pipeProcessorSubtask.getTaskID());
+                  LOGGER.warn("NotFullToFullListener", new Exception());
+                })
             .registerFullToNotFullListener(
                 taskId,
                 () -> {
@@ -114,6 +108,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
                     if (status == PipeStatus.RUNNING) {
                       pipeConnectorOutputEventCollector.tryCollectBufferedEvents();
                       executor.start(pipeProcessorSubtask.getTaskID());
+                      LOGGER.warn("FullToNotFullListener", new Exception());
                     }
                   }
                 });
