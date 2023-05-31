@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionFa
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionLogCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionTsFileCollector;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -59,7 +59,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
   private final PipeTaskMeta pipeTaskMeta;
   private final long creationTime;
-  private final ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue;
+  private final UnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   // TODO: support pattern in historical collector
   private PipeHistoricalDataRegionCollector historicalCollector;
@@ -70,7 +70,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   public IoTDBDataRegionCollector(
       PipeTaskMeta pipeTaskMeta,
       long creationTime,
-      ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue) {
+      UnboundedBlockingPendingQueue<Event> collectorPendingQueue) {
     this.hasBeenStarted = new AtomicBoolean(false);
 
     this.pipeTaskMeta = pipeTaskMeta;
