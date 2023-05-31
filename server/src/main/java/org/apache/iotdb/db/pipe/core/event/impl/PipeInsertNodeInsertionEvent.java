@@ -121,7 +121,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
 
   @Override
   public PipeInsertNodeInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta) {
+      PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeInsertNodeInsertionEvent(walEntryHandler, progressIndex, pipeTaskMeta, pattern);
   }
 

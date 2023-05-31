@@ -57,7 +57,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private final AtomicBoolean isClosed;
 
-  private Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap;
+  private final Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
     this(resource, null, null);
@@ -149,17 +149,13 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public void setPattern(String pathPattern) {
-    this.pattern = pathPattern;
-  }
-
-  @Override
   public String getPattern() {
     return pattern;
   }
 
+  @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta) {
+      PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern);
   }
 
