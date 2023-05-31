@@ -61,7 +61,7 @@ public class TSFHiveRecordReaderTest {
           .concat("0")
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
-  private FSType beforeFSType;
+  private FSType[] beforeFSType;
 
   @Before
   public void setUp() throws IOException {
@@ -70,7 +70,7 @@ public class TSFHiveRecordReaderTest {
     Path path = new Path(filePath);
     String[] hosts = {"127.0.0.1"};
     beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
-    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(new FSType[] {FSType.HDFS});
     TSFInputSplit inputSplit = new TSFInputSplit(path, hosts, 0, 3727528L);
     String[] deviceIds = {"device_1"}; // configure reading which deviceIds
     job.set(READ_DELTAOBJECTS, String.join(",", deviceIds));

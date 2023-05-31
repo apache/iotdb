@@ -510,7 +510,7 @@ public class PipeTaskAgent {
       PipeTaskMeta pipeTaskMeta) {
     if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
       final PipeTask pipeTask =
-          new PipeTaskBuilder(consensusGroupId, pipeTaskMeta, pipeStaticMeta).build();
+          new PipeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     }

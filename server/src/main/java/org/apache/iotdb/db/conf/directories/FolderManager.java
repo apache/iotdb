@@ -61,7 +61,7 @@ public class FolderManager {
     try {
       this.selectStrategy.setFolders(folders);
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("All disks of wal folders are full, change system mode to read-only.", e);
+      logger.error("All folders are full, change system mode to read-only.", e);
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }
@@ -71,7 +71,7 @@ public class FolderManager {
     try {
       return folders.get(selectStrategy.nextFolderIndex());
     } catch (DiskSpaceInsufficientException e) {
-      logger.error("All disks of wal folders are full, change system mode to read-only.", e);
+      logger.error("All folders are full, change system mode to read-only.", e);
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
       throw e;
     }

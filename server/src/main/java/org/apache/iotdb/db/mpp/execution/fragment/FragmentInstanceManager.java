@@ -70,9 +70,6 @@ public class FragmentInstanceManager {
   // record failed instances count
   private final CounterStat failedInstances = new CounterStat();
 
-  private static final long QUERY_TIMEOUT_MS =
-      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
-
   private final ExecutorService intoOperationExecutor;
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
@@ -147,6 +144,7 @@ public class FragmentInstanceManager {
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                  context.initializeNumOfDrivers(drivers.size());
                   // get the sink of last driver
                   ISink sink = drivers.get(drivers.size() - 1).getSink();
 
@@ -208,6 +206,7 @@ public class FragmentInstanceManager {
 
                 List<IDriver> drivers = new ArrayList<>();
                 driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                context.initializeNumOfDrivers(drivers.size());
                 // get the sink of last driver
                 ISink sink = drivers.get(drivers.size() - 1).getSink();
 
@@ -314,8 +313,12 @@ public class FragmentInstanceManager {
     instanceExecution.forEach(
         (key, execution) -> {
           if (execution.getStateMachine().getState() == FragmentInstanceState.FLUSHING
-              && (now - execution.getStartTime()) > QUERY_TIMEOUT_MS) {
-            execution.getStateMachine().failed(new TimeoutException());
+              && (now - execution.getStartTime()) > execution.getTimeoutInMs()) {
+            execution
+                .getStateMachine()
+                .failed(
+                    new TimeoutException(
+                        "Query has executed more than " + execution.getTimeoutInMs() + "ms"));
           }
         });
   }

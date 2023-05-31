@@ -71,6 +71,11 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     return schemaRegion.getSchemaRegionStatistics().getTemplateActivatedNumber();
   }
 
+  @Override
+  public void processDelayedTask(TsBlockBuilder tsBlockBuilder, String database) {
+    // There is no delayed tasks. So, do nothing.
+  }
+
   private class DevicesUsingTemplateReader implements ISchemaReader<IDeviceSchemaInfo> {
 
     final Iterator<PartialPath> pathPatternIterator;
