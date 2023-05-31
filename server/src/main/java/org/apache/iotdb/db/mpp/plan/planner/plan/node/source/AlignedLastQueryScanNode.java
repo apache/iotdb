@@ -174,6 +174,13 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
     return seriesPath;
   }
 
+  public String getOutputSymbolForSort() {
+    if (outputViewPath != null) {
+      return outputViewPath;
+    }
+    return seriesPath.getDevice();
+  }
+
   @Override
   public PartialPath getPartitionPath() {
     return seriesPath;

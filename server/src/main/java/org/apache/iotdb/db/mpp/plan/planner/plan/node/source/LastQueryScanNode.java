@@ -93,6 +93,13 @@ public class LastQueryScanNode extends SeriesSourceNode {
     return outputViewPath;
   }
 
+  public String getOutputSymbolForSort() {
+    if (outputViewPath != null) {
+      return outputViewPath;
+    }
+    return seriesPath.getFullPath();
+  }
+
   @Override
   public void close() throws Exception {}
 
