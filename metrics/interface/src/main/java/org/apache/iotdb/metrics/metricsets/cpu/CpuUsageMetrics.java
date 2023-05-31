@@ -25,6 +25,9 @@ import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
@@ -36,7 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.UnaryOperator;
 
 public class CpuUsageMetrics implements IMetricSet {
-
+  private static final Logger log = LoggerFactory.getLogger(CpuUsageMetrics.class);
   private static final String MODULE_CPU_USAGE = "module_cpu_usage";
   private static final String POOL_CPU_USAGE = "pool_cpu_usage";
   private static final String POOL = "pool";
@@ -280,7 +283,7 @@ public class CpuUsageMetrics implements IMetricSet {
       if (entry.getValue() > 0.0) {
         moduleUserTimePercentageMap.put(
             entry.getKey(),
-            moduleIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue());
+            Math.min(moduleIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue(), 1.0));
       } else {
         moduleUserTimePercentageMap.put(entry.getKey(), 0.0);
       }
@@ -290,7 +293,8 @@ public class CpuUsageMetrics implements IMetricSet {
           entry.getKey(), entry.getValue() * 1.0 / totalIncrementTime * processCpuLoad);
       if (entry.getValue() > 0.0) {
         poolUserTimePercentageMap.put(
-            entry.getKey(), poolIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue());
+            entry.getKey(),
+            Math.min(poolIncrementUserTimeMap.get(entry.getKey()) * 1.0 / entry.getValue(), 1.0));
       } else {
         poolUserTimePercentageMap.put(entry.getKey(), 0.0);
       }
