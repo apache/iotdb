@@ -49,6 +49,21 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
     this.device2Measurements = device2Measurements;
   }
 
+  public PipeRealtimeCollectEvent(
+      EnrichedEvent event,
+      TsFileEpoch tsFileEpoch,
+      Map<String, String[]> device2Measurements,
+      PipeTaskMeta pipeTaskMeta) {
+    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
+    // is only used in the realtime event collector, which does not need to report the progress
+    // of the event, so the pipeTaskMeta is always null.
+    super(pipeTaskMeta);
+
+    this.event = event;
+    this.tsFileEpoch = tsFileEpoch;
+    this.device2Measurements = device2Measurements;
+  }
+
   public Event getEvent() {
     return event;
   }
@@ -104,7 +119,8 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
     return new PipeRealtimeCollectEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta),
         this.tsFileEpoch,
-        this.device2Measurements);
+        this.device2Measurements,
+        pipeTaskMeta);
   }
 
   @Override
