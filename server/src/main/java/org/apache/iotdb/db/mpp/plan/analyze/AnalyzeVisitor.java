@@ -248,27 +248,29 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setStatement(queryStatement);
 
       // request schema fetch API
-      logger.debug("[StartFetchSchema]");
       long startTime = System.nanoTime();
       ISchemaTree schemaTree;
-      if (queryStatement.isGroupByTag()) {
-        schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
-      } else {
-        schemaTree = schemaFetcher.fetchSchema(patternTree, context);
-      }
-      QueryPlanCostMetricSet.getInstance()
-          .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
-      logger.debug("[EndFetchSchema]");
+      try {
+        logger.debug("[StartFetchSchema]");
+        if (queryStatement.isGroupByTag()) {
+          schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
+        } else {
+          schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+        }
+        // If there is no leaf node in the schema tree, the query should be completed immediately
+        if (schemaTree.isEmpty()) {
+          return finishQuery(queryStatement, analysis);
+        }
 
-      // If there is no leaf node in the schema tree, the query should be completed immediately
-      if (schemaTree.isEmpty()) {
-        return finishQuery(queryStatement, analysis);
-      }
-
-      // make sure paths in logical view is fetched
-      updateSchemaTreeByViews(analysis, schemaTree);
-      if (analysis.useLogicalView() && queryStatement.isAlignByDevice()) {
-        throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
+        // make sure paths in logical view is fetched
+        updateSchemaTreeByViews(analysis, schemaTree);
+        if (analysis.useLogicalView() && queryStatement.isAlignByDevice()) {
+          throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
+        }
+      } finally {
+        logger.debug("[EndFetchSchema]");
+        QueryPlanCostMetricSet.getInstance()
+            .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
       }
 
       // extract global time filter from query filter and determine if there is a value filter

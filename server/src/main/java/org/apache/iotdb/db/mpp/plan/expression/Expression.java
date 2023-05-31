@@ -169,8 +169,6 @@ public abstract class Expression extends StatementNode {
     return expressionString;
   }
 
-  private String outputSymbolCache;
-
   /**
    * Get the output symbol of the expression.
    *
@@ -178,10 +176,7 @@ public abstract class Expression extends StatementNode {
    * #hashCode()} and {@link #equals(Object)}.
    */
   public String getOutputSymbol() {
-    if (outputSymbolCache == null) {
-      outputSymbolCache = viewPath != null ? viewPath.getFullPath() : getOutputSymbolInternal();
-    }
-    return outputSymbolCache;
+    return viewPath != null ? viewPath.getFullPath() : getOutputSymbolInternal();
   }
 
   /**
