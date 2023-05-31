@@ -225,9 +225,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             storageGroupName,
             dataRegionId);
         // delete the old files
-        List<Long> sizeList = new ArrayList<>();
-        for (TsFileResource resource : selectedTsFileResourceList) {
-          sizeList.add(resource.getTsFileSize());
+        long[] sizeList = new long[selectedTsFileResourceList.size()];
+        for (int i = 0, size = selectedTsFileResourceList.size(); i < size; ++i) {
+          sizeList[i] = selectedTsFileResourceList.get(i).getTsFileSize();
         }
         CompactionUtils.deleteTsFilesInDisk(
             selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
@@ -252,8 +252,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         for (TsFileResource resource : selectedTsFileResourceList) {
           fileNames.add(resource.getTsFile().getName());
         }
-        FileMetrics.getInstance()
-            .deleteFile(sizeList, sequence, selectedTsFileResourceList.size(), fileNames);
+        FileMetrics.getInstance().deleteFile(sizeList, sequence, fileNames);
 
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 

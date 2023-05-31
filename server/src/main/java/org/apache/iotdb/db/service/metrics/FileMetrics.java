@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -51,6 +52,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+@SuppressWarnings("java:S6548") // do not warn about singleton class
 public class FileMetrics implements IMetricSet {
   private static final Logger log = LoggerFactory.getLogger(FileMetrics.class);
   private static final MetricConfig METRIC_CONFIG =
@@ -78,7 +80,6 @@ public class FileMetrics implements IMetricSet {
   private final Map<Integer, Long> seqLevelTsFileSizeMap = new ConcurrentHashMap<>();
   private final Map<Integer, Long> unseqLevelTsFileSizeMap = new ConcurrentHashMap<>();
   private long lastUpdateTime = 0;
-  private static final long UPDATE_INTERVAL = 10_000L;
 
   // compaction temporal files
   private final AtomicLong innerSeqCompactionTempFileSize = new AtomicLong(0);
@@ -434,14 +435,16 @@ public class FileMetrics implements IMetricSet {
         .set(size);
   }
 
-  public void deleteFile(List<Long> sizeList, boolean seq, int num, List<String> names) {
-    AtomicLong totalSize = new AtomicLong(0L);
-    sizeList.forEach(totalSize::addAndGet);
-    updateGlobalCountAndSize(-totalSize.get(), -num, seq);
+  public void deleteFile(long[] sizeList, boolean seq, List<String> names) {
+    long totalSize = 0;
+    for (long size : sizeList) {
+      totalSize += size;
+    }
+    updateGlobalCountAndSize(-totalSize, -sizeList.length, seq);
     for (int i = 0, length = names.size(); i < length; ++i) {
       int level = -1;
       String name = names.get(i);
-      long size = sizeList.get(i);
+      long size = sizeList[i];
       try {
         TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(name);
         level = tsFileName.getInnerCompactionCnt();
@@ -505,7 +508,7 @@ public class FileMetrics implements IMetricSet {
   }
 
   private synchronized void updateCompactionTempSize() {
-    if (System.currentTimeMillis() - lastUpdateTime <= UPDATE_INTERVAL) {
+    if (System.currentTimeMillis() - lastUpdateTime <= MetricConstant.UPDATE_INTERVAL) {
       return;
     }
     lastUpdateTime = System.currentTimeMillis();

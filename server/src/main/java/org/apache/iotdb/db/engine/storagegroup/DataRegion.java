@@ -1621,9 +1621,8 @@ public class DataRegion implements IDataRegionForQuery {
       resource.remove();
       FileMetrics.getInstance()
           .deleteFile(
-              Collections.singletonList(resource.getTsFileSize()),
+              new long[] {resource.getTsFileSize()},
               isSeq,
-              1,
               Collections.singletonList(resource.getTsFile().getName()));
       logger.info(
           "Removed a file {} before {} by ttl ({} {})",
@@ -2744,9 +2743,8 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileManager.remove(tsFileResourceToBeMoved, true);
           FileMetrics.getInstance()
               .deleteFile(
-                  Collections.singletonList(tsFileResourceToBeMoved.getTsFileSize()),
+                  new long[] {tsFileResourceToBeMoved.getTsFileSize()},
                   true,
-                  1,
                   Collections.singletonList(tsFileResourceToBeMoved.getTsFile().getName()));
           break;
         }
@@ -2760,9 +2758,8 @@ public class DataRegion implements IDataRegionForQuery {
             tsFileManager.remove(tsFileResourceToBeMoved, false);
             FileMetrics.getInstance()
                 .deleteFile(
-                    Collections.singletonList(tsFileResourceToBeMoved.getTsFileSize()),
+                    new long[] {tsFileResourceToBeMoved.getTsFileSize()},
                     false,
-                    1,
                     Collections.singletonList(tsFileResourceToBeMoved.getTsFile().getName()));
             break;
           }

@@ -204,16 +204,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           }
         }
 
-        List<Long> sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
-        List<String> fileNames = new ArrayList<>();
+        long[] sequenceFileSize = deleteOldFiles(selectedSequenceFiles);
+        List<String> fileNames = new ArrayList<>(selectedSequenceFiles.size());
         selectedSequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        FileMetrics.getInstance()
-            .deleteFile(sequenceFileSize, true, selectedSequenceFiles.size(), fileNames);
+        FileMetrics.getInstance().deleteFile(sequenceFileSize, true, fileNames);
         fileNames.clear();
         selectedUnsequenceFiles.forEach(x -> fileNames.add(x.getTsFile().getName()));
-        List<Long> unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
-        FileMetrics.getInstance()
-            .deleteFile(unsequenceFileSize, false, selectedUnsequenceFiles.size(), fileNames);
+        long[] unsequenceFileSize = deleteOldFiles(selectedUnsequenceFiles);
+        FileMetrics.getInstance().deleteFile(unsequenceFileSize, false, fileNames);
         CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
@@ -353,10 +351,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
-  private List<Long> deleteOldFiles(List<TsFileResource> tsFileResourceList) {
-    List<Long> size = new ArrayList<>();
-    for (TsFileResource tsFileResource : tsFileResourceList) {
-      size.add(tsFileResource.getTsFileSize());
+  private long[] deleteOldFiles(List<TsFileResource> tsFileResourceList) {
+    long[] size = new long[tsFileResourceList.size()];
+    for (int i = 0, length = tsFileResourceList.size(); i < length; ++i) {
+      TsFileResource tsFileResource = tsFileResourceList.get(i);
+      size[i] = tsFileResource.getTsFileSize();
       tsFileResource.remove();
       LOGGER.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
