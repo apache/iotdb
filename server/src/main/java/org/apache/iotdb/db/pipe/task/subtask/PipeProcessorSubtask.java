@@ -41,11 +41,10 @@ public class PipeProcessorSubtask extends PipeSubtask {
 
   public PipeProcessorSubtask(
       String taskID,
-      PipeTaskMeta taskMeta,
       EventSupplier inputEventSupplier,
       PipeProcessor pipeProcessor,
       EventCollector outputEventCollector) {
-    super(taskID, taskMeta);
+    super(taskID);
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;

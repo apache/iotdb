@@ -64,7 +64,6 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   public PipeTaskProcessorStage(
       String pipeName,
       TConsensusGroupId dataRegionId,
-      PipeTaskMeta taskMeta,
       EventSupplier pipeCollectorInputEventSupplier,
       @Nullable ListenableBlockingPendingQueue<Event> pipeCollectorInputPendingQueue,
       PipeParameters pipeProcessorParameters,
@@ -79,7 +78,6 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
-            taskMeta,
             pipeCollectorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);

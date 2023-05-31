@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.task.subtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.task.queue.ListenableBoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -48,10 +49,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
   /** @param taskID connectorAttributeSortedString */
   public PipeConnectorSubtask(
       String taskID,
-      PipeTaskMeta taskMeta,
       ListenableBoundedBlockingPendingQueue<Event> inputPendingQueue,
       PipeConnector outputPipeConnector) {
-    super(taskID, taskMeta);
+    super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
     executeOnceInvokedTimes = 0;
@@ -88,7 +88,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     } catch (PipeConnectionException e) {
       throw e;
     } catch (Exception e) {
-      e.printStackTrace();
+      LOGGER.warn("Execute Connector subtask once error.", e);
       throw new PipeException(
           "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
           e);
@@ -129,7 +129,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
         LOGGER.warn(errorMessage);
         lastFailedCause = throwable;
 
-        PipeAgent.runtime().report(taskMeta, new PipeRuntimeCriticalException(errorMessage));
+        if (lastEvent instanceof EnrichedEvent) {
+          ((EnrichedEvent) lastEvent)
+              .reportException(new PipeRuntimeCriticalException(errorMessage));
+        }
 
         // although the pipe task will be stopped, we still don't release the last event here
         // because we need to keep it for the next retry. if user wants to restart the task,

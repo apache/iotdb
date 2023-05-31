@@ -33,14 +33,13 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   protected String connectorSubtaskId;
 
-  public PipeTaskConnectorStage(PipeParameters pipeConnectorParameters, PipeTaskMeta taskMeta) {
+  public PipeTaskConnectorStage(PipeParameters pipeConnectorParameters) {
     this.pipeConnectorParameters = pipeConnectorParameters;
     connectorSubtaskId =
         PipeConnectorSubtaskManager.instance()
             .register(
                 PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
-                pipeConnectorParameters,
-                taskMeta);
+                pipeConnectorParameters);
   }
 
   @Override

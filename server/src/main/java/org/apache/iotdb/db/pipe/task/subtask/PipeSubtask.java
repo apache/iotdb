@@ -44,7 +44,6 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
   protected final String taskID;
-  protected final PipeTaskMeta taskMeta;
 
   private ListeningExecutorService subtaskWorkerThreadPoolExecutor;
   private ExecutorService subtaskCallbackListeningExecutor;
@@ -59,10 +58,9 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   protected Event lastEvent;
 
-  protected PipeSubtask(String taskID, PipeTaskMeta taskMeta) {
+  protected PipeSubtask(String taskID) {
     super();
     this.taskID = taskID;
-    this.taskMeta = taskMeta;
   }
 
   public void bindExecutors(
@@ -112,6 +110,10 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   public void onFailure(@NotNull Throwable throwable) {
     if (retryCount.get() < MAX_RETRY_TIMES) {
       retryCount.incrementAndGet();
+      LOGGER.warn(
+          String.format(
+              "Retry subtask %s, retry count [%s/%s]",
+              this.getClass().getSimpleName(), retryCount.get(), MAX_RETRY_TIMES));
       submitSelf();
     } else {
       final String errorMessage =
@@ -121,7 +123,9 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
       LOGGER.warn(errorMessage);
       lastFailedCause = throwable;
 
-      PipeAgent.runtime().report(taskMeta, new PipeRuntimeCriticalException(errorMessage));
+      if (lastEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) lastEvent).reportException(new PipeRuntimeCriticalException(errorMessage));
+      }
 
       // although the pipe task will be stopped, we still don't release the last event here
       // because we need to keep it for the next retry. if user wants to restart the task,

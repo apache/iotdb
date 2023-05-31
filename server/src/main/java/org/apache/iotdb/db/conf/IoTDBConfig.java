@@ -1262,6 +1262,7 @@ public class IoTDBConfig {
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
+    pipeReceiveFileDir = addDataHomeDir(pipeReceiveFileDir);
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);

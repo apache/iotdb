@@ -47,8 +47,7 @@ public class PipeConnectorSubtaskManager {
 
   public synchronized String register(
       PipeConnectorSubtaskExecutor executor,
-      PipeParameters pipeConnectorParameters,
-      PipeTaskMeta taskMeta) {
+      PipeParameters pipeConnectorParameters) {
     final String attributeSortedString =
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
@@ -81,7 +80,7 @@ public class PipeConnectorSubtaskManager {
           new ListenableBoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
       final PipeConnectorSubtask pipeConnectorSubtask =
-          new PipeConnectorSubtask(attributeSortedString, taskMeta, pendingQueue, pipeConnector);
+          new PipeConnectorSubtask(attributeSortedString, pendingQueue, pipeConnector);
       final PipeConnectorSubtaskLifeCycle pipeConnectorSubtaskLifeCycle =
           new PipeConnectorSubtaskLifeCycle(executor, pipeConnectorSubtask, pendingQueue);
       attributeSortedString2SubtaskLifeCycleMap.put(
