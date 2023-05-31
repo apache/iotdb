@@ -156,7 +156,9 @@ public class LastQueryScanNode extends SeriesSourceNode {
     PlanNodeType.LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
     ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
-    ReadWriteIOUtils.write(outputViewPath, byteBuffer);
+    if (outputViewPath != null) {
+      ReadWriteIOUtils.write(outputViewPath, byteBuffer);
+    }
   }
 
   @Override
@@ -164,7 +166,9 @@ public class LastQueryScanNode extends SeriesSourceNode {
     PlanNodeType.LAST_QUERY_SCAN.serialize(stream);
     seriesPath.serialize(stream);
     ReadWriteIOUtils.write(outputViewPath == null, stream);
-    ReadWriteIOUtils.write(outputViewPath, stream);
+    if (outputViewPath != null) {
+      ReadWriteIOUtils.write(outputViewPath, stream);
+    }
   }
 
   public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {
