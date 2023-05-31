@@ -21,12 +21,12 @@ package org.apache.iotdb.db.pipe.task.queue;
 
 import org.apache.iotdb.pipe.api.event.Event;
 
-import org.eclipse.jetty.util.BlockingArrayQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 
 public class ListenableBoundedBlockingPendingQueue<E extends Event>
     extends ListenableBlockingPendingQueue<E> {
 
   public ListenableBoundedBlockingPendingQueue(int pendingQueueSize) {
-    super(new BlockingArrayQueue<>(pendingQueueSize));
+    super(new ArrayBlockingQueue<>(pendingQueueSize));
   }
 }
