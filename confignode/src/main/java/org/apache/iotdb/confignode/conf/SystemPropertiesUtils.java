@@ -117,6 +117,9 @@ public class SystemPropertiesUtils {
       }
     }
 
+    final String format =
+        "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
+            + " Your configuration: {} will be forced update to: {}";
     // Consensus protocol configuration
     String configNodeConsensusProtocolClass =
         systemProperties.getProperty("config_node_consensus_protocol_class", null);
@@ -125,7 +128,8 @@ public class SystemPropertiesUtils {
     } else if (!configNodeConsensusProtocolClass.equals(
         conf.getConfigNodeConsensusProtocolClass())) {
       LOGGER.warn(
-          "[SystemProperties] The parameter \"config_node_consensus_protocol_class\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
+          format,
+          "config_node_consensus_protocol_class",
           conf.getConfigNodeConsensusProtocolClass(),
           configNodeConsensusProtocolClass);
       conf.setConfigNodeConsensusProtocolClass(configNodeConsensusProtocolClass);
@@ -138,7 +142,8 @@ public class SystemPropertiesUtils {
     } else if (!dataRegionConsensusProtocolClass.equals(
         conf.getDataRegionConsensusProtocolClass())) {
       LOGGER.warn(
-          "[SystemProperties] The parameter \"data_region_consensus_protocol_class\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
+          format,
+          "data_region_consensus_protocol_class",
           conf.getDataRegionConsensusProtocolClass(),
           dataRegionConsensusProtocolClass);
       conf.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
@@ -151,7 +156,8 @@ public class SystemPropertiesUtils {
     } else if (!schemaRegionConsensusProtocolClass.equals(
         conf.getSchemaRegionConsensusProtocolClass())) {
       LOGGER.warn(
-          "[SystemProperties] The parameter \"schema_region_consensus_protocol_class\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
+          format,
+          "schema_region_consensus_protocol_class",
           conf.getSchemaRegionConsensusProtocolClass(),
           schemaRegionConsensusProtocolClass);
       conf.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
@@ -164,10 +170,7 @@ public class SystemPropertiesUtils {
       int seriesPartitionSlotNum =
           Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
       if (seriesPartitionSlotNum != conf.getSeriesSlotNum()) {
-        LOGGER.warn(
-            "[SystemProperties] The parameter \"series_slot_num\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
-            conf.getSeriesSlotNum(),
-            seriesPartitionSlotNum);
+        LOGGER.warn(format, "series_slot_num", conf.getSeriesSlotNum(), seriesPartitionSlotNum);
         conf.setSeriesSlotNum(seriesPartitionSlotNum);
       }
     }
@@ -179,7 +182,8 @@ public class SystemPropertiesUtils {
     } else if (!Objects.equals(
         seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
       LOGGER.warn(
-          "[SystemProperties] The parameter \"seriesPartitionSlotExecutorClass\" can't be modified after first startup. Your configuration: {} will be forced update to: {}",
+          format,
+          "series_partition_executor_class",
           conf.getSeriesPartitionExecutorClass(),
           seriesPartitionSlotExecutorClass);
       conf.setSeriesPartitionExecutorClass(seriesPartitionSlotExecutorClass);
