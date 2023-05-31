@@ -48,7 +48,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -180,9 +179,8 @@ public class PrometheusReporter implements Reporter {
       throws IOException {
     prometheusTextWriter.writeHelp(name);
     prometheusTextWriter.writeType(name, type);
-    prometheusTextWriter.writeSample(name + "_max", tags, snapshot.getMax());
-    prometheusTextWriter.writeSample(
-        name + "_sum", tags, Arrays.stream(snapshot.getValues()).sum());
+    prometheusTextWriter.writeSample(name + "_max", tags, snapshot.getTotalMax());
+    prometheusTextWriter.writeSample(name + "_avg", tags, snapshot.getMean());
     prometheusTextWriter.writeSample(name + "_count", tags, count);
 
     prometheusTextWriter.writeSample(

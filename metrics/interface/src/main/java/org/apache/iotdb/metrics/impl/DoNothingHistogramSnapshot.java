@@ -28,17 +28,7 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   }
 
   @Override
-  public double[] getValues() {
-    return new double[0];
-  }
-
-  @Override
   public int size() {
-    return 0;
-  }
-
-  @Override
-  public double getMedian() {
     return 0;
   }
 
@@ -48,12 +38,12 @@ public class DoNothingHistogramSnapshot implements HistogramSnapshot, DoNothingM
   }
 
   @Override
-  public double getMean() {
-    return 0;
+  public double getTotalMax() {
+    return 0.0D;
   }
 
   @Override
-  public double getMin() {
-    return 0.0D;
+  public double getMean() {
+    return 0;
   }
 }

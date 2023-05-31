@@ -38,12 +38,12 @@ public class MicrometerTimer implements Timer {
   }
 
   @Override
-  public HistogramSnapshot takeSnapshot() {
-    return new MicrometerTimerHistogramSnapshot(timer.takeSnapshot(), timer.baseTimeUnit());
+  public long getCount() {
+    return timer.count();
   }
 
   @Override
-  public long getCount() {
-    return timer.count();
+  public HistogramSnapshot takeSnapshot() {
+    return new MicrometerTimerHistogramSnapshot(timer);
   }
 }

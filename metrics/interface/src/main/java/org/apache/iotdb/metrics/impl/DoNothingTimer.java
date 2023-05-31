@@ -31,12 +31,12 @@ public class DoNothingTimer implements Timer, DoNothingMetric {
   }
 
   @Override
-  public HistogramSnapshot takeSnapshot() {
-    return new DoNothingHistogramSnapshot();
+  public long getCount() {
+    return 0;
   }
 
   @Override
-  public long getCount() {
-    return 0;
+  public HistogramSnapshot takeSnapshot() {
+    return new DoNothingHistogramSnapshot();
   }
 }

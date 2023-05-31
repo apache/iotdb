@@ -21,8 +21,6 @@ package org.apache.iotdb.metrics.dropwizard.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-import java.util.Arrays;
-
 public class DropwizardHistogramSnapshot implements HistogramSnapshot {
 
   com.codahale.metrics.Snapshot snapshot;
@@ -37,18 +35,8 @@ public class DropwizardHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double[] getValues() {
-    return Arrays.stream(snapshot.getValues()).mapToDouble(k -> k).toArray();
-  }
-
-  @Override
   public int size() {
     return snapshot.size();
-  }
-
-  @Override
-  public double getMedian() {
-    return snapshot.getMedian();
   }
 
   @Override
@@ -57,12 +45,12 @@ public class DropwizardHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double getMean() {
-    return snapshot.getMean();
+  public double getTotalMax() {
+    return (double) snapshot.getMax();
   }
 
   @Override
-  public double getMin() {
-    return (double) snapshot.getMin();
+  public double getMean() {
+    return snapshot.getMean();
   }
 }

@@ -194,8 +194,7 @@ public class MetricServiceTest {
     metricService.histogram(50, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, histogram1.count());
     assertEquals(5, histogram1.takeSnapshot().size());
-    assertEquals(10.0D, histogram1.takeSnapshot().getMin(), 0.00001);
-    assertEquals(50.0D, histogram1.takeSnapshot().getMax(), 0.00001);
+    assertEquals(50.0D, histogram1.takeSnapshot().getTotalMax(), 0.00001);
     Histogram histogram2 =
         metricService.getOrCreateHistogram("histogram1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(histogram1, histogram2);
