@@ -162,6 +162,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
         // this event is not reliable anymore. but the data represented by this event
         // has been carried by the following tsfile event, so we can just discard this event.
         event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+        LOGGER.warn(String.format("Increase reference count for event %s error.", event));
         return null;
       }
     }
@@ -196,6 +197,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                 "TsFile Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 event.getEvent());
+        LOGGER.warn(errorMessage);
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
         return null;
       }
