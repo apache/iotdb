@@ -23,10 +23,9 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.concurrent.ArrayBlockingQueue;
 
-public class ListenableBoundedBlockingPendingQueue<E extends Event>
-    extends ListenableBlockingPendingQueue<E> {
+public class BoundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
 
-  public ListenableBoundedBlockingPendingQueue(int pendingQueueSize) {
+  public BoundedBlockingPendingQueue(int pendingQueueSize) {
     super(new ArrayBlockingQueue<>(pendingQueueSize));
   }
 }

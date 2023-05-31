@@ -28,17 +28,16 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public abstract class ListenableBlockingPendingQueue<E extends Event> {
+public abstract class BlockingPendingQueue<E extends Event> {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ListenableBlockingPendingQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BlockingPendingQueue.class);
 
   private static final long MAX_BLOCKING_TIME_MS =
       PipeConfig.getInstance().getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
 
   private final BlockingQueue<E> pendingQueue;
 
-  protected ListenableBlockingPendingQueue(BlockingQueue<E> pendingQueue) {
+  protected BlockingPendingQueue(BlockingQueue<E> pendingQueue) {
     this.pendingQueue = pendingQueue;
   }
 
