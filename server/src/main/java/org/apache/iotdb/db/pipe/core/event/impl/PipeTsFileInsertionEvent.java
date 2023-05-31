@@ -31,6 +31,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
@@ -207,6 +208,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         else {
           List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
           for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+
+            if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+              timeseriesMetadataList.add(timeseriesMetadata);
+              continue;
+            }
+
             String measurement = timeseriesMetadata.getMeasurementId();
             // low cost check comes first
             if (pattern.length() == measurement.length() + device.length() + 1

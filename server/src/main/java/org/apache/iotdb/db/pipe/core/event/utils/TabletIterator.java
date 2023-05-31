@@ -52,26 +52,37 @@ public class TabletIterator implements Iterator<Tablet> {
   private final TsFileSequenceReader reader;
   private final Iterator<Map.Entry<String, List<TimeseriesMetadata>>> entriesIterator;
   private Map.Entry<String, List<TimeseriesMetadata>> currentEntry;
+  private Iterator<TimeseriesMetadata> timeseriesMetadataIterator;
+  private TimeseriesMetadata currentTimeseriesMetadata;
   private List<MeasurementSchema> measurementSchemas;
-  private List<Object> values;
-  private List<BitMap> bitMap;
-  private List<Long> timestamps;
+
+  private boolean isAligned;
+  private List<long[]> timeBatches;
+  private long[] timestampsForAligned;
 
   public TabletIterator(
       TsFileSequenceReader reader,
       Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap) {
     this.reader = reader;
     this.entriesIterator = device2TimeseriesMetadataMap.entrySet().iterator();
+    this.timeBatches = new ArrayList<>();
     this.currentEntry = null;
+    this.timeseriesMetadataIterator = null;
+    this.currentTimeseriesMetadata = null;
     this.measurementSchemas = null;
-    this.values = null;
-    this.bitMap = null;
-    this.timestamps = null;
+    this.isAligned = false;
+    this.timestampsForAligned = null;
+
+    // Initialize timeseriesMetadataIterator if there is a next entry
+    if (entriesIterator.hasNext()) {
+      currentEntry = entriesIterator.next();
+      timeseriesMetadataIterator = currentEntry.getValue().iterator();
+    }
   }
 
   @Override
   public boolean hasNext() {
-    return entriesIterator.hasNext();
+    return timeseriesMetadataIterator.hasNext() || entriesIterator.hasNext();
   }
 
   @Override
@@ -80,39 +91,43 @@ public class TabletIterator implements Iterator<Tablet> {
       throw new NoSuchElementException();
     }
 
-    currentEntry = entriesIterator.next();
-    measurementSchemas = new ArrayList<>();
-    values = new ArrayList<>();
-    bitMap = new ArrayList<>();
-    timestamps = new ArrayList<>();
-    List<long[]> timeBatches = new ArrayList<>();
-
-    for (TimeseriesMetadata timeseriesMetadata : currentEntry.getValue()) {
-      processTimeseriesMetadata(timeseriesMetadata, timeBatches);
+    if (!timeseriesMetadataIterator.hasNext()) {
+      currentEntry = entriesIterator.next();
+      timeseriesMetadataIterator = currentEntry.getValue().iterator();
     }
+    currentTimeseriesMetadata = timeseriesMetadataIterator.next();
+    measurementSchemas = new ArrayList<>();
 
-    return createTablet();
+    if (currentTimeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+      processTimeseriesMetadata(currentTimeseriesMetadata);
+      currentTimeseriesMetadata = timeseriesMetadataIterator.next();
+    }
+    return processTimeseriesMetadata(currentTimeseriesMetadata);
   }
 
-  private Tablet createTablet() {
+  private Tablet createTablet(long[] timestamps, Object[] values, BitMap[] bitMaps) {
     // create tablet
     Tablet tablet = new Tablet(currentEntry.getKey(), measurementSchemas);
-    tablet.timestamps = timestamps.stream().mapToLong(Long::longValue).toArray();
-    tablet.values = values.toArray();
-    tablet.rowSize = tablet.timestamps.length;
 
-    BitMap[] bitMapArray = new BitMap[bitMap.size()];
-    for (int i = 0; i < bitMap.size(); i++) {
-      bitMapArray[i] = bitMap.get(i);
+    if (isAligned) {
+      if (timestampsForAligned == null) {
+        timestampsForAligned = timestamps;
+      }
+      tablet.timestamps = timestampsForAligned;
+    } else {
+      tablet.timestamps = timestamps;
     }
-    tablet.bitMaps = bitMapArray;
+
+    tablet.values = values;
+    tablet.rowSize = isAligned ? timestampsForAligned.length : timestamps.length;
+    tablet.bitMaps = bitMaps;
     return tablet;
   }
 
-  private void processTimeseriesMetadata(
-      TimeseriesMetadata timeseriesMetadata, List<long[]> timeBatches) {
+  private Tablet processTimeseriesMetadata(TimeseriesMetadata timeseriesMetadata) {
     int pageIndex = 0;
     if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+      isAligned = true;
       timeBatches.clear();
     } else {
       MeasurementSchema measurementSchema =
@@ -123,10 +138,9 @@ public class TabletIterator implements Iterator<Tablet> {
 
     List<Byte> bitMapBytes = new ArrayList<>();
     List<Object> measurementValues = new ArrayList<>();
+    List<Long> measurementTimestamps = new ArrayList<>();
 
-    List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
-
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+    for (IChunkMetadata chunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
       long offset = chunkMetadata.getOffsetOfChunkHeader();
       try {
         reader.position(offset);
@@ -157,6 +171,10 @@ public class TabletIterator implements Iterator<Tablet> {
                 new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
             long[] timeBatch = timePageReader.getNextTimeBatch();
             timeBatches.add(timeBatch);
+
+            for (long time : timeBatch) {
+              measurementTimestamps.add(time);
+            }
           }
           // Value column chunk
           else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
@@ -183,7 +201,7 @@ public class TabletIterator implements Iterator<Tablet> {
             List<Integer> isNullList = new ArrayList<>();
             int index = 0;
             while (batchData.hasCurrent()) {
-              timestamps.add(batchData.currentTime());
+              measurementTimestamps.add(batchData.currentTime());
               Object value = batchData.currentValue();
 
               if (value == null) {
@@ -194,7 +212,7 @@ public class TabletIterator implements Iterator<Tablet> {
               batchData.next();
             }
 
-            BitMap bitmap = new BitMap(bitMap.size());
+            BitMap bitmap = new BitMap(measurementTimestamps.size());
             for (int isNull : isNullList) {
               bitmap.mark(isNull);
             }
@@ -211,23 +229,17 @@ public class TabletIterator implements Iterator<Tablet> {
       }
     }
 
-    // Fill in the timestamps, values, and bitMap with the information for this measurement.
-    if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-      for (long[] timeBatch : timeBatches) {
-        for (long time : timeBatch) {
-          timestamps.add(time);
-        }
-      }
-    } else {
-      // when the timeseriesMetadata tsDataType is VECTOR, we do not need to fill the values and
-      // bitMap
-      values.add(measurementValues.toArray());
-
-      byte[] byteArray = new byte[bitMapBytes.size()];
-      for (int i = 0; i < bitMapBytes.size(); i++) {
-        byteArray[i] = bitMapBytes.get(i);
-      }
-      bitMap.add(new BitMap(bitMapBytes.size() * 8, byteArray));
+    long[] timestamps = new long[measurementTimestamps.size()];
+    for (int i = 0; i < measurementTimestamps.size(); i++) {
+      timestamps[i] = measurementTimestamps.get(i);
     }
+
+    byte[] byteArray = new byte[bitMapBytes.size()];
+    for (int i = 0; i < bitMapBytes.size(); i++) {
+      byteArray[i] = bitMapBytes.get(i);
+    }
+    BitMap[] bitMaps = new BitMap[] {new BitMap(bitMapBytes.size() * 8, byteArray)};
+
+    return createTablet(timestamps, measurementValues.toArray(), bitMaps);
   }
 }
