@@ -70,6 +70,9 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
    */
   private List<ITimeSeriesSchemaInfo> delayedLogicalViewList;
 
+  private static final String unknownDataTypeString = "UNKNOWN";
+  private static final String viewTypeOfLogicalView = "logical";
+
   LogicalViewSchemaSource(
       PartialPath pathPattern, long limit, long offset, SchemaFilter schemaFilter) {
     this.pathPattern = pathPattern;
@@ -126,7 +129,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
   }
 
-  private List<TSDataType> analyzeDataTypeOfDelayedViews() {
+  private List<String> analyzeDataTypeOfDelayedViews() {
     if (this.delayedLogicalViewList == null || this.delayedLogicalViewList.size() <= 0) {
       return new ArrayList<>();
     }
@@ -150,14 +153,24 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =
         new CompleteMeasurementSchemaVisitor();
     Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
-    List<TSDataType> dataTypeList = new ArrayList<>();
+    List<String> dataTypeStringList = new ArrayList<>();
     for (ViewExpression viewExpression : viewExpressionList) {
-      Expression expression = transformToExpressionVisitor.process(viewExpression, null);
-      expression = completeMeasurementSchemaVisitor.process(expression, schemaTree);
-      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, expression);
-      dataTypeList.add(expressionTypes.get(NodeRef.of(expression)));
+      Expression expression = null;
+      boolean viewIsBroken = false;
+      try {
+        expression = transformToExpressionVisitor.process(viewExpression, null);
+        expression = completeMeasurementSchemaVisitor.process(expression, schemaTree);
+        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, expression);
+      } catch (Exception e) {
+        viewIsBroken = true;
+      }
+      if (viewIsBroken) {
+        dataTypeStringList.add(unknownDataTypeString);
+      } else {
+        dataTypeStringList.add(expressionTypes.get(NodeRef.of(expression)).toString());
+      }
     }
-    return dataTypeList;
+    return dataTypeStringList;
   }
 
   @Override
@@ -166,22 +179,22 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     if (this.delayedLogicalViewList == null || this.delayedLogicalViewList.size() <= 0) {
       return;
     }
-    List<TSDataType> dataTypeList = this.analyzeDataTypeOfDelayedViews();
+    List<String> dataTypeStringList = this.analyzeDataTypeOfDelayedViews();
     // process delayed tasks
     for (int index = 0; index < this.delayedLogicalViewList.size(); index++) {
       ITimeSeriesSchemaInfo series = this.delayedLogicalViewList.get(index);
-      TSDataType expressionTypeOfThisView = dataTypeList.get(index);
+      String expressionTypeOfThisView = dataTypeStringList.get(index);
 
       builder.getTimeColumnBuilder().writeLong(0);
       builder.writeNullableText(0, series.getFullPath());
       builder.writeNullableText(1, database);
 
-      builder.writeNullableText(2, expressionTypeOfThisView.toString());
+      builder.writeNullableText(2, expressionTypeOfThisView);
 
       builder.writeNullableText(3, mapToString(series.getTags()));
       builder.writeNullableText(4, mapToString(series.getAttributes()));
 
-      builder.writeNullableText(5, "logical");
+      builder.writeNullableText(5, viewTypeOfLogicalView);
       builder.writeNullableText(
           6, ((LogicalViewSchema) series.getSchema()).getExpression().toString());
       builder.declarePosition();
