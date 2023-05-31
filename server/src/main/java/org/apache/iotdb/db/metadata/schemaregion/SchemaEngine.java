@@ -37,7 +37,6 @@ import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
-import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaLimitLevel;
 
@@ -50,7 +49,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -72,9 +70,6 @@ public class SchemaEngine {
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  // seriesNumberMonitor may be null
-  private ISeriesNumerMonitor seriesNumerMonitor = null;
-
   private ISchemaEngineStatistics schemaEngineStatistics;
 
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
@@ -88,22 +83,7 @@ public class SchemaEngine {
   }
 
   private SchemaEngine() {
-
     schemaRegionLoader = new SchemaRegionLoader();
-
-    // init ISeriesNumerMonitor if there is.
-    // each mmanager instance will generate an ISeriesNumerMonitor instance
-    // So, if you want to share the ISeriesNumerMonitor instance, pls change this part of code.
-    ServiceLoader<ISeriesNumerMonitor> monitorServiceLoader =
-        ServiceLoader.load(ISeriesNumerMonitor.class);
-    for (ISeriesNumerMonitor loader : monitorServiceLoader) {
-      if (this.seriesNumerMonitor != null) {
-        // it means there is more than one ISeriesNumerMonitor implementation.
-        logger.warn("There are more than one ISeriesNumerMonitor implementation. pls check.");
-      }
-      logger.info("Will set seriesNumerMonitor from {} ", loader.getClass().getName());
-      this.seriesNumerMonitor = loader;
-    }
   }
 
   public static SchemaEngine getInstance() {
@@ -303,8 +283,7 @@ public class SchemaEngine {
   private ISchemaRegion createSchemaRegionWithoutExistenceCheck(
       PartialPath database, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegionParams schemaRegionParams =
-        new SchemaRegionParams(
-            database, schemaRegionId, schemaEngineStatistics, seriesNumerMonitor);
+        new SchemaRegionParams(database, schemaRegionId, schemaEngineStatistics);
     ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
     SchemaMetricManager.getInstance().createSchemaRegionMetric(schemaRegion);
     return schemaRegion;
@@ -339,10 +318,6 @@ public class SchemaEngine {
         FileUtils.deleteDirectory(sgDir);
       }
     }
-  }
-
-  public void setSeriesNumerMonitor(ISeriesNumerMonitor seriesNumerMonitor) {
-    this.seriesNumerMonitor = seriesNumerMonitor;
   }
 
   public int getSchemaRegionNumber() {
