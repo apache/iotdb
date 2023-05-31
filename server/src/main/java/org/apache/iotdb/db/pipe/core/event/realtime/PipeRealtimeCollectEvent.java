@@ -66,8 +66,26 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean increaseReferenceCount(String holderMessage) {
+    // This method must be overridden, otherwise during the real-time data collection stage, the
+    // current PipeRealtimeCollectEvent rather than the member variable EnrichedEvent will increase
+    // the reference count, resulting in errors in the reference count of the EnrichedEvent
+    // contained in this PipeRealtimeCollectEvent during the processor and connector stages.
+    return event.increaseReferenceCount(holderMessage);
+  }
+
+  @Override
   public boolean increaseResourceReferenceCount(String holderMessage) {
     return event.increaseResourceReferenceCount(holderMessage);
+  }
+
+  @Override
+  public boolean decreaseReferenceCount(String holderMessage) {
+    // This method must be overridden, otherwise during the real-time data collection stage, the
+    // current PipeRealtimeCollectEvent rather than the member variable EnrichedEvent will increase
+    // the reference count, resulting in errors in the reference count of the EnrichedEvent
+    // contained in this PipeRealtimeCollectEvent during the processor and connector stages.
+    return event.decreaseReferenceCount(holderMessage);
   }
 
   @Override

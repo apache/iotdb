@@ -126,7 +126,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
             String.format(
                 "Failed to reconnect to the target system after %d times, stopping current pipe task %s...",
                 MAX_RETRY_TIMES, taskID);
-        LOGGER.error(errorMessage);
+        LOGGER.warn(errorMessage);
         lastFailedCause = throwable;
 
         PipeAgent.runtime().report(taskMeta, new PipeRuntimeCriticalException(errorMessage));

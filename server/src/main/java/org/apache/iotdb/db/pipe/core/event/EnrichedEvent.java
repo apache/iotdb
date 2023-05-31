@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * additional information mainly includes the reference count of the event.
  */
 public abstract class EnrichedEvent implements Event {
-
   private final AtomicInteger referenceCount;
 
   private final PipeTaskMeta pipeTaskMeta;
@@ -50,7 +49,7 @@ public abstract class EnrichedEvent implements Event {
    * @param holderMessage the message of the invoker
    * @return true if the reference count is increased successfully, false if the event is not
    */
-  public final boolean increaseReferenceCount(String holderMessage) {
+  public boolean increaseReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 0) {
@@ -78,7 +77,7 @@ public abstract class EnrichedEvent implements Event {
    * @param holderMessage the message of the invoker
    * @return true if the reference count is decreased successfully, false otherwise
    */
-  public final boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 1) {
