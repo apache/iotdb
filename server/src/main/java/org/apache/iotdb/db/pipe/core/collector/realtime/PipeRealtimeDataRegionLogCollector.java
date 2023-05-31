@@ -26,7 +26,7 @@ import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.queue.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

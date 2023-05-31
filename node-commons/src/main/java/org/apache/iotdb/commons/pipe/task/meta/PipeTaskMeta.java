@@ -21,9 +21,10 @@ package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
-import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
-import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
-import org.apache.iotdb.pipe.api.exception.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -81,10 +82,8 @@ public class PipeTaskMeta {
     progressIndex.get().serialize(outputStream);
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
-      ReadWriteIOUtils.write(
-          exceptionMessage instanceof PipeRuntimeCriticalException, outputStream);
-      ReadWriteIOUtils.write(exceptionMessage.getMessage(), outputStream);
+    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
+      pipeRuntimeException.serialize(outputStream);
     }
   }
 
@@ -92,10 +91,8 @@ public class PipeTaskMeta {
     progressIndex.get().serialize(outputStream);
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException exceptionMessage : exceptionMessages) {
-      ReadWriteIOUtils.write(
-          exceptionMessage instanceof PipeRuntimeCriticalException, outputStream);
-      ReadWriteIOUtils.write(exceptionMessage.getMessage(), outputStream);
+    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
+      pipeRuntimeException.serialize(outputStream);
     }
   }
 
@@ -105,12 +102,9 @@ public class PipeTaskMeta {
     final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      final boolean critical = ReadWriteIOUtils.readBool(byteBuffer);
-      final String message = ReadWriteIOUtils.readString(byteBuffer);
-      PipeTaskMeta.exceptionMessages.add(
-          critical
-              ? new PipeRuntimeCriticalException(message)
-              : new PipeRuntimeNonCriticalException(message));
+      final PipeRuntimeException pipeRuntimeException =
+          PipeRuntimeExceptionType.deserializeFrom(byteBuffer);
+      PipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return PipeTaskMeta;
   }
@@ -121,12 +115,9 @@ public class PipeTaskMeta {
     final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
-      final boolean critical = ReadWriteIOUtils.readBool(inputStream);
-      final String message = ReadWriteIOUtils.readString(inputStream);
-      PipeTaskMeta.exceptionMessages.add(
-          critical
-              ? new PipeRuntimeCriticalException(message)
-              : new PipeRuntimeNonCriticalException(message));
+      final PipeRuntimeException pipeRuntimeException =
+          PipeRuntimeExceptionType.deserializeFrom(inputStream);
+      PipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return PipeTaskMeta;
   }
