@@ -33,13 +33,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 public class PipeTabletInsertionEvent implements TabletInsertionEvent {
 
   private Tablet tablet;
 
-  private final String pattern;
+  private String pattern;
 
   private final long[] timestamps;
   private List<TSDataType> columnTypeList;
@@ -48,7 +49,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   private Object[][] rowRecords;
 
   public PipeTabletInsertionEvent(Tablet tablet) {
-    this(tablet, null);
+    this(Objects.requireNonNull(tablet), null);
   }
 
   public PipeTabletInsertionEvent(Tablet tablet, String pattern) {
@@ -67,8 +68,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
     PipeRowCollector rowCollector = new PipeRowCollector();
 
     for (int i = 0; i < timestamps.length; i++) {
-      Row row =
-          new PipeRow(columnNameList, columnTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
+      Row row = new PipeRow(rowRecords[i], columnNameList, columnTypeList, timestamps[i]);
       consumer.accept(row, rowCollector);
     }
 
@@ -93,10 +93,18 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
     return rowCollector.toTabletInsertionEvent();
   }
 
+  @Override
+  public TabletInsertionEvent filterByPrefix(String pattern) {
+    // set pattern
+    this.pattern = pattern;
+
+    // match pattern
+    matchPattern();
+
+    return new PipeTabletInsertionEvent(tablet);
+  }
+
   public void matchPattern() {
-    if (tablet == null) {
-      return;
-    }
 
     List<MeasurementSchema> originSchemaList = tablet.getSchemas();
     List<Integer> indexList = new ArrayList<>();

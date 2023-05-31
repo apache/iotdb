@@ -74,8 +74,6 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     super(pipeTaskMeta, pattern);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
-
-    matchPattern();
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -132,8 +130,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     PipeRowCollector rowCollector = new PipeRowCollector();
 
     for (int i = 0; i < timestamps.length; i++) {
-      Row row =
-          new PipeRow(columnNameList, columnTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
+      Row row = new PipeRow(rowRecords[i], columnNameList, columnTypeList, timestamps[i]);
       consumer.accept(row, rowCollector);
     }
 
@@ -157,14 +154,25 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     Tablet tablet = new Tablet(deviceId, schemas);
 
     for (int i = 0; i < timestamps.length; i++) {
-      Row row =
-          new PipeRow(columnNameList, columnTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
+      Row row = new PipeRow(rowRecords[i], columnNameList, columnTypeList, timestamps[i]);
       for (int rowIndex = 0; rowIndex < row.size(); rowIndex++) {
         tablet.addValue(columnNameList.get(i).getMeasurement(), rowIndex, row.getObject(i));
       }
     }
 
     return rowCollector.toTabletInsertionEvent();
+  }
+
+  @Override
+  public TabletInsertionEvent filterByPrefix(String pattern) {
+    // Based on the pattern in the custom Processor. if not set, the pattern from EnrichedEvent will be used.
+    this.pattern = pattern;
+
+    // filter by prefix
+    filterByPattern();
+
+    // return a new TabletInsertionEvent
+    return new PipeInsertNodeInsertionEvent(walEntryHandler, progressIndex, null, pattern);
   }
 
   private List<MeasurementSchema> createMeasurementSchemas() {
@@ -176,7 +184,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     return schemas;
   }
 
-  private void matchPattern() {
+  private void filterByPattern() {
     try {
       InsertNode insertNode = walEntryHandler.getValue();
       if (insertNode instanceof InsertRowNode) {

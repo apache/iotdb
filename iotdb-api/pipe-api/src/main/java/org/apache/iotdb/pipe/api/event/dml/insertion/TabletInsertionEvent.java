@@ -52,4 +52,11 @@ public interface TabletInsertionEvent extends Event {
    *     RowCollector
    */
   TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer);
+
+  /**
+   * Filter the data by the prefix path pattern.
+   * @param pattern the prefix path pattern
+   * @return TabletInsertionEvent a new TabletInsertionEvent contains the filtered data
+   */
+  TabletInsertionEvent filterByPrefix(String pattern);
 }

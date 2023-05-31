@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.core.event.utils.TabletIterator;
+import org.apache.iotdb.db.pipe.core.event.view.datastructure.TabletIterator;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -229,12 +228,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private Iterable<Tablet> readTsFile() {
     return () -> {
-      try {
-        TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getPath());
-        return new TabletIterator(reader, device2TimeseriesMetadataMap);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
+      return new TabletIterator(tsFile.getPath(), device2TimeseriesMetadataMap);
     };
   };
 
@@ -250,5 +244,16 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
         + ", isClosed="
         + isClosed
         + '}';
+  }
+
+  public static void main(String[] args) throws IOException {
+    String filename = "Tablet2.tsfile";
+
+    Iterable<TabletInsertionEvent> tabletInsertionEventIterable =
+        new PipeTsFileInsertionEvent(new TsFileResource(new File(filename)))
+            .toTabletInsertionEvents();
+    for (TabletInsertionEvent tabletInsertionEvent : tabletInsertionEventIterable) {
+      System.out.println(tabletInsertionEvent);
+    }
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.utils;
+package org.apache.iotdb.db.pipe.core.event.view.datastructure;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
@@ -49,7 +48,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class TabletIterator implements Iterator<Tablet> {
-  private final TsFileSequenceReader reader;
+  //  private final TsFileSequenceReader reader;
+  private final String filePath;
   private final Iterator<Map.Entry<String, List<TimeseriesMetadata>>> entriesIterator;
   private Map.Entry<String, List<TimeseriesMetadata>> currentEntry;
   private Iterator<TimeseriesMetadata> timeseriesMetadataIterator;
@@ -61,9 +61,8 @@ public class TabletIterator implements Iterator<Tablet> {
   private long[] timestampsForAligned;
 
   public TabletIterator(
-      TsFileSequenceReader reader,
-      Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap) {
-    this.reader = reader;
+      String filePath, Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap) {
+    this.filePath = filePath;
     this.entriesIterator = device2TimeseriesMetadataMap.entrySet().iterator();
     this.timeBatches = new ArrayList<>();
     this.currentEntry = null;
