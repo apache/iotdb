@@ -35,66 +35,54 @@ import java.util.Arrays;
 import java.util.List;
 
 public class TabletConverter {
-  private final InsertNode insertNode;
-  private long[] timestamps;
-  private List<TSDataType> dataTypes;
-  private final List<Path> columnPaths;
-  private String deviceId;
-  private Object[] columns;
-  private BitMap[] bitMaps;
-  private int rowSize;
-
-  public TabletConverter(InsertNode insertNode) {
-    this.insertNode = insertNode;
-    this.columnPaths = new ArrayList<>();
+  private TabletConverter() {
+    // private constructor to prevent instantiation
   }
 
-  public Tablet toTablet() throws UnsupportedDataTypeException {
+  public static Tablet toTablet(InsertNode insertNode) throws UnsupportedDataTypeException {
+    long[] timestamps;
+    List<TSDataType> dataTypes = Arrays.asList(insertNode.getDataTypes());
+    List<Path> columnPaths = new ArrayList<>();
+    String deviceId = insertNode.getDevicePath().getFullPath();
+    int columnCount = insertNode.getMeasurements().length;
+    Object[] columns;
+    BitMap[] bitMaps;
+    int rowCount;
+
+    for (String measurement : insertNode.getMeasurements()) {
+      columnPaths.add(new Path(deviceId, measurement, false));
+    }
+
     if (insertNode instanceof InsertRowNode) {
-      return handleRowNode((InsertRowNode) insertNode);
+      InsertRowNode rowNode = (InsertRowNode) insertNode;
+      bitMaps = new BitMap[columnCount];
+      Object[] values = rowNode.getValues();
+      columns = new Object[columnCount];
+      for (int i = 0; i < columnCount; i++) {
+        columns[i] = values[i];
+        bitMaps[i] = new BitMap(1);
+        if (values[i] == null) {
+          bitMaps[i].mark(0);
+        }
+      }
+      timestamps = new long[] {rowNode.getTime()};
+      rowCount = 1;
     } else if (insertNode instanceof InsertTabletNode) {
-      return handleTabletNode((InsertTabletNode) insertNode);
+      InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
+      rowCount = tabletNode.getRowCount();
+      timestamps = tabletNode.getTimes();
+      bitMaps = tabletNode.getBitMaps();
+      columns = tabletNode.getColumns();
     } else {
       throw new UnsupportedDataTypeException(
           String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
     }
-  }
 
-  private Tablet handleRowNode(InsertRowNode rowNode) {
-    setupMetadata(rowNode);
-    columns[0] = rowNode.getValues();
-    this.timestamps = new long[] {rowNode.getTime()};
-    return createTablet();
-  }
-
-  private Tablet handleTabletNode(InsertTabletNode tabletNode) {
-    setupMetadata(tabletNode);
-    this.rowSize = tabletNode.getRowCount();
-    this.timestamps = tabletNode.getTimes();
-    this.bitMaps = tabletNode.getBitMaps();
-    this.columns = tabletNode.getColumns();
-    return createTablet();
-  }
-
-  private List<MeasurementSchema> getMeasurementSchemas() {
     List<MeasurementSchema> schemas = new ArrayList<>();
     for (int i = 0; i < columnPaths.size(); i++) {
       schemas.add(new MeasurementSchema(columnPaths.get(i).getMeasurement(), dataTypes.get(i)));
     }
-    return schemas;
-  }
 
-  private void setupMetadata(InsertNode node) {
-    this.dataTypes = Arrays.asList(node.getDataTypes());
-    this.deviceId = node.getDevicePath().getFullPath();
-
-    for (String measurement : node.getMeasurements()) {
-      this.columnPaths.add(new Path(deviceId, measurement, false));
-    }
-  }
-
-  private Tablet createTablet() {
-    List<MeasurementSchema> schemas = getMeasurementSchemas();
-    return new Tablet(deviceId, schemas, timestamps, columns, bitMaps, rowSize);
+    return new Tablet(deviceId, schemas, timestamps, columns, bitMaps, rowCount);
   }
 }

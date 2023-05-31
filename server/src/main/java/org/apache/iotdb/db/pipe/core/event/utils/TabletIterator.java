@@ -57,8 +57,6 @@ public class TabletIterator implements Iterator<Tablet> {
   private List<BitMap> bitMap;
   private List<Long> timestamps;
 
-  private boolean isSetTimestamp;
-
   public TabletIterator(
       TsFileSequenceReader reader,
       Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap) {
@@ -69,7 +67,6 @@ public class TabletIterator implements Iterator<Tablet> {
     this.values = null;
     this.bitMap = null;
     this.timestamps = null;
-    this.isSetTimestamp = false;
   }
 
   @Override
