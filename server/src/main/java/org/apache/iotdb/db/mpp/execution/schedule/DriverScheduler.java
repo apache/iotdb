@@ -543,13 +543,11 @@ public class DriverScheduler implements IDriverScheduler, IService {
       } finally {
         task.unlock();
       }
-      // wrap this clearDriverTask to avoid that status is changed to Aborted during clearDriverTask
-      task.lock();
-      try {
-        clearDriverTask(task);
-      } finally {
-        task.unlock();
-      }
+      // Wrapping clearDriverTask with task.lock() may lead to deadlock. For example:
+      // Thread A locks a task and then try to remove it from a SynchronizedSet(instance related
+      // tasks) which will try to get the lock of SynchronizedSet.
+      // Thread B locks the SynchronizedSet first and then tries to lock the task.
+      clearDriverTask(task);
     }
 
     @Override
