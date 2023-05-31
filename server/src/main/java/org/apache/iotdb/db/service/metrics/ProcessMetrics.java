@@ -22,6 +22,7 @@ package org.apache.iotdb.db.service.metrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -34,7 +35,6 @@ public class ProcessMetrics implements IMetricSet {
   private final OperatingSystemMXBean sunOsMxBean;
   private final Runtime runtime;
   private long lastUpdateTime = 0L;
-  private static final long UPDATE_INTERVAL = 10_000L;
   private volatile long processCpuLoad = 0L;
   private volatile long processCpuTime = 0L;
 
@@ -66,7 +66,7 @@ public class ProcessMetrics implements IMetricSet {
         MetricLevel.CORE,
         sunOsMxBean,
         a -> {
-          if (System.currentTimeMillis() - lastUpdateTime > UPDATE_INTERVAL) {
+          if (System.currentTimeMillis() - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
             lastUpdateTime = System.currentTimeMillis();
             processCpuLoad = (long) (sunOsMxBean.getProcessCpuLoad() * 100);
             processCpuTime = sunOsMxBean.getProcessCpuTime();
@@ -81,7 +81,7 @@ public class ProcessMetrics implements IMetricSet {
         MetricLevel.CORE,
         sunOsMxBean,
         bean -> {
-          if (System.currentTimeMillis() - lastUpdateTime > UPDATE_INTERVAL) {
+          if (System.currentTimeMillis() - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
             lastUpdateTime = System.currentTimeMillis();
             processCpuLoad = (long) (sunOsMxBean.getProcessCpuLoad() * 100);
             processCpuTime = sunOsMxBean.getProcessCpuTime();
