@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
@@ -182,7 +183,7 @@ public class Analysis {
   // one.
   private Set<Expression> orderByExpressions;
 
-  private boolean orderByExpressionInDeviceView = false;
+  private boolean hasSort = false;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -194,6 +195,10 @@ public class Analysis {
   private GroupByParameter groupByParameter;
 
   private OrderByParameter mergeOrderParameter;
+
+  // This field will be set and used when the order by in last query only indicates the ordering of
+  // timeseries, otherwise it will be null
+  private Ordering timeseriesOrderingForLastQuery = null;
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
@@ -661,12 +666,12 @@ public class Analysis {
     this.deviceToOrderByExpressions = deviceToOrderByExpressions;
   }
 
-  public void setOrderByExpressionInDeviceView(boolean orderByExpressionInDeviceView) {
-    this.orderByExpressionInDeviceView = orderByExpressionInDeviceView;
+  public void setHasSort(boolean hasSort) {
+    this.hasSort = hasSort;
   }
 
-  public boolean isOrderByExpressionInDeviceView() {
-    return orderByExpressionInDeviceView;
+  public boolean isHasSort() {
+    return hasSort;
   }
 
   public Map<String, List<SortItem>> getDeviceToSortItems() {
@@ -695,5 +700,13 @@ public class Analysis {
 
   public List<Pair<Expression, String>> getOutputExpressions() {
     return this.outputExpressions;
+  }
+
+  public Ordering getTimeseriesOrderingForLastQuery() {
+    return timeseriesOrderingForLastQuery;
+  }
+
+  public void setTimeseriesOrderingForLastQuery(Ordering timeseriesOrderingForLastQuery) {
+    this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
   }
 }

@@ -203,9 +203,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(
-      Set<Expression> sourceExpressions,
-      Filter globalTimeFilter,
-      OrderByParameter mergeOrderParameter) {
+      Set<Expression> sourceExpressions, Filter globalTimeFilter, Ordering timeseriesOrdering) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     Map<PartialPath, List<String>> selectedPathToOutputSymbolsMap = new LinkedHashMap<>();
     for (Expression sourceExpression : sourceExpressions) {
@@ -217,9 +215,9 @@ public class LogicalPlanBuilder {
 
     List<PartialPath> selectedPaths = new ArrayList<>(selectedPathToOutputSymbolsMap.keySet());
     List<PartialPath> groupedPaths =
-        mergeOrderParameter.getSortItemList().isEmpty()
+        timeseriesOrdering == null
             ? MetaUtils.groupAlignedSeries(selectedPaths)
-            : MetaUtils.groupAlignedSeriesWithOrder(selectedPaths, mergeOrderParameter);
+            : MetaUtils.groupAlignedSeriesWithOrder(selectedPaths, timeseriesOrdering);
     for (PartialPath path : groupedPaths) {
       if (path instanceof MeasurementPath) { // non-aligned series
         sourceNodeList.add(
@@ -244,7 +242,7 @@ public class LogicalPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             sourceNodeList,
             globalTimeFilter,
-            mergeOrderParameter);
+            timeseriesOrdering);
     ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
         columnHeader ->
             context
@@ -1235,6 +1233,17 @@ public class LogicalPlanBuilder {
 
   private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
     this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+    return this;
+  }
+
+  public LogicalPlanBuilder planOrderBy(List<SortItem> sortItemList) {
+    if (sortItemList.isEmpty()) {
+      return this;
+    }
+
+    this.root =
+        new SortNode(
+            context.getQueryId().genPlanNodeId(), root, new OrderByParameter(sortItemList));
     return this;
   }
 

@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -43,7 +43,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
     +----+----------+-----+--------+
     ```
 
-- 可以使用 `ORDER BY TIMESERIES (DESC | ASC)` 指定结果集按照序列名降序/升序排列。
+- 可以使用 `ORDER BY TIME/TIMESERIES/VALUE/DATATYPE (DESC | ASC)` 指定结果集按照某一列进行降序/升序排列。当值列包含多种类型的数据时，按照字符串类型来排序。
 
 **示例 1：** 查询 root.ln.wf01.wt01.status 的最新数据点
 
@@ -76,6 +76,20 @@ It costs 0.002s
 
 ```
 IoTDB> select last * from root.ln.wf01.wt01 order by timeseries desc;
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
++-----------------------------+-----------------------------+---------+--------+
+Total line number = 2
+It costs 0.002s
+```
+
+**示例 4：** 查询 root.ln.wf01.wt01 下所有序列的最新数据点，并按照dataType降序排列。
+
+```
+IoTDB> select last * from root.ln.wf01.wt01 order by dataType desc;
 +-----------------------------+-----------------------------+---------+--------+
 |                         Time|                   timeseries|    value|dataType|
 +-----------------------------+-----------------------------+---------+--------+

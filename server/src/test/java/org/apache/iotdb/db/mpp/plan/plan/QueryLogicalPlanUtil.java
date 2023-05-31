@@ -155,11 +155,7 @@ public class QueryLogicalPlanUtil {
 
     LastQueryNode lastQueryNode =
         new LastQueryNode(
-            queryId.genPlanNodeId(),
-            sourceNodeList,
-            TimeFilter.gt(100),
-            new OrderByParameter(
-                Collections.singletonList(new SortItem(OrderByKey.TIMESERIES, Ordering.ASC))));
+            queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100), Ordering.ASC);
 
     querySQLs.add(sql);
     sqlToPlanMap.put(sql, lastQueryNode);

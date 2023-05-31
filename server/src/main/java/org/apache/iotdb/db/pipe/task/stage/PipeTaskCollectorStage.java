@@ -58,6 +58,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
   public PipeTaskCollectorStage(
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta,
+      long creationTime,
       PipeParameters collectorParameters) {
     // TODO: avoid if-else, use reflection to create collector all the time
     if (collectorParameters
@@ -77,7 +78,8 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
           .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
 
       collectorPendingQueue = new ListenableUnboundedBlockingPendingQueue<>();
-      this.pipeCollector = new IoTDBDataRegionCollector(pipeTaskMeta, collectorPendingQueue);
+      this.pipeCollector =
+          new IoTDBDataRegionCollector(pipeTaskMeta, creationTime, collectorPendingQueue);
     } else {
       this.collectorParameters = collectorParameters;
 
