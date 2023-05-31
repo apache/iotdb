@@ -20,35 +20,30 @@
 package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
-import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class MicrometerTimer implements Timer {
 
   io.micrometer.core.instrument.Timer timer;
-  MicrometerRate micrometerRate;
 
   public MicrometerTimer(io.micrometer.core.instrument.Timer timer) {
     this.timer = timer;
-    micrometerRate = new MicrometerRate(new AtomicLong(0));
   }
 
   @Override
   public void update(long duration, TimeUnit unit) {
     timer.record(duration, unit);
-    micrometerRate.mark();
   }
 
   @Override
   public HistogramSnapshot takeSnapshot() {
-    return new MicrometerTimerHistogramSnapshot(timer.takeSnapshot(), timer.baseTimeUnit());
+    return new MicrometerTimerHistogramSnapshot(timer);
   }
 
   @Override
-  public Rate getImmutableRate() {
-    return micrometerRate;
+  public long getCount() {
+    return timer.count();
   }
 }
