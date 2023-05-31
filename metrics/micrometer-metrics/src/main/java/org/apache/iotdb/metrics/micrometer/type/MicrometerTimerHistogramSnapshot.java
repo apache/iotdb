@@ -20,27 +20,24 @@ package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /** This implementation is just for a timer as it needs the TimeUnit to convert from nanoseconds. */
 public class MicrometerTimerHistogramSnapshot implements HistogramSnapshot {
 
-  io.micrometer.core.instrument.Timer timer;
   io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot;
   private final TimeUnit baseTimeUnit;
 
-  public MicrometerTimerHistogramSnapshot(io.micrometer.core.instrument.Timer timer) {
-    this.timer = timer;
-    this.histogramSnapshot = timer.takeSnapshot();
-    this.baseTimeUnit = timer.baseTimeUnit();
+  public MicrometerTimerHistogramSnapshot(
+      io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot,
+      TimeUnit baseTimeUnit) {
+    this.histogramSnapshot = histogramSnapshot;
+    this.baseTimeUnit = baseTimeUnit;
   }
 
   @Override
   public double getValue(double quantile) {
-    if (this.histogramSnapshot.percentileValues().length == 0) {
-      return 0.0D;
-    }
-
     int prevIndex = 0;
     for (int i = 0; i < this.histogramSnapshot.percentileValues().length; i++) {
       if (this.histogramSnapshot.percentileValues()[i].percentile() <= quantile) {
@@ -56,8 +53,20 @@ public class MicrometerTimerHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
+  public double[] getValues() {
+    return Arrays.stream(this.histogramSnapshot.percentileValues())
+        .mapToDouble(k -> k.value(baseTimeUnit))
+        .toArray();
+  }
+
+  @Override
   public int size() {
     return this.histogramSnapshot.percentileValues().length;
+  }
+
+  @Override
+  public double getMedian() {
+    return getValue(0.5);
   }
 
   @Override
@@ -66,12 +75,13 @@ public class MicrometerTimerHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double getTotalMax() {
-    return this.timer.max(baseTimeUnit);
+  public double getMean() {
+    return this.histogramSnapshot.mean(baseTimeUnit);
   }
 
   @Override
-  public double getMean() {
-    return this.histogramSnapshot.mean(baseTimeUnit);
+  public double getMin() {
+    // need distributionSummary to push 0 percentiles
+    return getValue(0.0);
   }
 }

@@ -32,11 +32,6 @@ public class DropwizardTimer implements Timer {
   }
 
   @Override
-  public long getCount() {
-    return timer.getCount();
-  }
-
-  @Override
   public void update(long duration, TimeUnit unit) {
     timer.update(duration, unit);
   }
@@ -44,5 +39,10 @@ public class DropwizardTimer implements Timer {
   @Override
   public HistogramSnapshot takeSnapshot() {
     return new DropwizardHistogramSnapshot(timer.getSnapshot());
+  }
+
+  @Override
+  public long getCount() {
+    return timer.getCount();
   }
 }

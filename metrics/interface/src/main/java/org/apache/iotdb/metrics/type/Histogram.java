@@ -26,7 +26,7 @@ public interface Histogram extends IMetric {
   /** Update histogram by value. */
   void update(long value);
 
-  /** Get the count of histogram. */
+  /** Get the value of histogram. */
   long count();
 
   /** Take snapshot of histogram. */

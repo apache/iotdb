@@ -42,11 +42,11 @@ public interface Timer extends IMetric {
     update(durationNanos, TimeUnit.NANOSECONDS);
   }
 
-  /** Get the count of timer. */
-  long getCount();
-
   /** Take snapshot of timer. */
   HistogramSnapshot takeSnapshot();
+
+  /** Get the count */
+  long getCount();
 
   @Override
   default void constructValueMap(Map<String, Object> result) {

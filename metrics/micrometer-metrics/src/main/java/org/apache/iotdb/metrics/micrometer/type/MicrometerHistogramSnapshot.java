@@ -21,23 +21,21 @@ package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
+import io.micrometer.core.instrument.distribution.ValueAtPercentile;
+
+import java.util.Arrays;
+
 public class MicrometerHistogramSnapshot implements HistogramSnapshot {
 
-  io.micrometer.core.instrument.DistributionSummary distributionSummary;
   io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot;
 
   public MicrometerHistogramSnapshot(
-      io.micrometer.core.instrument.DistributionSummary distributionSummary) {
-    this.distributionSummary = distributionSummary;
-    this.histogramSnapshot = this.distributionSummary.takeSnapshot();
+      io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot) {
+    this.histogramSnapshot = histogramSnapshot;
   }
 
   @Override
   public double getValue(double quantile) {
-    if (this.histogramSnapshot.percentileValues().length == 0) {
-      return 0.0D;
-    }
-
     int prevIndex = 0;
     for (int i = 0; i < this.histogramSnapshot.percentileValues().length; i++) {
       if (this.histogramSnapshot.percentileValues()[i].percentile() <= quantile) {
@@ -53,8 +51,20 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
+  public double[] getValues() {
+    return Arrays.stream(this.histogramSnapshot.percentileValues())
+        .mapToDouble(ValueAtPercentile::value)
+        .toArray();
+  }
+
+  @Override
   public int size() {
     return this.histogramSnapshot.percentileValues().length;
+  }
+
+  @Override
+  public double getMedian() {
+    return getValue(0.5);
   }
 
   @Override
@@ -63,12 +73,13 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double getTotalMax() {
-    return this.distributionSummary.max();
+  public double getMean() {
+    return this.histogramSnapshot.mean();
   }
 
   @Override
-  public double getMean() {
-    return this.distributionSummary.mean();
+  public double getMin() {
+    // need distributionSummary to push 0 percentiles
+    return getValue(0.0);
   }
 }
