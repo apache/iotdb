@@ -34,7 +34,7 @@ public interface Row {
    *
    * @return timestamp
    */
-  long getTime() throws IOException;
+  long getTime();
 
   /**
    * Returns the int value at the specified column in this row.
@@ -44,7 +44,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the int value at the specified column in this row
    */
-  int getInt(int columnIndex) throws IOException;
+  int getInt(int columnIndex);
 
   /**
    * Returns the long value at the specified column in this row.
@@ -64,7 +64,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the float value at the specified column in this row
    */
-  float getFloat(int columnIndex) throws IOException;
+  float getFloat(int columnIndex);
 
   /**
    * Returns the double value at the specified column in this row.
@@ -74,7 +74,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the double value at the specified column in this row
    */
-  double getDouble(int columnIndex) throws IOException;
+  double getDouble(int columnIndex);
 
   /**
    * Returns the boolean value at the specified column in this row.
@@ -84,7 +84,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the boolean value at the specified column in this row
    */
-  boolean getBoolean(int columnIndex) throws IOException;
+  boolean getBoolean(int columnIndex);
 
   /**
    * Returns the Binary value at the specified column in this row.
@@ -94,7 +94,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
    */
-  Binary getBinary(int columnIndex) throws IOException;
+  Binary getBinary(int columnIndex);
 
   /**
    * Returns the String value at the specified column in this row.
@@ -104,7 +104,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the String value at the specified column in this row
    */
-  String getString(int columnIndex) throws IOException;
+  String getString(int columnIndex);
 
   /**
    * Returns the Object value at the specified column in this row.
@@ -112,7 +112,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the Object value at the specified column in this row
    */
-  Object getObject(int columnIndex) throws IOException;
+  Object getObject(int columnIndex);
 
   /**
    * Returns the actual data type of the value at the specified column in this row.
@@ -159,11 +159,4 @@ public interface Row {
    * @return the column data types in the Row
    */
   List<Type> getColumnTypes();
-
-  /**
-   * Set the row records in the Row
-   *
-   * @return the Row
-   */
-  Row setRowRecord(Object[] rowRecord);
 }

@@ -36,10 +36,7 @@ public enum Type {
   DOUBLE((byte) 4),
 
   /** TEXT */
-  TEXT((byte) 5),
-
-  /** VECTOR */
-  VECTOR((byte) 6);
+  TEXT((byte) 5);
 
   private final byte type;
 

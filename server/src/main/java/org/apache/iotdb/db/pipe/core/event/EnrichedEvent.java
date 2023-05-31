@@ -34,7 +34,7 @@ public abstract class EnrichedEvent implements Event {
 
   private final PipeTaskMeta pipeTaskMeta;
 
-  protected String pattern;
+  protected final String pattern;
 
   public EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
@@ -115,11 +115,6 @@ public abstract class EnrichedEvent implements Event {
     return referenceCount.get();
   }
 
-  /** set the pattern of this event. */
-  public void setPattern(String pattern) {
-    this.pattern = pattern;
-  }
-
   /**
    * Get the pattern of this event.
    *
@@ -129,7 +124,6 @@ public abstract class EnrichedEvent implements Event {
     return pattern;
   }
 
-  // TODO: ConsensusIndex getConsensusIndex();
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta);
+      PipeTaskMeta pipeTaskMeta, String pattern);
 }

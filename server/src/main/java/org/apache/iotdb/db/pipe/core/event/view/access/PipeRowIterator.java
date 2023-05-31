@@ -61,8 +61,8 @@ public class PipeRowIterator implements Iterator<Row>, Iterable<Row> {
       throw new NoSuchElementException();
     }
     Row row =
-        new PipeRow(columnNameList, columnTypeList, timestamps[currentIndex])
-            .setRowRecord(rowRecords[currentIndex]);
+        new PipeRow(
+            rowRecords[currentIndex], columnNameList, columnTypeList, timestamps[currentIndex]);
     currentIndex++;
     return row;
   }

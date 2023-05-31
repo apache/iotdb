@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,7 +37,7 @@ public class PipeRowCollector implements RowCollector {
   private Tablet tablet = null;
 
   @Override
-  public void collectRow(Row row) throws IOException {
+  public void collectRow(Row row) {
     List<Path> measurementIds = row.getColumnNames();
     List<Type> dataTypeList = row.getColumnTypes();
 

@@ -57,7 +57,8 @@ public class TsFileEpochManager {
         // TsFileEpoch's life cycle
         filePath2Epoch.remove(filePath),
         resource.getDevices().stream()
-            .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)));
+            .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)),
+        event.getPattern());
   }
 
   public PipeRealtimeCollectEvent bindPipeInsertNodeInsertionEvent(
@@ -65,6 +66,7 @@ public class TsFileEpochManager {
     return new PipeRealtimeCollectEvent(
         event,
         filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new),
-        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()));
+        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
+        event.getPattern());
   }
 }
