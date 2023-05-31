@@ -103,13 +103,6 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
   @Override
   public synchronized void close() {
-    pendingQueue.removeEmptyToNotEmptyListener(subtask.getTaskID());
-    pendingQueue.removeNotEmptyToEmptyListener(subtask.getTaskID());
-
     executor.deregister(subtask.getTaskID());
-  }
-
-  private synchronized boolean hasRunningTasks() {
-    return runningTaskCount > 0;
   }
 }

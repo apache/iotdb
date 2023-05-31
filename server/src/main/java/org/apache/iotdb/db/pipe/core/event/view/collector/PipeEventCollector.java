@@ -64,15 +64,4 @@ public class PipeEventCollector implements EventCollector {
       bufferQueue.offer(event);
     }
   }
-
-  public synchronized void tryCollectBufferedEvents() {
-    while (!bufferQueue.isEmpty()) {
-      final Event bufferedEvent = bufferQueue.peek();
-      if (pendingQueue.offer(bufferedEvent)) {
-        bufferQueue.poll();
-      } else {
-        return;
-      }
-    }
-  }
 }

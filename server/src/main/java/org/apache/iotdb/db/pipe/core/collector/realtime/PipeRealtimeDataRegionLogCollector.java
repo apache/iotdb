@@ -36,7 +36,6 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionLogCollector.class);
 
-  // TODO: memory control
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final ListenableUnboundedBlockingPendingQueue<Event> pendingQueue;
@@ -58,11 +57,10 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
           String.format(
-              "Pending Queue of Log Realtime Collector %s has reached capacity, discard Tablet Event %s, current state %s",
+              "collect: pending queue of PipeRealtimeDataRegionLogCollector %s has reached capacity, discard tablet event %s, current state %s",
               this, event, event.getTsFileEpoch().getState(this)));
       // this would not happen, but just in case.
       // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
-      // TODO: memory control when elements in queue are too many.
     }
   }
 

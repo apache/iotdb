@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeEventCollector;
@@ -37,14 +36,9 @@ import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfig
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.annotation.Nullable;
 
 public class PipeTaskProcessorStage extends PipeTaskStage {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskProcessorStage.class);
 
   protected final PipeProcessorSubtaskExecutor executor =
       PipeSubtaskExecutorManager.getInstance().getProcessorSubtaskExecutor();
@@ -89,29 +83,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeProcessor,
             pipeConnectorOutputEventCollector);
 
-    final PipeTaskStage pipeTaskStage = this;
     this.pipeCollectorInputPendingQueue = pipeCollectorInputPendingQueue;
-    this.pipeConnectorOutputPendingQueue =
-        pipeConnectorOutputPendingQueue
-            .registerNotFullToFullListener(
-                taskId,
-                () -> {
-                  executor.stop(pipeProcessorSubtask.getTaskID());
-                  LOGGER.warn("NotFullToFullListener", new Exception());
-                })
-            .registerFullToNotFullListener(
-                taskId,
-                () -> {
-                  // status can be changed by other threads calling pipeTaskStage's methods
-                  synchronized (pipeTaskStage) {
-                    // only start when the pipe is running
-                    if (status == PipeStatus.RUNNING) {
-                      pipeConnectorOutputEventCollector.tryCollectBufferedEvents();
-                      executor.start(pipeProcessorSubtask.getTaskID());
-                      LOGGER.warn("FullToNotFullListener", new Exception());
-                    }
-                  }
-                });
+    this.pipeConnectorOutputPendingQueue = pipeConnectorOutputPendingQueue;
   }
 
   @Override
@@ -144,16 +117,6 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
 
   @Override
   public void dropSubtask() throws PipeException {
-    final String taskId = pipeProcessorSubtask.getTaskID();
-
-    if (pipeCollectorInputPendingQueue != null) {
-      pipeCollectorInputPendingQueue.removeEmptyToNotEmptyListener(taskId);
-      pipeCollectorInputPendingQueue.removeNotEmptyToEmptyListener(taskId);
-    }
-
-    pipeConnectorOutputPendingQueue.removeNotFullToFullListener(taskId);
-    pipeConnectorOutputPendingQueue.removeFullToNotFullListener(taskId);
-
-    executor.deregister(taskId);
+    executor.deregister(pipeProcessorSubtask.getTaskID());
   }
 }
