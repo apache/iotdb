@@ -112,11 +112,6 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
-  public String getPattern() {
-    return event.getPattern();
-  }
-
-  @Override
   public String toString() {
     return "PipeRealtimeCollectEvent{"
         + "event="

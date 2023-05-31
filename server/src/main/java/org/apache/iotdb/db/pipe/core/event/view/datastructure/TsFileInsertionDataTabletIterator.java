@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.datastructure;
 
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -29,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
@@ -37,6 +39,9 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -48,7 +53,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
-  //  private final TsFileSequenceReader reader;
+
+  private static Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataTabletIterator.class);
+  private final TsFileSequenceReader reader;
   private final String filePath;
   private final Iterator<Map.Entry<String, List<TimeseriesMetadata>>> entriesIterator;
   private Map.Entry<String, List<TimeseriesMetadata>> currentEntry;
@@ -57,7 +64,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
   private List<MeasurementSchema> measurementSchemas;
 
   private boolean isAligned;
-  private List<long[]> timeBatches;
+  private final List<long[]> timeBatches;
   private long[] timestampsForAligned;
 
   public TsFileInsertionDataTabletIterator(
@@ -71,6 +78,11 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
     this.measurementSchemas = null;
     this.isAligned = false;
     this.timestampsForAligned = null;
+    try {
+      this.reader = new TsFileSequenceReader(filePath);
+    } catch (IOException e) {
+      throw new PipeException("Cannot create TsFileSequenceReader for file " + filePath, e);
+    }
 
     // Initialize timeseriesMetadataIterator if there is a next entry
     if (entriesIterator.hasNext()) {
@@ -81,7 +93,15 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
 
   @Override
   public boolean hasNext() {
-    return timeseriesMetadataIterator.hasNext() || entriesIterator.hasNext();
+    boolean hasNext = timeseriesMetadataIterator.hasNext() || entriesIterator.hasNext();
+    if (!hasNext) {
+      try {
+        reader.close();
+      } catch (IOException e) {
+        LOGGER.warn("Cannot close TsFileSequenceReader for file {}", filePath, e);
+      }
+    }
+    return hasNext;
   }
 
   @Override
@@ -97,33 +117,43 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
     currentTimeseriesMetadata = timeseriesMetadataIterator.next();
     measurementSchemas = new ArrayList<>();
 
-    if (currentTimeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-      processTimeseriesMetadata(currentTimeseriesMetadata);
-      currentTimeseriesMetadata = timeseriesMetadataIterator.next();
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
+      if (currentTimeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
+        processTimeseriesMetadata(currentTimeseriesMetadata, reader);
+        currentTimeseriesMetadata = timeseriesMetadataIterator.next();
+      }
+      return processTimeseriesMetadata(currentTimeseriesMetadata, reader);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
-    return processTimeseriesMetadata(currentTimeseriesMetadata);
   }
 
   private Tablet createTablet(long[] timestamps, Object[] values, BitMap[] bitMaps) {
-    // create tablet
-    Tablet tablet = new Tablet(currentEntry.getKey(), measurementSchemas);
+    long[] tmp;
 
     if (isAligned) {
       if (timestampsForAligned == null) {
         timestampsForAligned = timestamps;
+        return null;
       }
-      tablet.timestamps = timestampsForAligned;
+      tmp = timestampsForAligned;
     } else {
-      tablet.timestamps = timestamps;
+      tmp = timestamps;
     }
 
+    // create tablet
+    int rowSize = tmp.length;
+    Tablet tablet = new Tablet(currentEntry.getKey(), measurementSchemas, rowSize);
+    tablet.timestamps = tmp;
     tablet.values = values;
-    tablet.rowSize = isAligned ? timestampsForAligned.length : timestamps.length;
+    tablet.rowSize = rowSize;
     tablet.bitMaps = bitMaps;
+
     return tablet;
   }
 
-  private Tablet processTimeseriesMetadata(TimeseriesMetadata timeseriesMetadata) {
+  private Tablet processTimeseriesMetadata(
+      TimeseriesMetadata timeseriesMetadata, TsFileSequenceReader reader) {
     int pageIndex = 0;
     if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
       isAligned = true;
@@ -237,7 +267,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
     for (int i = 0; i < bitMapBytes.size(); i++) {
       byteArray[i] = bitMapBytes.get(i);
     }
-    BitMap[] bitMaps = new BitMap[] {new BitMap(bitMapBytes.size() * 8, byteArray)};
+    BitMap[] bitMaps = new BitMap[] {new BitMap(byteArray.length, byteArray)};
 
     return createTablet(timestamps, measurementValues.toArray(), bitMaps);
   }
