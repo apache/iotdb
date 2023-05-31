@@ -193,8 +193,7 @@ public class MetricServiceTest {
     metricService.histogram(40, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.histogram(50, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, histogram1.count());
-    assertEquals(5, histogram1.takeSnapshot().size());
-    assertEquals(10.0D, histogram1.takeSnapshot().getMin(), 0.00001);
+    assertEquals(150.0D, histogram1.takeSnapshot().getSum(), 0.00001);
     assertEquals(50.0D, histogram1.takeSnapshot().getMax(), 0.00001);
     Histogram histogram2 =
         metricService.getOrCreateHistogram("histogram1", MetricLevel.IMPORTANT, "tag", "value");
@@ -229,7 +228,6 @@ public class MetricServiceTest {
     metricService.timer(8, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(10, TimeUnit.MILLISECONDS, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, timer1.getCount());
-    assertEquals(5, timer1.takeSnapshot().size());
     Timer timer2 = metricService.getOrCreateTimer("timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(timer1, timer2);
     timer2 = metricService.getOrCreateTimer("timer2", MetricLevel.IMPORTANT);
