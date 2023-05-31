@@ -266,11 +266,13 @@ public class LogicalPlanBuilder {
       } else {
         if (deviceAlignedMap.get(outputDevice)) {
           // aligned series
-          AlignedPath alignedPath = new AlignedPath();
-          for (Expression sourceExpression : deviceMeasurementExpressionEntry.getValue().values()) {
-            MeasurementPath selectedPath =
-                (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-            alignedPath.addMeasurement(selectedPath);
+          List<MeasurementPath> measurementPaths =
+              deviceMeasurementExpressionEntry.getValue().values().stream()
+                  .map(expression -> (MeasurementPath) ((TimeSeriesOperand) expression).getPath())
+                  .collect(Collectors.toList());
+          AlignedPath alignedPath = new AlignedPath(measurementPaths.get(0).getDevicePath());
+          for (MeasurementPath measurementPath : measurementPaths) {
+            alignedPath.addMeasurement(measurementPath);
           }
           sourceNodeList.add(
               new AlignedLastQueryScanNode(
