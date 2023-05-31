@@ -199,6 +199,7 @@ public class CpuUsageMetrics implements IMetricSet {
         totalIncrementTime);
     lastThreadCpuTime.clear();
     lastThreadCpuTime.putAll(currentThreadCpuTime);
+    lastThreadUserTime.clear();
     lastThreadUserTime.putAll(currentThreadUserTime);
   }
 

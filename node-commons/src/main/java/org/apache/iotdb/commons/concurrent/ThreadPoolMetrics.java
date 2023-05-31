@@ -34,6 +34,8 @@ public class ThreadPoolMetrics implements IMetricSet {
   private static final String THREAD_POOL_DONE_TASK_COUNT = "thread_pool_done_task_count";
   private static final String THREAD_POOL_WAITING_TASK_COUNT = "thread_pool_waiting_task_count";
   private static final String THREAD_POOL_CORE_SIZE = "thread_pool_core_size";
+  private static final String THREAD_POOL_MAX_POOL_SIZE = "thread_pool_max_pool_size";
+  private static final String THREAD_POOL_LARGEST_POOL_SIZE = "thread_pool_largest_pool_size";
   private static final String POOL_NAME = "pool_name";
   private AbstractMetricService metricService;
   private Map<String, IThreadPoolMBean> notRegisteredPoolMap = new HashMap<>();
@@ -77,6 +79,20 @@ public class ThreadPoolMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> registeredPoolMap.get(name).getCompletedTaskCount(),
+            POOL_NAME,
+            name);
+        metricService.createAutoGauge(
+            THREAD_POOL_MAX_POOL_SIZE,
+            MetricLevel.IMPORTANT,
+            registeredPoolMap,
+            map -> registeredPoolMap.get(name).getMaximumPoolSize(),
+            POOL_NAME,
+            name);
+        metricService.createAutoGauge(
+            THREAD_POOL_LARGEST_POOL_SIZE,
+            MetricLevel.IMPORTANT,
+            registeredPoolMap,
+            map -> registeredPoolMap.get(name).getLargestPoolSize(),
             POOL_NAME,
             name);
       }
