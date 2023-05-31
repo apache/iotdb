@@ -103,13 +103,12 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     } else {
       builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
       builder.writeNullableText(5, series.getSchema().getCompressor().toString());
-      builder.writeNullableText(10, "");
+      builder.writeNullableText(10, viewTypeOfNonView);
     }
     builder.writeNullableText(6, mapToString(series.getTags()));
     builder.writeNullableText(7, mapToString(series.getAttributes()));
     builder.writeNullableText(8, deadbandInfo.left);
     builder.writeNullableText(9, deadbandInfo.right);
-    builder.writeNullableText(10, viewTypeOfNonView);
     builder.declarePosition();
   }
 
