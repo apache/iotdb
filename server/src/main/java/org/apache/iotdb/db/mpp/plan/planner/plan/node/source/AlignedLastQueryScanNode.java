@@ -178,7 +178,10 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
     if (outputViewPath != null) {
       return outputViewPath;
     }
-    return seriesPath.getDevice();
+    if (seriesPath.getMeasurementList().size() > 1) {
+      return seriesPath.getDevice();
+    }
+    return seriesPath.transformToPartialPath().getFullPath();
   }
 
   @Override
