@@ -45,12 +45,11 @@ public interface Timer extends IMetric {
   /** Take snapshot of timer. */
   HistogramSnapshot takeSnapshot();
 
-  /** It's not safe to use the update interface of this rate. */
-  Rate getImmutableRate();
+  /** Get the count */
+  long getCount();
 
   @Override
   default void constructValueMap(Map<String, Object> result) {
     takeSnapshot().constructValueMap(result);
-    getImmutableRate().constructValueMap(result);
   }
 }
