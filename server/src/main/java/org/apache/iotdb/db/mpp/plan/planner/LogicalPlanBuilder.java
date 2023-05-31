@@ -211,9 +211,7 @@ public class LogicalPlanBuilder {
     Map<String, Boolean> deviceExistViewMap = new HashMap<>();
     Map<String, Map<String, Expression>> outputPathToSourceExpressionMap =
         timeseriesOrdering != null
-            ? new TreeMap<>(
-                (s1, s2) ->
-                    timeseriesOrdering == Ordering.ASC ? s1.compareTo(s2) : s2.compareTo(s1))
+            ? new TreeMap<>(timeseriesOrdering.getStringComparator())
             : new LinkedHashMap<>();
     for (Expression sourceExpression : sourceExpressions) {
       MeasurementPath outputPath =
@@ -227,11 +225,7 @@ public class LogicalPlanBuilder {
               outputDevice,
               k ->
                   timeseriesOrdering != null
-                      ? new TreeMap<>(
-                          (s1, s2) ->
-                              timeseriesOrdering == Ordering.ASC
-                                  ? s1.compareTo(s2)
-                                  : s2.compareTo(s1))
+                      ? new TreeMap<>(timeseriesOrdering.getStringComparator())
                       : new LinkedHashMap<>())
           .put(outputPath.getMeasurement(), sourceExpression);
       if (!deviceAlignedMap.containsKey(outputDevice)) {
@@ -306,17 +300,6 @@ public class LogicalPlanBuilder {
                 .setType(columnHeader.getColumnName(), columnHeader.getColumnType()));
 
     return this;
-  }
-
-  private Map<String, List<String>> getMeasurementToOutputSymbolsMap(
-      Map<PartialPath, List<String>> selectedPathToOutputSymbolsMap, AlignedPath path) {
-    Map<String, List<String>> measurementToOutputSymbolsMap = new HashMap<>();
-    for (String measurement : path.getMeasurementList()) {
-      measurementToOutputSymbolsMap
-          .computeIfAbsent(measurement, k -> new ArrayList<>())
-          .addAll(selectedPathToOutputSymbolsMap.get(path.getDevicePath().concatNode(measurement)));
-    }
-    return measurementToOutputSymbolsMap;
   }
 
   public LogicalPlanBuilder planAggregationSource(
