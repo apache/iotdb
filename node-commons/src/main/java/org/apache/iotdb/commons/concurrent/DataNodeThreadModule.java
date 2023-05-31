@@ -17,14 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics;
+package org.apache.iotdb.commons.concurrent;
 
-public class MetricConstant {
-  // Minimum sampling interval for certain monitoring items
-  // to avoid damage to system performance
-  public static final long UPDATE_INTERVAL = 10_000L;
-
-  private MetricConstant() {
-    // forbidding instantiation
-  }
+public enum DataNodeThreadModule {
+  QUERY,
+  MPP,
+  COMPACTION,
+  WAL,
+  FLUSH,
+  SCHEMA_ENGINE,
+  CLIENT_SERVICE,
+  IOT_CONSENSUS,
+  RATIS_CONSENSUS,
+  COMPUTE,
+  SYNC,
+  JVM,
+  LOG_BACK,
+  METRICS,
+  OTHER,
+  UNKNOWN
 }
