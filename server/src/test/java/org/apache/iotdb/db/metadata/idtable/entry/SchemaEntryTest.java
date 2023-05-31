@@ -33,7 +33,7 @@ public class SchemaEntryTest {
   public void schemaEntryBuildTest() throws IllegalPathException {
     for (TSDataType type : TSDataType.values()) {
       // omit vector
-      if (type == TSDataType.VECTOR) {
+      if (type == TSDataType.VECTOR || type == TSDataType.UNKNOWN) {
         continue;
       }
 
