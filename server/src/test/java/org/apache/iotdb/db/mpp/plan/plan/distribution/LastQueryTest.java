@@ -42,9 +42,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class LastQueryTest {
 
@@ -203,14 +201,10 @@ public class LastQueryTest {
       if (selectPath.isUnderAlignedEntity()) {
         sourceNodeList.add(
             new AlignedLastQueryScanNode(
-                context.getQueryId().genPlanNodeId(),
-                new AlignedPath(selectPath),
-                null));
+                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath), null));
       } else {
         sourceNodeList.add(
-            new LastQueryScanNode(
-                context.getQueryId().genPlanNodeId(),
-                selectPath,null));
+            new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath, null));
       }
     }
 

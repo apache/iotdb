@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.expression;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
@@ -248,11 +247,6 @@ public abstract class Expression extends StatementNode {
     if (expression.inputColumnIndex != null) {
       ReadWriteIOUtils.write(expression.inputColumnIndex, byteBuffer);
     }
-
-    ReadWriteIOUtils.write(expression.viewPath != null, byteBuffer);
-    if (expression.viewPath != null) {
-      expression.viewPath.serialize(byteBuffer);
-    }
   }
 
   public static void serialize(Expression expression, DataOutputStream stream) throws IOException {
@@ -263,11 +257,6 @@ public abstract class Expression extends StatementNode {
     ReadWriteIOUtils.write(expression.inputColumnIndex != null, stream);
     if (expression.inputColumnIndex != null) {
       ReadWriteIOUtils.write(expression.inputColumnIndex, stream);
-    }
-
-    ReadWriteIOUtils.write(expression.viewPath != null, stream);
-    if (expression.viewPath != null) {
-      expression.viewPath.serialize(stream);
     }
   }
 
@@ -378,11 +367,6 @@ public abstract class Expression extends StatementNode {
     boolean hasInputColumnIndex = ReadWriteIOUtils.readBool(byteBuffer);
     if (hasInputColumnIndex) {
       expression.inputColumnIndex = ReadWriteIOUtils.readInt(byteBuffer);
-    }
-
-    boolean hasViewPath = ReadWriteIOUtils.readBool(byteBuffer);
-    if (hasViewPath) {
-      expression.viewPath = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     }
 
     return expression;
