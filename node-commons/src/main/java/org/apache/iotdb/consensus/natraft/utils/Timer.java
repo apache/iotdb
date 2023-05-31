@@ -38,6 +38,7 @@ public class Timer {
   private static final String RAFT_MEMBER_SENDER = " Raft member(sender)";
   private static final String RAFT_MEMBER_RECEIVER = " Raft member(receiver)";
   private static final String LOG_DISPATCHER = "Log dispatcher";
+  private static final String ENGINE_INSERTION = "Engine insertion";
 
   // convert nano to milli
   private static final double TIME_SCALE = 1_000_000.0;
@@ -280,34 +281,7 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
-    RAFT_RECEIVER_HANDLE_APPEND_ACK(
-        RAFT_MEMBER_SENDER,
-        "handle append entrys ack",
-        TIME_SCALE,
-        true,
-        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
-    RAFT_RECEIVER_INDEX_DIFF(RAFT_MEMBER_RECEIVER, "index diff", 1.0, true, ROOT),
-    // log dispatcher
-    LOG_DISPATCHER_LOG_ENQUEUE(
-        LOG_DISPATCHER,
-        "enqueue",
-        TIME_SCALE,
-        true,
-        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
-    LOG_DISPATCHER_LOG_ENQUEUE_SINGLE(
-        LOG_DISPATCHER,
-        "enqueue (single)",
-        TIME_SCALE,
-        true,
-        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
-    LOG_DISPATCHER_LOG_IN_QUEUE(
-        LOG_DISPATCHER,
-        "in queue",
-        TIME_SCALE,
-        true,
-        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
-    LOG_DISPATCHER_LOG_BATCH_SIZE(
-        LOG_DISPATCHER, "batch size", 1, true, META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    RAFT_APPLY_BLOCK(RAFT_MEMBER_RECEIVER, "apply blocking time", TIME_SCALE, true, ROOT),
     SERIALIZE_ENTRY(
         LOG_DISPATCHER,
         "serialize entry",
@@ -440,24 +414,15 @@ public class Timer {
         1,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
-    RAFT_WINDOW_LENGTH(RAFT_MEMBER_RECEIVER, "window length", 1, true, ROOT),
-    RAFT_RELAYED_ENTRY(RAFT_MEMBER_RECEIVER, "number of relayed entries", 1, true, ROOT),
-    RAFT_SEND_RELAY_ACK(RAFT_MEMBER_RECEIVER, "send relay ack", 1, true, ROOT),
-    RAFT_SENT_ENTRY_SIZE(RAFT_MEMBER_SENDER, "sent entry size", 1, true, ROOT),
-    DISPATCHER_QUEUE_LENGTH(RAFT_MEMBER_SENDER, "dispatcher queue length", 1, true, ROOT),
-    RAFT_RELAYED_LEVEL1_NUM(RAFT_MEMBER_SENDER, "level 1 relay node number", 1, true, ROOT),
-    RAFT_RECEIVE_RELAY_ACK(RAFT_MEMBER_SENDER, "receive relay ack", 1, true, ROOT),
-    RAFT_SENDER_OOW(RAFT_MEMBER_SENDER, "out of window", 1, true, ROOT),
     RAFT_LEADER_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "leader weak accept", 1, true, ROOT),
     RAFT_FOLLOWER_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "follower weak accept", TIME_SCALE, true, ROOT),
     RAFT_PUT_LOG(RAFT_MEMBER_SENDER, "put logs", TIME_SCALE, true, ROOT),
     RAFT_PUT_ENTRY(RAFT_MEMBER_SENDER, "put one entry", TIME_SCALE, true, ROOT),
     RAFT_FOLLOWER_STRONG_ACCEPT(
         RAFT_MEMBER_SENDER, "follower strong accept", TIME_SCALE, true, ROOT),
-    RAFT_CONCURRENT_SENDER(RAFT_MEMBER_SENDER, "concurrent sender", 1, true, ROOT),
-    RAFT_INDEX_BLOCKER(RAFT_MEMBER_SENDER, "index blocker", 1, true, ROOT),
-    RAFT_APPEND_BLOCKER(RAFT_MEMBER_SENDER, "append blocker", 1, true, ROOT),
-    RAFT_APPLY_BLOCKER(RAFT_MEMBER_SENDER, "apply blocker", 1, true, ROOT);
+    ENGINE_INSERT_TABLET(ENGINE_INSERTION, "insert tablet", TIME_SCALE, true, ROOT),
+    ENGINE_INSERT_TABLET_LOCK(ENGINE_INSERTION, "insert tablet: lock", TIME_SCALE, true, ROOT),
+    ENGINE_INSERT_TABLET_LOOP(ENGINE_INSERTION, "insert tablet: loop", TIME_SCALE, true, ROOT);
 
     String className;
     String blockName;

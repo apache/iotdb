@@ -342,8 +342,7 @@ public interface IUnCompressor {
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
       return (int)
-          Zstd.decompressByteArray(
-              output, outOffset, output.length, byteArray, offset, byteArray.length);
+          Zstd.decompressByteArray(output, outOffset, output.length, byteArray, offset, length);
     }
 
     /**

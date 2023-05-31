@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class AutoCompressor implements ICompressor {
@@ -33,25 +33,19 @@ public class AutoCompressor implements ICompressor {
 
   public AutoCompressor() {
     List<CompressionType> compressionTypes = collectCompressionTypes();
-    double alpha = 1.0;
-    long minSampleIntervalMS = 1000;
-    sampler = new CompressionSampler(compressionTypes, alpha, minSampleIntervalMS);
+    double alpha = 0.5;
+    long minSampleIntervalMS = 10000;
+    double sampleRatio = 0.01;
+    sampler = new CompressionSampler(compressionTypes, alpha, minSampleIntervalMS, sampleRatio);
   }
 
-  public AutoCompressor(double alpha, long minSampleIntervalMS) {
+  public AutoCompressor(double alpha, long minSampleIntervalMS, double sampleRatio) {
     List<CompressionType> compressionTypes = collectCompressionTypes();
-    sampler = new CompressionSampler(compressionTypes, alpha, minSampleIntervalMS);
+    sampler = new CompressionSampler(compressionTypes, alpha, minSampleIntervalMS, sampleRatio);
   }
 
   private static List<CompressionType> collectCompressionTypes() {
-    List<CompressionType> compressionTypeList =
-        new ArrayList<>(CompressionType.values().length - 1);
-    for (CompressionType type : CompressionType.values()) {
-      if (!type.equals(CompressionType.AUTO) && !type.equals(CompressionType.UNCOMPRESSED)) {
-        compressionTypeList.add(type);
-      }
-    }
-    return compressionTypeList;
+    return Arrays.asList(CompressionType.LZ4, CompressionType.SNAPPY);
   }
 
   @Override
