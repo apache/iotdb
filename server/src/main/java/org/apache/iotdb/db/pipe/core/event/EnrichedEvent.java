@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.pipe.core.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
