@@ -44,7 +44,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -152,8 +151,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   }
 
   @Override
-  public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer)
-      throws IOException {
+  public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
     List<MeasurementSchema> schemas = createMeasurementSchemas();
     Tablet tablet = new Tablet(deviceId, schemas);
