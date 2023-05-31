@@ -124,19 +124,6 @@ public class IoTDBThreadPoolFactory {
         poolName);
   }
 
-  public static ExecutorService newSingleThreadExecutorWithDaemon(String poolName) {
-    logger.info(NEW_SINGLE_THREAD_POOL_LOGGER_FORMAT, poolName);
-    return new WrappedSingleThreadExecutorService(
-        new ThreadPoolExecutor(
-            1,
-            1,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(),
-            new IoTThreadFactory(poolName)),
-        poolName);
-  }
-
   public static ExecutorService newSingleThreadExecutor(
       String poolName, Thread.UncaughtExceptionHandler handler) {
     logger.info(NEW_SINGLE_THREAD_POOL_LOGGER_FORMAT, poolName);
@@ -147,7 +134,7 @@ public class IoTDBThreadPoolFactory {
             0L,
             TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<>(),
-            new IoTThreadFactory(poolName)),
+            new IoTThreadFactory(poolName, handler)),
         poolName);
   }
 
@@ -222,7 +209,7 @@ public class IoTDBThreadPoolFactory {
       String poolName, Thread.UncaughtExceptionHandler handler) {
     logger.info(NEW_SINGLE_SCHEDULED_THREAD_POOL_LOGGER_FORMAT, poolName);
     return new WrappedSingleThreadScheduledExecutor(
-        new ScheduledThreadPoolExecutor(1, new IoTThreadFactory(poolName)), poolName);
+        new ScheduledThreadPoolExecutor(1, new IoTThreadFactory(poolName, handler)), poolName);
   }
 
   /**

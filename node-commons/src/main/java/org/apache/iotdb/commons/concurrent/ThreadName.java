@@ -33,14 +33,16 @@ public enum ThreadName {
   FRAGMENT_INSTANCE_NOTIFICATION("Fragment-Instance-Notification"),
   DATANODE_INTERNAL_RPC_SERVICE("DataNodeInternalRPC-Service"),
   DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
+  DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
+  // -------------------------- MPP --------------------------
+  MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),
+
+  ASYNC_DATANODE_CLIENT_POOL("AsyncDataNodeInternalServiceClientPool"),
   MPP_DATA_EXCHANGE_RPC_SERVICE("MPPDataExchangeRPC-Service"),
   MPP_DATA_EXCHANGE_RPC_PROCESSOR("MPPDataExchangeRPC-Processor"),
   MPP_COORDINATOR_EXECUTOR_POOL("MPP-Coordinator-Executor"),
   ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
 
-  DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
-  // -------------------------- MPPSchedule --------------------------
-  MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),
   // -------------------------- Compaction --------------------------
   COMPACTION_WORKER("Compaction-Worker"),
   COMPACTION_SUB_TASK("Compaction-Sub-Task"),
@@ -77,7 +79,6 @@ public enum ThreadName {
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
   IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
-  ASYNC_DATANODE_CLIENT_POOL("AsyncDataNodeInternalServiceClientPool"),
   ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeIoTConsensusServiceClientPool"),
   LOG_DISPATCHER("LogDispatcher"),
   // -------------------------- Ratis --------------------------
@@ -160,10 +161,16 @@ public enum ThreadName {
               FRAGMENT_INSTANCE_NOTIFICATION,
               DATANODE_INTERNAL_RPC_SERVICE,
               DATANODE_INTERNAL_RPC_PROCESSOR,
+              DRIVER_TASK_SCHEDULER_NOTIFICATION));
+  private static Set<ThreadName> mppThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              MPP_COORDINATOR_SCHEDULED_EXECUTOR,
+              ASYNC_DATANODE_CLIENT_POOL,
+              MPP_COORDINATOR_WRITE_EXECUTOR,
               MPP_DATA_EXCHANGE_RPC_SERVICE,
               MPP_DATA_EXCHANGE_RPC_PROCESSOR,
               MPP_COORDINATOR_EXECUTOR_POOL,
-              DRIVER_TASK_SCHEDULER_NOTIFICATION,
               ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL));
   private static Set<ThreadName> compactionThreadNames =
       new HashSet<>(Arrays.asList(COMPACTION_WORKER, COMPACTION_SUB_TASK, COMPACTION_SCHEDULE));
@@ -196,7 +203,6 @@ public enum ThreadName {
           Arrays.asList(
               IOT_CONSENSUS_RPC_SERVICE,
               IOT_CONSENSUS_RPC_PROCESSOR,
-              ASYNC_DATANODE_CLIENT_POOL,
               ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL,
               LOG_DISPATCHER));
 
@@ -277,6 +283,7 @@ public enum ThreadName {
     Set<ThreadName>[] threadNameSetList =
         new Set[] {
           queryThreadNames,
+          mppThreadNames,
           compactionThreadNames,
           walThreadNames,
           flushThreadNames,
@@ -293,6 +300,7 @@ public enum ThreadName {
     DataNodeThreadModule[] modules =
         new DataNodeThreadModule[] {
           DataNodeThreadModule.QUERY,
+          DataNodeThreadModule.MPP,
           DataNodeThreadModule.COMPACTION,
           DataNodeThreadModule.WAL,
           DataNodeThreadModule.FLUSH,
@@ -311,13 +319,6 @@ public enum ThreadName {
       if (matchModuleWithThreadNames(threadNameSetList[i], modules[i], givenThreadName) != null) {
         return modules[i];
       }
-    }
-
-    if (givenThreadName.contains(MPP_COORDINATOR_SCHEDULED_EXECUTOR.getName())) {
-      return DataNodeThreadModule.MPP_SCHEDULE;
-    }
-    if (givenThreadName.contains(MPP_COORDINATOR_WRITE_EXECUTOR.getName())) {
-      return DataNodeThreadModule.MPP_WRITE;
     }
     if (givenThreadName.contains(LOG_BACK.getName())) {
       return DataNodeThreadModule.LOG_BACK;

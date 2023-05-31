@@ -132,6 +132,20 @@ public class ThreadPoolMetrics implements IMetricSet {
             map -> entry.getValue().getCompletedTaskCount(),
             POOL_NAME,
             entry.getKey());
+        metricService.createAutoGauge(
+            THREAD_POOL_MAX_POOL_SIZE,
+            MetricLevel.IMPORTANT,
+            registeredPoolMap,
+            map -> entry.getValue().getMaximumPoolSize(),
+            POOL_NAME,
+            entry.getKey());
+        metricService.createAutoGauge(
+            THREAD_POOL_LARGEST_POOL_SIZE,
+            MetricLevel.IMPORTANT,
+            registeredPoolMap,
+            map -> entry.getValue().getLargestPoolSize(),
+            POOL_NAME,
+            entry.getKey());
       }
       registeredPoolMap.putAll(notRegisteredPoolMap);
       notRegisteredPoolMap.clear();
@@ -148,6 +162,9 @@ public class ThreadPoolMetrics implements IMetricSet {
           MetricType.GAUGE, THREAD_POOL_WAITING_TASK_COUNT, POOL_NAME, entry.getKey());
       metricService.remove(
           MetricType.GAUGE, THREAD_POOL_DONE_TASK_COUNT, POOL_NAME, entry.getKey());
+      metricService.remove(MetricType.GAUGE, THREAD_POOL_MAX_POOL_SIZE, POOL_NAME, entry.getKey());
+      metricService.remove(
+          MetricType.GAUGE, THREAD_POOL_LARGEST_POOL_SIZE, POOL_NAME, entry.getKey());
     }
   }
 

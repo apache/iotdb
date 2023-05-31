@@ -23,4 +23,8 @@ public class MetricConstant {
   // Minimum sampling interval for certain monitoring items
   // to avoid damage to system performance
   public static final long UPDATE_INTERVAL = 10_000L;
+
+  private MetricConstant() {
+    // forbidding instantiation
+  }
 }
