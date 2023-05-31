@@ -158,21 +158,17 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
                 .getStatus()
                 .get()
                 .equals(PipeStatus.STOPPED)) {
+              pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+              needWriteConsensusOnConfigNodes = true;
+              needPushPipeMetaToDataNodes = true;
+
               LOGGER.warn(
                   String.format(
                       "Detect PipeRuntimeCriticalException %s from DataNode, stop pipe %s.",
                       exception, pipeName));
-
-              pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
-              needWriteConsensusOnConfigNodes = true;
-              needPushPipeMetaToDataNodes = true;
             }
 
             if (exception instanceof PipeRuntimeConnectorCriticalException) {
-              LOGGER.warn(
-                  String.format(
-                      "Detect PipeRuntimeConnectorCriticalException %s from DataNode.", exception));
-
               ((PipeTableResp)
                       env.getConfigManager()
                           .getPipeManager()
@@ -187,6 +183,11 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
                             status.set(PipeStatus.STOPPED);
                             needWriteConsensusOnConfigNodes = true;
                             needPushPipeMetaToDataNodes = true;
+
+                            LOGGER.warn(
+                                String.format(
+                                    "Detect PipeRuntimeConnectorCriticalException %s from DataNode, stop pipe %s.",
+                                    exception, pipeName));
                           });
             }
           }
