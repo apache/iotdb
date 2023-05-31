@@ -324,8 +324,7 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
-  /** default dop = 1 for now */
-  private int degreeOfParallelism = 1;
+  private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -1544,7 +1543,9 @@ public class IoTDBConfig {
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
-    this.degreeOfParallelism = Math.max(1, degreeOfParallelism);
+    if (degreeOfParallelism > 0) {
+      this.degreeOfParallelism = degreeOfParallelism;
+    }
   }
 
   public int getDegreeOfParallelism() {
