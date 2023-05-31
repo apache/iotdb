@@ -56,11 +56,10 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   private final WALEntryHandler walEntryHandler;
   private final ProgressIndex progressIndex;
 
-  private List<TSDataType> dataTypeList;
+  private List<TSDataType> columnTypeList;
   private List<Path> columnNameList;
   private String deviceId;
   private Object[][] rowRecords;
-
   private long[] timestamps;
 
   public PipeInsertNodeInsertionEvent(
@@ -135,7 +134,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
 
     for (int i = 0; i < timestamps.length; i++) {
       Row row =
-          new PipeRow(columnNameList, dataTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
+          new PipeRow(columnNameList, columnTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
       consumer.accept(row, rowCollector);
     }
 
@@ -145,16 +144,9 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   @Override
   public TabletInsertionEvent processByIterator(BiConsumer<Iterable<Row>, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
-
-    List<Row> rows = new ArrayList<>();
-
-    for (int i = 0; i < timestamps.length; i++) {
-      Row row =
-          new PipeRow(columnNameList, dataTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
-      rows.add(row);
-    }
-
-    PipeRowIterator rowIterator = new PipeRowIterator(rows, 0, rows.size());
+    PipeRowIterator rowIterator =
+        new PipeRowIterator(
+            columnNameList, columnTypeList, timestamps, rowRecords, 0, timestamps.length);
     consumer.accept(rowIterator, rowCollector);
     return rowCollector.toTabletInsertionEvent();
   }
@@ -168,7 +160,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
 
     for (int i = 0; i < timestamps.length; i++) {
       Row row =
-          new PipeRow(columnNameList, dataTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
+          new PipeRow(columnNameList, columnTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
       for (int rowIndex = 0; rowIndex < row.size(); rowIndex++) {
         tablet.addValue(columnNameList.get(i).getMeasurement(), rowIndex, row.getObject(i));
       }
@@ -181,7 +173,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     List<MeasurementSchema> schemas = new ArrayList<>();
     for (int i = 0; i < columnNameList.size(); i++) {
       schemas.add(
-          new MeasurementSchema(columnNameList.get(i).getMeasurement(), dataTypeList.get(i)));
+          new MeasurementSchema(columnNameList.get(i).getMeasurement(), columnTypeList.get(i)));
     }
     return schemas;
   }
@@ -209,7 +201,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     this.deviceId = insertRowNode.getDevicePath().getFullPath();
     this.timestamps = new long[] {insertRowNode.getTime()};
 
-    processPattern(originDataTypeList, originMeasurementList, originValues);
+    processPatternWithSingleRow(originDataTypeList, originMeasurementList, originValues);
   }
 
   private void processTabletNode(InsertTabletNode insertTabletNode) {
@@ -220,12 +212,12 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     this.deviceId = insertTabletNode.getDevicePath().getFullPath();
     this.timestamps = insertTabletNode.getTimes();
 
-    processPattern(originDataTypeList, originMeasurementList, originColumns, rowSize);
+    processPatternWithColumns(originDataTypeList, originMeasurementList, originColumns, rowSize);
   }
 
-  private void processPattern(
+  private void processPatternWithSingleRow(
       TSDataType[] originDataTypeList, String[] originMeasurementList, Object[] originValues) {
-    this.dataTypeList = new ArrayList<>();
+    this.columnTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
 
@@ -236,12 +228,12 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     }
   }
 
-  private void processPattern(
+  private void processPatternWithColumns(
       TSDataType[] originDataTypeList,
       String[] originMeasurementList,
       Object[] originColumns,
       int rowSize) {
-    this.dataTypeList = new ArrayList<>();
+    this.columnTypeList = new ArrayList<>();
     this.columnNameList = new ArrayList<>();
     List<Integer> indexList = new ArrayList<>();
 
@@ -266,7 +258,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     if (pattern == null || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
       for (int i = 0; i < originColumnSize; i++) {
         columnNameList.add(new Path(deviceId, originMeasurementList[i], false));
-        dataTypeList.add(originDataTypeList[i]);
+        columnTypeList.add(originDataTypeList[i]);
         indexList.add(i);
       }
     }
@@ -282,7 +274,7 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
             // high cost check comes later
             && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
           columnNameList.add(new Path(deviceId, measurement, false));
-          dataTypeList.add(originDataTypeList[i]);
+          columnTypeList.add(originDataTypeList[i]);
           indexList.add(i);
         }
       }

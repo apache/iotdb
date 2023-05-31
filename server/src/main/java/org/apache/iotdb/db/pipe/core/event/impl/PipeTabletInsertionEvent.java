@@ -41,7 +41,7 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
 
   private final String pattern;
 
-  private long[] timestamps;
+  private final long[] timestamps;
   private List<TSDataType> columnTypeList;
   private List<Path> columnNameList;
   private final String deviceId;
@@ -78,15 +78,9 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
   @Override
   public TabletInsertionEvent processByIterator(BiConsumer<Iterable<Row>, RowCollector> consumer) {
     PipeRowCollector rowCollector = new PipeRowCollector();
-    List<Row> rowList = new ArrayList<>();
-
-    for (int i = 0; i < timestamps.length; i++) {
-      Row row =
-          new PipeRow(columnNameList, columnTypeList, timestamps[i]).setRowRecord(rowRecords[i]);
-      rowList.add(row);
-    }
-
-    PipeRowIterator rowIterator = new PipeRowIterator(rowList, 0, rowList.size());
+    PipeRowIterator rowIterator =
+        new PipeRowIterator(
+            columnNameList, columnTypeList, timestamps, rowRecords, 0, timestamps.length);
     consumer.accept(rowIterator, rowCollector);
     return rowCollector.toTabletInsertionEvent();
   }
@@ -158,10 +152,6 @@ public class PipeTabletInsertionEvent implements TabletInsertionEvent {
 
   public String getPattern() {
     return pattern;
-  }
-
-  public List<MeasurementSchema> getMeasureSchemaList() {
-    return tablet.getSchemas();
   }
 
   public String getDeviceId() {

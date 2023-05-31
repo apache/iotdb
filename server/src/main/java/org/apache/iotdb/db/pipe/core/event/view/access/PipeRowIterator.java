@@ -20,66 +20,55 @@
 package org.apache.iotdb.db.pipe.core.event.view.access;
 
 import org.apache.iotdb.pipe.api.access.Row;
-import org.apache.iotdb.pipe.api.access.RowIterator;
-import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
-import org.apache.iotdb.pipe.api.type.Type;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
-public class PipeRowIterator implements RowIterator, Iterable<Row> {
+public class PipeRowIterator implements Iterator<Row>, Iterable<Row> {
+  private final List<Path> columnNameList;
+  private final List<TSDataType> columnTypeList;
+  private final long[] timestamps;
+  private final Object[][] rowRecords;
+  private int currentIndex;
+  private final int endIndex;
 
-  private final List<Row> rowList;
-  private final int beginIndex;
-  private final int size;
-  private Row row;
-
-  private int rowIndex;
-
-  public PipeRowIterator(List<Row> rowList, int beginIndex, int endIndex) {
-    this.rowList = rowList;
-    this.beginIndex = beginIndex;
-    this.size = endIndex - beginIndex;
-
-    row = rowList.get(beginIndex);
-    rowIndex = -1;
+  public PipeRowIterator(
+      List<Path> columnNameList,
+      List<TSDataType> columnTypeList,
+      long[] timestamps,
+      Object[][] rowRecords,
+      int startIndex,
+      int endIndex) {
+    this.columnNameList = columnNameList;
+    this.columnTypeList = columnTypeList;
+    this.timestamps = timestamps;
+    this.rowRecords = rowRecords;
+    this.currentIndex = startIndex;
+    this.endIndex = endIndex;
   }
 
   @Override
-  public boolean hasNextRow() {
-    return rowIndex < size - 1;
+  public boolean hasNext() {
+    return currentIndex < endIndex;
   }
 
   @Override
-  public Row next() throws IOException {
-    row = rowList.get(++rowIndex + beginIndex);
+  public Row next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    Row row =
+        new PipeRow(columnNameList, columnTypeList, timestamps[currentIndex])
+            .setRowRecord(rowRecords[currentIndex]);
+    currentIndex++;
     return row;
   }
 
   @Override
   public Iterator<Row> iterator() {
-    return rowList.iterator();
-  }
-
-  @Override
-  public void reset() {
-    rowIndex = -1;
-  }
-
-  @Override
-  public int getColumnIndex(Path columnName) throws PipeParameterNotValidException {
-    return row.getColumnIndex(columnName);
-  }
-
-  @Override
-  public List<Path> getColumnNames() {
-    return row.getColumnNames();
-  }
-
-  @Override
-  public List<Type> getColumnTypes() {
-    return row.getColumnTypes();
+    return this;
   }
 }
