@@ -37,18 +37,13 @@ public class DropwizardHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double[] getValues() {
-    return Arrays.stream(snapshot.getValues()).mapToDouble(k -> k).toArray();
+  public double getSum() {
+    return Arrays.stream(snapshot.getValues()).sum();
   }
 
   @Override
   public int size() {
     return snapshot.size();
-  }
-
-  @Override
-  public double getMedian() {
-    return snapshot.getMedian();
   }
 
   @Override
@@ -59,10 +54,5 @@ public class DropwizardHistogramSnapshot implements HistogramSnapshot {
   @Override
   public double getMean() {
     return snapshot.getMean();
-  }
-
-  @Override
-  public double getMin() {
-    return (double) snapshot.getMin();
   }
 }

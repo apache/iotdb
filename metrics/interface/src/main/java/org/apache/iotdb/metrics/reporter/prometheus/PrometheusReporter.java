@@ -48,7 +48,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -152,7 +151,7 @@ public class PrometheusReporter implements Reporter {
               metricInfo.getTags(),
               metricType,
               snapshot,
-              timer.getImmutableRate().getCount(),
+              timer.getCount(),
               prometheusTextWriter);
         }
       }
@@ -181,20 +180,15 @@ public class PrometheusReporter implements Reporter {
     prometheusTextWriter.writeHelp(name);
     prometheusTextWriter.writeType(name, type);
     prometheusTextWriter.writeSample(name + "_max", tags, snapshot.getMax());
-    prometheusTextWriter.writeSample(
-        name + "_sum", tags, Arrays.stream(snapshot.getValues()).sum());
+    prometheusTextWriter.writeSample(name + "_sum", tags, snapshot.getSum());
     prometheusTextWriter.writeSample(name + "_count", tags, count);
 
-    prometheusTextWriter.writeSample(
-        name, addTags(tags, "quantile", "0.0"), snapshot.getValue(0.0));
     prometheusTextWriter.writeSample(
         name, addTags(tags, "quantile", "0.5"), snapshot.getValue(0.5));
     prometheusTextWriter.writeSample(
         name, addTags(tags, "quantile", "0.75"), snapshot.getValue(0.75));
     prometheusTextWriter.writeSample(
         name, addTags(tags, "quantile", "0.99"), snapshot.getValue(0.99));
-    prometheusTextWriter.writeSample(
-        name, addTags(tags, "quantile", "0.999"), snapshot.getValue(0.999));
   }
 
   private Map<String, String> addTags(Map<String, String> tags, String key, String value) {
