@@ -154,6 +154,7 @@ public class CommonConfig {
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 1024;
+  private long pipeConnectorSessionId = Long.MAX_VALUE / 2;
 
   private int pipeHeartbeatLoopCyclesForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
@@ -548,5 +549,13 @@ public class CommonConfig {
       long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs) {
     this.pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs =
         pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs;
+  }
+
+  public long getPipeConnectorSessionId() {
+    return pipeConnectorSessionId;
+  }
+
+  public void setPipeConnectorSessionId(long pipeSessionId) {
+    this.pipeConnectorSessionId = pipeSessionId;
   }
 }
