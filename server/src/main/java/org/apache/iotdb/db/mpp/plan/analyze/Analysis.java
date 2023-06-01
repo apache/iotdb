@@ -148,7 +148,7 @@ public class Analysis {
   // expression of order by that need to be calculated
   private Map<String, Set<Expression>> deviceToOrderByExpressions;
 
-  // the sortItems used in order by push down of align  by device
+  // the sortItems used in order by push down of align by device
   private Map<String, List<SortItem>> deviceToSortItems;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
@@ -239,7 +239,8 @@ public class Analysis {
   // Logical View Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private boolean hasViewsInQuery = false;
+  private boolean useLogicalView = false;
+
   private List<Pair<Expression, String>> outputExpressions = null;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -685,12 +686,12 @@ public class Analysis {
   // Logical View Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public void setHasViewsInQuery(boolean hasViewsInQuery) {
-    this.hasViewsInQuery = hasViewsInQuery;
+  public void setUseLogicalView(boolean useLogicalView) {
+    this.useLogicalView = useLogicalView;
   }
 
-  public boolean hasViewsInQuery() {
-    return this.hasViewsInQuery;
+  public boolean useLogicalView() {
+    return this.useLogicalView;
   }
 
   public void setOutputExpressions(List<Pair<Expression, String>> outputExpressions) {

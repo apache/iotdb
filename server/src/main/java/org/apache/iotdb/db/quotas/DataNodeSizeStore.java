@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.quotas;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.engine.StorageEngine;
 
@@ -26,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -41,7 +42,9 @@ public class DataNodeSizeStore {
     storageEngine = StorageEngine.getInstance();
     dataRegionDisk = new HashMap<>();
     dataRegionIds = new ArrayList<>();
-    this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+    this.scheduledExecutorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.RESOURCE_CONTROL_DISK_STATISTIC.getName());
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         scheduledExecutorService, () -> calculateRegionSize(dataRegionIds), 0, 5, TimeUnit.SECONDS);
   }

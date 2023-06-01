@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.commons.concurrent.threadpool;
 
-public interface WrappedSingleThreadScheduledExecutorMBean {}
+public interface WrappedSingleThreadScheduledExecutorMBean extends IThreadPoolMBean {}

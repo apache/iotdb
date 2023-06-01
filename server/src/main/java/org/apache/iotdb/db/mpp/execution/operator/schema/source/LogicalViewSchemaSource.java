@@ -21,32 +21,18 @@ package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
-import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.query.reader.SchemaReaderLimitOffsetWrapper;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.metadata.view.viewExpression.visitor.GetSourcePathsVisitor;
-import org.apache.iotdb.db.metadata.view.viewExpression.visitor.TransformToExpressionVisitor;
-import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
-import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.mpp.plan.analyze.ExpressionTypeAnalyzer;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -62,15 +48,6 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   private final long offset;
 
   private final SchemaFilter schemaFilter;
-
-  /**
-   * The task of processing logical views will be delayed. Those infos will be stored here in
-   * function transformToTsBlockColumns(). <b>If there is no delayed infos of logical views, this
-   * variable may be null.</b>
-   */
-  private List<ITimeSeriesSchemaInfo> delayedLogicalViewList;
-
-  private static final String unknownDataTypeString = "UNKNOWN";
   private static final String viewTypeOfLogicalView = "logical";
 
   LogicalViewSchemaSource(
@@ -81,8 +58,6 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     this.offset = offset;
 
     this.schemaFilter = schemaFilter;
-
-    this.delayedLogicalViewList = new ArrayList<>();
   }
 
   @Override
@@ -108,98 +83,29 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   @Override
   public void transformToTsBlockColumns(
       ITimeSeriesSchemaInfo series, TsBlockBuilder builder, String database) {
-    // delay all tasks
-    this.delayedLogicalViewList.add(
-        new ShowTimeSeriesResult(
-            series.getFullPath(),
-            series.getAlias(),
-            series.getSchema(),
-            series.getTags(),
-            series.getAttributes(),
-            series.isUnderAlignedDevice()));
+    builder.getTimeColumnBuilder().writeLong(0);
+    builder.writeNullableText(0, series.getFullPath());
+    builder.writeNullableText(1, database);
+
+    builder.writeNullableText(2, series.getSchema().getType().toString());
+
+    builder.writeNullableText(3, mapToString(series.getTags()));
+    builder.writeNullableText(4, mapToString(series.getAttributes()));
+
+    builder.writeNullableText(5, viewTypeOfLogicalView);
+    builder.writeNullableText(
+        6, ((LogicalViewSchema) series.getSchema()).getExpression().toString());
+    builder.declarePosition();
   }
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN) && (schemaFilter == null);
+    return pathPattern.equals(ALL_MATCH_PATTERN);
   }
 
   @Override
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
-  }
-
-  private List<String> analyzeDataTypeOfDelayedViews() {
-    if (this.delayedLogicalViewList == null || this.delayedLogicalViewList.size() <= 0) {
-      return new ArrayList<>();
-    }
-    // fetch schema of source paths of views
-    List<ViewExpression> viewExpressionList = new ArrayList<>();
-    for (ITimeSeriesSchemaInfo series : this.delayedLogicalViewList) {
-      viewExpressionList.add(((LogicalViewSchema) series.getSchema()).getExpression());
-    }
-    GetSourcePathsVisitor getSourcePathsVisitor = new GetSourcePathsVisitor();
-    List<PartialPath> sourcePathsNeedFetch;
-    PathPatternTree patternTree = new PathPatternTree();
-    for (ViewExpression viewExpression : viewExpressionList) {
-      sourcePathsNeedFetch = getSourcePathsVisitor.process(viewExpression, null);
-      for (PartialPath path : sourcePathsNeedFetch) {
-        patternTree.appendFullPath(path);
-      }
-    }
-    ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
-    // process each view expression and get data type
-    TransformToExpressionVisitor transformToExpressionVisitor = new TransformToExpressionVisitor();
-    CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =
-        new CompleteMeasurementSchemaVisitor();
-    Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
-    List<String> dataTypeStringList = new ArrayList<>();
-    for (ViewExpression viewExpression : viewExpressionList) {
-      Expression expression = null;
-      boolean viewIsBroken = false;
-      try {
-        expression = transformToExpressionVisitor.process(viewExpression, null);
-        expression = completeMeasurementSchemaVisitor.process(expression, schemaTree);
-        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, expression);
-      } catch (Exception e) {
-        viewIsBroken = true;
-      }
-      if (viewIsBroken) {
-        dataTypeStringList.add(unknownDataTypeString);
-      } else {
-        dataTypeStringList.add(expressionTypes.get(NodeRef.of(expression)).toString());
-      }
-    }
-    return dataTypeStringList;
-  }
-
-  @Override
-  public void processDelayedTask(TsBlockBuilder builder, String database) {
-    // There is no delayed tasks. So, do nothing.
-    if (this.delayedLogicalViewList == null || this.delayedLogicalViewList.size() <= 0) {
-      return;
-    }
-    List<String> dataTypeStringList = this.analyzeDataTypeOfDelayedViews();
-    // process delayed tasks
-    for (int index = 0; index < this.delayedLogicalViewList.size(); index++) {
-      ITimeSeriesSchemaInfo series = this.delayedLogicalViewList.get(index);
-      String expressionTypeOfThisView = dataTypeStringList.get(index);
-
-      builder.getTimeColumnBuilder().writeLong(0);
-      builder.writeNullableText(0, series.getFullPath());
-      builder.writeNullableText(1, database);
-
-      builder.writeNullableText(2, expressionTypeOfThisView);
-
-      builder.writeNullableText(3, mapToString(series.getTags()));
-      builder.writeNullableText(4, mapToString(series.getAttributes()));
-
-      builder.writeNullableText(5, viewTypeOfLogicalView);
-      builder.writeNullableText(
-          6, ((LogicalViewSchema) series.getSchema()).getExpression().toString());
-      builder.declarePosition();
-    }
-    this.delayedLogicalViewList.clear();
   }
 
   private String mapToString(Map<String, String> map) {
@@ -213,6 +119,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     return "{" + content + "}";
   }
 
+  // TODO: this reader may be replaced by filter in the future
   private static class LogicalViewSchemaReader implements ISchemaReader<ITimeSeriesSchemaInfo> {
 
     private final ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader;

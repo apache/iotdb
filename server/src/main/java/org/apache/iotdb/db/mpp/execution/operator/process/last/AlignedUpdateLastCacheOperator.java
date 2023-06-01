@@ -76,14 +76,19 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
           lastCache.updateLastCache(
               getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
         }
-        LastQueryUtil.appendLastValue(
-            tsBlockBuilder,
-            lastTime,
-            measurementPath.getFullPath(),
-            lastValue.getStringValue(),
-            seriesPath.getSchemaList().get(i / 2).getType().name());
+        appendLastValueToTsBlockBuilder(lastTime, lastValue, measurementPath);
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;
+  }
+
+  protected void appendLastValueToTsBlockBuilder(
+      long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath) {
+    LastQueryUtil.appendLastValue(
+        tsBlockBuilder,
+        lastTime,
+        measurementPath.getFullPath(),
+        lastValue.getStringValue(),
+        measurementPath.getSeriesType().name());
   }
 }

@@ -238,13 +238,13 @@ public class CommonDescriptor {
                 String.valueOf(
                     config.getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount()))));
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "pipe_subtask_executor_basic_check_point_interval_by_time_duration",
                 String.valueOf(
                     config.getPipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration()))));
     config.setPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
                 String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
@@ -276,7 +276,7 @@ public class CommonDescriptor {
                 "pipe_connector_read_file_buffer_size",
                 String.valueOf(config.getPipeConnectorReadFileBufferSize()))));
     config.setPipeConnectorRetryIntervalMs(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "pipe_connector_retry_interval_ms",
                 String.valueOf(config.getPipeConnectorRetryIntervalMs()))));
@@ -285,6 +285,10 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
+    config.setPipeConnectorSessionId(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_connector_session_id", String.valueOf(config.getPipeConnectorSessionId()))));
 
     config.setPipeHeartbeatLoopCyclesForCollectingPipeMeta(
         Integer.parseInt(
@@ -292,12 +296,12 @@ public class CommonDescriptor {
                 "pipe_heartbeat_loop_cycles_for_collecting_pipe_meta",
                 String.valueOf(config.getPipeHeartbeatLoopCyclesForCollectingPipeMeta()))));
     config.setPipeMetaSyncerInitialSyncDelayMinutes(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "pipe_meta_syncer_initial_sync_delay_minutes",
                 String.valueOf(config.getPipeMetaSyncerInitialSyncDelayMinutes()))));
     config.setPipeMetaSyncerSyncIntervalMinutes(
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "pipe_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getPipeMetaSyncerSyncIntervalMinutes()))));

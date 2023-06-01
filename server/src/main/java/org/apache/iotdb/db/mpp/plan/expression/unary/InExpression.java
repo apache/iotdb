@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.unary;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
@@ -67,12 +68,14 @@ public class InExpression extends UnaryExpression {
   @Override
   protected String getExpressionStringInternal() {
     StringBuilder stringBuilder = new StringBuilder();
-    if (expression instanceof FunctionExpression
-        || expression instanceof ConstantOperand
-        || expression instanceof TimeSeriesOperand) {
-      stringBuilder.append(expression).append(" IN (");
+    if (expression instanceof FunctionExpression || expression instanceof LeafOperand) {
+      stringBuilder.append(expression.getExpressionString()).append(" IN (");
     } else {
-      stringBuilder.append('(').append(expression).append(')').append(" IN (");
+      stringBuilder
+          .append('(')
+          .append(expression.getExpressionString())
+          .append(')')
+          .append(" IN (");
     }
     return appendValuesToBuild(stringBuilder).toString();
   }
@@ -121,18 +124,14 @@ public class InExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
+  public String getOutputSymbolInternal() {
     StringBuilder stringBuilder = new StringBuilder();
     if (expression instanceof FunctionExpression
         || expression instanceof ConstantOperand
         || expression instanceof TimeSeriesOperand) {
-      stringBuilder.append(expression.getStringWithViewOfThisExpression()).append(" IN (");
+      stringBuilder.append(expression.getOutputSymbol()).append(" IN (");
     } else {
-      stringBuilder
-          .append('(')
-          .append(expression.getStringWithViewOfThisExpression())
-          .append(')')
-          .append(" IN (");
+      stringBuilder.append('(').append(expression.getOutputSymbol()).append(')').append(" IN (");
     }
     return appendValuesToBuild(stringBuilder).toString();
   }
