@@ -183,7 +183,7 @@
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.16</httpcore.version>
         <!-- for REST service -->
-        <swagger.core.version>1.6.2</swagger.core.version>
+        <swagger.core.version>1.6.11</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
         <openapi.generator.version>5.0.1</openapi.generator.version>
         <!-- cli -->
