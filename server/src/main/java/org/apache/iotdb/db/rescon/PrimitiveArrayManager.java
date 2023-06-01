@@ -121,8 +121,8 @@ public class PrimitiveArrayManager {
    * @return an array
    */
   public static Object allocate(TSDataType dataType) {
-    if (dataType.equals(TSDataType.VECTOR)) {
-      throw new UnSupportedDataTypeException(TSDataType.VECTOR.name());
+    if (dataType.equals(TSDataType.VECTOR) || dataType.equals(TSDataType.UNKNOWN)) {
+      throw new UnSupportedDataTypeException(dataType.name());
     }
 
     if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold) {
