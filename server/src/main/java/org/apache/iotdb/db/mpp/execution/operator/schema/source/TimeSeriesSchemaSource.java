@@ -225,6 +225,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       builder.writeNullableText(10, viewTypeOfLogicalView);
       builder.declarePosition();
     }
+    this.delayedLogicalViewList.clear();
   }
 
   private String mapToString(Map<String, String> map) {

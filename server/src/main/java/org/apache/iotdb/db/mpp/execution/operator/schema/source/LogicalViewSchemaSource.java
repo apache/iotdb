@@ -199,6 +199,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
           6, ((LogicalViewSchema) series.getSchema()).getExpression().toString());
       builder.declarePosition();
     }
+    this.delayedLogicalViewList.clear();
   }
 
   private String mapToString(Map<String, String> map) {
