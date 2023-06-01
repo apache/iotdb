@@ -1078,10 +1078,6 @@ public class IoTDBDescriptor {
     // author cache
     loadAuthorCache(properties);
 
-    conf.setTimePartitionInterval(
-        DateTimeUtils.convertMilliTimeWithPrecision(
-            conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
-
     conf.setQuotaEnable(
         Boolean.parseBoolean(
             properties.getProperty("quota_enable", String.valueOf(conf.isQuotaEnable()))));
