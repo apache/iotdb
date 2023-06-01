@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.stream.IntStream;
 
 public class TabletInsertionDataContainer {
 
@@ -53,6 +54,7 @@ public class TabletInsertionDataContainer {
   private Object[][] valueColumns;
   private TSDataType[] valueColumnTypes;
   private BitMap[] nullValueColumnBitmaps;
+  private int rowCount;
 
   private Tablet tablet;
 
@@ -114,6 +116,8 @@ public class TabletInsertionDataContainer {
         this.nullValueColumnBitmaps[filteredColumnIndex] = new BitMap(1);
       }
     }
+
+    rowCount = 1;
   }
 
   private void parse(InsertTabletNode insertTabletNode, String pattern)
@@ -144,7 +148,13 @@ public class TabletInsertionDataContainer {
     final String[] originColumnNameStringList = insertTabletNode.getMeasurements();
     final Object[] originValueColumns = insertTabletNode.getColumns();
     final TSDataType[] originValueColumnTypes = insertTabletNode.getDataTypes();
-    final BitMap[] originBitMapList = insertTabletNode.getBitMaps();
+    final BitMap[] originBitMapList =
+        (insertTabletNode.getBitMaps() == null
+            ? IntStream.range(0, originColumnSize)
+                .boxed()
+                .map(o -> new BitMap(timestampColumn.length))
+                .toArray(BitMap[]::new)
+            : insertTabletNode.getBitMaps());
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
@@ -157,6 +167,8 @@ public class TabletInsertionDataContainer {
         this.nullValueColumnBitmaps[filteredColumnIndex] = originBitMapList[i];
       }
     }
+
+    rowCount = timestampColumn.length;
   }
 
   private void parse(Tablet tablet, String pattern) {
@@ -201,6 +213,8 @@ public class TabletInsertionDataContainer {
         this.nullValueColumnBitmaps[filteredColumnIndex] = originBitMapList[i];
       }
     }
+
+    rowCount = tablet.rowSize;
   }
 
   private void generateColumnIndexMapper(
@@ -297,7 +311,9 @@ public class TabletInsertionDataContainer {
         final String[] stringValues = new String[binaryValues.length];
         for (int i = 0; i < binaryValues.length; i++) {
           stringValues[i] =
-              bitMap != null && bitMap.isMarked(i) ? null : binaryValues[i].getStringValue();
+              bitMap != null && bitMap.isMarked(i)
+                  ? null
+                  : (binaryValues[i] == null ? null : binaryValues[i].getStringValue());
         }
         return stringValues;
       default:
@@ -348,6 +364,7 @@ public class TabletInsertionDataContainer {
     newTablet.timestamps = timestampColumn;
     newTablet.bitMaps = nullValueColumnBitmaps;
     newTablet.values = squashFromColumnList(valueColumns, valueColumnTypes);
+    newTablet.rowSize = rowCount;
 
     tablet = newTablet;
     return tablet;
@@ -402,8 +419,7 @@ public class TabletInsertionDataContainer {
         final String[] stringValues = (String[]) valueColumn;
         final Binary[] binaryValues = new Binary[stringValues.length];
         for (int i = 0; i < stringValues.length; i++) {
-          binaryValues[i] =
-              stringValues[i] == null ? Binary.EMPTY_VALUE : Binary.valueOf(stringValues[i]);
+          binaryValues[i] = stringValues[i] == null ? null : Binary.valueOf(stringValues[i]);
         }
         return binaryValues;
       default:

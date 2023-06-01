@@ -50,6 +50,7 @@ public class PipeRowCollector implements RowCollector {
       final List<MeasurementSchema> measurementSchemaList =
           new ArrayList<>(Arrays.asList(measurementSchemaArray));
       tablet = new Tablet(deviceId, measurementSchemaList);
+      tablet.initBitMaps();
     }
 
     final int rowIndex = tablet.rowSize;

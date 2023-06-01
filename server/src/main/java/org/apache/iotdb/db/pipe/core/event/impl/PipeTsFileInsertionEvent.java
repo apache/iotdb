@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.core.event.view.datastructure.TsFileInsertionDat
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,10 +145,20 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
-    if (dataContainer == null) {
-      dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern());
+    try {
+      if (dataContainer == null) {
+        waitForTsFileClose();
+        dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern());
+      }
+      return dataContainer.toTabletInsertionEvents();
+    } catch (InterruptedException e) {
+      String errorMsg =
+          String.format(
+              "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
+      LOGGER.warn(errorMsg);
+      Thread.currentThread().interrupt();
+      throw new PipeException(errorMsg);
     }
-    return dataContainer.toTabletInsertionEvents();
   }
 
   @Override
