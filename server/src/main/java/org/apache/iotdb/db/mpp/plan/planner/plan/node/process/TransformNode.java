@@ -78,7 +78,7 @@ public class TransformNode extends SingleChildProcessNode {
     if (outputColumnNames == null) {
       outputColumnNames = new ArrayList<>();
       for (Expression expression : outputExpressions) {
-        outputColumnNames.add(expression.toString());
+        outputColumnNames.add(expression.getExpressionString());
       }
     }
     return outputColumnNames;

@@ -39,9 +39,18 @@ class HDFSConfUtil {
   private static final Logger logger = LoggerFactory.getLogger(HDFSConfUtil.class);
 
   static Configuration setConf(Configuration conf) {
-    if (!tsFileConfig.getTSFileStorageFs().equals(FSType.HDFS)) {
+    boolean enableHDFS = false;
+    for (FSType type : tsFileConfig.getTSFileStorageFs()) {
+      if (type.equals(FSType.HDFS)) {
+        enableHDFS = true;
+        break;
+      }
+    }
+
+    if (!enableHDFS) {
       return conf;
     }
+
     try {
       conf.addResource(new File(tsFileConfig.getCoreSitePath()).toURI().toURL());
       conf.addResource(new File(tsFileConfig.getHdfsSitePath()).toURI().toURL());

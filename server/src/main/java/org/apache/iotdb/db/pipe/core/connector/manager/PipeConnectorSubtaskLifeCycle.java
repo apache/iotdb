@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.core.connector.manager;
 
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.task.queue.ListenableBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -28,7 +28,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
   private final PipeConnectorSubtaskExecutor executor;
   private final PipeConnectorSubtask subtask;
-  private final ListenableBlockingPendingQueue<Event> pendingQueue;
+  private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
   private int runningTaskCount;
   private int aliveTaskCount;
@@ -36,20 +36,10 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   public PipeConnectorSubtaskLifeCycle(
       PipeConnectorSubtaskExecutor executor,
       PipeConnectorSubtask subtask,
-      ListenableBlockingPendingQueue<Event> pendingQueue) {
+      BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.executor = executor;
     this.subtask = subtask;
     this.pendingQueue = pendingQueue;
-
-    pendingQueue.registerEmptyToNotEmptyListener(
-        subtask.getTaskID(),
-        () -> {
-          if (hasRunningTasks()) {
-            executor.start(subtask.getTaskID());
-          }
-        });
-    this.pendingQueue.registerNotEmptyToEmptyListener(
-        subtask.getTaskID(), () -> executor.stop(subtask.getTaskID()));
 
     runningTaskCount = 0;
     aliveTaskCount = 0;
@@ -59,7 +49,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     return subtask;
   }
 
-  public ListenableBlockingPendingQueue<Event> getPendingQueue() {
+  public BoundedBlockingPendingQueue<Event> getPendingQueue() {
     return pendingQueue;
   }
 
@@ -113,13 +103,6 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
   @Override
   public synchronized void close() {
-    pendingQueue.removeEmptyToNotEmptyListener(subtask.getTaskID());
-    pendingQueue.removeNotEmptyToEmptyListener(subtask.getTaskID());
-
     executor.deregister(subtask.getTaskID());
-  }
-
-  private synchronized boolean hasRunningTasks() {
-    return runningTaskCount > 0;
   }
 }

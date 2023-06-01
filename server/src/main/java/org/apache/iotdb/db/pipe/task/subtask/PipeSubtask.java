@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -56,7 +57,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   protected Event lastEvent;
 
-  public PipeSubtask(String taskID) {
+  protected PipeSubtask(String taskID) {
     super();
     this.taskID = taskID;
   }
@@ -108,16 +109,26 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   public void onFailure(@NotNull Throwable throwable) {
     if (retryCount.get() < MAX_RETRY_TIMES) {
       retryCount.incrementAndGet();
+      LOGGER.warn(
+          String.format(
+              "Retry subtask %s, retry count [%s/%s]",
+              this.getClass().getSimpleName(), retryCount.get(), MAX_RETRY_TIMES));
       submitSelf();
     } else {
-      LOGGER.warn(
-          "Subtask {} failed, has been retried for {} times, last failed because of {}",
-          taskID,
-          retryCount,
-          throwable);
+      final String errorMessage =
+          String.format(
+              "Subtask %s failed, has been retried for %d times, last failed because of %s",
+              taskID, retryCount.get(), throwable);
+      LOGGER.warn(errorMessage, throwable);
       lastFailedCause = throwable;
 
-      PipeAgent.runtime().report(this);
+      if (lastEvent instanceof EnrichedEvent) {
+        ((EnrichedEvent) lastEvent)
+            .reportException(
+                throwable instanceof PipeRuntimeException
+                    ? (PipeRuntimeException) throwable
+                    : new PipeRuntimeCriticalException(errorMessage));
+      }
 
       // although the pipe task will be stopped, we still don't release the last event here
       // because we need to keep it for the next retry. if user wants to restart the task,
@@ -165,7 +176,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   protected void releaseLastEvent() {
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) lastEvent).decreaseReferenceCount(PipeSubtask.class.getName());
+        ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName());
       }
       lastEvent = null;
     }

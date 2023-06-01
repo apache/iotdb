@@ -510,7 +510,7 @@ public class PipeTaskAgent {
       PipeTaskMeta pipeTaskMeta) {
     if (pipeTaskMeta.getLeaderDataNodeId() == CONFIG.getDataNodeId()) {
       final PipeTask pipeTask =
-          new PipeTaskBuilder(consensusGroupId, pipeTaskMeta, pipeStaticMeta).build();
+          new PipeTaskBuilder(pipeStaticMeta, consensusGroupId, pipeTaskMeta).build();
       pipeTask.create();
       pipeTaskManager.addPipeTask(pipeStaticMeta, consensusGroupId, pipeTask);
     }
@@ -518,9 +518,7 @@ public class PipeTaskAgent {
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
         .getConsensusGroupIdToTaskMetaMap()
-        .put(
-            consensusGroupId,
-            new PipeTaskMeta(pipeTaskMeta.getProgressIndex(), pipeTaskMeta.getLeaderDataNodeId()));
+        .put(consensusGroupId, pipeTaskMeta);
   }
 
   private void dropPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {

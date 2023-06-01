@@ -255,8 +255,8 @@ public class IoTDBStartCheck {
    * accessing same director.
    */
   public void checkDirectory() throws ConfigurationException, IOException {
-    // check data dirs
-    for (String dataDir : config.getDataDirs()) {
+    // check data dirs TODO(zhm) only check local directories
+    for (String dataDir : config.getLocalDataDirs()) {
       DirectoryChecker.getInstance().registerDirectory(new File(dataDir));
     }
     if (config.isClusterMode()

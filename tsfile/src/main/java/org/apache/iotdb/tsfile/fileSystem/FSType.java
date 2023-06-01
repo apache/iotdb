@@ -21,5 +21,6 @@ package org.apache.iotdb.tsfile.fileSystem;
 
 public enum FSType {
   LOCAL,
-  HDFS
+  HDFS,
+  OBJECT_STORAGE,
 }

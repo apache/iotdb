@@ -205,6 +205,13 @@ public class PartitionManager {
     // by the number of SeriesPartitionSlots,
     // the number of serialized CreateSchemaPartitionReqs is acceptable.
     synchronized (this) {
+      // Here we should check again if the SchemaPartition
+      // has been created by other threads to improve concurrent performance
+      resp = (SchemaPartitionResp) getSchemaPartition(req);
+      if (resp.isAllPartitionsExist()) {
+        return resp;
+      }
+
       // Filter unassigned SchemaPartitionSlots
       Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
           partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
@@ -258,7 +265,7 @@ public class PartitionManager {
     resp = (SchemaPartitionResp) getSchemaPartition(req);
     if (!resp.isAllPartitionsExist()) {
       LOGGER.error(
-          "Lacked some SchemaPartition allocation result in the response of getOrCreateDataPartition method");
+          "Lacked some SchemaPartition allocation result in the response of getOrCreateSchemaPartition method");
       resp.setStatus(
           new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode())
               .setMessage("Lacked some SchemaPartition allocation result in the response"));
@@ -304,6 +311,13 @@ public class PartitionManager {
     // by the number of SeriesPartitionSlots,
     // the number of serialized CreateDataPartitionReqs is acceptable.
     synchronized (this) {
+      // Here we should check again if the DataPartition
+      // has been created by other threads to improve concurrent performance
+      resp = (DataPartitionResp) getDataPartition(req);
+      if (resp.isAllPartitionsExist()) {
+        return resp;
+      }
+
       // Filter unassigned DataPartitionSlots
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap =
           partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
@@ -525,22 +539,22 @@ public class PartitionManager {
   }
 
   /**
-   * Only leader use this interface. Checks whether the specified DataPartition has a predecessor
-   * and returns if it does
+   * Only leader use this interface. Checks whether the specified DataPartition has a predecessor or
+   * successor and returns if it does
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
    * @param timePartitionInterval Time partition interval
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getPrecededDataPartition(
-      String storageGroup,
+  public TConsensusGroupId getAdjacentDataPartition(
+      String database,
       TSeriesPartitionSlot seriesPartitionSlot,
       TTimePartitionSlot timePartitionSlot,
       long timePartitionInterval) {
-    return partitionInfo.getPrecededDataPartition(
-        storageGroup, seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+    return partitionInfo.getAdjacentDataPartition(
+        database, seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
   }
 
   /**

@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.reader;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 
 public interface TsFileInput {
@@ -97,20 +98,6 @@ public interface TsFileInput {
    */
   int read(ByteBuffer dst, long position) throws IOException;
 
-  /** read a byte from the Input. */
-  int read() throws IOException;
-
-  /**
-   * read an array of byte from the Input.
-   *
-   * @param b -array of byte
-   * @param off -offset of the Input
-   * @param len -length
-   */
-  int read(byte[] b, int off, int len) throws IOException;
-
-  FileChannel wrapAsFileChannel() throws IOException;
-
   InputStream wrapAsInputStream() throws IOException;
 
   /**
@@ -122,11 +109,25 @@ public interface TsFileInput {
    */
   void close() throws IOException;
 
-  /** read 4 bytes from the Input and convert it to a integer. */
-  int readInt() throws IOException;
-
   /** read a string from the Input at the given position */
-  String readVarIntString(long offset) throws IOException;
+  default String readVarIntString(long offset) throws IOException {
+    ByteBuffer byteBuffer = ByteBuffer.allocate(5);
+    read(byteBuffer, offset);
+    byteBuffer.flip();
+    int strLength = ReadWriteForEncodingUtils.readVarInt(byteBuffer);
+    if (strLength < 0) {
+      return null;
+    } else if (strLength == 0) {
+      return "";
+    }
+    ByteBuffer strBuffer = ByteBuffer.allocate(strLength);
+    int varIntLength = ReadWriteForEncodingUtils.varIntSize(strLength);
+    byte[] bytes = new byte[strLength];
+    read(strBuffer, offset + varIntLength);
+    strBuffer.flip();
+    strBuffer.get(bytes, 0, strLength);
+    return new String(bytes, 0, strLength);
+  }
 
   String getFilePath();
 }

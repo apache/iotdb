@@ -30,7 +30,7 @@ struct TLogEntry {
 
 struct TSyncLogEntriesReq {
   # source peer where the TSyncLogEntriesReq is generated
-  1: required string peerId
+  1: required i32 peerId
   2: required common.TConsensusGroupId consensusGroupId
   3: required list<TLogEntry> logEntries
 }

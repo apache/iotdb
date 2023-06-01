@@ -29,6 +29,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RemoveAliasFromExpressionVisitor extends ReconstructVisitor<Void> {
+
+  @Override
+  public Expression process(Expression expression, Void context) {
+    Expression resultExpression = expression.accept(this, context);
+    resultExpression.setViewPath(null);
+    return resultExpression;
+  }
+
   @Override
   public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
     List<Expression> childResult = new ArrayList<>();
@@ -42,13 +50,10 @@ public class RemoveAliasFromExpressionVisitor extends ReconstructVisitor<Void> {
   @Override
   public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Void context) {
     PartialPath rawPath = timeSeriesOperand.getPath();
-    if (rawPath.isMeasurementAliasExists()) {
-      MeasurementPath measurementPath = (MeasurementPath) rawPath;
-      MeasurementPath newPath =
-          new MeasurementPath(measurementPath, measurementPath.getMeasurementSchema());
-      newPath.setUnderAlignedEntity(measurementPath.isUnderAlignedEntity());
-      return new TimeSeriesOperand(newPath);
+    PartialPath newPath = rawPath.copy();
+    if (newPath.isMeasurementAliasExists()) {
+      ((MeasurementPath) newPath).removeMeasurementAlias();
     }
-    return timeSeriesOperand;
+    return new TimeSeriesOperand(newPath);
   }
 }

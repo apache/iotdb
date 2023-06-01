@@ -56,6 +56,7 @@ public class BindTypeForTimeSeriesOperandVisitor extends ReconstructVisitor<List
       if (oldPathString.equalsIgnoreCase(columnHeader.getColumnName())) {
         try {
           return reconstructTimeSeriesOperand(
+              predicate,
               new MeasurementPath(columnHeader.getColumnName(), columnHeader.getColumnType()));
         } catch (IllegalPathException ignored) {
         }

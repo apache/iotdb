@@ -159,7 +159,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public boolean putAlignedValueWithFlushCheck(long t, Object[] v, int[] columnIndexArray) {
+  public boolean putAlignedValueWithFlushCheck(long t, Object[] v) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 
@@ -197,7 +197,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public boolean putAlignedValuesWithFlushCheck(
-      long[] t, Object[] v, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
+      long[] t, Object[] v, BitMap[] bitMaps, int start, int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
   }
 

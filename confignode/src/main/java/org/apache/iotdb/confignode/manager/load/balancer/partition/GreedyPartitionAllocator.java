@@ -91,14 +91,14 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
 
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> slotsMapEntry :
         unassignedDataPartitionSlotsMap.entrySet()) {
-      final String storageGroup = slotsMapEntry.getKey();
+      final String database = slotsMapEntry.getKey();
       final Map<TSeriesPartitionSlot, TTimeSlotList> unassignedPartitionSlotsMap =
           slotsMapEntry.getValue();
 
       // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
       List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
           getPartitionManager()
-              .getSortedRegionGroupSlotsCounter(storageGroup, TConsensusGroupType.DataRegion);
+              .getSortedRegionGroupSlotsCounter(database, TConsensusGroupType.DataRegion);
 
       DataPartitionTable dataPartitionTable = new DataPartitionTable();
 
@@ -115,33 +115,33 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
 
           /* 1. Inherit policy */
           if (ENABLE_DATA_PARTITION_INHERIT_POLICY) {
-            // Check if the current Partition's predecessor is allocated
-            // in the same batch of Partition creation
-            TConsensusGroupId predecessor =
-                seriesPartitionTable.getPrecededDataPartition(
+            // Check if the current Partition's neighbor(predecessor or successor)
+            // is allocated in the same batch of Partition creation
+            TConsensusGroupId neighbor =
+                seriesPartitionTable.getAdjacentDataPartition(
                     timePartitionSlot, TIME_PARTITION_INTERVAL);
-            if (predecessor != null) {
+            if (neighbor != null) {
               seriesPartitionTable
                   .getSeriesPartitionMap()
-                  .put(timePartitionSlot, Collections.singletonList(predecessor));
-              bubbleSort(predecessor, regionSlotsCounter);
+                  .put(timePartitionSlot, Collections.singletonList(neighbor));
+              bubbleSort(neighbor, regionSlotsCounter);
               continue;
             }
 
-            // Check if the current Partition's predecessor was allocated
-            // in the former Partition creation
-            predecessor =
+            // Check if the current Partition's neighbor(predecessor or successor)
+            // was allocated in the former Partition creation
+            neighbor =
                 getPartitionManager()
-                    .getPrecededDataPartition(
-                        storageGroup,
+                    .getAdjacentDataPartition(
+                        database,
                         seriesPartitionEntry.getKey(),
                         timePartitionSlot,
                         TIME_PARTITION_INTERVAL);
-            if (predecessor != null) {
+            if (neighbor != null) {
               seriesPartitionTable
                   .getSeriesPartitionMap()
-                  .put(timePartitionSlot, Collections.singletonList(predecessor));
-              bubbleSort(predecessor, regionSlotsCounter);
+                  .put(timePartitionSlot, Collections.singletonList(neighbor));
+              bubbleSort(neighbor, regionSlotsCounter);
               continue;
             }
           }
@@ -158,7 +158,7 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
             .getDataPartitionMap()
             .put(seriesPartitionEntry.getKey(), seriesPartitionTable);
       }
-      result.put(storageGroup, dataPartitionTable);
+      result.put(database, dataPartitionTable);
     }
 
     return result;

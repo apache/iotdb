@@ -48,6 +48,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   private final long offset;
 
   private final SchemaFilter schemaFilter;
+  private static final String viewTypeOfLogicalView = "logical";
 
   LogicalViewSchemaSource(
       PartialPath pathPattern, long limit, long offset, SchemaFilter schemaFilter) {
@@ -86,12 +87,12 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     builder.writeNullableText(0, series.getFullPath());
     builder.writeNullableText(1, database);
 
-    builder.writeNullableText(2, "");
+    builder.writeNullableText(2, series.getSchema().getType().toString());
 
     builder.writeNullableText(3, mapToString(series.getTags()));
     builder.writeNullableText(4, mapToString(series.getAttributes()));
 
-    builder.writeNullableText(5, "logical");
+    builder.writeNullableText(5, viewTypeOfLogicalView);
     builder.writeNullableText(
         6, ((LogicalViewSchema) series.getSchema()).getExpression().toString());
     builder.declarePosition();
@@ -99,7 +100,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
 
   @Override
   public boolean hasSchemaStatistic(ISchemaRegion schemaRegion) {
-    return pathPattern.equals(ALL_MATCH_PATTERN) && (schemaFilter == null);
+    return pathPattern.equals(ALL_MATCH_PATTERN);
   }
 
   @Override
@@ -118,6 +119,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     return "{" + content + "}";
   }
 
+  // TODO: this reader may be replaced by filter in the future
   private static class LogicalViewSchemaReader implements ISchemaReader<ITimeSeriesSchemaInfo> {
 
     private final ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader;
