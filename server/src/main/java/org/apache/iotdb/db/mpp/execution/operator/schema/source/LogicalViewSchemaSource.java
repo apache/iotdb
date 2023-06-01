@@ -108,6 +108,79 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber();
   }
 
+  private List<String> analyzeDataTypeOfDelayedViews() {
+    if (this.delayedLogicalViewList == null || this.delayedLogicalViewList.size() <= 0) {
+      return new ArrayList<>();
+    }
+    // fetch schema of source paths of views
+    List<ViewExpression> viewExpressionList = new ArrayList<>();
+    for (ITimeSeriesSchemaInfo series : this.delayedLogicalViewList) {
+      viewExpressionList.add(((LogicalViewSchema) series.getSchema()).getExpression());
+    }
+    GetSourcePathsVisitor getSourcePathsVisitor = new GetSourcePathsVisitor();
+    List<PartialPath> sourcePathsNeedFetch;
+    PathPatternTree patternTree = new PathPatternTree();
+    for (ViewExpression viewExpression : viewExpressionList) {
+      sourcePathsNeedFetch = getSourcePathsVisitor.process(viewExpression, null);
+      for (PartialPath path : sourcePathsNeedFetch) {
+        patternTree.appendFullPath(path);
+      }
+    }
+    ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
+    // process each view expression and get data type
+    TransformToExpressionVisitor transformToExpressionVisitor = new TransformToExpressionVisitor();
+    CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =
+        new CompleteMeasurementSchemaVisitor();
+    Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
+    List<String> dataTypeStringList = new ArrayList<>();
+    for (ViewExpression viewExpression : viewExpressionList) {
+      Expression expression = null;
+      boolean viewIsBroken = false;
+      try {
+        expression = transformToExpressionVisitor.process(viewExpression, null);
+        expression = completeMeasurementSchemaVisitor.process(expression, schemaTree);
+        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, expression);
+      } catch (Exception e) {
+        viewIsBroken = true;
+      }
+      if (viewIsBroken) {
+        dataTypeStringList.add(unknownDataTypeString);
+      } else {
+        dataTypeStringList.add(expressionTypes.get(NodeRef.of(expression)).toString());
+      }
+    }
+    return dataTypeStringList;
+  }
+
+  @Override
+  public void processDelayedTask(TsBlockBuilder builder, String database) {
+    // There is no delayed tasks. So, do nothing.
+    if (this.delayedLogicalViewList == null || this.delayedLogicalViewList.size() <= 0) {
+      return;
+    }
+    List<String> dataTypeStringList = this.analyzeDataTypeOfDelayedViews();
+    // process delayed tasks
+    for (int index = 0; index < this.delayedLogicalViewList.size(); index++) {
+      ITimeSeriesSchemaInfo series = this.delayedLogicalViewList.get(index);
+      String expressionTypeOfThisView = dataTypeStringList.get(index);
+
+      builder.getTimeColumnBuilder().writeLong(0);
+      builder.writeNullableText(0, series.getFullPath());
+      builder.writeNullableText(1, database);
+
+      builder.writeNullableText(2, expressionTypeOfThisView);
+
+      builder.writeNullableText(3, mapToString(series.getTags()));
+      builder.writeNullableText(4, mapToString(series.getAttributes()));
+
+      builder.writeNullableText(5, viewTypeOfLogicalView);
+      builder.writeNullableText(
+          6, ((LogicalViewSchema) series.getSchema()).getExpression().toString());
+      builder.declarePosition();
+    }
+    this.delayedLogicalViewList.clear();
+  }
+
   private String mapToString(Map<String, String> map) {
     if (map == null || map.isEmpty()) {
       return null;
