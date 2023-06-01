@@ -19,7 +19,7 @@
 from sqlalchemy.sql.compiler import SQLCompiler
 from sqlalchemy.sql.compiler import OPERATORS
 from sqlalchemy.sql import operators
-
+import re
 
 class IoTDBSQLCompiler(SQLCompiler):
     def order_by_clause(self, select, **kw):
@@ -33,20 +33,44 @@ class IoTDBSQLCompiler(SQLCompiler):
 
     def group_by_clause(self, select, **kw):
         """allow dialects to customize how GROUP BY is rendered."""
-        return ""
+        if not re.search(r"(MIN|MAX|AVG|SUM|COUNT)\(", str(select)):
+            return ""
+        group_by = select._group_by_clause._compiler_dispatch(self, **kw)
+        if "Time" in group_by:
+            match = re.search(r"DATE_TRUNC\('([^']*)',", group_by)
+            timeflag = match.group(1)
+            if timeflag == "second":
+                return " GROUP BY ([startTime, endTime),1s)"
+            elif timeflag == "minute":
+                return " GROUP BY ([startTime, endTime),1m)"
+            elif timeflag == "hour":
+                return " GROUP BY ([startTime, endTime),1h)"
+            elif timeflag == "day":
+                return " GROUP BY ([startTime, endTime),1d)"
+            elif timeflag == "week":
+                return " GROUP BY ([startTime, endTime),7d)"
+            elif timeflag == "month":
+                return " GROUP BY ([startTime, endTime),1mo)"
+            elif timeflag == "year":
+                return " GROUP BY ([startTime, endTime),1y)"
+            else:
+                return ""
+        else:
+            return ""
 
     def visit_select(
         self,
-        select,
+        select_stmt,
         asfrom=False,
-        parens=True,
+        insert_into=False,
         fromhints=None,
-        compound_index=0,
-        nested_join_translation=False,
+        compound_index=None,
         select_wraps_for=None,
         lateral=False,
+        from_linter=None,
         **kwargs,
     ):
+
         """
         Override this method to solve two problems
         1. IoTDB does not support querying Time as a measurement name (e.g. select Time from root.storagegroup.device)
@@ -101,9 +125,9 @@ class IoTDBSQLCompiler(SQLCompiler):
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
         populate_result_map = need_column_expressions = (
-                toplevel
-                or entry.get("need_result_map_for_compound", False)
-                or entry.get("need_result_map_for_nested", False)
+            toplevel
+            or entry.get("need_result_map_for_compound", False)
+            or entry.get("need_result_map_for_nested", False)
         )
 
         # indicates there is a CompoundSelect in play and we are not the
@@ -181,22 +205,22 @@ class IoTDBSQLCompiler(SQLCompiler):
                     [
                         name
                         for (
-                        key,
-                        proxy_name,
-                        fallback_label_name,
-                        name,
-                        repeated,
-                    ) in compile_state.columns_plus_names
+                            key,
+                            proxy_name,
+                            fallback_label_name,
+                            name,
+                            repeated,
+                        ) in compile_state.columns_plus_names
                     ],
                     [
                         name
                         for (
-                        key,
-                        proxy_name,
-                        fallback_label_name,
-                        name,
-                        repeated,
-                    ) in compile_state_wraps_for.columns_plus_names
+                            key,
+                            proxy_name,
+                            fallback_label_name,
+                            name,
+                            repeated,
+                        ) in compile_state_wraps_for.columns_plus_names
                     ],
                 )
             )
@@ -236,20 +260,19 @@ class IoTDBSQLCompiler(SQLCompiler):
         inner_columns = list(
             filter(
                 lambda x: "Time"
-                          not in x.replace(self.preparer.initial_quote, "").split(),
+                not in x.replace(self.preparer.initial_quote, "").split(),
                 inner_columns,
             )
         )
 
         if inner_columns and time_column_index:
             inner_columns[-1] = (
-                    inner_columns[-1]
-                    + " \n FROM Time Index "
-                    + " ".join(time_column_index)
-                    + " \n FROM Time Name "
-                    + " ".join(time_column_names)
+                inner_columns[-1]
+                + " \n FROM Time Index "
+                + " ".join(time_column_index)
+                + " \n FROM Time Name "
+                + " ".join(time_column_names)
             )
-
         text = self._compose_select_body(
             text,
             select_stmt,
