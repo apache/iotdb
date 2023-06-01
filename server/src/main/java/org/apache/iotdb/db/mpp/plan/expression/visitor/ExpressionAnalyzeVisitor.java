@@ -31,7 +31,7 @@ public abstract class ExpressionAnalyzeVisitor<R, C> extends ExpressionVisitor<R
         "unsupported expression type: " + expression.getExpressionType());
   }
 
-  List<R> getResultsFromChild(Expression expression, C context) {
+  protected List<R> getResultsFromChild(Expression expression, C context) {
     return expression.getExpressions().stream()
         .map(child -> this.process(child, context))
         .collect(Collectors.toList());

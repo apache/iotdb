@@ -26,7 +26,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -51,7 +51,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
    * processing, and it also can notify the PipeTaskProcessorStage to start processing data when the
    * queue is not empty.
    */
-  private ListenableUnboundedBlockingPendingQueue<Event> collectorPendingQueue;
+  private UnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   private final PipeCollector pipeCollector;
 
@@ -77,7 +77,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
           .getAttribute()
           .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
 
-      collectorPendingQueue = new ListenableUnboundedBlockingPendingQueue<>();
+      collectorPendingQueue = new UnboundedBlockingPendingQueue<>();
       this.pipeCollector =
           new IoTDBDataRegionCollector(pipeTaskMeta, creationTime, collectorPendingQueue);
     } else {
@@ -130,7 +130,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
     return pipeCollector::supply;
   }
 
-  public ListenableUnboundedBlockingPendingQueue<Event> getCollectorPendingQueue() {
+  public UnboundedBlockingPendingQueue<Event> getCollectorPendingQueue() {
     return collectorPendingQueue;
   }
 }

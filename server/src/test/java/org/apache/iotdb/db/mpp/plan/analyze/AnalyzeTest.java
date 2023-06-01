@@ -287,9 +287,9 @@ public class AnalyzeTest {
           new DatasetHeader(
               Arrays.asList(
                   new ColumnHeader("Device", TSDataType.TEXT),
-                  new ColumnHeader("s1", TSDataType.INT32),
+                  new ColumnHeader("s1", TSDataType.INT32, "s1"),
                   new ColumnHeader("s2", TSDataType.DOUBLE, "status"),
-                  new ColumnHeader("s2 + 1", TSDataType.DOUBLE)),
+                  new ColumnHeader("s2 + 1", TSDataType.DOUBLE, "s2 + 1")),
               false));
 
       alignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);
@@ -477,7 +477,7 @@ public class AnalyzeTest {
           new DatasetHeader(
               Arrays.asList(
                   new ColumnHeader("Device", TSDataType.TEXT),
-                  new ColumnHeader("count(s1 + 1) + 1", TSDataType.DOUBLE)),
+                  new ColumnHeader("count(s1 + 1) + 1", TSDataType.DOUBLE, "count(s1 + 1) + 1")),
               false));
 
       alignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);

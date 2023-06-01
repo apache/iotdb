@@ -77,6 +77,8 @@ public abstract class GroupByParameter {
       return GroupByConditionParameter.deserialize(byteBuffer);
     } else if (type == WindowType.SESSION_WINDOW.getType()) {
       return GroupBySessionParameter.deserialize(byteBuffer);
+    } else if (type == WindowType.COUNT_WINDOW.getType()) {
+      return GroupByCountParameter.deserialize(byteBuffer);
     } else throw new SemanticException("Unsupported window type");
   }
 }

@@ -583,13 +583,13 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
               .sorted(
                   Comparator.comparing(
                       child -> {
-                        String fullPath = "";
+                        String sortKey = "";
                         if (child instanceof LastQueryScanNode) {
-                          fullPath = ((LastQueryScanNode) child).getSeriesPath().getFullPath();
+                          sortKey = ((LastQueryScanNode) child).getOutputSymbolForSort();
                         } else if (child instanceof AlignedLastQueryScanNode) {
-                          fullPath = ((AlignedLastQueryScanNode) child).getSeriesPath().getDevice();
+                          sortKey = ((AlignedLastQueryScanNode) child).getOutputSymbolForSort();
                         }
-                        return fullPath;
+                        return sortKey;
                       }))
               .collect(Collectors.toList()));
       lastQueryNode

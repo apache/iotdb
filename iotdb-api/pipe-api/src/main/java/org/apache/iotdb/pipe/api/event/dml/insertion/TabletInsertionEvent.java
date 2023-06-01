@@ -24,7 +24,6 @@ import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import java.util.Iterator;
 import java.util.function.BiConsumer;
 
 /** TabletInsertionEvent is used to define the event of data insertion. */
@@ -37,14 +36,6 @@ public interface TabletInsertionEvent extends Event {
    *     RowCollector
    */
   TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer);
-
-  /**
-   * The consumer processes the data by the Iterator and collects the results by RowCollector.
-   *
-   * @return TabletInsertionEvent a new TabletInsertionEvent contains the results collected by the
-   *     RowCollector
-   */
-  TabletInsertionEvent processByIterator(BiConsumer<Iterator<Row>, RowCollector> consumer);
 
   /**
    * The consumer processes the Tablet directly and collects the results by RowCollector.

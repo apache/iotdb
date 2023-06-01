@@ -21,17 +21,15 @@ package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
 
-import io.micrometer.core.instrument.distribution.ValueAtPercentile;
-
-import java.util.Arrays;
-
 public class MicrometerHistogramSnapshot implements HistogramSnapshot {
 
+  io.micrometer.core.instrument.DistributionSummary distributionSummary;
   io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot;
 
   public MicrometerHistogramSnapshot(
-      io.micrometer.core.instrument.distribution.HistogramSnapshot histogramSnapshot) {
-    this.histogramSnapshot = histogramSnapshot;
+      io.micrometer.core.instrument.DistributionSummary distributionSummary) {
+    this.distributionSummary = distributionSummary;
+    this.histogramSnapshot = distributionSummary.takeSnapshot();
   }
 
   @Override
@@ -51,20 +49,13 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   }
 
   @Override
-  public double[] getValues() {
-    return Arrays.stream(this.histogramSnapshot.percentileValues())
-        .mapToDouble(ValueAtPercentile::value)
-        .toArray();
+  public double getSum() {
+    return this.distributionSummary.totalAmount();
   }
 
   @Override
   public int size() {
     return this.histogramSnapshot.percentileValues().length;
-  }
-
-  @Override
-  public double getMedian() {
-    return getValue(0.5);
   }
 
   @Override
@@ -75,11 +66,5 @@ public class MicrometerHistogramSnapshot implements HistogramSnapshot {
   @Override
   public double getMean() {
     return this.histogramSnapshot.mean();
-  }
-
-  @Override
-  public double getMin() {
-    // need distributionSummary to push 0 percentiles
-    return getValue(0.0);
   }
 }

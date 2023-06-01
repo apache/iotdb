@@ -74,7 +74,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(2);
   }
 
