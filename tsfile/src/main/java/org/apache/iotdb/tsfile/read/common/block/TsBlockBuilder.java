@@ -44,7 +44,7 @@ public class TsBlockBuilder {
   // so the underlying data is larger than the object overhead, and the size is power of 2.
   //
   // This could be any other small number.
-  private static final int DEFAULT_INITIAL_EXPECTED_ENTRIES = 8;
+  private static final int DEFAULT_INITIAL_EXPECTED_ENTRIES = 60;
 
   private static final int MAX_LINE_NUMBER =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();

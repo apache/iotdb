@@ -90,7 +90,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
-    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+    this.resultTsBlockBuilder = new TsBlockBuilder(60, dataTypes);
 
     this.cachedRawDataSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();

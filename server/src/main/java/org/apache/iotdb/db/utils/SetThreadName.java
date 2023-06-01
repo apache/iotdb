@@ -20,24 +20,22 @@ package org.apache.iotdb.db.utils;
 
 import java.io.Closeable;
 
-import static java.util.Objects.requireNonNull;
-
 public class SetThreadName implements Closeable {
-  private final String originalThreadName;
+  // private final String originalThreadName="";
 
   public SetThreadName(String suffix) {
-    requireNonNull(suffix, "suffix is null");
-    originalThreadName = Thread.currentThread().getName();
-    int index = originalThreadName.indexOf("$");
-    if (index < 0) {
-      Thread.currentThread().setName(originalThreadName + '$' + suffix);
-    } else {
-      Thread.currentThread().setName(originalThreadName.substring(0, index) + '$' + suffix);
-    }
+    //    requireNonNull(suffix, "suffix is null");
+    //    originalThreadName = Thread.currentThread().getName();
+    //    int index = originalThreadName.indexOf("$");
+    //    if (index < 0) {
+    //      Thread.currentThread().setName(originalThreadName + '$' + suffix);
+    //    } else {
+    //      Thread.currentThread().setName(originalThreadName.substring(0, index) + '$' + suffix);
+    //    }
   }
 
   @Override
   public void close() {
-    Thread.currentThread().setName(originalThreadName);
+    //    Thread.currentThread().setName(originalThreadName);
   }
 }
