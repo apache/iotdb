@@ -22,6 +22,7 @@ package org.apache.iotdb.db.service.metrics;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -33,6 +34,9 @@ import java.lang.management.ManagementFactory;
 public class ProcessMetrics implements IMetricSet {
   private final OperatingSystemMXBean sunOsMxBean;
   private final Runtime runtime;
+  private long lastUpdateTime = 0L;
+  private volatile long processCpuLoad = 0L;
+  private volatile long processCpuTime = 0L;
 
   public ProcessMetrics() {
     sunOsMxBean =
@@ -61,7 +65,14 @@ public class ProcessMetrics implements IMetricSet {
         Metric.PROCESS_CPU_LOAD.toString(),
         MetricLevel.CORE,
         sunOsMxBean,
-        a -> (long) (sunOsMxBean.getProcessCpuLoad() * 100),
+        a -> {
+          if (System.currentTimeMillis() - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
+            lastUpdateTime = System.currentTimeMillis();
+            processCpuLoad = (long) (sunOsMxBean.getProcessCpuLoad() * 100);
+            processCpuTime = sunOsMxBean.getProcessCpuTime();
+          }
+          return processCpuLoad;
+        },
         Tag.NAME.toString(),
         "process");
 
@@ -69,7 +80,14 @@ public class ProcessMetrics implements IMetricSet {
         Metric.PROCESS_CPU_TIME.toString(),
         MetricLevel.CORE,
         sunOsMxBean,
-        com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
+        bean -> {
+          if (System.currentTimeMillis() - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
+            lastUpdateTime = System.currentTimeMillis();
+            processCpuLoad = (long) (sunOsMxBean.getProcessCpuLoad() * 100);
+            processCpuTime = sunOsMxBean.getProcessCpuTime();
+          }
+          return processCpuTime;
+        },
         Tag.NAME.toString(),
         "process");
   }

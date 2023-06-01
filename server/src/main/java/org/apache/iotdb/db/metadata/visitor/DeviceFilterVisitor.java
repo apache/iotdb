@@ -16,11 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.visitor;
 
-package org.apache.iotdb.db.pipe.task.queue;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 
-@FunctionalInterface
-public interface PendingQueueNotEmptyToEmptyListener {
+public class DeviceFilterVisitor extends SchemaFilterVisitor<Boolean, IDeviceSchemaInfo> {
+  @Override
+  public Boolean visitNode(SchemaFilter filter, IDeviceSchemaInfo info) {
+    return true;
+  }
 
-  void onPendingQueueNotEmptyToEmpty();
+  @Override
+  public Boolean visitPathContainsFilter(
+      PathContainsFilter pathContainsFilter, IDeviceSchemaInfo info) {
+    if (pathContainsFilter.getContainString() == null) {
+      return true;
+    }
+    return info.getFullPath().toLowerCase().contains(pathContainsFilter.getContainString());
+  }
 }

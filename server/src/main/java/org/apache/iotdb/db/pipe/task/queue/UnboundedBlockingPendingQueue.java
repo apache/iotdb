@@ -23,10 +23,9 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class ListenableUnboundedBlockingPendingQueue<E extends Event>
-    extends ListenableBlockingPendingQueue<E> {
+public class UnboundedBlockingPendingQueue<E extends Event> extends BlockingPendingQueue<E> {
 
-  public ListenableUnboundedBlockingPendingQueue() {
+  public UnboundedBlockingPendingQueue() {
     super(new LinkedBlockingQueue<>());
   }
 }

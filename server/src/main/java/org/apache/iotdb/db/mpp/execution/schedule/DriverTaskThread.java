@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
@@ -42,7 +43,8 @@ public class DriverTaskThread extends AbstractDriverThread {
 
   // we manage thread pool size directly, so create an unlimited pool
   private static final Executor listeningExecutor =
-      IoTDBThreadPoolFactory.newCachedThreadPool("scheduler-notification");
+      IoTDBThreadPoolFactory.newCachedThreadPool(
+          ThreadName.DRIVER_TASK_SCHEDULER_NOTIFICATION.getName());
 
   private final Ticker ticker;
 

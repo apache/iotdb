@@ -48,6 +48,8 @@ public class LogicalViewSchema
 
   private ViewExpression expression;
 
+  private TSDataType dataType = TSDataType.UNKNOWN;
+
   public LogicalViewSchema(String measurementId, ViewExpression expression) {
     this.measurementId = measurementId;
     this.expression = expression;
@@ -86,8 +88,7 @@ public class LogicalViewSchema
 
   @Override
   public TSDataType getType() {
-    // TODO: CRTODO: use a dynamic method to compute data type
-    return TSDataType.BOOLEAN;
+    return dataType;
   }
 
   @Override
@@ -97,7 +98,7 @@ public class LogicalViewSchema
 
   @Override
   public void setType(TSDataType dataType) {
-    // do nothing
+    this.dataType = dataType;
   }
 
   @Override

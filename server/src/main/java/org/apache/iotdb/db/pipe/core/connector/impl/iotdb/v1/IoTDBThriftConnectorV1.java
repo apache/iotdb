@@ -126,7 +126,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       LOGGER.error(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
-      throw new PipeConnectionException("Network error when transfer tablet insertion event.", e);
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tablet insertion event, because %s.", e.getMessage()),
+          e);
     }
   }
 
@@ -159,7 +162,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       LOGGER.error(
           "Network error when transfer tsfile insertion event: {}.", tsFileInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
-      throw new PipeConnectionException("Network error when transfer tsfile insertion event.", e);
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tsfile insertion event, because %s.", e.getMessage()),
+          e);
     }
   }
 

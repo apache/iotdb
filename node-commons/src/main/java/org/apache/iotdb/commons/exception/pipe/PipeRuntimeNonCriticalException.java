@@ -17,8 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.exception;
+package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
@@ -36,5 +42,33 @@ public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
   @Override
   public int hashCode() {
     return getMessage().hashCode();
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(byteBuffer);
+    ReadWriteIOUtils.write(getMessage(), byteBuffer);
+  }
+
+  @Override
+  public void serialize(OutputStream stream) throws IOException {
+    PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(stream);
+    ReadWriteIOUtils.write(getMessage(), stream);
+  }
+
+  public static PipeRuntimeNonCriticalException deserializeFrom(ByteBuffer byteBuffer) {
+    final String message = ReadWriteIOUtils.readString(byteBuffer);
+    return new PipeRuntimeNonCriticalException(message);
+  }
+
+  public static PipeRuntimeNonCriticalException deserializeFrom(InputStream stream)
+      throws IOException {
+    final String message = ReadWriteIOUtils.readString(stream);
+    return new PipeRuntimeNonCriticalException(message);
+  }
+
+  @Override
+  public String toString() {
+    return "PipeRuntimeNonCriticalException{ message: " + getMessage() + " }";
   }
 }

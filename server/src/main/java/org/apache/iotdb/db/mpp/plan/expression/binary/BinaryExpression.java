@@ -93,7 +93,7 @@ public abstract class BinaryExpression extends Expression {
     leftExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
     rightExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
-    final String digest = toString();
+    final String digest = getExpressionString();
 
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
@@ -147,9 +147,9 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
-    String left = this.getLeftExpression().getStringWithViewOfThisExpression();
-    String right = this.getRightExpression().getStringWithViewOfThisExpression();
+  public String getOutputSymbolInternal() {
+    String left = this.getLeftExpression().getOutputSymbol();
+    String right = this.getRightExpression().getOutputSymbol();
 
     StringBuilder builder = new StringBuilder();
     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {

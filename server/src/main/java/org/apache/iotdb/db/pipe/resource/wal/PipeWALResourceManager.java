@@ -6,6 +6,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -36,14 +37,17 @@ public class PipeWALResourceManager implements AutoCloseable {
         ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
             PIPE_WAL_RESOURCE_TTL_CHECKER,
             () -> {
-              for (final long memtableId : memtableIdToPipeWALResourceMap.keySet()) {
+              Iterator<Map.Entry<Long, PipeWALResource>> iterator =
+                  memtableIdToPipeWALResourceMap.entrySet().iterator();
+              while (iterator.hasNext()) {
+                final Map.Entry<Long, PipeWALResource> entry = iterator.next();
                 final ReentrantLock lock =
-                    memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
+                    memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
 
                 lock.lock();
                 try {
-                  if (memtableIdToPipeWALResourceMap.get(memtableId).invalidateIfPossible()) {
-                    memtableIdToPipeWALResourceMap.remove(memtableId);
+                  if (entry.getValue().invalidateIfPossible()) {
+                    iterator.remove();
                   }
                 } finally {
                   lock.unlock();

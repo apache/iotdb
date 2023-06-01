@@ -50,14 +50,13 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getCreationTime(),
             pipeStaticMeta.getCollectorParameters());
     final PipeTaskConnectorStage connectorStage =
-        new PipeTaskConnectorStage(pipeStaticMeta.getConnectorParameters(), pipeTaskMeta);
+        new PipeTaskConnectorStage(pipeStaticMeta.getConnectorParameters());
 
     // the processor connects the collector and connector.
     final PipeTaskProcessorStage processorStage =
         new PipeTaskProcessorStage(
             pipeStaticMeta.getPipeName(),
             dataRegionId,
-            pipeTaskMeta,
             collectorStage.getEventSupplier(),
             collectorStage.getCollectorPendingQueue(),
             pipeStaticMeta.getProcessorParameters(),

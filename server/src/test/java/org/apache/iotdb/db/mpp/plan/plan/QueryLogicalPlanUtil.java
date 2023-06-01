@@ -114,38 +114,36 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null));
     sourceNodeList.add(
         new AlignedLastQueryScanNode(
             queryId.genPlanNodeId(),
-            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1"))));
+            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1")),
+            null));
     sourceNodeList.add(
         new AlignedLastQueryScanNode(
             queryId.genPlanNodeId(),
-            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s2"))));
+            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s2")),
+            null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s1"), null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2"), null));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4"), null));
 
     LastQueryNode lastQueryNode =
         new LastQueryNode(
-            queryId.genPlanNodeId(),
-            sourceNodeList,
-            TimeFilter.gt(100),
-            new OrderByParameter(
-                Collections.singletonList(new SortItem(OrderByKey.TIMESERIES, Ordering.ASC))));
+            queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100), Ordering.ASC);
 
     querySQLs.add(sql);
     sqlToPlanMap.put(sql, lastQueryNode);
