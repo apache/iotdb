@@ -16,11 +16,16 @@
 # under the License.
 #
 
+import sys
+import signal
+import psutil
+
 import multiprocessing as mp
 from typing import Dict, Union
 
 import pandas as pd
 from torch.utils.data import Dataset
+from subprocess import call
 
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.process.task import (ForecastingInferenceTask,
@@ -41,7 +46,7 @@ class TaskManager(object):
         self.__shared_resource_manager = mp.Manager()
         self.__pid_info = self.__shared_resource_manager.dict()
         self.__training_process_pool = mp.Pool(pool_size)
-        # self.__inference_process_pool = mp.Pool(pool_size)
+        self.__inference_process_pool = mp.Pool(pool_size)
 
     def create_training_task(self,
                              dataset: Dataset,
@@ -60,7 +65,6 @@ class TaskManager(object):
             task: a training task for forecasting, which can be submitted to self.__training_process_pool
         """
         model_id = task_configs['model_id']
-        self.__pid_info[model_id] = self.__shared_resource_manager.dict()
         if task_configs['tuning']:
             task = ForecastingTuningTrainingTask(
                 task_configs,
@@ -103,6 +107,22 @@ class TaskManager(object):
     def submit_forecast_task(self, task: ForecastingInferenceTask) -> pd.DataFrame:
         read_pipe, send_pipe = mp.Pipe()
         if task is not None:
-            self.__training_process_pool.apply_async(task, args=(send_pipe,))
+            self.__inference_process_pool.apply_async(task, args=(send_pipe,))
             logger.info('Forecasting process submitted successfully')
         return read_pipe.recv()
+
+    def kill_task(self, model_id):
+        """
+        Kill the process by pid, will check whether the pid is training or inference process
+        """
+        pid = self.__pid_info[model_id]
+        if sys.platform == 'win32':
+            try:
+                process = psutil.Process(pid=pid)
+                process.send_signal(signal.CTRL_BREAK_EVENT)
+            except psutil.NoSuchProcess:
+                print(f'Tried to kill process (pid = {pid}), '
+                      f'but the process does not exist.')
+        else:
+            cmds = ['kill', str(pid)]
+            call(cmds)

@@ -177,14 +177,15 @@ class ForecastingSingleTrainingTask(_BasicTrainingTask):
         self.task_configs['trial_id'] = self.default_trial_id
         model, model_configs = create_forecast_model(**model_configs)
         self.trial = ForecastingTrainingTrial(task_configs, model, model_configs, dataset)
-        self.pid_info[self.model_id][self.default_trial_id] = os.getpid()
 
     def __call__(self):
         try:
+            self.pid_info[self.model_id] = os.getpid()
             self.trial.start()
             self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.default_trial_id)
         except Exception as e:
             logger.warn(e)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED, self.default_trial_id)
             raise e
 
 
@@ -211,14 +212,20 @@ class ForecastingTuningTrainingTask(_BasicTrainingTask):
         self.study = optuna.create_study(direction='minimize')
 
     def __call__(self):
-        self.study.optimize(ForestingTrainingObjective(
-            self.task_configs,
-            self.model_configs,
-            self.dataset),
-            n_trials=descriptor.get_config().get_mn_tuning_trial_num(),
-            n_jobs=descriptor.get_config().get_mn_tuning_trial_concurrency())
-        best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
-        self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
+        self.pid_info[self.model_id] = os.getpid()
+        try:
+            self.study.optimize(ForestingTrainingObjective(
+                self.task_configs,
+                self.model_configs,
+                self.dataset),
+                n_trials=descriptor.get_config().get_mn_tuning_trial_num(),
+                n_jobs=descriptor.get_config().get_mn_tuning_trial_concurrency())
+            best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
+        except Exception as e:
+            logger.warn(e)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED)
+            raise e
 
 
 class ForecastingInferenceTask(_BasicInferenceTask):

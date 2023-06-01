@@ -167,13 +167,6 @@ class DataNodeClient(object):
 
             if len(resp.tsDataset) == 0:
                 raise RuntimeError(f'No data fetched with query filter: {query_filter}')
-            print(resp.columnNameList)
-            print(resp.columnTypeList)
-            print(resp.columnNameIndexMap)
-            print(type(resp.tsDataset[0]))
-            import pickle
-            with open('test_tsdataset.pkl', 'wb') as f:
-                pickle.dump(resp.tsDataset, f, True)
             data = serde.convert_to_df(resp.columnNameList,
                                        resp.columnTypeList,
                                        resp.columnNameIndexMap,
