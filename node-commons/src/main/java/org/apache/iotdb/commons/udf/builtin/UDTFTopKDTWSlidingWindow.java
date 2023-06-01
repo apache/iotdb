@@ -45,17 +45,29 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
   private static class DTWPath {
 
     private final long startTime;
+    private long endTime;
     private double distance;
-    private int length;
 
-    private DTWPath(long startTime, double distance, int length) {
+    private DTWPath(long startTime, long endTime, double distance) {
       this.startTime = startTime;
+      this.endTime = endTime;
       this.distance = distance;
-      this.length = length;
     }
 
     private DTWPath copy() {
-      return new DTWPath(startTime, distance, length);
+      return new DTWPath(startTime, endTime, distance);
+    }
+
+    @Override
+    public String toString() {
+      return "DTWPath{"
+          + "startTime="
+          + startTime
+          + ", endTime="
+          + endTime
+          + ", distance="
+          + distance
+          + '}';
     }
   }
 
@@ -74,10 +86,10 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
       List<DTWPoint> patternList = new ArrayList<>();
       while (iterator.hasNextRow()) {
         Row row = iterator.next();
-        if (row.isNull(1)) {
+        if (row.isNull(COLUMN_P)) {
           break;
         }
-        patternList.add(new DTWPoint(row.getTime(), row.getDouble(1)));
+        patternList.add(new DTWPoint(row.getTime(), row.getDouble(COLUMN_P)));
       }
       pattern = patternList.toArray(new DTWPoint[0]);
     }
@@ -85,17 +97,17 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
     RowIterator iterator = rowWindow.getRowIterator();
     while (iterator.hasNextRow()) {
       Row row = iterator.next();
-      if (row.isNull(0)) {
+      if (row.isNull(COLUMN_S)) {
         continue;
       }
 
-      double value = row.getDouble(0);
+      double value = row.getDouble(COLUMN_S);
       dtwCurrent = new DTWPath[pattern.length];
       for (int i = 0; i < pattern.length; i++) {
         double currentDistance = Math.abs(value - pattern[i].value);
         if (i == 0) {
           // Start a new DTW path
-          dtwCurrent[i] = new DTWPath(pattern[i].time, currentDistance, 1);
+          dtwCurrent[i] = new DTWPath(pattern[i].time, pattern[i].time, currentDistance);
           continue;
         }
 
@@ -109,8 +121,8 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
             dtwCurrent[i] = dtwBefore[i - 1].copy();
           }
         }
+        dtwCurrent[i].endTime = pattern[i].time;
         dtwCurrent[i].distance += currentDistance;
-        dtwCurrent[i].length++;
       }
       dtwBefore = Arrays.copyOf(dtwCurrent, dtwCurrent.length);
       DTWPath currentPath = dtwCurrent[dtwCurrent.length - 1];
@@ -127,8 +139,7 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
   public void terminate(PointCollector collector) throws Exception {
     while (!topK.isEmpty()) {
       DTWPath path = topK.poll();
-      collector.putDouble(path.startTime, path.distance);
-      collector.putInt(path.startTime, path.length);
+      collector.putString(path.startTime, path.toString());
     }
   }
 }

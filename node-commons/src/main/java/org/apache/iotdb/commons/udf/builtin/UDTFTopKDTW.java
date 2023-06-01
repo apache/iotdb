@@ -6,6 +6,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFParameterNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,9 @@ public abstract class UDTFTopKDTW implements UDTF {
 
   private static final String K = "k";
   private static final String BATCH_SIZE = "batchSize";
+
+  protected static final int COLUMN_S = 0;
+  protected static final int COLUMN_P = 1;
 
   protected int k;
   protected int batchSize;
@@ -40,6 +44,8 @@ public abstract class UDTFTopKDTW implements UDTF {
       throw new UDFParameterNotValidException("batchSize must be positive");
     }
 
-    configurations.setAccessStrategy(new SlidingSizeWindowAccessStrategy(batchSize));
+    configurations
+        .setAccessStrategy(new SlidingSizeWindowAccessStrategy(batchSize))
+        .setOutputDataType(Type.TEXT);
   }
 }
