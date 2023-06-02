@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.core.event.realtime.TsFileEpoch;
@@ -40,9 +39,7 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionLogCollector(
-      PipeTaskMeta pipeTaskMeta, UnboundedBlockingPendingQueue<Event> pendingQueue) {
-    super(pipeTaskMeta);
+  public PipeRealtimeDataRegionLogCollector(UnboundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
   }
 

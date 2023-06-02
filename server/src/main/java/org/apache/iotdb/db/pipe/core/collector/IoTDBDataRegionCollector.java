@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.pipe.core.collector;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.historical.PipeHistoricalDataRegionTsFileCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
@@ -44,21 +42,18 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_REALTIME_ENABLE;
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_REALTIME_MODE;
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_REALTIME_MODE_FILE;
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_REALTIME_MODE_HYBRID;
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_REALTIME_MODE_LOG;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_REALTIME_ENABLE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_REALTIME_MODE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_REALTIME_MODE_FILE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_REALTIME_MODE_HYBRID;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_REALTIME_MODE_LOG;
 
 public class IoTDBDataRegionCollector implements PipeCollector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionCollector.class);
 
   private final AtomicBoolean hasBeenStarted;
-
-  private final PipeTaskMeta pipeTaskMeta;
-  private final long creationTime;
   private final UnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   // TODO: support pattern in historical collector
@@ -67,21 +62,13 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
   private int dataRegionId;
 
-  public IoTDBDataRegionCollector(
-      PipeTaskMeta pipeTaskMeta,
-      long creationTime,
-      UnboundedBlockingPendingQueue<Event> collectorPendingQueue) {
+  public IoTDBDataRegionCollector(UnboundedBlockingPendingQueue<Event> collectorPendingQueue) {
     this.hasBeenStarted = new AtomicBoolean(false);
-
-    this.pipeTaskMeta = pipeTaskMeta;
-    this.creationTime = creationTime;
     this.collectorPendingQueue = collectorPendingQueue;
   }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(PipeCollectorConstant.DATA_REGION_KEY);
-
     // validate collector.history.enable and collector.realtime.enable
     validator
         .validateAttributeValueRange(
@@ -115,48 +102,34 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
   private void constructHistoricalCollector(PipeParameters parameters) {
     // enable historical collector by default
-    historicalCollector =
-        parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true)
-            ? new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta, Long.MIN_VALUE)
-            // We define the realtime data as the data generated after the creation time
-            // of the pipe from user's perspective. But we still need to use
-            // PipeHistoricalDataRegionCollector to collect the realtime data generated between the
-            // creation time of the pipe and the time when the pipe starts, because those data
-            // can not be listened by PipeRealtimeDataRegionCollector, and should be collected by
-            // PipeHistoricalDataRegionCollector from implementation perspective.
-            : new PipeHistoricalDataRegionTsFileCollector(pipeTaskMeta, creationTime);
+    historicalCollector = new PipeHistoricalDataRegionTsFileCollector();
   }
 
   private void constructRealtimeCollector(PipeParameters parameters) {
     // enable realtime collector by default
     if (!parameters.getBooleanOrDefault(COLLECTOR_REALTIME_ENABLE, true)) {
-      realtimeCollector = new PipeRealtimeDataRegionFakeCollector(pipeTaskMeta);
+      realtimeCollector = new PipeRealtimeDataRegionFakeCollector();
       return;
     }
 
     // use hybrid mode by default
     if (!parameters.hasAttribute(COLLECTOR_REALTIME_MODE)) {
-      realtimeCollector =
-          new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
+      realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
       return;
     }
 
     switch (parameters.getString(COLLECTOR_REALTIME_MODE)) {
       case COLLECTOR_REALTIME_MODE_FILE:
-        realtimeCollector =
-            new PipeRealtimeDataRegionTsFileCollector(pipeTaskMeta, collectorPendingQueue);
+        realtimeCollector = new PipeRealtimeDataRegionTsFileCollector(collectorPendingQueue);
         break;
       case COLLECTOR_REALTIME_MODE_LOG:
-        realtimeCollector =
-            new PipeRealtimeDataRegionLogCollector(pipeTaskMeta, collectorPendingQueue);
+        realtimeCollector = new PipeRealtimeDataRegionLogCollector(collectorPendingQueue);
         break;
       case COLLECTOR_REALTIME_MODE_HYBRID:
-        realtimeCollector =
-            new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
+        realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
         break;
       default:
-        realtimeCollector =
-            new PipeRealtimeDataRegionHybridCollector(pipeTaskMeta, collectorPendingQueue);
+        realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
         LOGGER.warn(
             String.format(
                 "Unsupported collector realtime mode: %s, create a hybrid collector.",
@@ -167,7 +140,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   @Override
   public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
       throws Exception {
-    dataRegionId = parameters.getInt(PipeCollectorConstant.DATA_REGION_KEY);
+    dataRegionId = configuration.getRuntimeEnvironment().getRegionId();
 
     historicalCollector.customize(parameters, configuration);
     realtimeCollector.customize(parameters, configuration);

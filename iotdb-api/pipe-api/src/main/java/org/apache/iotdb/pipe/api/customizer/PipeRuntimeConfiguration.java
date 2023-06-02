@@ -23,6 +23,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public interface PipeRuntimeConfiguration {
 
+  PipeRuntimeEnvironment getRuntimeEnvironment();
+
   /** @throws PipeException if invalid runtime configuration is set */
   void check() throws PipeException;
 }

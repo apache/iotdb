@@ -58,8 +58,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 
 public class IoTDBThriftConnectorV1 implements PipeConnector {
 

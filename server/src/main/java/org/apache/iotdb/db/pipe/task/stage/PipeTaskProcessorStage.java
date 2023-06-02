@@ -22,52 +22,51 @@ package org.apache.iotdb.db.pipe.task.stage;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeEventCollector;
 import org.apache.iotdb.db.pipe.core.processor.PipeDoNothingProcessor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
-import org.apache.iotdb.db.pipe.task.queue.BlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.queue.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
 import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import javax.annotation.Nullable;
-
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
-  protected final PipeProcessorSubtaskExecutor executor =
+  private final PipeProcessorSubtaskExecutor executor =
       PipeSubtaskExecutorManager.getInstance().getProcessorSubtaskExecutor();
 
-  protected final PipeParameters pipeProcessorParameters;
-  protected final PipeProcessor pipeProcessor;
-  protected final PipeProcessorSubtask pipeProcessorSubtask;
-
-  protected final BlockingPendingQueue<Event> pipeCollectorInputPendingQueue;
-  protected final BlockingPendingQueue<Event> pipeConnectorOutputPendingQueue;
+  private final PipeRuntimeEnvironment pipeRuntimeEnvironment;
+  private final PipeParameters pipeProcessorParameters;
+  private final PipeProcessor pipeProcessor;
+  private final PipeProcessorSubtask pipeProcessorSubtask;
 
   /**
    * @param pipeName pipe name
+   * @param creationTime pipe creation time
+   * @param pipeProcessorParameters used to create pipe processor
    * @param dataRegionId data region id
    * @param pipeCollectorInputEventSupplier used to input events from pipe collector
-   * @param pipeCollectorInputPendingQueue used to listen whether pipe collector event queue is from
-   *     empty to not empty or from not empty to empty, null means no need to listen
-   * @param pipeProcessorParameters used to create pipe processor
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
    */
   public PipeTaskProcessorStage(
       String pipeName,
+      long creationTime,
+      PipeParameters pipeProcessorParameters,
       TConsensusGroupId dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
-      @Nullable BlockingPendingQueue<Event> pipeCollectorInputPendingQueue,
-      PipeParameters pipeProcessorParameters,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
+    this.pipeRuntimeEnvironment =
+        new PipeTaskRuntimeEnvironment(pipeName, creationTime, dataRegionId.getId());
     this.pipeProcessorParameters = pipeProcessorParameters;
 
     final String taskId = pipeName + "_" + dataRegionId;
@@ -88,9 +87,6 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             pipeCollectorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);
-
-    this.pipeCollectorInputPendingQueue = pipeCollectorInputPendingQueue;
-    this.pipeConnectorOutputPendingQueue = pipeConnectorOutputPendingQueue;
   }
 
   @Override
@@ -101,7 +97,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-          new PipeProcessorRuntimeConfiguration();
+          new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
       // TODO: use runtimeConfiguration to configure processor
     } catch (Exception e) {

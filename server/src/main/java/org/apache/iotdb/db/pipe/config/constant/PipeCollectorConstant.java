@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.db.pipe.config.constant;
 
 public class PipeCollectorConstant {
 
@@ -25,8 +25,6 @@ public class PipeCollectorConstant {
 
   public static final String COLLECTOR_PATTERN_KEY = "collector.pattern";
   public static final String COLLECTOR_PATTERN_DEFAULT_VALUE = "root";
-
-  public static final String DATA_REGION_KEY = "collector.data-region";
 
   public static final String COLLECTOR_HISTORY_ENABLE_KEY = "collector.history.enable";
   public static final String COLLECTOR_HISTORY_START_TIME = "collector.history.start-time";

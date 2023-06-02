@@ -56,17 +56,18 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 
 public class IoTDBSyncConnectorV1 implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  public static final String IOTDB_SYNC_CONNECTOR_VERSION = "1.1";
 
   private IoTDBThriftConnectorClient client = null;
 
@@ -76,14 +77,8 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
   private String user;
   private String password;
 
-  public static final String IOTDB_SYNC_CONNECTOR_VERSION = "1.1";
-
-  // TODO: Get pipeName and createTime
-  private String pipeName = "defaultPipe";
-  private Long createTime = 11L;
-
-  // TODO: Get databaseName
-  private String databaseName = "root.sg";
+  private String pipeName;
+  private Long creationTime;
 
   private static SessionPool sessionPool;
 
@@ -104,6 +99,8 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
     this.password =
         parameters.getStringOrDefault(
             CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
+    pipeName = configuration.getRuntimeEnvironment().getPipeName();
+    creationTime = configuration.getRuntimeEnvironment().getCreationTime();
   }
 
   @Override
@@ -127,7 +124,7 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
 
     try {
       TSyncIdentityInfo identityInfo =
-          new TSyncIdentityInfo(pipeName, createTime, IOTDB_SYNC_CONNECTOR_VERSION, databaseName);
+          new TSyncIdentityInfo(pipeName, creationTime, IOTDB_SYNC_CONNECTOR_VERSION, "");
       TSStatus status = client.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         String errorMsg =

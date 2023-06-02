@@ -17,9 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.collector;
+package org.apache.iotdb.pipe.api.customizer;
 
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
+public interface PipeRuntimeEnvironment {
+  String getPipeName();
 
-// TODO: complete this class
-public interface PipeCollectorRuntimeConfiguration extends PipeRuntimeConfiguration {}
+  long getCreationTime();
+
+  int getRegionId();
+}

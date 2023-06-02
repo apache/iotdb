@@ -17,21 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.db.pipe.config.constant;
 
-public class PipeConnectorConstant {
+public class PipeProcessorConstant {
 
-  public static final String CONNECTOR_KEY = "connector";
+  public static final String PROCESSOR_KEY = "processor";
 
-  public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
-  public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
-
-  public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
-  public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
-  public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
-  public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
-
-  private PipeConnectorConstant() {
+  private PipeProcessorConstant() {
     throw new IllegalStateException("Utility class");
   }
 }
