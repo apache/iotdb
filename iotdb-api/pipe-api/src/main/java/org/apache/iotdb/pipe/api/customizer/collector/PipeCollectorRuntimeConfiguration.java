@@ -20,8 +20,6 @@
 package org.apache.iotdb.pipe.api.customizer.collector;
 
 import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeEnvironment;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 // TODO: complete this class
 public interface PipeCollectorRuntimeConfiguration extends PipeRuntimeConfiguration {}
