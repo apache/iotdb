@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.common.schematree;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -727,5 +729,24 @@ public class ClusterSchemaTreeTest {
           boolean isPrefixMatch) {
     return SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
         root, pathPattern, isPrefixMatch, slimit, soffset);
+  }
+
+  @Test
+  public void testHasView() throws IllegalPathException {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    schemaTree.appendSingleMeasurement(
+        new PartialPath("root.db.db.s1"),
+        new MeasurementSchema("s1", TSDataType.INT32),
+        null,
+        null,
+        false);
+    Assert.assertFalse(schemaTree.hasLogicalViewMeasurement());
+    schemaTree.appendSingleMeasurement(
+        new PartialPath("root.db.view.s1"),
+        new LogicalViewSchema("s1", new TimeSeriesViewOperand("root.db.d.s1")),
+        null,
+        null,
+        false);
+    Assert.assertTrue(schemaTree.hasLogicalViewMeasurement());
   }
 }
