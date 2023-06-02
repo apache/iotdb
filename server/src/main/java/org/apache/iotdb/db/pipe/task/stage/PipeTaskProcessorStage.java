@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeEventCollector;
+import org.apache.iotdb.db.pipe.core.processor.PipeDoNothingProcessor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.queue.BlockingPendingQueue;
@@ -68,7 +71,14 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     this.pipeProcessorParameters = pipeProcessorParameters;
 
     final String taskId = pipeName + "_" + dataRegionId;
-    pipeProcessor = PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
+    pipeProcessor =
+        pipeProcessorParameters
+                .getStringOrDefault(
+                    PipeProcessorConstant.PROCESSOR_KEY,
+                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+                .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+            ? new PipeDoNothingProcessor()
+            : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(pipeConnectorOutputPendingQueue);
 

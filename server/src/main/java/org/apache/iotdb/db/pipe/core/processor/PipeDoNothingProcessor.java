@@ -17,8 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.processor;
+package org.apache.iotdb.db.pipe.core.processor;
 
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
@@ -27,42 +29,75 @@ import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfig
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.io.IOException;
 
-/** This class is a placeholder and should not be used. */
-public class DoNothingProcessor implements PipeProcessor {
+public class PipeDoNothingProcessor implements PipeProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    // do nothing
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    // do nothing
   }
 
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    if (tabletInsertionEvent instanceof EnrichedEvent) {
+      final EnrichedEvent enrichedEvent = (EnrichedEvent) tabletInsertionEvent;
+      if (enrichedEvent
+          .getPattern()
+          .equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+        eventCollector.collect(tabletInsertionEvent);
+      } else {
+        eventCollector.collect(
+            tabletInsertionEvent.processRowByRow(
+                (row, rowCollector) -> {
+                  try {
+                    rowCollector.collectRow(row);
+                  } catch (IOException e) {
+                    throw new PipeException("Failed to collect row", e);
+                  }
+                }));
+      }
+    } else {
+      eventCollector.collect(tabletInsertionEvent);
+    }
   }
 
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    if (tsFileInsertionEvent instanceof EnrichedEvent) {
+      final EnrichedEvent enrichedEvent = (EnrichedEvent) tsFileInsertionEvent;
+      if (enrichedEvent
+          .getPattern()
+          .equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+        eventCollector.collect(tsFileInsertionEvent);
+      } else {
+        for (final TabletInsertionEvent tabletInsertionEvent :
+            tsFileInsertionEvent.toTabletInsertionEvents()) {
+          eventCollector.collect(tabletInsertionEvent);
+        }
+      }
+    } else {
+      eventCollector.collect(tsFileInsertionEvent);
+    }
   }
 
   @Override
   public void process(Event event, EventCollector eventCollector) throws IOException {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    eventCollector.collect(event);
   }
 
   @Override
   public void close() {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    // do nothing
   }
 }
