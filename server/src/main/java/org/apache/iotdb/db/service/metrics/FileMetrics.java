@@ -44,7 +44,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -89,10 +88,10 @@ public class FileMetrics implements IMetricSet {
   private final AtomicInteger innerUnseqCompactionTempFileNum = new AtomicInteger(0);
   private final AtomicInteger crossCompactionTempFileNum = new AtomicInteger(0);
   private AtomicBoolean hasRemainData = new AtomicBoolean(false);
-  private final Map<Integer, Gauge> seqLevelCountGaugeMap = new HashMap<>();
-  private final Map<Integer, Gauge> seqLevelSizeGaugeMap = new HashMap<>();
-  private final Map<Integer, Gauge> unseqLevelCountGaugeMap = new HashMap<>();
-  private final Map<Integer, Gauge> unseqLevelSizeGaugeMap = new HashMap<>();
+  private final Map<Integer, Gauge> seqLevelCountGaugeMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Gauge> seqLevelSizeGaugeMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Gauge> unseqLevelCountGaugeMap = new ConcurrentHashMap<>();
+  private final Map<Integer, Gauge> unseqLevelSizeGaugeMap = new ConcurrentHashMap<>();
 
   @SuppressWarnings("squid:S1075")
   private String fileHandlerCntPathInLinux = "/proc/%s/fd";
