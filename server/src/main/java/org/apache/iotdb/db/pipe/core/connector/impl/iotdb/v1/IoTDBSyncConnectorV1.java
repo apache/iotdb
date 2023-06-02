@@ -24,10 +24,7 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
-import org.apache.iotdb.commons.exception.sync.SyncConnectionException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
@@ -70,7 +67,6 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private IoTDBThriftConnectorClient client = null;
 
@@ -184,9 +180,9 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeInsertNodeInsertionEvent pipeTabletInsertionEvent)
+  private void doTransfer(PipeInsertNodeInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    sessionPool.insertTablet(pipeTabletInsertionEvent.convertToTablet());
+    sessionPool.insertTablet(pipeInsertNodeInsertionEvent.convertToTablet());
   }
 
   private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
