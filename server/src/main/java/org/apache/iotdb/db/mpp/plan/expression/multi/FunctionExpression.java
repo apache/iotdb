@@ -161,7 +161,7 @@ public class FunctionExpression extends Expression {
   }
 
   public void addAttribute(String key, String value) {
-    functionAttributes.put(key.toLowerCase(), value);
+    functionAttributes.put(key, value);
   }
 
   public void addExpression(Expression expression) {
