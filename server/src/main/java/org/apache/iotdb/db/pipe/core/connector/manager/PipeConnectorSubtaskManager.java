@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.IoTDBSyncConnectorV1;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.queue.BoundedBlockingPendingQueue;
@@ -53,14 +54,18 @@ public class PipeConnectorSubtaskManager {
       // TODO: construct all PipeConnector with the same reflection method, avoid using if-else
       // 1. construct, validate and customize PipeConnector, and then handshake (create connection)
       // with the target
-      final PipeConnector pipeConnector =
-          pipeConnectorParameters
-                  .getStringOrDefault(
-                      PipeConnectorConstant.CONNECTOR_KEY,
-                      BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
-                  .equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
-              ? new IoTDBThriftConnectorV1()
-              : PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
+      PipeConnector pipeConnector;
+      String connectorKey =
+          pipeConnectorParameters.getStringOrDefault(
+              PipeConnectorConstant.CONNECTOR_KEY,
+              BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+      if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())) {
+        pipeConnector = new IoTDBThriftConnectorV1();
+      } else if (connectorKey.equals(BuiltinPipePlugin.IOTDB_SYNC_CONNECTOR.getPipePluginName())) {
+        pipeConnector = new IoTDBSyncConnectorV1();
+      } else {
+        pipeConnector = PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
+      }
       try {
         pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
         final PipeConnectorRuntimeConfiguration runtimeConfiguration =
