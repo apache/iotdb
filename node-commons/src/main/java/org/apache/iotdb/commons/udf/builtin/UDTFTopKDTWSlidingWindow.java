@@ -75,8 +75,20 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
   private DTWPath[] dtwBefore;
   private DTWPath[] dtwCurrent;
 
-  private final PriorityQueue<DTWPath> topK =
-      new PriorityQueue<>((o1, o2) -> Double.compare(o2.distance, o1.distance));
+  private final PriorityQueue<DTWPath> topK = new PriorityQueue<>(this::compareDTWPath);
+
+  private int compareDTWPath(DTWPath p1, DTWPath p2) {
+    if (Math.abs(p1.distance - p2.distance) > EPS) {
+      // The bigger the distance, the higher the priority
+      return Double.compare(p2.distance, p1.distance);
+    } else if (p1.startTime != p2.startTime) {
+      // The bigger the start time, the higher the priority
+      return Long.compare(p2.startTime, p1.startTime);
+    } else {
+      // The bigger the end time, the higher the priority
+      return Long.compare(p2.endTime, p1.endTime);
+    }
+  }
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
@@ -89,7 +101,7 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
         if (row.isNull(COLUMN_P)) {
           break;
         }
-        patternList.add(new DTWPoint(row.getTime(), row.getDouble(COLUMN_P)));
+        patternList.add(new DTWPoint(row.getTime(), safelyReadDoubleValue(row, COLUMN_P)));
       }
       pattern = patternList.toArray(new DTWPoint[0]);
     }
@@ -101,13 +113,14 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
         continue;
       }
 
-      double value = row.getDouble(COLUMN_S);
+      long currentTime = row.getTime();
+      double value = safelyReadDoubleValue(row, COLUMN_S);
       dtwCurrent = new DTWPath[pattern.length];
       for (int i = 0; i < pattern.length; i++) {
         double currentDistance = Math.abs(value - pattern[i].value);
         if (i == 0) {
           // Start a new DTW path
-          dtwCurrent[i] = new DTWPath(pattern[i].time, pattern[i].time, currentDistance);
+          dtwCurrent[i] = new DTWPath(currentTime, currentTime, currentDistance);
           continue;
         }
 
@@ -121,14 +134,14 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
             dtwCurrent[i] = dtwBefore[i - 1].copy();
           }
         }
-        dtwCurrent[i].endTime = pattern[i].time;
+        dtwCurrent[i].endTime = currentTime;
         dtwCurrent[i].distance += currentDistance;
       }
       dtwBefore = Arrays.copyOf(dtwCurrent, dtwCurrent.length);
       DTWPath currentPath = dtwCurrent[dtwCurrent.length - 1];
       if (topK.size() < k) {
         topK.offer(currentPath);
-      } else if (topK.peek().distance > currentPath.distance) {
+      } else if (compareDTWPath(currentPath, topK.peek()) > 0) {
         topK.poll();
         topK.offer(currentPath);
       }
@@ -137,8 +150,12 @@ public class UDTFTopKDTWSlidingWindow extends UDTFTopKDTW {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    while (!topK.isEmpty()) {
-      DTWPath path = topK.poll();
+    int topSize = topK.size();
+    DTWPath[] result = new DTWPath[topSize];
+    for (int i = topSize - 1; i >= 0; i--) {
+      result[i] = topK.poll();
+    }
+    for (DTWPath path : result) {
       collector.putString(path.startTime, path.toString());
     }
   }
