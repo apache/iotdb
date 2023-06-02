@@ -26,7 +26,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnblockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
@@ -51,13 +51,14 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
    * processing, and it also can notify the PipeTaskProcessorStage to start processing data when the
    * queue is not empty.
    */
-  private ListenableUnblockingPendingQueue<Event> collectorPendingQueue;
+  private UnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   private final PipeCollector pipeCollector;
 
   public PipeTaskCollectorStage(
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta,
+      long creationTime,
       PipeParameters collectorParameters) {
     // TODO: avoid if-else, use reflection to create collector all the time
     if (collectorParameters
@@ -76,8 +77,9 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
           .getAttribute()
           .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
 
-      collectorPendingQueue = new ListenableUnblockingPendingQueue<>();
-      this.pipeCollector = new IoTDBDataRegionCollector(pipeTaskMeta, collectorPendingQueue);
+      collectorPendingQueue = new UnboundedBlockingPendingQueue<>();
+      this.pipeCollector =
+          new IoTDBDataRegionCollector(pipeTaskMeta, creationTime, collectorPendingQueue);
     } else {
       this.collectorParameters = collectorParameters;
 
@@ -128,7 +130,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
     return pipeCollector::supply;
   }
 
-  public ListenableUnblockingPendingQueue<Event> getCollectorPendingQueue() {
+  public UnboundedBlockingPendingQueue<Event> getCollectorPendingQueue() {
     return collectorPendingQueue;
   }
 }

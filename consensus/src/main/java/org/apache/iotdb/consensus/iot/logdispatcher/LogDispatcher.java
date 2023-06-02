@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -58,7 +59,7 @@ public class LogDispatcher {
   private static final long DEFAULT_INITIAL_SYNC_INDEX = 0L;
   private final IoTConsensusServerImpl impl;
   private final List<LogDispatcherThread> threads;
-  private final String selfPeerId;
+  private final int selfPeerId;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private ExecutorService executorService;
 
@@ -73,7 +74,7 @@ public class LogDispatcher {
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IoTConsensusServerMetrics ioTConsensusServerMetrics) {
     this.impl = impl;
-    this.selfPeerId = impl.getThisNode().getEndpoint().toString();
+    this.selfPeerId = impl.getThisNode().getNodeId();
     this.clientManager = clientManager;
     this.threads =
         impl.getConfiguration().stream()
@@ -93,7 +94,7 @@ public class LogDispatcher {
     // Thus, the size of this threadPool will be the same as the count of LogDispatcherThread.
     this.executorService =
         IoTDBThreadPoolFactory.newCachedThreadPool(
-            "LogDispatcher-" + impl.getThisNode().getGroupId());
+            ThreadName.LOG_DISPATCHER.getName() + "-" + impl.getThisNode().getGroupId());
   }
 
   public synchronized void start() {

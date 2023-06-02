@@ -147,7 +147,7 @@ public class SubPlanTypeExtractor {
           .flatMap(aggregationDescriptor -> aggregationDescriptor.getInputExpressions().stream())
           .forEach(
               expression -> {
-                String expressionStr = expression.toString();
+                String expressionStr = expression.getExpressionString();
                 typeProvider.setType(expressionStr, allTypes.getType(expressionStr));
               });
     }

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.other.CaseWhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
@@ -59,36 +61,39 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ExpressionUtils {
+
   public static List<Expression> reconstructTimeSeriesOperands(
-      List<? extends PartialPath> actualPaths) {
+      TimeSeriesOperand rawExpression, List<? extends PartialPath> actualPaths) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (PartialPath actualPath : actualPaths) {
-      resultExpressions.add(new TimeSeriesOperand(actualPath));
+      resultExpressions.add(reconstructTimeSeriesOperand(rawExpression, actualPath));
     }
     return resultExpressions;
   }
 
-  public static Expression reconstructTimeSeriesOperand(PartialPath actualPath) {
-    return new TimeSeriesOperand(actualPath);
+  public static Expression reconstructTimeSeriesOperand(
+      TimeSeriesOperand rawExpression, PartialPath actualPath) {
+    Expression resultExpression = new TimeSeriesOperand(actualPath);
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static List<Expression> reconstructFunctionExpressions(
       FunctionExpression expression, List<List<Expression>> childExpressionsList) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (List<Expression> functionExpressions : childExpressionsList) {
-      resultExpressions.add(
-          new FunctionExpression(
-              expression.getFunctionName(),
-              expression.getFunctionAttributes(),
-              functionExpressions));
+      resultExpressions.add(reconstructFunctionExpression(expression, functionExpressions));
     }
     return resultExpressions;
   }
 
   public static Expression reconstructFunctionExpression(
-      FunctionExpression expression, List<Expression> childExpressions) {
-    return new FunctionExpression(
-        expression.getFunctionName(), expression.getFunctionAttributes(), childExpressions);
+      FunctionExpression rawExpression, List<Expression> childExpressions) {
+    Expression resultExpression =
+        new FunctionExpression(
+            rawExpression.getFunctionName(),
+            rawExpression.getFunctionAttributes(),
+            childExpressions);
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static List<Expression> reconstructUnaryExpressions(
@@ -100,109 +105,128 @@ public class ExpressionUtils {
     return resultExpressions;
   }
 
-  public static Expression reconstructCaseWHenThenExpression(List<Expression> childExpressions) {
-    return new CaseWhenThenExpression(
-        childExpressions // transform to List<WhenThenExpression>
-            .subList(0, childExpressions.size() - 1).stream()
-            .map(expression -> (WhenThenExpression) expression)
-            .collect(Collectors.toList()),
-        childExpressions.get(childExpressions.size() - 1));
+  public static Expression reconstructCaseWhenThenExpression(
+      CaseWhenThenExpression rawExpression, List<Expression> childExpressions) {
+    Expression resultExpression =
+        new CaseWhenThenExpression(
+            childExpressions // transform to List<WhenThenExpression>
+                .subList(0, childExpressions.size() - 1).stream()
+                .map(expression -> (WhenThenExpression) expression)
+                .collect(Collectors.toList()),
+            childExpressions.get(childExpressions.size() - 1));
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static Expression reconstructUnaryExpression(
-      UnaryExpression expression, Expression childExpression) {
-    switch (expression.getExpressionType()) {
+      UnaryExpression rawExpression, Expression childExpression) {
+    Expression resultExpression;
+    switch (rawExpression.getExpressionType()) {
       case IS_NULL:
-        return new IsNullExpression(childExpression, ((IsNullExpression) expression).isNot());
+        resultExpression =
+            new IsNullExpression(childExpression, ((IsNullExpression) rawExpression).isNot());
+        break;
       case IN:
-        return new InExpression(
-            childExpression,
-            ((InExpression) expression).isNotIn(),
-            ((InExpression) expression).getValues());
+        resultExpression =
+            new InExpression(
+                childExpression,
+                ((InExpression) rawExpression).isNotIn(),
+                ((InExpression) rawExpression).getValues());
+        break;
       case LIKE:
-        return new LikeExpression(
-            childExpression,
-            ((LikeExpression) expression).getPatternString(),
-            ((LikeExpression) expression).getPattern());
+        resultExpression =
+            new LikeExpression(
+                childExpression,
+                ((LikeExpression) rawExpression).getPatternString(),
+                ((LikeExpression) rawExpression).getPattern());
+        break;
       case LOGIC_NOT:
-        return new LogicNotExpression(childExpression);
-
+        resultExpression = new LogicNotExpression(childExpression);
+        break;
       case NEGATION:
-        return new NegationExpression(childExpression);
-
+        resultExpression = new NegationExpression(childExpression);
+        break;
       case REGEXP:
-        return new RegularExpression(
-            childExpression,
-            ((RegularExpression) expression).getPatternString(),
-            ((RegularExpression) expression).getPattern());
-
+        resultExpression =
+            new RegularExpression(
+                childExpression,
+                ((RegularExpression) rawExpression).getPatternString(),
+                ((RegularExpression) rawExpression).getPattern());
+        break;
       default:
         throw new IllegalArgumentException(
-            "unsupported expression type: " + expression.getExpressionType());
+            "unsupported expression type: " + rawExpression.getExpressionType());
     }
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static List<Expression> reconstructBinaryExpressions(
-      ExpressionType expressionType,
+      BinaryExpression expression,
       List<Expression> leftExpressions,
       List<Expression> rightExpressions) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression le : leftExpressions) {
       for (Expression re : rightExpressions) {
-        resultExpressions.add(reconstructBinaryExpression(expressionType, le, re));
+        resultExpressions.add(reconstructBinaryExpression(expression, le, re));
       }
     }
     return resultExpressions;
   }
 
   public static Expression reconstructBinaryExpression(
-      ExpressionType expressionType, Expression leftExpression, Expression rightExpression) {
-    switch (expressionType) {
+      Expression rawExpression, Expression leftExpression, Expression rightExpression) {
+    Expression resultExpression;
+    switch (rawExpression.getExpressionType()) {
       case ADDITION:
-        return new AdditionExpression(leftExpression, rightExpression);
-
+        resultExpression = new AdditionExpression(leftExpression, rightExpression);
+        break;
       case SUBTRACTION:
-        return new SubtractionExpression(leftExpression, rightExpression);
+        resultExpression = new SubtractionExpression(leftExpression, rightExpression);
+        break;
       case MULTIPLICATION:
-        return new MultiplicationExpression(leftExpression, rightExpression);
+        resultExpression = new MultiplicationExpression(leftExpression, rightExpression);
+        break;
       case DIVISION:
-        return new DivisionExpression(leftExpression, rightExpression);
+        resultExpression = new DivisionExpression(leftExpression, rightExpression);
+        break;
       case MODULO:
-        return new ModuloExpression(leftExpression, rightExpression);
-
+        resultExpression = new ModuloExpression(leftExpression, rightExpression);
+        break;
       case LESS_THAN:
-        return new LessThanExpression(leftExpression, rightExpression);
+        resultExpression = new LessThanExpression(leftExpression, rightExpression);
+        break;
       case LESS_EQUAL:
-        return new LessEqualExpression(leftExpression, rightExpression);
-
+        resultExpression = new LessEqualExpression(leftExpression, rightExpression);
+        break;
       case GREATER_THAN:
-        return new GreaterThanExpression(leftExpression, rightExpression);
-
+        resultExpression = new GreaterThanExpression(leftExpression, rightExpression);
+        break;
       case GREATER_EQUAL:
-        return new GreaterEqualExpression(leftExpression, rightExpression);
-
+        resultExpression = new GreaterEqualExpression(leftExpression, rightExpression);
+        break;
       case EQUAL_TO:
-        return new EqualToExpression(leftExpression, rightExpression);
-
+        resultExpression = new EqualToExpression(leftExpression, rightExpression);
+        break;
       case NON_EQUAL:
-        return new NonEqualExpression(leftExpression, rightExpression);
-
+        resultExpression = new NonEqualExpression(leftExpression, rightExpression);
+        break;
       case LOGIC_AND:
-        return new LogicAndExpression(leftExpression, rightExpression);
-
+        resultExpression = new LogicAndExpression(leftExpression, rightExpression);
+        break;
       case LOGIC_OR:
-        return new LogicOrExpression(leftExpression, rightExpression);
-
+        resultExpression = new LogicOrExpression(leftExpression, rightExpression);
+        break;
       case WHEN_THEN:
-        return new WhenThenExpression(leftExpression, rightExpression);
-
+        resultExpression = new WhenThenExpression(leftExpression, rightExpression);
+        break;
       default:
-        throw new IllegalArgumentException("unsupported expression type: " + expressionType);
+        throw new IllegalArgumentException(
+            "unsupported rawExpression type: " + rawExpression.getExpressionType());
     }
+    return cloneCommonFields(rawExpression, resultExpression);
   }
 
   public static List<Expression> reconstructTernaryExpressions(
-      Expression expression,
+      TernaryExpression expression,
       List<Expression> firstExpressions,
       List<Expression> secondExpressions,
       List<Expression> thirdExpressions) {
@@ -217,21 +241,29 @@ public class ExpressionUtils {
   }
 
   public static Expression reconstructTernaryExpression(
-      Expression expression,
+      TernaryExpression rawExpression,
       Expression firstExpression,
       Expression secondExpression,
       Expression thirdExpression) {
-    switch (expression.getExpressionType()) {
-      case BETWEEN:
-        return new BetweenExpression(
-            firstExpression,
-            secondExpression,
-            thirdExpression,
-            ((BetweenExpression) expression).isNotBetween());
-      default:
-        throw new IllegalArgumentException(
-            "unsupported expression type: " + expression.getExpressionType());
+    Expression resultExpression;
+    if (rawExpression.getExpressionType() == ExpressionType.BETWEEN) {
+      resultExpression =
+          new BetweenExpression(
+              firstExpression,
+              secondExpression,
+              thirdExpression,
+              ((BetweenExpression) rawExpression).isNotBetween());
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + rawExpression.getExpressionType());
     }
+    return cloneCommonFields(rawExpression, resultExpression);
+  }
+
+  private static Expression cloneCommonFields(
+      Expression rawExpression, Expression resultExpression) {
+    resultExpression.setViewPath(rawExpression.getViewPath());
+    return resultExpression;
   }
 
   /**

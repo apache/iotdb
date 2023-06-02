@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
@@ -115,7 +116,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
       int index = i;
-      String threadName = "Query-Worker-Thread-" + i;
+      String threadName = ThreadName.QUERY_WORKER.getName() + "-" + i;
       ThreadProducer producer =
           new ThreadProducer() {
             @Override
@@ -136,7 +137,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       t.start();
     }
 
-    String threadName = "Query-Sentinel-Thread";
+    String threadName = ThreadName.QUERY_SENTINEL.getName();
     ThreadProducer producer =
         new ThreadProducer() {
           @Override
@@ -543,13 +544,11 @@ public class DriverScheduler implements IDriverScheduler, IService {
       } finally {
         task.unlock();
       }
-      // wrap this clearDriverTask to avoid that status is changed to Aborted during clearDriverTask
-      task.lock();
-      try {
-        clearDriverTask(task);
-      } finally {
-        task.unlock();
-      }
+      // Wrapping clearDriverTask with task.lock() may lead to deadlock. For example:
+      // Thread A locks a task and then try to remove it from a SynchronizedSet(instance related
+      // tasks) which will try to get the lock of SynchronizedSet.
+      // Thread B locks the SynchronizedSet first and then tries to lock the task.
+      clearDriverTask(task);
     }
 
     @Override

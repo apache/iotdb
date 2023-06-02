@@ -158,7 +158,7 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putAlignedValue(long time, Object[] value, int[] columnIndexArray) {
+  public void putAlignedValue(long time, Object[] value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -186,8 +186,7 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putAlignedValues(
-      long[] time, Object[] value, BitMap[] bitMaps, int[] columnIndexArray, int start, int end) {
+  public void putAlignedValues(long[] time, Object[] value, BitMap[] bitMaps, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

@@ -96,12 +96,14 @@ import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColum
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AbstractUpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.AlignedUpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.AlignedUpdateViewPathLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateViewPathLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountGroupByLevelScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
@@ -1365,7 +1367,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               context
                   .getTypeProvider()
                   // get the type of first inputExpression
-                  .getType(descriptor.getInputExpressions().get(0).toString()),
+                  .getType(descriptor.getInputExpressions().get(0).getExpressionString()),
               descriptor.getInputExpressions(),
               descriptor.getInputAttributes(),
               ascending,
@@ -1440,7 +1442,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                   context
                       .getTypeProvider()
                       // get the type of first inputExpression
-                      .getType(descriptor.getInputExpressions().get(0).toString()),
+                      .getType(descriptor.getInputExpressions().get(0).getExpressionString()),
                   descriptor.getInputExpressions(),
                   descriptor.getInputAttributes(),
                   ascending),
@@ -2037,7 +2039,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         return null;
       }
     } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-      context.addCachedLastValue(timeValuePair, seriesPath.getFullPath());
+      context.addCachedLastValue(timeValuePair, node.outputPathSymbol());
       return null;
     }
   }
@@ -2045,22 +2047,40 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private UpdateLastCacheOperator createUpdateLastCacheOperator(
       LastQueryScanNode node, LocalExecutionPlanContext context, MeasurementPath fullPath) {
     SeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
-
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                UpdateLastCacheOperator.class.getSimpleName());
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new UpdateLastCacheOperator(
-        operatorContext,
-        lastQueryScan,
-        fullPath,
-        node.getSeriesPath().getSeriesType(),
-        DATA_NODE_SCHEMA_CACHE,
-        context.isNeedUpdateLastCache());
+    if (node.getOutputViewPath() == null) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  UpdateLastCacheOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new UpdateLastCacheOperator(
+          operatorContext,
+          lastQueryScan,
+          fullPath,
+          node.getSeriesPath().getSeriesType(),
+          DATA_NODE_SCHEMA_CACHE,
+          context.isNeedUpdateLastCache());
+    } else {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  UpdateViewPathLastCacheOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new UpdateViewPathLastCacheOperator(
+          operatorContext,
+          lastQueryScan,
+          fullPath,
+          node.getSeriesPath().getSeriesType(),
+          DATA_NODE_SCHEMA_CACHE,
+          context.isNeedUpdateLastCache(),
+          node.getOutputViewPath());
+    }
   }
 
   private SeriesAggregationScanOperator createLastQueryScanOperator(
@@ -2129,7 +2149,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           unCachedMeasurementIndexes.add(i);
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-        context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
+        if (node.getOutputViewPath() != null) {
+          context.addCachedLastValue(timeValuePair, node.getOutputViewPath());
+        } else {
+          context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
+        }
       }
     }
     if (unCachedMeasurementIndexes.isEmpty()) {
@@ -2148,20 +2172,38 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     AlignedSeriesAggregationScanOperator lastQueryScan =
         createLastQueryScanOperator(node, unCachedPath, context);
 
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                AlignedUpdateLastCacheOperator.class.getSimpleName());
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new AlignedUpdateLastCacheOperator(
-        operatorContext,
-        lastQueryScan,
-        unCachedPath,
-        DATA_NODE_SCHEMA_CACHE,
-        context.isNeedUpdateLastCache());
+    if (node.getOutputViewPath() == null) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  AlignedUpdateLastCacheOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new AlignedUpdateLastCacheOperator(
+          operatorContext,
+          lastQueryScan,
+          unCachedPath,
+          DATA_NODE_SCHEMA_CACHE,
+          context.isNeedUpdateLastCache());
+    } else {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  AlignedUpdateViewPathLastCacheOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new AlignedUpdateViewPathLastCacheOperator(
+          operatorContext,
+          lastQueryScan,
+          unCachedPath,
+          DATA_NODE_SCHEMA_CACHE,
+          context.isNeedUpdateLastCache(),
+          node.getOutputViewPath());
+    }
   }
 
   private AlignedSeriesAggregationScanOperator createLastQueryScanOperator(
@@ -2211,13 +2253,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQuery(LastQueryNode node, LocalExecutionPlanContext context) {
 
-    List<SortItem> sortItemList = node.getMergeOrderParameter().getSortItemList();
-    checkArgument(
-        sortItemList.isEmpty()
-            || (sortItemList.size() == 1
-                && Objects.equals(sortItemList.get(0).getSortKey(), OrderByKey.TIMESERIES)),
-        "Last query only support order by timeseries asc/desc");
-
     context.setLastQueryTimeFilter(node.getTimeFilter());
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(node.getTimeFilter()));
 
@@ -2232,8 +2267,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context.getCachedLastValueAndPathList();
 
     int initSize = cachedLastValueAndPathList != null ? cachedLastValueAndPathList.size() : 0;
-    // no order by clause
-    if (sortItemList.isEmpty()) {
+    // no need to order by timeseries at first
+    if (!node.needOrderByTimeseries()) {
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(initSize);
       for (int i = 0; i < initSize; i++) {
         TimeValuePair timeValuePair = cachedLastValueAndPathList.get(i).left;
@@ -2256,7 +2291,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else {
       // order by timeseries
       Comparator<Binary> comparator =
-          sortItemList.get(0).getOrdering() == Ordering.ASC
+          node.getTimeseriesOrdering() == Ordering.ASC
               ? ASC_BINARY_COMPARATOR
               : DESC_BINARY_COMPARATOR;
       // sort values from last cache
@@ -2301,9 +2336,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 LastQueryMergeOperator.class.getSimpleName());
 
-    List<SortItem> items = node.getMergeOrderParameter().getSortItemList();
+    Ordering timeseriesOrdering = node.getTimeseriesOrdering();
     Comparator<Binary> comparator =
-        (items.isEmpty() || items.get(0).getOrdering() == Ordering.ASC)
+        (timeseriesOrdering == null || timeseriesOrdering == Ordering.ASC)
             ? ASC_BINARY_COMPARATOR
             : DESC_BINARY_COMPARATOR;
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.view.BrokenViewException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 
-import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -95,12 +95,7 @@ public class CompleteMeasurementSchemaVisitor extends ExpressionVisitor<Expressi
       } catch (Exception notAMeasurementPath) {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
         if (actualPaths.size() != 1) {
-          throw new UnexpectedException(
-              "given one path ["
-                  + path.toString()
-                  + "], "
-                  + "but got unmatched path(s) :"
-                  + actualPaths.toString());
+          throw new BrokenViewException(path.getFullPath(), actualPaths);
         }
         return new TimeSeriesOperand(actualPaths.get(0));
       }

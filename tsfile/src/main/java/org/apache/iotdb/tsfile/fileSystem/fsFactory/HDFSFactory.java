@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fsFactory;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.utils.FSUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +31,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -35,21 +40,24 @@ import java.net.URI;
 public class HDFSFactory implements FSFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(HDFSFactory.class);
-  private static Constructor constructorWithPathname;
-  private static Constructor constructorWithParentStringAndChild;
-  private static Constructor constructorWithParentFileAndChild;
-  private static Constructor constructorWithUri;
-  private static Method getBufferedReader;
-  private static Method getBufferedWriter;
-  private static Method getBufferedInputStream;
-  private static Method getBufferedOutputStream;
-  private static Method listFilesBySuffix;
-  private static Method listFilesByPrefix;
-  private static Method renameTo;
+  private Constructor constructorWithPathname;
+  private Constructor constructorWithParentStringAndChild;
+  private Constructor constructorWithParentFileAndChild;
+  private Constructor constructorWithUri;
+  private Method getBufferedReader;
+  private Method getBufferedWriter;
+  private Method getBufferedInputStream;
+  private Method getBufferedOutputStream;
+  private Method listFilesBySuffix;
+  private Method listFilesByPrefix;
+  private Method renameTo;
+  private Method copyToLocal;
+  private Method copyFromLocal;
+  private Method copyTo;
 
-  static {
+  public HDFSFactory() {
     try {
-      Class<?> clazz = Class.forName("org.apache.iotdb.hadoop.fileSystem.HDFSFile");
+      Class<?> clazz = Class.forName(TSFileDescriptor.getInstance().getConfig().getHdfsFile());
       constructorWithPathname = clazz.getConstructor(String.class);
       constructorWithParentStringAndChild = clazz.getConstructor(String.class, String.class);
       constructorWithParentFileAndChild = clazz.getConstructor(File.class, String.class);
@@ -61,6 +69,9 @@ public class HDFSFactory implements FSFactory {
       listFilesBySuffix = clazz.getMethod("listFilesBySuffix", String.class, String.class);
       listFilesByPrefix = clazz.getMethod("listFilesByPrefix", String.class, String.class);
       renameTo = clazz.getMethod("renameTo", File.class);
+      copyToLocal = clazz.getMethod("copyToLocal", File.class);
+      copyFromLocal = clazz.getMethod("copyFromLocal", File.class);
+      copyTo = clazz.getMethod("copyTo", File.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       logger.error(
           "Failed to get Hadoop file system. Please check your dependency of Hadoop module.", e);
@@ -187,7 +198,7 @@ public class HDFSFactory implements FSFactory {
   }
 
   @Override
-  public void moveFile(File srcFile, File destFile) {
+  public void moveFile(File srcFile, File destFile) throws IOException {
     try {
       renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
@@ -195,6 +206,30 @@ public class HDFSFactory implements FSFactory {
           "Failed to rename file from {} to {}. Please check your dependency of Hadoop module.",
           srcFile.getName(),
           destFile.getName());
+      throw new IOException(e);
+    }
+  }
+
+  @Override
+  public void copyFile(File srcFile, File destFile) throws IOException {
+    FSType srcType = FSUtils.getFSType(srcFile);
+    FSType destType = FSUtils.getFSType(destFile);
+    try {
+      if (srcType == FSType.HDFS && destType == FSType.HDFS) {
+        copyTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
+      } else if (srcType == FSType.LOCAL) {
+        copyFromLocal.invoke(
+            constructorWithPathname.newInstance(destFile.getAbsolutePath()), srcFile);
+      } else {
+        copyToLocal.invoke(
+            constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
+      }
+    } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+      logger.error(
+          "Failed to copy file from {} to {}. Please check your dependency of object storage module.",
+          srcFile.getName(),
+          destFile.getName());
+      throw new IOException(e);
     }
   }
 
@@ -233,5 +268,10 @@ public class HDFSFactory implements FSFactory {
   @Override
   public boolean deleteIfExists(File file) {
     return file.delete();
+  }
+
+  @Override
+  public void deleteDirectory(String dir) throws IOException {
+    getFile(dir).delete();
   }
 }

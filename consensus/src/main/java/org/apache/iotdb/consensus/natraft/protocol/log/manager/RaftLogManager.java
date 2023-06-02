@@ -137,7 +137,7 @@ public abstract class RaftLogManager {
         IoTDBThreadPoolFactory.newScheduledThreadPoolWithDaemon(1, "raft-log-delete-" + name);
 
     this.checkLogApplierExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadExecutorWithDaemon("check-log-applier-" + name);
+        IoTDBThreadPoolFactory.newSingleThreadExecutor("check-log-applier-" + name);
 
     /* deletion check period of the submitted log */
     int logDeleteCheckIntervalSecond = config.getLogDeleteCheckIntervalSecond();

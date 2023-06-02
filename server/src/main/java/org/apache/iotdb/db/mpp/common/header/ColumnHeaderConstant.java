@@ -184,7 +184,7 @@ public class ColumnHeaderConstant {
   public static final String HYPERPARAMETER = "Hyperparameter";
   public static final String MODEL_PATH = "ModelPath";
 
-  // column names for views (eg. logical view)
+  // column names for views (e.g. logical view)
   public static final String VIEW_TYPE = "ViewType";
   public static final String SOURCE = "Source";
 

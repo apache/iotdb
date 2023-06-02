@@ -90,12 +90,11 @@ public class PathUtils {
         res.add(null);
         continue;
       }
-      if (checkedMeasurements.get(measurement) != null) {
-        res.add(checkedMeasurements.get(measurement));
-        continue;
+      String checked = checkedMeasurements.get(measurement);
+      if (checked == null) {
+        checked = checkAndReturnSingleMeasurement(measurement);
+        checkedMeasurements.put(measurement, checked);
       }
-      String checked = checkAndReturnSingleMeasurement(measurement);
-      checkedMeasurements.put(measurement, checked);
       res.add(checked);
     }
     return res;

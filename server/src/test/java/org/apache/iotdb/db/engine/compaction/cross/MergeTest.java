@@ -104,7 +104,7 @@ abstract class MergeTest {
       File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i));
       mkdirs(file);
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
       tsFileResource.setVersion(i);
@@ -115,7 +115,7 @@ abstract class MergeTest {
       File file = new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, i + seqFileNum));
       mkdirs(file);
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
       tsFileResource.setVersion(i + seqFileNum);
@@ -127,7 +127,7 @@ abstract class MergeTest {
         new File(TestConstant.getTestTsFilePath("root.sg1", 0, 0, seqFileNum + unseqFileNum));
     mkdirs(file);
     TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+    tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setVersion(seqFileNum + unseqFileNum);
