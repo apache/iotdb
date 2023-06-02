@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFilePieceReq;
@@ -59,6 +58,9 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 
+import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
+
 public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV1.class);
@@ -76,15 +78,15 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator
-        .validateRequiredAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY)
-        .validateRequiredAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY);
+        .validateRequiredAttribute(CONNECTOR_IOTDB_IP_KEY)
+        .validateRequiredAttribute(CONNECTOR_IOTDB_PORT_KEY);
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    this.ipAddress = parameters.getString(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY);
-    this.port = parameters.getInt(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY);
+    this.ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
+    this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
   }
 
   @Override
@@ -102,11 +104,16 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
             ipAddress,
             port);
 
-    final TPipeTransferResp resp =
-        client.pipeTransfer(
-            PipeTransferHandshakeReq.toTPipeTransferReq(IOTDB_CONFIG.getTimestampPrecision()));
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
+    try {
+      final TPipeTransferResp resp =
+          client.pipeTransfer(
+              PipeTransferHandshakeReq.toTPipeTransferReq(IOTDB_CONFIG.getTimestampPrecision()));
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
+      }
+    } catch (TException e) {
+      LOGGER.warn(String.format("Connect to receiver %s:%s error.", ipAddress, port), e);
+      throw new PipeConnectionException(e.getMessage(), e);
     }
   }
 
