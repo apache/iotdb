@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
@@ -102,21 +102,19 @@ public class PipeRealtimeCollectTest {
     // set up realtime collector
 
     try (PipeRealtimeDataRegionHybridCollector collector1 =
-            new PipeRealtimeDataRegionHybridCollector(null, new UnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(new UnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector2 =
-            new PipeRealtimeDataRegionHybridCollector(null, new UnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(new UnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector3 =
-            new PipeRealtimeDataRegionHybridCollector(null, new UnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(new UnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector4 =
-            new PipeRealtimeDataRegionHybridCollector(
-                null, new UnboundedBlockingPendingQueue<>())) {
+            new PipeRealtimeDataRegionHybridCollector(new UnboundedBlockingPendingQueue<>())) {
 
       collector1.customize(
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
-                  put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion1);
                 }
               }),
           null);
@@ -125,7 +123,6 @@ public class PipeRealtimeCollectTest {
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
-                  put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion1);
                 }
               }),
           null);
@@ -134,7 +131,6 @@ public class PipeRealtimeCollectTest {
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
-                  put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion2);
                 }
               }),
           null);
@@ -143,7 +139,6 @@ public class PipeRealtimeCollectTest {
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
-                  put(PipeCollectorConstant.DATA_REGION_KEY, dataRegion2);
                 }
               }),
           null);

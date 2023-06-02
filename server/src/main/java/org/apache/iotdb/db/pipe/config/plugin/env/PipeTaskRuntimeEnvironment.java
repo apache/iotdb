@@ -17,11 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.collector;
+package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.PipeRuntimeEnvironment;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
-// TODO: complete this class
-public interface PipeCollectorRuntimeConfiguration extends PipeRuntimeConfiguration {}
+public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
+  private final String pipeName;
+  private final long creationTime;
+
+  private final int regionId;
+
+  public PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
+    this.regionId = regionId;
+  }
+
+  @Override
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  @Override
+  public long getCreationTime() {
+    return creationTime;
+  }
+
+  @Override
+  public int getRegionId() {
+    return regionId;
+  }
+}

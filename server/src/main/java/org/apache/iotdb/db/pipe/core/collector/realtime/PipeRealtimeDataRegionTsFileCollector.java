@@ -40,9 +40,7 @@ public class PipeRealtimeDataRegionTsFileCollector extends PipeRealtimeDataRegio
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionTsFileCollector(
-      PipeTaskMeta pipeTaskMeta, UnboundedBlockingPendingQueue<Event> pendingQueue) {
-    super(pipeTaskMeta);
+  public PipeRealtimeDataRegionTsFileCollector(UnboundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
   }
 

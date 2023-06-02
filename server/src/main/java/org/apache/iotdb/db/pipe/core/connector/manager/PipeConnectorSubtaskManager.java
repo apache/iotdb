@@ -22,7 +22,8 @@ package org.apache.iotdb.db.pipe.core.connector.manager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.IoTDBSyncConnectorV1;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -46,7 +48,9 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      PipeConnectorSubtaskExecutor executor, PipeParameters pipeConnectorParameters) {
+      PipeConnectorSubtaskExecutor executor,
+      PipeParameters pipeConnectorParameters,
+      PipeRuntimeEnvironment pipeRuntimeEnvironment) {
     final String attributeSortedString =
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
@@ -69,7 +73,7 @@ public class PipeConnectorSubtaskManager {
       try {
         pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
         final PipeConnectorRuntimeConfiguration runtimeConfiguration =
-            new PipeConnectorRuntimeConfiguration();
+            new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
         pipeConnector.customize(pipeConnectorParameters, runtimeConfiguration);
         // TODO: use runtimeConfiguration to configure PipeConnector
         pipeConnector.handshake();
