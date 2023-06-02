@@ -184,9 +184,9 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeInsertNodeInsertionEvent tabletInsertionEvent)
+  private void doTransfer(PipeInsertNodeInsertionEvent pipeTabletInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    sessionPool.insertTablet(tabletInsertionEvent.convertToTablet());
+    sessionPool.insertTablet(pipeTabletInsertionEvent.convertToTablet());
   }
 
   private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
@@ -214,7 +214,7 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
   }
 
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, TException, InterruptedException, IOException, SyncConnectionException {
+      throws PipeException, TException, InterruptedException, IOException {
     pipeTsFileInsertionEvent.waitForTsFileClose();
 
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
