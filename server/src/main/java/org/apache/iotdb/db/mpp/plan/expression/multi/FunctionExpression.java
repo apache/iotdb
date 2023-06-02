@@ -186,6 +186,27 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public String getOutputSymbolInternal() {
+    StringBuilder builder = new StringBuilder();
+    if (!expressions.isEmpty()) {
+      builder.append(expressions.get(0).getOutputSymbol());
+      for (int i = 1; i < expressions.size(); ++i) {
+        builder.append(", ").append(expressions.get(i).getOutputSymbol());
+      }
+    }
+    if (!functionAttributes.isEmpty()) {
+      // Some built-in scalar functions may have different header.
+      if (BuiltinScalarFunction.contains(functionName)) {
+        BuiltInScalarFunctionHelperFactory.createHelper(functionName)
+            .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
+      } else {
+        appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
+      }
+    }
+    return functionName + "(" + builder + ")";
+  }
+
+  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     String expressionString = getExpressionString();
@@ -206,7 +227,7 @@ public class FunctionExpression extends Expression {
       expression.bindInputLayerColumnIndexWithExpression(inputLocations);
     }
 
-    final String digest = toString();
+    final String digest = getExpressionString();
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }
@@ -227,7 +248,7 @@ public class FunctionExpression extends Expression {
     }
     return new UDTFInformationInferrer(functionName)
         .getAccessStrategy(
-            expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+            expressions.stream().map(Expression::getExpressionString).collect(Collectors.toList()),
             expressions.stream()
                 .map(f -> expressionTypes.get(NodeRef.of(f)))
                 .collect(Collectors.toList()),
@@ -267,9 +288,9 @@ public class FunctionExpression extends Expression {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {
-        builder.append(expressions.get(0).toString());
+        builder.append(expressions.get(0).getExpressionString());
         for (int i = 1; i < expressions.size(); ++i) {
-          builder.append(", ").append(expressions.get(i).toString());
+          builder.append(", ").append(expressions.get(i).getExpressionString());
         }
       }
       if (!functionAttributes.isEmpty()) {

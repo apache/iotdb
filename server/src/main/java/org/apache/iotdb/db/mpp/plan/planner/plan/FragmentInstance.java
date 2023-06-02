@@ -46,7 +46,7 @@ import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
 
-  private final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
+  private static final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 

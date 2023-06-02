@@ -104,7 +104,7 @@ public class SelectComponent extends StatementNode {
     }
     for (int i = 0; i < resultColumns.size(); i++) {
       ResultColumn resultColumn = resultColumns.get(i);
-      sqlBuilder.append(resultColumn.getExpression().toString());
+      sqlBuilder.append(resultColumn.getExpression().getExpressionString());
       if (resultColumn.hasAlias()) {
         sqlBuilder.append('(').append(resultColumn.getAlias()).append(')');
       }

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -48,7 +48,7 @@ public class Analyzer {
         new AnalyzeVisitor(partitionFetcher, schemaFetcher).process(statement, context);
 
     if (statement.isQuery()) {
-      QueryMetricsManager.getInstance().recordPlanCost(ANALYZER, System.nanoTime() - startTime);
+      QueryPlanCostMetricSet.getInstance().recordPlanCost(ANALYZER, System.nanoTime() - startTime);
     }
     return analysis;
   }

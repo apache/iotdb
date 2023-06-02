@@ -99,7 +99,7 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
   public void setUp() throws MetadataException {
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     CompactionTaskManager.getInstance().start();
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
@@ -436,7 +436,7 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.NORMAL);
+              targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -740,7 +740,7 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.NORMAL);
+              targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
@@ -1043,7 +1043,7 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                   new TsFileResource(
                       TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
               targetResource.deserialize();
-              targetResource.setStatus(TsFileResourceStatus.NORMAL);
+              targetResource.setStatusForTest(TsFileResourceStatus.NORMAL);
               targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);

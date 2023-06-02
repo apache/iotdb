@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.record;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Test;
@@ -29,7 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TabletTest {
@@ -52,11 +53,18 @@ public class TabletTest {
       ((long[]) values[1])[i] = 1;
     }
 
-    Tablet tablet = new Tablet(deviceId, measurementSchemas, timestamps, values, null, rowSize);
+    Tablet tablet =
+        new Tablet(
+            deviceId,
+            measurementSchemas,
+            timestamps,
+            values,
+            new BitMap[] {new BitMap(1024), new BitMap(1024)},
+            rowSize);
     try {
       ByteBuffer byteBuffer = tablet.serialize();
       Tablet newTablet = Tablet.deserialize(byteBuffer);
-      assertEquals(newTablet, tablet);
+      assertTrue(newTablet.equals(tablet));
     } catch (Exception e) {
       e.printStackTrace();
       fail();

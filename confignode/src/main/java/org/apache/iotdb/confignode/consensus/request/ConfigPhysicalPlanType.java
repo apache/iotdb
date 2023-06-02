@@ -183,6 +183,7 @@ public enum ConfigPhysicalPlanType {
 
   /** Pipe Runtime */
   PipeHandleLeaderChange((short) 1600),
+  PipeHandleMetaChange((short) 1601),
   ;
 
   private final short planType;

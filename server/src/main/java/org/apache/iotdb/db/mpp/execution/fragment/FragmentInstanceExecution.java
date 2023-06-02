@@ -53,6 +53,8 @@ public class FragmentInstanceExecution {
 
   private final FragmentInstanceStateMachine stateMachine;
 
+  private final long timeoutInMs;
+
   private long lastHeartbeat;
 
   public static FragmentInstanceExecution createFragmentInstanceExecution(
@@ -66,9 +68,9 @@ public class FragmentInstanceExecution {
       long timeOut)
       throws CpuNotEnoughException, MemoryNotEnoughException {
     FragmentInstanceExecution execution =
-        new FragmentInstanceExecution(instanceId, context, drivers, sinkHandle, stateMachine);
+        new FragmentInstanceExecution(
+            instanceId, context, drivers, sinkHandle, stateMachine, timeOut);
     execution.initialize(failedInstances, scheduler);
-    LOGGER.debug("timeout is {}ms.", timeOut);
     scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
   }
@@ -78,12 +80,14 @@ public class FragmentInstanceExecution {
       FragmentInstanceContext context,
       List<IDriver> drivers,
       ISink sink,
-      FragmentInstanceStateMachine stateMachine) {
+      FragmentInstanceStateMachine stateMachine,
+      long timeoutInMs) {
     this.instanceId = instanceId;
     this.context = context;
     this.drivers = drivers;
     this.sink = sink;
     this.stateMachine = stateMachine;
+    this.timeoutInMs = timeoutInMs;
   }
 
   public void recordHeartbeat() {
@@ -108,6 +112,10 @@ public class FragmentInstanceExecution {
 
   public long getStartTime() {
     return context.getStartTime();
+  }
+
+  public long getTimeoutInMs() {
+    return timeoutInMs;
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
@@ -159,7 +167,7 @@ public class FragmentInstanceExecution {
             for (IDriver driver : drivers) {
               driver.close();
             }
-            context.releaseResource();
+            context.releaseResourceWhenAllDriversAreClosed();
             // help for gc
             drivers = null;
             MPPDataExchangeService.getInstance()

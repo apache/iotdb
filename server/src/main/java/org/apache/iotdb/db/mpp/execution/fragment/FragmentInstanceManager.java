@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.IDataRegionForQuery;
@@ -28,7 +29,7 @@ import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.mpp.execution.schedule.IDriverScheduler;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.mpp.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.PipelineDriverFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -70,14 +71,10 @@ public class FragmentInstanceManager {
   // record failed instances count
   private final CounterStat failedInstances = new CounterStat();
 
-  private static final long QUERY_TIMEOUT_MS =
-      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
-
   private final ExecutorService intoOperationExecutor;
 
-  private final ExecutorService modelInferenceExecutor;
-
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
+      QueryExecutionMetricSet.getInstance();
 
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
@@ -87,9 +84,11 @@ public class FragmentInstanceManager {
     this.instanceContext = new ConcurrentHashMap<>();
     this.instanceExecution = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(1, "instance-management");
+        IoTDBThreadPoolFactory.newScheduledThreadPool(
+            1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT.getName());
     this.instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            4, ThreadName.FRAGMENT_INSTANCE_NOTIFICATION.getName());
 
     this.infoCacheTime = new Duration(5, TimeUnit.MINUTES);
 
@@ -111,6 +110,14 @@ public class FragmentInstanceManager {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             IoTDBDescriptor.getInstance().getConfig().getModelInferenceExecutionThreadCount(),
             "model-inference-executor");
+  }
+
+  public int getInstanceContextSize() {
+    return instanceContext.size();
+  }
+
+  public int getInstanceExecutionSize() {
+    return instanceExecution.size();
   }
 
   public FragmentInstanceInfo execDataQueryFragmentInstance(
@@ -145,6 +152,7 @@ public class FragmentInstanceManager {
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                  context.initializeNumOfDrivers(drivers.size());
                   // get the sink of last driver
                   ISink sink = drivers.get(drivers.size() - 1).getSink();
 
@@ -178,7 +186,8 @@ public class FragmentInstanceManager {
         return createFailedInstanceInfo(instanceId);
       }
     } finally {
-      QUERY_METRICS.recordExecutionCost(LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
+      QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
+          LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
     }
   }
 
@@ -205,6 +214,7 @@ public class FragmentInstanceManager {
 
                 List<IDriver> drivers = new ArrayList<>();
                 driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
+                context.initializeNumOfDrivers(drivers.size());
                 // get the sink of last driver
                 ISink sink = drivers.get(drivers.size() - 1).getSink();
 
@@ -311,8 +321,12 @@ public class FragmentInstanceManager {
     instanceExecution.forEach(
         (key, execution) -> {
           if (execution.getStateMachine().getState() == FragmentInstanceState.FLUSHING
-              && (now - execution.getStartTime()) > QUERY_TIMEOUT_MS) {
-            execution.getStateMachine().failed(new TimeoutException());
+              && (now - execution.getStartTime()) > execution.getTimeoutInMs()) {
+            execution
+                .getStateMachine()
+                .failed(
+                    new TimeoutException(
+                        "Query has executed more than " + execution.getTimeoutInMs() + "ms"));
           }
         });
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
@@ -29,8 +30,14 @@ import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfig
 
 public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
 
+  protected final PipeTaskMeta pipeTaskMeta;
+
   protected String pattern;
   protected String dataRegionId;
+
+  public PipeRealtimeDataRegionCollector(PipeTaskMeta pipeTaskMeta) {
+    this.pipeTaskMeta = pipeTaskMeta;
+  }
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -38,8 +45,8 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
   }
 
   @Override
-  public void customize(
-      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
+      throws Exception {
     pattern =
         parameters.getStringOrDefault(
             PipeCollectorConstant.COLLECTOR_PATTERN_KEY,
@@ -48,20 +55,28 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
   }
 
   @Override
-  public void start() {
+  public void start() throws Exception {
     PipeInsertionDataNodeListener.getInstance().startListenAndAssign(dataRegionId, this);
   }
 
   @Override
-  public void close() {
+  public void close() throws Exception {
     PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
   }
 
   /** @param event the event from the storage engine */
   public abstract void collect(PipeRealtimeCollectEvent event);
 
+  public abstract boolean isNeedListenToTsFile();
+
+  public abstract boolean isNeedListenToInsertNode();
+
   public final String getPattern() {
     return pattern;
+  }
+
+  public final PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
   }
 
   @Override

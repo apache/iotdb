@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
@@ -77,7 +78,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
     super.setUp();
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
@@ -161,7 +162,12 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 schemas);
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
-                path, EnvironmentUtils.TEST_QUERY_FI_CONTEXT, seqResources, unseqResources, true);
+                path,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                seqResources,
+                unseqResources,
+                true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
           TsBlock batchData = tsFilesReader.nextBatch();
@@ -258,7 +264,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
                 new ArrayList<>(),
                 true);
@@ -383,7 +390,12 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
                 schemas);
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
-                path, EnvironmentUtils.TEST_QUERY_FI_CONTEXT, seqResources, unseqResources, true);
+                path,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
+                seqResources,
+                unseqResources,
+                true);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
           TsBlock batchData = tsFilesReader.nextBatch();
@@ -481,7 +493,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
         IDataBlockReader tsFilesReader =
             new SeriesDataBlockReader(
                 path,
-                EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
+                FragmentInstanceContext.createFragmentInstanceContextForCompaction(
+                    EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 tsFileManager.getTsFileList(true),
                 new ArrayList<>(),
                 true);

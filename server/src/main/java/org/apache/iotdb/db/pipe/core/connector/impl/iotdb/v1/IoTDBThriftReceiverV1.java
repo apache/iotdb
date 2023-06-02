@@ -27,15 +27,16 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
-import org.apache.iotdb.db.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -54,7 +55,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverV1.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final String RECEIVE_DIR = PipeConfig.getInstance().getReceiveFileDir();
+  private static final String RECEIVER_FILE_DIR = IOTDB_CONFIG.getPipeReceiverFileDir();
 
   private File writingFile;
   private RandomAccessFile writingFileWriter;
@@ -70,6 +71,9 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         case TRANSFER_INSERT_NODE:
           return handleTransferInsertNode(
               PipeTransferInsertNodeReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+        case TRANSFER_TABLET:
+          return handleTransferTablet(
+              PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
         case TRANSFER_FILE_PIECE:
           return handleTransferFilePiece(PipeTransferFilePieceReq.fromTPipeTransferReq(req));
         case TRANSFER_FILE_SEAL:
@@ -110,26 +114,13 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
   }
 
-  private TSStatus executeStatement(
-      Statement statement, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    final long queryId = SessionManager.getInstance().requestQueryId();
-    final ExecutionResult result =
-        Coordinator.getInstance()
-            .execute(
-                statement,
-                queryId,
-                null,
-                "",
-                partitionFetcher,
-                schemaFetcher,
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "failed to execute statement, statement: {}, result status is: {}",
-          statement,
-          result.status);
-    }
-    return result.status;
+  private TPipeTransferResp handleTransferTablet(
+      PipeTransferTabletReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    InsertTabletStatement statement = req.constructStatement();
+    return new TPipeTransferResp(
+        statement.isEmpty()
+            ? RpcUtils.SUCCESS_STATUS
+            : executeStatement(statement, partitionFetcher, schemaFetcher));
   }
 
   private TPipeTransferResp handleTransferFilePiece(PipeTransferFilePieceReq req) {
@@ -179,11 +170,11 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       writingFile = null;
     }
 
-    final File receiveDir = new File(RECEIVE_DIR);
+    final File receiveDir = new File(RECEIVER_FILE_DIR);
     if (!receiveDir.exists()) {
       boolean ignored = receiveDir.mkdirs();
     }
-    writingFile = new File(RECEIVE_DIR, fileName);
+    writingFile = new File(RECEIVER_FILE_DIR, fileName);
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
     LOGGER.info(String.format("start to write transferring file %s.", writingFile.getPath()));
   }
@@ -229,9 +220,19 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
                     req.getFileLength(), writingFileWriter.length())));
       }
 
-      writingFileWriter.close();
-
       final LoadTsFileStatement statement = new LoadTsFileStatement(writingFile.getAbsolutePath());
+
+      // 1.The writing file writer must be closed, otherwise it may cause concurrent errors during
+      // the process of loading tsfile when parsing tsfile.
+      //
+      // 2.The writing file must be set to null, otherwise if the next passed tsfile has the same
+      // name as the current tsfile, it will bypass the judgment logic of
+      // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
+      // loaded file. Since the writing file writer has already been closed, it will throw a Stream
+      // Close exception.
+      writingFileWriter.close();
+      writingFile = null;
+
       statement.setDeleteAfterLoad(true);
       statement.setVerifySchema(true);
       statement.setAutoCreateDatabase(false);
@@ -247,6 +248,33 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   private boolean isWritingFileAvailable() {
     return writingFile != null && writingFile.exists() && writingFileWriter != null;
+  }
+
+  private TSStatus executeStatement(
+      Statement statement, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    if (statement == null) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
+    }
+
+    final long queryId = SessionManager.getInstance().requestQueryId();
+    final ExecutionResult result =
+        Coordinator.getInstance()
+            .execute(
+                statement,
+                queryId,
+                null,
+                "",
+                partitionFetcher,
+                schemaFetcher,
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "failed to execute statement, statement: {}, result status is: {}",
+          statement,
+          result.status);
+    }
+    return result.status;
   }
 
   @Override

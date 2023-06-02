@@ -157,7 +157,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     }
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testRepeatedSubmitAfterExecution() throws Exception {
     logger.warn("testRepeatedSubmitAfterExecution");
     TsFileManager tsFileManager =
@@ -178,7 +178,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
 
     // an invalid task can be submitted to waiting queue, but should not be submitted to thread pool
     try {
-      Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
+      Assert.assertFalse(manager.addTaskToWaitingQueue(task2));
       Assert.assertEquals(manager.getExecutingTaskCount(), 0);
     } finally {
       CompactionTaskManager.getInstance().waitAllCompactionFinish();

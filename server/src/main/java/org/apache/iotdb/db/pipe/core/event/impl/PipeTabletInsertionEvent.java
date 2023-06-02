@@ -19,69 +19,58 @@
 
 package org.apache.iotdb.db.pipe.core.event.impl;
 
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.core.event.view.datastructure.TabletInsertionDataContainer;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent implements TabletInsertionEvent, EnrichedEvent {
+public class PipeTabletInsertionEvent implements TabletInsertionEvent {
 
-  private final InsertNode insertNode;
+  private final Tablet tablet;
+  private final String pattern;
 
-  private final AtomicInteger referenceCount;
+  private TabletInsertionDataContainer dataContainer;
 
-  public PipeTabletInsertionEvent(InsertNode insertNode) {
-    this.insertNode = insertNode;
-    this.referenceCount = new AtomicInteger(0);
+  public PipeTabletInsertionEvent(Tablet tablet) {
+    this(Objects.requireNonNull(tablet), null);
   }
 
-  public InsertNode getInsertNode() {
-    return insertNode;
+  public PipeTabletInsertionEvent(Tablet tablet, String pattern) {
+    this.tablet = Objects.requireNonNull(tablet);
+    this.pattern = pattern;
   }
+
+  public String getPattern() {
+    return pattern == null ? PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
+  }
+
+  /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
-    throw new UnsupportedOperationException("Not implemented yet");
-  }
-
-  @Override
-  public TabletInsertionEvent processByIterator(BiConsumer<Iterator<Row>, RowCollector> consumer) {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (dataContainer == null) {
+      dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
+    }
+    return dataContainer.processRowByRow(consumer);
   }
 
   @Override
   public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (dataContainer == null) {
+      dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
+    }
+    return dataContainer.processTablet(consumer);
   }
 
-  @Override
-  public boolean increaseReferenceCount(String holderMessage) {
-    // TODO: use WALPipeHandler pinMemtable
-    referenceCount.incrementAndGet();
-    return true;
-  }
-
-  @Override
-  public boolean decreaseReferenceCount(String holderMessage) {
-    // TODO: use WALPipeHandler unpinMemetable
-    referenceCount.decrementAndGet();
-    return true;
-  }
-
-  @Override
-  public int getReferenceCount() {
-    // TODO: use WALPipeHandler unpinMemetable
-    return referenceCount.get();
-  }
-
-  @Override
-  public String toString() {
-    return "PipeTabletInsertionEvent{" + "insertNode=" + insertNode + '}';
+  public Tablet convertToTablet() {
+    if (dataContainer == null) {
+      dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
+    }
+    return dataContainer.convertToTablet();
   }
 }

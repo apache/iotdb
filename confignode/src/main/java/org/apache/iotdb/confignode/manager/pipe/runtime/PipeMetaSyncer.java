@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -40,8 +41,10 @@ public class PipeMetaSyncer {
   private static final ScheduledExecutorService SYNC_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.PIPE_META_SYNC_SERVICE.getName());
-  // TODO: make this configurable
-  private static final long SYNC_INTERVAL_MINUTES = 3;
+  private static final long INITIAL_SYNC_DELAY_MINUTES =
+      PipeConfig.getInstance().getPipeMetaSyncerInitialSyncDelayMinutes();
+  private static final long SYNC_INTERVAL_MINUTES =
+      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes();
 
   private final ConfigManager configManager;
 
@@ -52,15 +55,29 @@ public class PipeMetaSyncer {
   }
 
   public synchronized void start() {
+    while (configManager.getConsensusManager() == null) {
+      try {
+        LOGGER.info("consensus layer is not ready, sleep 1s...");
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("unexpected interruption during waiting for consensus layer ready.");
+      }
+    }
+
     if (metaSyncFuture == null) {
       metaSyncFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-              SYNC_EXECUTOR, this::sync, 0, SYNC_INTERVAL_MINUTES, TimeUnit.MINUTES);
+              SYNC_EXECUTOR,
+              this::sync,
+              INITIAL_SYNC_DELAY_MINUTES,
+              SYNC_INTERVAL_MINUTES,
+              TimeUnit.MINUTES);
       LOGGER.info("PipeMetaSyncer is started successfully.");
     }
   }
 
-  private void sync() {
+  private synchronized void sync() {
     final TSStatus status = configManager.getProcedureManager().pipeMetaSync();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(

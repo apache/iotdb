@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.core.event.realtime;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 
 import org.slf4j.Logger;
@@ -57,14 +57,16 @@ public class TsFileEpochManager {
         // TsFileEpoch's life cycle
         filePath2Epoch.remove(filePath),
         resource.getDevices().stream()
-            .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)));
+            .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)),
+        event.getPattern());
   }
 
-  public PipeRealtimeCollectEvent bindPipeTabletInsertionEvent(
-      PipeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
+  public PipeRealtimeCollectEvent bindPipeInsertNodeInsertionEvent(
+      PipeInsertNodeInsertionEvent event, InsertNode node, TsFileResource resource) {
     return new PipeRealtimeCollectEvent(
         event,
         filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new),
-        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()));
+        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
+        event.getPattern());
   }
 }

@@ -38,9 +38,9 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 /** This is not thread safe class, the caller should ensure multi-threads safety. */
 @NotThreadSafe
@@ -81,10 +81,14 @@ public class SharedTsBlockQueue {
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getConfig().getMaxBytesPerFragmentInstance();
 
+  // used for SharedTsBlockQueue listener
+  private final ExecutorService executorService;
+
   public SharedTsBlockQueue(
       TFragmentInstanceId fragmentInstanceId,
       String planNodeId,
-      LocalMemoryManager localMemoryManager) {
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService) {
     this.localFragmentInstanceId =
         Validate.notNull(fragmentInstanceId, "fragment instance ID cannot be null");
     this.fullFragmentInstanceId =
@@ -92,6 +96,7 @@ public class SharedTsBlockQueue {
     this.localPlanNodeId = Validate.notNull(planNodeId, "PlanNode ID cannot be null");
     this.localMemoryManager =
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");
+    this.executorService = Validate.notNull(executorService, "ExecutorService can not be null.");
   }
 
   public boolean hasNoMoreTsBlocks() {
@@ -226,6 +231,7 @@ public class SharedTsBlockQueue {
 
     // reserve memory failed, we should wait until there is enough memory
     if (!pair.right) {
+      SettableFuture<Void> channelBlocked = SettableFuture.create();
       blockedOnMemory.addListener(
           () -> {
             synchronized (this) {
@@ -233,17 +239,23 @@ public class SharedTsBlockQueue {
               if (!blocked.isDone()) {
                 blocked.set(null);
               }
+              channelBlocked.set(null);
             }
           },
-          directExecutor());
+          // Use directExecutor() here could lead to deadlock. Thread A holds lock of
+          // SharedTsBlockQueueA and tries to invoke the listener of
+          // SharedTsBlockQueueB(when freeing memory to complete MemoryReservationFuture) while
+          // Thread B holds lock of SharedTsBlockQueueB and tries to invoke the listener of
+          // SharedTsBlockQueueA
+          executorService);
+      return channelBlocked;
     } else { // reserve memory succeeded, add the TsBlock directly
       queue.add(tsBlock);
       if (!blocked.isDone()) {
         blocked.set(null);
       }
+      return blockedOnMemory;
     }
-
-    return blockedOnMemory;
   }
 
   /** Destroy the queue and complete the future. Should only be called in normal case */

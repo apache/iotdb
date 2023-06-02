@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.collector.realtime.matcher;
 
-import org.apache.iotdb.db.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -47,7 +47,9 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     this.lock = new ReentrantReadWriteLock();
     this.collectors = new HashSet<>();
     this.deviceToCollectorsCache =
-        Caffeine.newBuilder().maximumSize(PipeConfig.getInstance().getMatcherCacheSize()).build();
+        Caffeine.newBuilder()
+            .maximumSize(PipeConfig.getInstance().getPipeCollectorMatcherCacheSize())
+            .build();
   }
 
   @Override

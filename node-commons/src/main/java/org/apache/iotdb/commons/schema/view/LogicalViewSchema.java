@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.commons.schema.view;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,6 +47,8 @@ public class LogicalViewSchema
   private String measurementId;
 
   private ViewExpression expression;
+
+  private TSDataType dataType = TSDataType.UNKNOWN;
 
   public LogicalViewSchema(String measurementId, ViewExpression expression) {
     this.measurementId = measurementId;
@@ -82,8 +88,7 @@ public class LogicalViewSchema
 
   @Override
   public TSDataType getType() {
-    // TODO: CRTODO: use a dynamic method to compute data type
-    return TSDataType.BOOLEAN;
+    return dataType;
   }
 
   @Override
@@ -93,7 +98,7 @@ public class LogicalViewSchema
 
   @Override
   public void setType(TSDataType dataType) {
-    // do nothing
+    this.dataType = dataType;
   }
 
   @Override
@@ -160,7 +165,7 @@ public class LogicalViewSchema
   public int serializedSize() {
     throw new RuntimeException(
         new UnsupportedOperationException(
-            "Can not calculate the size of logical view schema before serializing."));
+            "Can not calculate the size of view schema before serializing."));
   }
 
   @Override
@@ -220,5 +225,31 @@ public class LogicalViewSchema
 
   public void setExpression(ViewExpression expression) {
     this.expression = expression;
+  }
+
+  public boolean isWritable() {
+    return this.expression instanceof TimeSeriesViewOperand;
+  }
+
+  public String getSourcePathStringIfWritable() {
+    if (this.isWritable()) {
+      return ((TimeSeriesViewOperand) this.expression).getPathString();
+    }
+    return null;
+  }
+
+  public PartialPath getSourcePathIfWritable() {
+    if (this.isWritable()) {
+      try {
+        return new PartialPath(((TimeSeriesViewOperand) this.expression).getPathString());
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(
+            new MetadataException(
+                String.format(
+                    "View with measurementID [%s] is broken. It stores illegal path [%s].",
+                    this.measurementId, this.getSourcePathStringIfWritable())));
+      }
+    }
+    return null;
   }
 }

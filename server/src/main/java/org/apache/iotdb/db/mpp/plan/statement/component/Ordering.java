@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import java.util.Comparator;
+
 public enum Ordering {
   ASC,
   DESC;
@@ -33,5 +35,13 @@ public enum Ordering {
 
   public boolean isAscending() {
     return this == ASC;
+  }
+
+  public Comparator<String> getStringComparator() {
+    if (this == ASC) {
+      return Comparator.naturalOrder();
+    } else {
+      return Comparator.reverseOrder();
+    }
   }
 }

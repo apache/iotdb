@@ -19,13 +19,10 @@
 
 package org.apache.iotdb.consensus.iot.client;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
-import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.iot.logdispatcher.Batch;
 import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcher.LogDispatcherThread;
+import org.apache.iotdb.consensus.iot.logdispatcher.LogDispatcherThreadMetrics;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -41,10 +38,15 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   private final LogDispatcherThread thread;
   private final Batch batch;
   private final long createTime;
+  private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
   private int retryCount;
 
-  public DispatchLogHandler(LogDispatcherThread thread, Batch batch) {
+  public DispatchLogHandler(
+      LogDispatcherThread thread,
+      LogDispatcherThreadMetrics logDispatcherThreadMetrics,
+      Batch batch) {
     this.thread = thread;
+    this.logDispatcherThreadMetrics = logDispatcherThreadMetrics;
     this.batch = batch;
     this.createTime = System.nanoTime();
   }
@@ -64,17 +66,8 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
       // update safely deleted search index after current sync index is updated by removeBatch
       thread.updateSafelyDeletedSearchIndex();
     }
-    MetricService.getInstance()
-        .getOrCreateHistogram(
-            Metric.STAGE.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            Metric.IOT_CONSENSUS.toString(),
-            Tag.TYPE.toString(),
-            "syncLogTimePerRequest",
-            Tag.REGION.toString(),
-            this.thread.getPeer().getGroupId().toString())
-        .update((System.nanoTime() - createTime) / batch.getLogEntries().size());
+    logDispatcherThreadMetrics.recordSyncLogTimePerRequest(
+        (System.nanoTime() - createTime) / batch.getLogEntries().size());
   }
 
   private boolean needRetry(int statusCode) {

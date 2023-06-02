@@ -37,6 +37,9 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -188,15 +191,15 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         }
 
         for (TSDataType dataType : createAlignedTimeSeriesPlan.getDataTypes()) {
-          dataOutputStream.writeByte(dataType.ordinal());
+          dataOutputStream.writeByte(dataType.serialize());
         }
 
         for (TSEncoding tsEncoding : createAlignedTimeSeriesPlan.getEncodings()) {
-          dataOutputStream.writeByte(tsEncoding.ordinal());
+          dataOutputStream.writeByte(tsEncoding.serialize());
         }
 
         for (CompressionType compressionType : createAlignedTimeSeriesPlan.getCompressors()) {
-          dataOutputStream.writeByte(compressionType.ordinal());
+          dataOutputStream.writeByte(compressionType.serialize());
         }
 
         for (long tagOffset : createAlignedTimeSeriesPlan.getTagOffsets()) {
@@ -253,9 +256,9 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         byte[] bytes = createTimeSeriesPlan.getPath().getFullPath().getBytes();
         dataOutputStream.writeInt(bytes.length);
         dataOutputStream.write(bytes);
-        dataOutputStream.writeByte(createTimeSeriesPlan.getDataType().ordinal());
-        dataOutputStream.writeByte(createTimeSeriesPlan.getEncoding().ordinal());
-        dataOutputStream.writeByte(createTimeSeriesPlan.getCompressor().ordinal());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getDataType().serialize());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getEncoding().serialize());
+        dataOutputStream.writeByte(createTimeSeriesPlan.getCompressor().serialize());
         dataOutputStream.writeLong(createTimeSeriesPlan.getTagOffset());
 
         // alias
@@ -419,6 +422,40 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
           dataOutputStream.write(bytes);
           ViewExpression.serialize(thisExp, dataOutputStream);
         }
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitPreDeleteLogicalView(
+        IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, DataOutputStream dataOutputStream) {
+      try {
+        preDeleteLogicalViewPlan.getPath().serialize(dataOutputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitRollbackPreDeleteLogicalView(
+        IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan,
+        DataOutputStream dataOutputStream) {
+      try {
+        rollbackPreDeleteLogicalViewPlan.getPath().serialize(dataOutputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitDeleteLogicalView(
+        IDeleteLogicalViewPlan deleteLogicalViewPlan, DataOutputStream dataOutputStream) {
+      try {
+        deleteLogicalViewPlan.getPath().serialize(dataOutputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (IOException e) {
         return new SchemaRegionPlanSerializationResult(e);

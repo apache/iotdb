@@ -40,14 +40,14 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
-        Metric.CACHE_HIT.toString(),
+        Metric.CACHE_HIT_RATE.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
         l -> timeSeriesMetadataCache.calculateTimeSeriesMetadataHitRatio() * 100.0d,
         Tag.NAME.toString(),
         "timeSeriesMeta");
     metricService.createAutoGauge(
-        Metric.CACHE_HIT.toString(),
+        Metric.CACHE_HIT_RATE.toString(),
         MetricLevel.IMPORTANT,
         timeSeriesMetadataCache,
         l -> timeSeriesMetadataCache.calculateBloomFilterHitRatio() * 100.0d,
@@ -58,15 +58,25 @@ public class TimeSeriesMetadataCacheMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "timeSeriesMeta");
+        MetricType.AUTO_GAUGE,
+        Metric.CACHE_HIT_RATE.toString(),
+        Tag.NAME.toString(),
+        "timeSeriesMeta");
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.CACHE_HIT.toString(), Tag.NAME.toString(), "bloomFilter");
+        MetricType.AUTO_GAUGE,
+        Metric.CACHE_HIT_RATE.toString(),
+        Tag.NAME.toString(),
+        "bloomFilter");
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     TimeSeriesMetadataCacheMetrics that = (TimeSeriesMetadataCacheMetrics) o;
     return Objects.equals(timeSeriesMetadataCache, that.timeSeriesMetadataCache);
   }

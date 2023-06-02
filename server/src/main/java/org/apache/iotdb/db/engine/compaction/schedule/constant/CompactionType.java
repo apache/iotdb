@@ -19,7 +19,18 @@
 package org.apache.iotdb.db.engine.compaction.schedule.constant;
 
 public enum CompactionType {
-  INNER_SEQ_COMPACTION,
-  INNER_UNSEQ_COMPACTION,
-  CROSS_COMPACTION
+  INNER_SEQ_COMPACTION("inner_seq_compaction"),
+  INNER_UNSEQ_COMPACTION("inner_unseq_compaction"),
+  CROSS_COMPACTION("cross_compaction");
+
+  private String name;
+
+  CompactionType(String name) {
+    this.name = name;
+  }
+
+  @Override
+  public String toString() {
+    return name;
+  }
 }

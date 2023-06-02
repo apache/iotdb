@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -140,11 +141,11 @@ public class InsertMultiTabletsNode extends InsertNode {
       List<WritePlanNode> tmpResult = insertTabletNode.splitByPartition(analysis);
       for (WritePlanNode subNode : tmpResult) {
         TRegionReplicaSet dataRegionReplicaSet = ((InsertNode) subNode).getDataRegionReplicaSet();
-        if (splitMap.containsKey(dataRegionReplicaSet)) {
-          InsertMultiTabletsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+        InsertMultiTabletsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+        if (tmpNode != null) {
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
         } else {
-          InsertMultiTabletsNode tmpNode = new InsertMultiTabletsNode(this.getPlanNodeId());
+          tmpNode = new InsertMultiTabletsNode(this.getPlanNodeId());
           tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
           splitMap.put(dataRegionReplicaSet, tmpNode);
@@ -262,5 +263,11 @@ public class InsertMultiTabletsNode extends InsertNode {
   @Override
   public long getMinTime() {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+    insertTabletNodeList.forEach(node -> node.setProgressIndex(progressIndex));
   }
 }

@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -551,6 +552,8 @@ public interface IManager {
    *
    */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
+
+  TSStatus deleteLogicalView(TDeleteLogicalViewReq req);
 
   /**
    * Create Pipe

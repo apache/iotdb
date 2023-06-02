@@ -46,7 +46,10 @@ public enum TSDataType {
   TEXT((byte) 5),
 
   /** VECTOR */
-  VECTOR((byte) 6);
+  VECTOR((byte) 6),
+
+  /** UNKNOWN */
+  UNKNOWN((byte) 7);
 
   private final byte type;
 
@@ -84,6 +87,8 @@ public enum TSDataType {
         return TSDataType.TEXT;
       case 6:
         return TSDataType.VECTOR;
+      case 7:
+        return TSDataType.UNKNOWN;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }

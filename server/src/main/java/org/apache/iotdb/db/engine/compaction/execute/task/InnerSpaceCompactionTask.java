@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -33,7 +32,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -103,6 +103,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
+  @SuppressWarnings("squid:S6541")
   protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
@@ -150,6 +151,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         performer.setSummary(summary);
         performer.perform();
 
+        CompactionUtils.updateProgressIndex(
+            targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
         CompactionUtils.moveTargetFile(
             targetTsFileList, true, storageGroupName + "-" + dataRegionId);
 
@@ -224,9 +227,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             storageGroupName,
             dataRegionId);
         // delete the old files
-        long totalSizeOfDeletedFile = 0L;
-        for (TsFileResource resource : selectedTsFileResourceList) {
-          totalSizeOfDeletedFile += resource.getTsFileSize();
+        long[] sizeList = new long[selectedTsFileResourceList.size()];
+        for (int i = 0, size = selectedTsFileResourceList.size(); i < size; ++i) {
+          sizeList[i] = selectedTsFileResourceList.get(i).getTsFileSize();
         }
         CompactionUtils.deleteTsFilesInDisk(
             selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
@@ -235,8 +238,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
         // inner space compaction task has only one target file
         if (!targetTsFileResource.isDeleted()) {
-          TsFileMetricManager.getInstance()
-              .addFile(targetTsFileResource.getTsFile().length(), sequence);
+          FileMetrics.getInstance()
+              .addFile(
+                  targetTsFileResource.getTsFile().length(),
+                  sequence,
+                  targetTsFileResource.getTsFile().getName());
 
           // set target resource to CLOSED, so that it can be selected to compact
           targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
@@ -244,10 +250,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           // target resource is empty after compaction, then delete it
           targetTsFileResource.remove();
         }
-        TsFileMetricManager.getInstance()
-            .deleteFile(totalSizeOfDeletedFile, sequence, selectedTsFileResourceList.size());
+        List<String> fileNames = new ArrayList<>();
+        for (TsFileResource resource : selectedTsFileResourceList) {
+          fileNames.add(resource.getTsFile().getName());
+        }
+        FileMetrics.getInstance().deleteFile(sizeList, sequence, fileNames);
 
-        CompactionMetricsManager.getInstance().updateSummary(summary);
+        CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
         LOGGER.info(
@@ -320,8 +329,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public void setSourceFilesToCompactionCandidate() {
-    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+  protected List<TsFileResource> getAllSourceTsFiles() {
+    return this.selectedTsFileResourceList;
   }
 
   private void collectSelectedFilesInfo() {
@@ -417,9 +426,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         resource.writeUnlock();
       }
       try {
-        if (!resource.isDeleted()) {
-          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.NORMAL);
-        }
+        // try to set the file's status back to NORMAL. If the status is Deleted, its status won't
+        // be changed
+        selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.NORMAL);
       } catch (Throwable e) {
         LOGGER.error("Exception occurs when resetting resource status", e);
       }
@@ -436,19 +445,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         TsFileResource resource = selectedTsFileResourceList.get(i);
         resource.readLock();
         isHoldingReadLock[i] = true;
-        if (resource.isCompacting()
-            || !resource.isClosed()
-            || !resource.getTsFile().exists()
-            || resource.isDeleted()) {
-          // this source file cannot be compacted
-          // release the lock of locked files, and return
+        if (!resource.setStatus(TsFileResourceStatus.COMPACTING)) {
           releaseFileLocksAndResetMergingStatus();
           return false;
         }
-      }
-
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        resource.setStatus(TsFileResourceStatus.COMPACTING);
       }
     } catch (Throwable e) {
       releaseFileLocksAndResetMergingStatus();
