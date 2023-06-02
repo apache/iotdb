@@ -224,6 +224,7 @@ public class SharedTsBlockQueue {
 
     // reserve memory failed, we should wait until there is enough memory
     if (!pair.right) {
+      SettableFuture<Void> channelBlocked = SettableFuture.create();
       blockedOnMemory.addListener(
           () -> {
             synchronized (this) {
@@ -231,6 +232,7 @@ public class SharedTsBlockQueue {
               if (!blocked.isDone()) {
                 blocked.set(null);
               }
+              channelBlocked.set(null);
             }
           },
           // Use directExecutor() here could lead to deadlock. Thread A holds lock of
@@ -239,14 +241,14 @@ public class SharedTsBlockQueue {
           // Thread B holds lock of SharedTsBlockQueueB and tries to invoke the listener of
           // SharedTsBlockQueueA
           executorService);
+      return channelBlocked;
     } else { // reserve memory succeeded, add the TsBlock directly
       queue.add(tsBlock);
       if (!blocked.isDone()) {
         blocked.set(null);
       }
+      return blockedOnMemory;
     }
-
-    return blockedOnMemory;
   }
 
   /** Destroy the queue and complete the future. Should only be called in normal case */
