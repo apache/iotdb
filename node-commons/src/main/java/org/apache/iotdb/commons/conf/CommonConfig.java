@@ -165,6 +165,10 @@ public class CommonConfig {
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
+    if (homeDir == null) {
+      return;
+    }
+
     File homeFile = new File(homeDir);
     try {
       homeDir = homeFile.getCanonicalPath();

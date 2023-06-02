@@ -1319,6 +1319,10 @@ public class IoTDBConfig {
     if (dataHomeDir == null) {
       dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
     }
+    if (dataHomeDir == null) {
+      return dir;
+    }
+
     File dataHomeFile = new File(dataHomeDir);
     try {
       dataHomeDir = dataHomeFile.getCanonicalPath();
