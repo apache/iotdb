@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.pipe.core.collector.realtime;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.core.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.pipe.api.PipeCollector;
@@ -30,19 +31,14 @@ import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfig
 
 public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
 
-  protected final PipeTaskMeta pipeTaskMeta;
-
   protected String pattern;
   protected String dataRegionId;
+  protected PipeTaskMeta pipeTaskMeta;
 
-  public PipeRealtimeDataRegionCollector(PipeTaskMeta pipeTaskMeta) {
-    this.pipeTaskMeta = pipeTaskMeta;
-  }
+  public PipeRealtimeDataRegionCollector() {}
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(PipeCollectorConstant.DATA_REGION_KEY);
-  }
+  public void validate(PipeParameterValidator validator) throws Exception {}
 
   @Override
   public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
@@ -51,7 +47,11 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
         parameters.getStringOrDefault(
             PipeCollectorConstant.COLLECTOR_PATTERN_KEY,
             PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE);
-    dataRegionId = parameters.getString(PipeCollectorConstant.DATA_REGION_KEY);
+
+    final PipeTaskCollectorRuntimeEnvironment environment =
+        (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    dataRegionId = String.valueOf(environment.getRegionId());
+    pipeTaskMeta = environment.getPipeTaskMeta();
   }
 
   @Override

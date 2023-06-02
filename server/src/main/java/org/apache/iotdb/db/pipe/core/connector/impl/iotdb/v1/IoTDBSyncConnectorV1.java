@@ -56,12 +56,12 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 
 public class IoTDBSyncConnectorV1 implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1.class);

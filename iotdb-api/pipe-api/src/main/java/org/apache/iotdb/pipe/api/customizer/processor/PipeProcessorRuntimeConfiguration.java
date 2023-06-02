@@ -22,14 +22,11 @@ package org.apache.iotdb.pipe.api.customizer.processor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 /**
  * Used in {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} to
  * customize the runtime behavior of the PipeProcessor.
  */
-public class PipeProcessorRuntimeConfiguration implements PipeRuntimeConfiguration {
-
-  @Override
-  public void check() throws PipeException {}
-}
+public interface PipeProcessorRuntimeConfiguration extends PipeRuntimeConfiguration {}

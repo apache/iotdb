@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.api.customizer.connector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.connector.parallel.ParallelStrategy;
 import org.apache.iotdb.pipe.api.customizer.connector.retry.RetryStrategy;
 import org.apache.iotdb.pipe.api.customizer.connector.reuse.ReuseStrategy;
@@ -43,42 +44,10 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
  *       .retryStrategy(Z);
  * }</pre>
  */
-public class PipeConnectorRuntimeConfiguration implements PipeRuntimeConfiguration {
+public interface PipeConnectorRuntimeConfiguration extends PipeRuntimeConfiguration {
+  PipeConnectorRuntimeConfiguration reuseStrategy(ReuseStrategy reuseStrategy);
 
-  private ReuseStrategy reuseStrategy;
-  private ParallelStrategy parallelStrategy;
-  private RetryStrategy retryStrategy;
+  PipeConnectorRuntimeConfiguration parallelStrategy(ParallelStrategy parallelStrategy);
 
-  public PipeConnectorRuntimeConfiguration reuseStrategy(ReuseStrategy reuseStrategy) {
-    this.reuseStrategy = reuseStrategy;
-    return this;
-  }
-
-  public PipeConnectorRuntimeConfiguration parallelStrategy(ParallelStrategy parallelStrategy) {
-    this.parallelStrategy = parallelStrategy;
-    return this;
-  }
-
-  public PipeConnectorRuntimeConfiguration retryStrategy(RetryStrategy retryStrategy) {
-    this.retryStrategy = retryStrategy;
-    return this;
-  }
-
-  @Override
-  public void check() throws PipeException {
-    if (reuseStrategy == null) {
-      throw new PipeException("ReuseStrategy is not set!");
-    }
-    reuseStrategy.check();
-
-    if (parallelStrategy == null) {
-      throw new PipeException("ParallelStrategy is not set!");
-    }
-    parallelStrategy.check();
-
-    if (retryStrategy == null) {
-      throw new PipeException("RetryStrategy is not set!");
-    }
-    retryStrategy.check();
-  }
+  PipeConnectorRuntimeConfiguration retryStrategy(RetryStrategy retryStrategy);
 }
