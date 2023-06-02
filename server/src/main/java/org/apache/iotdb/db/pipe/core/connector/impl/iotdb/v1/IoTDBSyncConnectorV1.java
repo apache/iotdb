@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorClient;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
@@ -163,19 +164,29 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // TODO: support more TabletInsertionEvent
     // PipeProcessor can change the type of TabletInsertionEvent
-    if (!(tabletInsertionEvent instanceof PipeTabletInsertionEvent)) {
-      throw new NotImplementedException(
-          "IoTDBSyncConnectorV1 only support PipeTabletInsertionEvent.");
-    }
-
     try {
-      doTransfer((PipeTabletInsertionEvent) tabletInsertionEvent);
+      if (tabletInsertionEvent instanceof PipeInsertNodeInsertionEvent) {
+        doTransfer((PipeInsertNodeInsertionEvent) tabletInsertionEvent);
+      } else if (tabletInsertionEvent instanceof PipeTabletInsertionEvent) {
+        doTransfer((PipeTabletInsertionEvent) tabletInsertionEvent);
+      } else {
+        throw new NotImplementedException(
+            "IoTDBSyncConnectorV1 only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+      }
     } catch (TException e) {
       LOGGER.error(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
-      // The connection may be broken, try to reconnect by catching PipeConnectionException
-      throw new PipeConnectionException("Network error when transfer tablet insertion event.", e);
+      // the connection may be broken, try to reconnect by catching PipeConnectionException
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tablet insertion event, because %s.", e.getMessage()),
+          e);
     }
+  }
+
+  private void doTransfer(PipeInsertNodeInsertionEvent tabletInsertionEvent)
+      throws IoTDBConnectionException, StatementExecutionException {
+    sessionPool.insertTablet(tabletInsertionEvent.convertToTablet());
   }
 
   private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
