@@ -86,6 +86,11 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
     return this.measurementSchema.isLogicalView();
   }
 
+  @Override
+  public ITimeSeriesSchemaInfo snapshot() {
+    return this;
+  }
+
   public TSDataType getDataType() {
     return measurementSchema.getType();
   }

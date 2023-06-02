@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -49,18 +50,25 @@ public class LastQueryScanNode extends SeriesSourceNode {
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
 
+  private final String outputViewPath;
+
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public LastQueryScanNode(PlanNodeId id, MeasurementPath seriesPath) {
+  public LastQueryScanNode(PlanNodeId id, MeasurementPath seriesPath, String outputViewPath) {
     super(id);
     this.seriesPath = seriesPath;
+    this.outputViewPath = outputViewPath;
   }
 
   public LastQueryScanNode(
-      PlanNodeId id, MeasurementPath seriesPath, TRegionReplicaSet regionReplicaSet) {
+      PlanNodeId id,
+      MeasurementPath seriesPath,
+      String outputViewPath,
+      TRegionReplicaSet regionReplicaSet) {
     super(id);
     this.seriesPath = seriesPath;
+    this.outputViewPath = outputViewPath;
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -81,6 +89,17 @@ public class LastQueryScanNode extends SeriesSourceNode {
     return seriesPath;
   }
 
+  public String getOutputViewPath() {
+    return outputViewPath;
+  }
+
+  public String getOutputSymbolForSort() {
+    if (outputViewPath != null) {
+      return outputViewPath;
+    }
+    return seriesPath.getFullPath();
+  }
+
   @Override
   public void close() throws Exception {}
 
@@ -96,7 +115,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryScanNode(getPlanNodeId(), seriesPath, regionReplicaSet);
+    return new LastQueryScanNode(getPlanNodeId(), seriesPath, outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -121,12 +140,13 @@ public class LastQueryScanNode extends SeriesSourceNode {
     if (!super.equals(o)) return false;
     LastQueryScanNode that = (LastQueryScanNode) o;
     return Objects.equals(seriesPath, that.seriesPath)
+        && Objects.equals(outputViewPath, that.outputViewPath)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), seriesPath, regionReplicaSet);
+    return Objects.hash(super.hashCode(), seriesPath, outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -142,18 +162,28 @@ public class LastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
+    if (outputViewPath != null) {
+      ReadWriteIOUtils.write(outputViewPath, byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LAST_QUERY_SCAN.serialize(stream);
     seriesPath.serialize(stream);
+    ReadWriteIOUtils.write(outputViewPath == null, stream);
+    if (outputViewPath != null) {
+      ReadWriteIOUtils.write(outputViewPath, stream);
+    }
   }
 
   public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
+    boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
+    String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryScanNode(planNodeId, partialPath);
+    return new LastQueryScanNode(planNodeId, partialPath, outputPathSymbol);
   }
 
   @Override
@@ -164,5 +194,13 @@ public class LastQueryScanNode extends SeriesSourceNode {
   @Override
   public Filter getPartitionTimeFilter() {
     return null;
+  }
+
+  public String outputPathSymbol() {
+    if (outputViewPath == null) {
+      return seriesPath.getFullPath();
+    } else {
+      return outputViewPath;
+    }
   }
 }

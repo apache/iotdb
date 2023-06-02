@@ -63,13 +63,16 @@ public class WhenThenExpression extends BinaryExpression {
 
   @Override
   public String getExpressionStringInternal() {
-    return "WHEN " + this.getWhen().toString() + " THEN " + this.getThen().toString();
+    return "WHEN "
+        + this.getWhen().getExpressionString()
+        + " THEN "
+        + this.getThen().getExpressionString();
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
-    String when = this.getWhen().getStringWithViewOfThisExpression();
-    String then = this.getThen().getStringWithViewOfThisExpression();
+  public String getOutputSymbolInternal() {
+    String when = this.getWhen().getOutputSymbol();
+    String then = this.getThen().getOutputSymbol();
     return "WHEN " + when + " THEN " + then;
   }
 

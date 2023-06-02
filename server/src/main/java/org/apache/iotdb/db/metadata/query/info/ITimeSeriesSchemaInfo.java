@@ -36,4 +36,6 @@ public interface ITimeSeriesSchemaInfo extends ISchemaInfo {
   boolean isUnderAlignedDevice();
 
   boolean isLogicalView();
+
+  ITimeSeriesSchemaInfo snapshot();
 }

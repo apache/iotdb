@@ -31,6 +31,8 @@ import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransfe
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
@@ -120,40 +122,58 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    // TODO: support more TabletInsertionEvent
     // PipeProcessor can change the type of TabletInsertionEvent
-    if (!(tabletInsertionEvent instanceof PipeTabletInsertionEvent)) {
-      throw new NotImplementedException(
-          "IoTDBThriftConnectorV1 only support PipeTabletInsertionEvent.");
-    }
-
     try {
-      doTransfer((PipeTabletInsertionEvent) tabletInsertionEvent);
+      if (tabletInsertionEvent instanceof PipeInsertNodeInsertionEvent) {
+        doTransfer((PipeInsertNodeInsertionEvent) tabletInsertionEvent);
+      } else if (tabletInsertionEvent instanceof PipeTabletInsertionEvent) {
+        doTransfer((PipeTabletInsertionEvent) tabletInsertionEvent);
+      } else {
+        throw new NotImplementedException(
+            "IoTDBThriftConnectorV1 only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+      }
     } catch (TException e) {
       LOGGER.error(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
-      throw new PipeConnectionException("Network error when transfer tablet insertion event.", e);
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tablet insertion event, because %s.", e.getMessage()),
+          e);
     }
   }
 
-  private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
+  private void doTransfer(PipeInsertNodeInsertionEvent pipeInsertNodeInsertionEvent)
       throws PipeException, TException, WALPipeException {
     final TPipeTransferResp resp =
         client.pipeTransfer(
-            PipeTransferInsertNodeReq.toTPipeTransferReq(pipeTabletInsertionEvent.getInsertNode()));
+            PipeTransferInsertNodeReq.toTPipeTransferReq(
+                pipeInsertNodeInsertionEvent.getInsertNode()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Transfer tablet insertion event %s error, result status %s",
+              "Transfer PipeInsertNodeInsertionEvent %s error, result status %s",
+              pipeInsertNodeInsertionEvent, resp.status));
+    }
+  }
+
+  private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
+      throws PipeException, TException, IOException {
+    final TPipeTransferResp resp =
+        client.pipeTransfer(
+            PipeTransferTabletReq.toTPipeTransferReq(pipeTabletInsertionEvent.convertToTablet()));
+
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Transfer PipeTabletInsertionEvent %s error, result status %s",
               pipeTabletInsertionEvent, resp.status));
     }
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // TODO: support more TsFileInsertionEvent
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
@@ -166,7 +186,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       LOGGER.error(
           "Network error when transfer tsfile insertion event: {}.", tsFileInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
-      throw new PipeConnectionException("Network error when transfer tsfile insertion event.", e);
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tsfile insertion event, because %s.", e.getMessage()),
+          e);
     }
   }
 

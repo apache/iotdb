@@ -20,7 +20,6 @@
 package org.apache.iotdb.metrics.dropwizard.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
-import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 
 import java.util.concurrent.TimeUnit;
@@ -43,7 +42,7 @@ public class DropwizardTimer implements Timer {
   }
 
   @Override
-  public Rate getImmutableRate() {
-    return new DropwizardRate(timer);
+  public long getCount() {
+    return timer.getCount();
   }
 }

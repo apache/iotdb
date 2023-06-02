@@ -29,6 +29,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Void> {
+
+  @Override
+  public Expression process(Expression expression, Void context) {
+    Expression newExpression = expression.accept(this, context);
+
+    if (expression.getViewPath() != null) {
+      PartialPath viewPath = expression.getViewPath();
+      newExpression.setViewPath(new PartialPath(viewPath.getMeasurement(), false));
+    }
+    return newExpression;
+  }
+
   @Override
   public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
     List<Expression> childExpressions = new ArrayList<>();
@@ -36,8 +48,8 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Void> {
       childExpressions.add(process(suffixExpression, null));
     }
     return new FunctionExpression(
-        ((FunctionExpression) functionExpression).getFunctionName(),
-        ((FunctionExpression) functionExpression).getFunctionAttributes(),
+        functionExpression.getFunctionName(),
+        functionExpression.getFunctionAttributes(),
         childExpressions);
   }
 

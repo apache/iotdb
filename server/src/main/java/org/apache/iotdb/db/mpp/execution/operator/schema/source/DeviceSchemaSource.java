@@ -105,9 +105,4 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
   public long getSchemaStatistic(ISchemaRegion schemaRegion) {
     return schemaRegion.getSchemaRegionStatistics().getDevicesNumber();
   }
-
-  @Override
-  public void processDelayedTask(TsBlockBuilder tsBlockBuilder, String database) {
-    // There is no delayed tasks. So, do nothing.
-  }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransfe
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -69,6 +71,9 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         case TRANSFER_INSERT_NODE:
           return handleTransferInsertNode(
               PipeTransferInsertNodeReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+        case TRANSFER_TABLET:
+          return handleTransferTablet(
+              PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
         case TRANSFER_FILE_PIECE:
           return handleTransferFilePiece(PipeTransferFilePieceReq.fromTPipeTransferReq(req));
         case TRANSFER_FILE_SEAL:
@@ -109,26 +114,13 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
   }
 
-  private TSStatus executeStatement(
-      Statement statement, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    final long queryId = SessionManager.getInstance().requestQueryId();
-    final ExecutionResult result =
-        Coordinator.getInstance()
-            .execute(
-                statement,
-                queryId,
-                null,
-                "",
-                partitionFetcher,
-                schemaFetcher,
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "failed to execute statement, statement: {}, result status is: {}",
-          statement,
-          result.status);
-    }
-    return result.status;
+  private TPipeTransferResp handleTransferTablet(
+      PipeTransferTabletReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    InsertTabletStatement statement = req.constructStatement();
+    return new TPipeTransferResp(
+        statement.isEmpty()
+            ? RpcUtils.SUCCESS_STATUS
+            : executeStatement(statement, partitionFetcher, schemaFetcher));
   }
 
   private TPipeTransferResp handleTransferFilePiece(PipeTransferFilePieceReq req) {
@@ -256,6 +248,33 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   private boolean isWritingFileAvailable() {
     return writingFile != null && writingFile.exists() && writingFileWriter != null;
+  }
+
+  private TSStatus executeStatement(
+      Statement statement, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    if (statement == null) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
+    }
+
+    final long queryId = SessionManager.getInstance().requestQueryId();
+    final ExecutionResult result =
+        Coordinator.getInstance()
+            .execute(
+                statement,
+                queryId,
+                null,
+                "",
+                partitionFetcher,
+                schemaFetcher,
+                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "failed to execute statement, statement: {}, result status is: {}",
+          statement,
+          result.status);
+    }
+    return result.status;
   }
 
   @Override

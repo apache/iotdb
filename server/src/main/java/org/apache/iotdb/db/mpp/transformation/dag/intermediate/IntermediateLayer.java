@@ -91,6 +91,6 @@ public abstract class IntermediateLayer {
 
   @Override
   public String toString() {
-    return expression.toString();
+    return expression.getExpressionString();
   }
 }

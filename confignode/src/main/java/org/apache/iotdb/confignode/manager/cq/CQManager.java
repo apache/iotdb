@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.cq;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.cq.CQState;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -61,7 +62,8 @@ public class CQManager {
     this.configManager = configManager;
     this.lock = new ReentrantReadWriteLock();
     this.executor =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(CONF.getCqSubmitThread(), "CQ-Scheduler");
+        IoTDBThreadPoolFactory.newScheduledThreadPool(
+            CONF.getCqSubmitThread(), ThreadName.CQ_MANAGER.getName());
   }
 
   public TSStatus createCQ(TCreateCQReq req) {

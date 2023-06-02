@@ -48,7 +48,7 @@ public abstract class LeafOperand extends Expression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
+  public String getOutputSymbolInternal() {
     return this.getExpressionString();
   }
 }

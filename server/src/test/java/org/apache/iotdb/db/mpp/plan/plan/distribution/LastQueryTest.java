@@ -201,9 +201,10 @@ public class LastQueryTest {
       if (selectPath.isUnderAlignedEntity()) {
         sourceNodeList.add(
             new AlignedLastQueryScanNode(
-                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath)));
+                context.getQueryId().genPlanNodeId(), new AlignedPath(selectPath), null));
       } else {
-        sourceNodeList.add(new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath));
+        sourceNodeList.add(
+            new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectPath, null));
       }
     }
 

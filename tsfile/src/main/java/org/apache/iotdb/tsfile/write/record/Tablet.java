@@ -378,6 +378,7 @@ public class Tablet {
   }
 
   private void writeTimes(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(timestamps.length, stream);
     for (long time : timestamps) {
       ReadWriteIOUtils.write(time, stream);
     }
@@ -385,14 +386,15 @@ public class Tablet {
 
   /** Serialize bitmaps */
   private void writeBitMaps(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), stream);
+    ReadWriteIOUtils.write(bitMaps != null ? 1 : 0, stream);
     if (bitMaps != null) {
       for (BitMap bitMap : bitMaps) {
         if (bitMap == null) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
+          ReadWriteIOUtils.write(0, stream);
         } else {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
-          stream.write(bitMap.getByteArray());
+          ReadWriteIOUtils.write(1, stream);
+          ReadWriteIOUtils.write(bitMap.getSize(), stream);
+          ReadWriteIOUtils.write(new Binary(bitMap.getByteArray()), stream);
         }
       }
     }
@@ -410,38 +412,48 @@ public class Tablet {
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
-        for (int j = 0; j < rowSize; j++) {
+        ReadWriteIOUtils.write(intValues.length, stream);
+        for (int j = 0; j < intValues.length; j++) {
           ReadWriteIOUtils.write(intValues[j], stream);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
-        for (int j = 0; j < rowSize; j++) {
+        ReadWriteIOUtils.write(longValues.length, stream);
+        for (int j = 0; j < longValues.length; j++) {
           ReadWriteIOUtils.write(longValues[j], stream);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
-        for (int j = 0; j < rowSize; j++) {
+        ReadWriteIOUtils.write(floatValues.length, stream);
+        for (int j = 0; j < floatValues.length; j++) {
           ReadWriteIOUtils.write(floatValues[j], stream);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = 0; j < rowSize; j++) {
+        ReadWriteIOUtils.write(doubleValues.length, stream);
+        for (int j = 0; j < doubleValues.length; j++) {
           ReadWriteIOUtils.write(doubleValues[j], stream);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
-        for (int j = 0; j < rowSize; j++) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
+        ReadWriteIOUtils.write(boolValues.length, stream);
+        for (int j = 0; j < boolValues.length; j++) {
+          ReadWriteIOUtils.write(boolValues[j] ? 1 : 0, stream);
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = 0; j < rowSize; j++) {
-          ReadWriteIOUtils.write(binaryValues[j], stream);
+        ReadWriteIOUtils.write(binaryValues.length, stream);
+        for (int j = 0; j < binaryValues.length; j++) {
+          boolean isNull = (binaryValues[j] == null);
+          ReadWriteIOUtils.write(isNull ? 1 : 0, stream);
+          if (!isNull) {
+            ReadWriteIOUtils.write(binaryValues[j], stream);
+          }
         }
         break;
       default:
@@ -466,22 +478,23 @@ public class Tablet {
     }
 
     // deserialize times
-    long[] times = new long[rowSize];
-    for (int i = 0; i < rowSize; i++) {
+    int timesSize = ReadWriteIOUtils.readInt(byteBuffer);
+    long[] times = new long[timesSize];
+    for (int i = 0; i < timesSize; i++) {
       times[i] = ReadWriteIOUtils.readLong(byteBuffer);
     }
 
     // deserialize bitmaps
-    boolean hasBitMaps = BytesUtils.byteToBool(byteBuffer.get());
+    boolean hasBitMaps = (ReadWriteIOUtils.readInt(byteBuffer) == 1);
     BitMap[] bitMaps = null;
     if (hasBitMaps) {
-      bitMaps = readBitMapsFromBuffer(byteBuffer, schemaSize, rowSize);
+      bitMaps = readBitMapsFromBuffer(byteBuffer, schemaSize);
     }
 
     // deserialize values
     TSDataType[] dataTypes =
         schemas.stream().map(MeasurementSchema::getType).toArray(TSDataType[]::new);
-    Object[] values = readTabletValuesFromBuffer(byteBuffer, dataTypes, schemaSize, rowSize);
+    Object[] values = readTabletValuesFromBuffer(byteBuffer, dataTypes, schemaSize);
 
     Tablet tablet = new Tablet(deviceId, schemas, times, values, bitMaps, rowSize);
     tablet.constructMeasurementIndexMap();
@@ -489,19 +502,14 @@ public class Tablet {
   }
 
   /** deserialize bitmaps */
-  public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns, int size) {
-    if (!buffer.hasRemaining()) {
-      return null;
-    }
+  public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns) {
     BitMap[] bitMaps = new BitMap[columns];
     for (int i = 0; i < columns; i++) {
-      boolean hasBitMap = BytesUtils.byteToBool(buffer.get());
+      boolean hasBitMap = (ReadWriteIOUtils.readInt(buffer) == 1);
       if (hasBitMap) {
-        byte[] bytes = new byte[size / Byte.SIZE + 1];
-        for (int j = 0; j < bytes.length; j++) {
-          bytes[j] = buffer.get();
-        }
-        bitMaps[i] = new BitMap(size, bytes);
+        int bitMapSize = ReadWriteIOUtils.readInt(buffer);
+        byte[] bytes = ReadWriteIOUtils.readBinary(buffer).getValues();
+        bitMaps[i] = new BitMap(bitMapSize, bytes);
       }
     }
     return bitMaps;
@@ -510,56 +518,56 @@ public class Tablet {
   /**
    * @param buffer data values
    * @param columns column number
-   * @param size value count in each column
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Object[] readTabletValuesFromBuffer(
-      ByteBuffer buffer, TSDataType[] types, int columns, int size) {
+      ByteBuffer buffer, TSDataType[] types, int columns) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
+      int arraySize = ReadWriteIOUtils.readInt(buffer);
       switch (types[i]) {
         case BOOLEAN:
-          boolean[] boolValues = new boolean[size];
-          for (int index = 0; index < size; index++) {
-            boolValues[index] = BytesUtils.byteToBool(buffer.get());
+          boolean[] boolValues = new boolean[arraySize];
+          for (int index = 0; index < arraySize; index++) {
+            boolValues[index] = ReadWriteIOUtils.readInt(buffer) == 1;
           }
           values[i] = boolValues;
           break;
         case INT32:
-          int[] intValues = new int[size];
-          for (int index = 0; index < size; index++) {
-            intValues[index] = buffer.getInt();
+          int[] intValues = new int[arraySize];
+          for (int index = 0; index < arraySize; index++) {
+            intValues[index] = ReadWriteIOUtils.readInt(buffer);
           }
           values[i] = intValues;
           break;
         case INT64:
-          long[] longValues = new long[size];
-          for (int index = 0; index < size; index++) {
-            longValues[index] = buffer.getLong();
+          long[] longValues = new long[arraySize];
+          for (int index = 0; index < arraySize; index++) {
+            longValues[index] = ReadWriteIOUtils.readLong(buffer);
           }
           values[i] = longValues;
           break;
         case FLOAT:
-          float[] floatValues = new float[size];
-          for (int index = 0; index < size; index++) {
-            floatValues[index] = buffer.getFloat();
+          float[] floatValues = new float[arraySize];
+          for (int index = 0; index < arraySize; index++) {
+            floatValues[index] = ReadWriteIOUtils.readFloat(buffer);
           }
           values[i] = floatValues;
           break;
         case DOUBLE:
-          double[] doubleValues = new double[size];
-          for (int index = 0; index < size; index++) {
-            doubleValues[index] = buffer.getDouble();
+          double[] doubleValues = new double[arraySize];
+          for (int index = 0; index < arraySize; index++) {
+            doubleValues[index] = ReadWriteIOUtils.readDouble(buffer);
           }
           values[i] = doubleValues;
           break;
         case TEXT:
-          Binary[] binaryValues = new Binary[size];
-          for (int index = 0; index < size; index++) {
-            int binarySize = buffer.getInt();
-            byte[] binaryValue = new byte[binarySize];
-            buffer.get(binaryValue);
-            binaryValues[index] = new Binary(binaryValue);
+          Binary[] binaryValues = new Binary[arraySize];
+          for (int index = 0; index < arraySize; index++) {
+            boolean isNull = (ReadWriteIOUtils.readInt(buffer) == 1);
+            if (!isNull) {
+              binaryValues[index] = ReadWriteIOUtils.readBinary(buffer);
+            }
           }
           values[i] = binaryValues;
           break;
