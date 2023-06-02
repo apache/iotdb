@@ -48,6 +48,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
@@ -207,6 +209,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
+
+    if (queryStatement.isModelInferenceQuery()) {
+      ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
+      switch (modelInferenceDescriptor.getFunctionType()) {
+        case FORECAST:
+          ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
+              (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
+          planBuilder
+              .planLimit(forecastModelInferenceDescriptor.getModelInputLength())
+              .planForecast(forecastModelInferenceDescriptor);
+          break;
+        default:
+          throw new IllegalArgumentException();
+      }
+    }
 
     // plan select into
     if (queryStatement.isAlignByDevice()) {

@@ -19,17 +19,23 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.ModelTask;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.model.ForecastModeInformation;
 import org.apache.iotdb.commons.model.ModelInformation;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
-import org.apache.iotdb.confignode.consensus.response.ModelTableResp;
-import org.apache.iotdb.confignode.consensus.response.TrailTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
+import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.TrailTableResp;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
@@ -39,12 +45,17 @@ import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ModelManager {
 
@@ -63,15 +74,41 @@ public class ModelManager {
   }
 
   public TSStatus createModel(TCreateModelReq req) {
-    ModelInformation modelInformation =
-        new ModelInformation(
-            req.getModelId(),
-            req.getModelTask(),
-            req.getModelType(),
-            req.isIsAuto(),
-            req.getQueryExpressions(),
-            req.getQueryFilter());
-    return configManager.getProcedureManager().createModel(modelInformation, req.getModelConfigs());
+    ModelTask modelTask = req.getModelTask();
+    Map<String, String> modelConfigs = req.getModelConfigs();
+    ModelInformation modelInformation;
+    switch (modelTask) {
+      case FORECAST:
+        String inputTypeListStr = modelConfigs.get("input_type_list");
+        List<TSDataType> inputTypeList =
+            Arrays.stream(inputTypeListStr.split(","))
+                .sequential()
+                .map(s -> TSDataType.valueOf(s.toUpperCase()))
+                .collect(Collectors.toList());
+
+        String predictIndexListStr = modelConfigs.get("predict_index_list");
+        List<Integer> predictIndexList =
+            Arrays.stream(predictIndexListStr.split(","))
+                .sequential()
+                .map(Integer::valueOf)
+                .collect(Collectors.toList());
+
+        modelInformation =
+            new ForecastModeInformation(
+                req.getModelId(),
+                req.getModelType(),
+                req.isIsAuto(),
+                req.getQueryExpressions(),
+                req.getQueryFilter(),
+                inputTypeList,
+                predictIndexList,
+                Integer.parseInt(modelConfigs.getOrDefault("input_length", "96")),
+                Integer.parseInt(modelConfigs.getOrDefault("predict_length", "96")));
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid task type: " + modelTask);
+    }
+    return configManager.getProcedureManager().createModel(modelInformation, modelConfigs);
   }
 
   public TSStatus dropModel(TDropModelReq req) {
@@ -126,7 +163,7 @@ public class ModelManager {
         return new TShowModelResp(res, Collections.emptyList());
       }
     } catch (IOException e) {
-      LOGGER.error("Fail to get ModelTable", e);
+      LOGGER.warn("Fail to get ModelTable", e);
       return new TShowModelResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
@@ -148,11 +185,25 @@ public class ModelManager {
         return new TShowTrailResp(res, Collections.emptyList());
       }
     } catch (IOException e) {
-      LOGGER.error("Fail to get TrailTable", e);
+      LOGGER.warn("Fail to get TrailTable", e);
       return new TShowTrailResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
           Collections.emptyList());
+    }
+  }
+
+  public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
+    ConsensusReadResponse response =
+        configManager.getConsensusManager().read(new GetModelInfoPlan(req));
+    if (response.getDataset() != null) {
+      return ((GetModelInfoResp) response.getDataset()).convertToThriftResponse();
+    } else {
+      LOGGER.warn("Unexpected error happened while getting model: ", response.getException());
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(response.getException().toString());
+      return new TGetModelInfoResp(res, null);
     }
   }
 }

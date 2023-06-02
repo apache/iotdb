@@ -105,6 +105,11 @@ public class FragmentInstanceManager {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
             "into-operation-executor");
+
+    this.modelInferenceExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            IoTDBDescriptor.getInstance().getConfig().getModelInferenceExecutionThreadCount(),
+            "model-inference-executor");
   }
 
   public int getInstanceContextSize() {
@@ -328,6 +333,10 @@ public class FragmentInstanceManager {
 
   public ExecutorService getIntoOperationExecutor() {
     return intoOperationExecutor;
+  }
+
+  public ExecutorService getModelInferenceExecutor() {
+    return modelInferenceExecutor;
   }
 
   private static class InstanceHolder {

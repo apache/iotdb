@@ -17,12 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.multi;
+package org.apache.iotdb.db.exception;
 
-/** */
-public enum FunctionType {
-  AGGREGATION_FUNCTION,
-  BUILT_IN_SCALAR_FUNCTION,
-  UDF,
-  MODEL_INFERENCE_FUNCTION
+public class ModelInferenceProcessException extends RuntimeException {
+
+  public ModelInferenceProcessException(String message) {
+    super(message);
+  }
 }

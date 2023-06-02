@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.udf.service;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.UDFTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.udf.api.UDF;
 import org.apache.iotdb.udf.api.UDTF;
@@ -111,8 +112,26 @@ public class UDFManagementService {
     throw new UDFManagementException(errorMessage);
   }
 
+  private void checkIsModelInferenceFunctionName(UDFInformation udfInformation)
+      throws UDFManagementException {
+    String functionName = udfInformation.getFunctionName();
+    String className = udfInformation.getClassName();
+    if (!ModelInferenceFunction.getNativeFunctionNames().contains(functionName.toLowerCase())) {
+      return;
+    }
+
+    String errorMessage =
+        String.format(
+            "Failed to register UDF %s(%s), because the given function name conflicts with the ML model inference function name",
+            functionName, className);
+
+    LOGGER.warn(errorMessage);
+    throw new UDFManagementException(errorMessage);
+  }
+
   private void checkIfRegistered(UDFInformation udfInformation) throws UDFManagementException {
     checkIsBuiltInAggregationFunctionName(udfInformation);
+    checkIsModelInferenceFunctionName(udfInformation);
     String functionName = udfInformation.getFunctionName();
     String className = udfInformation.getClassName();
     UDFInformation information = udfTable.getUDFInformation(functionName);

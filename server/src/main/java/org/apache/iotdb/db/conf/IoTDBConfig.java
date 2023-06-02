@@ -722,6 +722,9 @@ public class IoTDBConfig {
   /** The number of threads in the thread pool that execute insert-tablet tasks. */
   private int intoOperationExecutionThreadCount = 2;
 
+  /** The number of threads in the thread pool that execute model inference tasks. */
+  private int modelInferenceExecutionThreadCount = 10;
+
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
 
@@ -2043,6 +2046,14 @@ public class IoTDBConfig {
 
   public void setIntoOperationExecutionThreadCount(int intoOperationExecutionThreadCount) {
     this.intoOperationExecutionThreadCount = intoOperationExecutionThreadCount;
+  }
+
+  public int getModelInferenceExecutionThreadCount() {
+    return modelInferenceExecutionThreadCount;
+  }
+
+  public void setModelInferenceExecutionThreadCount(int modelInferenceExecutionThreadCount) {
+    this.modelInferenceExecutionThreadCount = modelInferenceExecutionThreadCount;
   }
 
   public int getCompactionWriteThroughputMbPerSec() {

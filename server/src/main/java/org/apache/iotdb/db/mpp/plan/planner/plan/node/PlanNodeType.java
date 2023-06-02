@@ -78,6 +78,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ml.ForecastNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -177,7 +178,8 @@ public enum PlanNodeType {
   CONSTRUCT_LOGICAL_VIEW_BLACK_LIST((short) 74),
   ROLLBACK_LOGICAL_VIEW_BLACK_LIST((short) 75),
   DELETE_LOGICAL_VIEW((short) 76),
-  LOGICAL_VIEW_SCHEMA_SCAN((short) 77);
+  LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
+  FORECAST((short) 78);
 
   public static final int BYTES = Short.BYTES;
 
@@ -380,6 +382,8 @@ public enum PlanNodeType {
         return DeleteLogicalViewNode.deserialize(buffer);
       case 77:
         return LogicalViewSchemaScanNode.deserialize(buffer);
+      case 78:
+        return ForecastNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
