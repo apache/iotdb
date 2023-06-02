@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -74,6 +75,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -550,6 +553,8 @@ public interface IManager {
    */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
 
+  TSStatus deleteLogicalView(TDeleteLogicalViewReq req);
+
   /**
    * Create Pipe
    *
@@ -657,6 +662,9 @@ public interface IManager {
 
   /** Update the model state */
   TSStatus updateModelState(TUpdateModelStateReq req);
+
+  /** Update the model state */
+  TGetModelInfoResp getModelInfo(TGetModelInfoReq req);
 
   /** Set space quota */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);

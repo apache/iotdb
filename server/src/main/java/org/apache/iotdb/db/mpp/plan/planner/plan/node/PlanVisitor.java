@@ -38,7 +38,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSe
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
@@ -49,6 +48,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InternalCre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.ConstructLogicalViewBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
@@ -74,6 +77,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ml.ForecastNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -184,6 +188,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitForecast(ForecastNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 
@@ -375,6 +383,22 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitCreateLogicalView(CreateLogicalViewNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitConstructLogicalViewBlackList(ConstructLogicalViewBlackListNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitRollbackLogicalViewBlackList(RollbackLogicalViewBlackListNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteLogicalView(DeleteLogicalViewNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Data Write Node
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -400,10 +424,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeleteData(DeleteDataNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitCreateLogicalView(CreateLogicalViewNode node, C context) {
     return visitPlan(node, context);
   }
 }

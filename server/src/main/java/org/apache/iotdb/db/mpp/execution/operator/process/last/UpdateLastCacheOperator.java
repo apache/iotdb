@@ -34,10 +34,10 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   // fullPath for queried time series
   // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
   // accept PartialPath
-  private MeasurementPath fullPath;
+  private final MeasurementPath fullPath;
 
   // dataType for queried time series;
-  private String dataType;
+  protected final String dataType;
 
   public UpdateLastCacheOperator(
       OperatorContext operatorContext,
@@ -77,10 +77,12 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
     }
 
     tsBlockBuilder.reset();
+    appendLastValueToTsBlockBuilder(lastTime, lastValue);
+    return tsBlockBuilder.build();
+  }
 
+  protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
     LastQueryUtil.appendLastValue(
         tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
-
-    return tsBlockBuilder.build();
   }
 }

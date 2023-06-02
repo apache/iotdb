@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
+import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -105,6 +106,8 @@ public class FunctionExpression extends Expression {
       functionType = FunctionType.AGGREGATION_FUNCTION;
     } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(functionName)) {
       functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
+    } else if (ModelInferenceFunction.getNativeFunctionNames().contains(functionName)) {
+      functionType = FunctionType.MODEL_INFERENCE_FUNCTION;
     } else {
       functionType = FunctionType.UDF;
     }
@@ -123,6 +126,13 @@ public class FunctionExpression extends Expression {
       initializeFunctionType();
     }
     return functionType == FunctionType.BUILT_IN_SCALAR_FUNCTION;
+  }
+
+  public boolean isModelInferenceFunction() {
+    if (functionType == null) {
+      initializeFunctionType();
+    }
+    return functionType == FunctionType.MODEL_INFERENCE_FUNCTION;
   }
 
   @Override
@@ -176,6 +186,27 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public String getOutputSymbolInternal() {
+    StringBuilder builder = new StringBuilder();
+    if (!expressions.isEmpty()) {
+      builder.append(expressions.get(0).getOutputSymbol());
+      for (int i = 1; i < expressions.size(); ++i) {
+        builder.append(", ").append(expressions.get(i).getOutputSymbol());
+      }
+    }
+    if (!functionAttributes.isEmpty()) {
+      // Some built-in scalar functions may have different header.
+      if (BuiltinScalarFunction.contains(functionName)) {
+        BuiltInScalarFunctionHelperFactory.createHelper(functionName)
+            .appendFunctionAttributes(!expressions.isEmpty(), builder, functionAttributes);
+      } else {
+        appendAttributes(!expressions.isEmpty(), builder, functionAttributes);
+      }
+    }
+    return functionName + "(" + builder + ")";
+  }
+
+  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     String expressionString = getExpressionString();
@@ -196,7 +227,7 @@ public class FunctionExpression extends Expression {
       expression.bindInputLayerColumnIndexWithExpression(inputLocations);
     }
 
-    final String digest = toString();
+    final String digest = getExpressionString();
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }
@@ -217,7 +248,7 @@ public class FunctionExpression extends Expression {
     }
     return new UDTFInformationInferrer(functionName)
         .getAccessStrategy(
-            expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+            expressions.stream().map(Expression::getExpressionString).collect(Collectors.toList()),
             expressions.stream()
                 .map(f -> expressionTypes.get(NodeRef.of(f)))
                 .collect(Collectors.toList()),
@@ -257,9 +288,9 @@ public class FunctionExpression extends Expression {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {
-        builder.append(expressions.get(0).toString());
+        builder.append(expressions.get(0).getExpressionString());
         for (int i = 1; i < expressions.size(); ++i) {
-          builder.append(", ").append(expressions.get(i).toString());
+          builder.append(", ").append(expressions.get(i).getExpressionString());
         }
       }
       if (!functionAttributes.isEmpty()) {

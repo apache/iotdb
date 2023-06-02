@@ -23,11 +23,14 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -67,7 +70,27 @@ public abstract class AbstractCompactionTask {
     this.serialId = serialId;
   }
 
-  public abstract void setSourceFilesToCompactionCandidate();
+  protected abstract List<TsFileResource> getAllSourceTsFiles();
+
+  /**
+   * This method will try to set the files to COMPACTION_CANDIDATE. If failed, it should roll back
+   * all status to original value
+   *
+   * @return set status successfully or not
+   */
+  public boolean setSourceFilesToCompactionCandidate() {
+    List<TsFileResource> files = getAllSourceTsFiles();
+    for (int i = 0; i < files.size(); i++) {
+      if (!files.get(i).setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE)) {
+        // rollback status to NORMAL
+        for (int j = 0; j < i; j++) {
+          files.get(j).setStatus(TsFileResourceStatus.NORMAL);
+        }
+        return false;
+      }
+    }
+    return true;
+  }
 
   protected abstract boolean doCompaction();
 
@@ -81,8 +104,8 @@ public abstract class AbstractCompactionTask {
       this.currentTaskNum.decrementAndGet();
       summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
-      CompactionMetricsManager.getInstance()
-          .reportTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
+      CompactionMetrics.getInstance()
+          .recordTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
       return isSuccess;
     }
   }

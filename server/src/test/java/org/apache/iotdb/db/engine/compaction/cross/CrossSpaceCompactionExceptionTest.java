@@ -66,7 +66,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
@@ -619,8 +619,9 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the first target file should be deleted after compaction, the others still exist
-    for (TsFileResource resource : targetResources) {
-      if (resource.getVersion() == 0) {
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource resource = targetResources.get(i);
+      if (i == 0) {
         Assert.assertFalse(resource.getTsFile().exists());
         Assert.assertFalse(resource.resourceFileExists());
       } else {

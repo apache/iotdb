@@ -173,6 +173,7 @@ public class DataDriverTest {
               dataRegion.query(driverContext.getPaths(), deviceId, fragmentInstanceContext, null))
           .thenReturn(new QueryDataSource(seqResources, unSeqResources));
       fragmentInstanceContext.initQueryDataSource(driverContext.getPaths());
+      fragmentInstanceContext.initializeNumOfDrivers(1);
 
       StubSink stubSink = new StubSink(fragmentInstanceContext);
       driverContext.setSink(stubSink);

@@ -137,7 +137,7 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       seqFileResource1.updateEndTime(TEST_DEVICE, 9);
       tsFileIOWriter.endFile();
     }
-    seqFileResource1.setStatus(TsFileResourceStatus.NORMAL);
+    seqFileResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource1);
 
     // prepare file 2
@@ -205,7 +205,7 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       seqFileResource2.updateEndTime(TEST_DEVICE, 19);
       tsFileIOWriter.endFile();
     }
-    seqFileResource2.setStatus(TsFileResourceStatus.NORMAL);
+    seqFileResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource2);
 
     // prepare file 3
@@ -285,7 +285,7 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       seqFileResource3.updateEndTime(TEST_DEVICE, 39);
       tsFileIOWriter.endFile();
     }
-    seqFileResource3.setStatus(TsFileResourceStatus.NORMAL);
+    seqFileResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource3);
 
     // prepare file 4
@@ -380,7 +380,7 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       seqFileResource4.updateEndTime(TEST_DEVICE, 79);
       tsFileIOWriter.endFile();
     }
-    seqFileResource4.setStatus(TsFileResourceStatus.NORMAL);
+    seqFileResource4.setStatusForTest(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource4);
 
     // prepare file 5
@@ -404,7 +404,7 @@ public class AlignedSeriesScanLimitOffsetPushDownTest {
       unseqFileResource5.updateEndTime(TEST_DEVICE, 89);
       tsFileIOWriter.endFile();
     }
-    unseqFileResource5.setStatus(TsFileResourceStatus.NORMAL);
+    unseqFileResource5.setStatusForTest(TsFileResourceStatus.NORMAL);
     unSeqResources.add(unseqFileResource5);
   }
 

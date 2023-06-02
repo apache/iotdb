@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -216,11 +217,11 @@ public class InsertRowsNode extends InsertNode {
                   TimePartitionUtils.getTimePartition(insertRowNode.getTime()));
       // collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
-      if (splitMap.containsKey(dataRegionReplicaSet)) {
-        InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+      InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
+      if (tmpNode != null) {
         tmpNode.addOneInsertRowNode(insertRowNode, i);
       } else {
-        InsertRowsNode tmpNode = new InsertRowsNode(this.getPlanNodeId());
+        tmpNode = new InsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);
@@ -239,5 +240,11 @@ public class InsertRowsNode extends InsertNode {
   @Override
   public long getMinTime() {
     throw new NotImplementedException();
+  }
+
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
+    insertRowNodeList.forEach(insertRowNode -> insertRowNode.setProgressIndex(progressIndex));
   }
 }

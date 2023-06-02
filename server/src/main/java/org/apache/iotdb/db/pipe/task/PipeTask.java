@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskStage;
 
 public class PipeTask {
 
   private final String pipeName;
-  private final String dataRegionId;
+  private final TConsensusGroupId dataRegionId;
 
   private final PipeTaskStage collectorStage;
   private final PipeTaskStage processorStage;
@@ -32,7 +33,7 @@ public class PipeTask {
 
   PipeTask(
       String pipeName,
-      String dataRegionId,
+      TConsensusGroupId dataRegionId,
       PipeTaskStage collectorStage,
       PipeTaskStage processorStage,
       PipeTaskStage connectorStage) {
@@ -68,7 +69,7 @@ public class PipeTask {
     connectorStage.stop();
   }
 
-  public String getDataRegionId() {
+  public TConsensusGroupId getDataRegionId() {
     return dataRegionId;
   }
 

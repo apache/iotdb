@@ -69,7 +69,7 @@ public class RegularExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression + " REGEXP '" + patternString + "'";
+    return expression.getExpressionString() + " REGEXP '" + patternString + "'";
   }
 
   @Override
@@ -87,6 +87,11 @@ public class RegularExpression extends UnaryExpression {
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(patternString, stream);
+  }
+
+  @Override
+  public String getOutputSymbolInternal() {
+    return expression.getOutputSymbol() + " REGEXP '" + patternString + "'";
   }
 
   @Override

@@ -24,12 +24,14 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class PipeBuilder {
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final PipeMeta pipeMeta;
 
@@ -39,26 +41,22 @@ public class PipeBuilder {
 
   public Map<TConsensusGroupId, PipeTask> build() {
     final PipeStaticMeta pipeStaticMeta = pipeMeta.getStaticMeta();
-    final String pipeName = pipeStaticMeta.getPipeName();
-    final PipeParameters collectorParameters = pipeStaticMeta.getCollectorParameters();
-    final PipeParameters processorParameters = pipeStaticMeta.getProcessorParameters();
-    final PipeParameters connectorParameters = pipeStaticMeta.getConnectorParameters();
 
     final Map<TConsensusGroupId, PipeTask> consensusGroupIdToPipeTaskMap = new HashMap<>();
 
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
         pipeRuntimeMeta.getConsensusGroupIdToTaskMetaMap().entrySet()) {
-      consensusGroupIdToPipeTaskMap.put(
-          consensusGroupIdToPipeTaskMeta.getKey(),
-          new PipeTaskBuilder(
-                  pipeName,
-                  Integer.toString(consensusGroupIdToPipeTaskMeta.getKey().getId()),
-                  // TODO: consensusGroupIdToPipeTaskMeta.getValue().getProgressIndex() is not used
-                  collectorParameters,
-                  processorParameters,
-                  connectorParameters)
-              .build());
+      if (consensusGroupIdToPipeTaskMeta.getValue().getLeaderDataNodeId()
+          == CONFIG.getDataNodeId()) {
+        consensusGroupIdToPipeTaskMap.put(
+            consensusGroupIdToPipeTaskMeta.getKey(),
+            new PipeTaskBuilder(
+                    pipeStaticMeta,
+                    consensusGroupIdToPipeTaskMeta.getKey(),
+                    consensusGroupIdToPipeTaskMeta.getValue())
+                .build());
+      }
     }
 
     return consensusGroupIdToPipeTaskMap;

@@ -24,45 +24,45 @@ import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.IOException;
 
+/** This class is a placeholder and should not be used. */
 public class DoNothingProcessor implements PipeProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    eventCollector.collectTabletInsertionEvent(tabletInsertionEvent);
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    eventCollector.collectTsFileInsertionEvent(tsFileInsertionEvent);
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void process(DeletionEvent deletionEvent, EventCollector eventCollector)
-      throws IOException {
-    eventCollector.collectDeletionEvent(deletionEvent);
+  public void process(Event event, EventCollector eventCollector) throws IOException {
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void close() {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 }

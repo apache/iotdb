@@ -103,6 +103,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.ConstructLogicalViewBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
@@ -132,6 +135,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -144,6 +148,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
@@ -170,6 +175,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
@@ -803,6 +809,91 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus constructViewSchemaBlackList(TConstructViewSchemaBlackListReq req)
+      throws TException {
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    AtomicInteger preDeletedNum = new AtomicInteger(0);
+    TSStatus executionResult =
+        executeInternalSchemaTask(
+            req.getSchemaRegionIdList(),
+            consensusGroupId -> {
+              String storageGroup =
+                  schemaEngine
+                      .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                      .getDatabaseFullPath();
+              PathPatternTree filteredPatternTree =
+                  filterPathPatternTree(patternTree, storageGroup);
+              if (filteredPatternTree.isEmpty()) {
+                return RpcUtils.SUCCESS_STATUS;
+              }
+              RegionWriteExecutor executor = new RegionWriteExecutor();
+              TSStatus status =
+                  executor
+                      .execute(
+                          new SchemaRegionId(consensusGroupId.getId()),
+                          new ConstructLogicalViewBlackListNode(
+                              new PlanNodeId(""), filteredPatternTree))
+                      .getStatus();
+              if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                preDeletedNum.getAndAdd(Integer.parseInt(status.getMessage()));
+              }
+              return status;
+            });
+    executionResult.setMessage(String.valueOf(preDeletedNum.get()));
+    return executionResult;
+  }
+
+  @Override
+  public TSStatus rollbackViewSchemaBlackList(TRollbackViewSchemaBlackListReq req)
+      throws TException {
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          String storageGroup =
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getDatabaseFullPath();
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+          if (filteredPatternTree.isEmpty()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
+          RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new RollbackLogicalViewBlackListNode(new PlanNodeId(""), filteredPatternTree))
+              .getStatus();
+        });
+  }
+
+  @Override
+  public TSStatus deleteViewSchema(TDeleteViewSchemaReq req) throws TException {
+    PathPatternTree patternTree =
+        PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          String storageGroup =
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getDatabaseFullPath();
+          PathPatternTree filteredPatternTree = filterPathPatternTree(patternTree, storageGroup);
+          if (filteredPatternTree.isEmpty()) {
+            return RpcUtils.SUCCESS_STATUS;
+          }
+          RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new DeleteLogicalViewNode(new PlanNodeId(""), filteredPatternTree))
+              .getStatus();
+        });
+  }
+
+  @Override
   public TSStatus pushPipeMeta(TPushPipeMetaReq req) {
     final List<PipeMeta> pipeMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getPipeMetas()) {
@@ -1023,6 +1114,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
     // Update schema quota if necessary
     SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
+
+    // Update pipe meta if necessary
+    PipeAgent.task().collectPipeMetaList(req, resp);
+
     return resp;
   }
 

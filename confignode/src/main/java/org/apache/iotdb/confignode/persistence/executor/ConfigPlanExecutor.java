@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
@@ -75,9 +76,10 @@ import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStat
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -278,6 +280,8 @@ public class ConfigPlanExecutor {
         return modelInfo.showModel((ShowModelPlan) req);
       case ShowTrail:
         return modelInfo.showTrail((ShowTrailPlan) req);
+      case GetModelInfo:
+        return modelInfo.getModelInfo((GetModelInfoPlan) req);
       case GetPipePluginTable:
         return pipeInfo.getPipePluginInfo().showPipePlugins();
       case GetPipePluginJar:
@@ -408,6 +412,10 @@ public class ConfigPlanExecutor {
         return pipeInfo
             .getPipeTaskInfo()
             .handleLeaderChange((PipeHandleLeaderChangePlan) physicalPlan);
+      case PipeHandleMetaChange:
+        return pipeInfo
+            .getPipeTaskInfo()
+            .handleMetaChanges((PipeHandleMetaChangePlan) physicalPlan);
       case ADD_CQ:
         return cqInfo.addCQ((AddCQPlan) physicalPlan);
       case DROP_CQ:

@@ -113,7 +113,8 @@ carefully evaluated. The current Core-level metrics are as follows:
 #### 4.1.1. Cluster
 
 | Metric                    | Tags                                            | Type      | Description                                         |
-| ------------------------- | ----------------------------------------------- | --------- | --------------------------------------------------- |
+|---------------------------|-------------------------------------------------| --------- |-----------------------------------------------------|
+| up_time                   | -                                               | AutoGauge | The time IoTDB has been running                     |
 | config_node               | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown confignodes |
 | data_node                 | name="total",status="Registered/Online/Unknown" | AutoGauge | The number of registered/online/unknown datanodes   |
 | cluster_node_leader_count | name="{ip}:{port}"                              | Gauge     | The count of consensus group leader on each node    |
@@ -394,7 +395,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 #### 4.2.13. Data Exchange
 
 | Metric              | Tags                                                                   | Type      | Description                                                     |
-| ------------------- | ---------------------------------------------------------------------- | --------- | --------------------------------------------------------------- |
+|---------------------|------------------------------------------------------------------------|-----------|-----------------------------------------------------------------|
 | data_exchange_cost  | operation="source_handle_get_tsblock", type="local/remote"             | Timer     | The time-consuming that source handles receive TsBlock          |
 | data_exchange_cost  | operation="source_handle_deserialize_tsblock", type="local/remote"     | Timer     | The time-consuming that source handles deserialize TsBlock      |
 | data_exchange_cost  | operation="sink_handle_send_tsblock", type="local/remote"              | Timer     | The time-consuming that sink handles send TsBlock               |
@@ -404,15 +405,18 @@ carefully evaluated. The current Core-level metrics are as follows:
 | data_exchange_count | name="send_new_data_block_num", type="server/caller"                   | Histogram | The number of sent TsBlocks by sink handles                     |
 | data_exchange_count | name="get_data_block_num", type="server/caller"                        | Histogram | The number of received TsBlocks by source handles               |
 | data_exchange_count | name="on_acknowledge_data_block_num", type="server/caller"             | Histogram | The number of acknowledged TsBlocks by source handles           |
-
+| data_exchange_count | name="shuffle_sink_handle_size"                                        | AutoGauge | The number of shuffle sink handle                               |
+| data_exchange_count | name="source_handle_size"                                              | AutoGauge | The number of source handle                                     |
 #### 4.2.14. Query Task Schedule
 
-| Metric           | Tags                           | Type      | Description                                      |
-| ---------------- | ------------------------------ | --------- | ------------------------------------------------ |
-| driver_scheduler | name="ready_queued_time"       | Timer     | The queuing time of ready queue                  |
-| driver_scheduler | name="block_queued_time"       | Timer     | The queuing time of blocking queue               |
-| driver_scheduler | name="ready_queue_task_count"  | AutoGauge | The number of tasks queued in the ready queue    |
-| driver_scheduler | name="block_queued_task_count" | AutoGauge | The number of tasks queued in the blocking queue |
+| Metric           | Tags                             | Type      | Description                                       |
+|------------------|----------------------------------|-----------|---------------------------------------------------|
+| driver_scheduler | name="ready_queued_time"         | Timer     | The queuing time of ready queue                   |
+| driver_scheduler | name="block_queued_time"         | Timer     | The queuing time of blocking queue                |
+| driver_scheduler | name="ready_queue_task_count"    | AutoGauge | The number of tasks queued in the ready queue     |
+| driver_scheduler | name="block_queued_task_count"   | AutoGauge | The number of tasks queued in the blocking queue  |
+| driver_scheduler | name="timeout_queued_task_count" | AutoGauge | The number of tasks queued in the timeout queue   |
+| driver_scheduler | name="query_map_size"            | AutoGauge | The number of queries recorded in DriverScheduler |
 
 #### 4.2.15. Query Execution
 
@@ -439,7 +443,35 @@ carefully evaluated. The current Core-level metrics are as follows:
 | series_scan_cost         | stage="build_tsblock_from_page_reader", type="aligned/non_aligned", from="mem/disk" | Timer   | The time-consuming of constructing Tsblock from PageReader                              |
 | series_scan_cost         | stage="build_tsblock_from_merge_reader", type="aligned/non_aligned", from="null"    | Timer   | The time-consuming of constructing Tsblock from MergeReader (handling overlapping data) |
 
-#### 4.2.16 Schema Engine
+#### 4.2.16. Coordinator
+
+| Metric      | Tags                            | Type      | Description                                        |
+|-------------|---------------------------------|-----------|----------------------------------------------------|
+| coordinator | name="query_execution_map_size" | AutoGauge | The number of queries recorded on current DataNode |
+
+#### 4.2.17. FragmentInstanceManager
+
+| Metric                    | Tags                           | Type      | Description                                              |
+|---------------------------|--------------------------------|-----------|----------------------------------------------------------|
+| fragment_instance_manager | name="instance_context_size"   | AutoGauge | The number of query fragment context on current DataNode |
+| fragment_instance_manager | name="instance_execution_size" | AutoGauge | The number of query fragment on current DataNode         |
+
+#### 4.2.18. MemoryPool
+
+| Metric      | Tags                                 | Type      | Description                                                    |
+|-------------|--------------------------------------|-----------|----------------------------------------------------------------|
+| memory_pool | name="max_bytes"                     | Gauge     | Maximum memory for data exchange                               |
+| memory_pool | name="remaining_bytes"               | AutoGauge | Remaining memory for data exchange                             |
+| memory_pool | name="query_memory_reservation_size" | AutoGauge | Size of query reserved memory                                  |
+| memory_pool | name="memory_reservation_size"       | AutoGauge | Size of sink handle and source handle trying to reserve memory |
+
+#### 4.2.19. LocalExecutionPlanner
+
+| Metric                  | Tags                             | Type      | Description                                                               |
+|-------------------------|----------------------------------|-----------|---------------------------------------------------------------------------|
+| local_execution_planner | name="free_memory_for_operators" | AutoGauge | The remaining memory can allocate for query fragments on current DataNode |
+
+#### 4.2.20. Schema Engine
 
 | Metric        | Tags                                                         | Type      | Description                                        |
 | ------------- | ------------------------------------------------------------ | --------- | -------------------------------------------------- |
@@ -454,7 +486,7 @@ carefully evaluated. The current Core-level metrics are as follows:
 | schema_region | name="activated_template_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Number of Activated template for each SchemaRegion |
 | schema_region | name="template_series_cnt", region="SchemaRegion[{regionId}]" | AutoGauge | Number of template series for each SchemaRegion    |
 
-#### 4.2.17 Write Performance
+#### 4.2.21. Write Performance
 
 | Metric                    | Tags                                                                  | Type      | Description                                            |
 | ------------------------- | :-------------------------------------------------------------------- | --------- | ------------------------------------------------------ |
@@ -535,13 +567,13 @@ the sidebar `org.apache.iotdb.db.service` to view the cache hit ratio:
 > For metrics whose Metric Name is name and Tags are K1=V1, ..., Kn=Vn, the mapping is as follows, where value is a
 > specific value
 
-| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Counter          | name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| AutoGauge、Gauge | name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Histogram        | name_max{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_sum{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_count{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.99"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.999"} value                                                         |
-| Rate             | name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", rate="mean"} value                                                                                                                                                                                                                                                                    |
-| Timer            | name_seconds_max{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.0"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.99"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.999"} value |
+| Metric Type      | Mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Counter          | name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| AutoGauge、Gauge | name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Histogram        | name_max{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_sum{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_count{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.99"} value                                                |
+| Rate             | name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", rate="m1"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", rate="m5"} value  <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", rate="m15"} value <br> name_total{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", rate="mean"} value                 |
+| Timer            | name_seconds_max{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_seconds_sum{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_seconds_count{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.5"} value <br> name_seconds{cluster="clusterName", nodeType="nodeType", nodeId="nodeId", k1="V1", ..., Kn="Vn", quantile="0.99"} value        |
 
 #### 5.2.2. Config File
 

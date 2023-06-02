@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.concurrent.threadpool;
 
+import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.concurrent.WrappedCallable;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -48,6 +49,7 @@ public class WrappedScheduledExecutorService
             "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
     this.service = service;
     JMXService.registerMBean(this, this.mbeanName);
+    ThreadPoolMetrics.getInstance().registerThreadPool(this, this.mbeanName);
   }
 
   @Override

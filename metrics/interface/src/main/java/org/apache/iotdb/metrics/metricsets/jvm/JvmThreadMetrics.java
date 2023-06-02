@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -35,7 +36,6 @@ import java.util.Map;
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics */
 public class JvmThreadMetrics implements IMetricSet {
   private static long lastUpdateTime = 0L;
-  private static final long UPDATE_INTERVAL = 10_000L;
   private static final Map<Thread.State, Integer> threadStateCountMap =
       new EnumMap<>(Thread.State.class);
 
@@ -99,7 +99,7 @@ public class JvmThreadMetrics implements IMetricSet {
   }
 
   private static void checkAndUpdate(ThreadMXBean threadBean) {
-    if (System.currentTimeMillis() - lastUpdateTime < UPDATE_INTERVAL) {
+    if (System.currentTimeMillis() - lastUpdateTime < MetricConstant.UPDATE_INTERVAL) {
       return;
     }
     lastUpdateTime = System.currentTimeMillis();

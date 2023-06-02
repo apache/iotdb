@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -39,7 +39,8 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.INIT_CHUNK_
 public class DiskAlignedChunkLoader implements IChunkLoader {
 
   private final boolean debug;
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
+      SeriesScanCostMetricSet.getInstance();
 
   public DiskAlignedChunkLoader(boolean debug) {
     this.debug = debug;
@@ -72,11 +73,12 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
       long t2 = System.nanoTime();
       IChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, timeFilter);
-      QUERY_METRICS.recordSeriesScanCost(INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
+          INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
 
       return chunkReader;
     } finally {
-      QUERY_METRICS.recordSeriesScanCost(
+      SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CONSTRUCT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t1);
     }
   }

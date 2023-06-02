@@ -21,7 +21,9 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 public enum TSDataType {
@@ -44,7 +46,10 @@ public enum TSDataType {
   TEXT((byte) 5),
 
   /** VECTOR */
-  VECTOR((byte) 6);
+  VECTOR((byte) 6),
+
+  /** UNKNOWN */
+  UNKNOWN((byte) 7);
 
   private final byte type;
 
@@ -82,6 +87,8 @@ public enum TSDataType {
         return TSDataType.TEXT;
       case 6:
         return TSDataType.VECTOR;
+      case 7:
+        return TSDataType.UNKNOWN;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
@@ -89,6 +96,10 @@ public enum TSDataType {
 
   public static TSDataType deserializeFrom(ByteBuffer buffer) {
     return deserialize(buffer.get());
+  }
+
+  public static TSDataType deserializeFrom(InputStream stream) throws IOException {
+    return deserialize((byte) stream.read());
   }
 
   public static int getSerializedSize() {
@@ -100,6 +111,10 @@ public enum TSDataType {
   }
 
   public void serializeTo(DataOutputStream outputStream) throws IOException {
+    outputStream.write(serialize());
+  }
+
+  public void serializeTo(FileOutputStream outputStream) throws IOException {
     outputStream.write(serialize());
   }
 

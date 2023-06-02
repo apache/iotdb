@@ -61,14 +61,14 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.CACHE_HIT.toString(),
+        Metric.CACHE.toString(),
         Tag.NAME.toString(),
         "SchemaCache",
         Tag.TYPE.toString(),
         "hit");
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.CACHE_HIT.toString(),
+        Metric.CACHE.toString(),
         Tag.NAME.toString(),
         "SchemaCache",
         Tag.TYPE.toString(),
@@ -77,8 +77,12 @@ public class DataNodeSchemaCacheMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DataNodeSchemaCacheMetrics that = (DataNodeSchemaCacheMetrics) o;
     return Objects.equals(dataNodeSchemaCache, that.dataNodeSchemaCache);
   }

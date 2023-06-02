@@ -66,8 +66,7 @@ public class SettleService implements IService {
     if (settleThreadPool == null) {
       int settleThreadNum = IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
       settleThreadPool =
-          IoTDBThreadPoolFactory.newFixedThreadPool(
-              settleThreadNum, ThreadName.SETTLE_SERVICE.getName());
+          IoTDBThreadPoolFactory.newFixedThreadPool(settleThreadNum, ThreadName.SETTLE.getName());
     }
     TsFileAndModSettleTool.findFilesToBeRecovered();
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.metricsets.net;
 
+import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -53,7 +54,6 @@ public class LinuxNetMetricManager implements INetMetricManager {
 
   private static final String BYTES = "bytes";
   private static final String PACKETS = "packets";
-  private static final long UPDATE_INTERVAL = 10_000L;
 
   private static final int IFACE_NAME_INDEX = 0;
 
@@ -127,7 +127,7 @@ public class LinuxNetMetricManager implements INetMetricManager {
   }
 
   private void checkUpdate() {
-    if (System.currentTimeMillis() - lastUpdateTime >= UPDATE_INTERVAL) {
+    if (System.currentTimeMillis() - lastUpdateTime >= MetricConstant.UPDATE_INTERVAL) {
       updateNetStatus();
     }
   }

@@ -47,7 +47,7 @@ public class IsNullExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression + " IS " + (isNot ? "NOT " : "") + "NULL";
+    return expression.getExpressionString() + " IS " + (isNot ? "NOT " : "") + "NULL";
   }
 
   @Override
@@ -70,6 +70,11 @@ public class IsNullExpression extends UnaryExpression {
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(isNot, stream);
+  }
+
+  @Override
+  public String getOutputSymbolInternal() {
+    return expression.getOutputSymbol() + " IS " + (isNot ? "NOT " : "") + "NULL";
   }
 
   @Override

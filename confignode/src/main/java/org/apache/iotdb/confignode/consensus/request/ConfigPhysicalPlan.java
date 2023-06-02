@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabase
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
@@ -77,9 +78,10 @@ import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStat
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
@@ -396,6 +398,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PipeHandleLeaderChange:
           plan = new PipeHandleLeaderChangePlan();
           break;
+        case PipeHandleMetaChange:
+          plan = new PipeHandleMetaChangePlan();
+          break;
         case GetRegionId:
           plan = new GetRegionIdPlan();
           break;
@@ -455,6 +460,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ShowTrail:
           plan = new ShowTrailPlan();
+          break;
+        case GetModelInfo:
+          plan = new GetModelInfoPlan();
           break;
         case CreatePipePlugin:
           plan = new CreatePipePluginPlan();

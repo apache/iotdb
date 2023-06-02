@@ -52,4 +52,4 @@ jobs:
       - name: Integration test
         shell: bash
         run: |
-          cd client-go && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
+          cd iotdb-client/client-go/ && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo

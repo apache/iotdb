@@ -19,93 +19,153 @@
 
 package org.apache.iotdb.consensus.iot.logdispatcher;
 
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 public class LogDispatcherThreadMetrics implements IMetricSet {
   private final LogDispatcher.LogDispatcherThread logDispatcherThread;
+  private final String peerGroupId;
+
+  private Histogram constructBatchHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram syncLogTimePerRequestHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
 
   public LogDispatcherThreadMetrics(LogDispatcher.LogDispatcherThread logDispatcherThread) {
     this.logDispatcherThread = logDispatcherThread;
+    this.peerGroupId = logDispatcherThread.getPeer().getGroupId().toString();
+  }
+
+  public void recordConstructBatchTime(long time) {
+    constructBatchHistogram.update(time);
+  }
+
+  public void recordSyncLogTimePerRequest(long time) {
+    syncLogTimePerRequestHistogram.update(time);
   }
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .createAutoGauge(
-            Metric.IOT_CONSENSUS.toString(),
-            MetricLevel.IMPORTANT,
-            logDispatcherThread,
-            LogDispatcher.LogDispatcherThread::getCurrentSyncIndex,
-            Tag.NAME.toString(),
-            formatName(),
-            Tag.REGION.toString(),
-            logDispatcherThread.getPeer().getGroupId().toString(),
-            Tag.TYPE.toString(),
-            "currentSyncIndex");
-    MetricService.getInstance()
-        .createAutoGauge(
-            Metric.IOT_CONSENSUS.toString(),
-            MetricLevel.IMPORTANT,
-            logDispatcherThread,
-            x -> x.getSyncStatus().getPendingBatches().size(),
-            Tag.NAME.toString(),
-            formatName(),
-            Tag.REGION.toString(),
-            logDispatcherThread.getPeer().getGroupId().toString(),
-            Tag.TYPE.toString(),
-            "pipelineNum");
-    MetricService.getInstance()
-        .createAutoGauge(
-            Metric.IOT_CONSENSUS.toString(),
-            MetricLevel.IMPORTANT,
-            logDispatcherThread,
-            x -> x.getPendingEntriesSize() + x.getBufferRequestSize(),
-            Tag.NAME.toString(),
-            formatName(),
-            Tag.REGION.toString(),
-            logDispatcherThread.getPeer().getGroupId().toString(),
-            Tag.TYPE.toString(),
-            "cachedRequestInMemoryQueue");
+    bindAutoGauge(metricService);
+    bindStageHistogram(metricService);
+  }
+
+  private void bindAutoGauge(AbstractMetricService metricService) {
+    metricService.createAutoGauge(
+        Metric.IOT_CONSENSUS.toString(),
+        MetricLevel.IMPORTANT,
+        logDispatcherThread,
+        LogDispatcher.LogDispatcherThread::getCurrentSyncIndex,
+        Tag.NAME.toString(),
+        formatName(),
+        Tag.REGION.toString(),
+        logDispatcherThread.getPeer().getGroupId().toString(),
+        Tag.TYPE.toString(),
+        "currentSyncIndex");
+    metricService.createAutoGauge(
+        Metric.IOT_CONSENSUS.toString(),
+        MetricLevel.IMPORTANT,
+        logDispatcherThread,
+        x -> x.getSyncStatus().getPendingBatches().size(),
+        Tag.NAME.toString(),
+        formatName(),
+        Tag.REGION.toString(),
+        logDispatcherThread.getPeer().getGroupId().toString(),
+        Tag.TYPE.toString(),
+        "pipelineNum");
+    metricService.createAutoGauge(
+        Metric.IOT_CONSENSUS.toString(),
+        MetricLevel.IMPORTANT,
+        logDispatcherThread,
+        x -> x.getPendingEntriesSize() + x.getBufferRequestSize(),
+        Tag.NAME.toString(),
+        formatName(),
+        Tag.REGION.toString(),
+        logDispatcherThread.getPeer().getGroupId().toString(),
+        Tag.TYPE.toString(),
+        "cachedRequestInMemoryQueue");
+  }
+
+  private void bindStageHistogram(AbstractMetricService metricService) {
+    metricService.getOrCreateHistogram(
+        Metric.STAGE.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        Metric.IOT_CONSENSUS.toString(),
+        Tag.TYPE.toString(),
+        "constructBatch",
+        Tag.REGION.toString(),
+        peerGroupId);
+    metricService.getOrCreateHistogram(
+        Metric.STAGE.toString(),
+        MetricLevel.IMPORTANT,
+        Tag.NAME.toString(),
+        Metric.IOT_CONSENSUS.toString(),
+        Tag.TYPE.toString(),
+        "syncLogTimePerRequest",
+        Tag.REGION.toString(),
+        peerGroupId);
+  }
+
+  private void unbindStageHistogram(AbstractMetricService metricService) {
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.STAGE.toString(),
+        Tag.NAME.toString(),
+        Metric.IOT_CONSENSUS.toString(),
+        Tag.TYPE.toString(),
+        "constructBatch",
+        Tag.REGION.toString(),
+        peerGroupId);
+    metricService.remove(
+        MetricType.HISTOGRAM,
+        Metric.STAGE.toString(),
+        Tag.NAME.toString(),
+        Metric.IOT_CONSENSUS.toString(),
+        Tag.TYPE.toString(),
+        "syncLogTimePerRequest",
+        Tag.REGION.toString(),
+        peerGroupId);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    MetricService.getInstance()
-        .remove(
-            MetricType.AUTO_GAUGE,
-            Metric.IOT_CONSENSUS.toString(),
-            Tag.NAME.toString(),
-            formatName(),
-            Tag.REGION.toString(),
-            logDispatcherThread.getPeer().getGroupId().toString(),
-            Tag.TYPE.toString(),
-            "currentSyncIndex");
-    MetricService.getInstance()
-        .remove(
-            MetricType.AUTO_GAUGE,
-            Metric.IOT_CONSENSUS.toString(),
-            Tag.NAME.toString(),
-            formatName(),
-            Tag.REGION.toString(),
-            logDispatcherThread.getPeer().getGroupId().toString(),
-            Tag.TYPE.toString(),
-            "pipelineNum");
-    MetricService.getInstance()
-        .remove(
-            MetricType.AUTO_GAUGE,
-            Metric.IOT_CONSENSUS.toString(),
-            Tag.NAME.toString(),
-            formatName(),
-            Tag.REGION.toString(),
-            logDispatcherThread.getPeer().getGroupId().toString(),
-            Tag.TYPE.toString(),
-            "cachedRequestInMemoryQueue");
+    unbindAutoGauge(metricService);
+    unbindStageHistogram(metricService);
+  }
+
+  private void unbindAutoGauge(AbstractMetricService metricService) {
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.IOT_CONSENSUS.toString(),
+        Tag.NAME.toString(),
+        formatName(),
+        Tag.REGION.toString(),
+        logDispatcherThread.getPeer().getGroupId().toString(),
+        Tag.TYPE.toString(),
+        "currentSyncIndex");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.IOT_CONSENSUS.toString(),
+        Tag.NAME.toString(),
+        formatName(),
+        Tag.REGION.toString(),
+        logDispatcherThread.getPeer().getGroupId().toString(),
+        Tag.TYPE.toString(),
+        "pipelineNum");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.IOT_CONSENSUS.toString(),
+        Tag.NAME.toString(),
+        formatName(),
+        Tag.REGION.toString(),
+        logDispatcherThread.getPeer().getGroupId().toString(),
+        Tag.TYPE.toString(),
+        "cachedRequestInMemoryQueue");
   }
 
   private String formatName() {

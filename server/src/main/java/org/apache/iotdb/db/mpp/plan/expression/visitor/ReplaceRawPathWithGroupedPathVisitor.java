@@ -63,7 +63,7 @@ public class ReplaceRawPathWithGroupedPathVisitor
       GroupByLevelController.RawPathToGroupedPathMap rawPathToGroupedPathMap) {
     PartialPath rawPath = timeSeriesOperand.getPath();
     PartialPath groupedPath = rawPathToGroupedPathMap.get(rawPath);
-    return reconstructTimeSeriesOperand(groupedPath);
+    return reconstructTimeSeriesOperand(timeSeriesOperand, groupedPath);
   }
 
   @Override

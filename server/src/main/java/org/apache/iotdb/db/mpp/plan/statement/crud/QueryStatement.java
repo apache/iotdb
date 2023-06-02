@@ -38,7 +38,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
@@ -51,6 +50,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.constant.SqlConstant.MODEL_ID;
 
 /**
  * Base class of SELECT statement.
@@ -277,7 +278,7 @@ public class QueryStatement extends Statement {
   }
 
   public boolean isAggregationQuery() {
-    return selectComponent.isHasBuiltInAggregationFunction();
+    return selectComponent.hasBuiltInAggregationFunction();
   }
 
   public boolean isGroupByLevel() {
@@ -356,6 +357,10 @@ public class QueryStatement extends Statement {
     return orderByComponent != null && orderByComponent.isOrderByTimeseries();
   }
 
+  public boolean onlyOrderByTimeseries() {
+    return isOrderByTimeseries() && orderByComponent.getSortItemList().size() == 1;
+  }
+
   public boolean isOrderByDevice() {
     return orderByComponent != null && orderByComponent.isOrderByDevice();
   }
@@ -428,8 +433,7 @@ public class QueryStatement extends Statement {
     List<SortItem> sortItems = getSortItemList();
     List<SortItem> newSortItems = new ArrayList<>();
     int expressionIndex = 0;
-    for (int i = 0; i < sortItems.size(); i++) {
-      SortItem sortItem = sortItems.get(i);
+    for (SortItem sortItem : sortItems) {
       SortItem newSortItem =
           new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
       if (sortItem.isExpression()) {
@@ -477,7 +481,52 @@ public class QueryStatement extends Statement {
     return useWildcard;
   }
 
+  public boolean isModelInferenceQuery() {
+    return selectComponent.hasModelInferenceFunction();
+  }
+
   public void semanticCheck() {
+    if (isModelInferenceQuery()) {
+      if (selectComponent.getResultColumns().size() > 1) {
+        throw new SemanticException("");
+      }
+
+      Expression modelInferenceExpression =
+          selectComponent.getResultColumns().get(0).getExpression();
+      if (!(modelInferenceExpression instanceof FunctionExpression
+          && ((FunctionExpression) modelInferenceExpression).isModelInferenceFunction())) {
+        throw new SemanticException("");
+      }
+      if (!((FunctionExpression) modelInferenceExpression)
+          .getFunctionAttributes()
+          .containsKey(MODEL_ID)) {
+        throw new SemanticException("");
+      }
+      if (ExpressionAnalyzer.searchAggregationExpressions(modelInferenceExpression).size() > 0) {
+        throw new SemanticException("");
+      }
+
+      if (hasHaving()
+          || isGroupBy()
+          || isGroupByLevel()
+          || isGroupByTag()
+          || isAlignByDevice()
+          || isLastQuery()
+          || seriesLimit > 0
+          || seriesOffset > 0
+          || isSelectInto()
+          || isOrderByDevice()
+          || isOrderByTimeseries()) {
+        throw new SemanticException("");
+      }
+
+      if (orderByComponent != null
+          && (!orderByComponent.isOrderByTime()
+              || orderByComponent.getTimeOrder() != Ordering.ASC)) {
+        throw new SemanticException("");
+      }
+    }
+
     if (isAggregationQuery()) {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
@@ -585,10 +634,6 @@ public class QueryStatement extends Statement {
     }
 
     if (isLastQuery()) {
-      if (getSortItemList().size() == 1
-          && !getSortItemList().get(0).getSortKey().equals(OrderByKey.TIMESERIES)) {
-        throw new SemanticException("Last query only support sorting by timeseries now.");
-      }
       if (isAlignByDevice()) {
         throw new SemanticException("Last query doesn't support align by device.");
       }
@@ -604,9 +649,6 @@ public class QueryStatement extends Statement {
       if (isOrderByDevice()) {
         throw new SemanticException(
             "Sorting by device is only supported in ALIGN BY DEVICE queries.");
-      }
-      if (isOrderByTime()) {
-        throw new SemanticException("Sorting by time is not yet supported in last queries.");
       }
       if (seriesLimit != 0 || seriesOffset != 0) {
         throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");
