@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
-import org.apache.iotdb.commons.exception.sync.SyncConnectionException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorClient;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
@@ -65,6 +65,7 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 
 public class IoTDBSyncConnectorV1 implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1.class);
+
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final String IOTDB_SYNC_CONNECTOR_VERSION = "1.1";
 
@@ -156,19 +157,29 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // TODO: support more TabletInsertionEvent
     // PipeProcessor can change the type of TabletInsertionEvent
-    if (!(tabletInsertionEvent instanceof PipeTabletInsertionEvent)) {
-      throw new NotImplementedException(
-          "IoTDBSyncConnectorV1 only support PipeTabletInsertionEvent.");
-    }
-
     try {
-      doTransfer((PipeTabletInsertionEvent) tabletInsertionEvent);
+      if (tabletInsertionEvent instanceof PipeInsertNodeInsertionEvent) {
+        doTransfer((PipeInsertNodeInsertionEvent) tabletInsertionEvent);
+      } else if (tabletInsertionEvent instanceof PipeTabletInsertionEvent) {
+        doTransfer((PipeTabletInsertionEvent) tabletInsertionEvent);
+      } else {
+        throw new NotImplementedException(
+            "IoTDBSyncConnectorV1 only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+      }
     } catch (TException e) {
       LOGGER.error(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
-      // The connection may be broken, try to reconnect by catching PipeConnectionException
-      throw new PipeConnectionException("Network error when transfer tablet insertion event.", e);
+      // the connection may be broken, try to reconnect by catching PipeConnectionException
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tablet insertion event, because %s.", e.getMessage()),
+          e);
     }
+  }
+
+  private void doTransfer(PipeInsertNodeInsertionEvent pipeInsertNodeInsertionEvent)
+      throws IoTDBConnectionException, StatementExecutionException {
+    sessionPool.insertTablet(pipeInsertNodeInsertionEvent.convertToTablet());
   }
 
   private void doTransfer(PipeTabletInsertionEvent pipeTabletInsertionEvent)
@@ -196,7 +207,7 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
   }
 
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, TException, InterruptedException, IOException, SyncConnectionException {
+      throws PipeException, TException, InterruptedException, IOException {
     pipeTsFileInsertionEvent.waitForTsFileClose();
 
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
