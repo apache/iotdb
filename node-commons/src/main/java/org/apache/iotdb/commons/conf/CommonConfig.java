@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
@@ -163,6 +164,12 @@ public class CommonConfig {
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
+    File homeFile = new File(homeDir);
+    try {
+      homeDir = homeFile.getCanonicalPath();
+    } catch (IOException e) {
+      logger.error("Fail to get canonical path of {}", homeFile, e);
+    }
     userFolder = addHomeDir(userFolder, homeDir);
     roleFolder = addHomeDir(roleFolder, homeDir);
     procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);

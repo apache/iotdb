@@ -51,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1316,6 +1317,12 @@ public class IoTDBConfig {
     String dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_DATA_HOME, null);
     if (dataHomeDir == null) {
       dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+    }
+    File dataHomeFile = new File(dataHomeDir);
+    try {
+      dataHomeDir = dataHomeFile.getCanonicalPath();
+    } catch (IOException e) {
+      logger.error("Fail to get canonical path of {}", dataHomeFile, e);
     }
     return addDirPrefix(dataHomeDir, dir);
   }
