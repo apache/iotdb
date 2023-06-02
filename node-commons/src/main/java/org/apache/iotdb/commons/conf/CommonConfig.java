@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
-import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.slf4j.Logger;
@@ -171,12 +171,12 @@ public class CommonConfig {
     } catch (IOException e) {
       logger.error("Fail to get canonical path of {}", homeFile, e);
     }
-    userFolder = PathUtils.addPrefix2FilePath(homeDir, userFolder);
-    roleFolder = PathUtils.addPrefix2FilePath(homeDir, roleFolder);
-    procedureWalFolder = PathUtils.addPrefix2FilePath(homeDir, procedureWalFolder);
-    syncDir = PathUtils.addPrefix2FilePath(homeDir, syncDir);
+    userFolder = FileUtils.addPrefix2FilePath(homeDir, userFolder);
+    roleFolder = FileUtils.addPrefix2FilePath(homeDir, roleFolder);
+    procedureWalFolder = FileUtils.addPrefix2FilePath(homeDir, procedureWalFolder);
+    syncDir = FileUtils.addPrefix2FilePath(homeDir, syncDir);
     for (int i = 0; i < walDirs.length; i++) {
-      walDirs[i] = PathUtils.addPrefix2FilePath(homeDir, walDirs[i]);
+      walDirs[i] = FileUtils.addPrefix2FilePath(homeDir, walDirs[i]);
     }
   }
 

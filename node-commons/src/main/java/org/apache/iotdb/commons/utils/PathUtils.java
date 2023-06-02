@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.iotdb.tsfile.read.common.parser.PathVisitor;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -202,17 +201,5 @@ public class PathUtils {
       return false;
     }
     return src.length() == (src.replace("``", "").length() + num);
-  }
-
-  /** Add a prefix to a relative path file */
-  public static String addPrefix2FilePath(String prefix, String file) {
-    if (!new File(file).isAbsolute() && prefix != null && prefix.length() > 0) {
-      if (!prefix.endsWith(File.separator)) {
-        file = prefix + File.separatorChar + file;
-      } else {
-        file = prefix + file;
-      }
-    }
-    return file;
   }
 }
