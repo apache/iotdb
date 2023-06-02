@@ -97,7 +97,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
 
-    pushPipeMetaToDataNodes(env);
+    // do nothing
   }
 
   @Override

@@ -138,9 +138,20 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
             .getValue()
             .getProgressIndex()
             .isAfter(runtimeMetaFromDataNode.getProgressIndex())) {
-          runtimeMetaOnConfigNode
-              .getValue()
-              .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex());
+          LOGGER.info(
+              "Updating progress index for (pipe name: {}, consensus group id: {}) ... Progress index on config node: {}, progress index from data node: {}",
+              pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
+              runtimeMetaOnConfigNode.getKey(),
+              runtimeMetaOnConfigNode.getValue().getProgressIndex(),
+              runtimeMetaFromDataNode.getProgressIndex());
+          LOGGER.info(
+              "Progress index for (pipe name: {}, consensus group id: {}) is updated to {}",
+              pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
+              runtimeMetaOnConfigNode.getKey(),
+              runtimeMetaOnConfigNode
+                  .getValue()
+                  .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex()));
+
           needWriteConsensusOnConfigNodes = true;
         }
 
@@ -149,6 +160,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
         pipeTaskMetaOnConfigNode.clearExceptionMessages();
         for (final PipeRuntimeException exception :
             runtimeMetaFromDataNode.getExceptionMessages()) {
+
           pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
 
           if (exception instanceof PipeRuntimeCriticalException) {
@@ -159,6 +171,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
                 .get()
                 .equals(PipeStatus.STOPPED)) {
               pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+
               needWriteConsensusOnConfigNodes = true;
               needPushPipeMetaToDataNodes = true;
 
@@ -181,6 +194,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
                       .forEach(
                           status -> {
                             status.set(PipeStatus.STOPPED);
+
                             needWriteConsensusOnConfigNodes = true;
                             needPushPipeMetaToDataNodes = true;
 

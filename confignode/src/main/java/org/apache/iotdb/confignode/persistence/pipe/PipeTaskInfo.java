@@ -234,11 +234,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
+    LOGGER.info("Handling pipe meta changes ...");
     pipeMetaKeeper.clear();
     plan.getPipeMetaList()
         .forEach(
             pipeMeta -> {
               pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
+              LOGGER.info("Recording pipe meta: {}", pipeMeta);
             });
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
