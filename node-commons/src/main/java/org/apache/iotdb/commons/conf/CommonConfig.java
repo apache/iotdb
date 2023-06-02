@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.slf4j.Logger;
@@ -170,24 +171,13 @@ public class CommonConfig {
     } catch (IOException e) {
       logger.error("Fail to get canonical path of {}", homeFile, e);
     }
-    userFolder = addHomeDir(userFolder, homeDir);
-    roleFolder = addHomeDir(roleFolder, homeDir);
-    procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
-    syncDir = addHomeDir(syncDir, homeDir);
+    userFolder = PathUtils.addPrefix2FilePath(homeDir, userFolder);
+    roleFolder = PathUtils.addPrefix2FilePath(homeDir, roleFolder);
+    procedureWalFolder = PathUtils.addPrefix2FilePath(homeDir, procedureWalFolder);
+    syncDir = PathUtils.addPrefix2FilePath(homeDir, syncDir);
     for (int i = 0; i < walDirs.length; i++) {
-      walDirs[i] = addHomeDir(walDirs[i], homeDir);
+      walDirs[i] = PathUtils.addPrefix2FilePath(homeDir, walDirs[i]);
     }
-  }
-
-  private String addHomeDir(String dir, String homeDir) {
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
-    }
-    return dir;
   }
 
   public String getEncryptDecryptProvider() {
