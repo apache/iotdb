@@ -206,8 +206,8 @@ public class NodeManager {
   }
 
   private TRuntimeConfiguration getRuntimeConfiguration() {
-    getPipeManager().getPipePluginCoordinator().lock();
     getPipeManager().getPipeTaskCoordinator().lock();
+    getPipeManager().getPipePluginCoordinator().lock();
     getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
     getUDFManager().getUdfInfo().acquireUDFTableLock();
 
@@ -226,8 +226,8 @@ public class NodeManager {
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
       getUDFManager().getUdfInfo().releaseUDFTableLock();
-      getPipeManager().getPipeTaskCoordinator().unlock();
       getPipeManager().getPipePluginCoordinator().unlock();
+      getPipeManager().getPipeTaskCoordinator().unlock();
     }
   }
 
