@@ -238,14 +238,14 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromHandleOnDataNodes");
 
     if (!needPushPipeMetaToDataNodes) {
       return;
     }
 
-    pushPipeMetaToDataNodes(env);
+    pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override

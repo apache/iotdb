@@ -223,11 +223,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                                   dataRegionGroupId,
                                   new PipeTaskMeta(
                                       new MinimumProgressIndex(), newDataRegionLeader));
-                            } else {
-                              LOGGER.warn(
-                                  "The pipe task meta does not contain the data region group {} or the data region group has already been removed",
-                                  dataRegionGroupId);
                             }
+                            // else:
+                            // "The pipe task meta does not contain the data region group {} or
+                            // the data region group has already been removed"
                           }
                         }));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
