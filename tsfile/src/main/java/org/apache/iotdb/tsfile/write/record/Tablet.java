@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write.record;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -605,7 +606,7 @@ public class Tablet {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (o == null || !getClass().equals(o.getClass())) {
       return false;
     }
     Tablet that = (Tablet) o;
@@ -613,49 +614,110 @@ public class Tablet {
     boolean flag =
         that.rowSize == rowSize
             && Objects.equals(that.deviceId, deviceId)
-            && Arrays.equals(that.timestamps, timestamps)
-            && Arrays.equals(that.bitMaps, bitMaps)
             && Objects.equals(that.schemas, schemas)
             && Objects.equals(that.measurementIndex, measurementIndex);
     if (!flag) {
       return false;
     }
 
+    // assert timestamps and bitmaps
+    int columns = (schemas == null ? 0 : schemas.size());
+    if (!isTimestampsEqual(this.timestamps, that.timestamps, rowSize)
+        || !isBitMapsEqual(this.bitMaps, that.bitMaps, columns)) {
+      return false;
+    }
+
     // assert values
     Object[] thatValues = that.values;
+    if (thatValues == values) {
+      return true;
+    }
+    if (thatValues == null || values == null) {
+      return false;
+    }
+
     if (thatValues.length != values.length) {
       return false;
     }
     for (int i = 0, n = values.length; i < n; i++) {
+      if (thatValues[i] == values[i]) {
+        continue;
+      }
+      if (thatValues[i] == null || values[i] == null) {
+        return false;
+      }
+
       switch (schemas.get(i).getType()) {
         case INT32:
-          if (!Arrays.equals((int[]) thatValues[i], (int[]) values[i])) {
+          int[] thisIntValues = (int[]) values[i];
+          int[] thatIntValues = (int[]) thatValues[i];
+          if (thisIntValues.length < rowSize || thatIntValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisIntValues[j] != thatIntValues[j]) {
+              return false;
+            }
           }
           break;
         case INT64:
-          if (!Arrays.equals((long[]) thatValues[i], (long[]) values[i])) {
+          long[] thisLongValues = (long[]) values[i];
+          long[] thatLongValues = (long[]) thatValues[i];
+          if (thisLongValues.length < rowSize || thatLongValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisLongValues[j] != thatLongValues[j]) {
+              return false;
+            }
           }
           break;
         case FLOAT:
-          if (!Arrays.equals((float[]) thatValues[i], (float[]) values[i])) {
+          float[] thisFloatValues = (float[]) values[i];
+          float[] thatFloatValues = (float[]) thatValues[i];
+          if (thisFloatValues.length < rowSize || thatFloatValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisFloatValues[j] != thatFloatValues[j]) {
+              return false;
+            }
           }
           break;
         case DOUBLE:
-          if (!Arrays.equals((double[]) thatValues[i], (double[]) values[i])) {
+          double[] thisDoubleValues = (double[]) values[i];
+          double[] thatDoubleValues = (double[]) thatValues[i];
+          if (thisDoubleValues.length < rowSize || thatDoubleValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisDoubleValues[j] != thatDoubleValues[j]) {
+              return false;
+            }
           }
           break;
         case BOOLEAN:
-          if (!Arrays.equals((boolean[]) thatValues[i], (boolean[]) values[i])) {
+          boolean[] thisBooleanValues = (boolean[]) values[i];
+          boolean[] thatBooleanValues = (boolean[]) thatValues[i];
+          if (thisBooleanValues.length < rowSize || thatBooleanValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisBooleanValues[j] != thatBooleanValues[j]) {
+              return false;
+            }
           }
           break;
         case TEXT:
-          if (!Arrays.equals((Binary[]) thatValues[i], (Binary[]) values[i])) {
+          Binary[] thisBinaryValues = (Binary[]) values[i];
+          Binary[] thatBinaryValues = (Binary[]) thatValues[i];
+          if (thisBinaryValues.length < rowSize || thatBinaryValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (!thisBinaryValues[j].equals(thatBinaryValues[j])) {
+              return false;
+            }
           }
           break;
         default:
@@ -664,6 +726,38 @@ public class Tablet {
       }
     }
 
+    return true;
+  }
+
+  private boolean isTimestampsEqual(long[] thisTimestamps, long[] thatTimestamps, int rowSize) {
+    if (thisTimestamps == thatTimestamps) {
+      return true;
+    }
+    if (thisTimestamps == null || thatTimestamps == null) {
+      return false;
+    }
+
+    for (int i = 0; i < rowSize; i++) {
+      if (thisTimestamps[i] != thatTimestamps[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean isBitMapsEqual(BitMap[] thisBitMaps, BitMap[] thatBitMaps, int columns) {
+    if (thisBitMaps == thatBitMaps) {
+      return true;
+    }
+    if (thisBitMaps == null || thatBitMaps == null) {
+      return false;
+    }
+
+    for (int i = 0; i < columns; i++) {
+      if (!thisBitMaps[i].equals(thatBitMaps[i])) {
+        return false;
+      }
+    }
     return true;
   }
 }
