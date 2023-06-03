@@ -100,10 +100,10 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnDataNodes");
 
-    pushPipeMetaToDataNodes(env);
+    pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override
@@ -142,10 +142,10 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCreateOnDataNodes");
 
-    pushPipeMetaToDataNodes(env);
+    pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override
