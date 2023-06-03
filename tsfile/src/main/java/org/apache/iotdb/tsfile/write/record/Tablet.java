@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.write.record;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -32,8 +31,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -402,6 +399,7 @@ public class Tablet {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
         } else {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
+          ReadWriteIOUtils.write(bitMaps[i].getSize(), stream);
           ReadWriteIOUtils.write(new Binary(bitMaps[i].getByteArray()), stream);
         }
       }
@@ -452,7 +450,7 @@ public class Tablet {
         case BOOLEAN:
           boolean[] boolValues = (boolean[]) column;
           for (int j = 0; j < rowSize; j++) {
-            ReadWriteIOUtils.write(boolValues[j] ? 1 : 0, stream);
+            ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
           }
           break;
         case TEXT:
@@ -503,7 +501,7 @@ public class Tablet {
     BitMap[] bitMaps = new BitMap[schemaSize];
     boolean isBitMapsNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
     if (isBitMapsNotNull) {
-      bitMaps = readBitMapsFromBuffer(byteBuffer, schemaSize, rowSize);
+      bitMaps = readBitMapsFromBuffer(byteBuffer, schemaSize);
     }
 
     // deserialize values
@@ -521,13 +519,14 @@ public class Tablet {
   }
 
   /** deserialize bitmaps */
-  public static BitMap[] readBitMapsFromBuffer(ByteBuffer byteBuffer, int columns, int rowSize) {
+  public static BitMap[] readBitMapsFromBuffer(ByteBuffer byteBuffer, int columns) {
     BitMap[] bitMaps = new BitMap[columns];
     for (int i = 0; i < columns; i++) {
       boolean hasBitMap = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
       if (hasBitMap) {
+        final int size = ReadWriteIOUtils.readInt(byteBuffer);
         final Binary valueBinary = ReadWriteIOUtils.readBinary(byteBuffer);
-        bitMaps[i] = new BitMap(rowSize, valueBinary.getValues());
+        bitMaps[i] = new BitMap(size, valueBinary.getValues());
       }
     }
     return bitMaps;
