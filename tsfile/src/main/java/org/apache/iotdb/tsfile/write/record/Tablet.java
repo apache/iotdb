@@ -634,7 +634,6 @@ public class Tablet {
     if (thatValues == null || values == null) {
       return false;
     }
-
     if (thatValues.length != values.length) {
       return false;
     }
@@ -643,6 +642,9 @@ public class Tablet {
         continue;
       }
       if (thatValues[i] == null || values[i] == null) {
+        return false;
+      }
+      if (!thatValues[i].getClass().equals(values[i].getClass())) {
         return false;
       }
 
