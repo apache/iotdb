@@ -420,7 +420,7 @@ public class DProfileIT {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, "Device", "distinct(s1)"};
     String[] retArray =
         new String[] {
-          "0,root.test.db,1.0,", "1,root.test.db,2.0,",
+          "1,root.test.db,1.0,", "2,root.test.db,2.0,",
         };
     resultSetEqualTest(sqlStr, expectedHeader, retArray);
   }

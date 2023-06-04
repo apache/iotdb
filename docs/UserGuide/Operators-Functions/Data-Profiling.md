@@ -91,7 +91,7 @@ This function returns all unique values in time series.
 
 **Input Series:** Only support a single input series. The type is arbitrary.
 
-**Output Series:** Output a single series. The type is the same as the input.
+**Output Series:** Output a single series. The type is the same as the input. The output time is the earliest time of each distinct element.
 
 **Note:**
 
@@ -128,9 +128,9 @@ Output series:
 +-----------------------------+-------------------------+
 |                         Time|distinct(root.test.d2.s2)|
 +-----------------------------+-------------------------+
-|1970-01-01T08:00:00.001+08:00|                    Hello|
-|1970-01-01T08:00:00.002+08:00|                    hello|
-|1970-01-01T08:00:00.003+08:00|                    World|
+|2020-01-01T08:00:00.001+08:00|                    Hello|
+|2020-01-01T08:00:00.002+08:00|                    hello|
+|2020-01-01T08:00:00.004+08:00|                    World|
 +-----------------------------+-------------------------+
 ```
 
