@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.datastructure;
 
-import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -124,7 +124,7 @@ public class TsFileInsertionDataContainer {
 
           @Override
           public TabletInsertionEvent next() {
-            return new PipeTabletInsertionEvent(tabletIterator.next());
+            return new PipeTabletTabletInsertionEvent(tabletIterator.next());
           }
         };
   }

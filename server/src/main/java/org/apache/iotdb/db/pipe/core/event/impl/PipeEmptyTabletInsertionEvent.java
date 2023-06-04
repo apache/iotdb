@@ -17,7 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.runtime;
+package org.apache.iotdb.db.pipe.core.event.impl;
 
-/** HeartbeatScheduler is used to schedule the heartbeat of the pipe. */
-public class HeartbeatScheduler {}
+import org.apache.iotdb.pipe.api.access.Row;
+import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+
+import java.util.function.BiConsumer;
+
+public class PipeEmptyTabletInsertionEvent implements TabletInsertionEvent {
+  @Override
+  public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+    return this;
+  }
+
+  @Override
+  public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+    return this;
+  }
+}

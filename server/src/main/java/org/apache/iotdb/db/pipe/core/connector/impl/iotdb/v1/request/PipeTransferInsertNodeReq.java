@@ -50,8 +50,9 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
       statement.setMeasurements(node.getMeasurements());
       statement.setDataTypes(node.getDataTypes());
       statement.setValues(node.getValues());
-      statement.setNeedInferType(true);
+      statement.setNeedInferType(node.isNeedInferType());
       statement.setAligned(node.isAligned());
+      statement.setMeasurementSchemas(node.getMeasurementSchemas());
       return statement;
     }
 
@@ -67,6 +68,7 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
       statement.setRowCount(node.getRowCount());
       statement.setDataTypes(node.getDataTypes());
       statement.setAligned(node.isAligned());
+      statement.setMeasurementSchemas(node.getMeasurementSchemas());
       return statement;
     }
 
