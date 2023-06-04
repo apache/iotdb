@@ -176,8 +176,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         }
 
         if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
-            && !CompactionUtils.validateTsFileResources(
-                tsFileManager, storageGroupName, timePartition)) {
+            && (!CompactionUtils.validateTsFileResources(
+                    tsFileManager, storageGroupName, timePartition)
+                || !CompactionUtils.validateTsFiles(targetTsfileResourceList))) {
           LOGGER.error(
               "Failed to pass compaction validation, source sequence files is: {}, unsequence files is {}, target files is {}",
               selectedSequenceFiles,
