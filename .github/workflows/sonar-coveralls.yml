@@ -46,7 +46,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Coveralls
         run: |
-          mvn -B post-test -Pcode-coverage -pl code-coverage
+          mvn -B test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \
           -DserviceName=travis_ci \
           -Dbranch=$BRANCH_NAME \
