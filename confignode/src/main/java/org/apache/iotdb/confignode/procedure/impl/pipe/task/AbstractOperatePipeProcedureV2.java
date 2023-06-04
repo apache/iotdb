@@ -200,6 +200,14 @@ public abstract class AbstractOperatePipeProcedureV2
     }
   }
 
+  protected void pushPipeMetaToDataNodesIgnoreException(ConfigNodeProcedureEnv env) {
+    try {
+      pushPipeMetaToDataNodes(env);
+    } catch (Throwable throwable) {
+      LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", throwable);
+    }
+  }
+
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);

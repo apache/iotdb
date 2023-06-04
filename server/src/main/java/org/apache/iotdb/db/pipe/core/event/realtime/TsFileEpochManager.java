@@ -46,15 +46,13 @@ public class TsFileEpochManager {
 
     // this would not happen, but just in case
     if (!filePath2Epoch.containsKey(filePath)) {
-      LOGGER.warn(
-          String.format("PipeEngine: can not find TsFileEpoch for TsFile %s, create it", filePath));
+      LOGGER.info(
+          String.format("Pipe: can not find TsFileEpoch for TsFile %s, creating it", filePath));
       filePath2Epoch.put(filePath, new TsFileEpoch(filePath));
     }
 
     return new PipeRealtimeCollectEvent(
         event,
-        // TODO: we have to make sure that the TsFileInsertionEvent is the last event of the
-        // TsFileEpoch's life cycle
         filePath2Epoch.remove(filePath),
         resource.getDevices().stream()
             .collect(Collectors.toMap(device -> device, device -> EMPTY_MEASUREMENT_ARRAY)),
