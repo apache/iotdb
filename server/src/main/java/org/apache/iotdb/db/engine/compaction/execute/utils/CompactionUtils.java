@@ -20,11 +20,13 @@ package org.apache.iotdb.db.engine.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -333,7 +335,7 @@ public class CompactionUtils {
     return true;
   }
 
-  public static boolean validateSingleTsFiles(TsFileResource resource) throws IOException {
+  public static boolean validateSingleTsFiles(TsFileResource resource) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
       reader.readHeadMagic();
       reader.readTailMagic();
@@ -355,6 +357,7 @@ public class CompactionUtils {
               // empty value chunk
               break;
             }
+            CompactionMetricsManager.getInstance().recordReadInfo(header.getDataSize());
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
