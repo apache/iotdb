@@ -46,7 +46,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name:  Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean test -Pcode-coverage -am -Dtest.port.closed=true
+        run: mvn -B clean test -Pcode-coverage -pl code-coverage -Dtest.port.closed=true
       - name: Coveralls
         run: |
           mvn -B coveralls:report \
