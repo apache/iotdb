@@ -47,14 +47,14 @@ jobs:
       - name:  Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
         run: mvn -B clean test -Pcode-coverage -am -Dtest.port.closed=true
-      - name: Coveralls GitHub Action
-        uses: coverallsapp/github-action@v2
-        with:
-          github-token: ${{ secrets.COVERALL_TOKEN }}
-          # *base-path* is prepended to all paths in order to correctly reference source files on coveralls.io
-          base-path: "*/src/main/java"
-          # *file* is optional, but good to have. By default coveralls will try to find the report automatically.
-          file: "*/target/jacoco-unit-reports/jacoco.xml"
+      - name: Coveralls
+        run: |
+          mvn -B coveralls:report \
+          -DserviceName=travis_ci \
+          -Dbranch=$BRANCH_NAME \
+          -DpullRequest=$PR_NUMBER \
+          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
+          -Pcode-coverage -P '!testcontainer'
 
   sonar:
     runs-on: ubuntu-latest
