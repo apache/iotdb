@@ -52,7 +52,7 @@ jobs:
         with:
           github-token: ${{ secrets.COVERALL_TOKEN }}
           # *base-path* is prepended to all paths in order to correctly reference source files on coveralls.io
-          base-path: src/main/java
+          base-path: "*/src/main/java"
 
   sonar:
     runs-on: ubuntu-latest
