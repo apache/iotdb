@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeEmptyTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeRowCollector;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -51,7 +52,7 @@ public class TabletInsertionDataContainer {
   private String[] columnNameStringList;
 
   private long[] timestampColumn;
-  private Object[][] valueColumns;
+  private Object[] valueColumns;
   private TSDataType[] valueColumnTypes;
   private BitMap[] nullValueColumnBitmaps;
   private int rowCount;
@@ -97,7 +98,7 @@ public class TabletInsertionDataContainer {
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumns = new Object[filteredColumnSize][1];
+    this.valueColumns = new Object[filteredColumnSize];
     this.valueColumnTypes = new TSDataType[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
@@ -111,7 +112,7 @@ public class TabletInsertionDataContainer {
         final int filteredColumnIndex = originColumnIndex2FilteredColumnIndexMapperList[i];
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
-        this.valueColumns[filteredColumnIndex][0] = originValueColumns[i];
+        this.valueColumns[filteredColumnIndex] = originValueColumns[i];
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
         this.nullValueColumnBitmaps[filteredColumnIndex] = new BitMap(1);
       }
@@ -139,7 +140,7 @@ public class TabletInsertionDataContainer {
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumns = new Object[filteredColumnSize][];
+    this.valueColumns = new Object[filteredColumnSize];
     this.valueColumnTypes = new TSDataType[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
@@ -188,7 +189,7 @@ public class TabletInsertionDataContainer {
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumns = new Object[filteredColumnSize][];
+    this.valueColumns = new Object[filteredColumnSize];
     this.valueColumnTypes = new TSDataType[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
@@ -269,51 +270,53 @@ public class TabletInsertionDataContainer {
         originMeasurementList, pattern, originColumnIndex2FilteredColumnIndexMapperList);
   }
 
-  private Object[] convertToColumn(Object originColumn, TSDataType dataType, BitMap bitMap) {
+  private Object convertToColumn(Object originColumn, TSDataType dataType, BitMap bitMap) {
     switch (dataType) {
       case INT32:
         final int[] intValues = (int[]) originColumn;
-        final Integer[] integerValues = new Integer[intValues.length];
+        final int[] integerValues = new int[intValues.length];
         for (int i = 0; i < intValues.length; i++) {
-          integerValues[i] = bitMap != null && bitMap.isMarked(i) ? null : intValues[i];
+          integerValues[i] = bitMap != null && bitMap.isMarked(i) ? 0 : intValues[i];
         }
         return integerValues;
       case INT64:
         final long[] longValues = (long[]) originColumn;
-        final Long[] longValues2 = new Long[longValues.length];
+        final long[] longValues2 = new long[longValues.length];
         for (int i = 0; i < longValues.length; i++) {
-          longValues2[i] = bitMap != null && bitMap.isMarked(i) ? null : longValues[i];
+          longValues2[i] = bitMap != null && bitMap.isMarked(i) ? 0 : longValues[i];
         }
         return longValues2;
       case FLOAT:
         final float[] floatValues = (float[]) originColumn;
-        final Float[] floatValues2 = new Float[floatValues.length];
+        final float[] floatValues2 = new float[floatValues.length];
         for (int i = 0; i < floatValues.length; i++) {
-          floatValues2[i] = bitMap != null && bitMap.isMarked(i) ? null : floatValues[i];
+          floatValues2[i] = bitMap != null && bitMap.isMarked(i) ? 0 : floatValues[i];
         }
         return floatValues2;
       case DOUBLE:
         final double[] doubleValues = (double[]) originColumn;
-        final Double[] doubleValues2 = new Double[doubleValues.length];
+        final double[] doubleValues2 = new double[doubleValues.length];
         for (int i = 0; i < doubleValues.length; i++) {
-          doubleValues2[i] = bitMap != null && bitMap.isMarked(i) ? null : doubleValues[i];
+          doubleValues2[i] = bitMap != null && bitMap.isMarked(i) ? 0 : doubleValues[i];
         }
         return doubleValues2;
       case BOOLEAN:
         final boolean[] booleanValues = (boolean[]) originColumn;
-        final Boolean[] booleanValues2 = new Boolean[booleanValues.length];
+        final boolean[] booleanValues2 = new boolean[booleanValues.length];
         for (int i = 0; i < booleanValues.length; i++) {
-          booleanValues2[i] = bitMap != null && bitMap.isMarked(i) ? null : booleanValues[i];
+          booleanValues2[i] = (bitMap == null || !bitMap.isMarked(i)) && booleanValues[i];
         }
         return booleanValues2;
       case TEXT:
         final Binary[] binaryValues = (Binary[]) originColumn;
-        final String[] stringValues = new String[binaryValues.length];
+        final Binary[] stringValues = new Binary[binaryValues.length];
         for (int i = 0; i < binaryValues.length; i++) {
           stringValues[i] =
               bitMap != null && bitMap.isMarked(i)
                   ? null
-                  : (binaryValues[i] == null ? null : binaryValues[i].getStringValue());
+                  : (binaryValues[i] == null
+                      ? null
+                      : Binary.valueOf(binaryValues[i].getStringValue()));
         }
         return stringValues;
       default:
@@ -326,6 +329,10 @@ public class TabletInsertionDataContainer {
 
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector();
+    if (valueColumns.length == 0) {
+      return new PipeEmptyTabletInsertionEvent();
+    }
+
     for (int i = 0; i < timestampColumn.length; i++) {
       consumer.accept(
           new PipeRow(
@@ -355,76 +362,17 @@ public class TabletInsertionDataContainer {
     }
 
     final int columnSize = measurementSchemaList.length;
-    final int rowSize = valueColumns[0].length;
 
     final List<MeasurementSchema> measurementSchemaArrayList =
         new ArrayList<>(Arrays.asList(measurementSchemaList).subList(0, columnSize));
 
-    final Tablet newTablet = new Tablet(deviceId, measurementSchemaArrayList, rowSize);
+    final Tablet newTablet = new Tablet(deviceId, measurementSchemaArrayList, rowCount);
     newTablet.timestamps = timestampColumn;
     newTablet.bitMaps = nullValueColumnBitmaps;
-    newTablet.values = squashFromColumnList(valueColumns, valueColumnTypes);
+    newTablet.values = valueColumns;
     newTablet.rowSize = rowCount;
 
     tablet = newTablet;
     return tablet;
-  }
-
-  private Object[] squashFromColumnList(Object[][] valueColumns, TSDataType[] valueColumnTypes) {
-    final Object[] values = new Object[valueColumns.length];
-    for (int i = 0; i < valueColumns.length; i++) {
-      values[i] = squashFromColumn(valueColumns[i], valueColumnTypes[i]);
-    }
-    return values;
-  }
-
-  private Object squashFromColumn(Object[] valueColumn, TSDataType valueColumnType) {
-    switch (valueColumnType) {
-      case INT32:
-        final Integer[] intValues = (Integer[]) valueColumn;
-        final int[] intValues2 = new int[intValues.length];
-        for (int i = 0; i < intValues.length; i++) {
-          intValues2[i] = intValues[i] == null ? 0 : intValues[i];
-        }
-        return intValues2;
-      case INT64:
-        final Long[] longValues = (Long[]) valueColumn;
-        final long[] longValues2 = new long[longValues.length];
-        for (int i = 0; i < longValues.length; i++) {
-          longValues2[i] = longValues[i] == null ? 0 : longValues[i];
-        }
-        return longValues2;
-      case FLOAT:
-        final Float[] floatValues = (Float[]) valueColumn;
-        final float[] floatValues2 = new float[floatValues.length];
-        for (int i = 0; i < floatValues.length; i++) {
-          floatValues2[i] = floatValues[i] == null ? 0 : floatValues[i];
-        }
-        return floatValues2;
-      case DOUBLE:
-        final Double[] doubleValues = (Double[]) valueColumn;
-        final double[] doubleValues2 = new double[doubleValues.length];
-        for (int i = 0; i < doubleValues.length; i++) {
-          doubleValues2[i] = doubleValues[i] == null ? 0 : doubleValues[i];
-        }
-        return doubleValues2;
-      case BOOLEAN:
-        final Boolean[] booleanValues = (Boolean[]) valueColumn;
-        final boolean[] booleanValues2 = new boolean[booleanValues.length];
-        for (int i = 0; i < booleanValues.length; i++) {
-          booleanValues2[i] = booleanValues[i] != null && booleanValues[i];
-        }
-        return booleanValues2;
-      case TEXT:
-        final String[] stringValues = (String[]) valueColumn;
-        final Binary[] binaryValues = new Binary[stringValues.length];
-        for (int i = 0; i < stringValues.length; i++) {
-          binaryValues[i] = stringValues[i] == null ? null : Binary.valueOf(stringValues[i]);
-        }
-        return binaryValues;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", valueColumnType));
-    }
   }
 }
