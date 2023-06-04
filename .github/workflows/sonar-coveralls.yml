@@ -53,8 +53,6 @@ jobs:
           github-token: ${{ secrets.COVERALL_TOKEN }}
           # *base-path* is prepended to all paths in order to correctly reference source files on coveralls.io
           base-path: src/main/java
-          # *file* is optional, but good to have. By default coveralls will try to find the report automatically.
-          file: target/jacoco-report/jacoco.xml
 
   sonar:
     runs-on: ubuntu-latest
