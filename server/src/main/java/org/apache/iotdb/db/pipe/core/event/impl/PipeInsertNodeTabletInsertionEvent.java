@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.core.event.impl;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.core.event.view.datastructure.TabletInsertionDataContainer;
@@ -38,21 +39,23 @@ import org.slf4j.LoggerFactory;
 
 import java.util.function.BiConsumer;
 
-public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
+public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
+    implements TabletInsertionEvent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInsertNodeInsertionEvent.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
   private final ProgressIndex progressIndex;
 
   private TabletInsertionDataContainer dataContainer;
 
-  public PipeInsertNodeInsertionEvent(
+  public PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
     this(walEntryHandler, progressIndex, null, null);
   }
 
-  private PipeInsertNodeInsertionEvent(
+  private PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
       ProgressIndex progressIndex,
       PipeTaskMeta pipeTaskMeta,
@@ -104,9 +107,10 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
   }
 
   @Override
-  public PipeInsertNodeInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+  public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeInsertNodeInsertionEvent(walEntryHandler, progressIndex, pipeTaskMeta, pattern);
+    return new PipeInsertNodeTabletInsertionEvent(
+        walEntryHandler, progressIndex, pipeTaskMeta, pattern);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -149,11 +153,24 @@ public class PipeInsertNodeInsertionEvent extends EnrichedEvent implements Table
     }
   }
 
+  @TestOnly
+  public Tablet convertToTabletForTest(InsertNode insertNode, String pattern) {
+    try {
+      if (dataContainer == null) {
+        dataContainer = new TabletInsertionDataContainer(insertNode, pattern);
+      }
+      return dataContainer.convertToTablet();
+    } catch (Exception e) {
+      LOGGER.error("Process tablet error.", e);
+      throw new PipeException("Process tablet error.", e);
+    }
+  }
+
   /////////////////////////// Object ///////////////////////////
 
   @Override
   public String toString() {
-    return "PipeTabletInsertionEvent{"
+    return "PipeTabletTabletInsertionEvent{"
         + "walEntryHandler="
         + walEntryHandler
         + ", progressIndex="

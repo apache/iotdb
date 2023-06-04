@@ -29,18 +29,18 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent implements TabletInsertionEvent {
+public class PipeTabletTabletInsertionEvent implements TabletInsertionEvent {
 
   private final Tablet tablet;
   private final String pattern;
 
   private TabletInsertionDataContainer dataContainer;
 
-  public PipeTabletInsertionEvent(Tablet tablet) {
+  public PipeTabletTabletInsertionEvent(Tablet tablet) {
     this(Objects.requireNonNull(tablet), null);
   }
 
-  public PipeTabletInsertionEvent(Tablet tablet, String pattern) {
+  public PipeTabletTabletInsertionEvent(Tablet tablet, String pattern) {
     this.tablet = Objects.requireNonNull(tablet);
     this.pattern = pattern;
   }
