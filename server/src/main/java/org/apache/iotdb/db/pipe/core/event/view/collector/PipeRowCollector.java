@@ -19,13 +19,60 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.collector;
 
+import org.apache.iotdb.db.pipe.core.event.impl.PipeEmptyTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class PipeRowCollector implements RowCollector {
 
+  private Tablet tablet = null;
+
   @Override
-  public void collectRow(Row row) throws IOException {}
+  public void collectRow(Row row) {
+    if (!(row instanceof PipeRow)) {
+      throw new PipeException("Row can not be customized");
+    }
+
+    final PipeRow pipeRow = (PipeRow) row;
+    final MeasurementSchema[] measurementSchemaArray = pipeRow.getMeasurementSchemaList();
+
+    if (tablet == null) {
+      final String deviceId = pipeRow.getDeviceId();
+      final List<MeasurementSchema> measurementSchemaList =
+          new ArrayList<>(Arrays.asList(measurementSchemaArray));
+      tablet = new Tablet(deviceId, measurementSchemaList);
+      tablet.initBitMaps();
+    }
+
+    final int rowIndex = tablet.rowSize;
+    tablet.addTimestamp(rowIndex, row.getTime());
+    for (int i = 0; i < row.size(); i++) {
+      tablet.addValue(measurementSchemaArray[i].getMeasurementId(), rowIndex, row.getObject(i));
+      if (row.isNull(i)) {
+        tablet.bitMaps[i].mark(rowIndex);
+      }
+    }
+    tablet.rowSize++;
+  }
+
+  public TabletInsertionEvent toTabletInsertionEvent() {
+    if (tablet == null) {
+      return new PipeEmptyTabletInsertionEvent();
+    }
+
+    PipeTabletTabletInsertionEvent tabletInsertionEvent =
+        new PipeTabletTabletInsertionEvent(tablet);
+    this.tablet = null;
+    return tabletInsertionEvent;
+  }
 }

@@ -153,4 +153,16 @@ public class FileUtils {
       org.apache.commons.io.FileUtils.delete(file);
     }
   }
+
+  /** Add a prefix to a relative path file */
+  public static String addPrefix2FilePath(String prefix, String file) {
+    if (!new File(file).isAbsolute() && prefix != null && prefix.length() > 0) {
+      if (!prefix.endsWith(File.separator)) {
+        file = prefix + File.separatorChar + file;
+      } else {
+        file = prefix + file;
+      }
+    }
+    return file;
+  }
 }

@@ -17,7 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.runtime;
+package org.apache.iotdb.commons.pipe.utils;
 
-/** HeartbeatScheduler is used to schedule the heartbeat of the pipe. */
-public class HeartbeatScheduler {}
+public class PipeBinaryTransformer {
+  public static org.apache.iotdb.tsfile.utils.Binary transformToBinary(
+      org.apache.iotdb.pipe.api.type.Binary binary) {
+    return binary == null ? null : new org.apache.iotdb.tsfile.utils.Binary(binary.getValues());
+  }
+
+  public static org.apache.iotdb.pipe.api.type.Binary transformToPipeBinary(
+      org.apache.iotdb.tsfile.utils.Binary binary) {
+    return binary == null ? null : new org.apache.iotdb.pipe.api.type.Binary(binary.getValues());
+  }
+}

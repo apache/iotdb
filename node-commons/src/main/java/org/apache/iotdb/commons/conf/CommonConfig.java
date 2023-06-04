@@ -22,12 +22,14 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
@@ -154,6 +156,7 @@ public class CommonConfig {
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 1024;
+  private long pipeConnectorSessionId = Long.MAX_VALUE / 2;
 
   private int pipeHeartbeatLoopCyclesForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
@@ -162,24 +165,23 @@ public class CommonConfig {
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
-    userFolder = addHomeDir(userFolder, homeDir);
-    roleFolder = addHomeDir(roleFolder, homeDir);
-    procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
-    syncDir = addHomeDir(syncDir, homeDir);
-    for (int i = 0; i < walDirs.length; i++) {
-      walDirs[i] = addHomeDir(walDirs[i], homeDir);
+    if (homeDir == null) {
+      return;
     }
-  }
 
-  private String addHomeDir(String dir, String homeDir) {
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
+    File homeFile = new File(homeDir);
+    try {
+      homeDir = homeFile.getCanonicalPath();
+    } catch (IOException e) {
+      logger.error("Fail to get canonical path of {}", homeFile, e);
     }
-    return dir;
+    userFolder = FileUtils.addPrefix2FilePath(homeDir, userFolder);
+    roleFolder = FileUtils.addPrefix2FilePath(homeDir, roleFolder);
+    procedureWalFolder = FileUtils.addPrefix2FilePath(homeDir, procedureWalFolder);
+    syncDir = FileUtils.addPrefix2FilePath(homeDir, syncDir);
+    for (int i = 0; i < walDirs.length; i++) {
+      walDirs[i] = FileUtils.addPrefix2FilePath(homeDir, walDirs[i]);
+    }
   }
 
   public String getEncryptDecryptProvider() {
@@ -548,5 +550,13 @@ public class CommonConfig {
       long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs) {
     this.pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs =
         pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs;
+  }
+
+  public long getPipeConnectorSessionId() {
+    return pipeConnectorSessionId;
+  }
+
+  public void setPipeConnectorSessionId(long pipeSessionId) {
+    this.pipeConnectorSessionId = pipeSessionId;
   }
 }

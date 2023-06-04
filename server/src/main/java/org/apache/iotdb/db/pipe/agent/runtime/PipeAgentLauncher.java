@@ -163,13 +163,19 @@ class PipeAgentLauncher {
       PipeAgent.task()
           .handlePipeMetaChanges(
               getAllPipeInfoResp.getAllPipeInfo().stream()
-                  .map(PipeMeta::deserialize)
+                  .map(
+                      byteBuffer -> {
+                        final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
+                        LOGGER.info(
+                            "Pulled pipe meta from config node: {}, recovering ...", pipeMeta);
+                        return pipeMeta;
+                      })
                   .collect(Collectors.toList()));
-    } catch (Throwable throwable) {
+    } catch (Exception e) {
       LOGGER.info(
           "Failed to get pipe task meta from config node. Ignore the exception, "
               + "because config node may not be ready yet, and meta will be pushed by config node later.",
-          throwable);
+          e);
     }
   }
 }

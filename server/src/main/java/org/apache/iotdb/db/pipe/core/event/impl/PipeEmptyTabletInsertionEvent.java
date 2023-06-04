@@ -17,44 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event.view.access;
+package org.apache.iotdb.db.pipe.core.event.impl;
 
 import org.apache.iotdb.pipe.api.access.Row;
-import org.apache.iotdb.pipe.api.access.RowIterator;
-import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
-import org.apache.iotdb.pipe.api.type.Type;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import java.io.IOException;
-import java.util.List;
+import java.util.function.BiConsumer;
 
-public class PipeRowIterator implements RowIterator {
-
+public class PipeEmptyTabletInsertionEvent implements TabletInsertionEvent {
   @Override
-  public boolean hasNextRow() {
-    return false;
+  public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+    return this;
   }
 
   @Override
-  public Row next() throws IOException {
-    return null;
-  }
-
-  @Override
-  public void reset() {}
-
-  @Override
-  public int getColumnIndex(Path columnName) throws PipeParameterNotValidException {
-    return 0;
-  }
-
-  @Override
-  public List<Path> getColumnNames() {
-    return null;
-  }
-
-  @Override
-  public List<Type> getColumnTypes() {
-    return null;
+  public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+    return this;
   }
 }

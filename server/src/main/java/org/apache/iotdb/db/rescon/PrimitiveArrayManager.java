@@ -55,11 +55,11 @@ public class PrimitiveArrayManager {
           * CONFIG.getBufferedArraysMemoryProportion()
           / AMPLIFICATION_FACTOR;
 
-  /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR is ignored */
-  private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length - 1];
+  /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
+  private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length - 2];
 
-  /** TSDataType#serialize() -> max size of ArrayDeque<Array>, VECTOR is ignored */
-  private static final int[] LIMITS = new int[TSDataType.values().length - 1];
+  /** TSDataType#serialize() -> max size of ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
+  private static final int[] LIMITS = new int[TSDataType.values().length - 2];
 
   /** LIMITS should be updated if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold) */
   private static long limitUpdateThreshold;
@@ -89,7 +89,7 @@ public class PrimitiveArrayManager {
     // => LIMITS[i] = POOLED_ARRAYS_MEMORY_THRESHOLD / ARRAY_SIZE / ∑(datatype[i].getDataTypeSize())
     int totalDataTypeSize = 0;
     for (TSDataType dataType : TSDataType.values()) {
-      // VECTOR is ignored
+      // VECTOR and UNKNOWN are ignored
       if (dataType.equals(TSDataType.VECTOR) || dataType.equals(TSDataType.UNKNOWN)) {
         continue;
       }
@@ -100,7 +100,7 @@ public class PrimitiveArrayManager {
     Arrays.fill(LIMITS, (int) limit);
 
     // limitUpdateThreshold = ∑(LIMITS[i])
-    limitUpdateThreshold = (long) ((TSDataType.values().length - 1) * limit);
+    limitUpdateThreshold = (long) ((TSDataType.values().length - 2) * limit);
 
     for (int i = 0; i < POOLED_ARRAYS.length; ++i) {
       POOLED_ARRAYS[i] = new ArrayDeque<>((int) limit);
@@ -121,8 +121,8 @@ public class PrimitiveArrayManager {
    * @return an array
    */
   public static Object allocate(TSDataType dataType) {
-    if (dataType.equals(TSDataType.VECTOR)) {
-      throw new UnSupportedDataTypeException(TSDataType.VECTOR.name());
+    if (dataType.equals(TSDataType.VECTOR) || dataType.equals(TSDataType.UNKNOWN)) {
+      throw new UnSupportedDataTypeException(dataType.name());
     }
 
     if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold) {
@@ -167,8 +167,8 @@ public class PrimitiveArrayManager {
     //     / ∑(datatype[i].getDataTypeSize() * ratios[i])
     double weightedSumOfRatios = 0;
     for (TSDataType dataType : TSDataType.values()) {
-      // VECTOR is ignored
-      if (dataType.equals(TSDataType.VECTOR)) {
+      // VECTOR and UNKNOWN are ignored
+      if (dataType.equals(TSDataType.VECTOR) || dataType.equals(TSDataType.UNKNOWN)) {
         continue;
       }
       weightedSumOfRatios += dataType.getDataTypeSize() * ratios[dataType.serialize()];

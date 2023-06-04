@@ -19,84 +19,130 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.access;
 
+import org.apache.iotdb.commons.pipe.utils.PipeDataTypeTransformer;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.pipe.api.type.Type;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 public class PipeRow implements Row {
 
-  @Override
-  public long getTime() throws IOException {
-    return 0;
+  private final int rowIndex;
+
+  private final String deviceId;
+  private final MeasurementSchema[] measurementSchemaList;
+
+  private final long[] timestampColumn;
+  private final Object[] valueColumns;
+  private final TSDataType[] valueColumnTypes;
+
+  private final String[] columnNameStringList;
+
+  public PipeRow(
+      int rowIndex,
+      String deviceId,
+      MeasurementSchema[] measurementSchemaList,
+      long[] timestampColumn,
+      Object[] valueColumns,
+      TSDataType[] valueColumnTypes,
+      String[] columnNameStringList) {
+    this.rowIndex = rowIndex;
+    this.deviceId = deviceId;
+    this.measurementSchemaList = measurementSchemaList;
+    this.timestampColumn = timestampColumn;
+    this.valueColumns = valueColumns;
+    this.valueColumnTypes = valueColumnTypes;
+    this.columnNameStringList = columnNameStringList;
   }
 
   @Override
-  public int getInt(int columnIndex) throws IOException {
-    return 0;
+  public long getTime() {
+    return timestampColumn[rowIndex];
   }
 
   @Override
-  public long getLong(int columnIndex) throws IOException {
-    return 0;
+  public int getInt(int columnIndex) {
+    return ((int[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public float getFloat(int columnIndex) throws IOException {
-    return 0;
+  public long getLong(int columnIndex) {
+    return ((long[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public double getDouble(int columnIndex) throws IOException {
-    return 0;
+  public float getFloat(int columnIndex) {
+    return ((float[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public boolean getBoolean(int columnIndex) throws IOException {
-    return false;
+  public double getDouble(int columnIndex) {
+    return ((double[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public Binary getBinary(int columnIndex) throws IOException {
-    return null;
+  public boolean getBoolean(int columnIndex) {
+    return ((boolean[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public String getString(int columnIndex) throws IOException {
-    return null;
+  public Binary getBinary(int columnIndex) {
+    return ((Binary[]) valueColumns[columnIndex])[rowIndex];
+  }
+
+  @Override
+  public String getString(int columnIndex) {
+    return ((Binary[]) valueColumns[columnIndex])[rowIndex].getStringValue();
+  }
+
+  @Override
+  public Object getObject(int columnIndex) {
+    return ((Object[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
   public Type getDataType(int columnIndex) {
-    return null;
+    return PipeDataTypeTransformer.transformToPipeDataType(valueColumnTypes[columnIndex]);
   }
 
   @Override
   public boolean isNull(int columnIndex) {
-    return false;
+    return ((Object[]) valueColumns[columnIndex])[rowIndex] == null;
   }
 
   @Override
   public int size() {
-    return 0;
+    return valueColumns.length;
   }
 
   @Override
   public int getColumnIndex(Path columnName) throws PipeParameterNotValidException {
-    return 0;
-  }
-
-  @Override
-  public List<Path> getColumnNames() {
-    return null;
+    for (int i = 0; i < columnNameStringList.length; i++) {
+      if (columnNameStringList[i].equals(columnName.getFullPath())) {
+        return i;
+      }
+    }
+    throw new PipeParameterNotValidException(
+        String.format("column %s not found", columnName.getFullPath()));
   }
 
   @Override
   public List<Type> getColumnTypes() {
-    return null;
+    return PipeDataTypeTransformer.transformToPipeDataTypeList(Arrays.asList(valueColumnTypes));
+  }
+
+  @Override
+  public String getDeviceId() {
+    return deviceId;
+  }
+
+  public MeasurementSchema[] getMeasurementSchemaList() {
+    return measurementSchemaList;
   }
 }

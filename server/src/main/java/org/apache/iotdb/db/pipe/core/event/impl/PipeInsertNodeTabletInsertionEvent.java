@@ -21,36 +21,46 @@ package org.apache.iotdb.db.pipe.core.event.impl;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.core.event.view.datastructure.TabletInsertionDataContainer;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Iterator;
 import java.util.function.BiConsumer;
 
-public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
+public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
+    implements TabletInsertionEvent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletInsertionEvent.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
 
   private final WALEntryHandler walEntryHandler;
   private final ProgressIndex progressIndex;
 
-  public PipeTabletInsertionEvent(WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
-    this(walEntryHandler, progressIndex, null);
+  private TabletInsertionDataContainer dataContainer;
+
+  public PipeInsertNodeTabletInsertionEvent(
+      WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
+    this(walEntryHandler, progressIndex, null, null);
   }
 
-  private PipeTabletInsertionEvent(
-      WALEntryHandler walEntryHandler, ProgressIndex progressIndex, PipeTaskMeta pipeTaskMeta) {
-    super(pipeTaskMeta);
+  private PipeInsertNodeTabletInsertionEvent(
+      WALEntryHandler walEntryHandler,
+      ProgressIndex progressIndex,
+      PipeTaskMeta pipeTaskMeta,
+      String pattern) {
+    super(pipeTaskMeta, pattern);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
   }
@@ -97,33 +107,70 @@ public class PipeTabletInsertionEvent extends EnrichedEvent implements TabletIns
   }
 
   @Override
-  public PipeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta) {
-    return new PipeTabletInsertionEvent(walEntryHandler, progressIndex, pipeTaskMeta);
+  public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      PipeTaskMeta pipeTaskMeta, String pattern) {
+    return new PipeInsertNodeTabletInsertionEvent(
+        walEntryHandler, progressIndex, pipeTaskMeta, pattern);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
   public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
-    throw new UnsupportedOperationException("Not implemented yet");
-  }
-
-  @Override
-  public TabletInsertionEvent processByIterator(BiConsumer<Iterator<Row>, RowCollector> consumer) {
-    throw new UnsupportedOperationException("Not implemented yet");
+    try {
+      if (dataContainer == null) {
+        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+      }
+      return dataContainer.processRowByRow(consumer);
+    } catch (Exception e) {
+      LOGGER.error("Process row by row error.", e);
+      throw new PipeException("Process row by row error.", e);
+    }
   }
 
   @Override
   public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
-    throw new UnsupportedOperationException("Not implemented yet");
+    try {
+      if (dataContainer == null) {
+        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+      }
+      return dataContainer.processTablet(consumer);
+    } catch (Exception e) {
+      LOGGER.error("Process tablet error.", e);
+      throw new PipeException("Process tablet error.", e);
+    }
+  }
+
+  public Tablet convertToTablet() {
+    try {
+      if (dataContainer == null) {
+        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+      }
+      return dataContainer.convertToTablet();
+    } catch (Exception e) {
+      LOGGER.error("Process tablet error.", e);
+      throw new PipeException("Process tablet error.", e);
+    }
+  }
+
+  @TestOnly
+  public Tablet convertToTabletForTest(InsertNode insertNode, String pattern) {
+    try {
+      if (dataContainer == null) {
+        dataContainer = new TabletInsertionDataContainer(insertNode, pattern);
+      }
+      return dataContainer.convertToTablet();
+    } catch (Exception e) {
+      LOGGER.error("Process tablet error.", e);
+      throw new PipeException("Process tablet error.", e);
+    }
   }
 
   /////////////////////////// Object ///////////////////////////
 
   @Override
   public String toString() {
-    return "PipeTabletInsertionEvent{"
+    return "PipeTabletTabletInsertionEvent{"
         + "walEntryHandler="
         + walEntryHandler
         + ", progressIndex="
