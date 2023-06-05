@@ -1287,7 +1287,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (!lastQueryColumnNames.contains(sortKey.toUpperCase())) {
         throw new SemanticException(
             String.format(
-                "%s in ORDER BY clause should exist in the result of last query.", sortKey));
+                "SortKey:%s in ORDER BY clause should exist in the result of last query.",
+                sortKey));
       }
     }
   }
@@ -1304,8 +1305,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (expressions.size() != 1) {
         throw new SemanticException(
             String.format(
-                "%s in ORDER BY clause should exist and indicate only one value",
-                expressionForItem.getExpressionString()));
+                "SortKey:%s in ORDER BY clause should indicate one value, got %d",
+                expressionForItem.getExpressionString(), expressions.size()));
       }
       expressionForItem = ExpressionAnalyzer.removeAliasFromExpression(expressions.get(0));
       TSDataType dataType = analyzeExpression(analysis, expressionForItem);
@@ -1417,8 +1418,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (expressions.size() != 1) {
           throw new SemanticException(
               String.format(
-                  "One sort item in order by should only indicate one value, got %s value(s)",
-                  expressions.size()));
+                  "SortKey:%s in ORDER BY clause should indicate one value, got %s",
+                  expressionForItem.getExpressionString(), expressions.size()));
         }
         expressionForItem = expressions.get(0);
         TSDataType dataType = analyzeExpression(analysis, expressionForItem);
