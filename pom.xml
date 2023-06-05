@@ -125,8 +125,8 @@
     </modules>
     <!-- Properties Management -->
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <maven.assembly.version>3.1.0</maven.assembly.version>
         <scala.library.version>2.12</scala.library.version>
         <scala.version>2.12.10</scala.version>
