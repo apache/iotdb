@@ -29,18 +29,18 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-public class PipeTabletTabletInsertionEvent implements TabletInsertionEvent {
+public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
 
   private final Tablet tablet;
   private final String pattern;
 
   private TabletInsertionDataContainer dataContainer;
 
-  public PipeTabletTabletInsertionEvent(Tablet tablet) {
+  public PipeRawTabletInsertionEvent(Tablet tablet) {
     this(Objects.requireNonNull(tablet), null);
   }
 
-  public PipeTabletTabletInsertionEvent(Tablet tablet, String pattern) {
+  private PipeRawTabletInsertionEvent(Tablet tablet, String pattern) {
     this.tablet = Objects.requireNonNull(tablet);
     this.pattern = pattern;
   }
@@ -52,7 +52,7 @@ public class PipeTabletTabletInsertionEvent implements TabletInsertionEvent {
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
-  public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
     }
@@ -60,7 +60,7 @@ public class PipeTabletTabletInsertionEvent implements TabletInsertionEvent {
   }
 
   @Override
-  public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
     }
@@ -68,8 +68,16 @@ public class PipeTabletTabletInsertionEvent implements TabletInsertionEvent {
   }
 
   public Tablet convertToTablet() {
+    final String pattern = getPattern();
+
+    // if pattern is "root", we don't need to convert, just return the original tablet
+    if (pattern.equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+      return tablet;
+    }
+
+    // if pattern is not "root", we need to convert the tablet
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
+      dataContainer = new TabletInsertionDataContainer(tablet, pattern);
     }
     return dataContainer.convertToTablet();
   }

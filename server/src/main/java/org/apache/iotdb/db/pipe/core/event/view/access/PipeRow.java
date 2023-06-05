@@ -26,6 +26,7 @@ import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.pipe.api.type.Type;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Arrays;
@@ -39,8 +40,9 @@ public class PipeRow implements Row {
   private final MeasurementSchema[] measurementSchemaList;
 
   private final long[] timestampColumn;
-  private final Object[] valueColumns;
   private final TSDataType[] valueColumnTypes;
+  private final Object[] valueColumns;
+  private final BitMap[] bitMaps;
 
   private final String[] columnNameStringList;
 
@@ -49,15 +51,17 @@ public class PipeRow implements Row {
       String deviceId,
       MeasurementSchema[] measurementSchemaList,
       long[] timestampColumn,
-      Object[] valueColumns,
       TSDataType[] valueColumnTypes,
+      Object[] valueColumns,
+      BitMap[] bitMaps,
       String[] columnNameStringList) {
     this.rowIndex = rowIndex;
     this.deviceId = deviceId;
     this.measurementSchemaList = measurementSchemaList;
     this.timestampColumn = timestampColumn;
-    this.valueColumns = valueColumns;
     this.valueColumnTypes = valueColumnTypes;
+    this.valueColumns = valueColumns;
+    this.bitMaps = bitMaps;
     this.columnNameStringList = columnNameStringList;
   }
 
@@ -113,7 +117,7 @@ public class PipeRow implements Row {
 
   @Override
   public boolean isNull(int columnIndex) {
-    return ((Object[]) valueColumns[columnIndex])[rowIndex] == null;
+    return bitMaps[columnIndex].isMarked(rowIndex);
   }
 
   @Override

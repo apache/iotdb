@@ -116,7 +116,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
-  public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
         dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
@@ -129,24 +129,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
         dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
       }
       return dataContainer.processTablet(consumer);
-    } catch (Exception e) {
-      LOGGER.error("Process tablet error.", e);
-      throw new PipeException("Process tablet error.", e);
-    }
-  }
-
-  public Tablet convertToTablet() {
-    try {
-      if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
-      }
-      return dataContainer.convertToTablet();
     } catch (Exception e) {
       LOGGER.error("Process tablet error.", e);
       throw new PipeException("Process tablet error.", e);
