@@ -205,7 +205,9 @@ set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
- -DIOTDB_CONF="%IOTDB_CONF%"
+ -DIOTDB_CONF="%IOTDB_CONF%"^
+ -Dsun.jnu.encoding=UTF-8^
+ -Dfile.encoding=UTF-8
 
 @REM ----------------------------------------------------------------------------
 @REM ***** CLASSPATH library setting *****

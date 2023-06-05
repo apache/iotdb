@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode implements ConfigNodeMBean {
@@ -88,6 +89,10 @@ public class ConfigNode implements ConfigNodeMBean {
         ConfigNodeConstant.GLOBAL_NAME
             + " environment variables: "
             + ConfigNodeConfig.getEnvironmentVariables());
+    LOGGER.info(
+        "{} default charset is: {}",
+        ConfigNodeConstant.GLOBAL_NAME,
+        Charset.defaultCharset().displayName());
     new ConfigNodeCommandLine().doMain(args);
   }
 
