@@ -209,6 +209,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private static final Expression endTimeExpression =
       TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
 
+  private final List<String> lastQueryColumnNames =
+      new ArrayList<>(Arrays.asList("TIME", "TIMESERIES", "VALUE", "DATATYPE"));
+
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
 
@@ -1278,6 +1281,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setTimeseriesOrderingForLastQuery(
           queryStatement.getOrderByComponent().getTimeseriesOrder());
     }
+
+    for (SortItem sortItem : queryStatement.getSortItemList()) {
+      String sortKey = sortItem.getSortKey();
+      if (!lastQueryColumnNames.contains(sortKey.toUpperCase())) {
+        throw new SemanticException(
+            String.format(
+                "%s in ORDER BY clause should exist in the result of last query.", sortKey));
+      }
+    }
   }
 
   private void analyzeOrderBy(
@@ -1290,7 +1302,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Expression> expressions =
           ExpressionAnalyzer.bindSchemaForExpression(expressionForItem, schemaTree);
       if (expressions.size() != 1) {
-        throw new SemanticException("One sort item in order by should only indicate one value");
+        throw new SemanticException(
+            String.format(
+                "%s in ORDER BY clause should exist and indicate only one value",
+                expressionForItem.getExpressionString()));
       }
       expressionForItem = ExpressionAnalyzer.removeAliasFromExpression(expressions.get(0));
       TSDataType dataType = analyzeExpression(analysis, expressionForItem);
