@@ -143,7 +143,6 @@ public class SettleRequestHandlerTest {
       }
       for (TsFileProcessor tsFileProcessor : dataRegion.getWorkSequenceTsFileProcessors()) {
         paths.add(tsFileProcessor.getTsFileResource().getTsFilePath());
-        tsFileProcessor.syncFlush();
       }
       dataRegion.syncCloseAllWorkingTsFileProcessors();
       if (i != 2) {
