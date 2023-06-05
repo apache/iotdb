@@ -680,6 +680,11 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
+        logger.info(
+            "[Deletion] Deletion with path: {}, time:{}-{} in workMemTable",
+            deletion.getPath(),
+            deletion.getStartTime(),
+            deletion.getEndTime());
         for (PartialPath device : devicePaths) {
           workMemTable.delete(
               deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
@@ -953,7 +958,15 @@ public class TsFileProcessor {
     Map<String, Long> lastTimeForEachDevice = new HashMap<>();
     if (sequence) {
       lastTimeForEachDevice = tobeFlushed.getMaxTime();
-      tsFileResource.updateEndTime(lastTimeForEachDevice);
+      // If some devices have been removed in MemTable, the number of device in MemTable and
+      // tsFileResource will not be the same. And the endTime of these devices in resource will be
+      // Long.minValue.
+      // In the case, we need to delete the removed devices in tsFileResource.
+      if (lastTimeForEachDevice.size() != tsFileResource.getDevices().size()) {
+        tsFileResource.deleteRemovedDeviceAndUpdateEndTime(lastTimeForEachDevice);
+      } else {
+        tsFileResource.updateEndTime(lastTimeForEachDevice);
+      }
     }
 
     for (FlushListener flushListener : flushListeners) {

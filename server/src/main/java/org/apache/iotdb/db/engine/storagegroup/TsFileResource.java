@@ -1112,8 +1112,17 @@ public class TsFileResource {
     }
   }
 
-  public void updateEndTime(Map<String, Long> times) {
-    for (Map.Entry<String, Long> entry : times.entrySet()) {
+  public void deleteRemovedDeviceAndUpdateEndTime(Map<String, Long> lastTimeForEachDevice) {
+    ITimeIndex newTimeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
+    for (Map.Entry<String, Long> entry : lastTimeForEachDevice.entrySet()) {
+      newTimeIndex.updateStartTime(entry.getKey(), timeIndex.getStartTime(entry.getKey()));
+      newTimeIndex.updateEndTime(entry.getKey(), entry.getValue());
+    }
+    timeIndex = newTimeIndex;
+  }
+
+  public void updateEndTime(Map<String, Long> lastTimeForEachDevice) {
+    for (Map.Entry<String, Long> entry : lastTimeForEachDevice.entrySet()) {
       timeIndex.updateEndTime(entry.getKey(), entry.getValue());
     }
   }
