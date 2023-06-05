@@ -190,8 +190,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         }
 
         if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
-            && !CompactionUtils.validateTsFileResources(
-                tsFileManager, storageGroupName, timePartition)) {
+            && (!CompactionUtils.validateTsFileResources(
+                    tsFileManager, storageGroupName, timePartition)
+                || !CompactionUtils.validateTsFiles(targetTsFileList))) {
           LOGGER.error(
               "Failed to pass compaction validation, source files is: {}, target files is {}",
               selectedTsFileResourceList,

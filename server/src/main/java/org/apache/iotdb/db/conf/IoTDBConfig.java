@@ -521,7 +521,7 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private boolean enableCompactionValidation = true;
+  private boolean enableCompactionValidation = false;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
