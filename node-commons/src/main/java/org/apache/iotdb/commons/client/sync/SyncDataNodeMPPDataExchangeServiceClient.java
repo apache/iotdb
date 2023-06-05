@@ -117,13 +117,16 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
     public PooledObject<SyncDataNodeMPPDataExchangeServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
       return new DefaultPooledObject<>(
-          SyncThriftClientWithErrorHandler.newErrorHandler(
-              SyncDataNodeMPPDataExchangeServiceClient.class,
-              SyncDataNodeMPPDataExchangeServiceClient.class.getConstructor(
-                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
-              thriftClientProperty,
-              endpoint,
-              clientManager));
+          new SyncDataNodeMPPDataExchangeServiceClient(
+              thriftClientProperty, endpoint, clientManager));
+      //          SyncThriftClientWithErrorHandler.newErrorHandler(
+      //              SyncDataNodeMPPDataExchangeServiceClient.class,
+      //              SyncDataNodeMPPDataExchangeServiceClient.class.getConstructor(
+      //                  thriftClientProperty.getClass(), endpoint.getClass(),
+      // clientManager.getClass()),
+      //              thriftClientProperty,
+      //              endpoint,
+      //              clientManager));
     }
 
     @Override

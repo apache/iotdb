@@ -116,13 +116,15 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     public PooledObject<SyncConfigNodeIServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
       return new DefaultPooledObject<>(
-          SyncThriftClientWithErrorHandler.newErrorHandler(
-              SyncConfigNodeIServiceClient.class,
-              SyncConfigNodeIServiceClient.class.getConstructor(
-                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
-              thriftClientProperty,
-              endpoint,
-              clientManager));
+          new SyncConfigNodeIServiceClient(thriftClientProperty, endpoint, clientManager));
+      //          SyncThriftClientWithErrorHandler.newErrorHandler(
+      //              SyncConfigNodeIServiceClient.class,
+      //              SyncConfigNodeIServiceClient.class.getConstructor(
+      //                  thriftClientProperty.getClass(), endpoint.getClass(),
+      // clientManager.getClass()),
+      //              thriftClientProperty,
+      //              endpoint,
+      //              clientManager));
     }
 
     @Override
