@@ -165,7 +165,7 @@ public class SimpleProgressIndex implements ProgressIndex {
       // thatSimpleProgressIndex.memtableFlushOrderId
       return this;
     } finally {
-      lock.writeLock().lock();
+      lock.writeLock().unlock();
     }
   }
 
