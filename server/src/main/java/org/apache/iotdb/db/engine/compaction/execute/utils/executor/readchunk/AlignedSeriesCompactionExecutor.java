@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -142,7 +141,9 @@ public class AlignedSeriesCompactionExecutor {
             readerIterator.nextReader();
         summary.increaseProcessChunkNum(nextAlignedChunkInfo.getNotNullChunkNum());
         summary.increaseProcessPointNum(nextAlignedChunkInfo.getTotalPointNum());
-        CompactionMetrics.getInstance().recordReadInfo(nextAlignedChunkInfo.getTotalSize());
+        CompactionMetrics.getInstance()
+            .recordReadInfo(
+                CompactionType.INNER_SEQ_COMPACTION, true, nextAlignedChunkInfo.getTotalSize());
         compactOneAlignedChunk(
             nextAlignedChunkInfo.getReader(), nextAlignedChunkInfo.getNotNullChunkNum());
       }
@@ -153,10 +154,7 @@ public class AlignedSeriesCompactionExecutor {
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       CompactionMetrics.getInstance()
           .recordWriteInfo(
-              CompactionType.INNER_SEQ_COMPACTION,
-              ProcessChunkType.DESERIALIZE_CHUNK,
-              true,
-              chunkWriter.estimateMaxSeriesMemSize());
+              CompactionType.INNER_SEQ_COMPACTION, true, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(writer);
     }
     writer.checkMetadataSizeAndMayFlush();
@@ -195,10 +193,7 @@ public class AlignedSeriesCompactionExecutor {
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       CompactionMetrics.getInstance()
           .recordWriteInfo(
-              CompactionType.INNER_SEQ_COMPACTION,
-              ProcessChunkType.DESERIALIZE_CHUNK,
-              true,
-              chunkWriter.estimateMaxSeriesMemSize());
+              CompactionType.INNER_SEQ_COMPACTION, true, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(writer);
       remainingPointInChunkWriter = 0L;
     }

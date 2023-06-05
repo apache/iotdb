@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -131,6 +130,8 @@ public class SingleSeriesCompactionExecutor {
         }
         CompactionMetrics.getInstance()
             .recordReadInfo(
+                CompactionType.INNER_SEQ_COMPACTION,
+                false,
                 (long) currentChunk.getHeader().getSerializedSize()
                     + currentChunk.getHeader().getDataSize());
 
@@ -337,11 +338,7 @@ public class SingleSeriesCompactionExecutor {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
     CompactionMetrics.getInstance()
-        .recordWriteInfo(
-            CompactionType.INNER_SEQ_COMPACTION,
-            isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
-            false,
-            getChunkSize(chunk));
+        .recordWriteInfo(CompactionType.INNER_SEQ_COMPACTION, false, getChunkSize(chunk));
     fileWriter.writeChunk(chunk, chunkMetadata);
   }
 
@@ -352,10 +349,7 @@ public class SingleSeriesCompactionExecutor {
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       CompactionMetrics.getInstance()
           .recordWriteInfo(
-              CompactionType.INNER_SEQ_COMPACTION,
-              ProcessChunkType.DESERIALIZE_CHUNK,
-              false,
-              chunkWriter.estimateMaxSeriesMemSize());
+              CompactionType.INNER_SEQ_COMPACTION, false, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
       pointCountInChunkWriter = 0L;
     }
@@ -375,10 +369,7 @@ public class SingleSeriesCompactionExecutor {
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     CompactionMetrics.getInstance()
         .recordWriteInfo(
-            CompactionType.INNER_SEQ_COMPACTION,
-            ProcessChunkType.DESERIALIZE_CHUNK,
-            false,
-            chunkWriter.estimateMaxSeriesMemSize());
+            CompactionType.INNER_SEQ_COMPACTION, false, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
   }

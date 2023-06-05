@@ -57,19 +57,22 @@ public class CompactionMetrics implements IMetricSet {
   private final AtomicInteger finishSeqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger finishUnseqInnerCompactionTaskNum = new AtomicInteger(0);
   private final AtomicInteger finishCrossCompactionTaskNum = new AtomicInteger(0);
+  // compaction type -> Counter[ Not-Aligned, Aligned]
+  private final Map<String, Counter[]> writeCounters = new ConcurrentHashMap<>();
+  private final Map<String, Counter[]> readCounters = new ConcurrentHashMap<>();
 
   private CompactionMetrics() {
     for (String type : TYPES) {
-      Map<CompactionType, Map<ProcessChunkType, Counter>> compactionTypeProcessChunkTypeMap =
-          writeInfoCounterMap.computeIfAbsent(type, k -> new ConcurrentHashMap<>());
-      for (CompactionType compactionType : CompactionType.values()) {
-        Map<ProcessChunkType, Counter> counterMap =
-            compactionTypeProcessChunkTypeMap.computeIfAbsent(
-                compactionType, k -> new ConcurrentHashMap<>());
-        for (ProcessChunkType processChunkType : ProcessChunkType.values()) {
-          counterMap.put(processChunkType, DoNothingMetricManager.DO_NOTHING_COUNTER);
-        }
-      }
+      readCounters.put(
+          type,
+          new Counter[] {
+            DoNothingMetricManager.DO_NOTHING_COUNTER, DoNothingMetricManager.DO_NOTHING_COUNTER
+          });
+      writeCounters.put(
+          type,
+          new Counter[] {
+            DoNothingMetricManager.DO_NOTHING_COUNTER, DoNothingMetricManager.DO_NOTHING_COUNTER
+          });
     }
   }
 
@@ -79,25 +82,25 @@ public class CompactionMetrics implements IMetricSet {
   private Counter totalCompactionWriteInfoCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   private void bindWriteInfo(AbstractMetricService metricService) {
-    for (String type : TYPES) {
-      Map<CompactionType, Map<ProcessChunkType, Counter>> compactionTypeProcessChunkTypeMap =
-          writeInfoCounterMap.computeIfAbsent(type, k -> new ConcurrentHashMap<>());
-      for (CompactionType compactionType : CompactionType.values()) {
-        Map<ProcessChunkType, Counter> counterMap =
-            compactionTypeProcessChunkTypeMap.computeIfAbsent(
-                compactionType, k -> new ConcurrentHashMap<>());
-        for (ProcessChunkType processChunkType : ProcessChunkType.values()) {
-          Counter counter =
-              metricService.getOrCreateCounter(
-                  Metric.DATA_WRITTEN.toString(),
-                  MetricLevel.IMPORTANT,
-                  Tag.NAME.toString(),
-                  "compaction_" + compactionType.toString(),
-                  Tag.STATUS.toString(),
-                  type + "_" + processChunkType.toString());
-          counterMap.put(processChunkType, counter);
-        }
-      }
+    for (CompactionType compactionType : CompactionType.values()) {
+      writeCounters.put(
+          compactionType.toString(),
+          new Counter[] {
+            metricService.getOrCreateCounter(
+                Metric.DATA_WRITTEN.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.TYPE.toString(),
+                compactionType.toString(),
+                Tag.NAME.toString(),
+                "not_aligned"),
+            metricService.getOrCreateCounter(
+                Metric.DATA_WRITTEN.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.TYPE.toString(),
+                compactionType.toString(),
+                Tag.NAME.toString(),
+                "aligned")
+          });
     }
     totalCompactionWriteInfoCounter =
         metricService.getOrCreateCounter(
@@ -110,22 +113,21 @@ public class CompactionMetrics implements IMetricSet {
   }
 
   private void unbindWriteInfo(AbstractMetricService metricService) {
-    for (String type : TYPES) {
-      for (CompactionType compactionType : CompactionType.values()) {
-        for (ProcessChunkType processChunkType : ProcessChunkType.values()) {
-          metricService.remove(
-              MetricType.COUNTER,
-              Metric.DATA_WRITTEN.toString(),
-              Tag.NAME.toString(),
-              "compaction_" + compactionType.toString(),
-              Tag.STATUS.toString(),
-              type + "_" + processChunkType.toString());
-          writeInfoCounterMap
-              .get(type)
-              .get(compactionType)
-              .put(processChunkType, DoNothingMetricManager.DO_NOTHING_COUNTER);
-        }
-      }
+    for (CompactionType compactionType : CompactionType.values()) {
+      metricService.remove(
+          MetricType.COUNTER,
+          Metric.DATA_WRITTEN.toString(),
+          Tag.TYPE.toString(),
+          compactionType.toString(),
+          Tag.NAME.toString(),
+          "not_aligned");
+      metricService.remove(
+          MetricType.COUNTER,
+          Metric.DATA_WRITTEN.toString(),
+          Tag.TYPE.toString(),
+          compactionType.toString(),
+          Tag.NAME.toString(),
+          "aligned");
     }
     metricService.remove(
         MetricType.COUNTER,
@@ -136,14 +138,10 @@ public class CompactionMetrics implements IMetricSet {
         "total");
   }
 
-  public void recordWriteInfo(
-      CompactionType compactionType,
-      ProcessChunkType processChunkType,
-      boolean aligned,
-      long byteNum) {
-    String type = aligned ? "aligned" : "not_aligned";
-    writeInfoCounterMap.get(type).get(compactionType).get(processChunkType).inc(byteNum / 1024L);
-    totalCompactionWriteInfoCounter.inc(byteNum / 1024L);
+  public void recordWriteInfo(CompactionType compactionType, boolean aligned, long byteNum) {
+    Counter[] counters = writeCounters.get(compactionType.toString());
+    counters[aligned ? 1 : 0].inc(byteNum);
+    totalCompactionWriteInfoCounter.inc(byteNum);
   }
 
   // endregion
@@ -152,18 +150,56 @@ public class CompactionMetrics implements IMetricSet {
   private Counter totalCompactionReadInfoCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   private void bindReadInfo(AbstractMetricService metricService) {
+    for (CompactionType compactionType : CompactionType.values()) {
+      readCounters.put(
+          compactionType.toString(),
+          new Counter[] {
+            metricService.getOrCreateCounter(
+                Metric.DATA_READ.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.TYPE.toString(),
+                compactionType.toString(),
+                Tag.NAME.toString(),
+                "not_aligned"),
+            metricService.getOrCreateCounter(
+                Metric.DATA_READ.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.TYPE.toString(),
+                compactionType.toString(),
+                Tag.NAME.toString(),
+                "aligned")
+          });
+    }
     totalCompactionReadInfoCounter =
         metricService.getOrCreateCounter(
             Metric.DATA_READ.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), "compaction");
   }
 
   private void unbindReadInfo(AbstractMetricService metricService) {
+    for (CompactionType compactionType : CompactionType.values()) {
+      metricService.remove(
+          MetricType.COUNTER,
+          Metric.DATA_READ.toString(),
+          Tag.TYPE.toString(),
+          compactionType.toString(),
+          Tag.NAME.toString(),
+          "not_aligned");
+      metricService.remove(
+          MetricType.COUNTER,
+          Metric.DATA_READ.toString(),
+          Tag.TYPE.toString(),
+          compactionType.toString(),
+          Tag.NAME.toString(),
+          "aligned");
+    }
     metricService.remove(
         MetricType.COUNTER, Metric.DATA_READ.toString(), Tag.NAME.toString(), "compaction");
   }
 
-  public void recordReadInfo(long byteNum) {
-    totalCompactionReadInfoCounter.inc(byteNum / 1024L);
+  public void recordReadInfo(CompactionType compactionType, boolean aligned, long byteNum) {
+    Counter[] counters = readCounters.get(compactionType.toString());
+    counters[aligned ? 1 : 0].inc(byteNum);
+    totalCompactionReadInfoCounter.inc(byteNum);
   }
   // endregion
 
