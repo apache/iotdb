@@ -349,6 +349,14 @@ public class TsFileIOWriter implements AutoCloseable {
     logger.info("Time for flushing metadata is {} ms", cost);
   }
 
+  protected void updateCache(String device, TimeseriesMetadata timeseriesMetadata) {
+    // do nothing
+  }
+
+  protected void updateCache(BloomFilter bloomFilter) {
+    // do nothing
+  }
+
   private void checkInMemoryPathCount() {
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       pathCount += chunkGroupMetadata.getChunkMetadataList().size();
@@ -426,6 +434,8 @@ public class TsFileIOWriter implements AutoCloseable {
       seriesIdxForCurrDevice++;
       // serialize the timeseries metadata to file
       timeseriesMetadata.serializeTo(out.wrapAsStream());
+      timeseriesMetadata.setChunkMetadataListBuffer(null);
+      updateCache(currentDevice, timeseriesMetadata);
     }
 
     addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
@@ -444,6 +454,7 @@ public class TsFileIOWriter implements AutoCloseable {
 
     int size = tsFileMetadata.serializeTo(out.wrapAsStream());
     size += tsFileMetadata.serializeBloomFilter(out.wrapAsStream(), filter);
+    updateCache(filter);
 
     // write TsFileMetaData size
     ReadWriteIOUtils.write(size, out.wrapAsStream());

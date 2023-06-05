@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.writer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.reader.UpdateCacheTsFileIOWriter;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -50,7 +51,8 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
     this.fileWriter =
-        new TsFileIOWriter(targetFileResource.getTsFile(), enableMemoryControl, sizeForFileWriter);
+        new UpdateCacheTsFileIOWriter(
+            targetFileResource.getTsFile(), enableMemoryControl, sizeForFileWriter);
     this.targetResource = targetFileResource;
     isEmptyFile = true;
   }

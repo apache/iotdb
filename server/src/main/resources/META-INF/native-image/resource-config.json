@@ -20,9 +20,6 @@
       "pattern":"\\Qlogback-test.xml\\E"
     }, 
     {
-      "pattern":"\\Qorg/apache/iotdb/db/metadata\\E"
-    }, 
-    {
       "pattern":"\\Qorg/slf4j/impl/StaticLoggerBinder.class\\E"
     }, 
     {

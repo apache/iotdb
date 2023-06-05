@@ -95,16 +95,14 @@ public class TSMIterator {
       seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
     }
 
-    TimeseriesMetadata timeseriesMetadata =
-        new TimeseriesMetadata(
-            (byte)
-                ((serializeStatistic ? (byte) 1 : (byte) 0) | chunkMetadataList.get(0).getMask()),
-            chunkMetadataListLength,
-            measurementId,
-            dataType,
-            seriesStatistics,
-            publicBAOS);
-    return timeseriesMetadata;
+    return new TimeseriesMetadata(
+        (byte) ((serializeStatistic ? (byte) 1 : (byte) 0) | chunkMetadataList.get(0).getMask()),
+        chunkMetadataListLength,
+        measurementId,
+        dataType,
+        seriesStatistics,
+        publicBAOS,
+        (ArrayList<IChunkMetadata>) chunkMetadataList);
   }
 
   public static List<Pair<Path, List<IChunkMetadata>>> sortChunkMetadata(

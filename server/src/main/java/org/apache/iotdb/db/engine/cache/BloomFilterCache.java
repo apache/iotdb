@@ -125,6 +125,10 @@ public class BloomFilterCache {
     return entryAverageSize.get();
   }
 
+  public void updateCache(String filePath, BloomFilter bloomFilter) {
+    lruCache.put(new BloomFilterCacheKey(filePath), bloomFilter);
+  }
+
   /** clear LRUCache. */
   public void clear() {
     lruCache.invalidateAll();

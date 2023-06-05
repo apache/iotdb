@@ -238,6 +238,14 @@ public class TimeSeriesMetadataCache {
     return BloomFilterCache.getInstance().calculateBloomFilterHitRatio();
   }
 
+  public void updateCache(String filePath, String deviceId, TimeseriesMetadata timeseriesMetadata) {
+    if (timeseriesMetadata.getStatistics().getCount() != 0) {
+      lruCache.put(
+          new TimeSeriesMetadataCacheKey(filePath, deviceId, timeseriesMetadata.getMeasurementId()),
+          timeseriesMetadata);
+    }
+  }
+
   /** clear LRUCache. */
   public void clear() {
     lruCache.invalidateAll();

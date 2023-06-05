@@ -93,8 +93,6 @@ public class SchemaEngine {
   public void init() {
     logger.info("used schema engine mode: {}.", config.getSchemaEngineMode());
 
-    schemaRegionLoader.init(config.getSchemaEngineMode());
-
     initSchemaEngineStatistics();
     SchemaResourceManager.initSchemaResource(schemaEngineStatistics);
     // CachedSchemaEngineMetric depend on CacheMemoryManager, so it should be initialized after

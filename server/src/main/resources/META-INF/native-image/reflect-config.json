@@ -24,9 +24,6 @@
   "name":"[Ljavax.management.openmbean.CompositeData;"
 },
 {
-  "name":"[Lnet.sf.cglib.proxy.Callback;"
-},
-{
   "name":"[Lorg.HdrHistogram.DoubleRecorder;"
 },
 {
@@ -230,26 +227,10 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
-  "name":"java.io.DataInputStream"
-},
-{
-  "name":"java.io.DataOutputStream"
-},
-{
   "name":"java.io.FileDescriptor"
 },
 {
   "name":"java.io.FilePermission"
-},
-{
-  "name":"java.io.InputStream"
-},
-{
-  "name":"java.io.Serializable"
-},
-{
-  "name":"java.lang.AutoCloseable",
-  "queryAllDeclaredMethods":true
 },
 {
   "name":"java.lang.Boolean",
@@ -267,16 +248,6 @@
   "fields":[{"name":"TYPE"}]
 },
 {
-  "name":"java.lang.Class"
-},
-{
-  "name":"java.lang.ClassLoader",
-  "methods":[{"name":"defineClass","parameterTypes":["java.lang.String","byte[]","int","int","java.security.ProtectionDomain"] }]
-},
-{
-  "name":"java.lang.Comparable"
-},
-{
   "name":"java.lang.Deprecated",
   "queryAllPublicMethods":true
 },
@@ -284,9 +255,6 @@
   "name":"java.lang.Double",
   "allDeclaredFields":true,
   "fields":[{"name":"TYPE"}]
-},
-{
-  "name":"java.lang.Enum"
 },
 {
   "name":"java.lang.Float",
@@ -304,16 +272,12 @@
   "fields":[{"name":"TYPE"}]
 },
 {
-  "name":"java.lang.Module"
-},
-{
   "name":"java.lang.Number",
   "allDeclaredFields":true
 },
 {
   "name":"java.lang.Object",
-  "allDeclaredFields":true,
-  "queryAllDeclaredMethods":true
+  "allDeclaredFields":true
 },
 {
   "name":"java.lang.ProcessHandle",
@@ -339,9 +303,6 @@
   "allDeclaredFields":true
 },
 {
-  "name":"java.lang.StringBuilder"
-},
-{
   "name":"java.lang.Thread",
   "fields":[{"name":"threadLocalRandomProbe"}]
 },
@@ -352,12 +313,6 @@
 {
   "name":"java.lang.Void",
   "fields":[{"name":"TYPE"}]
-},
-{
-  "name":"java.lang.annotation.Annotation"
-},
-{
-  "name":"java.lang.invoke.CallSite"
 },
 {
   "name":"java.lang.management.BufferPoolMXBean",
@@ -476,17 +431,10 @@
   "name":"java.security.AllPermission"
 },
 {
-  "name":"java.security.ProtectionDomain"
-},
-{
   "name":"java.security.SecureRandomParameters"
 },
 {
   "name":"java.security.SecurityPermission"
-},
-{
-  "name":"java.util.AbstractMap",
-  "allDeclaredFields":true
 },
 {
   "name":"java.util.AbstractMap$SimpleEntry",
@@ -500,16 +448,8 @@
   "name":"java.util.Date"
 },
 {
-  "name":"java.util.Iterator"
-},
-{
-  "name":"java.util.List",
-  "methods":[{"name":"copyOf","parameterTypes":["java.util.Collection"] }]
-},
-{
   "name":"java.util.Optional",
-  "allDeclaredFields":true,
-  "methods":[{"name":"isEmpty","parameterTypes":[] }]
+  "allDeclaredFields":true
 },
 {
   "name":"java.util.OptionalDouble",
@@ -528,22 +468,6 @@
   "methods":[{"name":"<init>","parameterTypes":["java.lang.String","java.lang.String"] }]
 },
 {
-  "name":"java.util.concurrent.ConcurrentHashMap",
-  "allDeclaredFields":true
-},
-{
-  "name":"java.util.concurrent.ConcurrentHashMap$CollectionView",
-  "allDeclaredFields":true
-},
-{
-  "name":"java.util.concurrent.ConcurrentHashMap$EntrySetView",
-  "allDeclaredFields":true
-},
-{
-  "name":"java.util.concurrent.ConcurrentHashMap$Node",
-  "allDeclaredFields":true
-},
-{
   "name":"java.util.concurrent.atomic.LongAdder",
   "queryAllPublicConstructors":true,
   "methods":[
@@ -553,18 +477,12 @@
   ]
 },
 {
-  "name":"java.util.function.Function"
-},
-{
   "name":"java.util.logging.LogManager",
   "methods":[{"name":"getLoggingMXBean","parameterTypes":[] }]
 },
 {
   "name":"java.util.logging.LoggingMXBean",
   "queryAllPublicMethods":true
-},
-{
-  "name":"java.util.zip.DeflaterInputStream"
 },
 {
   "name":"javax.management.MBeanOperationInfo",
@@ -619,62 +537,6 @@
   "queryAllPublicMethods":true
 },
 {
-  "name":"net.sf.cglib.core.KeyFactory"
-},
-{
-  "name":"net.sf.cglib.core.MethodWrapper$MethodWrapperKey",
-  "queryAllDeclaredMethods":true
-},
-{
-  "name":"net.sf.cglib.core.MethodWrapper$MethodWrapperKey$$KeyFactoryByCGLIB$$d45e49f7",
-  "methods":[{"name":"<init>","parameterTypes":[] }]
-},
-{
-  "name":"net.sf.cglib.core.ReflectUtils"
-},
-{
-  "name":"net.sf.cglib.core.Signature"
-},
-{
-  "name":"net.sf.cglib.proxy.Dispatcher"
-},
-{
-  "name":"net.sf.cglib.proxy.Enhancer"
-},
-{
-  "name":"net.sf.cglib.proxy.Enhancer$EnhancerKey",
-  "queryAllDeclaredMethods":true
-},
-{
-  "name":"net.sf.cglib.proxy.Enhancer$EnhancerKey$$KeyFactoryByCGLIB$$7fb24d72",
-  "methods":[{"name":"<init>","parameterTypes":[] }]
-},
-{
-  "name":"net.sf.cglib.proxy.Factory",
-  "queryAllDeclaredMethods":true
-},
-{
-  "name":"net.sf.cglib.proxy.FixedValue"
-},
-{
-  "name":"net.sf.cglib.proxy.InvocationHandler"
-},
-{
-  "name":"net.sf.cglib.proxy.LazyLoader"
-},
-{
-  "name":"net.sf.cglib.proxy.MethodInterceptor"
-},
-{
-  "name":"net.sf.cglib.proxy.NoOp"
-},
-{
-  "name":"net.sf.cglib.proxy.ProxyRefDispatcher"
-},
-{
-  "name":"net.sf.cglib.reflect.FastClass"
-},
-{
   "name":"org.HdrHistogram.ConcurrentHistogram",
   "methods":[{"name":"<init>","parameterTypes":["long","long","int"] }]
 },
@@ -701,10 +563,6 @@
 {
   "name":"org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer",
   "methods":[{"name":"<init>","parameterTypes":[] }]
-},
-{
-  "name":"org.apache.iotdb.commons.client.ThriftClient",
-  "queryAllDeclaredMethods":true
 },
 {
   "name":"org.apache.iotdb.commons.concurrent.threadpool.WrappedScheduledExecutorService",
@@ -743,60 +601,6 @@
   "methods":[{"name":"<init>","parameterTypes":["int"] }]
 },
 {
-  "name":"org.apache.iotdb.commons.path.PathPatternNode$Serializer"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.IMNode"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.common.AbstractAboveDatabaseMNode"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.common.AbstractDatabaseDeviceMNode"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.common.AbstractDeviceMNode"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.common.AbstractMeasurementMNode"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.info.IDatabaseDeviceInfo"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.info.IDatabaseInfo"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.info.IDeviceInfo"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.info.IMeasurementInfo"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.utils.IMNodeContainer"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.utils.IMNodeFactory"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.utils.IMNodeIterator"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor"
-},
-{
-  "name":"org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor"
-},
-{
   "name":"org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
@@ -807,10 +611,6 @@
 {
   "name":"org.apache.iotdb.commons.service.metric.MetricServiceMBean",
   "queryAllPublicMethods":true
-},
-{
-  "name":"org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService$Iface",
-  "queryAllDeclaredMethods":true
 },
 {
   "name":"org.apache.iotdb.consensus.iot.IoTConsensus",
@@ -829,29 +629,6 @@
   "methods":[{"name":"<init>","parameterTypes":["org.apache.iotdb.consensus.config.ConsensusConfig","org.apache.iotdb.consensus.IStateMachine$Registry"] }]
 },
 {
-  "name":"org.apache.iotdb.db.client.ConfigNodeClient",
-  "queryAllDeclaredMethods":true,
-  "queryAllDeclaredConstructors":true,
-  "methods":[{"name":"<init>","parameterTypes":["java.util.List","org.apache.iotdb.commons.client.property.ThriftClientProperty","org.apache.iotdb.commons.client.ClientManager"] }]
-},
-{
-  "name":"org.apache.iotdb.db.client.ConfigNodeClient$$EnhancerByCGLIB$$e2d55b5e",
-  "queryAllDeclaredMethods":true,
-  "queryAllDeclaredConstructors":true,
-  "methods":[
-    {"name":"<init>","parameterTypes":["java.util.List","org.apache.iotdb.commons.client.property.ThriftClientProperty","org.apache.iotdb.commons.client.ClientManager"] }, 
-    {"name":"CGLIB$SET_THREAD_CALLBACKS","parameterTypes":["net.sf.cglib.proxy.Callback[]"] }
-  ]
-},
-{
-  "name":"org.apache.iotdb.db.client.ConfigNodeClient$$EnhancerByCGLIB$$e2d55b5e$$FastClassByCGLIB$$90aef4e7",
-  "methods":[{"name":"<init>","parameterTypes":["java.lang.Class"] }]
-},
-{
-  "name":"org.apache.iotdb.db.client.ConfigNodeClient$$FastClassByCGLIB$$c29c157a",
-  "methods":[{"name":"<init>","parameterTypes":["java.lang.Class"] }]
-},
-{
   "name":"org.apache.iotdb.db.conf.IoTDBConfig",
   "allDeclaredFields":true
 },
@@ -867,128 +644,16 @@
   "queryAllPublicMethods":true
 },
 {
+  "name":"org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache$TimeSeriesMetadataCacheKey",
+  "allDeclaredFields":true
+},
+{
   "name":"org.apache.iotdb.db.engine.flush.FlushManager",
   "queryAllPublicConstructors":true
 },
 {
   "name":"org.apache.iotdb.db.engine.flush.FlushManagerMBean",
   "queryAllPublicMethods":true
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCache"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCacheComputation"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCacheStats"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.dualkeycache.impl.ICacheEntry"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.dualkeycache.impl.ICacheEntryGroup"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.dualkeycache.impl.ICacheEntryManager"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.dualkeycache.impl.ICacheSizeComputer"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContainer"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.cache.lastCache.container.value.ILastCacheValue"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.idtable.IDTable"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.idtable.IDiskSchemaManager"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.idtable.entry.IDeviceID"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.logfile.IDeserializer"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.logfile.ISerializer"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mnode.mem.info.BasicMNodeInfo"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.store.IMTreeStore"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.IReleaseFlushStrategy"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.traverser.counter.Counter"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.mtree.traverser.updater.Updater"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.plan.schemaregion.ISchemaRegionPlan"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.plan.schemaregion.SchemaRegionPlanVisitor"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.query.info.ISchemaInfo"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.rescon.ISchemaRegionStatistics"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionParams"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.schemaregion.SchemaRegionMemoryImpl",
-  "methods":[{"name":"<init>","parameterTypes":["org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionParams"] }]
-},
-{
-  "name":"org.apache.iotdb.db.metadata.schemaregion.SchemaRegionSchemaFileImpl",
-  "methods":[{"name":"<init>","parameterTypes":["org.apache.iotdb.db.metadata.schemaregion.ISchemaRegionParams"] }]
-},
-{
-  "name":"org.apache.iotdb.db.metadata.template.ITemplateManager"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.template.alter.TemplateAlterInfo"
-},
-{
-  "name":"org.apache.iotdb.db.metadata.utils.ResourceByPathUtils"
-},
-{
-  "name":"org.apache.iotdb.db.mpp.common.schematree.IMeasurementSchemaInfo"
 },
 {
   "name":"org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService",
@@ -1001,9 +666,6 @@
 {
   "name":"org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator$Location",
   "allDeclaredFields":true
-},
-{
-  "name":"org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor"
 },
 {
   "name":"org.apache.iotdb.db.query.control.SessionManager",
@@ -1046,7 +708,16 @@
   "methods":[{"name":"loadAll","parameterTypes":["java.lang.Iterable"] }]
 },
 {
-  "name":"org.apache.iotdb.metrics.metricsets.IMetricSet"
+  "name":"org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata",
+  "allDeclaredFields":true
+},
+{
+  "name":"org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics",
+  "allDeclaredFields":true
+},
+{
+  "name":"org.apache.iotdb.tsfile.file.metadata.statistics.Statistics",
+  "allDeclaredFields":true
 },
 {
   "name":"org.apache.iotdb.tsfile.read.common.block.TsBlock",
@@ -1463,9 +1134,6 @@
     {"name":"f3"}, 
     {"name":"f4"}
   ]
-},
-{
-  "name":"org.slf4j.impl.StaticLoggerBinder"
 },
 {
   "name":"sun.management.ClassLoadingImpl",
