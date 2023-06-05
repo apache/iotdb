@@ -437,7 +437,27 @@
   "name":"java.security.SecurityPermission"
 },
 {
+  "name":"java.util.AbstractCollection",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.util.AbstractList",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.util.AbstractMap",
+  "allDeclaredFields":true
+},
+{
   "name":"java.util.AbstractMap$SimpleEntry",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.util.ArrayList",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.util.BitSet",
   "allDeclaredFields":true
 },
 {
@@ -466,6 +486,22 @@
 {
   "name":"java.util.PropertyPermission",
   "methods":[{"name":"<init>","parameterTypes":["java.lang.String","java.lang.String"] }]
+},
+{
+  "name":"java.util.concurrent.ConcurrentHashMap",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.util.concurrent.ConcurrentHashMap$CollectionView",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.util.concurrent.ConcurrentHashMap$EntrySetView",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.util.concurrent.ConcurrentHashMap$Node",
+  "allDeclaredFields":true
 },
 {
   "name":"java.util.concurrent.atomic.LongAdder",
@@ -636,6 +672,10 @@
   "name":"org.apache.iotdb.db.conf.directories.strategy.SequenceStrategy"
 },
 {
+  "name":"org.apache.iotdb.db.engine.cache.BloomFilterCache$BloomFilterCacheKey",
+  "allDeclaredFields":true
+},
+{
   "name":"org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor",
   "queryAllPublicConstructors":true
 },
@@ -769,6 +809,14 @@
 },
 {
   "name":"org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder",
+  "allDeclaredFields":true
+},
+{
+  "name":"org.apache.iotdb.tsfile.utils.BloomFilter",
+  "allDeclaredFields":true
+},
+{
+  "name":"org.apache.iotdb.tsfile.utils.BloomFilter$HashFunction",
   "allDeclaredFields":true
 },
 {
