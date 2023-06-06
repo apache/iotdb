@@ -73,9 +73,7 @@ public class IoTDBCreateAndShowViewIT {
         "CREATE VIEW root.cal_view(agg_max1, agg_max2) AS SELECT MAX_VALUE(s01) FROM root.db.d01, root.db.d02;",
         "CREATE VIEW root.myview.illegal_view AS root.myview.d01.s01 + 1;",
         "CREATE VIEW root.multi_view($abc) AS root.db.d01.s01;",
-        "CREATE VIEW root.multi_view(${3}.${2}) AS SELECT * FROM root.db.**;", // can not use two
-        // nodes in multiple
-        // creation
+        "CREATE VIEW root.multi_view(${3}.${2}) AS SELECT * FROM root.db.**;",
       };
 
   @BeforeClass
