@@ -474,6 +474,7 @@
                                 <buildArg>--initialize-at-build-time=ch.qos.logback,fresh.graal,io.micronau,org.slf4j</buildArg>
                                 <buildArg>--initialize-at-run-time=io.netty</buildArg>
                                 <buildArg>-J-XX:+UseParallelGC</buildArg>
+                                <buildArg>-J-XX:+AlwaysPreTouch</buildArg>
                                 <buildArg>-J--add-opens=java.base/java.util.concurrent=ALL-UNNAMED</buildArg>
                                 <buildArg>-J--add-opens=java.base/java.lang=ALL-UNNAMED</buildArg>
                                 <buildArg>-J--add-opens=java.base/java.util=ALL-UNNAMED</buildArg>
