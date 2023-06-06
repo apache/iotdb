@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
 
@@ -167,7 +166,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  protected void sealChunk(CompactionTsFileWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
+  protected void sealChunk(
+      CompactionTsFileWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
       throws IOException {
     CompactionTaskManager.mergeRateLimiterAcquire(
         compactionRateLimiter, iChunkWriter.estimateMaxSeriesMemSize());
@@ -293,7 +293,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(
-      CompactionTsFileWriter fileWriter, IChunkWriter iChunkWriter, int subTaskId, boolean isCrossSpace)
+      CompactionTsFileWriter fileWriter,
+      IChunkWriter iChunkWriter,
+      int subTaskId,
+      boolean isCrossSpace)
       throws IOException {
     if (chunkPointNumArray[subTaskId] >= (lastCheckIndex + 1) * checkPoint) {
       // if chunk point num reaches the check point, then check if the chunk size over threshold

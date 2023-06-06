@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.execute.performer.impl;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -37,16 +36,11 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
 public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private TsFileResource targetResource;
   private List<TsFileResource> seqFiles;
   private CompactionTaskSummary summary;

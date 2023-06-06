@@ -71,8 +71,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     super.writeEmptyValueChunk(
         measurementId, compressionType, tsDataType, encodingType, statistics);
     long writtenDataSize = this.getPos() - beforeOffset;
-    CompactionMetrics.getInstance()
-        .recordWriteInfo(type, WrittenDataType.ALIGNED, writtenDataSize);
+    CompactionMetrics.getInstance().recordWriteInfo(type, WrittenDataType.ALIGNED, writtenDataSize);
   }
 
   public void writeChunk(IChunkWriter chunkWriter) throws IOException {
