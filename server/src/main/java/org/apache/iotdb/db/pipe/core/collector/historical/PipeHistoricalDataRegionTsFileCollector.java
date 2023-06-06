@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
@@ -152,7 +153,12 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterCollectionTimeLowerBound(resource))
-                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
+                .map(
+                    resource ->
+                        new PipeTsFileInsertionEvent(
+                            resource,
+                            pipeTaskMeta,
+                            PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
@@ -161,7 +167,12 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterCollectionTimeLowerBound(resource))
-                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta))
+                .map(
+                    resource ->
+                        new PipeTsFileInsertionEvent(
+                            resource,
+                            pipeTaskMeta,
+                            PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
             event ->

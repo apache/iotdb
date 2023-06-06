@@ -78,7 +78,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
     super.setUp();
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After

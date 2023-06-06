@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.schemaregion;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
-import org.apache.iotdb.external.api.ISeriesNumerMonitor;
 
 public class SchemaRegionParams implements ISchemaRegionParams {
 
@@ -32,17 +31,13 @@ public class SchemaRegionParams implements ISchemaRegionParams {
 
   private final ISchemaEngineStatistics schemaEngineStatistics;
 
-  private final ISeriesNumerMonitor seriesNumberMonitor;
-
   public SchemaRegionParams(
       PartialPath database,
       SchemaRegionId schemaRegionId,
-      ISchemaEngineStatistics schemaEngineStatistics,
-      ISeriesNumerMonitor seriesNumberMonitor) {
+      ISchemaEngineStatistics schemaEngineStatistics) {
     this.database = database;
     this.schemaRegionId = schemaRegionId;
     this.schemaEngineStatistics = schemaEngineStatistics;
-    this.seriesNumberMonitor = seriesNumberMonitor;
   }
 
   @Override
@@ -58,10 +53,5 @@ public class SchemaRegionParams implements ISchemaRegionParams {
   @Override
   public ISchemaEngineStatistics getSchemaEngineStatistics() {
     return schemaEngineStatistics;
-  }
-
-  @Override
-  public ISeriesNumerMonitor getSeriesNumberMonitor() {
-    return seriesNumberMonitor;
   }
 }

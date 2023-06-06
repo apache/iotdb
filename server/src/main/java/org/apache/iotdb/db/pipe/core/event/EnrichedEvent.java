@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.pipe.core.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,13 +33,17 @@ import java.util.concurrent.atomic.AtomicInteger;
  * additional information mainly includes the reference count of the event.
  */
 public abstract class EnrichedEvent implements Event {
+
   private final AtomicInteger referenceCount;
 
   private final PipeTaskMeta pipeTaskMeta;
 
-  public EnrichedEvent(PipeTaskMeta pipeTaskMeta) {
+  private final String pattern;
+
+  public EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
     this.pipeTaskMeta = pipeTaskMeta;
+    this.pattern = pattern;
   }
 
   /**
@@ -112,6 +119,19 @@ public abstract class EnrichedEvent implements Event {
     return referenceCount.get();
   }
 
+  /**
+   * Get the pattern of this event.
+   *
+   * @return the pattern
+   */
+  public final String getPattern() {
+    return pattern == null ? PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
+  }
+
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta);
+      PipeTaskMeta pipeTaskMeta, String pattern);
+
+  public void reportException(PipeRuntimeException pipeRuntimeException) {
+    PipeAgent.runtime().report(this.pipeTaskMeta, pipeRuntimeException);
+  }
 }

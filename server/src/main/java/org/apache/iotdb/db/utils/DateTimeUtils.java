@@ -668,10 +668,10 @@ public class DateTimeUtils {
     String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
-        timestamp /= 1000_000_000;
+        timestamp /= 1000_000;
         break;
       case "us":
-        timestamp /= 1000_000;
+        timestamp /= 1000;
         break;
     }
     return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())

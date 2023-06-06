@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
@@ -2241,13 +2240,17 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     public PooledObject<ConfigNodeClient> makeObject(ConfigRegionId configRegionId)
         throws Exception {
       return new DefaultPooledObject<>(
-          SyncThriftClientWithErrorHandler.newErrorHandler(
-              ConfigNodeClient.class,
-              ConfigNodeClient.class.getConstructor(
-                  List.class, thriftClientProperty.getClass(), clientManager.getClass()),
+          new ConfigNodeClient(
               ConfigNodeInfo.getInstance().getLatestConfigNodes(),
               thriftClientProperty,
               clientManager));
+      //          SyncThriftClientWithErrorHandler.newErrorHandler(
+      //              ConfigNodeClient.class,
+      //              ConfigNodeClient.class.getConstructor(
+      //                  List.class, thriftClientProperty.getClass(), clientManager.getClass()),
+      //              ConfigNodeInfo.getInstance().getLatestConfigNodes(),
+      //              thriftClientProperty,
+      //              clientManager));
     }
 
     @Override

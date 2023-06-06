@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.reader.UpdateCacheTsFileIOWriter;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -77,7 +78,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
-          new TsFileIOWriter(
+          new UpdateCacheTsFileIOWriter(
               targetResources.get(i).getTsFile(), enableMemoryControl, memorySizeForEachWriter));
       isEmptyFile[i] = true;
     }

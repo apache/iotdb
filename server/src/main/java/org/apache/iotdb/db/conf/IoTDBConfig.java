@@ -21,6 +21,7 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
@@ -51,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
@@ -336,8 +338,7 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
-  /** default dop = 1 for now */
-  private int degreeOfParallelism = 1;
+  private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
   private int modeMapSizeThreshold = 10000;
 
@@ -1262,6 +1263,7 @@ public class IoTDBConfig {
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
+    pipeReceiveFileDir = addDataHomeDir(pipeReceiveFileDir);
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
@@ -1317,18 +1319,17 @@ public class IoTDBConfig {
     if (dataHomeDir == null) {
       dataHomeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
     }
-    return addDirPrefix(dataHomeDir, dir);
-  }
-
-  private String addDirPrefix(String prefix, String dir) {
-    if (!new File(dir).isAbsolute() && prefix != null && prefix.length() > 0) {
-      if (!prefix.endsWith(File.separator)) {
-        dir = prefix + File.separatorChar + dir;
-      } else {
-        dir = prefix + dir;
-      }
+    if (dataHomeDir == null) {
+      return dir;
     }
-    return dir;
+
+    File dataHomeFile = new File(dataHomeDir);
+    try {
+      dataHomeDir = dataHomeFile.getCanonicalPath();
+    } catch (IOException e) {
+      logger.error("Fail to get canonical path of {}", dataHomeFile, e);
+    }
+    return FileUtils.addPrefix2FilePath(dataHomeDir, dir);
   }
 
   void confirmMultiDirStrategy() {
@@ -1621,7 +1622,9 @@ public class IoTDBConfig {
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
-    this.degreeOfParallelism = Math.max(1, degreeOfParallelism);
+    if (degreeOfParallelism > 0) {
+      this.degreeOfParallelism = degreeOfParallelism;
+    }
   }
 
   public int getDegreeOfParallelism() {

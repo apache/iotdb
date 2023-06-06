@@ -1,0 +1,33 @@
+{
+  "resources":{
+  "includes":[
+    {
+      "pattern":"\\QMETA-INF/services/org.apache.iotdb.metrics.AbstractMetricManager\\E"
+    }, 
+    {
+      "pattern":"\\QMETA-INF/services/org.apache.ratis.metrics.MetricRegistries\\E"
+    }, 
+    {
+      "pattern":"\\QMETA-INF/services/org.apache.ratis.thirdparty.io.grpc.LoadBalancerProvider\\E"
+    }, 
+    {
+      "pattern":"\\QMETA-INF/services/org.apache.ratis.thirdparty.io.grpc.NameResolverProvider\\E"
+    }, 
+    {
+      "pattern":"\\Qgit.properties\\E"
+    }, 
+    {
+      "pattern":"\\Qlogback-test.xml\\E"
+    }, 
+    {
+      "pattern":"\\Qorg/slf4j/impl/StaticLoggerBinder.class\\E"
+    }, 
+    {
+      "pattern":"\\Qorg/xerial/snappy/VERSION\\E"
+    }, 
+    {
+      "pattern":"\\Qorg/xerial/snappy/native/Mac/aarch64/libsnappyjava.dylib\\E"
+    }
+  ]},
+  "bundles":[]
+}

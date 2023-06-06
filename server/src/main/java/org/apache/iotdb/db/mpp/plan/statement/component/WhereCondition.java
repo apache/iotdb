@@ -44,6 +44,6 @@ public class WhereCondition extends StatementNode {
   }
 
   public String toSQLString() {
-    return "WHERE " + predicate.toString();
+    return "WHERE " + predicate.getOutputSymbol();
   }
 }

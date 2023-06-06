@@ -20,19 +20,21 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.pipe.api.exception.PipeManagementException;
-import org.apache.iotdb.pipe.api.exception.PipeRuntimeCriticalException;
-import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -136,9 +138,20 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
             .getValue()
             .getProgressIndex()
             .isAfter(runtimeMetaFromDataNode.getProgressIndex())) {
-          runtimeMetaOnConfigNode
-              .getValue()
-              .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex());
+          LOGGER.info(
+              "Updating progress index for (pipe name: {}, consensus group id: {}) ... Progress index on config node: {}, progress index from data node: {}",
+              pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
+              runtimeMetaOnConfigNode.getKey(),
+              runtimeMetaOnConfigNode.getValue().getProgressIndex(),
+              runtimeMetaFromDataNode.getProgressIndex());
+          LOGGER.info(
+              "Progress index for (pipe name: {}, consensus group id: {}) is updated to {}",
+              pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
+              runtimeMetaOnConfigNode.getKey(),
+              runtimeMetaOnConfigNode
+                  .getValue()
+                  .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex()));
+
           needWriteConsensusOnConfigNodes = true;
         }
 
@@ -147,11 +160,50 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
         pipeTaskMetaOnConfigNode.clearExceptionMessages();
         for (final PipeRuntimeException exception :
             runtimeMetaFromDataNode.getExceptionMessages()) {
+
           pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
+
           if (exception instanceof PipeRuntimeCriticalException) {
-            pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
-            needWriteConsensusOnConfigNodes = true;
-            needPushPipeMetaToDataNodes = true;
+            final String pipeName = pipeMetaOnConfigNode.getStaticMeta().getPipeName();
+            if (!pipeMetaOnConfigNode
+                .getRuntimeMeta()
+                .getStatus()
+                .get()
+                .equals(PipeStatus.STOPPED)) {
+              pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+
+              needWriteConsensusOnConfigNodes = true;
+              needPushPipeMetaToDataNodes = true;
+
+              LOGGER.warn(
+                  String.format(
+                      "Detect PipeRuntimeCriticalException %s from DataNode, stop pipe %s.",
+                      exception, pipeName));
+            }
+
+            if (exception instanceof PipeRuntimeConnectorCriticalException) {
+              ((PipeTableResp)
+                      env.getConfigManager()
+                          .getPipeManager()
+                          .getPipeTaskCoordinator()
+                          .getPipeTaskInfo()
+                          .showPipes())
+                  .filter(true, pipeName).getAllPipeMeta().stream()
+                      .map(pipeMeta -> pipeMeta.getRuntimeMeta().getStatus())
+                      .filter(status -> !status.get().equals(PipeStatus.STOPPED))
+                      .forEach(
+                          status -> {
+                            status.set(PipeStatus.STOPPED);
+
+                            needWriteConsensusOnConfigNodes = true;
+                            needPushPipeMetaToDataNodes = true;
+
+                            LOGGER.warn(
+                                String.format(
+                                    "Detect PipeRuntimeConnectorCriticalException %s from DataNode, stop pipe %s.",
+                                    exception, pipeName));
+                          });
+            }
           }
         }
       }
@@ -186,14 +238,14 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromHandleOnDataNodes");
 
     if (!needPushPipeMetaToDataNodes) {
       return;
     }
 
-    pushPipeMetaToDataNodes(env);
+    pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override

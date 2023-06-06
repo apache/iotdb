@@ -55,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.reader.UpdateCacheRestorableTsFileIOWriter;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -194,7 +195,7 @@ public class TsFileProcessor {
     this.sequence = sequence;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.dataRegionInfo = dataRegionInfo;
-    this.writer = new RestorableTsFileIOWriter(tsfile);
+    this.writer = new UpdateCacheRestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.walNode =
         WALManager.getInstance()

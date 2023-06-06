@@ -82,13 +82,15 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
       String measurementId,
       TSDataType dataType,
       Statistics<? extends Serializable> statistics,
-      PublicBAOS chunkMetadataListBuffer) {
+      PublicBAOS chunkMetadataListBuffer,
+      ArrayList<IChunkMetadata> chunkMetadataList) {
     this.timeSeriesMetadataType = timeSeriesMetadataType;
     this.chunkMetaDataListDataSize = chunkMetaDataListDataSize;
     this.measurementId = measurementId;
     this.dataType = dataType;
     this.statistics = statistics;
     this.chunkMetadataListBuffer = chunkMetadataListBuffer;
+    this.chunkMetadataList = chunkMetadataList;
   }
 
   public TimeseriesMetadata(TimeseriesMetadata timeseriesMetadata) {

@@ -401,7 +401,7 @@ public class IntermediateLayerVisitor
     executor.beforeStart(
         context.queryId,
         context.memoryAssigner.assign(),
-        expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+        expressions.stream().map(Expression::getExpressionString).collect(Collectors.toList()),
         expressions.stream().map(context::getType).collect(Collectors.toList()),
         functionExpression.getFunctionAttributes());
 

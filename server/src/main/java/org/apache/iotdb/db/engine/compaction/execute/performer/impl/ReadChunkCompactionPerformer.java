@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.executor.readchunk.Al
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.query.reader.UpdateCacheTsFileIOWriter;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -72,7 +73,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
         TsFileIOWriter writer =
-            new TsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {
+            new UpdateCacheTsFileIOWriter(targetResource.getTsFile(), true, sizeForFileWriter)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.query.reader.UpdateCacheRestorableTsFileIOWriter;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -77,7 +78,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
 
     // try to remove corrupted part of the TsFile
     try {
-      writer = new RestorableTsFileIOWriter(tsFile);
+      writer = new UpdateCacheRestorableTsFileIOWriter(tsFile);
     } catch (NotCompatibleTsFileException e) {
       boolean result = tsFile.delete();
       logger.warn(

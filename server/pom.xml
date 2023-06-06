@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.2.0-SNAPSHOT</version>
+        <version>1.3.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-server</artifactId>
@@ -36,6 +36,8 @@
         <jjwt-api.version>0.10.8</jjwt-api.version>
         <oauth2-oidc-sdk.version>8.3</oauth2-oidc-sdk.version>
         <tomcat-embed-core.version>10.1.0-M1</tomcat-embed-core.version>
+        <maven-jar-plugin.version>3.2.2</maven-jar-plugin.version>
+        <native.maven.plugin.version>0.9.22</native.maven.plugin.version>
     </properties>
     <dependencies>
         <dependency>
@@ -405,6 +407,93 @@
                 <iotdb.ut.skip>false</iotdb.ut.skip>
                 <iotdb.it.skip>false</iotdb.it.skip>
             </properties>
+        </profile>
+        <profile>
+            <id>get-jar-with-dependencies</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven.assembly.version}</version>
+                        <configuration>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.apache.iotdb.db.service.DataNode</mainClass>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>make-assembly</id>
+                                <!-- this is used for inheritance merges -->
+                                <phase>package</phase>
+                                <!-- bind to the packaging phase -->
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>${native.maven.plugin.version}</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <id>build-native</id>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                            <execution>
+                                <id>test-native</id>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <phase>test</phase>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <imageName>datanode</imageName>
+                            <buildArgs>
+                                <buildArg>-H:+ReportExceptionStackTraces</buildArg>
+                                <!-- <buildArg>-H:+StaticExecutableWithDynamicLibC</buildArg> -->
+                                <buildArg>--verbose</buildArg>
+                                <buildArg>--initialize-at-build-time=ch.qos.logback,fresh.graal,io.micronau,org.slf4j</buildArg>
+                                <buildArg>--initialize-at-run-time=io.netty</buildArg>
+                                <buildArg>-J-XX:+UseParallelGC</buildArg>
+                                <buildArg>-J--add-opens=java.base/java.util.concurrent=ALL-UNNAMED</buildArg>
+                                <buildArg>-J--add-opens=java.base/java.lang=ALL-UNNAMED</buildArg>
+                                <buildArg>-J--add-opens=java.base/java.util=ALL-UNNAMED</buildArg>
+                                <buildArg>-J--add-opens=java.base/java.nio=ALL-UNNAMED</buildArg>
+                                <buildArg>-J--add-opens=java.base/java.io=ALL-UNNAMED</buildArg>
+                                <buildArg>-J--add-opens=java.base/java.net=ALL-UNNAMED</buildArg>
+                                <!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.micronaut.configuration.metrics,io.micrometer,io.netty</buildArg>-->
+                                <!-- For Quick Build (22.1+) -->
+                                <buildArg>-Ob</buildArg>
+                            </buildArgs>
+                            <mainClass>org.apache.iotdb.db.service.DataNode</mainClass>
+                            <!-- Start: Workaround for 22.2: Disable the default Java Module Path using USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM -->
+                            <!-- <environment>
+                              <USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM>false</USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM>
+                            </environment> -->
+                            <!-- End: Workaround for 22.2: Disable the default Java Module Path using USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM -->
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

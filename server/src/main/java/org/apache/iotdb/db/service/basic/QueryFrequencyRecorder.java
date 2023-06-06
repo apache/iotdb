@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service.basic;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 
@@ -36,7 +37,8 @@ public class QueryFrequencyRecorder {
 
   public QueryFrequencyRecorder(IoTDBConfig config) {
     ScheduledExecutorService timedQuerySqlCountThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedQuerySqlCount");
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.TIMED_QUERY_SQL_COUNT.getName());
     ScheduledExecutorUtil.safelyScheduleAtFixedRate(
         timedQuerySqlCountThread,
         () -> {

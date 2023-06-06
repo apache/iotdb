@@ -128,13 +128,15 @@ public class SyncDataNodeInternalServiceClient extends IDataNodeRPCService.Clien
     public PooledObject<SyncDataNodeInternalServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
       return new DefaultPooledObject<>(
-          SyncThriftClientWithErrorHandler.newErrorHandler(
-              SyncDataNodeInternalServiceClient.class,
-              SyncDataNodeInternalServiceClient.class.getConstructor(
-                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
-              thriftClientProperty,
-              endpoint,
-              clientManager));
+          new SyncDataNodeInternalServiceClient(thriftClientProperty, endpoint, clientManager));
+      //          SyncThriftClientWithErrorHandler.newErrorHandler(
+      //              SyncDataNodeInternalServiceClient.class,
+      //              SyncDataNodeInternalServiceClient.class.getConstructor(
+      //                  thriftClientProperty.getClass(), endpoint.getClass(),
+      // clientManager.getClass()),
+      //              thriftClientProperty,
+      //              endpoint,
+      //              clientManager));
     }
 
     @Override

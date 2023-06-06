@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.reader.UpdateCacheRestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -181,7 +182,8 @@ public class CompactionFileGeneratorUtils {
     if (!newTsFileResource.getTsFile().getParentFile().exists()) {
       newTsFileResource.getTsFile().getParentFile().mkdirs();
     }
-    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
+    RestorableTsFileIOWriter writer =
+        new UpdateCacheRestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
@@ -238,7 +240,8 @@ public class CompactionFileGeneratorUtils {
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer.MAX_VALUE);
 
-    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
+    RestorableTsFileIOWriter writer =
+        new UpdateCacheRestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
@@ -329,7 +332,8 @@ public class CompactionFileGeneratorUtils {
     if (!newTsFileResource.getTsFile().getParentFile().exists()) {
       newTsFileResource.getTsFile().getParentFile().mkdirs();
     }
-    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
+    RestorableTsFileIOWriter writer =
+        new UpdateCacheRestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);

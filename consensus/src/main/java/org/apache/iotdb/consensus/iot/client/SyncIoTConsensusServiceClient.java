@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -106,13 +105,15 @@ public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
     public PooledObject<SyncIoTConsensusServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
       return new DefaultPooledObject<>(
-          SyncThriftClientWithErrorHandler.newErrorHandler(
-              SyncIoTConsensusServiceClient.class,
-              SyncIoTConsensusServiceClient.class.getConstructor(
-                  thriftClientProperty.getClass(), endpoint.getClass(), clientManager.getClass()),
-              thriftClientProperty,
-              endpoint,
-              clientManager));
+          new SyncIoTConsensusServiceClient(thriftClientProperty, endpoint, clientManager));
+      //          SyncThriftClientWithErrorHandler.newErrorHandler(
+      //              SyncIoTConsensusServiceClient.class,
+      //              SyncIoTConsensusServiceClient.class.getConstructor(
+      //                  thriftClientProperty.getClass(), endpoint.getClass(),
+      // clientManager.getClass()),
+      //              thriftClientProperty,
+      //              endpoint,
+      //              clientManager));
     }
 
     @Override
