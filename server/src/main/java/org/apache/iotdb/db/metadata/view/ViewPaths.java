@@ -20,8 +20,12 @@
 package org.apache.iotdb.db.metadata.view;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
+import org.apache.iotdb.db.exception.metadata.view.ViewContainsAggregationException;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpressionsVisitor;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -88,6 +92,26 @@ public class ViewPaths {
     } else if (this.viewPathType == ViewPathType.QUERY_STATEMENT) {
       // no nothing. expressions should be set by setExpressionsList
     }
+  }
+
+  /**
+   * Check all expression in this list, ensure that the views created using them are legal. Check
+   * follows above rules: 1. A legal view can NOT contain aggregation functions.
+   *
+   * @return If all check passed, return true; else return false with failure message.
+   */
+  public static Pair<Boolean, UnsupportedViewException> checkExpressionList(
+      List<Expression> expressionsList) {
+    CollectAggregationExpressionsVisitor collectAggExpVisitor =
+        new CollectAggregationExpressionsVisitor();
+
+    for (Expression expression : expressionsList) {
+      List<Expression> aggList = collectAggExpVisitor.process(expression, null);
+      if (aggList.size() > 0) {
+        return new Pair<>(false, new ViewContainsAggregationException(aggList.get(0).toString()));
+      }
+    }
+    return new Pair<>(true, null);
   }
 
   public void setExpressionsList(List<Expression> expressionsList) {

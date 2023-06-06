@@ -46,6 +46,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
+import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -3344,22 +3345,28 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (queryAnalysisPair.right.isFinishQueryAfterAnalyze()) {
           return analysis;
         } else if (queryAnalysisPair.left != null) {
-          createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
+          try {
+            createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
+          } catch (UnsupportedViewException e) {
+            analysis.setFinishQueryAfterAnalyze(true);
+            analysis.setFailStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+            return analysis;
+          }
         }
       }
+    }
 
-      // check target paths; check source expressions.
-      checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
-      if (analysis.isFinishQueryAfterAnalyze()) {
-        return analysis;
-      }
+    // check target paths; check source expressions.
+    checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
 
-      // make sure there is no view in source
-      List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
-      checkViewsInSource(analysis, sourceExpressionList, context);
-      if (analysis.isFinishQueryAfterAnalyze()) {
-        return analysis;
-      }
+    // make sure there is no view in source
+    List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
+    checkViewsInSource(analysis, sourceExpressionList, context);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
     }
 
     // set schema partition info, this info will be used to split logical plan node.
