@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -152,11 +153,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
-      String errorMsg =
+      final String errorMsg =
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
       LOGGER.warn(errorMsg);
       Thread.currentThread().interrupt();
+      throw new PipeException(errorMsg);
+    } catch (IOException e) {
+      final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
+      LOGGER.warn(errorMsg);
       throw new PipeException(errorMsg);
     }
   }

@@ -285,10 +285,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
-    config.setPipeConnectorSessionId(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_connector_session_id", String.valueOf(config.getPipeConnectorSessionId()))));
 
     config.setPipeHeartbeatLoopCyclesForCollectingPipeMeta(
         Integer.parseInt(

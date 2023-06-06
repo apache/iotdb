@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.pipe.core.event.impl.PipeEmptyTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.db.pipe.core.event.view.collector.PipeRowCollector;
 import org.apache.iotdb.pipe.api.access.Row;
@@ -40,6 +39,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -52,8 +52,9 @@ public class TabletInsertionDataContainer {
   private String[] columnNameStringList;
 
   private long[] timestampColumn;
-  private Object[] valueColumns;
   private TSDataType[] valueColumnTypes;
+  // each column of Object[] is a column of primitive type array
+  private Object[] valueColumns;
   private BitMap[] nullValueColumnBitmaps;
   private int rowCount;
 
@@ -89,7 +90,8 @@ public class TabletInsertionDataContainer {
     this.timestampColumn = new long[] {insertRowNode.getTime()};
 
     generateColumnIndexMapper(
-        insertRowNode, pattern, originColumnIndex2FilteredColumnIndexMapperList);
+        insertRowNode.getMeasurements(), pattern, originColumnIndex2FilteredColumnIndexMapperList);
+
     final int filteredColumnSize =
         Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
             .filter(Objects::nonNull)
@@ -98,22 +100,46 @@ public class TabletInsertionDataContainer {
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumns = new Object[filteredColumnSize];
     this.valueColumnTypes = new TSDataType[filteredColumnSize];
+    this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
     final MeasurementSchema[] originMeasurementSchemaList = insertRowNode.getMeasurementSchemas();
     final String[] originColumnNameStringList = insertRowNode.getMeasurements();
-    final Object[] originValueColumns = insertRowNode.getValues();
     final TSDataType[] originValueColumnTypes = insertRowNode.getDataTypes();
+    final Object[] originValueColumns = insertRowNode.getValues();
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
         final int filteredColumnIndex = originColumnIndex2FilteredColumnIndexMapperList[i];
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
-        this.valueColumns[filteredColumnIndex] = originValueColumns[i];
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
+        switch (originValueColumnTypes[i]) {
+          case INT32:
+            this.valueColumns[filteredColumnIndex] = new int[] {(Integer) originValueColumns[i]};
+            break;
+          case INT64:
+            this.valueColumns[filteredColumnIndex] = new long[] {(Long) originValueColumns[i]};
+            break;
+          case FLOAT:
+            this.valueColumns[filteredColumnIndex] = new float[] {(Float) originValueColumns[i]};
+            break;
+          case DOUBLE:
+            this.valueColumns[filteredColumnIndex] = new double[] {(Double) originValueColumns[i]};
+            break;
+          case BOOLEAN:
+            this.valueColumns[filteredColumnIndex] =
+                new boolean[] {(Boolean) originValueColumns[i]};
+            break;
+          case TEXT:
+            this.valueColumns[filteredColumnIndex] = new Binary[] {(Binary) originValueColumns[i]};
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format(
+                    "Data type %s is not supported.", originValueColumnTypes[i].toString()));
+        }
         this.nullValueColumnBitmaps[filteredColumnIndex] = new BitMap(1);
       }
     }
@@ -130,7 +156,9 @@ public class TabletInsertionDataContainer {
     this.timestampColumn = insertTabletNode.getTimes();
 
     generateColumnIndexMapper(
-        insertTabletNode, pattern, originColumnIndex2FilteredColumnIndexMapperList);
+        insertTabletNode.getMeasurements(),
+        pattern,
+        originColumnIndex2FilteredColumnIndexMapperList);
 
     final int filteredColumnSize =
         Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
@@ -140,15 +168,15 @@ public class TabletInsertionDataContainer {
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumns = new Object[filteredColumnSize];
     this.valueColumnTypes = new TSDataType[filteredColumnSize];
+    this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
     final MeasurementSchema[] originMeasurementSchemaList =
         insertTabletNode.getMeasurementSchemas();
     final String[] originColumnNameStringList = insertTabletNode.getMeasurements();
-    final Object[] originValueColumns = insertTabletNode.getColumns();
     final TSDataType[] originValueColumnTypes = insertTabletNode.getDataTypes();
+    final Object[] originValueColumns = insertTabletNode.getColumns();
     final BitMap[] originBitMapList =
         (insertTabletNode.getBitMaps() == null
             ? IntStream.range(0, originColumnSize)
@@ -156,15 +184,19 @@ public class TabletInsertionDataContainer {
                 .map(o -> new BitMap(timestampColumn.length))
                 .toArray(BitMap[]::new)
             : insertTabletNode.getBitMaps());
+    for (int i = 0; i < originBitMapList.length; i++) {
+      if (originBitMapList[i] == null) {
+        originBitMapList[i] = new BitMap(timestampColumn.length);
+      }
+    }
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
         final int filteredColumnIndex = originColumnIndex2FilteredColumnIndexMapperList[i];
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
-        this.valueColumns[filteredColumnIndex] =
-            convertToColumn(originValueColumns[i], originValueColumnTypes[i], originBitMapList[i]);
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
+        this.valueColumns[filteredColumnIndex] = originValueColumns[i];
         this.nullValueColumnBitmaps[filteredColumnIndex] = originBitMapList[i];
       }
     }
@@ -179,7 +211,13 @@ public class TabletInsertionDataContainer {
     this.deviceId = tablet.deviceId;
     this.timestampColumn = tablet.timestamps;
 
-    generateColumnIndexMapper(tablet, pattern, originColumnIndex2FilteredColumnIndexMapperList);
+    final List<MeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
+    final String[] originMeasurementList = new String[originMeasurementSchemaList.size()];
+    for (int i = 0; i < originMeasurementSchemaList.size(); i++) {
+      originMeasurementList[i] = originMeasurementSchemaList.get(i).getMeasurementId();
+    }
+    generateColumnIndexMapper(
+        originMeasurementList, pattern, originColumnIndex2FilteredColumnIndexMapperList);
 
     final int filteredColumnSize =
         Arrays.stream(originColumnIndex2FilteredColumnIndexMapperList)
@@ -189,11 +227,10 @@ public class TabletInsertionDataContainer {
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumns = new Object[filteredColumnSize];
     this.valueColumnTypes = new TSDataType[filteredColumnSize];
+    this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
-    final List<MeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
     final String[] originColumnNameStringList = new String[originColumnSize];
     final TSDataType[] originValueColumnTypes = new TSDataType[originColumnSize];
     for (int i = 0; i < originColumnSize; i++) {
@@ -201,16 +238,26 @@ public class TabletInsertionDataContainer {
       originValueColumnTypes[i] = originMeasurementSchemaList.get(i).getType();
     }
     final Object[] originValueColumns = tablet.values;
-    final BitMap[] originBitMapList = tablet.bitMaps;
+    final BitMap[] originBitMapList =
+        tablet.bitMaps == null
+            ? IntStream.range(0, originColumnSize)
+                .boxed()
+                .map(o -> new BitMap(timestampColumn.length))
+                .toArray(BitMap[]::new)
+            : tablet.bitMaps;
+    for (int i = 0; i < originBitMapList.length; i++) {
+      if (originBitMapList[i] == null) {
+        originBitMapList[i] = new BitMap(timestampColumn.length);
+      }
+    }
 
     for (int i = 0; i < originColumnIndex2FilteredColumnIndexMapperList.length; i++) {
       if (originColumnIndex2FilteredColumnIndexMapperList[i] != null) {
         final int filteredColumnIndex = originColumnIndex2FilteredColumnIndexMapperList[i];
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList.get(i);
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
-        this.valueColumns[filteredColumnIndex] =
-            convertToColumn(originValueColumns[i], originValueColumnTypes[i], originBitMapList[i]);
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
+        this.valueColumns[filteredColumnIndex] = originValueColumns[i];
         this.nullValueColumnBitmaps[filteredColumnIndex] = originBitMapList[i];
       }
     }
@@ -218,6 +265,7 @@ public class TabletInsertionDataContainer {
     rowCount = tablet.rowSize;
   }
 
+  // TODO: cache the result keyed by deviceId to improve performance
   private void generateColumnIndexMapper(
       String[] originMeasurementList,
       String pattern,
@@ -243,7 +291,6 @@ public class TabletInsertionDataContainer {
         // low cost check comes first
         if (pattern.length() == deviceId.length() + measurement.length() + 1
             // high cost check comes later
-            && pattern.startsWith(deviceId)
             && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
           originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
         }
@@ -251,107 +298,34 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void generateColumnIndexMapper(
-      InsertNode insertNode,
-      String pattern,
-      Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
-    generateColumnIndexMapper(
-        insertNode.getMeasurements(), pattern, originColumnIndex2FilteredColumnIndexMapperList);
-  }
-
-  private void generateColumnIndexMapper(
-      Tablet tablet, String pattern, Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
-    final List<MeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
-    final String[] originMeasurementList = new String[originMeasurementSchemaList.size()];
-    for (int i = 0; i < originMeasurementSchemaList.size(); i++) {
-      originMeasurementList[i] = originMeasurementSchemaList.get(i).getMeasurementId();
-    }
-    generateColumnIndexMapper(
-        originMeasurementList, pattern, originColumnIndex2FilteredColumnIndexMapperList);
-  }
-
-  private Object convertToColumn(Object originColumn, TSDataType dataType, BitMap bitMap) {
-    switch (dataType) {
-      case INT32:
-        final int[] intValues = (int[]) originColumn;
-        final int[] integerValues = new int[intValues.length];
-        for (int i = 0; i < intValues.length; i++) {
-          integerValues[i] = bitMap != null && bitMap.isMarked(i) ? 0 : intValues[i];
-        }
-        return integerValues;
-      case INT64:
-        final long[] longValues = (long[]) originColumn;
-        final long[] longValues2 = new long[longValues.length];
-        for (int i = 0; i < longValues.length; i++) {
-          longValues2[i] = bitMap != null && bitMap.isMarked(i) ? 0 : longValues[i];
-        }
-        return longValues2;
-      case FLOAT:
-        final float[] floatValues = (float[]) originColumn;
-        final float[] floatValues2 = new float[floatValues.length];
-        for (int i = 0; i < floatValues.length; i++) {
-          floatValues2[i] = bitMap != null && bitMap.isMarked(i) ? 0 : floatValues[i];
-        }
-        return floatValues2;
-      case DOUBLE:
-        final double[] doubleValues = (double[]) originColumn;
-        final double[] doubleValues2 = new double[doubleValues.length];
-        for (int i = 0; i < doubleValues.length; i++) {
-          doubleValues2[i] = bitMap != null && bitMap.isMarked(i) ? 0 : doubleValues[i];
-        }
-        return doubleValues2;
-      case BOOLEAN:
-        final boolean[] booleanValues = (boolean[]) originColumn;
-        final boolean[] booleanValues2 = new boolean[booleanValues.length];
-        for (int i = 0; i < booleanValues.length; i++) {
-          booleanValues2[i] = (bitMap == null || !bitMap.isMarked(i)) && booleanValues[i];
-        }
-        return booleanValues2;
-      case TEXT:
-        final Binary[] binaryValues = (Binary[]) originColumn;
-        final Binary[] stringValues = new Binary[binaryValues.length];
-        for (int i = 0; i < binaryValues.length; i++) {
-          stringValues[i] =
-              bitMap != null && bitMap.isMarked(i)
-                  ? null
-                  : (binaryValues[i] == null
-                      ? null
-                      : Binary.valueOf(binaryValues[i].getStringValue()));
-        }
-        return stringValues;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-  }
-
   ////////////////////////////  process  ////////////////////////////
 
-  public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
-    final PipeRowCollector rowCollector = new PipeRowCollector();
-    if (valueColumns.length == 0) {
-      return new PipeEmptyTabletInsertionEvent();
+  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+    if (valueColumns.length == 0 || timestampColumn.length == 0) {
+      return Collections.emptyList();
     }
 
-    for (int i = 0; i < timestampColumn.length; i++) {
+    final PipeRowCollector rowCollector = new PipeRowCollector();
+    for (int i = 0; i < rowCount; i++) {
       consumer.accept(
           new PipeRow(
               i,
               deviceId,
               measurementSchemaList,
               timestampColumn,
-              valueColumns,
               valueColumnTypes,
+              valueColumns,
+              nullValueColumnBitmaps,
               columnNameStringList),
           rowCollector);
     }
-    return rowCollector.toTabletInsertionEvent();
+    return rowCollector.convertToTabletInsertionEvents();
   }
 
-  public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector();
     consumer.accept(convertToTablet(), rowCollector);
-    return rowCollector.toTabletInsertionEvent();
+    return rowCollector.convertToTabletInsertionEvents();
   }
 
   ////////////////////////////  convert  ////////////////////////////
@@ -362,10 +336,8 @@ public class TabletInsertionDataContainer {
     }
 
     final int columnSize = measurementSchemaList.length;
-
     final List<MeasurementSchema> measurementSchemaArrayList =
         new ArrayList<>(Arrays.asList(measurementSchemaList).subList(0, columnSize));
-
     final Tablet newTablet = new Tablet(deviceId, measurementSchemaArrayList, rowCount);
     newTablet.timestamps = timestampColumn;
     newTablet.bitMaps = nullValueColumnBitmaps;
@@ -373,6 +345,7 @@ public class TabletInsertionDataContainer {
     newTablet.rowSize = rowCount;
 
     tablet = newTablet;
+
     return tablet;
   }
 }

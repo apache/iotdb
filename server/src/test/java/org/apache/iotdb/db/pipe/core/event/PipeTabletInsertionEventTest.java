@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.view.datastructure.TabletInsertionDataContainer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -37,7 +38,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 
-public class PipeInsertNodeTabletInsertionEventTest {
+public class PipeTabletInsertionEventTest {
 
   InsertRowNode insertRowNode;
   InsertTabletNode insertTabletNode;
@@ -56,7 +57,6 @@ public class PipeInsertNodeTabletInsertionEventTest {
       };
 
   final MeasurementSchema[] schemas = new MeasurementSchema[6];
-  final Object[] values = new Object[6];
 
   final String pattern = "root.sg.d1";
 
@@ -78,6 +78,14 @@ public class PipeInsertNodeTabletInsertionEventTest {
   }
 
   private void createInsertRowNode() throws IllegalPathException {
+    final Object[] values = new Object[6];
+
+    values[0] = 100;
+    values[1] = 10000L;
+    values[2] = 2F;
+    values[3] = 1.0;
+    values[4] = false;
+    values[5] = Binary.valueOf("text");
 
     insertRowNode =
         new InsertRowNode(
@@ -93,6 +101,24 @@ public class PipeInsertNodeTabletInsertionEventTest {
   }
 
   private void createInsertTabletNode() throws IllegalPathException {
+    final Object[] values = new Object[6];
+
+    values[0] = new int[5];
+    values[1] = new long[5];
+    values[2] = new float[5];
+    values[3] = new double[5];
+    values[4] = new boolean[5];
+    values[5] = new Binary[5];
+
+    for (int r = 0; r < 5; r++) {
+      ((int[]) values[0])[r] = 100;
+      ((long[]) values[1])[r] = 10000;
+      ((float[]) values[2])[r] = 2;
+      ((double[]) values[3])[r] = 1.0;
+      ((boolean[]) values[4])[r] = false;
+      ((Binary[]) values[5])[r] = Binary.valueOf("text");
+    }
+
     this.insertTabletNode =
         new InsertTabletNode(
             new PlanNodeId("plannode 1"),
@@ -108,6 +134,7 @@ public class PipeInsertNodeTabletInsertionEventTest {
   }
 
   private void createTablet() {
+    final Object[] values = new Object[6];
 
     // create tablet for insertRowNode
     BitMap[] bitMapsForInsertRowNode = new BitMap[6];
@@ -167,12 +194,18 @@ public class PipeInsertNodeTabletInsertionEventTest {
 
   @Test
   public void convertToTabletForTest() {
-    PipeInsertNodeTabletInsertionEvent event1 = new PipeInsertNodeTabletInsertionEvent(null, null);
-    Tablet tablet1 = event1.convertToTabletForTest(insertRowNode, pattern);
+    Tablet tablet1 = new TabletInsertionDataContainer(insertRowNode, pattern).convertToTablet();
     Assert.assertEquals(tablet1, tabletForInsertRowNode);
 
-    PipeInsertNodeTabletInsertionEvent event2 = new PipeInsertNodeTabletInsertionEvent(null, null);
-    Tablet tablet2 = event2.convertToTabletForTest(insertTabletNode, pattern);
+    Tablet tablet2 = new TabletInsertionDataContainer(insertTabletNode, pattern).convertToTablet();
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);
+
+    PipeRawTabletInsertionEvent event3 = new PipeRawTabletInsertionEvent(tablet1, pattern);
+    Tablet tablet3 = event3.convertToTablet();
+    Assert.assertEquals(tablet1, tablet3);
+
+    PipeRawTabletInsertionEvent event4 = new PipeRawTabletInsertionEvent(tablet2, pattern);
+    Tablet tablet4 = event4.convertToTablet();
+    Assert.assertEquals(tablet2, tablet4);
   }
 }
