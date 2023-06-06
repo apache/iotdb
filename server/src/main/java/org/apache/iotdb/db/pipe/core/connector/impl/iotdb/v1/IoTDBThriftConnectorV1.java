@@ -123,7 +123,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
         doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
         throw new NotImplementedException(
-            "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeTabletTabletInsertionEvent.");
+            "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
     } catch (TException e) {
       LOGGER.error(
@@ -161,7 +161,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Transfer PipeTabletTabletInsertionEvent %s error, result status %s",
+              "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
               pipeRawTabletInsertionEvent, resp.status));
     }
   }

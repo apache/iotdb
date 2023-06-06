@@ -158,7 +158,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public String toString() {
-    return "PipeTabletTabletInsertionEvent{"
+    return "PipeRawTabletInsertionEvent{"
         + "walEntryHandler="
         + walEntryHandler
         + ", progressIndex="

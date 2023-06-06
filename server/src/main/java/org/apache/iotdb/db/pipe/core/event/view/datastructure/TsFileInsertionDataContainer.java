@@ -117,7 +117,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               throw new NoSuchElementException();
             }
 
-            if (tabletIterator == null || !tabletIterator.hasNext()) {
+            while (tabletIterator == null || !tabletIterator.hasNext()) {
               final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterator.next();
               try {
                 tabletIterator =
