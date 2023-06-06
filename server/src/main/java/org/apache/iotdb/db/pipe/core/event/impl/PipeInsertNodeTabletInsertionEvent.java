@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.core.event.impl;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.core.event.view.datastructure.TabletInsertionDataContainer;
@@ -116,7 +115,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
-  public TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
         dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
@@ -129,7 +128,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
         dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
@@ -141,36 +140,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
-  public Tablet convertToTablet() {
-    try {
-      if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
-      }
-      return dataContainer.convertToTablet();
-    } catch (Exception e) {
-      LOGGER.error("Process tablet error.", e);
-      throw new PipeException("Process tablet error.", e);
-    }
-  }
-
-  @TestOnly
-  public Tablet convertToTabletForTest(InsertNode insertNode, String pattern) {
-    try {
-      if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(insertNode, pattern);
-      }
-      return dataContainer.convertToTablet();
-    } catch (Exception e) {
-      LOGGER.error("Process tablet error.", e);
-      throw new PipeException("Process tablet error.", e);
-    }
-  }
-
   /////////////////////////// Object ///////////////////////////
 
   @Override
   public String toString() {
-    return "PipeTabletTabletInsertionEvent{"
+    return "PipeRawTabletInsertionEvent{"
         + "walEntryHandler="
         + walEntryHandler
         + ", progressIndex="

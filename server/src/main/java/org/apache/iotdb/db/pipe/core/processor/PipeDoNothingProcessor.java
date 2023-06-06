@@ -56,15 +56,23 @@ public class PipeDoNothingProcessor implements PipeProcessor {
           .equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
         eventCollector.collect(tabletInsertionEvent);
       } else {
-        eventCollector.collect(
-            tabletInsertionEvent.processRowByRow(
+        tabletInsertionEvent
+            .processRowByRow(
                 (row, rowCollector) -> {
                   try {
                     rowCollector.collectRow(row);
                   } catch (IOException e) {
                     throw new PipeException("Failed to collect row", e);
                   }
-                }));
+                })
+            .forEach(
+                event -> {
+                  try {
+                    eventCollector.collect(event);
+                  } catch (IOException e) {
+                    throw new PipeException("Failed to collect event", e);
+                  }
+                });
       }
     } else {
       eventCollector.collect(tabletInsertionEvent);

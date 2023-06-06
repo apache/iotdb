@@ -32,16 +32,16 @@ public interface TabletInsertionEvent extends Event {
   /**
    * The consumer processes the data row by row and collects the results by RowCollector.
    *
-   * @return TabletInsertionEvent a new TabletInsertionEvent contains the results collected by the
-   *     RowCollector
+   * @return Iterable<TabletInsertionEvent> a list of new TabletInsertionEvent contains the results
+   *     collected by the RowCollector
    */
-  TabletInsertionEvent processRowByRow(BiConsumer<Row, RowCollector> consumer);
+  Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer);
 
   /**
    * The consumer processes the Tablet directly and collects the results by RowCollector.
    *
-   * @return TabletInsertionEvent a new TabletInsertionEvent contains the results collected by the
-   *     RowCollector
+   * @return Iterable<TabletInsertionEvent> a list of new TabletInsertionEvent contains the results
+   *     collected by the RowCollector
    */
-  TabletInsertionEvent processTablet(BiConsumer<Tablet, RowCollector> consumer);
+  Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer);
 }
