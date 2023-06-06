@@ -17,30 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution.executor;
+package org.apache.iotdb.db.pipe.execution;
 
-import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
-import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.collector.EventCollector;
+import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtask;
+import org.apache.iotdb.pipe.api.PipeConnector;
 
 import org.junit.Before;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.mock;
 
-public class PipeProcessorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
+public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
 
   @Before
   public void setUp() throws Exception {
-    executor = new PipeProcessorSubtaskExecutor();
+    executor = new PipeConnectorSubtaskExecutor();
 
     subtask =
         Mockito.spy(
-            new PipeProcessorSubtask(
-                "PipeProcessorSubtaskExecutorTest",
-                mock(EventSupplier.class),
-                mock(PipeProcessor.class),
-                mock(EventCollector.class)));
+            new PipeConnectorSubtask(
+                "PipeConnectorSubtaskExecutorTest",
+                mock(BoundedBlockingPendingQueue.class),
+                mock(PipeConnector.class)));
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.collector;
+package org.apache.iotdb.db.pipe.collector;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;

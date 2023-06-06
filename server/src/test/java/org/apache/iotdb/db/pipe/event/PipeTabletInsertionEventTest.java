@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.core.event;
+package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -40,8 +40,8 @@ import java.util.Arrays;
 
 public class PipeTabletInsertionEventTest {
 
-  InsertRowNode insertRowNode;
-  InsertTabletNode insertTabletNode;
+  private InsertRowNode insertRowNode;
+  private InsertTabletNode insertTabletNode;
 
   final String deviceId = "root.sg.d1";
   final long[] times = new long[] {110L, 111L, 112L, 113L, 114L};
