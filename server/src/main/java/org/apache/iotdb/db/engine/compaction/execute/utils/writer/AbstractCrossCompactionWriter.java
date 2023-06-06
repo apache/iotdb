@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.writer;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileWriter;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -39,7 +41,7 @@ import java.util.Map;
 public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWriter {
 
   // target fileIOWriters
-  protected List<TsFileIOWriter> targetFileWriters = new ArrayList<>();
+  protected List<CompactionTsFileWriter> targetFileWriters = new ArrayList<>();
 
   // source tsfiles
   private List<TsFileResource> seqTsFileResources;
@@ -77,8 +79,11 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
-          new TsFileIOWriter(
-              targetResources.get(i).getTsFile(), enableMemoryControl, memorySizeForEachWriter));
+          new CompactionTsFileWriter(
+              targetResources.get(i).getTsFile(),
+              enableMemoryControl,
+              memorySizeForEachWriter,
+              CompactionType.CROSS_COMPACTION));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
@@ -99,7 +104,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   @Override
   public void endChunkGroup() throws IOException {
     for (int i = 0; i < seqTsFileResources.size(); i++) {
-      TsFileIOWriter targetFileWriter = targetFileWriters.get(i);
+      CompactionTsFileWriter targetFileWriter = targetFileWriters.get(i);
       if (isDeviceExistedInTargetFiles[i]) {
         // update resource
         CompactionUtils.updateResource(targetResources.get(i), targetFileWriter, deviceId);
@@ -153,7 +158,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void close() throws IOException {
-    for (TsFileIOWriter targetWriter : targetFileWriters) {
+    for (CompactionTsFileWriter targetWriter : targetFileWriters) {
       if (targetWriter != null && targetWriter.canWrite()) {
         targetWriter.close();
       }
@@ -165,7 +170,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   @Override
   public void checkAndMayFlushChunkMetadata() throws IOException {
     for (int i = 0; i < targetFileWriters.size(); i++) {
-      TsFileIOWriter fileIOWriter = targetFileWriters.get(i);
+      CompactionTsFileWriter fileIOWriter = targetFileWriters.get(i);
       fileIOWriter.checkMetadataSizeAndMayFlush();
     }
   }
@@ -234,7 +239,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   @Override
   public long getWriterSize() throws IOException {
     long totalSize = 0;
-    for (TsFileIOWriter writer : targetFileWriters) {
+    for (CompactionTsFileWriter writer : targetFileWriters) {
       totalSize += writer.getPos();
     }
     return totalSize;

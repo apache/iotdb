@@ -24,6 +24,10 @@ import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.WrittenDataType;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -31,6 +35,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 
 public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
@@ -52,6 +57,22 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, WrittenDataType.NOT_ALIGNED, writtenDataSize);
+  }
+
+  @Override
+  public void writeEmptyValueChunk(
+      String measurementId,
+      CompressionType compressionType,
+      TSDataType tsDataType,
+      TSEncoding encodingType,
+      Statistics<? extends Serializable> statistics)
+      throws IOException {
+    long beforeOffset = this.getPos();
+    super.writeEmptyValueChunk(
+        measurementId, compressionType, tsDataType, encodingType, statistics);
+    long writtenDataSize = this.getPos() - beforeOffset;
+    CompactionMetrics.getInstance()
+        .recordWriteInfo(type, WrittenDataType.ALIGNED, writtenDataSize);
   }
 
   public void writeChunk(IChunkWriter chunkWriter) throws IOException {

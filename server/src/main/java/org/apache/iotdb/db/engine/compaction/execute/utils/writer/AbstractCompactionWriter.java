@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.WrittenDataType;
@@ -166,12 +167,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  protected void sealChunk(TsFileIOWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
+  protected void sealChunk(CompactionTsFileWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
       throws IOException {
     CompactionTaskManager.mergeRateLimiterAcquire(
         compactionRateLimiter, iChunkWriter.estimateMaxSeriesMemSize());
     synchronized (targetWriter) {
-      iChunkWriter.writeToFileWriter(targetWriter);
+      targetWriter.writeChunk(iChunkWriter);
     }
     chunkPointNumArray[subTaskId] = 0;
   }
@@ -188,19 +189,19 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       throws IOException;
 
   protected void flushNonAlignedChunkToFileWriter(
-      TsFileIOWriter targetWriter, Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
+      CompactionTsFileWriter targetWriter, Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
     CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(chunk));
     synchronized (targetWriter) {
       // seal last chunk to file writer
-      chunkWriters[subTaskId].writeToFileWriter(targetWriter);
+      targetWriter.writeChunk(chunkWriters[subTaskId]);
       chunkPointNumArray[subTaskId] = 0;
       targetWriter.writeChunk(chunk, chunkMetadata);
     }
   }
 
   protected void flushAlignedChunkToFileWriter(
-      TsFileIOWriter targetWriter,
+      CompactionTsFileWriter targetWriter,
       Chunk timeChunk,
       IChunkMetadata timeChunkMetadata,
       List<Chunk> valueChunks,
@@ -210,7 +211,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     synchronized (targetWriter) {
       AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriters[subTaskId];
       // seal last chunk to file writer
-      alignedChunkWriter.writeToFileWriter(targetWriter);
+      targetWriter.writeChunk(alignedChunkWriter);
       chunkPointNumArray[subTaskId] = 0;
 
       // flush time chunk
@@ -292,7 +293,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(
-      TsFileIOWriter fileWriter, IChunkWriter iChunkWriter, int subTaskId, boolean isCrossSpace)
+      CompactionTsFileWriter fileWriter, IChunkWriter iChunkWriter, int subTaskId, boolean isCrossSpace)
       throws IOException {
     if (chunkPointNumArray[subTaskId] >= (lastCheckIndex + 1) * checkPoint) {
       // if chunk point num reaches the check point, then check if the chunk size over threshold

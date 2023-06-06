@@ -20,6 +20,8 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileWriter;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -31,7 +33,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import java.io.IOException;
 
 public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWriter {
-  protected TsFileIOWriter fileWriter;
+  protected CompactionTsFileWriter fileWriter;
 
   protected boolean isEmptyFile;
 
@@ -50,7 +52,11 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
     this.fileWriter =
-        new TsFileIOWriter(targetFileResource.getTsFile(), enableMemoryControl, sizeForFileWriter);
+        new CompactionTsFileWriter(
+            targetFileResource.getTsFile(),
+            enableMemoryControl,
+            sizeForFileWriter,
+            CompactionType.INNER_UNSEQ_COMPACTION);
     this.targetResource = targetFileResource;
     isEmptyFile = true;
   }
