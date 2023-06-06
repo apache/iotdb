@@ -57,9 +57,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
     tsFileReader = new TsFileReader(tsFileSequenceReader);
 
-    final Map<String, List<String>> filteredDeviceMeasurementsMap =
-        filterDeviceMeasurementsMapByPattern();
-    deviceMeasurementsMapIterator = filteredDeviceMeasurementsMap.entrySet().iterator();
+    deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
     measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
   }
 
@@ -74,7 +72,9 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       // in this case, all data can be matched without checking the measurements
       if (pattern == null
           || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
-        filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
+        if (!entry.getValue().isEmpty()) {
+          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
+        }
       }
 
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
@@ -91,7 +91,9 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
           }
         }
 
-        filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
+        if (!filteredMeasurements.isEmpty()) {
+          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
+        }
       }
     }
 
@@ -118,7 +120,12 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
             }
 
             while (tabletIterator == null || !tabletIterator.hasNext()) {
+              if (!deviceMeasurementsMapIterator.hasNext()) {
+                throw new NoSuchElementException();
+              }
+
               final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterator.next();
+
               try {
                 tabletIterator =
                     new TsFileInsertionDataTabletIterator(

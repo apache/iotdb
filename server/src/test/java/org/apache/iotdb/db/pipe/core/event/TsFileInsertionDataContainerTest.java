@@ -72,6 +72,7 @@ public class TsFileInsertionDataContainerTest {
       for (int measurementNumber : measurementNumbers) {
         testToTabletInsertionEvents(deviceNumber, measurementNumber, 0);
         testToTabletInsertionEvents(deviceNumber, measurementNumber, 1);
+        testToTabletInsertionEvents(deviceNumber, measurementNumber, 2);
 
         testToTabletInsertionEvents(deviceNumber, measurementNumber, 999);
         testToTabletInsertionEvents(deviceNumber, measurementNumber, 1000);
@@ -489,6 +490,116 @@ public class TsFileInsertionDataContainerTest {
       Assert.assertEquals(count1.get(), rowNumberInOneDevice);
       Assert.assertEquals(count2.get(), rowNumberInOneDevice);
       Assert.assertEquals(count3.get(), rowNumberInOneDevice);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    try (final TsFileInsertionDataContainer alignedContainer =
+            new TsFileInsertionDataContainer(alignedTsFile, "not-exist-pattern");
+        final TsFileInsertionDataContainer nonalignedContainer =
+            new TsFileInsertionDataContainer(nonalignedTsFile, "not-exist-pattern"); ) {
+      AtomicInteger count1 = new AtomicInteger(0);
+      AtomicInteger count2 = new AtomicInteger(0);
+      AtomicInteger count3 = new AtomicInteger(0);
+
+      alignedContainer
+          .toTabletInsertionEvents()
+          .forEach(
+              event ->
+                  event
+                      .processRowByRow(
+                          (row, collector) -> {
+                            try {
+                              collector.collectRow(row);
+                              Assert.assertEquals(0, row.size());
+                              count1.incrementAndGet();
+                            } catch (IOException e) {
+                              throw new RuntimeException(e);
+                            }
+                          })
+                      .forEach(
+                          tabletInsertionEvent1 ->
+                              tabletInsertionEvent1
+                                  .processRowByRow(
+                                      (row, collector) -> {
+                                        try {
+                                          collector.collectRow(row);
+                                          Assert.assertEquals(0, row.size());
+                                          count2.incrementAndGet();
+                                        } catch (IOException e) {
+                                          throw new RuntimeException(e);
+                                        }
+                                      })
+                                  .forEach(
+                                      tabletInsertionEvent2 ->
+                                          tabletInsertionEvent2.processTablet(
+                                              (tablet, rowCollector) -> {
+                                                new PipeRawTabletInsertionEvent(tablet)
+                                                    .processRowByRow(
+                                                        (row, collector) -> {
+                                                          try {
+                                                            rowCollector.collectRow(row);
+                                                            Assert.assertEquals(0, row.size());
+                                                            count3.incrementAndGet();
+                                                          } catch (IOException e) {
+                                                            throw new RuntimeException(e);
+                                                          }
+                                                        });
+                                              }))));
+
+      Assert.assertEquals(count1.getAndSet(0), 0);
+      Assert.assertEquals(count2.getAndSet(0), 0);
+      Assert.assertEquals(count3.getAndSet(0), 0);
+
+      nonalignedContainer
+          .toTabletInsertionEvents()
+          .forEach(
+              event ->
+                  event
+                      .processTablet(
+                          (tablet, rowCollector) -> {
+                            new PipeRawTabletInsertionEvent(tablet)
+                                .processRowByRow(
+                                    (row, collector) -> {
+                                      try {
+                                        rowCollector.collectRow(row);
+                                        Assert.assertEquals(0, row.size());
+                                        count1.incrementAndGet();
+                                      } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                      }
+                                    });
+                          })
+                      .forEach(
+                          tabletInsertionEvent1 ->
+                              tabletInsertionEvent1
+                                  .processRowByRow(
+                                      (row, collector) -> {
+                                        try {
+                                          collector.collectRow(row);
+                                          Assert.assertEquals(0, row.size());
+                                          count2.incrementAndGet();
+                                        } catch (IOException e) {
+                                          throw new RuntimeException(e);
+                                        }
+                                      })
+                                  .forEach(
+                                      tabletInsertionEvent2 ->
+                                          tabletInsertionEvent2.processRowByRow(
+                                              (row, collector) -> {
+                                                try {
+                                                  collector.collectRow(row);
+                                                  Assert.assertEquals(0, row.size());
+                                                  count3.incrementAndGet();
+                                                } catch (IOException e) {
+                                                  throw new RuntimeException(e);
+                                                }
+                                              }))));
+
+      Assert.assertEquals(count1.get(), 0);
+      Assert.assertEquals(count2.get(), 0);
+      Assert.assertEquals(count3.get(), 0);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
