@@ -36,6 +36,10 @@ import java.util.List;
 /** Use this visitor to find all the paths of time series used in one expression. */
 public class GetSourcePathsVisitor extends ViewExpressionVisitor<List<PartialPath>, Void> {
 
+  public static List<PartialPath> getSourcePaths(ViewExpression viewExpression) {
+    return new GetSourcePathsVisitor().process(viewExpression, null);
+  }
+
   @Override
   public List<PartialPath> visitExpression(ViewExpression expression, Void context) {
     return new ArrayList<>();

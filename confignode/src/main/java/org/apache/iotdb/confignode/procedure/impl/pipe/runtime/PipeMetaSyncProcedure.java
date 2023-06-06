@@ -66,10 +66,10 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
-    pushPipeMetaToDataNodes(env);
+    pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override
@@ -94,10 +94,10 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
 
-    pushPipeMetaToDataNodes(env);
+    // do nothing
   }
 
   @Override

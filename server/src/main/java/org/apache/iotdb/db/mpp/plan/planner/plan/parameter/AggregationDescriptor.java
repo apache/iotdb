@@ -167,9 +167,9 @@ public class AggregationDescriptor {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!inputExpressions.isEmpty()) {
-        builder.append(inputExpressions.get(0).toString());
+        builder.append(inputExpressions.get(0).getExpressionString());
         for (int i = 1; i < inputExpressions.size(); ++i) {
-          builder.append(", ").append(inputExpressions.get(i).toString());
+          builder.append(", ").append(inputExpressions.get(i).getExpressionString());
         }
       }
       appendAttributes(builder);

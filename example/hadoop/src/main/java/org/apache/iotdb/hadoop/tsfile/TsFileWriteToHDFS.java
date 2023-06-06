@@ -43,7 +43,7 @@ public class TsFileWriteToHDFS {
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriteToHDFS.class);
 
   public static void main(String[] args) {
-    config.setTSFileStorageFs(FSType.HDFS);
+    config.setTSFileStorageFs(new FSType[] {FSType.HDFS});
 
     String path = "hdfs://localhost:9000/test.tsfile";
     File f = FSFactoryProducer.getFSFactory().getFile(path);

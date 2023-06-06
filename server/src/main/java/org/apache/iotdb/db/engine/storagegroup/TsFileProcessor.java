@@ -189,11 +189,13 @@ public class TsFileProcessor {
       boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
+    // this.sequence should be assigned at first because `this` will be passed as parameter to other
+    // val later
+    this.sequence = sequence;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.dataRegionInfo = dataRegionInfo;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
-    this.sequence = sequence;
     this.walNode =
         WALManager.getInstance()
             .applyForWALNode(WALManager.getApplicantUniqueId(storageGroupName, sequence));

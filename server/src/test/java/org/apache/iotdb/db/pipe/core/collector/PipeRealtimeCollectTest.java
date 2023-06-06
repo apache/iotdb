@@ -29,7 +29,7 @@ import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.task.queue.ListenableUnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.queue.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -102,17 +102,14 @@ public class PipeRealtimeCollectTest {
     // set up realtime collector
 
     try (PipeRealtimeDataRegionHybridCollector collector1 =
-            new PipeRealtimeDataRegionHybridCollector(
-                null, new ListenableUnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(null, new UnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector2 =
-            new PipeRealtimeDataRegionHybridCollector(
-                null, new ListenableUnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(null, new UnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector3 =
-            new PipeRealtimeDataRegionHybridCollector(
-                null, new ListenableUnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector(null, new UnboundedBlockingPendingQueue<>());
         PipeRealtimeDataRegionHybridCollector collector4 =
             new PipeRealtimeDataRegionHybridCollector(
-                null, new ListenableUnboundedBlockingPendingQueue<>())) {
+                null, new UnboundedBlockingPendingQueue<>())) {
 
       collector1.customize(
           new PipeParameters(
@@ -232,6 +229,8 @@ public class PipeRealtimeCollectTest {
               throw new RuntimeException(e);
             }
           });
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

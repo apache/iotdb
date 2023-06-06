@@ -110,7 +110,15 @@ public interface FSFactory {
    * @param srcFile src file
    * @param destFile dest file
    */
-  void moveFile(File srcFile, File destFile);
+  void moveFile(File srcFile, File destFile) throws IOException;
+
+  /**
+   * copy file
+   *
+   * @param srcFile src file
+   * @param destFile dest file
+   */
+  void copyFile(File srcFile, File destFile) throws IOException;
 
   /**
    * list file by suffix
@@ -136,4 +144,7 @@ public interface FSFactory {
    * @param file local file or HDFS file
    */
   boolean deleteIfExists(File file) throws IOException;
+
+  /** Force delete the directory */
+  void deleteDirectory(String dir) throws IOException;
 }

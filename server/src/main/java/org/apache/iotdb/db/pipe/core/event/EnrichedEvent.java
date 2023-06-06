@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.pipe.core.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,9 +38,12 @@ public abstract class EnrichedEvent implements Event {
 
   private final PipeTaskMeta pipeTaskMeta;
 
-  public EnrichedEvent(PipeTaskMeta pipeTaskMeta) {
+  private final String pattern;
+
+  public EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
     this.pipeTaskMeta = pipeTaskMeta;
+    this.pattern = pattern;
   }
 
   /**
@@ -47,7 +53,7 @@ public abstract class EnrichedEvent implements Event {
    * @param holderMessage the message of the invoker
    * @return true if the reference count is increased successfully, false if the event is not
    */
-  public final boolean increaseReferenceCount(String holderMessage) {
+  public boolean increaseReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 0) {
@@ -75,7 +81,7 @@ public abstract class EnrichedEvent implements Event {
    * @param holderMessage the message of the invoker
    * @return true if the reference count is decreased successfully, false otherwise
    */
-  public final boolean decreaseReferenceCount(String holderMessage) {
+  public boolean decreaseReferenceCount(String holderMessage) {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 1) {
@@ -113,6 +119,19 @@ public abstract class EnrichedEvent implements Event {
     return referenceCount.get();
   }
 
+  /**
+   * Get the pattern of this event.
+   *
+   * @return the pattern
+   */
+  public final String getPattern() {
+    return pattern == null ? PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
+  }
+
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta);
+      PipeTaskMeta pipeTaskMeta, String pattern);
+
+  public void reportException(PipeRuntimeException pipeRuntimeException) {
+    PipeAgent.runtime().report(this.pipeTaskMeta, pipeRuntimeException);
+  }
 }

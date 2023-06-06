@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -27,7 +29,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.resource.file.PipeHardlinkFileDirStartupCleaner;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
-import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,7 @@ public class PipeRuntimeAgent implements IService {
 
   @Override
   public synchronized void start() throws StartupException {
+    PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
 
     isShutdown.set(false);
@@ -84,9 +86,18 @@ public class PipeRuntimeAgent implements IService {
     simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource);
   }
 
+  public void assignSimpleProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+    simpleConsensusProgressIndexAssigner.assignSimpleProgressIndexForTsFileRecovery(tsFileResource);
+  }
+
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
 
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
+    LOGGER.warn(
+        String.format(
+            "PipeRuntimeException: pipe task meta %s, exception %s",
+            pipeTaskMeta, pipeRuntimeException),
+        pipeRuntimeException);
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
   }
 }

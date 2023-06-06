@@ -38,11 +38,30 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   private Map<String, String[]> device2Measurements;
 
   public PipeRealtimeCollectEvent(
-      EnrichedEvent event, TsFileEpoch tsFileEpoch, Map<String, String[]> device2Measurements) {
+      EnrichedEvent event,
+      TsFileEpoch tsFileEpoch,
+      Map<String, String[]> device2Measurements,
+      String pattern) {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
     // is only used in the realtime event collector, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(null);
+    super(null, pattern);
+
+    this.event = event;
+    this.tsFileEpoch = tsFileEpoch;
+    this.device2Measurements = device2Measurements;
+  }
+
+  public PipeRealtimeCollectEvent(
+      EnrichedEvent event,
+      TsFileEpoch tsFileEpoch,
+      Map<String, String[]> device2Measurements,
+      PipeTaskMeta pipeTaskMeta,
+      String pattern) {
+    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
+    // is only used in the realtime event collector, which does not need to report the progress
+    // of the event, so the pipeTaskMeta is always null.
+    super(pipeTaskMeta, pattern);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -66,8 +85,26 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean increaseReferenceCount(String holderMessage) {
+    // This method must be overridden, otherwise during the real-time data collection stage, the
+    // current PipeRealtimeCollectEvent rather than the member variable EnrichedEvent will increase
+    // the reference count, resulting in errors in the reference count of the EnrichedEvent
+    // contained in this PipeRealtimeCollectEvent during the processor and connector stages.
+    return event.increaseReferenceCount(holderMessage);
+  }
+
+  @Override
   public boolean increaseResourceReferenceCount(String holderMessage) {
     return event.increaseResourceReferenceCount(holderMessage);
+  }
+
+  @Override
+  public boolean decreaseReferenceCount(String holderMessage) {
+    // This method must be overridden, otherwise during the real-time data collection stage, the
+    // current PipeRealtimeCollectEvent rather than the member variable EnrichedEvent will increase
+    // the reference count, resulting in errors in the reference count of the EnrichedEvent
+    // contained in this PipeRealtimeCollectEvent during the processor and connector stages.
+    return event.decreaseReferenceCount(holderMessage);
   }
 
   @Override
@@ -82,11 +119,13 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
 
   @Override
   public PipeRealtimeCollectEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta) {
+      PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeRealtimeCollectEvent(
-        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta),
+        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta, pattern),
         this.tsFileEpoch,
-        this.device2Measurements);
+        this.device2Measurements,
+        pipeTaskMeta,
+        pattern);
   }
 
   @Override

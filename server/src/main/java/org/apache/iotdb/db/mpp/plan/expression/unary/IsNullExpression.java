@@ -47,7 +47,7 @@ public class IsNullExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression + " IS " + (isNot ? "NOT " : "") + "NULL";
+    return expression.getExpressionString() + " IS " + (isNot ? "NOT " : "") + "NULL";
   }
 
   @Override
@@ -73,8 +73,8 @@ public class IsNullExpression extends UnaryExpression {
   }
 
   @Override
-  public String getStringWithViewOfThisExpressionInternal() {
-    return expression.getStringWithViewOfThisExpression() + " IS " + (isNot ? "NOT " : "") + "NULL";
+  public String getOutputSymbolInternal() {
+    return expression.getOutputSymbol() + " IS " + (isNot ? "NOT " : "") + "NULL";
   }
 
   @Override

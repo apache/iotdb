@@ -65,6 +65,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** A skeleton class for expression */
 public abstract class Expression extends StatementNode {
@@ -133,22 +134,62 @@ public abstract class Expression extends StatementNode {
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // toString
+  // For analyzing logical view
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private String expressionStringCache;
+  protected PartialPath viewPath = null;
 
-  /** Sub-classes must not override this method. */
+  public void setViewPath(PartialPath viewPath) {
+    this.viewPath = viewPath;
+  }
+
+  public PartialPath getViewPath() {
+    return viewPath;
+  }
+
+  public boolean isViewExpression() {
+    return viewPath != null;
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // For representing expression in string
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * This method is only displayed during debugging, please use {@link #getExpressionString()} or
+   * {@link #getOutputSymbol()} in the code.
+   */
   @Override
   public final String toString() {
-    return getExpressionString();
+    String outputSymbol = getOutputSymbol();
+    String expressionString = getExpressionString();
+    if (!Objects.equals(outputSymbol, expressionString)) {
+      return expressionString + " [" + outputSymbol + "]";
+    }
+    return expressionString;
   }
 
   /**
-   * Get the representation of the expression in string. The hash code of the returned value will be
-   * the hash code of this object. See {@link #hashCode()} and {@link #equals(Object)}. In other
-   * words, same expressions should have exactly the same string representation, and different
-   * expressions must have different string representations.
+   * Get the output symbol of the expression.
+   *
+   * <p>The hash code of the returned value will be the hash code of this object. See {@link
+   * #hashCode()} and {@link #equals(Object)}.
+   */
+  public String getOutputSymbol() {
+    return viewPath != null ? viewPath.getFullPath() : getOutputSymbolInternal();
+  }
+
+  /**
+   * Sub-classes should override this method to provide valid output symbol of this object. See
+   * {@link #getOutputSymbol()}
+   */
+  public abstract String getOutputSymbolInternal();
+
+  private String expressionStringCache;
+
+  /**
+   * Get the representation of the expression in string. Compared to output symbol, it does not
+   * consider logical views.
    */
   public final String getExpressionString() {
     if (expressionStringCache == null) {
@@ -170,7 +211,7 @@ public abstract class Expression extends StatementNode {
   /** Sub-classes must not override this method. */
   @Override
   public final int hashCode() {
-    return getExpressionString().hashCode();
+    return getOutputSymbol().hashCode();
   }
 
   /** Sub-classes must not override this method. */
@@ -184,7 +225,7 @@ public abstract class Expression extends StatementNode {
       return false;
     }
 
-    return getExpressionString().equals(((Expression) o).getExpressionString());
+    return getOutputSymbol().equals(((Expression) o).getOutputSymbol());
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -372,23 +413,4 @@ public abstract class Expression extends StatementNode {
       return current;
     }
   }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // For analyzing logical view
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  protected PartialPath viewPathOfThisExpression = null;
-
-  public void setViewPathOfThisExpression(PartialPath viewPathOfThisExpression) {
-    this.viewPathOfThisExpression = viewPathOfThisExpression;
-  }
-
-  public String getStringWithViewOfThisExpression() {
-    if (this.viewPathOfThisExpression == null) {
-      return this.getStringWithViewOfThisExpressionInternal();
-    }
-    return this.viewPathOfThisExpression.getFullPath();
-  }
-
-  public abstract String getStringWithViewOfThisExpressionInternal();
 }

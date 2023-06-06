@@ -59,7 +59,7 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
   public void setUp()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     super.setUp();
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @Override

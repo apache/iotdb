@@ -38,7 +38,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -64,7 +63,7 @@ public class CachedSchemaPatternMatcherTest {
   }
 
   @Test
-  public void testCachedMatcher() throws ExecutionException, InterruptedException {
+  public void testCachedMatcher() throws Exception {
     PipeRealtimeDataRegionCollector databaseCollector =
         new PipeRealtimeDataRegionFakeCollector(null);
     databaseCollector.customize(
@@ -132,12 +131,12 @@ public class CachedSchemaPatternMatcherTest {
       for (int j = 0; j < deviceNum; j++) {
         PipeRealtimeCollectEvent event =
             new PipeRealtimeCollectEvent(
-                null, null, Collections.singletonMap("root." + i, measurements));
+                null, null, Collections.singletonMap("root." + i, measurements), "root");
         long startTime = System.currentTimeMillis();
         matcher.match(event).forEach(collector -> collector.collect(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
-      PipeRealtimeCollectEvent event = new PipeRealtimeCollectEvent(null, null, deviceMap);
+      PipeRealtimeCollectEvent event = new PipeRealtimeCollectEvent(null, null, deviceMap, "root");
       long startTime = System.currentTimeMillis();
       matcher.match(event).forEach(collector -> collector.collect(event));
       totalTime += (System.currentTimeMillis() - startTime);
@@ -180,6 +179,16 @@ public class CachedSchemaPatternMatcherTest {
                 }
               });
       Assert.assertTrue(match[0]);
+    }
+
+    @Override
+    public boolean isNeedListenToTsFile() {
+      return true;
+    }
+
+    @Override
+    public boolean isNeedListenToInsertNode() {
+      return true;
     }
   }
 }

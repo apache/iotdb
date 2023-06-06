@@ -27,8 +27,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SimpleProgressIndex implements ProgressIndex {
+
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final int rebootTimes;
   private final long memtableFlushOrderId;
@@ -40,54 +43,78 @@ public class SimpleProgressIndex implements ProgressIndex {
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    ProgressIndexType.SIMPLE_CONSENSUS_INDEX.serialize(byteBuffer);
+    lock.readLock().lock();
+    try {
+      ProgressIndexType.SIMPLE_PROGRESS_INDEX.serialize(byteBuffer);
 
-    ReadWriteIOUtils.write(rebootTimes, byteBuffer);
-    ReadWriteIOUtils.write(memtableFlushOrderId, byteBuffer);
+      ReadWriteIOUtils.write(rebootTimes, byteBuffer);
+      ReadWriteIOUtils.write(memtableFlushOrderId, byteBuffer);
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
-    ProgressIndexType.SIMPLE_CONSENSUS_INDEX.serialize(stream);
+    lock.readLock().lock();
+    try {
+      ProgressIndexType.SIMPLE_PROGRESS_INDEX.serialize(stream);
 
-    ReadWriteIOUtils.write(rebootTimes, stream);
-    ReadWriteIOUtils.write(memtableFlushOrderId, stream);
+      ReadWriteIOUtils.write(rebootTimes, stream);
+      ReadWriteIOUtils.write(memtableFlushOrderId, stream);
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   @Override
   public boolean isAfter(ProgressIndex progressIndex) {
-    if (progressIndex instanceof MinimumProgressIndex) {
-      return true;
-    }
+    lock.readLock().lock();
+    try {
+      if (progressIndex instanceof MinimumProgressIndex) {
+        return true;
+      }
 
-    if (!(progressIndex instanceof SimpleProgressIndex)) {
-      return false;
-    }
+      if (progressIndex instanceof HybridProgressIndex) {
+        return ((HybridProgressIndex) progressIndex).isGivenProgressIndexAfterSelf(this);
+      }
 
-    final SimpleProgressIndex thisSimpleProgressIndex = this;
-    final SimpleProgressIndex thatSimpleProgressIndex = (SimpleProgressIndex) progressIndex;
-    if (thisSimpleProgressIndex.rebootTimes > thatSimpleProgressIndex.rebootTimes) {
-      return true;
+      if (!(progressIndex instanceof SimpleProgressIndex)) {
+        return false;
+      }
+
+      final SimpleProgressIndex thisSimpleProgressIndex = this;
+      final SimpleProgressIndex thatSimpleProgressIndex = (SimpleProgressIndex) progressIndex;
+      if (thisSimpleProgressIndex.rebootTimes > thatSimpleProgressIndex.rebootTimes) {
+        return true;
+      }
+      if (thisSimpleProgressIndex.rebootTimes < thatSimpleProgressIndex.rebootTimes) {
+        return false;
+      }
+      // thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
+      return thisSimpleProgressIndex.memtableFlushOrderId
+          > thatSimpleProgressIndex.memtableFlushOrderId;
+    } finally {
+      lock.readLock().unlock();
     }
-    if (thisSimpleProgressIndex.rebootTimes < thatSimpleProgressIndex.rebootTimes) {
-      return false;
-    }
-    // thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
-    return thisSimpleProgressIndex.memtableFlushOrderId
-        > thatSimpleProgressIndex.memtableFlushOrderId;
   }
 
   @Override
   public boolean equals(ProgressIndex progressIndex) {
-    if (!(progressIndex instanceof SimpleProgressIndex)) {
-      return false;
-    }
+    lock.readLock().lock();
+    try {
+      if (!(progressIndex instanceof SimpleProgressIndex)) {
+        return false;
+      }
 
-    final SimpleProgressIndex thisSimpleProgressIndex = this;
-    final SimpleProgressIndex thatSimpleProgressIndex = (SimpleProgressIndex) progressIndex;
-    return thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
-        && thisSimpleProgressIndex.memtableFlushOrderId
-            == thatSimpleProgressIndex.memtableFlushOrderId;
+      final SimpleProgressIndex thisSimpleProgressIndex = this;
+      final SimpleProgressIndex thatSimpleProgressIndex = (SimpleProgressIndex) progressIndex;
+      return thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
+          && thisSimpleProgressIndex.memtableFlushOrderId
+              == thatSimpleProgressIndex.memtableFlushOrderId;
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   @Override
@@ -111,29 +138,39 @@ public class SimpleProgressIndex implements ProgressIndex {
 
   @Override
   public ProgressIndex updateToMinimumIsAfterProgressIndex(ProgressIndex progressIndex) {
-    if (!(progressIndex instanceof SimpleProgressIndex)) {
-      return this;
-    }
+    lock.writeLock().lock();
+    try {
+      if (!(progressIndex instanceof SimpleProgressIndex)) {
+        return ProgressIndex.blendProgressIndex(this, progressIndex);
+      }
 
-    final SimpleProgressIndex thisSimpleProgressIndex = this;
-    final SimpleProgressIndex thatSimpleProgressIndex = (SimpleProgressIndex) progressIndex;
-    if (thisSimpleProgressIndex.rebootTimes > thatSimpleProgressIndex.rebootTimes) {
+      final SimpleProgressIndex thisSimpleProgressIndex = this;
+      final SimpleProgressIndex thatSimpleProgressIndex = (SimpleProgressIndex) progressIndex;
+      if (thisSimpleProgressIndex.rebootTimes > thatSimpleProgressIndex.rebootTimes) {
+        return this;
+      }
+      if (thisSimpleProgressIndex.rebootTimes < thatSimpleProgressIndex.rebootTimes) {
+        return progressIndex;
+      }
+      // thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
+      if (thisSimpleProgressIndex.memtableFlushOrderId
+          > thatSimpleProgressIndex.memtableFlushOrderId) {
+        return this;
+      }
+      if (thisSimpleProgressIndex.memtableFlushOrderId
+          < thatSimpleProgressIndex.memtableFlushOrderId) {
+        return progressIndex;
+      }
+      // thisSimpleProgressIndex.memtableFlushOrderId ==
+      // thatSimpleProgressIndex.memtableFlushOrderId
       return this;
+    } finally {
+      lock.writeLock().unlock();
     }
-    if (thisSimpleProgressIndex.rebootTimes < thatSimpleProgressIndex.rebootTimes) {
-      return progressIndex;
-    }
-    // thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
-    if (thisSimpleProgressIndex.memtableFlushOrderId
-        > thatSimpleProgressIndex.memtableFlushOrderId) {
-      return this;
-    }
-    if (thisSimpleProgressIndex.memtableFlushOrderId
-        < thatSimpleProgressIndex.memtableFlushOrderId) {
-      return progressIndex;
-    }
-    // thisSimpleProgressIndex.memtableFlushOrderId == thatSimpleProgressIndex.memtableFlushOrderId
-    return this;
+  }
+
+  public ProgressIndexType getType() {
+    return ProgressIndexType.SIMPLE_PROGRESS_INDEX;
   }
 
   public static SimpleProgressIndex deserializeFrom(ByteBuffer byteBuffer) {

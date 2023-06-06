@@ -249,7 +249,7 @@ public class SnapshotTaker {
 
   private void cleanUpWhenFail(String snapshotId) {
     LOGGER.info("Cleaning up snapshot dir for {}", snapshotId);
-    for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+    for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()) {
       File dataDirForThisSnapshot =
           new File(
               dataDir

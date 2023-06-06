@@ -85,7 +85,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
@@ -2124,9 +2124,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
    * task.
    */
   @Test
-  public void testSelectingFilesWhenSomeFilesBeingDeleted()
-      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
-          InterruptedException, MergeException {
+  public void testSelectingFilesWhenSomeFilesBeingDeleted() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 10, 4500, 500, 500, 0, 100, false, false);

@@ -31,7 +31,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -349,10 +348,11 @@ public class Tablet {
 
   /** serialize Tablet */
   public ByteBuffer serialize() throws IOException {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    serialize(outputStream);
-    return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -366,20 +366,26 @@ public class Tablet {
 
   /** Serialize measurement schemas */
   private void writeMeasurementSchemas(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(schemas.size(), stream);
-    for (MeasurementSchema schema : schemas) {
-      if (schema == null) {
-        ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
-      } else {
-        ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
-        schema.serializeTo(stream);
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(schemas != null), stream);
+    if (schemas != null) {
+      ReadWriteIOUtils.write(schemas.size(), stream);
+      for (MeasurementSchema schema : schemas) {
+        if (schema == null) {
+          ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
+        } else {
+          ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
+          schema.serializeTo(stream);
+        }
       }
     }
   }
 
   private void writeTimes(DataOutputStream stream) throws IOException {
-    for (long time : timestamps) {
-      ReadWriteIOUtils.write(time, stream);
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(timestamps != null), stream);
+    if (timestamps != null) {
+      for (int i = 0; i < rowSize; i++) {
+        ReadWriteIOUtils.write(timestamps[i], stream);
+      }
     }
   }
 
@@ -387,12 +393,14 @@ public class Tablet {
   private void writeBitMaps(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(BytesUtils.boolToByte(bitMaps != null), stream);
     if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
-        if (bitMap == null) {
+      int size = (schemas == null ? 0 : schemas.size());
+      for (int i = 0; i < size; i++) {
+        if (bitMaps[i] == null) {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(false), stream);
         } else {
           ReadWriteIOUtils.write(BytesUtils.boolToByte(true), stream);
-          stream.write(bitMap.getByteArray());
+          ReadWriteIOUtils.write(bitMaps[i].getSize(), stream);
+          ReadWriteIOUtils.write(new Binary(bitMaps[i].getByteArray()), stream);
         }
       }
     }
@@ -400,53 +408,64 @@ public class Tablet {
 
   /** Serialize values */
   private void writeValues(DataOutputStream stream) throws IOException {
-    for (int i = 0; i < values.length; i++) {
-      serializeColumn(schemas.get(i).getType(), values[i], stream);
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(values != null), stream);
+    if (values != null) {
+      int size = (schemas == null ? 0 : schemas.size());
+      for (int i = 0; i < size; i++) {
+        serializeColumn(schemas.get(i).getType(), values[i], stream);
+      }
     }
   }
 
   private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream)
       throws IOException {
-    switch (dataType) {
-      case INT32:
-        int[] intValues = (int[]) column;
-        for (int j = 0; j < rowSize; j++) {
-          ReadWriteIOUtils.write(intValues[j], stream);
-        }
-        break;
-      case INT64:
-        long[] longValues = (long[]) column;
-        for (int j = 0; j < rowSize; j++) {
-          ReadWriteIOUtils.write(longValues[j], stream);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for (int j = 0; j < rowSize; j++) {
-          ReadWriteIOUtils.write(floatValues[j], stream);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for (int j = 0; j < rowSize; j++) {
-          ReadWriteIOUtils.write(doubleValues[j], stream);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for (int j = 0; j < rowSize; j++) {
-          ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
-        }
-        break;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = 0; j < rowSize; j++) {
-          ReadWriteIOUtils.write(binaryValues[j], stream);
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
+    ReadWriteIOUtils.write(BytesUtils.boolToByte(column != null), stream);
+
+    if (column != null) {
+      switch (dataType) {
+        case INT32:
+          int[] intValues = (int[]) column;
+          for (int j = 0; j < rowSize; j++) {
+            ReadWriteIOUtils.write(intValues[j], stream);
+          }
+          break;
+        case INT64:
+          long[] longValues = (long[]) column;
+          for (int j = 0; j < rowSize; j++) {
+            ReadWriteIOUtils.write(longValues[j], stream);
+          }
+          break;
+        case FLOAT:
+          float[] floatValues = (float[]) column;
+          for (int j = 0; j < rowSize; j++) {
+            ReadWriteIOUtils.write(floatValues[j], stream);
+          }
+          break;
+        case DOUBLE:
+          double[] doubleValues = (double[]) column;
+          for (int j = 0; j < rowSize; j++) {
+            ReadWriteIOUtils.write(doubleValues[j], stream);
+          }
+          break;
+        case BOOLEAN:
+          boolean[] boolValues = (boolean[]) column;
+          for (int j = 0; j < rowSize; j++) {
+            ReadWriteIOUtils.write(BytesUtils.boolToByte(boolValues[j]), stream);
+          }
+          break;
+        case TEXT:
+          Binary[] binaryValues = (Binary[]) column;
+          for (int j = 0; j < rowSize; j++) {
+            ReadWriteIOUtils.write(BytesUtils.boolToByte(binaryValues[j] != null), stream);
+            if (binaryValues[j] != null) {
+              ReadWriteIOUtils.write(binaryValues[j], stream);
+            }
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataType));
+      }
     }
   }
 
@@ -456,32 +475,43 @@ public class Tablet {
     int rowSize = ReadWriteIOUtils.readInt(byteBuffer);
 
     // deserialize schemas
-    int schemaSize = ReadWriteIOUtils.readInt(byteBuffer);
+    int schemaSize = 0;
     List<MeasurementSchema> schemas = new ArrayList<>();
-    for (int i = 0; i < schemaSize; i++) {
-      boolean hasSchema = BytesUtils.byteToBool(byteBuffer.get());
-      if (hasSchema) {
-        schemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
+    boolean isSchemasNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    if (isSchemasNotNull) {
+      schemaSize = ReadWriteIOUtils.readInt(byteBuffer);
+      for (int i = 0; i < schemaSize; i++) {
+        boolean hasSchema = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+        if (hasSchema) {
+          schemas.add(MeasurementSchema.deserializeFrom(byteBuffer));
+        }
       }
     }
 
     // deserialize times
     long[] times = new long[rowSize];
-    for (int i = 0; i < rowSize; i++) {
-      times[i] = ReadWriteIOUtils.readLong(byteBuffer);
+    boolean isTimesNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    if (isTimesNotNull) {
+      for (int i = 0; i < rowSize; i++) {
+        times[i] = ReadWriteIOUtils.readLong(byteBuffer);
+      }
     }
 
     // deserialize bitmaps
-    boolean hasBitMaps = BytesUtils.byteToBool(byteBuffer.get());
-    BitMap[] bitMaps = null;
-    if (hasBitMaps) {
-      bitMaps = readBitMapsFromBuffer(byteBuffer, schemaSize, rowSize);
+    BitMap[] bitMaps = new BitMap[schemaSize];
+    boolean isBitMapsNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    if (isBitMapsNotNull) {
+      bitMaps = readBitMapsFromBuffer(byteBuffer, schemaSize);
     }
 
     // deserialize values
     TSDataType[] dataTypes =
         schemas.stream().map(MeasurementSchema::getType).toArray(TSDataType[]::new);
-    Object[] values = readTabletValuesFromBuffer(byteBuffer, dataTypes, schemaSize, rowSize);
+    Object[] values = new Object[schemaSize];
+    boolean isValuesNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+    if (isValuesNotNull) {
+      values = readTabletValuesFromBuffer(byteBuffer, dataTypes, schemaSize, rowSize);
+    }
 
     Tablet tablet = new Tablet(deviceId, schemas, times, values, bitMaps, rowSize);
     tablet.constructMeasurementIndexMap();
@@ -489,83 +519,82 @@ public class Tablet {
   }
 
   /** deserialize bitmaps */
-  public static BitMap[] readBitMapsFromBuffer(ByteBuffer buffer, int columns, int size) {
-    if (!buffer.hasRemaining()) {
-      return null;
-    }
+  public static BitMap[] readBitMapsFromBuffer(ByteBuffer byteBuffer, int columns) {
     BitMap[] bitMaps = new BitMap[columns];
     for (int i = 0; i < columns; i++) {
-      boolean hasBitMap = BytesUtils.byteToBool(buffer.get());
+      boolean hasBitMap = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
       if (hasBitMap) {
-        byte[] bytes = new byte[size / Byte.SIZE + 1];
-        for (int j = 0; j < bytes.length; j++) {
-          bytes[j] = buffer.get();
-        }
-        bitMaps[i] = new BitMap(size, bytes);
+        final int size = ReadWriteIOUtils.readInt(byteBuffer);
+        final Binary valueBinary = ReadWriteIOUtils.readBinary(byteBuffer);
+        bitMaps[i] = new BitMap(size, valueBinary.getValues());
       }
     }
     return bitMaps;
   }
 
   /**
-   * @param buffer data values
+   * @param byteBuffer data values
    * @param columns column number
-   * @param size value count in each column
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Object[] readTabletValuesFromBuffer(
-      ByteBuffer buffer, TSDataType[] types, int columns, int size) {
+      ByteBuffer byteBuffer, TSDataType[] types, int columns, int rowSize) {
     Object[] values = new Object[columns];
     for (int i = 0; i < columns; i++) {
-      switch (types[i]) {
-        case BOOLEAN:
-          boolean[] boolValues = new boolean[size];
-          for (int index = 0; index < size; index++) {
-            boolValues[index] = BytesUtils.byteToBool(buffer.get());
-          }
-          values[i] = boolValues;
-          break;
-        case INT32:
-          int[] intValues = new int[size];
-          for (int index = 0; index < size; index++) {
-            intValues[index] = buffer.getInt();
-          }
-          values[i] = intValues;
-          break;
-        case INT64:
-          long[] longValues = new long[size];
-          for (int index = 0; index < size; index++) {
-            longValues[index] = buffer.getLong();
-          }
-          values[i] = longValues;
-          break;
-        case FLOAT:
-          float[] floatValues = new float[size];
-          for (int index = 0; index < size; index++) {
-            floatValues[index] = buffer.getFloat();
-          }
-          values[i] = floatValues;
-          break;
-        case DOUBLE:
-          double[] doubleValues = new double[size];
-          for (int index = 0; index < size; index++) {
-            doubleValues[index] = buffer.getDouble();
-          }
-          values[i] = doubleValues;
-          break;
-        case TEXT:
-          Binary[] binaryValues = new Binary[size];
-          for (int index = 0; index < size; index++) {
-            int binarySize = buffer.getInt();
-            byte[] binaryValue = new byte[binarySize];
-            buffer.get(binaryValue);
-            binaryValues[index] = new Binary(binaryValue);
-          }
-          values[i] = binaryValues;
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("data type %s is not supported when convert data at client", types[i]));
+      boolean isValueColumnsNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+
+      if (isValueColumnsNotNull) {
+        switch (types[i]) {
+          case BOOLEAN:
+            boolean[] boolValues = new boolean[rowSize];
+            for (int index = 0; index < rowSize; index++) {
+              boolValues[index] = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+            }
+            values[i] = boolValues;
+            break;
+          case INT32:
+            int[] intValues = new int[rowSize];
+            for (int index = 0; index < rowSize; index++) {
+              intValues[index] = ReadWriteIOUtils.readInt(byteBuffer);
+            }
+            values[i] = intValues;
+            break;
+          case INT64:
+            long[] longValues = new long[rowSize];
+            for (int index = 0; index < rowSize; index++) {
+              longValues[index] = ReadWriteIOUtils.readLong(byteBuffer);
+            }
+            values[i] = longValues;
+            break;
+          case FLOAT:
+            float[] floatValues = new float[rowSize];
+            for (int index = 0; index < rowSize; index++) {
+              floatValues[index] = ReadWriteIOUtils.readFloat(byteBuffer);
+            }
+            values[i] = floatValues;
+            break;
+          case DOUBLE:
+            double[] doubleValues = new double[rowSize];
+            for (int index = 0; index < rowSize; index++) {
+              doubleValues[index] = ReadWriteIOUtils.readDouble(byteBuffer);
+            }
+            values[i] = doubleValues;
+            break;
+          case TEXT:
+            Binary[] binaryValues = new Binary[rowSize];
+            for (int index = 0; index < rowSize; index++) {
+              boolean isNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
+              if (isNotNull) {
+                binaryValues[index] = ReadWriteIOUtils.readBinary(byteBuffer);
+              }
+            }
+            values[i] = binaryValues;
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format(
+                    "data type %s is not supported when convert data at client", types[i]));
+        }
       }
     }
     return values;
@@ -576,57 +605,120 @@ public class Tablet {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (o == null || !getClass().equals(o.getClass())) {
       return false;
     }
     Tablet that = (Tablet) o;
 
     boolean flag =
         that.rowSize == rowSize
-            && Arrays.equals(that.timestamps, timestamps)
-            && Arrays.equals(that.bitMaps, bitMaps)
+            && Objects.equals(that.deviceId, deviceId)
             && Objects.equals(that.schemas, schemas)
-            && Objects.equals(that.measurementIndex, measurementIndex)
-            && Objects.equals(that.deviceId, deviceId);
+            && Objects.equals(that.measurementIndex, measurementIndex);
     if (!flag) {
+      return false;
+    }
+
+    // assert timestamps and bitmaps
+    int columns = (schemas == null ? 0 : schemas.size());
+    if (!isTimestampsEqual(this.timestamps, that.timestamps, rowSize)
+        || !isBitMapsEqual(this.bitMaps, that.bitMaps, columns)) {
       return false;
     }
 
     // assert values
     Object[] thatValues = that.values;
+    if (thatValues == values) {
+      return true;
+    }
+    if (thatValues == null || values == null) {
+      return false;
+    }
     if (thatValues.length != values.length) {
       return false;
     }
     for (int i = 0, n = values.length; i < n; i++) {
+      if (thatValues[i] == values[i]) {
+        continue;
+      }
+      if (thatValues[i] == null || values[i] == null) {
+        return false;
+      }
+      if (!thatValues[i].getClass().equals(values[i].getClass())) {
+        return false;
+      }
+
       switch (schemas.get(i).getType()) {
         case INT32:
-          if (!Arrays.equals((int[]) thatValues[i], (int[]) values[i])) {
+          int[] thisIntValues = (int[]) values[i];
+          int[] thatIntValues = (int[]) thatValues[i];
+          if (thisIntValues.length < rowSize || thatIntValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisIntValues[j] != thatIntValues[j]) {
+              return false;
+            }
           }
           break;
         case INT64:
-          if (!Arrays.equals((long[]) thatValues[i], (long[]) values[i])) {
+          long[] thisLongValues = (long[]) values[i];
+          long[] thatLongValues = (long[]) thatValues[i];
+          if (thisLongValues.length < rowSize || thatLongValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisLongValues[j] != thatLongValues[j]) {
+              return false;
+            }
           }
           break;
         case FLOAT:
-          if (!Arrays.equals((float[]) thatValues[i], (float[]) values[i])) {
+          float[] thisFloatValues = (float[]) values[i];
+          float[] thatFloatValues = (float[]) thatValues[i];
+          if (thisFloatValues.length < rowSize || thatFloatValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisFloatValues[j] != thatFloatValues[j]) {
+              return false;
+            }
           }
           break;
         case DOUBLE:
-          if (!Arrays.equals((double[]) thatValues[i], (double[]) values[i])) {
+          double[] thisDoubleValues = (double[]) values[i];
+          double[] thatDoubleValues = (double[]) thatValues[i];
+          if (thisDoubleValues.length < rowSize || thatDoubleValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisDoubleValues[j] != thatDoubleValues[j]) {
+              return false;
+            }
           }
           break;
         case BOOLEAN:
-          if (!Arrays.equals((boolean[]) thatValues[i], (boolean[]) values[i])) {
+          boolean[] thisBooleanValues = (boolean[]) values[i];
+          boolean[] thatBooleanValues = (boolean[]) thatValues[i];
+          if (thisBooleanValues.length < rowSize || thatBooleanValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (thisBooleanValues[j] != thatBooleanValues[j]) {
+              return false;
+            }
           }
           break;
         case TEXT:
-          if (!Arrays.equals((Binary[]) thatValues[i], (Binary[]) values[i])) {
+          Binary[] thisBinaryValues = (Binary[]) values[i];
+          Binary[] thatBinaryValues = (Binary[]) thatValues[i];
+          if (thisBinaryValues.length < rowSize || thatBinaryValues.length < rowSize) {
             return false;
+          }
+          for (int j = 0; j < rowSize; j++) {
+            if (!thisBinaryValues[j].equals(thatBinaryValues[j])) {
+              return false;
+            }
           }
           break;
         default:
@@ -635,6 +727,38 @@ public class Tablet {
       }
     }
 
+    return true;
+  }
+
+  private boolean isTimestampsEqual(long[] thisTimestamps, long[] thatTimestamps, int rowSize) {
+    if (thisTimestamps == thatTimestamps) {
+      return true;
+    }
+    if (thisTimestamps == null || thatTimestamps == null) {
+      return false;
+    }
+
+    for (int i = 0; i < rowSize; i++) {
+      if (thisTimestamps[i] != thatTimestamps[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean isBitMapsEqual(BitMap[] thisBitMaps, BitMap[] thatBitMaps, int columns) {
+    if (thisBitMaps == thatBitMaps) {
+      return true;
+    }
+    if (thisBitMaps == null || thatBitMaps == null) {
+      return false;
+    }
+
+    for (int i = 0; i < columns; i++) {
+      if (!thisBitMaps[i].equals(thatBitMaps[i])) {
+        return false;
+      }
+    }
     return true;
   }
 }

@@ -37,7 +37,7 @@ import static java.util.Objects.requireNonNull;
 /** The base class of query logical plan nodes, which is used to compose logical query plan. */
 public abstract class PlanNode implements IConsensusRequest {
 
-  private final Logger logger = LoggerFactory.getLogger(PlanNode.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PlanNode.class);
 
   protected static final int NO_CHILD_ALLOWED = 0;
   protected static final int ONE_CHILD = 1;
@@ -145,7 +145,7 @@ public abstract class PlanNode implements IConsensusRequest {
       serialize(outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      logger.error("Unexpected error occurs when serializing writePlanNode.", e);
+      LOGGER.error("Unexpected error occurs when serializing writePlanNode.", e);
       throw new SerializationRunTimeException(e);
     }
   }

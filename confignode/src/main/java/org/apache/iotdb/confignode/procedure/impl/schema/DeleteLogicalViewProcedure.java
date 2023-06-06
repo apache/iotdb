@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.view.ViewNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
@@ -95,7 +95,7 @@ public class DeleteLogicalViewProcedure
           } else {
             setFailure(
                 new ProcedureException(
-                    new PathNotExistException(
+                    new ViewNotExistException(
                         patternTree.getAllPathPatterns().stream()
                             .map(PartialPath::getFullPath)
                             .collect(Collectors.toList()),

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema.view;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
@@ -36,7 +37,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.rmi.UnexpectedException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +47,8 @@ public class LogicalViewSchema
   private String measurementId;
 
   private ViewExpression expression;
+
+  private TSDataType dataType = TSDataType.UNKNOWN;
 
   public LogicalViewSchema(String measurementId, ViewExpression expression) {
     this.measurementId = measurementId;
@@ -86,8 +88,7 @@ public class LogicalViewSchema
 
   @Override
   public TSDataType getType() {
-    // TODO: CRTODO: use a dynamic method to compute data type
-    return TSDataType.BOOLEAN;
+    return dataType;
   }
 
   @Override
@@ -97,7 +98,7 @@ public class LogicalViewSchema
 
   @Override
   public void setType(TSDataType dataType) {
-    // do nothing
+    this.dataType = dataType;
   }
 
   @Override
@@ -164,7 +165,7 @@ public class LogicalViewSchema
   public int serializedSize() {
     throw new RuntimeException(
         new UnsupportedOperationException(
-            "Can not calculate the size of logical view schema before serializing."));
+            "Can not calculate the size of view schema before serializing."));
   }
 
   @Override
@@ -243,9 +244,9 @@ public class LogicalViewSchema
         return new PartialPath(((TimeSeriesViewOperand) this.expression).getPathString());
       } catch (IllegalPathException e) {
         throw new RuntimeException(
-            new UnexpectedException(
+            new MetadataException(
                 String.format(
-                    "Logical view with measurementID [%s] is broken. It stores illegal path [%s].",
+                    "View with measurementID [%s] is broken. It stores illegal path [%s].",
                     this.measurementId, this.getSourcePathStringIfWritable())));
       }
     }

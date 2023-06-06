@@ -77,7 +77,7 @@ public abstract class UnaryExpression extends Expression {
       Map<String, List<InputLocation>> inputLocations) {
     expression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
-    final String digest = toString();
+    final String digest = getExpressionString();
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }

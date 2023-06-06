@@ -44,6 +44,10 @@ public class PipeTableResp implements DataSet {
     this.allPipeMeta = allPipeMeta;
   }
 
+  public List<PipeMeta> getAllPipeMeta() {
+    return allPipeMeta;
+  }
+
   public PipeTableResp filter(Boolean whereClause, String pipeName) {
     if (whereClause == null) {
       if (pipeName == null) {
