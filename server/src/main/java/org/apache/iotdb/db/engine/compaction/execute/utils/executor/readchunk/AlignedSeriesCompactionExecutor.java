@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.readchunk;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -38,7 +39,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
 
@@ -55,7 +55,7 @@ public class AlignedSeriesCompactionExecutor {
   private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       readerAndChunkMetadataList;
   private final TsFileResource targetResource;
-  private final TsFileIOWriter writer;
+  private final CompactionTsFileWriter writer;
 
   private final AlignedChunkWriterImpl chunkWriter;
   private final List<IMeasurementSchema> schemaList;
@@ -73,7 +73,7 @@ public class AlignedSeriesCompactionExecutor {
       String device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter writer,
+      CompactionTsFileWriter writer,
       CompactionTaskSummary summary)
       throws IOException {
     this.device = device;
@@ -150,12 +150,7 @@ public class AlignedSeriesCompactionExecutor {
     }
 
     if (remainingPointInChunkWriter != 0L) {
-      CompactionTaskManager.mergeRateLimiterAcquire(
-          rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetrics.getInstance()
-          .recordWriteInfo(
-              CompactionType.INNER_SEQ_COMPACTION, true, chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(writer);
+      writer.writeChunk(chunkWriter);
     }
     writer.checkMetadataSizeAndMayFlush();
   }
@@ -189,12 +184,7 @@ public class AlignedSeriesCompactionExecutor {
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (remainingPointInChunkWriter >= chunkPointNumThreshold
         || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
-      CompactionTaskManager.mergeRateLimiterAcquire(
-          rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetrics.getInstance()
-          .recordWriteInfo(
-              CompactionType.INNER_SEQ_COMPACTION, true, chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(writer);
+      writer.writeChunk(chunkWriter);
       remainingPointInChunkWriter = 0L;
     }
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.readchunk;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -38,7 +39,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
 
@@ -51,7 +51,7 @@ public class SingleSeriesCompactionExecutor {
   private String device;
   private PartialPath series;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
-  private TsFileIOWriter fileWriter;
+  private CompactionTsFileWriter fileWriter;
   private TsFileResource targetResource;
 
   private IMeasurementSchema schema;
@@ -79,7 +79,7 @@ public class SingleSeriesCompactionExecutor {
       PartialPath series,
       IMeasurementSchema measurementSchema,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter fileWriter,
+      CompactionTsFileWriter fileWriter,
       TsFileResource targetResource) {
     this.device = series.getDevice();
     this.series = series;
@@ -96,7 +96,7 @@ public class SingleSeriesCompactionExecutor {
   public SingleSeriesCompactionExecutor(
       PartialPath series,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter fileWriter,
+      CompactionTsFileWriter fileWriter,
       TsFileResource targetResource,
       CompactionTaskSummary summary) {
     this.device = series.getDevice();
@@ -337,20 +337,13 @@ public class SingleSeriesCompactionExecutor {
     if (chunkMetadata.getEndTime() > maxEndTimestamp) {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
-    CompactionMetrics.getInstance()
-        .recordWriteInfo(CompactionType.INNER_SEQ_COMPACTION, false, getChunkSize(chunk));
     fileWriter.writeChunk(chunk, chunkMetadata);
   }
 
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (pointCountInChunkWriter >= targetChunkPointNum
         || chunkWriter.estimateMaxSeriesMemSize() >= targetChunkSize) {
-      CompactionTaskManager.mergeRateLimiterAcquire(
-          compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetrics.getInstance()
-          .recordWriteInfo(
-              CompactionType.INNER_SEQ_COMPACTION, false, chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriter);
+      fileWriter.writeChunk(chunkWriter);
       pointCountInChunkWriter = 0L;
     }
   }
@@ -365,12 +358,7 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private void flushChunkWriter() throws IOException {
-    CompactionTaskManager.mergeRateLimiterAcquire(
-        compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-    CompactionMetrics.getInstance()
-        .recordWriteInfo(
-            CompactionType.INNER_SEQ_COMPACTION, false, chunkWriter.estimateMaxSeriesMemSize());
-    chunkWriter.writeToFileWriter(fileWriter);
+    fileWriter.writeChunk(chunkWriter);
     pointCountInChunkWriter = 0L;
   }
 }
