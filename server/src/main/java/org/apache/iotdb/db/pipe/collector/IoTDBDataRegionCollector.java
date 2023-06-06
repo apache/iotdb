@@ -36,7 +36,7 @@ import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -228,7 +228,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
   private void rethrowExceptionIfAny(AtomicReference<Exception> exceptionHolder) {
     if (exceptionHolder.get() != null) {
-      throw new PipeManagementException("failed to start collectors.", exceptionHolder.get());
+      throw new PipeException("failed to start collectors.", exceptionHolder.get());
     }
   }
 

@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -233,7 +233,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
             .getConsensusManager()
             .write(new PipeHandleMetaChangePlan(pipeMetaList));
     if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
+      throw new PipeException(response.getErrorMessage());
     }
   }
 

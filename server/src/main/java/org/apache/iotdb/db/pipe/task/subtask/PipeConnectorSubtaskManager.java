@@ -32,7 +32,6 @@ import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -68,7 +67,7 @@ public class PipeConnectorSubtaskManager {
         // TODO: use runtimeConfiguration to configure PipeConnector
         pipeConnector.handshake();
       } catch (Exception e) {
-        throw new PipeManagementException(
+        throw new PipeException(
             "Failed to construct PipeConnector, because of " + e.getMessage(), e);
       }
 

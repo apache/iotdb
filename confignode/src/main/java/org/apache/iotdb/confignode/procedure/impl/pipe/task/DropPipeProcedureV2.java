@@ -24,7 +24,6 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -55,8 +54,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
     env.getConfigManager()
@@ -67,27 +65,26 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromCalculateInfoForTask({})", pipeName);
     // Do nothing
   }
 
   @Override
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+      throws PipeException {
     LOGGER.info("DropPipeProcedureV2: executeFromWriteConfigNodeConsensus({})", pipeName);
 
     final ConsensusWriteResponse response =
         env.getConfigManager().getConsensusManager().write(new DropPipePlanV2(pipeName));
     if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
+      throw new PipeException(response.getErrorMessage());
     }
   }
 
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeManagementException, IOException {
+      throws PipeException, IOException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     pushPipeMetaToDataNodes(env);

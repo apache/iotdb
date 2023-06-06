@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -70,8 +69,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -84,8 +82,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -111,7 +108,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
   @Override
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+      throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
@@ -121,13 +118,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .getConsensusManager()
             .write(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
     if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
+      throw new PipeException(response.getErrorMessage());
     }
   }
 
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeManagementException, IOException {
+      throws PipeException, IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
@@ -161,7 +158,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .getConsensusManager()
             .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
     if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
+      throw new PipeException(response.getErrorMessage());
     }
   }
 

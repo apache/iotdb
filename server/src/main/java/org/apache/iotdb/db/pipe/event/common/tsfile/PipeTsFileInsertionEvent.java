@@ -165,11 +165,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     }
   }
 
-  @Override
-  public TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable) {
-    throw new UnsupportedOperationException("Not implemented yet");
-  }
-
   /////////////////////////// Object ///////////////////////////
 
   @Override

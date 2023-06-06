@@ -33,12 +33,4 @@ public interface TsFileInsertionEvent extends Event {
    * @return the list of TsFileInsertionEvent
    */
   Iterable<TabletInsertionEvent> toTabletInsertionEvents();
-
-  /**
-   * The method is used to compact several TabletInsertionEvents into one TsFileInsertionEvent. The
-   * underlying data in TabletInsertionEvents will be stored into a TsFile.
-   *
-   * @return TsFileInsertionEvent
-   */
-  TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable);
 }
