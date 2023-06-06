@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.collector;
 
-import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeEmptyTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -65,7 +66,12 @@ public class PipeRowCollector implements RowCollector {
   }
 
   public TabletInsertionEvent toTabletInsertionEvent() {
-    PipeTabletInsertionEvent tabletInsertionEvent = new PipeTabletInsertionEvent(tablet);
+    if (tablet == null) {
+      return new PipeEmptyTabletInsertionEvent();
+    }
+
+    PipeTabletTabletInsertionEvent tabletInsertionEvent =
+        new PipeTabletTabletInsertionEvent(tablet);
     this.tablet = null;
     return tabletInsertionEvent;
   }

@@ -17,16 +17,10 @@
   under the License.
  */
 
-import { sidebar } from 'vuepress-theme-hope';
-import { zhSidebar as V102xSidebar } from './V1.2.x/zh.js';
-import { zhSidebar as V101xSidebar } from './V1.1.x/zh.js';
-import { zhSidebar as V100xSidebar } from './V1.0.x/zh.js';
-import { zhSidebar as V013xSidebar } from './V0.13.x/zh.js';
-
-export const zhSidebar = sidebar({
-  '/zh/UserGuide/Master/': [
+export const zhSidebar = {
+  '/zh/UserGuide/V1.2.x/': [
     {
-      text: 'IoTDB用户手册 (In progress)',
+      text: 'IoTDB用户手册 (V1.2.x)',
       children: [],
     },
     {
@@ -312,8 +306,4 @@ export const zhSidebar = sidebar({
       ],
     },
   ],
-  ...V102xSidebar,
-  ...V101xSidebar,
-  ...V100xSidebar,
-  ...V013xSidebar,
-});
+};

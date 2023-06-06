@@ -39,7 +39,7 @@ public class PipeRow implements Row {
   private final MeasurementSchema[] measurementSchemaList;
 
   private final long[] timestampColumn;
-  private final Object[][] valueColumns;
+  private final Object[] valueColumns;
   private final TSDataType[] valueColumnTypes;
 
   private final String[] columnNameStringList;
@@ -49,7 +49,7 @@ public class PipeRow implements Row {
       String deviceId,
       MeasurementSchema[] measurementSchemaList,
       long[] timestampColumn,
-      Object[][] valueColumns,
+      Object[] valueColumns,
       TSDataType[] valueColumnTypes,
       String[] columnNameStringList) {
     this.rowIndex = rowIndex;
@@ -68,42 +68,42 @@ public class PipeRow implements Row {
 
   @Override
   public int getInt(int columnIndex) {
-    return (int) valueColumns[columnIndex][rowIndex];
+    return ((int[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
   public long getLong(int columnIndex) {
-    return (long) valueColumns[columnIndex][rowIndex];
+    return ((long[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
   public float getFloat(int columnIndex) {
-    return (float) valueColumns[columnIndex][rowIndex];
+    return ((float[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
   public double getDouble(int columnIndex) {
-    return (double) valueColumns[columnIndex][rowIndex];
+    return ((double[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
   public boolean getBoolean(int columnIndex) {
-    return (boolean) valueColumns[columnIndex][rowIndex];
+    return ((boolean[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
   public Binary getBinary(int columnIndex) {
-    return Binary.valueOf((String) valueColumns[columnIndex][rowIndex]);
+    return ((Binary[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
   public String getString(int columnIndex) {
-    return (String) valueColumns[columnIndex][rowIndex];
+    return ((Binary[]) valueColumns[columnIndex])[rowIndex].getStringValue();
   }
 
   @Override
   public Object getObject(int columnIndex) {
-    return valueColumns[columnIndex][rowIndex];
+    return ((Object[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
@@ -113,7 +113,7 @@ public class PipeRow implements Row {
 
   @Override
   public boolean isNull(int columnIndex) {
-    return valueColumns[columnIndex][rowIndex] == null;
+    return ((Object[]) valueColumns[columnIndex])[rowIndex] == null;
   }
 
   @Override

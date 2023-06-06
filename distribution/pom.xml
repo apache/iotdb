@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>1.2.0-SNAPSHOT</version>
+        <version>1.3.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-distribution</artifactId>
@@ -137,12 +137,6 @@
             <version>${project.version}</version>
             <type>pom</type>
             <!--            <classifier>${os.classifier}</classifier>-->
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>influxdb-protocol</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
