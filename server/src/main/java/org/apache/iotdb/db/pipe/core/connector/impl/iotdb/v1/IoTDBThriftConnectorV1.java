@@ -33,9 +33,8 @@ import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransfe
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferTabletReq;
-import org.apache.iotdb.db.pipe.core.event.impl.PipeEmptyTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeInsertNodeTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.impl.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -120,13 +119,11 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeTabletTabletInsertionEvent) {
-        doTransfer((PipeTabletTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeEmptyTabletInsertionEvent) {
-        doTransfer((PipeEmptyTabletInsertionEvent) tabletInsertionEvent);
+      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+        doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
         throw new NotImplementedException(
-            "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeTabletTabletInsertionEvent.");
+            "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
     } catch (TException e) {
       LOGGER.error(
@@ -154,23 +151,19 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeTabletTabletInsertionEvent pipeTabletTabletInsertionEvent)
+  private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferTabletReq.toTPipeTransferReq(
-                pipeTabletTabletInsertionEvent.convertToTablet()));
+                pipeRawTabletInsertionEvent.convertToTablet()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format(
-              "Transfer PipeTabletTabletInsertionEvent %s error, result status %s",
-              pipeTabletTabletInsertionEvent, resp.status));
+              "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
+              pipeRawTabletInsertionEvent, resp.status));
     }
-  }
-
-  private void doTransfer(PipeEmptyTabletInsertionEvent pipeEmptyTabletInsertionEvent) {
-    // do nothing
   }
 
   @Override

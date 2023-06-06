@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.datastructure;
 
-import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,100 +37,127 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
-public class TsFileInsertionDataContainer {
+public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
-  private final File tsFile;
   private final String pattern;
 
-  private TimeseriesMetadata vectorTimeseriesMetadata;
+  private final TsFileSequenceReader tsFileSequenceReader;
+  private final TsFileReader tsFileReader;
 
-  private final Map<String, List<TimeseriesMetadata>> device2TimeseriesMetadataMap;
+  private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
+  private final Map<String, TSDataType> measurementDataTypeMap;
 
-  public TsFileInsertionDataContainer(File tsFile, String pattern) {
-    this.tsFile = tsFile;
+  public TsFileInsertionDataContainer(File tsFile, String pattern) throws IOException {
     this.pattern = pattern;
 
-    this.device2TimeseriesMetadataMap = collectDevice2TimeseriesMetadataMap();
+    tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
+    tsFileReader = new TsFileReader(tsFileSequenceReader);
+
+    deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
+    measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
   }
 
-  private Map<String, List<TimeseriesMetadata>> collectDevice2TimeseriesMetadataMap() {
-    final Map<String, List<TimeseriesMetadata>> result = new HashMap<>();
+  private Map<String, List<String>> filterDeviceMeasurementsMapByPattern() throws IOException {
+    final Map<String, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
 
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getPath())) {
-      // match pattern
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          reader.getAllTimeseriesMetadata(true).entrySet()) {
-        final String device = entry.getKey();
-        boolean isVector = false;
+    for (Map.Entry<String, List<String>> entry :
+        tsFileSequenceReader.getDeviceMeasurementsMap().entrySet()) {
+      final String deviceId = entry.getKey();
 
-        // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
-        // in this case, all data can be matched without checking the measurements
-        if (pattern == null || pattern.length() <= device.length() && device.startsWith(pattern)) {
-          result.put(device, entry.getValue());
-        }
-
-        // case 2: for example, pattern is root.a.b.c and device is root.a.b
-        // in this case, we need to check the full path
-        else {
-          final List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-
-          for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-            // TODO: test me!!!
-            if (timeseriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-              vectorTimeseriesMetadata = timeseriesMetadata;
-              isVector = false;
-              continue;
-            }
-
-            final String measurement = timeseriesMetadata.getMeasurementId();
-            // low cost check comes first
-            if (pattern.length() == measurement.length() + device.length() + 1
-                // high cost check comes later
-                && pattern.startsWith(device)
-                && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
-              if (!isVector) {
-                isVector = true;
-                timeseriesMetadataList.add(vectorTimeseriesMetadata);
-              }
-              timeseriesMetadataList.add(timeseriesMetadata);
-            }
-          }
-
-          if (!timeseriesMetadataList.isEmpty()) {
-            result.put(device, timeseriesMetadataList);
-          }
+      // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
+      // in this case, all data can be matched without checking the measurements
+      if (pattern == null
+          || pattern.length() <= deviceId.length() && deviceId.startsWith(pattern)) {
+        if (!entry.getValue().isEmpty()) {
+          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
         }
       }
-    } catch (IOException e) {
-      LOGGER.error("Cannot read TsFile {}.", tsFile.getPath(), e);
+
+      // case 2: for example, pattern is root.a.b.c and device is root.a.b
+      // in this case, we need to check the full path
+      else if (pattern.length() > deviceId.length() && pattern.startsWith(deviceId)) {
+        final List<String> filteredMeasurements = new ArrayList<>();
+
+        for (final String measurement : entry.getValue()) {
+          // low cost check comes first
+          if (pattern.length() == deviceId.length() + measurement.length() + 1
+              // high cost check comes later
+              && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
+            filteredMeasurements.add(measurement);
+          }
+        }
+
+        if (!filteredMeasurements.isEmpty()) {
+          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
+        }
+      }
     }
 
-    return result;
+    return filteredDeviceMeasurementsMap;
   }
 
+  /** @return TabletInsertionEvent in a streaming way */
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     return () ->
         new Iterator<TabletInsertionEvent>() {
 
-          private final Iterator<Tablet> tabletIterator = constructTabletIterable().iterator();
+          private TsFileInsertionDataTabletIterator tabletIterator = null;
 
           @Override
           public boolean hasNext() {
-            return tabletIterator.hasNext();
+            return (tabletIterator != null && tabletIterator.hasNext())
+                || deviceMeasurementsMapIterator.hasNext();
           }
 
           @Override
           public TabletInsertionEvent next() {
-            return new PipeTabletTabletInsertionEvent(tabletIterator.next());
+            if (!hasNext()) {
+              throw new NoSuchElementException();
+            }
+
+            while (tabletIterator == null || !tabletIterator.hasNext()) {
+              if (!deviceMeasurementsMapIterator.hasNext()) {
+                throw new NoSuchElementException();
+              }
+
+              final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterator.next();
+
+              try {
+                tabletIterator =
+                    new TsFileInsertionDataTabletIterator(
+                        tsFileReader, measurementDataTypeMap, entry.getKey(), entry.getValue());
+              } catch (IOException e) {
+                throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
+              }
+            }
+
+            final TabletInsertionEvent next =
+                new PipeRawTabletInsertionEvent(tabletIterator.next());
+
+            if (!hasNext()) {
+              try {
+                close();
+              } catch (Exception e) {
+                LOGGER.warn("Failed to close TsFileInsertionDataContainer", e);
+              }
+            }
+
+            return next;
           }
         };
   }
 
-  private Iterable<Tablet> constructTabletIterable() {
-    return () ->
-        new TsFileInsertionDataTabletIterator(tsFile.getPath(), device2TimeseriesMetadataMap);
+  @Override
+  public void close() throws Exception {
+    if (tsFileReader != null) {
+      tsFileReader.close();
+    }
+    if (tsFileSequenceReader != null) {
+      tsFileSequenceReader.close();
+    }
   }
 }

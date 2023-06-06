@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.pipe.core.event.view.collector;
 
-import org.apache.iotdb.db.pipe.core.event.impl.PipeEmptyTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.core.event.impl.PipeTabletTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.core.event.impl.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.core.event.view.access.PipeRow;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -35,6 +34,7 @@ import java.util.List;
 
 public class PipeRowCollector implements RowCollector {
 
+  private final List<TabletInsertionEvent> tabletInsertionEventList = new ArrayList<>();
   private Tablet tablet = null;
 
   @Override
@@ -63,16 +63,21 @@ public class PipeRowCollector implements RowCollector {
       }
     }
     tablet.rowSize++;
+
+    if (tablet.rowSize == tablet.getMaxRowNumber()) {
+      collectTabletInsertionEvent();
+    }
   }
 
-  public TabletInsertionEvent toTabletInsertionEvent() {
-    if (tablet == null) {
-      return new PipeEmptyTabletInsertionEvent();
+  private void collectTabletInsertionEvent() {
+    if (tablet != null) {
+      tabletInsertionEventList.add(new PipeRawTabletInsertionEvent(tablet));
     }
-
-    PipeTabletTabletInsertionEvent tabletInsertionEvent =
-        new PipeTabletTabletInsertionEvent(tablet);
     this.tablet = null;
-    return tabletInsertionEvent;
+  }
+
+  public Iterable<TabletInsertionEvent> convertToTabletInsertionEvents() {
+    collectTabletInsertionEvent();
+    return tabletInsertionEventList;
   }
 }
