@@ -3171,6 +3171,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setWhereExpression(whereExpression);
   }
 
+  // region view
+
   /**
    * Compute how many paths exist, get the schema tree and the number of existed paths.
    *
@@ -3356,6 +3358,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
+    // use source and into item to generate target views
+    createLogicalViewStatement.parseIntoItemIfNecessary();
+
     // check target paths; check source expressions.
     checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
@@ -3395,4 +3400,5 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowLogicalViewHeader());
     return analysis;
   }
+  // endregion view
 }

@@ -24,13 +24,19 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.metadata.view.ViewPathType;
 import org.apache.iotdb.db.metadata.view.ViewPaths;
+import org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** CREATE LOGICAL VIEW statement. */
@@ -38,6 +44,7 @@ public class CreateLogicalViewStatement extends Statement {
 
   // the paths of this view
   private ViewPaths targetPaths;
+  private IntoItem intoItem;
 
   // the paths of sources
   private ViewPaths sourcePaths;
@@ -145,6 +152,36 @@ public class CreateLogicalViewStatement extends Statement {
 
   public void setViewExpression(ViewExpression viewExpression) {
     this.viewExpression = viewExpression;
+  }
+
+  public void setTargetIntoItem(IntoItem intoItem) {
+    this.targetPaths.setViewPathType(ViewPathType.INTO_ITEM);
+    this.intoItem = intoItem;
+  }
+
+  public void parseIntoItemIfNecessary() {
+    if (this.intoItem != null) {
+      List<Expression> sourceExpressionList = this.getSourceExpressionList();
+      IntoComponent intoComponent = new IntoComponent(Collections.singletonList(this.intoItem));
+      intoComponent.validate(sourceExpressionList);
+      IntoComponent.IntoPathIterator intoPathIterator = intoComponent.getIntoPathIterator();
+      List<PartialPath> targetPathsList = new ArrayList<>();
+      for (Expression sourceColumn : sourceExpressionList) {
+        PartialPath deviceTemplate = intoPathIterator.getDeviceTemplate();
+        String measurementTemplate = intoPathIterator.getMeasurementTemplate();
+
+        if (sourceColumn instanceof TimeSeriesOperand) {
+          PartialPath sourcePath = ((TimeSeriesOperand) sourceColumn).getPath();
+          targetPathsList.add(
+              SelectIntoUtils.constructTargetPath(sourcePath, deviceTemplate, measurementTemplate));
+        } else {
+          throw new RuntimeException(
+              new UnsupportedViewException(
+                  "Cannot create views using data sources with calculated expressions while using into item."));
+        }
+      }
+      this.targetPaths.setFullPathList(targetPathsList);
+    }
   }
 
   // endregion

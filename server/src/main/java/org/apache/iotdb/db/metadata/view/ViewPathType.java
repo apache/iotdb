@@ -20,7 +20,13 @@
 package org.apache.iotdb.db.metadata.view;
 
 public enum ViewPathType {
+  /** Example: root.db.d01.s01, root.db.d02.s01, root.db.d02.s02 */
   FULL_PATH_LIST,
+  /** Example: root.db(d01.s01, d02.s02, status) */
   PATHS_GROUP,
-  QUERY_STATEMENT
+  /** Example: SELECT s01, s02 FROM root.db.*; */
+  QUERY_STATEMENT,
+
+  /** Example: root.db.view(${2}_temperature) */
+  INTO_ITEM,
 }
