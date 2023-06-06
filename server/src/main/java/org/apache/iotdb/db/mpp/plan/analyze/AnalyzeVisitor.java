@@ -3307,13 +3307,30 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               "The path " + checkResult.right + " is illegal."));
       return;
     }
-    if (createLogicalViewStatement.getSourceExpressionList().size()
-        != createLogicalViewStatement.getTargetPathList().size()) {
+    // make sure there are no redundant paths in targets. Please note that redundant paths in source
+    // are legal!
+    List<PartialPath> targetPathList = createLogicalViewStatement.getTargetPathList();
+    Set<String> targetStringSet = new HashSet<>();
+    for (PartialPath path : targetPathList) {
+      boolean repeatPathNotExist = targetStringSet.add(path.toString());
+      if (!repeatPathNotExist) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ILLEGAL_PATH.getStatusCode(),
+                String.format("Path [%s] is redundant in target paths.", path)));
+        return;
+      }
+    }
+    if (createLogicalViewStatement.getSourceExpressionList().size() != targetPathList.size()) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "The number of target and source paths are miss matched! Please check your SQL."));
+              String.format(
+                  "The number of target paths (%d) and sources (%d) are miss matched! Please check your SQL.",
+                  createLogicalViewStatement.getTargetPathList().size(),
+                  createLogicalViewStatement.getSourceExpressionList().size())));
       return;
     }
     // make sure all paths are NOt under any template
