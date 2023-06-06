@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.core.event;
 
-import org.apache.iotdb.db.pipe.core.event.impl.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.core.event.view.datastructure.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.TsFileInsertionDataContainer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;

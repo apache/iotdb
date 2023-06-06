@@ -22,11 +22,11 @@ package org.apache.iotdb.db.pipe.core.connector;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
