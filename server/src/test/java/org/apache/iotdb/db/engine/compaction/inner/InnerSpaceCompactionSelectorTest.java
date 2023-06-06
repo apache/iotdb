@@ -39,7 +39,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
@@ -148,7 +147,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // the other thread holds write lock and delete files successfully before setting
                 // status to COMPACTION_CANDIDATE
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
 
                 if (taskResource.size() != 3) {
                   throw new RuntimeException("task num is not 3");
@@ -277,7 +276,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     // the other thread holds write lock and delete files successfully before
                     // setting status to COMPACTING
                     cd1.countDown();
-                    cd2.await(1000, TimeUnit.MILLISECONDS);
+                    cd2.await();
 
                     if (innerSpaceCompactionTask.checkValidAndSetMerging()) {
                       throw new RuntimeException("cross space compaction task should be invalid.");
@@ -357,7 +356,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 // the file is deleted before selection
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
                 SizeTieredCompactionSelector selector =
                     new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
                 List<TsFileResource> resources =
@@ -433,7 +432,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // the other thread holds write lock and delete files successfully before setting
                 // status to COMPACTION_CANDIDATE
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
 
                 if (taskResource.size() != 3) {
                   throw new RuntimeException("task num is not 3");
@@ -565,7 +564,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     // the other thread holds write lock and delete files successfully before
                     // setting status to COMPACTING
                     cd1.countDown();
-                    cd2.await(1000, TimeUnit.MILLISECONDS);
+                    cd2.await();
 
                     if (innerSpaceCompactionTask.checkValidAndSetMerging()) {
                       throw new RuntimeException("cross space compaction task should be invalid.");

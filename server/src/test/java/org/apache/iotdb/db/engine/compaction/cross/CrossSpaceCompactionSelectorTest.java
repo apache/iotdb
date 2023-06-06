@@ -40,7 +40,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
@@ -192,7 +191,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 // the file is deleted before selection
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
                 CrossSpaceCompactionCandidate candidate =
@@ -271,7 +270,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -287,6 +285,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
+                cd2.await();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
                     new CrossSpaceCompactionTask(
@@ -411,7 +410,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // the other thread delete the file successfully when the compaction task is blocked
                 // in the queue
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
 
                 if (crossSpaceCompactionTask.checkValidAndSetMerging()) {
                   throw new RuntimeException("cross space compaction task should be invalid.");
@@ -495,7 +494,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -511,6 +509,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
+                cd2.await();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
                     new CrossSpaceCompactionTask(
@@ -642,7 +641,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // the other thread delete the file successfully when the compaction task is blocked
                 // in the queue
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
 
                 if (crossSpaceCompactionTask.checkValidAndSetMerging()) {
                   throw new RuntimeException("cross space compaction task should be invalid.");
@@ -717,7 +716,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 // the file is deleted before selection
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
                 CrossSpaceCompactionCandidate candidate =
@@ -800,7 +799,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (crossCompactionTaskResource.getSeqFiles().size() != 5) {
@@ -810,6 +808,9 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
                 candidate.releaseReadLock();
+
+                // other thread holds write lock and delete files successfully
+                cd2.await();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -860,7 +861,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               try {
                 // the file is deleted before selection
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
                 CrossSpaceCompactionCandidate candidate =
@@ -939,7 +940,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -955,6 +955,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
+                cd2.await();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
                     new CrossSpaceCompactionTask(
@@ -1083,7 +1084,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // the other thread delete the file successfully when the compaction task is blocked
                 // in the queue
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
 
                 if (crossSpaceCompactionTask.checkValidAndSetMerging()) {
                   throw new RuntimeException("cross space compaction task should be invalid.");
@@ -1167,7 +1168,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -1183,6 +1183,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
+                cd2.await();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
                     new CrossSpaceCompactionTask(
@@ -1314,7 +1315,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // the other thread delete the file successfully when the compaction task is blocked
                 // in the queue
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
+                cd2.await();
 
                 if (crossSpaceCompactionTask.checkValidAndSetMerging()) {
                   throw new RuntimeException("cross space compaction task should be invalid.");
@@ -1397,7 +1398,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
                 // other thread want to hold write lock to delete files, but is stuck
                 cd1.countDown();
-                cd2.await(1000, TimeUnit.MILLISECONDS);
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (crossCompactionTaskResource.getSeqFiles().size() != 5) {
@@ -1407,6 +1407,9 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
                 candidate.releaseReadLock();
+
+                // other thread holds write lock and delete files successfully
+                cd2.await();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
