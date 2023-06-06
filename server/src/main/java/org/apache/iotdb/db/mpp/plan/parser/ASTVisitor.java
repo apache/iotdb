@@ -1006,7 +1006,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     parseViewTargetPaths(
         ctx.viewTargetPaths(),
         createLogicalViewStatement::setTargetFullPaths,
-        createLogicalViewStatement::setTargetPathsGroup);
+        createLogicalViewStatement::setTargetPathsGroup,
+        createLogicalViewStatement::setTargetIntoItem);
     // parse source
     parseViewSourcePaths(
         ctx.viewSourcePaths(),
@@ -1069,7 +1070,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     parseViewTargetPaths(
         ctx.viewTargetPaths(),
         alterLogicalViewStatement::setTargetFullPaths,
-        alterLogicalViewStatement::setTargetPathsGroup);
+        alterLogicalViewStatement::setTargetPathsGroup,
+        alterLogicalViewStatement::setTargetIntoItem);
+    if (alterLogicalViewStatement.getIntoItem() != null) {
+      throw new SemanticException("Can not use char '$' or into item in alter view statement.");
+    }
     // parse source
     parseViewSourcePaths(
         ctx.viewSourcePaths(),
@@ -1081,7 +1086,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // parse suffix paths in logical view
-  private PartialPath parseViewSuffixPath(IoTDBSqlParser.ViewSuffixPathsContext ctx) {
+  private PartialPath parseViewSuffixPathInTarget(IoTDBSqlParser.ViewSuffixPathsContext ctx) {
+    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+        ctx.nodeNameWithoutWildcard();
+    String[] nodeList = new String[nodeNamesWithoutStar.size()];
+    for (int i = 0; i < nodeNamesWithoutStar.size(); i++) {
+      nodeList[i] = parseNodeStringInIntoPath(nodeNamesWithoutStar.get(i).getText());
+    }
+    return new PartialPath(nodeList);
+  }
+
+  private PartialPath parseViewSuffixPathInSource(IoTDBSqlParser.ViewSuffixPathsContext ctx) {
     List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
         ctx.nodeNameWithoutWildcard();
     String[] nodeList = new String[nodeNamesWithoutStar.size()];
@@ -1095,7 +1110,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private void parseViewTargetPaths(
       IoTDBSqlParser.ViewTargetPathsContext ctx,
       Consumer<List<PartialPath>> setTargetFullPaths,
-      BiConsumer<PartialPath, List<PartialPath>> setTargetPathsGroup) {
+      BiConsumer<PartialPath, List<PartialPath>> setTargetPathsGroup,
+      Consumer<IntoItem> setTargetIntoItem) {
     // full paths
     if (ctx.fullPath() != null && ctx.fullPath().size() > 0) {
       List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
@@ -1113,10 +1129,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       PartialPath prefixPath = parsePrefixPath(prefixPathContext);
       List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList = ctx.viewSuffixPaths();
       List<PartialPath> suffixPathList = new ArrayList<>();
+      boolean isMultipleCreating = false;
       for (IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
-        suffixPathList.add(parseViewSuffixPath(suffixPathContext));
+        PartialPath suffixPath = parseViewSuffixPathInTarget(suffixPathContext);
+        String suffixPathString = suffixPath.toString();
+        if (suffixPathString.contains("$")) {
+          isMultipleCreating = true;
+        }
+        suffixPathList.add(suffixPath);
       }
-      setTargetPathsGroup.accept(prefixPath, suffixPathList);
+      if (!isMultipleCreating) {
+        setTargetPathsGroup.accept(prefixPath, suffixPathList);
+      } else {
+        List<String> intoMeasurementList = new ArrayList<>();
+        for (PartialPath path : suffixPathList) {
+          intoMeasurementList.add(path.toString());
+        }
+        IntoItem intoItem = new IntoItem(prefixPath, intoMeasurementList, false);
+        setTargetIntoItem.accept(intoItem);
+      }
     }
   }
 
@@ -1144,7 +1175,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList = ctx.viewSuffixPaths();
       List<PartialPath> suffixPathList = new ArrayList<>();
       for (IoTDBSqlParser.ViewSuffixPathsContext suffixPathContext : suffixPathContextList) {
-        suffixPathList.add(parseViewSuffixPath(suffixPathContext));
+        suffixPathList.add(parseViewSuffixPathInSource(suffixPathContext));
       }
       setSourcePathsGroup.accept(prefixPath, suffixPathList);
     }
