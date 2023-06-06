@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement.metadata.view;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.metadata.view.ViewPathType;
 import org.apache.iotdb.db.metadata.view.ViewPaths;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -113,8 +114,16 @@ public class CreateLogicalViewStatement extends Statement {
    *
    * @param expressionList
    */
-  public void setSourceExpressions(List<Expression> expressionList) {
-    this.sourcePaths.setExpressionsList(expressionList);
+  public void setSourceExpressions(List<Expression> expressionList)
+      throws UnsupportedViewException {
+    // check expressions, make sure no aggregation function expression
+    Pair<Boolean, UnsupportedViewException> checkResult =
+        ViewPaths.checkExpressionList(expressionList);
+    if (checkResult.left) {
+      this.sourcePaths.setExpressionsList(expressionList);
+    } else {
+      throw checkResult.right;
+    }
   }
 
   // set target paths

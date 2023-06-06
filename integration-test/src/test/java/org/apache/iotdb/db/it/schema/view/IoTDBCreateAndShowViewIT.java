@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.view;
+package org.apache.iotdb.db.it.schema.view;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -32,6 +33,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -46,7 +48,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateAndShowViewIT {
 
-  private static String[] sqls =
+  private static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.db;",
         "CREATE DATABASE root.myview;",
@@ -60,8 +62,15 @@ public class IoTDBCreateAndShowViewIT {
         "CREATE VIEW root.myview.d02(s01, s02) AS SELECT s01, s02 FROM root.db.d02;",
         "CREATE VIEW root.cal_view.avg AS SELECT (s01+s02)/2 FROM root.db.d01;",
         "CREATE VIEW root.cal_view(multiple, divide) AS SELECT s01*s02, s01/s02 FROM root.db.d02;",
-        "CREATE VIEW root.cal_view(agg_max1, agg_max2) AS SELECT MAX_VALUE(s01) FROM root.db.d01, root.db.d02 ;",
         "CREATE VIEW root.cal_view.cast_view AS SELECT CAST(s01 as TEXT) FROM root.db.d01;",
+      };
+
+  private static final String[] unsupportedSQLs =
+      new String[] {
+        "CREATE VIEW root.myview.nested_view AS root.myview.d01.s01;",
+        "CREATE VIEW root.cal_view(agg_avg1, agg_avg2) AS SELECT AVG(s01)+1 FROM root.db.d01, root.db.d02;",
+        "CREATE VIEW root.cal_view(agg_max1, agg_max2) AS SELECT MAX_VALUE(s01) FROM root.db.d01, root.db.d02;",
+        "CREATE VIEW root.myview.illegal_view AS root.myview.d01.s01 + 1;",
       };
 
   @BeforeClass
@@ -78,7 +87,7 @@ public class IoTDBCreateAndShowViewIT {
 
   // region Test show timesereis
   @Test
-  public void showOriginTimeseries() {
+  public void testShowOriginTimeseries() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -127,7 +136,7 @@ public class IoTDBCreateAndShowViewIT {
   }
 
   @Test
-  public void showAliasViewsWithShowTimeseries() {
+  public void testShowAliasViewsWithShowTimeseries() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -176,7 +185,7 @@ public class IoTDBCreateAndShowViewIT {
   }
 
   @Test
-  public void showViewsWithCalculationWithShowTimeseries() {
+  public void testShowViewsWithCalculationWithShowTimeseries() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -184,8 +193,6 @@ public class IoTDBCreateAndShowViewIT {
                 "root.cal_view.avg,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
                 "root.cal_view.multiple,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
                 "root.cal_view.divide,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
-                "root.cal_view.agg_max1,null,root.cal_view,INT32,null,null,null,null,logical;",
-                "root.cal_view.agg_max2,null,root.cal_view,INT32,null,null,null,null,logical;",
                 "root.cal_view.cast_view,null,root.cal_view,TEXT,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -229,7 +236,7 @@ public class IoTDBCreateAndShowViewIT {
 
   // region Test Show View
   @Test
-  public void showAllViewsWithShowView() {
+  public void testShowAllViewsWithShowView() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -241,8 +248,6 @@ public class IoTDBCreateAndShowViewIT {
                 "root.cal_view.avg,root.cal_view,DOUBLE,null,null,logical,(root.db.d01.s01 + root.db.d01.s02) / 2;",
                 "root.cal_view.multiple,root.cal_view,DOUBLE,null,null,logical,root.db.d02.s01 * root.db.d02.s02;",
                 "root.cal_view.divide,root.cal_view,DOUBLE,null,null,logical,root.db.d02.s01 / root.db.d02.s02;",
-                "root.cal_view.agg_max1,root.cal_view,INT32,null,null,logical,max_value(root.db.d01.s01);",
-                "root.cal_view.agg_max2,root.cal_view,INT32,null,null,logical,max_value(root.db.d02.s01);",
                 "root.cal_view.cast_view,root.cal_view,TEXT,null,null,logical,cast(type=TEXT)(root.db.d01.s01);"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -280,11 +285,26 @@ public class IoTDBCreateAndShowViewIT {
   }
   // endregion
 
+  // region unsupported SQLs
+  @Test
+  public void testUnsupportedSQLs() {
+    for (String unsupportedSQL : unsupportedSQLs) {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(String.format(unsupportedSQL));
+        Assert.fail(String.format("SQL [%s] should fail but no exception thrown.", unsupportedSQL));
+      } catch (SQLException ignored) {
+      }
+    }
+  }
+
+  // endregion
+
   private static void createSchema() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      for (String sql : sqls) {
+      for (String sql : SQLs) {
         statement.execute(sql);
       }
     } catch (Exception e) {
