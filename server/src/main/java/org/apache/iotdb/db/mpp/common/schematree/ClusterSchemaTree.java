@@ -267,7 +267,9 @@ public class ClusterSchemaTree implements ISchemaTree {
           }
           measurementNode.setTagMap(tagMap);
           child = measurementNode;
-          this.hasLogicalMeasurementPath = true;
+          if (schema.isLogicalView()) {
+            this.hasLogicalMeasurementPath = true;
+          }
         } else if (i == nodes.length - 2) {
           SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
           entityNode.setAligned(isAligned);
