@@ -107,7 +107,25 @@ public class PipeRow implements Row {
 
   @Override
   public Object getObject(int columnIndex) {
-    return ((Object[]) valueColumns[columnIndex])[rowIndex];
+    switch (getDataType(columnIndex)) {
+      case INT32:
+        return getInt(columnIndex);
+      case INT64:
+        return getLong(columnIndex);
+      case FLOAT:
+        return getFloat(columnIndex);
+      case DOUBLE:
+        return getDouble(columnIndex);
+      case BOOLEAN:
+        return getBoolean(columnIndex);
+      case TEXT:
+        return getBinary(columnIndex);
+      default:
+        throw new UnsupportedOperationException(
+            String.format(
+                "unsupported data type %s for column %s",
+                getDataType(columnIndex), columnNameStringList[columnIndex]));
+    }
   }
 
   @Override

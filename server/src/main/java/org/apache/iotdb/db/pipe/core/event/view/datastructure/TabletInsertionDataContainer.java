@@ -291,7 +291,6 @@ public class TabletInsertionDataContainer {
         // low cost check comes first
         if (pattern.length() == deviceId.length() + measurement.length() + 1
             // high cost check comes later
-            && pattern.startsWith(deviceId)
             && pattern.endsWith(TsFileConstant.PATH_SEPARATOR + measurement)) {
           originColumnIndex2FilteredColumnIndexMapperList[i] = filteredCount++;
         }
@@ -307,7 +306,7 @@ public class TabletInsertionDataContainer {
     }
 
     final PipeRowCollector rowCollector = new PipeRowCollector();
-    for (int i = 0; i < timestampColumn.length; i++) {
+    for (int i = 0; i < rowCount; i++) {
       consumer.accept(
           new PipeRow(
               i,
