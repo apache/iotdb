@@ -94,7 +94,7 @@ public class IoTDBConfig {
   private boolean enableMQTTService = false;
 
   /** the mqtt service binding host. */
-  private String mqttHost = "127.0.0.1";
+  private String mqttHost = "172.31.8.255";
 
   /** the mqtt service binding port. */
   private int mqttPort = 1883;
@@ -109,7 +109,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "127.0.0.1";
+  private String rpcAddress = "172.31.8.255";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -572,7 +572,7 @@ public class IoTDBConfig {
   private int mRemoteSchemaCacheSize = 100000;
 
   /** White list for sync */
-  private String ipWhiteList = "127.0.0.1/32";
+  private String ipWhiteList = "172.31.8.255/32";
 
   /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
   private int maxNumberOfSyncFileRetry = 5;
@@ -895,7 +895,7 @@ public class IoTDBConfig {
   private int maxMeasurementNumOfInternalRequest = 10000;
 
   /** Internal address for data node */
-  private String internalAddress = "127.0.0.1";
+  private String internalAddress = "172.31.8.255";
 
   /** Internal port for coordinator */
   private int internalPort = 10730;
@@ -911,7 +911,7 @@ public class IoTDBConfig {
 
   /** Ip and port of config nodes. */
   private List<TEndPoint> targetConfigNodeList =
-      Collections.singletonList(new TEndPoint("127.0.0.1", 10710));
+      Collections.singletonList(new TEndPoint("172.31.8.255", 10710));
 
   /** The time of data node waiting for the next retry to join into the cluster */
   private long joinClusterRetryIntervalMs = TimeUnit.SECONDS.toMillis(5);
