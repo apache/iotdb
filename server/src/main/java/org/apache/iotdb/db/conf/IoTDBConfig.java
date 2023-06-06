@@ -338,7 +338,7 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
-  private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  private int degreeOfParallelism = 1;
 
   private int modeMapSizeThreshold = 10000;
 
@@ -566,7 +566,7 @@ public class IoTDBConfig {
   private boolean enableQueryMemoryEstimation = true;
 
   /** Whether to enable Last cache */
-  private boolean lastCacheEnable = true;
+  private boolean lastCacheEnable = false;
 
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;

@@ -41,7 +41,7 @@ public class ConfigNodeConfig {
   private volatile int configNodeId = -1;
 
   /** could set ip or hostname */
-  private String internalAddress = "127.0.0.1";
+  private String internalAddress = "172.31.8.255";
 
   /** used for communication between data node and config node */
   private int internalPort = 10710;
@@ -50,22 +50,22 @@ public class ConfigNodeConfig {
   private int consensusPort = 10720;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
+  private TEndPoint targetConfigNode = new TEndPoint("172.31.8.255", 10710);
 
   // TODO: Read from iotdb-confignode.properties
   private int configRegionId = 0;
 
   /** ConfigNodeGroup consensus protocol */
-  private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+  private String configNodeConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** Schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
 
   /** Data region consensus protocol */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.SIMPLE_CONSENSUS;
 
   /** Default number of DataRegion replicas */
   private int dataReplicationFactor = 1;
@@ -93,14 +93,14 @@ public class ConfigNodeConfig {
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.AUTO;
+      RegionGroupExtensionPolicy.CUSTOM;
 
   /**
    * When set data_region_group_extension_policy=CUSTOM, this parameter is the default number of
    * DataRegionGroups for each Database. When set data_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of DataRegionGroups for each Database.
    */
-  private int defaultDataRegionGroupNumPerDatabase = 2;
+  private int defaultDataRegionGroupNumPerDatabase = 1;
 
   /** The maximum number of DataRegions expected to be managed by each DataNode. */
   private double dataRegionPerDataNode = 5.0;
