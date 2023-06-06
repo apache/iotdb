@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.utils;
+package org.apache.iotdb.db.pipe.event.common.row;
 
 import org.apache.iotdb.pipe.api.type.Type;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,9 +30,6 @@ import java.util.stream.Collectors;
  * org.apache.iotdb.pipe.api.type.Type}
  */
 public class PipeDataTypeTransformer {
-  public static Type transformToPipeDataType(TSDataType tsDataType) {
-    return tsDataType == null ? null : getPipeDataType(tsDataType.getType());
-  }
 
   public static List<Type> transformToPipeDataTypeList(List<TSDataType> tsDataTypeList) {
     return tsDataTypeList == null
@@ -40,6 +37,10 @@ public class PipeDataTypeTransformer {
         : tsDataTypeList.stream()
             .map(PipeDataTypeTransformer::transformToPipeDataType)
             .collect(Collectors.toList());
+  }
+
+  public static Type transformToPipeDataType(TSDataType tsDataType) {
+    return tsDataType == null ? null : getPipeDataType(tsDataType.getType());
   }
 
   private static Type getPipeDataType(byte type) {
@@ -61,34 +62,7 @@ public class PipeDataTypeTransformer {
     }
   }
 
-  public static TSDataType transformToTsDataType(Type type) {
-    return type == null ? null : getTsDataType(type.getType());
-  }
-
-  public static List<TSDataType> transformToTsDataTypeList(List<Type> typeList) {
-    return typeList == null
-        ? null
-        : typeList.stream()
-            .map(PipeDataTypeTransformer::transformToTsDataType)
-            .collect(Collectors.toList());
-  }
-
-  private static TSDataType getTsDataType(byte type) {
-    switch (type) {
-      case 0:
-        return TSDataType.BOOLEAN;
-      case 1:
-        return TSDataType.INT32;
-      case 2:
-        return TSDataType.INT64;
-      case 3:
-        return TSDataType.FLOAT;
-      case 4:
-        return TSDataType.DOUBLE;
-      case 5:
-        return TSDataType.TEXT;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + type);
-    }
+  private PipeDataTypeTransformer() {
+    // util class
   }
 }
