@@ -119,7 +119,8 @@ public class FlowBalancer {
     Map<Peer, Double> nodesRate = logDispatcher.getNodesRate();
 
     // sort followers according to their queue length
-    followers.sort(Comparator.comparing(node -> dispatcherGroupMap.get(node).getQueueSize()));
+    followers.sort(Comparator.comparing(dispatcherGroupMap::get));
+
     if (burstWindowNum > latestWindows.size() / 2 && !inBurst) {
       enterBurst(nodesRate, nodeNum, assumedFlow, followers);
       logDispatcher.updateRateLimiter();

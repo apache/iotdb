@@ -19,14 +19,7 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
-import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,9 +27,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.BlockingQueue;
-
-import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
+import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A LogDispatcher serves a raft leader by queuing logs that the leader wants to send to its
@@ -67,7 +64,7 @@ public class LogDispatcher {
     this.bindingThreadNum = config.getDispatcherBindingThreadNum();
     this.allNodes = member.getAllNodes();
     this.newNodes = member.getNewNodes();
-    createQueueAndBindingThreads(unionNodes(allNodes, newNodes));
+    createDispatcherGroups(unionNodes(allNodes, newNodes));
     maxBatchSize = config.getLogNumInBatch();
   }
 
@@ -81,10 +78,10 @@ public class LogDispatcher {
   }
 
   void createDispatcherGroup(Peer node) {
-    dispatcherGroupMap.computeIfAbsent(node, n -> new DispatcherGroup(n, this, bindingThreadNum));
+    dispatcherGroupMap.computeIfAbsent(node, n -> new QueueBasedDispatcherGroup(n, this, bindingThreadNum));
   }
 
-  void createQueueAndBindingThreads(Collection<Peer> peers) {
+  void createDispatcherGroups(Collection<Peer> peers) {
     for (Peer node : peers) {
       if (!node.equals(member.getThisNode())) {
         createDispatcherGroup(node);
@@ -101,16 +98,6 @@ public class LogDispatcher {
     }
   }
 
-  protected boolean addToQueue(BlockingQueue<VotingEntry> nodeLogQueue, VotingEntry request) {
-    synchronized (nodeLogQueue) {
-      boolean added = nodeLogQueue.add(request);
-      if (added) {
-        nodeLogQueue.notifyAll();
-      }
-      return added;
-    }
-  }
-
   public void offer(VotingEntry request) {
 
     for (Entry<Peer, DispatcherGroup> entry : dispatcherGroupMap.entrySet()) {
@@ -120,7 +107,7 @@ public class LogDispatcher {
       }
 
       try {
-        boolean addSucceeded = addToQueue(dispatcherGroup.getEntryQueue(), request);
+        boolean addSucceeded = dispatcherGroup.add(request);
 
         if (!addSucceeded) {
           logger.debug(
@@ -183,8 +170,8 @@ public class LogDispatcher {
   }
 
   public void wakeUp() {
-    for (DispatcherGroup value : dispatcherGroupMap.values()) {
-      value.wakeUp();
+    for (DispatcherGroup group : dispatcherGroupMap.values()) {
+      group.wakeUp();
     }
   }
 

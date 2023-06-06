@@ -45,62 +45,41 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
-class DispatcherThread extends DynamicThread {
+abstract class DispatcherThread extends DynamicThread {
 
   private static final Logger logger = LoggerFactory.getLogger(DispatcherThread.class);
 
-  private final LogDispatcher logDispatcher;
-  Peer receiver;
-  private final BlockingQueue<VotingEntry> logBlockingDeque;
+  protected final LogDispatcher logDispatcher;
+  protected Peer receiver;
   protected List<VotingEntry> currBatch = new ArrayList<>();
-  private final DispatcherGroup group;
-  private long lastDispatchTime;
-  private PublicBAOS batchLogBuffer = new PublicBAOS(64 * 1024);
-  private AtomicReference<byte[]> compressionBuffer = new AtomicReference<>(new byte[64 * 1024]);
+  protected final DispatcherGroup group;
+  protected long lastDispatchTime;
+  protected PublicBAOS batchLogBuffer = new PublicBAOS(64 * 1024);
+  protected AtomicReference<byte[]> compressionBuffer = new AtomicReference<>(new byte[64 * 1024]);
   protected ICompressor compressor;
 
   protected DispatcherThread(
       LogDispatcher logDispatcher,
       Peer receiver,
-      BlockingQueue<VotingEntry> logBlockingDeque,
       DispatcherGroup group) {
     super(group.getDynamicThreadGroup());
     this.logDispatcher = logDispatcher;
     this.receiver = receiver;
-    this.logBlockingDeque = logBlockingDeque;
     this.group = group;
     this.compressor =
         ICompressor.getCompressor(logDispatcher.getConfig().getDispatchingCompressionType());
   }
 
+  protected abstract boolean fetchLogs() throws InterruptedException;
+
   @Override
   public void runInternal() {
     try {
       while (!Thread.interrupted() && !group.getDynamicThreadGroup().isStopped()) {
-        if (group.isDelayed()) {
-          if (logBlockingDeque.size() < logDispatcher.maxBatchSize
-              && System.nanoTime() - lastDispatchTime < 1_000_000_000L) {
-            // the follower is being delayed, if there is not enough requests, and it has
-            // dispatched recently, wait for a while to get a larger batch
-            Thread.sleep(100);
-            continue;
-          }
+        if (!fetchLogs()) {
+          continue;
         }
 
-        synchronized (logBlockingDeque) {
-          VotingEntry poll = logBlockingDeque.poll();
-          if (poll != null) {
-            currBatch.add(poll);
-            logBlockingDeque.drainTo(currBatch, logDispatcher.maxBatchSize - 1);
-          } else {
-            if (group.getLogDispatcher().getMember().isLeader()) {
-              logBlockingDeque.wait(1000);
-            } else {
-              logBlockingDeque.wait(5000);
-            }
-            continue;
-          }
-        }
         idleToRunning();
         if (logger.isDebugEnabled()) {
           logger.debug("Sending {} logs to {}", currBatch.size(), receiver);

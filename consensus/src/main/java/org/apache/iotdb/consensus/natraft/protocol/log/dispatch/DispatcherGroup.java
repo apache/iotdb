@@ -19,37 +19,31 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.dynamic.DynamicThread;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
-
 import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-
-public class DispatcherGroup {
+public abstract class DispatcherGroup implements Comparable<DispatcherGroup> {
 
   private static final Logger logger = LoggerFactory.getLogger(DispatcherGroup.class);
-  private final Peer peer;
-  private final BlockingQueue<VotingEntry> entryQueue;
-  private boolean nodeEnabled;
-  private volatile RateLimiter rateLimiter;
-  private final ExecutorService dispatcherThreadPool;
-  private final LogDispatcher logDispatcher;
-  private volatile boolean delayed;
-  private DynamicThreadGroup dynamicThreadGroup;
-  private String name;
+  protected boolean nodeEnabled;
+  protected volatile RateLimiter rateLimiter;
+  protected final ExecutorService dispatcherThreadPool;
+  protected final LogDispatcher logDispatcher;
+  protected volatile boolean delayed;
+  protected DynamicThreadGroup dynamicThreadGroup;
+  protected String name;
 
   public DispatcherGroup(Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
     this.logDispatcher = logDispatcher;
-    this.peer = peer;
-    this.entryQueue = new ArrayBlockingQueue<>(logDispatcher.getConfig().getMaxNumOfLogsInMem());
     this.nodeEnabled = true;
     this.rateLimiter = RateLimiter.create(Double.MAX_VALUE);
     this.dispatcherThreadPool = createPool(peer, logDispatcher.getMember().getName());
@@ -58,11 +52,16 @@ public class DispatcherGroup {
         new DynamicThreadGroup(
             name,
             dispatcherThreadPool::submit,
-            () -> newDispatcherThread(peer, entryQueue),
+            () -> newDispatcherThread(peer),
             maxBindingThreadNum / 4,
             maxBindingThreadNum);
+  }
+
+  protected void init() {
     this.dynamicThreadGroup.init();
   }
+
+  protected abstract DynamicThread newDispatcherThread(Peer peer);
 
   public void close() {
     try {
@@ -71,10 +70,6 @@ public class DispatcherGroup {
     } catch (ExecutionException | InterruptedException e) {
       logger.error("Failed to stop threads in {}", dynamicThreadGroup);
     }
-  }
-
-  DispatcherThread newDispatcherThread(Peer node, BlockingQueue<VotingEntry> logBlockingQueue) {
-    return new DispatcherThread(logDispatcher, node, logBlockingQueue, this);
   }
 
   public void updateRate(double rate) {
@@ -95,16 +90,11 @@ public class DispatcherGroup {
             + node.getNodeId());
   }
 
-  public int getQueueSize() {
-    return entryQueue.size();
-  }
+  @Override
+  public abstract int compareTo(DispatcherGroup o);
 
   public boolean isNodeEnabled() {
     return nodeEnabled;
-  }
-
-  public BlockingQueue<VotingEntry> getEntryQueue() {
-    return entryQueue;
   }
 
   public boolean isDelayed() {
@@ -123,27 +113,11 @@ public class DispatcherGroup {
     return logDispatcher;
   }
 
-  public void wakeUp() {
-    synchronized (entryQueue) {
-      entryQueue.notifyAll();
-    }
-  }
+  public abstract void wakeUp();
 
   public RateLimiter getRateLimiter() {
     return rateLimiter;
   }
 
-  @Override
-  public String toString() {
-    return "{"
-        + "rate="
-        + rateLimiter.getRate()
-        + ", delayed="
-        + isDelayed()
-        + ", queueSize="
-        + entryQueue.size()
-        + ", dispatcherNum="
-        + dynamicThreadGroup.getThreadCnt().get()
-        + "}";
-  }
+  public abstract boolean add(VotingEntry request);
 }
