@@ -40,7 +40,7 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
     this(Objects.requireNonNull(tablet), null);
   }
 
-  private PipeRawTabletInsertionEvent(Tablet tablet, String pattern) {
+  public PipeRawTabletInsertionEvent(Tablet tablet, String pattern) {
     this.tablet = Objects.requireNonNull(tablet);
     this.pattern = pattern;
   }
