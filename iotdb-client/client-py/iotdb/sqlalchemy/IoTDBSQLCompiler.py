@@ -19,7 +19,7 @@
 from sqlalchemy.sql.compiler import SQLCompiler
 from sqlalchemy.sql.compiler import OPERATORS
 from sqlalchemy.sql import operators
-
+import re
 
 class IoTDBSQLCompiler(SQLCompiler):
     def order_by_clause(self, select, **kw):
@@ -33,20 +33,44 @@ class IoTDBSQLCompiler(SQLCompiler):
 
     def group_by_clause(self, select, **kw):
         """allow dialects to customize how GROUP BY is rendered."""
-        return ""
+        if not re.search(r"(MIN|MAX|AVG|SUM|COUNT)\(", str(select)):
+            return ""
+        group_by = select._group_by_clause._compiler_dispatch(self, **kw)
+        if "Time" in group_by:
+            match = re.search(r"DATE_TRUNC\('([^']*)',", group_by)
+            timeflag = match.group(1)
+            if timeflag == "second":
+                return " GROUP BY ([startTime, endTime),1s)"
+            elif timeflag == "minute":
+                return " GROUP BY ([startTime, endTime),1m)"
+            elif timeflag == "hour":
+                return " GROUP BY ([startTime, endTime),1h)"
+            elif timeflag == "day":
+                return " GROUP BY ([startTime, endTime),1d)"
+            elif timeflag == "week":
+                return " GROUP BY ([startTime, endTime),7d)"
+            elif timeflag == "month":
+                return " GROUP BY ([startTime, endTime),1mo)"
+            elif timeflag == "year":
+                return " GROUP BY ([startTime, endTime),1y)"
+            else:
+                return ""
+        else:
+            return ""
 
     def visit_select(
-        self,
-        select,
-        asfrom=False,
-        parens=True,
-        fromhints=None,
-        compound_index=0,
-        nested_join_translation=False,
-        select_wraps_for=None,
-        lateral=False,
-        **kwargs,
+            self,
+            select_stmt,
+            asfrom=False,
+            insert_into=False,
+            fromhints=None,
+            compound_index=None,
+            select_wraps_for=None,
+            lateral=False,
+            from_linter=None,
+            **kwargs,
     ):
+
         """
         Override this method to solve two problems
         1. IoTDB does not support querying Time as a measurement name (e.g. select Time from root.storagegroup.device)
@@ -249,7 +273,6 @@ class IoTDBSQLCompiler(SQLCompiler):
                     + " \n FROM Time Name "
                     + " ".join(time_column_names)
             )
-
         text = self._compose_select_body(
             text,
             select_stmt,
@@ -290,14 +313,14 @@ class IoTDBSQLCompiler(SQLCompiler):
         return text
 
     def visit_table(
-        self,
-        table,
-        asfrom=False,
-        iscrud=False,
-        ashint=False,
-        fromhints=None,
-        use_schema=True,
-        **kwargs,
+            self,
+            table,
+            asfrom=False,
+            iscrud=False,
+            ashint=False,
+            fromhints=None,
+            use_schema=True,
+            **kwargs,
     ):
         """
         IoTDB's table does not support quotation marks (e.g. select ** from `root.`)
@@ -317,7 +340,7 @@ class IoTDBSQLCompiler(SQLCompiler):
             return ""
 
     def visit_column(
-        self, column, add_to_result_map=None, include_table=True, **kwargs
+            self, column, add_to_result_map=None, include_table=True, **kwargs
     ):
         """
         IoTDB's where statement does not support "table".column format(e.g. "table".column > 1)
