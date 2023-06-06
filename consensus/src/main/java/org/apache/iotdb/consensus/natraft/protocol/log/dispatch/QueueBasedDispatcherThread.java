@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import java.util.concurrent.BlockingQueue;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+
+import java.util.concurrent.BlockingQueue;
 
 class QueueBasedDispatcherThread extends DispatcherThread {
 

@@ -52,6 +52,7 @@ public class LogUtils {
 
     AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(member);
     votingEntry.setAppendEntryRequest(appendEntryRequest);
+    e.setVotingEntry(votingEntry);
 
     return votingEntry;
   }

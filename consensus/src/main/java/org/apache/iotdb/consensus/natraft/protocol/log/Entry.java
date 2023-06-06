@@ -66,6 +66,8 @@ public abstract class Entry implements Comparable<Entry> {
 
   protected abstract ByteBuffer serializeInternal(byte[] buffer);
 
+  protected volatile VotingEntry votingEntry;
+
   /**
    * Perform serialization before indexing to avoid serialization under locked environment. It
    * should be noticed that at this time point, the index is not set yet, so when the final
@@ -246,5 +248,14 @@ public abstract class Entry implements Comparable<Entry> {
       recycledBuffer = serializationCache.array();
       serializationCache = null;
     }
+    votingEntry = null;
+  }
+
+  public VotingEntry getVotingEntry() {
+    return votingEntry;
+  }
+
+  public void setVotingEntry(VotingEntry votingEntry) {
+    this.votingEntry = votingEntry;
   }
 }

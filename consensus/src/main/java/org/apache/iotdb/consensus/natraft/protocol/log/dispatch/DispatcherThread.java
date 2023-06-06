@@ -42,7 +42,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 abstract class DispatcherThread extends DynamicThread {
@@ -58,10 +57,7 @@ abstract class DispatcherThread extends DynamicThread {
   protected AtomicReference<byte[]> compressionBuffer = new AtomicReference<>(new byte[64 * 1024]);
   protected ICompressor compressor;
 
-  protected DispatcherThread(
-      LogDispatcher logDispatcher,
-      Peer receiver,
-      DispatcherGroup group) {
+  protected DispatcherThread(LogDispatcher logDispatcher, Peer receiver, DispatcherGroup group) {
     super(group.getDynamicThreadGroup());
     this.logDispatcher = logDispatcher;
     this.receiver = receiver;

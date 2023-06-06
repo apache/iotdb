@@ -64,10 +64,9 @@ public class SynchronousSequencer implements LogSequencer {
       e.setFromThisNode(true);
       e.createTime = System.nanoTime();
 
+      votingEntry = LogUtils.buildVotingLog(e, member);
       // logDispatcher will serialize log, and set log size, and we will use the size after it
       logManager.append(Collections.singletonList(e), true);
-
-      votingEntry = LogUtils.buildVotingLog(e, member);
 
       if (!(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance())) {
         votingEntry = LogUtils.enqueueEntry(votingEntry, member);

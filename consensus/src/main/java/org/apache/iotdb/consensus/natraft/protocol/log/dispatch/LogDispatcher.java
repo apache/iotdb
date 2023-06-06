@@ -19,7 +19,14 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
+import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
+import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,13 +34,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
-import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
-import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
 
 /**
  * A LogDispatcher serves a raft leader by queuing logs that the leader wants to send to its
@@ -78,7 +80,8 @@ public class LogDispatcher {
   }
 
   void createDispatcherGroup(Peer node) {
-    dispatcherGroupMap.computeIfAbsent(node, n -> new QueueBasedDispatcherGroup(n, this, bindingThreadNum));
+    dispatcherGroupMap.computeIfAbsent(
+        node, n -> new CursorBasedDispatcherGroup(n, this, bindingThreadNum));
   }
 
   void createDispatcherGroups(Collection<Peer> peers) {

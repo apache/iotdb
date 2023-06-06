@@ -22,39 +22,32 @@ package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class QueueBasedDispatcherGroup extends DispatcherGroup {
+public class CursorBasedDispatcherGroup extends DispatcherGroup {
+  private AtomicLong cursor = new AtomicLong();
 
-  private final BlockingQueue<VotingEntry> entryQueue;
-
-  public QueueBasedDispatcherGroup(
+  public CursorBasedDispatcherGroup(
       Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
     super(peer, logDispatcher, maxBindingThreadNum);
-    this.entryQueue = new ArrayBlockingQueue<>(logDispatcher.getConfig().getMaxNumOfLogsInMem());
+    this.cursor.set(logDispatcher.getMember().getSafeIndex() + 1);
     init();
   }
 
   protected DispatcherThread newDispatcherThread(Peer node) {
-    return new QueueBasedDispatcherThread(logDispatcher, node, entryQueue, this);
+    return new CursorBasedDispatcherThread(logDispatcher, node, cursor, this);
   }
 
-  @Override
   public int compareTo(DispatcherGroup o) {
-    if (!(o instanceof QueueBasedDispatcherGroup)) {
+    if (!(o instanceof CursorBasedDispatcherGroup)) {
       return 0;
     }
-    return Long.compare(this.getQueueSize(), ((QueueBasedDispatcherGroup) o).getQueueSize());
-  }
-
-  public int getQueueSize() {
-    return entryQueue.size();
+    return -Long.compare(this.cursor.get(), ((CursorBasedDispatcherGroup) o).cursor.get());
   }
 
   public void wakeUp() {
-    synchronized (entryQueue) {
-      entryQueue.notifyAll();
+    synchronized (cursor) {
+      cursor.notifyAll();
     }
   }
 
@@ -65,20 +58,15 @@ public class QueueBasedDispatcherGroup extends DispatcherGroup {
         + rateLimiter.getRate()
         + ", delayed="
         + isDelayed()
-        + ", queueSize="
-        + entryQueue.size()
+        + ", cursor="
+        + cursor.get()
         + ", dispatcherNum="
         + dynamicThreadGroup.getThreadCnt().get()
         + "}";
   }
 
   public boolean add(VotingEntry request) {
-    synchronized (entryQueue) {
-      boolean added = entryQueue.add(request);
-      if (added) {
-        entryQueue.notifyAll();
-      }
-      return added;
-    }
+    wakeUp();
+    return true;
   }
 }
