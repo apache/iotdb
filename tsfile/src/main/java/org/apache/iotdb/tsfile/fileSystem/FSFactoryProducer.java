@@ -39,11 +39,19 @@ public class FSFactoryProducer {
     return fileInputFactory;
   }
 
+  public static void setFsFactory(FSFactory fsFactory) {
+    FSFactoryProducer.fsFactory = fsFactory;
+  }
+
   public static void setFileInputFactory(FileInputFactory fileInputFactory) {
     FSFactoryProducer.fileInputFactory = fileInputFactory;
   }
 
   public static FileOutputFactory getFileOutputFactory() {
     return fileOutputFactory;
+  }
+
+  public static void setFileOutputFactory(FileOutputFactory fileOutputFactory) {
+    FSFactoryProducer.fileOutputFactory = fileOutputFactory;
   }
 }
