@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -26,6 +27,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -91,8 +93,11 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    if (!pushPipeMetaToDataNodes(env)) {
-      throw new PipeException(String.format("Failed to stop pipe %s on data nodes.", pipeName));
+    TSStatus result = pushPipeMetaToDataNodes(env);
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Failed to stop pipe %s on data nodes. Failures: %s", pipeName, result.getMessage()));
     }
   }
 
@@ -126,9 +131,12 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StopPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
-    if (!pushPipeMetaToDataNodes(env)) {
+    TSStatus result = pushPipeMetaToDataNodes(env);
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
-          String.format("Failed to rollback stop pipe %s on data nodes.", pipeName));
+          String.format(
+              "Failed to rollback stop pipe %s on data nodes. Failures: %s",
+              pipeName, result.getMessage()));
     }
   }
 
