@@ -91,7 +91,9 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StartPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    pushPipeMetaToDataNodes(env);
+    if (!pushPipeMetaToDataNodes(env)) {
+      throw new PipeException(String.format("Failed to start pipe %s on data nodes.", pipeName));
+    }
   }
 
   @Override
@@ -124,7 +126,10 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StartPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
-    pushPipeMetaToDataNodes(env);
+    if (!pushPipeMetaToDataNodes(env)) {
+      throw new PipeException(
+          String.format("Failed to rollback start pipe %s on data nodes.", pipeName));
+    }
   }
 
   @Override

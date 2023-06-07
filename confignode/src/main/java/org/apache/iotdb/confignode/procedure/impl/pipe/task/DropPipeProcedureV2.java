@@ -88,7 +88,9 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    pushPipeMetaToDataNodes(env);
+    if (!pushPipeMetaToDataNodes(env)) {
+      throw new PipeException(String.format("Failed to drop pipe %s on data nodes.", pipeName));
+    }
   }
 
   @Override
