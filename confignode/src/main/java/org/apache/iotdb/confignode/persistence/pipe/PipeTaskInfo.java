@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStat
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -74,8 +74,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest)
-      throws PipeManagementException {
+  public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) throws PipeException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
       return;
     }
@@ -85,15 +84,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
             "Failed to create pipe %s, the pipe with the same name has been created",
             createPipeRequest.getPipeName());
     LOGGER.info(exceptionMessage);
-    throw new PipeManagementException(exceptionMessage);
+    throw new PipeException(exceptionMessage);
   }
 
-  public void checkBeforeStartPipe(String pipeName) throws PipeManagementException {
+  public void checkBeforeStartPipe(String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe does not exist", pipeName);
       LOGGER.info(exceptionMessage);
-      throw new PipeManagementException(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
@@ -101,22 +100,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe is already running", pipeName);
       LOGGER.info(exceptionMessage);
-      throw new PipeManagementException(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe is already dropped", pipeName);
       LOGGER.info(exceptionMessage);
-      throw new PipeManagementException(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
   }
 
-  public void checkBeforeStopPipe(String pipeName) throws PipeManagementException {
+  public void checkBeforeStopPipe(String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe does not exist", pipeName);
       LOGGER.info(exceptionMessage);
-      throw new PipeManagementException(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
 
     final PipeStatus pipeStatus = getPipeStatus(pipeName);
@@ -124,13 +123,13 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe is already stop", pipeName);
       LOGGER.info(exceptionMessage);
-      throw new PipeManagementException(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
     if (pipeStatus == PipeStatus.DROPPED) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe is already dropped", pipeName);
       LOGGER.info(exceptionMessage);
-      throw new PipeManagementException(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
   }
 

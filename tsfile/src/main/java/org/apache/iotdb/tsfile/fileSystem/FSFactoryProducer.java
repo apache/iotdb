@@ -35,6 +35,10 @@ public class FSFactoryProducer {
     return fsFactory;
   }
 
+  public static void setFsFactory(FSFactory fsFactory) {
+    FSFactoryProducer.fsFactory = fsFactory;
+  }
+
   public static FileInputFactory getFileInputFactory() {
     return fileInputFactory;
   }
@@ -45,5 +49,9 @@ public class FSFactoryProducer {
 
   public static FileOutputFactory getFileOutputFactory() {
     return fileOutputFactory;
+  }
+
+  public static void setFileOutputFactory(FileOutputFactory fileOutputFactory) {
+    FSFactoryProducer.fileOutputFactory = fileOutputFactory;
   }
 }

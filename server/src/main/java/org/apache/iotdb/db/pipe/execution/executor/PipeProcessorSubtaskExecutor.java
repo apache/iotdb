@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 public class PipeProcessorSubtaskExecutor extends PipeSubtaskExecutor {
 
-  PipeProcessorSubtaskExecutor() {
+  public PipeProcessorSubtaskExecutor() {
     super(
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
         ThreadName.PIPE_PROCESSOR_EXECUTOR_POOL);
