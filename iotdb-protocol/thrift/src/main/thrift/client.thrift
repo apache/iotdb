@@ -357,7 +357,7 @@ struct TSGroupByQueryIntervalReq {
   2: required i64 statementId
   3: required string device
   4: required string measurement
-  5: required string dataType
+  5: required i32 dataType
   6: required common.TAggregationType aggregationType
   7: optional i64 startTime
   8: optional i64 endTime
