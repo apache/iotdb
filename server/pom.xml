@@ -487,7 +487,7 @@
                                 <buildArg>-J-Djdk.nio.maxCachedBufferSize=536870912</buildArg>
                                 <!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.micronaut.configuration.metrics,io.micrometer,io.netty</buildArg>-->
                                 <!-- For Quick Build (22.1+) -->
-<!--                                <buildArg>-Ob</buildArg>-->
+                                <!--                                <buildArg>-Ob</buildArg>-->
                             </buildArgs>
                             <mainClass>org.apache.iotdb.db.service.DataNode</mainClass>
                             <!-- Start: Workaround for 22.2: Disable the default Java Module Path using USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM -->

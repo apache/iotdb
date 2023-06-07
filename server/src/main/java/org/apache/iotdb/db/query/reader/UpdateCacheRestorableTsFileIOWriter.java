@@ -48,7 +48,9 @@ public class UpdateCacheRestorableTsFileIOWriter extends RestorableTsFileIOWrite
 
   @Override
   protected void updateCache(String device, TimeseriesMetadata timeseriesMetadata) {
-    TIME_SERIES_METADATA_CACHE.updateCache(file.getPath(), device, timeseriesMetadata);
+    if (device.startsWith("root.cpu")) {
+      TIME_SERIES_METADATA_CACHE.updateCache(file.getPath(), device, timeseriesMetadata);
+    }
   }
 
   @Override
