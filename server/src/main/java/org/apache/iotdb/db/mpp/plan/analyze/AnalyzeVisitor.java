@@ -209,6 +209,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private static final Expression endTimeExpression =
       TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
 
+  private final List<String> lastQueryColumnNames =
+      new ArrayList<>(Arrays.asList("TIME", "TIMESERIES", "VALUE", "DATATYPE"));
+
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
 
@@ -1278,6 +1281,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setTimeseriesOrderingForLastQuery(
           queryStatement.getOrderByComponent().getTimeseriesOrder());
     }
+
+    for (SortItem sortItem : queryStatement.getSortItemList()) {
+      String sortKey = sortItem.getSortKey();
+      if (!lastQueryColumnNames.contains(sortKey.toUpperCase())) {
+        throw new SemanticException(
+            String.format(
+                "%s in order by clause doesn't exist in the result of last query.", sortKey));
+      }
+    }
   }
 
   private void analyzeOrderBy(
@@ -1289,14 +1301,22 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // Expression in a sortItem only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.bindSchemaForExpression(expressionForItem, schemaTree);
-      if (expressions.size() != 1) {
-        throw new SemanticException("One sort item in order by should only indicate one value");
+      if (expressions.size() == 0) {
+        throw new SemanticException(
+            String.format(
+                "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
+      }
+      if (expressions.size() > 1) {
+        throw new SemanticException(
+            String.format(
+                "%s in order by clause shouldn't refer to more than one timeseries.",
+                expressionForItem.getExpressionString()));
       }
       expressionForItem = ExpressionAnalyzer.removeAliasFromExpression(expressions.get(0));
       TSDataType dataType = analyzeExpression(analysis, expressionForItem);
       if (!dataType.isComparable()) {
         throw new SemanticException(
-            String.format("The data type of sort item %s is not comparable", dataType));
+            String.format("The data type of %s is not comparable", dataType));
       }
       orderByExpressions.add(expressionForItem);
     }
@@ -1399,17 +1419,22 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         List<Expression> expressions =
             ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
                 expressionForItem, device, schemaTree);
-        if (expressions.size() != 1) {
+        if (expressions.size() == 0) {
           throw new SemanticException(
               String.format(
-                  "One sort item in order by should only indicate one value, got %s value(s)",
-                  expressions.size()));
+                  "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
+        }
+        if (expressions.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "%s in order by clause shouldn't refer to more than one timeseries.",
+                  expressionForItem.getExpressionString()));
         }
         expressionForItem = expressions.get(0);
         TSDataType dataType = analyzeExpression(analysis, expressionForItem);
         if (!dataType.isComparable()) {
           throw new SemanticException(
-              String.format("The data type of sort item %s is not comparable", dataType));
+              String.format("The data type of %s is not comparable", dataType));
         }
 
         Expression devicerViewExpression =
