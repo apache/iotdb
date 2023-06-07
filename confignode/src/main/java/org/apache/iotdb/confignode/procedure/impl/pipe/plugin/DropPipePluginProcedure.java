@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.plugin.DropPipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -109,7 +109,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
 
     try {
       pipePluginCoordinator.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
-    } catch (PipeManagementException e) {
+    } catch (PipeException e) {
       // if the pipe plugin is a built-in plugin, we should not drop it
       LOGGER.warn(e.getMessage());
       setFailure(new ProcedureException(e.getMessage()));
@@ -133,7 +133,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       return Flow.HAS_MORE_STATE;
     }
 
-    throw new PipeManagementException(
+    throw new PipeException(
         String.format("Failed to drop pipe plugin %s on data nodes", pluginName));
   }
 
