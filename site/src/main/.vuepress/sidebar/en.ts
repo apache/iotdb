@@ -154,7 +154,7 @@ export const enSidebar = sidebar({
         { text: 'Where Condition', link: 'Where-Condition' },
         { text: 'Group By', link: 'Group-By' },
         { text: 'Having Condition', link: 'Having-Condition' },
-        // { text:  'Order By', link: 'Order-By' },
+        { text: 'Order By', link: 'Order-By' },
         { text: 'Fill Null Value', link: 'Fill' },
         { text: 'Pagination', link: 'Pagination' },
         { text: 'Select Into', link: 'Select-Into' },
