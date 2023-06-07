@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -98,6 +99,12 @@ public class SelectIntoUtils {
       }
       resNode = matcher.replaceFirst(sourceNodes[index]);
       matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);
+    }
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(resNode).matches()) {
+      throw new SemanticException(
+          String.format(
+              "Parsed node name %s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              resNode));
     }
     return resNode;
   }

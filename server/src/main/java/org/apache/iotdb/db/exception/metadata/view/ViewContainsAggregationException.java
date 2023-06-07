@@ -16,17 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.metadata.view;
 
-package org.apache.iotdb.db.metadata.view;
+public class ViewContainsAggregationException extends UnsupportedViewException {
 
-public enum ViewPathType {
-  /** Example: root.db.d01.s01, root.db.d02.s01, root.db.d02.s02 */
-  FULL_PATH_LIST,
-  /** Example: root.db(d01.s01, d02.s02, status) */
-  PATHS_GROUP,
-  /** Example: SELECT s01, s02 FROM root.db.*; */
-  QUERY_STATEMENT,
+  private static final String VIEW_CONTAINS_AGGREGATION_FUNCTION =
+      "This view contains aggregation function(s) named [%s]";
 
-  /** Example: root.db.view(${2}_temperature) */
-  BATCH_GENERATION,
+  public ViewContainsAggregationException(String namesOfAggregationFunctions) {
+    super(String.format(VIEW_CONTAINS_AGGREGATION_FUNCTION, namesOfAggregationFunctions), true);
+  }
 }
