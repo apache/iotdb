@@ -352,6 +352,20 @@ struct TSAggregationQueryReq {
   11: optional bool legalPathNodes
 }
 
+struct TSGroupByQueryIntervalReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required string device
+  4: required string measurement
+  5: required string dataType
+  6: required common.TAggregationType aggregationType
+  7: optional i64 startTime
+  8: optional i64 endTime
+  9: optional i64 interval
+  10: optional i32 fetchSize
+  11: optional i64 timeout
+}
+
 struct TSCreateMultiTimeseriesReq {
   1: required i64 sessionId
   2: required list<string> paths
@@ -581,6 +595,8 @@ service IClientRPCService {
   TSExecuteStatementResp executeLastDataQuery(1:TSLastDataQueryReq req);
 
   TSExecuteStatementResp executeAggregationQuery(1:TSAggregationQueryReq req);
+
+  TSExecuteStatementResp executeGroupByQueryIntervalQuery(1:TSGroupByQueryIntervalReq req);
 
   i64 requestStatementId(1:i64 sessionId);
 
