@@ -21,12 +21,15 @@ package org.apache.iotdb.db.engine.compaction.cross;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.junit.After;
@@ -167,5 +170,51 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1L);
     selected = selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(0, selected.size());
+  }
+
+  @Test
+  public void testSelectWithTooManySourceFiles()
+      throws IOException, MetadataException, WriteProcessException {
+    int oldMaxFileNumForCompaction = SystemInfo.getInstance().getMaxFileNumForCompaction();
+    SystemInfo.getInstance().setMaxFileNumForCompaction(1);
+    try {
+      createFiles(19, 2, 3, 50, 0, 10000, 50, 50, false, true);
+      createFiles(1, 2, 3, 3000, 0, 10000, 50, 50, false, false);
+      RewriteCrossSpaceCompactionSelector selector =
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+      List<CrossCompactionTaskResource> selected =
+          selector.selectCrossSpaceTask(seqResources, unseqResources);
+      Assert.assertEquals(1, selected.size());
+      Assert.assertEquals(19, selected.get(0).getSeqFiles().size());
+      Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+
+      CrossSpaceCompactionTask crossSpaceCompactionTask =
+          new CrossSpaceCompactionTask(
+              0,
+              tsFileManager,
+              selected.get(0).getSeqFiles(),
+              selected.get(0).getUnseqFiles(),
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getCrossCompactionPerformer()
+                  .createInstance(),
+              CompactionTaskManager.currentTaskNum,
+              1000,
+              tsFileManager.getNextCompactionTaskId());
+      // set file status to COMPACTION_CANDIDATE
+      Assert.assertTrue(crossSpaceCompactionTask.setSourceFilesToCompactionCandidate());
+
+      Assert.assertFalse(crossSpaceCompactionTask.checkValidAndSetMerging());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+      for (TsFileResource resource : seqResources) {
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
+      }
+      for (TsFileResource resource : unseqResources) {
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
+      }
+    } finally {
+      SystemInfo.getInstance().setMaxFileNumForCompaction(oldMaxFileNumForCompaction);
+    }
   }
 }

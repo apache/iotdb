@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionFileNumNotEnoughException;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -379,17 +380,28 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   public boolean checkValidAndSetMerging() {
     try {
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
-    } catch (InterruptedException e) {
-      LOGGER.error("Interrupted when allocating memory for compaction", e);
-      return false;
-    } catch (CompactionMemoryNotEnoughException e) {
-      LOGGER.error("No enough memory for current compaction task {}", this, e);
+      SystemInfo.getInstance()
+          .addCompactionFileNum(selectedSequenceFiles.size() + selectedUnsequenceFiles.size(), 60);
+    } catch (Throwable t) {
+      if (t instanceof InterruptedException) {
+        LOGGER.warn("Interrupted when allocating memory for compaction", t);
+      } else if (t instanceof CompactionMemoryNotEnoughException) {
+        LOGGER.info("No enough memory for current compaction task {}", this, t);
+      } else if (t instanceof CompactionFileNumNotEnoughException) {
+        LOGGER.info("No enough file num for current compaction task {}", this, t);
+        SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      }
+      resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
+
     boolean addReadLockSuccess =
         addReadLock(selectedSequenceFiles) && addReadLock(selectedUnsequenceFiles);
     if (!addReadLockSuccess) {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      SystemInfo.getInstance()
+          .resetCompactionFileNumCost(
+              selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
     }
     return addReadLockSuccess;
   }
