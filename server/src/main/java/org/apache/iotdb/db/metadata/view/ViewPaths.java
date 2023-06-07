@@ -91,8 +91,8 @@ public class ViewPaths {
       }
     } else if (this.viewPathType == ViewPathType.QUERY_STATEMENT) {
       // no nothing. expressions should be set by setExpressionsList
-    } else if (this.viewPathType == ViewPathType.INTO_ITEM) {
-      // source paths has no intoItem.
+    } else if (this.viewPathType == ViewPathType.BATCH_GENERATION) {
+      // source paths has no intoItem. target paths should not be converted to expression.
     }
   }
 

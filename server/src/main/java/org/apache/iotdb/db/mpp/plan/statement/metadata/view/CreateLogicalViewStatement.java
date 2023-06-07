@@ -44,7 +44,7 @@ public class CreateLogicalViewStatement extends Statement {
 
   // the paths of this view
   private ViewPaths targetPaths;
-  private IntoItem intoItem;
+  private IntoItem batchGenerationItem;
 
   // the paths of sources
   private ViewPaths sourcePaths;
@@ -155,14 +155,15 @@ public class CreateLogicalViewStatement extends Statement {
   }
 
   public void setTargetIntoItem(IntoItem intoItem) {
-    this.targetPaths.setViewPathType(ViewPathType.INTO_ITEM);
-    this.intoItem = intoItem;
+    this.targetPaths.setViewPathType(ViewPathType.BATCH_GENERATION);
+    this.batchGenerationItem = intoItem;
   }
 
   public void parseIntoItemIfNecessary() {
-    if (this.intoItem != null) {
+    if (this.batchGenerationItem != null) {
       List<Expression> sourceExpressionList = this.getSourceExpressionList();
-      IntoComponent intoComponent = new IntoComponent(Collections.singletonList(this.intoItem));
+      IntoComponent intoComponent =
+          new IntoComponent(Collections.singletonList(this.batchGenerationItem));
       intoComponent.validate(sourceExpressionList);
       IntoComponent.IntoPathIterator intoPathIterator = intoComponent.getIntoPathIterator();
       List<PartialPath> targetPathsList = new ArrayList<>();
