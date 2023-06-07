@@ -35,7 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -122,7 +122,7 @@ class PipeAgentLauncher {
           if (!PipePluginExecutableManager.getInstance().isLocalJarMatched(pipePluginMeta)) {
             pipePluginMetaList.add(pipePluginMeta);
           }
-        } catch (PipeManagementException e) {
+        } catch (PipeException e) {
           pipePluginMetaList.add(pipePluginMeta);
         }
       }
