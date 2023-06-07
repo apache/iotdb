@@ -56,6 +56,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   private final PipeTaskMeta pipeTaskMeta;
   private final ProgressIndex startIndex;
 
+  private String pattern;
   private int dataRegionId;
 
   private final long historicalDataCollectionTimeLowerBound;
@@ -80,6 +81,10 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   @Override
   public void customize(
       PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+    pattern =
+        parameters.getStringOrDefault(
+            PipeCollectorConstant.COLLECTOR_PATTERN_KEY,
+            PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE);
     dataRegionId = parameters.getInt(DATA_REGION_KEY);
     historicalDataCollectionStartTime =
         parameters.hasAttribute(COLLECTOR_HISTORY_START_TIME)
@@ -153,12 +158,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterCollectionTimeLowerBound(resource))
-                .map(
-                    resource ->
-                        new PipeTsFileInsertionEvent(
-                            resource,
-                            pipeTaskMeta,
-                            PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE))
+                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
@@ -167,12 +167,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterCollectionTimeLowerBound(resource))
-                .map(
-                    resource ->
-                        new PipeTsFileInsertionEvent(
-                            resource,
-                            pipeTaskMeta,
-                            PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE))
+                .map(resource -> new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
             event ->
