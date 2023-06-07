@@ -253,7 +253,7 @@ public class TimeFilter {
 
     @Override
     public boolean satisfyStartEndTime(long startTime, long endTime) {
-      return !(startTime < this.startTime || endTime >= this.endTime);
+      return !(endTime < this.startTime || startTime >= this.endTime);
     }
 
     @Override
