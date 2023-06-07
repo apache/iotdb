@@ -105,7 +105,7 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
   }
 
   public void setTargetIntoItem(IntoItem intoItem) {
-    this.targetPaths.setViewPathType(ViewPathType.INTO_ITEM);
+    this.targetPaths.setViewPathType(ViewPathType.BATCH_GENERATION);
     this.intoItem = intoItem;
   }
 

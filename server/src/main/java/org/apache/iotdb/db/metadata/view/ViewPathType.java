@@ -28,5 +28,5 @@ public enum ViewPathType {
   QUERY_STATEMENT,
 
   /** Example: root.db.view(${2}_temperature) */
-  INTO_ITEM,
+  BATCH_GENERATION,
 }
