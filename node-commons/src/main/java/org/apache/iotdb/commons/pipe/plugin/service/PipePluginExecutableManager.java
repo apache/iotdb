@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.pipe.plugin.service;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
@@ -41,7 +41,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
     super(temporaryLibRoot, libRoot);
   }
 
-  public boolean isLocalJarMatched(PipePluginMeta pipePluginMeta) throws PipeManagementException {
+  public boolean isLocalJarMatched(PipePluginMeta pipePluginMeta) throws PipeException {
     final String pluginName = pipePluginMeta.getPluginName();
     final String md5FilePath = pluginName + ".txt";
 
@@ -69,7 +69,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
                   + "because error occurred when trying to compute md5 of jar file for function %s ",
               pluginName, pluginName);
       LOGGER.warn(errorMessage, e);
-      throw new PipeManagementException(errorMessage);
+      throw new PipeException(errorMessage);
     }
   }
 
