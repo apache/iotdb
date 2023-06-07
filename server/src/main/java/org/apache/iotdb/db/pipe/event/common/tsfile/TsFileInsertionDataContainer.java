@@ -54,11 +54,16 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   public TsFileInsertionDataContainer(File tsFile, String pattern) throws IOException {
     this.pattern = pattern;
 
-    tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
-    tsFileReader = new TsFileReader(tsFileSequenceReader);
+    try {
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
+      tsFileReader = new TsFileReader(tsFileSequenceReader);
 
-    deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
-    measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+      deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
+      measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+    } catch (IOException e) {
+      close();
+      throw e;
+    }
   }
 
   private Map<String, List<String>> filterDeviceMeasurementsMapByPattern() throws IOException {
@@ -116,11 +121,13 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
           @Override
           public TabletInsertionEvent next() {
             if (!hasNext()) {
+              close();
               throw new NoSuchElementException();
             }
 
             while (tabletIterator == null || !tabletIterator.hasNext()) {
               if (!deviceMeasurementsMapIterator.hasNext()) {
+                close();
                 throw new NoSuchElementException();
               }
 
@@ -131,6 +138,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                     new TsFileInsertionDataTabletIterator(
                         tsFileReader, measurementDataTypeMap, entry.getKey(), entry.getValue());
               } catch (IOException e) {
+                close();
                 throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
               }
             }
@@ -139,11 +147,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                 new PipeRawTabletInsertionEvent(tabletIterator.next());
 
             if (!hasNext()) {
-              try {
-                close();
-              } catch (Exception e) {
-                LOGGER.warn("Failed to close TsFileInsertionDataContainer", e);
-              }
+              close();
             }
 
             return next;
@@ -152,12 +156,20 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
-    if (tsFileReader != null) {
-      tsFileReader.close();
+  public void close() {
+    try {
+      if (tsFileReader != null) {
+        tsFileReader.close();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to close TsFileReader", e);
     }
-    if (tsFileSequenceReader != null) {
-      tsFileSequenceReader.close();
+    try {
+      if (tsFileSequenceReader != null) {
+        tsFileSequenceReader.close();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
   }
 }
