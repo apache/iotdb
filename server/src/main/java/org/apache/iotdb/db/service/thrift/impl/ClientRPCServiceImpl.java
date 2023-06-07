@@ -18,13 +18,19 @@
  */
 package org.apache.iotdb.db.service.thrift.impl;
 
+import io.jsonwebtoken.lang.Strings;
+import org.apache.commons.lang.StringUtils;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -44,6 +50,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.driver.DriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
@@ -86,6 +93,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
@@ -94,6 +102,7 @@ import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -164,9 +173,11 @@ import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -174,6 +185,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTim
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
+import static org.apache.iotdb.db.utils.QueryDataSetUtils.convertTsBlockByFetchSize;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
@@ -192,6 +204,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private static final boolean enableAuditLog = config.isEnableAuditLog();
 
   public static Duration DEFAULT_TIME_SLICE = new Duration(60_000, TimeUnit.MILLISECONDS);
+
+  private static final Semaphore querySemaphore =
+      new Semaphore(Runtime.getRuntime().availableProcessors() * 2);
 
   private final IPartitionFetcher partitionFetcher;
 
@@ -213,8 +228,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SelectResult OLD_SELECT_RESULT =
       (resp, queryExecution, fetchSize) -> {
-        Pair<TSQueryDataSet, Boolean> pair =
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, fetchSize);
+        Pair<TSQueryDataSet, Boolean> pair = convertTsBlockByFetchSize(queryExecution, fetchSize);
         resp.setQueryDataSet(pair.left);
         return pair.right;
       };
@@ -1262,7 +1276,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
         Pair<TSQueryDataSet, Boolean> pair =
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize);
+            convertTsBlockByFetchSize(queryExecution, req.fetchSize);
         TSQueryDataSet result = pair.left;
         finished = pair.right;
         boolean hasResultSet = result.bufferForTime().limit() != 0;
@@ -1848,28 +1862,70 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   @Override
   public TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)
       throws TException {
+
     try {
+      querySemaphore.acquire();
+
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
 
-      DataRegionId dataRegionId = new DataRegionId(5);
-      List<DataRegion> dataRegionList = null;
-      StorageEngine.getInstance().getDataRegion(dataRegionId);
+      String database = req.getDatabase();
+      if (StringUtils.isEmpty(database)) {
+        String[] splits = Strings.split(req.getDevice(), "\\.");
+        database = String.format("%s.%s", splits[0], splits[1]);
+      }
+      String deviceId = req.getDevice();
+      String measurementId = req.getMeasurement();
+      TSDataType dataType = TSDataType.getTsDataType((byte) req.getDataType());
 
-      List<TsBlock> ret =
+      // only one database, one device, one time interval
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      TTimePartitionSlot timePartitionSlot =
+          TimePartitionUtils.getTimePartition(req.getStartTime());
+      DataPartitionQueryParam queryParam =
+          new DataPartitionQueryParam(
+              deviceId, Collections.singletonList(timePartitionSlot), false, false);
+      sgNameToQueryParamsMap.put(database, Collections.singletonList(queryParam));
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      List<DataRegion> dataRegionList = new ArrayList<>();
+      List<TRegionReplicaSet> replicaSets =
+          dataPartition.getDataRegionReplicaSet(
+              deviceId, Collections.singletonList(timePartitionSlot));
+      for (TRegionReplicaSet region : replicaSets) {
+        dataRegionList.add(
+            StorageEngine.getInstance()
+                .getDataRegion(new DataRegionId(region.getRegionId().getId())));
+      }
+
+      List<TsBlock> blockResult =
           executeGroupByQueryInternal(
               SESSION_MANAGER.getSessionInfo(clientSession),
-              req.getDevice(),
-              req.getMeasurement(),
-              TSDataType.getTsDataType((byte) 2),
+              deviceId,
+              measurementId,
+              dataType,
               req.getStartTime(),
               req.getEndTime(),
               req.getInterval(),
               req.getAggregationType(),
               dataRegionList);
-    } catch (Exception e) {
 
+      String outputColumnName = req.getAggregationType().name();
+      List<ColumnHeader> columnHeaders =
+          Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
+      DatasetHeader header = new DatasetHeader(columnHeaders, false);
+      header.setColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
+
+      TSExecuteStatementResp resp = createResponse(header, 1);
+      TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
+      resp.setQueryDataSet(queryDataSet);
+
+      return resp;
+    } catch (Exception e) {
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_AGG_QUERY));
+    } finally {
+      querySemaphore.release();
+      SESSION_MANAGER.updateIdleTime();
     }
-    return null;
   }
 
   @Override

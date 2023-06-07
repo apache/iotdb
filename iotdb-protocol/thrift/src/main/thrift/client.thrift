@@ -359,11 +359,12 @@ struct TSGroupByQueryIntervalReq {
   4: required string measurement
   5: required i32 dataType
   6: required common.TAggregationType aggregationType
-  7: optional i64 startTime
-  8: optional i64 endTime
-  9: optional i64 interval
-  10: optional i32 fetchSize
-  11: optional i64 timeout
+  7: optional string database
+  8: optional i64 startTime
+  9: optional i64 endTime
+  10: optional i64 interval
+  11: optional i32 fetchSize
+  12: optional i64 timeout
 }
 
 struct TSCreateMultiTimeseriesReq {
