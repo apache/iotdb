@@ -46,6 +46,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
+import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -3195,6 +3196,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setWhereExpression(whereExpression);
   }
 
+  // region view
+
   /**
    * Compute how many paths exist, get the schema tree and the number of existed paths.
    *
@@ -3329,13 +3332,30 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               "The path " + checkResult.right + " is illegal."));
       return;
     }
-    if (createLogicalViewStatement.getSourceExpressionList().size()
-        != createLogicalViewStatement.getTargetPathList().size()) {
+    // make sure there are no redundant paths in targets. Please note that redundant paths in source
+    // are legal!
+    List<PartialPath> targetPathList = createLogicalViewStatement.getTargetPathList();
+    Set<String> targetStringSet = new HashSet<>();
+    for (PartialPath path : targetPathList) {
+      boolean repeatPathNotExist = targetStringSet.add(path.toString());
+      if (!repeatPathNotExist) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ILLEGAL_PATH.getStatusCode(),
+                String.format("Path [%s] is redundant in target paths.", path)));
+        return;
+      }
+    }
+    if (createLogicalViewStatement.getSourceExpressionList().size() != targetPathList.size()) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "The number of target and source paths are miss matched! Please check your SQL."));
+              String.format(
+                  "The number of target paths (%d) and sources (%d) are miss matched! Please check your SQL.",
+                  createLogicalViewStatement.getTargetPathList().size(),
+                  createLogicalViewStatement.getSourceExpressionList().size())));
       return;
     }
     // make sure all paths are NOt under any template
@@ -3369,22 +3389,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (queryAnalysisPair.right.isFinishQueryAfterAnalyze()) {
           return analysis;
         } else if (queryAnalysisPair.left != null) {
-          createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
+          try {
+            createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
+          } catch (UnsupportedViewException e) {
+            analysis.setFinishQueryAfterAnalyze(true);
+            analysis.setFailStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+            return analysis;
+          }
         }
       }
+    }
 
-      // check target paths; check source expressions.
-      checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
-      if (analysis.isFinishQueryAfterAnalyze()) {
-        return analysis;
-      }
+    // use source and into item to generate target views
+    createLogicalViewStatement.parseIntoItemIfNecessary();
 
-      // make sure there is no view in source
-      List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
-      checkViewsInSource(analysis, sourceExpressionList, context);
-      if (analysis.isFinishQueryAfterAnalyze()) {
-        return analysis;
-      }
+    // check target paths; check source expressions.
+    checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
+
+    // make sure there is no view in source
+    List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
+    checkViewsInSource(analysis, sourceExpressionList, context);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
     }
 
     // set schema partition info, this info will be used to split logical plan node.
@@ -3413,4 +3442,5 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowLogicalViewHeader());
     return analysis;
   }
+  // endregion view
 }

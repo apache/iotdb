@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.view;
+package org.apache.iotdb.db.it.schema.view;
 
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -32,6 +33,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -46,7 +48,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateAndShowViewIT {
 
-  private static String[] sqls =
+  private static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.db;",
         "CREATE DATABASE root.myview;",
@@ -60,8 +62,23 @@ public class IoTDBCreateAndShowViewIT {
         "CREATE VIEW root.myview.d02(s01, s02) AS SELECT s01, s02 FROM root.db.d02;",
         "CREATE VIEW root.cal_view.avg AS SELECT (s01+s02)/2 FROM root.db.d01;",
         "CREATE VIEW root.cal_view(multiple, divide) AS SELECT s01*s02, s01/s02 FROM root.db.d02;",
-        "CREATE VIEW root.cal_view(agg_max1, agg_max2) AS SELECT MAX_VALUE(s01) FROM root.db.d01, root.db.d02 ;",
         "CREATE VIEW root.cal_view.cast_view AS SELECT CAST(s01 as TEXT) FROM root.db.d01;",
+        "CREATE VIEW root.multi_view.all_in_one(${2}_${3}) AS SELECT * FROM root.db.**;",
+        "CREATE VIEW root.copy_view.${2}(${3}) AS SELECT * FROM root.db.**;"
+      };
+
+  private static final String[] unsupportedSQLs =
+      new String[] {
+        "CREATE VIEW root.myview.nested_view AS root.myview.d01.s01;",
+        "CREATE VIEW root.agg_view(agg_avg1, agg_avg2) AS SELECT AVG(s01)+1 FROM root.db.d01, root.db.d02;",
+        "CREATE VIEW root.agg_view(agg_max1, agg_max2) AS SELECT MAX_VALUE(s01) FROM root.db.d01, root.db.d02;",
+        "CREATE VIEW root.myview.illegal_view AS root.myview.d01.s01 + 1;",
+        "CREATE VIEW root.multi_view($illegal_name) AS root.db.d01.s01;",
+        "CREATE VIEW root.multi_view.multi_nodes(${3}.${2}) AS SELECT * FROM root.db.**;",
+        "CREATE VIEW root.copy_view.$illegal_char(${3}) AS SELECT * FROM root.db.**;",
+        "CREATE VIEW root.copy_view.mismatched_count(${3}) AS SELECT * FROM root.db.**;",
+        "CREATE VIEW root.repeated_view(a, a) AS SELECT s01, s02 FROM root.db.d01;",
+        "CREATE VIEW root.repeated_view.abc, root.repeated_view.abc  AS SELECT s01, s02 FROM root.db.d01;",
       };
 
   @BeforeClass
@@ -78,7 +95,7 @@ public class IoTDBCreateAndShowViewIT {
 
   // region Test show timesereis
   @Test
-  public void showOriginTimeseries() {
+  public void testShowOriginTimeseries() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -127,7 +144,7 @@ public class IoTDBCreateAndShowViewIT {
   }
 
   @Test
-  public void showAliasViewsWithShowTimeseries() {
+  public void testShowAliasViewsWithShowTimeseries() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -176,7 +193,7 @@ public class IoTDBCreateAndShowViewIT {
   }
 
   @Test
-  public void showViewsWithCalculationWithShowTimeseries() {
+  public void testShowViewsWithCalculationWithShowTimeseries() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -184,14 +201,110 @@ public class IoTDBCreateAndShowViewIT {
                 "root.cal_view.avg,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
                 "root.cal_view.multiple,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
                 "root.cal_view.divide,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
-                "root.cal_view.agg_max1,null,root.cal_view,INT32,null,null,null,null,logical;",
-                "root.cal_view.agg_max2,null,root.cal_view,INT32,null,null,null,null,logical;",
                 "root.cal_view.cast_view,null,root.cal_view,TEXT,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.cal_view.*;");
+      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.cal_view.**;");
+      int count = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.ALIAS)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.DATABASE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.TAGS)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.VIEW_TYPE)
+                + ";";
+
+        System.out.println("actual result:" + ans);
+        assertTrue(retSet.contains(ans));
+        count++;
+      }
+      assertEquals(retSet.size(), count);
+      resultSet.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowViewsWithMultiCreationWithShowTimeseriesPart01() {
+
+    Set<String> retSet =
+        new HashSet<>(
+            Arrays.asList(
+                "root.multi_view.all_in_one.d01_s01,null,root.multi_view,INT32,null,null,null,null,logical;",
+                "root.multi_view.all_in_one.d01_s02,null,root.multi_view,INT32,null,null,null,null,logical;",
+                "root.multi_view.all_in_one.d02_s01,null,root.multi_view,INT32,null,null,null,null,logical;",
+                "root.multi_view.all_in_one.d02_s02,null,root.multi_view,INT32,null,null,null,null,logical;"));
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.multi_view.**;");
+      int count = 0;
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(ColumnHeaderConstant.TIMESERIES)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.ALIAS)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.DATABASE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.DATATYPE)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.ENCODING)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.COMPRESSION)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.TAGS)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.ATTRIBUTES)
+                + ","
+                + resultSet.getString(ColumnHeaderConstant.VIEW_TYPE)
+                + ";";
+
+        System.out.println("actual result:" + ans);
+        assertTrue(retSet.contains(ans));
+        count++;
+      }
+      assertEquals(retSet.size(), count);
+      resultSet.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowViewsWithMultiCreationWithShowTimeseriesPart02() {
+
+    Set<String> retSet =
+        new HashSet<>(
+            Arrays.asList(
+                "root.copy_view.d01.s01,null,root.copy_view,INT32,null,null,null,null,logical;",
+                "root.copy_view.d01.s02,null,root.copy_view,INT32,null,null,null,null,logical;",
+                "root.copy_view.d02.s01,null,root.copy_view,INT32,null,null,null,null,logical;",
+                "root.copy_view.d02.s02,null,root.copy_view,INT32,null,null,null,null,logical;"));
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.copy_view.**;");
       int count = 0;
       while (resultSet.next()) {
         String ans =
@@ -229,7 +342,7 @@ public class IoTDBCreateAndShowViewIT {
 
   // region Test Show View
   @Test
-  public void showAllViewsWithShowView() {
+  public void testShowAllViewsWithShowView() {
 
     Set<String> retSet =
         new HashSet<>(
@@ -241,9 +354,15 @@ public class IoTDBCreateAndShowViewIT {
                 "root.cal_view.avg,root.cal_view,DOUBLE,null,null,logical,(root.db.d01.s01 + root.db.d01.s02) / 2;",
                 "root.cal_view.multiple,root.cal_view,DOUBLE,null,null,logical,root.db.d02.s01 * root.db.d02.s02;",
                 "root.cal_view.divide,root.cal_view,DOUBLE,null,null,logical,root.db.d02.s01 / root.db.d02.s02;",
-                "root.cal_view.agg_max1,root.cal_view,INT32,null,null,logical,max_value(root.db.d01.s01);",
-                "root.cal_view.agg_max2,root.cal_view,INT32,null,null,logical,max_value(root.db.d02.s01);",
-                "root.cal_view.cast_view,root.cal_view,TEXT,null,null,logical,cast(type=TEXT)(root.db.d01.s01);"));
+                "root.cal_view.cast_view,root.cal_view,TEXT,null,null,logical,cast(type=TEXT)(root.db.d01.s01);",
+                "root.multi_view.all_in_one.d01_s01,root.multi_view,INT32,null,null,logical,root.db.d01.s01;",
+                "root.multi_view.all_in_one.d01_s02,root.multi_view,INT32,null,null,logical,root.db.d01.s02;",
+                "root.multi_view.all_in_one.d02_s01,root.multi_view,INT32,null,null,logical,root.db.d02.s01;",
+                "root.multi_view.all_in_one.d02_s02,root.multi_view,INT32,null,null,logical,root.db.d02.s02;",
+                "root.copy_view.d01.s01,root.copy_view,INT32,null,null,logical,root.db.d01.s01;",
+                "root.copy_view.d01.s02,root.copy_view,INT32,null,null,logical,root.db.d01.s02;",
+                "root.copy_view.d02.s01,root.copy_view,INT32,null,null,logical,root.db.d02.s01;",
+                "root.copy_view.d02.s02,root.copy_view,INT32,null,null,logical,root.db.d02.s02;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -280,11 +399,26 @@ public class IoTDBCreateAndShowViewIT {
   }
   // endregion
 
+  // region unsupported SQLs
+  @Test
+  public void testUnsupportedSQLs() {
+    for (String unsupportedSQL : unsupportedSQLs) {
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute(String.format(unsupportedSQL));
+        Assert.fail(String.format("SQL [%s] should fail but no exception thrown.", unsupportedSQL));
+      } catch (SQLException ignored) {
+      }
+    }
+  }
+
+  // endregion
+
   private static void createSchema() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      for (String sql : sqls) {
+      for (String sql : SQLs) {
         statement.execute(sql);
       }
     } catch (Exception e) {
