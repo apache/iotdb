@@ -201,10 +201,6 @@ public class OSFSFactory implements FSFactory {
     try {
       renameTo.invoke(srcFile, destFile);
     } catch (InvocationTargetException | IllegalAccessException e) {
-      logger.error(
-          "Failed to rename file from {} to {}. Please check your dependency of object storage module.",
-          srcFile.getName(),
-          destFile.getName());
       throw new IOException(e);
     }
   }
@@ -223,10 +219,6 @@ public class OSFSFactory implements FSFactory {
                 "Doesn't support copy file from %s to %s.", srcType, FSType.OBJECT_STORAGE));
       }
     } catch (InvocationTargetException | IllegalAccessException e) {
-      logger.error(
-          "Failed to copy file from {} to {}. Please check your dependency of object storage module.",
-          srcFile.getName(),
-          destFile.getName());
       throw new IOException(e);
     }
   }
@@ -273,10 +265,7 @@ public class OSFSFactory implements FSFactory {
     try {
       deleteObjectsByPrefix.invoke(constructorWithPathname.newInstance(dir));
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-      logger.error(
-          "Failed to delete directory {}. Please check your dependency of object storage module.",
-          dir,
-          e);
+      throw new IOException(e);
     }
   }
 }
