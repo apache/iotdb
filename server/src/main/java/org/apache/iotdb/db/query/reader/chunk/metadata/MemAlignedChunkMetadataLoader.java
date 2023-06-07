@@ -63,7 +63,6 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       chunkMetadataList.forEach(
           chunkMetadata -> {
             if (chunkMetadata.needSetChunkLoader()) {
-              chunkMetadata.setFilePath(resource.getTsFilePath());
               chunkMetadata.setClosed(resource.isClosed());
               chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context.isDebug()));
             }
