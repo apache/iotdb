@@ -130,7 +130,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    pushPipeMetaToDataNodes(env);
+    if (!pushPipeMetaToDataNodes(env)) {
+      throw new PipeException(
+          String.format("Failed to create pipe %s on data nodes.", pipeStaticMeta.getPipeName()));
+    }
   }
 
   @Override
@@ -169,7 +172,11 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    pushPipeMetaToDataNodes(env);
+    if (!pushPipeMetaToDataNodes(env)) {
+      throw new PipeException(
+          String.format(
+              "Failed to rollback create pipe %s on data nodes.", pipeStaticMeta.getPipeName()));
+    }
   }
 
   @Override

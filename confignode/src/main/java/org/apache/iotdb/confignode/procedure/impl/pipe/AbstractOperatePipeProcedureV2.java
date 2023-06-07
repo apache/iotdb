@@ -181,7 +181,7 @@ public abstract class AbstractOperatePipeProcedureV2
     return OperatePipeTaskState.VALIDATE_TASK;
   }
 
-  protected void pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected boolean pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     for (PipeMeta pipeMeta :
         env.getConfigManager()
@@ -192,10 +192,9 @@ public abstract class AbstractOperatePipeProcedureV2
       pipeMetaBinaryList.add(pipeMeta.serialize());
     }
 
-    if (RpcUtils.squashResponseStatusList(env.pushPipeMetaToDataNodes(pipeMetaBinaryList)).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException("Failed to push pipe meta list to data nodes");
-    }
+    return RpcUtils.squashResponseStatusList(env.pushPipeMetaToDataNodes(pipeMetaBinaryList))
+            .getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   protected void pushPipeMetaToDataNodesIgnoreException(ConfigNodeProcedureEnv env) {

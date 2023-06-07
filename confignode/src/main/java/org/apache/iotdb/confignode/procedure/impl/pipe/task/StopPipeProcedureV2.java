@@ -91,7 +91,9 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    pushPipeMetaToDataNodes(env);
+    if (!pushPipeMetaToDataNodes(env)) {
+      throw new PipeException(String.format("Failed to stop pipe %s on data nodes.", pipeName));
+    }
   }
 
   @Override
@@ -124,7 +126,10 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StopPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
-    pushPipeMetaToDataNodes(env);
+    if (!pushPipeMetaToDataNodes(env)) {
+      throw new PipeException(
+          String.format("Failed to rollback stop pipe %s on data nodes.", pipeName));
+    }
   }
 
   @Override
