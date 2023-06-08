@@ -41,6 +41,12 @@ public class RecoverProgressIndex implements ProgressIndex {
     this.dataNodeId2LocalIndex = new HashMap<>();
   }
 
+  public RecoverProgressIndex(int dataNodeId, SimpleProgressIndex simpleProgressIndex) {
+    this.dataNodeId2LocalIndex = new HashMap<>();
+
+    dataNodeId2LocalIndex.put(dataNodeId, simpleProgressIndex);
+  }
+
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     lock.readLock().lock();

@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.resource.file.PipeHardlinkFileDirStartupCleaner;
@@ -38,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class PipeRuntimeAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
+  private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
@@ -86,8 +89,13 @@ public class PipeRuntimeAgent implements IService {
     simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource);
   }
 
-  public void assignSimpleProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
-    simpleConsensusProgressIndexAssigner.assignSimpleProgressIndexForTsFileRecovery(tsFileResource);
+  ////////////////////// Recover ProgressIndex Assigner //////////////////////
+
+  public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+    tsFileResource.updateProgressIndex(
+        new RecoverProgressIndex(
+            DATA_NODE_ID,
+            simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
   }
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
