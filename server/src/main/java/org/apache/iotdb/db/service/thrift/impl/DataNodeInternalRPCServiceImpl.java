@@ -899,8 +899,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     for (ByteBuffer byteBuffer : req.getPipeMetas()) {
       pipeMetas.add(PipeMeta.deserialize(byteBuffer));
     }
-    PipeAgent.task().handlePipeMetaChanges(pipeMetas);
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    try {
+      PipeAgent.task().handlePipeMetaChanges(pipeMetas);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when pushing pipe meta", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
   }
 
   private TSStatus executeInternalSchemaTask(
