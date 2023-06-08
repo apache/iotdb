@@ -154,7 +154,7 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** The proportion of write memory for memtable */
-  private double writeProportionForMemtable = 0.8;
+  private double writeProportionForMemtable = 0.76;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
@@ -554,7 +554,7 @@ public class IoTDBConfig {
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
   /** Memory allocated proportion for time partition info */
-  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
+  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
 
   /** Memory allocated proportion for wal pipe cache */
   private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
