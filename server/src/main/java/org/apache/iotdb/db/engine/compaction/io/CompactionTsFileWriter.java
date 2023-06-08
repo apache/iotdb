@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.compaction.io;
 
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.WrittenDataType;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -56,7 +56,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
-        .recordWriteInfo(type, WrittenDataType.NOT_ALIGNED, writtenDataSize);
+        .recordWriteInfo(type, CompactionIoDataType.NOT_ALIGNED, writtenDataSize);
   }
 
   @Override
@@ -71,7 +71,8 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     super.writeEmptyValueChunk(
         measurementId, compressionType, tsDataType, encodingType, statistics);
     long writtenDataSize = this.getPos() - beforeOffset;
-    CompactionMetrics.getInstance().recordWriteInfo(type, WrittenDataType.ALIGNED, writtenDataSize);
+    CompactionMetrics.getInstance()
+        .recordWriteInfo(type, CompactionIoDataType.ALIGNED, writtenDataSize);
   }
 
   public void writeChunk(IChunkWriter chunkWriter) throws IOException {
@@ -82,7 +83,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     CompactionMetrics.getInstance()
         .recordWriteInfo(
             type,
-            isAligned ? WrittenDataType.ALIGNED : WrittenDataType.NOT_ALIGNED,
+            isAligned ? CompactionIoDataType.ALIGNED : CompactionIoDataType.NOT_ALIGNED,
             writtenDataSize);
   }
 
@@ -92,6 +93,6 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     super.endFile();
     long writtenDataSize = this.getPos() - beforeSize;
     CompactionMetrics.getInstance()
-        .recordWriteInfo(type, WrittenDataType.METADATA, writtenDataSize);
+        .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
   }
 }

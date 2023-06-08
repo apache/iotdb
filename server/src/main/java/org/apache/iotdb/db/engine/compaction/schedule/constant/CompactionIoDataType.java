@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.schedule.constant;
 
-public enum WrittenDataType {
+public enum CompactionIoDataType {
   NOT_ALIGNED(0),
   ALIGNED(1),
   METADATA(2);
 
   int value;
 
-  WrittenDataType(int value) {
+  CompactionIoDataType(int value) {
     this.value = value;
   }
 

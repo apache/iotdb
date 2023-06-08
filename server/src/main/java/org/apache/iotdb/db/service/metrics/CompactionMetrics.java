@@ -25,9 +25,9 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.WrittenDataType;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -158,7 +158,7 @@ public class CompactionMetrics implements IMetricSet {
   }
 
   public void recordWriteInfo(
-      CompactionType compactionType, WrittenDataType dataType, long byteNum) {
+      CompactionType compactionType, CompactionIoDataType dataType, long byteNum) {
     Counter[] counters = writeCounters.get(compactionType.toString());
     counters[dataType.getValue()].inc(byteNum);
     totalCompactionWriteInfoCounter.inc(byteNum);
@@ -230,9 +230,10 @@ public class CompactionMetrics implements IMetricSet {
         MetricType.COUNTER, Metric.DATA_READ.toString(), Tag.NAME.toString(), "compaction");
   }
 
-  public void recordReadInfo(CompactionType compactionType, boolean aligned, long byteNum) {
+  public void recordReadInfo(
+      CompactionType compactionType, CompactionIoDataType dataType, long byteNum) {
     Counter[] counters = readCounters.get(compactionType.toString());
-    counters[aligned ? 1 : 0].inc(byteNum);
+    counters[dataType.getValue()].inc(byteNum);
     totalCompactionReadInfoCounter.inc(byteNum);
   }
   // endregion

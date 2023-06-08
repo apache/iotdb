@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.engine.compaction.io;
 
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -31,6 +33,8 @@ import java.nio.ByteBuffer;
 public class CompactionTsFileReader extends TsFileSequenceReader {
   long readDataSize = 0L;
   CompactionType compactionType;
+
+  boolean readingAlignedSeries = false;
 
   public CompactionTsFileReader(String file, CompactionType compactionType) throws IOException {
     super(file);
@@ -44,12 +48,24 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     return buffer;
   }
 
+  public void markStartAlignedSeries() {
+    readingAlignedSeries = true;
+  }
+
+  public void markEndAlignedSeries() {
+    readingAlignedSeries = false;
+  }
+
   @Override
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
     long before = readDataSize;
     Chunk chunk = super.readMemChunk(metaData);
     long dataSize = readDataSize - before;
-    // TODO: record metrics size
+    CompactionMetrics.getInstance()
+        .recordReadInfo(
+            compactionType,
+            readingAlignedSeries ? CompactionIoDataType.ALIGNED : CompactionIoDataType.NOT_ALIGNED,
+            dataSize);
     return chunk;
   }
 
@@ -58,7 +74,8 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     long before = readDataSize;
     TsFileDeviceIterator iterator = super.getAllDevicesIteratorWithIsAligned();
     long dataSize = readDataSize - before;
-    // TODO: record metrics size
+    CompactionMetrics.getInstance()
+        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
     return iterator;
   }
 }

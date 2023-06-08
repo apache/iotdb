@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.writer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.WrittenDataType;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.PageException;
@@ -309,7 +309,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
                 isCrossSpace
                     ? CompactionType.CROSS_COMPACTION
                     : CompactionType.INNER_UNSEQ_COMPACTION,
-                isAlign ? WrittenDataType.ALIGNED : WrittenDataType.NOT_ALIGNED,
+                isAlign ? CompactionIoDataType.ALIGNED : CompactionIoDataType.NOT_ALIGNED,
                 iChunkWriter.estimateMaxSeriesMemSize());
       }
     }
