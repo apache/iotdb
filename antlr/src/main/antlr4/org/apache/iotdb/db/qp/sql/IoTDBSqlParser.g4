@@ -577,6 +577,7 @@ renameLogicalView
 
 alterLogicalView
     : ALTER VIEW viewTargetPaths AS viewSourcePaths
+    | ALTER VIEW fullPath alterClause
     ;
 
 viewSuffixPaths
