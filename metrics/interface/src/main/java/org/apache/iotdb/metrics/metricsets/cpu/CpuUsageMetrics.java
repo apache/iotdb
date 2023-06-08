@@ -246,11 +246,11 @@ public class CpuUsageMetrics implements IMetricSet {
       long id = threadInfo.getThreadId();
       long beforeCpuTime = beforeThreadCpuTime.getOrDefault(id, 0L);
       long afterCpuTime = afterThreadCpuTime.get(id);
-      long beforeUserTime = beforeThreadUserTime.getOrDefault(id, 0L);
-      long afterUserTime = afterThreadUserTime.get(id);
       if (afterCpuTime < beforeCpuTime) {
         continue;
       }
+      long beforeUserTime = beforeThreadUserTime.getOrDefault(id, 0L);
+      long afterUserTime = afterThreadUserTime.get(id);
       totalIncrementTime += afterCpuTime - beforeCpuTime;
       String module = getThreadModuleById(id, threadInfo);
       String pool = getThreadPoolById(id, threadInfo);
