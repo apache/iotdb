@@ -37,11 +37,11 @@ public class PipeReceiverAgent {
 
   private final ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal = new ThreadLocal<>();
 
-  public TPipeTransferResp transfer(
+  public TPipeTransferResp receive(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     final byte reqVersion = req.getVersion();
-    if (reqVersion == IoTDBThriftConnectorVersion.VERSION_ONE.getVersion()) {
-      return getReceiver(reqVersion).handleTransferReq(req, partitionFetcher, schemaFetcher);
+    if (reqVersion == IoTDBThriftConnectorVersion.VERSION_1.getVersion()) {
+      return getReceiver(reqVersion).receive(req, partitionFetcher, schemaFetcher);
     } else {
       return new TPipeTransferResp(
           RpcUtils.getStatus(
@@ -71,7 +71,7 @@ public class PipeReceiverAgent {
   }
 
   private IoTDBThriftReceiver setAndGetReceiver(byte reqVersion) {
-    if (reqVersion == IoTDBThriftConnectorVersion.VERSION_ONE.getVersion()) {
+    if (reqVersion == IoTDBThriftConnectorVersion.VERSION_1.getVersion()) {
       receiverThreadLocal.set(new IoTDBThriftReceiverV1());
     } else {
       throw new UnsupportedOperationException(

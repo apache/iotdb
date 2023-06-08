@@ -61,7 +61,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private RandomAccessFile writingFileWriter;
 
   @Override
-  public synchronized TPipeTransferResp handleTransferReq(
+  public synchronized TPipeTransferResp receive(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     final short rawRequestType = req.getType();
     if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
@@ -298,6 +298,6 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   @Override
   public IoTDBThriftConnectorVersion getVersion() {
-    return IoTDBThriftConnectorVersion.VERSION_ONE;
+    return IoTDBThriftConnectorVersion.VERSION_1;
   }
 }

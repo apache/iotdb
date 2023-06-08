@@ -29,7 +29,7 @@ public interface IoTDBThriftReceiver {
 
   IoTDBThriftConnectorVersion getVersion();
 
-  TPipeTransferResp handleTransferReq(
+  TPipeTransferResp receive(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
 
   void handleExit();

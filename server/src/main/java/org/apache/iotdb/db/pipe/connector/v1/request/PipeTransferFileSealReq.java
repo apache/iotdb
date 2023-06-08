@@ -51,7 +51,7 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     fileSealReq.fileName = fileName;
     fileSealReq.fileLength = fileLength;
 
-    fileSealReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    fileSealReq.version = IoTDBThriftConnectorVersion.VERSION_1.getVersion();
     fileSealReq.type = PipeRequestType.TRANSFER_FILE_SEAL.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

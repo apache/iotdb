@@ -45,7 +45,7 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
 
     handshakeReq.timestampPrecision = timestampPrecision;
 
-    handshakeReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    handshakeReq.version = IoTDBThriftConnectorVersion.VERSION_1.getVersion();
     handshakeReq.type = PipeRequestType.HANDSHAKE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

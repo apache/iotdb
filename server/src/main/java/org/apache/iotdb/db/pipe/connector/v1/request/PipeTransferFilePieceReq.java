@@ -58,7 +58,7 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
     filePieceReq.startWritingOffset = startWritingOffset;
     filePieceReq.filePiece = filePiece;
 
-    filePieceReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    filePieceReq.version = IoTDBThriftConnectorVersion.VERSION_1.getVersion();
     filePieceReq.type = PipeRequestType.TRANSFER_FILE_PIECE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

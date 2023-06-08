@@ -83,7 +83,7 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
     req.insertNode = insertNode;
 
-    req.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    req.version = IoTDBThriftConnectorVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_INSERT_NODE.getType();
     req.body = insertNode.serializeToByteBuffer();
 
