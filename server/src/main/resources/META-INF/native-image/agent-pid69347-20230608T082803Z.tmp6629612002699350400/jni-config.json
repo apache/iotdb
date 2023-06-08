@@ -1,0 +1,79 @@
+[
+{
+  "name":"[Lcom.sun.management.internal.DiagnosticCommandArgumentInfo;"
+},
+{
+  "name":"[Lcom.sun.management.internal.DiagnosticCommandInfo;"
+},
+{
+  "name":"com.sun.management.VMOption$Origin",
+  "fields":[
+    {"name":"ATTACH_ON_DEMAND"}, 
+    {"name":"CONFIG_FILE"}, 
+    {"name":"DEFAULT"}, 
+    {"name":"ENVIRON_VAR"}, 
+    {"name":"ERGONOMIC"}, 
+    {"name":"MANAGEMENT"}, 
+    {"name":"OTHER"}, 
+    {"name":"VM_CREATION"}
+  ]
+},
+{
+  "name":"com.sun.management.internal.DiagnosticCommandArgumentInfo",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.String","java.lang.String","java.lang.String","java.lang.String","boolean","boolean","boolean","int"] }]
+},
+{
+  "name":"com.sun.management.internal.DiagnosticCommandInfo",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.String","java.lang.String","java.lang.String","java.lang.String","java.lang.String","java.lang.String","boolean","java.util.List"] }]
+},
+{
+  "name":"com.sun.management.internal.Flag",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.String","java.lang.Object","boolean","boolean","com.sun.management.VMOption$Origin"] }]
+},
+{
+  "name":"java.lang.Boolean",
+  "methods":[
+    {"name":"<init>","parameterTypes":["boolean"] }, 
+    {"name":"getBoolean","parameterTypes":["java.lang.String"] }
+  ]
+},
+{
+  "name":"java.lang.Long",
+  "methods":[{"name":"<init>","parameterTypes":["long"] }]
+},
+{
+  "name":"java.lang.String",
+  "methods":[
+    {"name":"lastIndexOf","parameterTypes":["int"] }, 
+    {"name":"substring","parameterTypes":["int"] }
+  ]
+},
+{
+  "name":"java.lang.System",
+  "methods":[
+    {"name":"getProperty","parameterTypes":["java.lang.String"] }, 
+    {"name":"setProperty","parameterTypes":["java.lang.String","java.lang.String"] }
+  ]
+},
+{
+  "name":"java.util.Arrays",
+  "methods":[{"name":"asList","parameterTypes":["java.lang.Object[]"] }]
+},
+{
+  "name":"org.apache.iotdb.db.service.DataNode",
+  "methods":[{"name":"main","parameterTypes":["java.lang.String[]"] }]
+},
+{
+  "name":"sun.management.VMManagementImpl",
+  "fields":[
+    {"name":"compTimeMonitoringSupport"}, 
+    {"name":"currentThreadCpuTimeSupport"}, 
+    {"name":"objectMonitorUsageSupport"}, 
+    {"name":"otherThreadCpuTimeSupport"}, 
+    {"name":"remoteDiagnosticCommandsSupport"}, 
+    {"name":"synchronizerUsageSupport"}, 
+    {"name":"threadAllocatedMemorySupport"}, 
+    {"name":"threadContentionMonitoringSupport"}
+  ]
+}
+]
