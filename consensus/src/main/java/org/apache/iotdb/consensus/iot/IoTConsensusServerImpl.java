@@ -186,7 +186,11 @@ public class IoTConsensusServerImpl {
           if (timeout) {
             return RpcUtils.getStatus(
                 TSStatusCode.WRITE_PROCESS_REJECT,
-                "Reject write because there are too many requests need to process");
+                String.format(
+                    "The write is rejected because the wal directory size has reached the "
+                        + "threshold %d bytes. You may need to adjust the flush policy of the "
+                        + "storage engine or the IoTConsensus synchronization parameter",
+                    config.getReplication().getWalThrottleThreshold()));
           }
         } catch (InterruptedException e) {
           logger.error("Failed to throttle down because ", e);
@@ -805,6 +809,7 @@ public class IoTConsensusServerImpl {
    * deserialization of PlanNode to be concurrent
    */
   private class SyncLogCacheQueue {
+
     private final int sourcePeerId;
     private final Lock queueLock = new ReentrantLock();
     private final Condition queueSortCondition = queueLock.newCondition();
