@@ -1803,14 +1803,10 @@ public class IoTDBDescriptor {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
     int proportionSum = 10;
-    int schemaRegionProportion = 5;
-    int schemaCacheProportion = 4;
-    int partitionCacheProportion = 1;
-    int lastCacheProportion = 0;
 
-    String schemaMemoryAllocatePortion = properties.getProperty("schema_memory_proportion");
-    if (schemaMemoryAllocatePortion != null) {
-      String[] proportions = schemaMemoryAllocatePortion.split(":");
+    String schemaMemoryPortionInput = properties.getProperty("schema_memory_proportion");
+    if (schemaMemoryPortionInput != null) {
+      String[] proportions = schemaMemoryPortionInput.split(":");
       int loadedProportionSum = 0;
       for (String proportion : proportions) {
         loadedProportionSum += Integer.parseInt(proportion.trim());
@@ -1818,15 +1814,18 @@ public class IoTDBDescriptor {
 
       if (loadedProportionSum != 0) {
         proportionSum = loadedProportionSum;
-        schemaRegionProportion = Integer.parseInt(proportions[0].trim());
-        schemaCacheProportion = Integer.parseInt(proportions[1].trim());
-        partitionCacheProportion = Integer.parseInt(proportions[2].trim());
+        conf.setSchemaMemoryProportion(
+            new int[] {
+              Integer.parseInt(proportions[0].trim()),
+              Integer.parseInt(proportions[1].trim()),
+              Integer.parseInt(proportions[2].trim())
+            });
       }
 
     } else {
-      schemaMemoryAllocatePortion = properties.getProperty("schema_memory_allocate_proportion");
-      if (schemaMemoryAllocatePortion != null) {
-        String[] proportions = schemaMemoryAllocatePortion.split(":");
+      schemaMemoryPortionInput = properties.getProperty("schema_memory_allocate_proportion");
+      if (schemaMemoryPortionInput != null) {
+        String[] proportions = schemaMemoryPortionInput.split(":");
         int loadedProportionSum = 0;
         for (String proportion : proportions) {
           loadedProportionSum += Integer.parseInt(proportion.trim());
@@ -1834,27 +1833,27 @@ public class IoTDBDescriptor {
 
         if (loadedProportionSum != 0) {
           proportionSum = loadedProportionSum;
-          schemaRegionProportion = Integer.parseInt(proportions[0].trim());
-          schemaCacheProportion = Integer.parseInt(proportions[1].trim());
-          partitionCacheProportion = Integer.parseInt(proportions[2].trim());
-          lastCacheProportion = Integer.parseInt(proportions[3].trim());
+          conf.setSchemaMemoryProportion(
+              new int[] {
+                Integer.parseInt(proportions[0].trim()),
+                Integer.parseInt(proportions[1].trim()) + Integer.parseInt(proportions[3].trim()),
+                Integer.parseInt(proportions[2].trim())
+              });
         }
       }
     }
 
     conf.setAllocateMemoryForSchemaRegion(
-        schemaMemoryTotal * schemaRegionProportion / proportionSum);
+        schemaMemoryTotal * conf.getSchemaMemoryProportion()[0] / proportionSum);
     logger.info("allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
 
-    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
+    conf.setAllocateMemoryForSchemaCache(
+        schemaMemoryTotal * conf.getSchemaMemoryProportion()[1] / proportionSum);
     logger.info("allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
 
     conf.setAllocateMemoryForPartitionCache(
-        schemaMemoryTotal * partitionCacheProportion / proportionSum);
+        schemaMemoryTotal * conf.getSchemaMemoryProportion()[2] / proportionSum);
     logger.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
-
-    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
-    logger.info("allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
