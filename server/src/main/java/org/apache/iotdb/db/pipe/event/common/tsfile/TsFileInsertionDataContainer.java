@@ -26,6 +26,10 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +47,9 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
+  // used to filter data
   private final String pattern;
+  private final IExpression timeFilterExpression;
 
   private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
@@ -51,14 +57,27 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
-  public TsFileInsertionDataContainer(File tsFile, String pattern) throws IOException {
+  public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
+      throws IOException {
     this.pattern = pattern;
+    timeFilterExpression =
+        (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
+            ? null
+            : BinaryExpression.and(
+                new GlobalTimeExpression(TimeFilter.gtEq(startTime)),
+                new GlobalTimeExpression(TimeFilter.ltEq(endTime)));
 
-    tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
-    tsFileReader = new TsFileReader(tsFileSequenceReader);
+    try {
+      tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
+      tsFileReader = new TsFileReader(tsFileSequenceReader);
 
-    deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
-    measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+      deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
+      measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
+    } catch (Exception e) {
+      LOGGER.error("failed to create TsFileInsertionDataContainer", e);
+      close();
+      throw e;
+    }
   }
 
   private Map<String, List<String>> filterDeviceMeasurementsMapByPattern() throws IOException {
@@ -109,19 +128,9 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
           @Override
           public boolean hasNext() {
-            return (tabletIterator != null && tabletIterator.hasNext())
-                || deviceMeasurementsMapIterator.hasNext();
-          }
-
-          @Override
-          public TabletInsertionEvent next() {
-            if (!hasNext()) {
-              throw new NoSuchElementException();
-            }
-
             while (tabletIterator == null || !tabletIterator.hasNext()) {
               if (!deviceMeasurementsMapIterator.hasNext()) {
-                throw new NoSuchElementException();
+                return false;
               }
 
               final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterator.next();
@@ -129,21 +138,32 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               try {
                 tabletIterator =
                     new TsFileInsertionDataTabletIterator(
-                        tsFileReader, measurementDataTypeMap, entry.getKey(), entry.getValue());
+                        tsFileReader,
+                        measurementDataTypeMap,
+                        entry.getKey(),
+                        entry.getValue(),
+                        timeFilterExpression);
               } catch (IOException e) {
+                close();
                 throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
               }
+            }
+
+            return true;
+          }
+
+          @Override
+          public TabletInsertionEvent next() {
+            if (!hasNext()) {
+              close();
+              throw new NoSuchElementException();
             }
 
             final TabletInsertionEvent next =
                 new PipeRawTabletInsertionEvent(tabletIterator.next());
 
             if (!hasNext()) {
-              try {
-                close();
-              } catch (Exception e) {
-                LOGGER.warn("Failed to close TsFileInsertionDataContainer", e);
-              }
+              close();
             }
 
             return next;
@@ -152,12 +172,21 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
-    if (tsFileReader != null) {
-      tsFileReader.close();
+  public void close() {
+    try {
+      if (tsFileReader != null) {
+        tsFileReader.close();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to close TsFileReader", e);
     }
-    if (tsFileSequenceReader != null) {
-      tsFileSequenceReader.close();
+
+    try {
+      if (tsFileSequenceReader != null) {
+        tsFileSequenceReader.close();
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
   }
 }
