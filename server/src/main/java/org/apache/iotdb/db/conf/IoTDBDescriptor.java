@@ -1802,8 +1802,6 @@ public class IoTDBDescriptor {
   private void initSchemaMemoryAllocate(Properties properties) {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
-    int proportionSum = 10;
-
     String schemaMemoryPortionInput = properties.getProperty("schema_memory_proportion");
     if (schemaMemoryPortionInput != null) {
       String[] proportions = schemaMemoryPortionInput.split(":");
@@ -1813,7 +1811,6 @@ public class IoTDBDescriptor {
       }
 
       if (loadedProportionSum != 0) {
-        proportionSum = loadedProportionSum;
         conf.setSchemaMemoryProportion(
             new int[] {
               Integer.parseInt(proportions[0].trim()),
@@ -1832,7 +1829,6 @@ public class IoTDBDescriptor {
         }
 
         if (loadedProportionSum != 0) {
-          proportionSum = loadedProportionSum;
           conf.setSchemaMemoryProportion(
               new int[] {
                 Integer.parseInt(proportions[0].trim()),
@@ -1841,6 +1837,11 @@ public class IoTDBDescriptor {
               });
         }
       }
+    }
+
+    int proportionSum = 0;
+    for (int proportion : conf.getSchemaMemoryProportion()) {
+      proportionSum += proportion;
     }
 
     conf.setAllocateMemoryForSchemaRegion(
