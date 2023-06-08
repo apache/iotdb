@@ -121,7 +121,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       throw new MergeException(e);
     } finally {
       try {
-        compactionEstimator.clear();
+        compactionEstimator.close();
       } catch (IOException e) {
         throw new MergeException(e);
       }
@@ -213,6 +213,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> seqFiles,
       long memoryCost)
       throws IOException {
+    if (memoryCost == -1) {
+      // there is file been deleted during selection
+      return false;
+    }
     TsFileNameGenerator.TsFileName unseqFileName =
         TsFileNameGenerator.getTsFileName(unseqFile.getTsFile().getName());
     // we add a hard limit for cross compaction that selected unseqFile should reach a certain size
@@ -311,9 +315,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     } catch (MergeException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
-    } finally {
-      // release read lock for candidate source files
-      candidate.releaseReadLock();
     }
     return Collections.emptyList();
   }

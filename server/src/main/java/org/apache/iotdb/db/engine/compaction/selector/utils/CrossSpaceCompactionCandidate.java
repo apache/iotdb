@@ -45,29 +45,20 @@ public class CrossSpaceCompactionCandidate {
 
   public CrossSpaceCompactionCandidate(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    initAndAddLock(seqFiles, unseqFiles);
+    init(seqFiles, unseqFiles);
   }
 
   public CrossSpaceCompactionCandidate(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
-    initAndAddLock(seqFiles, unseqFiles);
+    init(seqFiles, unseqFiles);
   }
 
-  private void initAndAddLock(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  private void init(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = copySeqResource(seqFiles);
     // it is necessary that unseqFiles are all available
     this.unseqFiles = filterUnseqResource(unseqFiles);
     this.nextUnseqFileIndex = 0;
-  }
-
-  public void releaseReadLock() {
-    for (TsFileResourceCandidate resourceCandidate : seqFiles) {
-      resourceCandidate.resource.readUnlock();
-    }
-    for (TsFileResourceCandidate resourceCandidate : unseqFiles) {
-      resourceCandidate.resource.readUnlock();
-    }
   }
 
   public boolean hasNextSplit() throws IOException {
@@ -142,7 +133,6 @@ public class CrossSpaceCompactionCandidate {
   private List<TsFileResourceCandidate> copySeqResource(List<TsFileResource> seqFiles) {
     List<TsFileResourceCandidate> ret = new ArrayList<>();
     for (TsFileResource resource : seqFiles) {
-      resource.readLock();
       ret.add(new TsFileResourceCandidate(resource));
     }
     return ret;
@@ -160,7 +150,6 @@ public class CrossSpaceCompactionCandidate {
       if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
         break;
       } else if (resource.stillLives(ttlLowerBound)) {
-        resource.readLock();
         ret.add(new TsFileResourceCandidate(resource));
       }
     }
@@ -233,16 +222,22 @@ public class CrossSpaceCompactionCandidate {
       }
       deviceInfoMap = new LinkedHashMap<>();
       if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-        if (!resource.resourceFileExists()) {
-          hasDetailedDeviceInfo = false;
-          return;
-        }
-        DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
-        for (String deviceId : timeIndex.getDevices()) {
-          deviceInfoMap.put(
-              deviceId,
-              new DeviceInfo(
-                  deviceId, timeIndex.getStartTime(deviceId), timeIndex.getEndTime(deviceId)));
+        // deserialize resource file
+        resource.readLock();
+        try {
+          if (!resource.resourceFileExists()) {
+            hasDetailedDeviceInfo = false;
+            return;
+          }
+          DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
+          for (String deviceId : timeIndex.getDevices()) {
+            deviceInfoMap.put(
+                deviceId,
+                new DeviceInfo(
+                    deviceId, timeIndex.getStartTime(deviceId), timeIndex.getEndTime(deviceId)));
+          }
+        } finally {
+          resource.readUnlock();
         }
       } else {
         for (String deviceId : resource.getDevices()) {

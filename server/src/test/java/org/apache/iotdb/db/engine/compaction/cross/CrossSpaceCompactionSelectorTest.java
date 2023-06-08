@@ -197,7 +197,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-                candidate.releaseReadLock();
+
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -209,7 +209,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
                   throw new RuntimeException("selected unseq file num is not 1");
                 }
-                candidate.releaseReadLock();
+
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -246,6 +246,118 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testSeqFileWithDeviceIndexBeenDeletedDuringSelectionAndAfterCopyingList()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    AtomicBoolean fail = new AtomicBoolean(false);
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
+
+    // select files in cross compaction
+    Thread thread1 =
+        new Thread(
+            () -> {
+              try {
+                RewriteCrossSpaceCompactionSelector selector =
+                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                // copy candidate source file list and add read lock
+                CrossSpaceCompactionCandidate candidate =
+                    new CrossSpaceCompactionCandidate(
+                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+
+                // the other thread holds write lock and delete file successfully after copying list
+                cd1.countDown();
+                cd2.await();
+                CrossCompactionTaskResource crossCompactionTaskResource =
+                    selector.selectOneTaskResources(candidate);
+                if (!crossCompactionTaskResource.isValid()) {
+                  throw new RuntimeException("compaction task resource is not valid");
+                }
+                if (crossCompactionTaskResource.getSeqFiles().size() != 1) {
+                  throw new RuntimeException("selected seq file should be 1");
+                }
+                if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
+                  throw new RuntimeException("selected unseq file num should be 1");
+                }
+
+                CrossSpaceCompactionTask crossSpaceCompactionTask =
+                    new CrossSpaceCompactionTask(
+                        0,
+                        tsFileManager,
+                        crossCompactionTaskResource.getSeqFiles(),
+                        crossCompactionTaskResource.getUnseqFiles(),
+                        IoTDBDescriptor.getInstance()
+                            .getConfig()
+                            .getCrossCompactionPerformer()
+                            .createInstance(),
+                        CompactionTaskManager.currentTaskNum,
+                        crossCompactionTaskResource.getTotalMemoryCost(),
+                        tsFileManager.getNextCompactionTaskId());
+                // set file status to COMPACTION_CANDIDATE
+                if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
+                  throw new RuntimeException("set status should be true");
+                }
+                for (int i = 0; i < seqResources.size(); i++) {
+                  TsFileResource resource = seqResources.get(i);
+                  if (i < 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
+                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
+                    }
+                  } else if (i == 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.DELETED) {
+                      throw new RuntimeException("status should be DELETED");
+                    }
+                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+                    throw new RuntimeException("status should be NORMAL");
+                  }
+                }
+                for (int i = 0; i < unseqResources.size(); i++) {
+                  TsFileResource resource = unseqResources.get(i);
+                  if (i < 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
+                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
+                    }
+                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+                    throw new RuntimeException("status should be NORMAL");
+                  }
+                }
+              } catch (Exception e) {
+                fail.set(true);
+                e.printStackTrace();
+              }
+            });
+
+    // delete seq files
+    Thread thread2 =
+        new Thread(
+            () -> {
+              try {
+                cd1.await();
+                TsFileResource resource = seqResources.get(1);
+                // try to delete file
+                resource.writeLock();
+                resource.remove();
+                resource.writeUnlock();
+                cd2.countDown();
+              } catch (Exception e) {
+                fail.set(true);
+                e.printStackTrace();
+              }
+            });
+
+    thread1.start();
+    thread2.start();
+    thread1.join(10000);
+    thread2.join(10000);
+    if (fail.get()) {
+      Assert.fail();
+    }
+  }
+
+  @Test
   public void testSeqFileWithDeviceIndexBeenDeletedDuringSelectionAndBeforeSettingCandidate()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
@@ -268,8 +380,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
 
-                // the other thread want to hold write lock to delete files, but is stuck
-                cd1.countDown();
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -281,10 +391,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
-                candidate.releaseReadLock();
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
+                cd1.countDown();
                 cd2.await();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
@@ -387,7 +497,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
-                candidate.releaseReadLock();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
                     new CrossSpaceCompactionTask(
@@ -466,6 +575,123 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testSeqFileWithFileIndexBeenDeletedDuringSelectionAndAfterCopyingList()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    AtomicBoolean fail = new AtomicBoolean(false);
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
+    seqResources.get(0).degradeTimeIndex();
+    seqResources.get(1).degradeTimeIndex();
+    seqResources.get(2).degradeTimeIndex();
+    unseqResources.get(1).degradeTimeIndex();
+
+    // select files in cross compaction
+    Thread thread1 =
+        new Thread(
+            () -> {
+              try {
+                RewriteCrossSpaceCompactionSelector selector =
+                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                // copy candidate source file list and add read lock
+                CrossSpaceCompactionCandidate candidate =
+                    new CrossSpaceCompactionCandidate(
+                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+
+                // the other thread holds write lock and delete file successfully after copying list
+                cd1.countDown();
+                cd2.await();
+
+                CrossCompactionTaskResource crossCompactionTaskResource =
+                    selector.selectOneTaskResources(candidate);
+                if (!crossCompactionTaskResource.isValid()) {
+                  throw new RuntimeException("compaction task resource is not valid");
+                }
+                if (crossCompactionTaskResource.getSeqFiles().size() != 1) {
+                  throw new RuntimeException("selected seq file num should be 1");
+                }
+                if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
+                  throw new RuntimeException("selected unseq file num should be 1");
+                }
+
+                CrossSpaceCompactionTask crossSpaceCompactionTask =
+                    new CrossSpaceCompactionTask(
+                        0,
+                        tsFileManager,
+                        crossCompactionTaskResource.getSeqFiles(),
+                        crossCompactionTaskResource.getUnseqFiles(),
+                        IoTDBDescriptor.getInstance()
+                            .getConfig()
+                            .getCrossCompactionPerformer()
+                            .createInstance(),
+                        CompactionTaskManager.currentTaskNum,
+                        crossCompactionTaskResource.getTotalMemoryCost(),
+                        tsFileManager.getNextCompactionTaskId());
+                // set file status to COMPACTION_CANDIDATE
+                if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
+                  throw new RuntimeException("set status should be true");
+                }
+                for (int i = 0; i < seqResources.size(); i++) {
+                  TsFileResource resource = seqResources.get(i);
+                  if (i < 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
+                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
+                    }
+                  } else if (i == 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.DELETED) {
+                      throw new RuntimeException("status should be DELETED");
+                    }
+                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+                    throw new RuntimeException("status should be NORMAL");
+                  }
+                }
+                for (int i = 0; i < unseqResources.size(); i++) {
+                  TsFileResource resource = unseqResources.get(i);
+                  if (i < 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
+                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
+                    }
+                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+                    throw new RuntimeException("status should be NORMAL");
+                  }
+                }
+              } catch (Exception e) {
+                fail.set(true);
+                e.printStackTrace();
+              }
+            });
+
+    // delete seq files
+    Thread thread2 =
+        new Thread(
+            () -> {
+              try {
+                cd1.await();
+                TsFileResource resource = seqResources.get(1);
+                // try to delete file
+                resource.writeLock();
+                resource.remove();
+                resource.writeUnlock();
+                cd2.countDown();
+              } catch (Exception e) {
+                fail.set(true);
+                e.printStackTrace();
+              }
+            });
+
+    thread1.start();
+    thread2.start();
+    thread1.join();
+    thread2.join();
+    if (fail.get()) {
+      Assert.fail();
+    }
+  }
+
+  @Test
   public void testSeqFileWithFileIndexBeenDeletedDuringSelectionAndBeforeSettingCandidate()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
@@ -492,8 +718,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
 
-                // the other thread want to hold write lock to delete files, but is stuck
-                cd1.countDown();
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -505,10 +729,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
-                candidate.releaseReadLock();
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
+                cd1.countDown();
                 cd2.await();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
@@ -570,8 +794,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
 
     thread1.start();
     thread2.start();
-    thread1.join(10000);
-    thread2.join(10000);
+    thread1.join();
+    thread2.join();
     if (fail.get()) {
       Assert.fail();
     }
@@ -615,7 +839,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
-                candidate.releaseReadLock();
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
@@ -734,7 +957,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
                   throw new RuntimeException("selected unseq file num is not 1");
                 }
-                candidate.releaseReadLock();
+
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -758,80 +981,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 fail.set(true);
                 e.printStackTrace();
                 Assert.fail(e.getMessage());
-              }
-            });
-
-    thread1.start();
-    thread2.start();
-    thread1.join(10000);
-    thread2.join(10000);
-    if (fail.get()) {
-      Assert.fail();
-    }
-  }
-
-  @Test
-  public void testSeqFileWithFileIndexBeenDeletedDuringSelection()
-      throws IOException, MetadataException, WriteProcessException, InterruptedException {
-    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
-    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-    AtomicBoolean fail = new AtomicBoolean(false);
-    CountDownLatch cd1 = new CountDownLatch(1);
-    CountDownLatch cd2 = new CountDownLatch(1);
-    seqResources.get(0).degradeTimeIndex();
-    seqResources.get(1).degradeTimeIndex();
-    seqResources.get(2).degradeTimeIndex();
-    unseqResources.get(1).degradeTimeIndex();
-
-    // select files in cross compaction
-    Thread thread1 =
-        new Thread(
-            () -> {
-              try {
-                RewriteCrossSpaceCompactionSelector selector =
-                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list and add read lock, hold read lock
-                CrossSpaceCompactionCandidate candidate =
-                    new CrossSpaceCompactionCandidate(
-                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
-
-                // other thread want to hold write lock to delete files, but is stuck
-                cd1.countDown();
-                CrossCompactionTaskResource crossCompactionTaskResource =
-                    selector.selectOneTaskResources(candidate);
-                if (crossCompactionTaskResource.getSeqFiles().size() != 5) {
-                  throw new RuntimeException("selected seq file num is not 5");
-                }
-                if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
-                  throw new RuntimeException("selected unseq file num is not 5");
-                }
-                candidate.releaseReadLock();
-
-                // other thread holds write lock and delete files successfully
-                cd2.await();
-              } catch (Exception e) {
-                fail.set(true);
-                e.printStackTrace();
-              }
-            });
-
-    // delete seq files
-    Thread thread2 =
-        new Thread(
-            () -> {
-              try {
-                cd1.await();
-                TsFileResource resource = seqResources.get(1);
-                // try to delete file
-                resource.writeLock();
-                resource.remove();
-                resource.writeUnlock();
-                cd2.countDown();
-              } catch (Exception e) {
-                fail.set(true);
-                e.printStackTrace();
               }
             });
 
@@ -879,7 +1028,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
                   throw new RuntimeException("selected unseq file num is not 1");
                 }
-                candidate.releaseReadLock();
+
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
@@ -916,6 +1065,119 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testUnSeqFileWithDeviceIndexBeenDeletedDuringSelectionAndAfterCopyingList()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    AtomicBoolean fail = new AtomicBoolean(false);
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
+
+    // select files in cross compaction
+    Thread thread1 =
+        new Thread(
+            () -> {
+              try {
+                RewriteCrossSpaceCompactionSelector selector =
+                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                // copy candidate source file list and add read lock
+                CrossSpaceCompactionCandidate candidate =
+                    new CrossSpaceCompactionCandidate(
+                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+
+                // the other thread holds write lock and delete file successfully after copying list
+                cd1.countDown();
+                cd2.await();
+
+                CrossCompactionTaskResource crossCompactionTaskResource =
+                    selector.selectOneTaskResources(candidate);
+                if (!crossCompactionTaskResource.isValid()) {
+                  throw new RuntimeException("compaction task resource is not valid");
+                }
+                if (crossCompactionTaskResource.getSeqFiles().size() != 1) {
+                  throw new RuntimeException("selected seq file num is not 1");
+                }
+                if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
+                  throw new RuntimeException("selected unseq file num is not 1");
+                }
+
+                CrossSpaceCompactionTask crossSpaceCompactionTask =
+                    new CrossSpaceCompactionTask(
+                        0,
+                        tsFileManager,
+                        crossCompactionTaskResource.getSeqFiles(),
+                        crossCompactionTaskResource.getUnseqFiles(),
+                        IoTDBDescriptor.getInstance()
+                            .getConfig()
+                            .getCrossCompactionPerformer()
+                            .createInstance(),
+                        CompactionTaskManager.currentTaskNum,
+                        crossCompactionTaskResource.getTotalMemoryCost(),
+                        tsFileManager.getNextCompactionTaskId());
+                // set file status to COMPACTION_CANDIDATE
+                if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
+                  throw new RuntimeException("set status should be true");
+                }
+                for (int i = 0; i < unseqResources.size(); i++) {
+                  TsFileResource resource = unseqResources.get(i);
+                  if (i < 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
+                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
+                    }
+                  } else if (i == 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.DELETED) {
+                      throw new RuntimeException("status should be DELETED");
+                    }
+                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+                    throw new RuntimeException("status should be NORMAL");
+                  }
+                }
+                for (int i = 0; i < seqResources.size(); i++) {
+                  TsFileResource resource = seqResources.get(i);
+                  if (i < 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
+                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
+                    }
+                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+                    throw new RuntimeException("status should be NORMAL");
+                  }
+                }
+              } catch (Exception e) {
+                fail.set(true);
+                e.printStackTrace();
+              }
+            });
+
+    // delete seq files
+    Thread thread2 =
+        new Thread(
+            () -> {
+              try {
+                cd1.await();
+                TsFileResource resource = unseqResources.get(1);
+                // try to delete file
+                resource.writeLock();
+                resource.remove();
+                resource.writeUnlock();
+                cd2.countDown();
+              } catch (Exception e) {
+                fail.set(true);
+                e.printStackTrace();
+              }
+            });
+
+    thread1.start();
+    thread2.start();
+    thread1.join(10000);
+    thread2.join(10000);
+    if (fail.get()) {
+      Assert.fail();
+    }
+  }
+
+  @Test
   public void testUnSeqFileWithDeviceIndexBeenDeletedDuringSelectionAndBeforeSettingCandidate()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
@@ -938,8 +1200,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
 
-                // the other thread want to hold write lock to delete files, but is stuck
-                cd1.countDown();
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -951,10 +1211,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
-                candidate.releaseReadLock();
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
+                cd1.countDown();
                 cd2.await();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
@@ -1058,7 +1318,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
-                candidate.releaseReadLock();
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
@@ -1140,6 +1399,122 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testUnSeqFileWithFileIndexBeenDeletedDuringSelectionAndAfterCopyingList()
+      throws IOException, MetadataException, WriteProcessException, InterruptedException {
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    AtomicBoolean fail = new AtomicBoolean(false);
+    CountDownLatch cd1 = new CountDownLatch(1);
+    CountDownLatch cd2 = new CountDownLatch(1);
+    unseqResources.get(0).degradeTimeIndex();
+    unseqResources.get(1).degradeTimeIndex();
+    unseqResources.get(2).degradeTimeIndex();
+    seqResources.get(1).degradeTimeIndex();
+
+    // select files in cross compaction
+    Thread thread1 =
+        new Thread(
+            () -> {
+              try {
+                RewriteCrossSpaceCompactionSelector selector =
+                    new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+                // copy candidate source file list and add read lock
+                CrossSpaceCompactionCandidate candidate =
+                    new CrossSpaceCompactionCandidate(
+                        seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
+
+                // the other thread holds write lock and delete file successfully after copying list
+                cd1.countDown();
+                cd2.await();
+                CrossCompactionTaskResource crossCompactionTaskResource =
+                    selector.selectOneTaskResources(candidate);
+                if (!crossCompactionTaskResource.isValid()) {
+                  throw new RuntimeException("compaction task resource is not valid");
+                }
+                if (crossCompactionTaskResource.getSeqFiles().size() != 1) {
+                  throw new RuntimeException("selected seq file num is not 1");
+                }
+                if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
+                  throw new RuntimeException("selected unseq file num is not 1");
+                }
+
+                CrossSpaceCompactionTask crossSpaceCompactionTask =
+                    new CrossSpaceCompactionTask(
+                        0,
+                        tsFileManager,
+                        crossCompactionTaskResource.getSeqFiles(),
+                        crossCompactionTaskResource.getUnseqFiles(),
+                        IoTDBDescriptor.getInstance()
+                            .getConfig()
+                            .getCrossCompactionPerformer()
+                            .createInstance(),
+                        CompactionTaskManager.currentTaskNum,
+                        crossCompactionTaskResource.getTotalMemoryCost(),
+                        tsFileManager.getNextCompactionTaskId());
+                // set file status to COMPACTION_CANDIDATE
+                if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
+                  throw new RuntimeException("set status should be true");
+                }
+                for (int i = 0; i < unseqResources.size(); i++) {
+                  TsFileResource resource = unseqResources.get(i);
+                  if (i < 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
+                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
+                    }
+                  } else if (i == 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.DELETED) {
+                      throw new RuntimeException("status should be DELETED");
+                    }
+                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+                    throw new RuntimeException("status should be NORMAL");
+                  }
+                }
+                for (int i = 0; i < seqResources.size(); i++) {
+                  TsFileResource resource = seqResources.get(i);
+                  if (i < 1) {
+                    if (resource.getStatus() != TsFileResourceStatus.COMPACTION_CANDIDATE) {
+                      throw new RuntimeException("status should be COMPACTION_CANDIDATE");
+                    }
+                  } else if (resource.getStatus() != TsFileResourceStatus.NORMAL) {
+                    throw new RuntimeException("status should be NORMAL");
+                  }
+                }
+              } catch (Exception e) {
+                fail.set(true);
+                e.printStackTrace();
+              }
+            });
+
+    // delete seq files
+    Thread thread2 =
+        new Thread(
+            () -> {
+              try {
+                cd1.await();
+                TsFileResource resource = unseqResources.get(1);
+                // try to delete file
+                resource.writeLock();
+                resource.remove();
+                resource.writeUnlock();
+                cd2.countDown();
+              } catch (Exception e) {
+                fail.set(true);
+                e.printStackTrace();
+              }
+            });
+
+    thread1.start();
+    thread2.start();
+    thread1.join(10000);
+    thread2.join(10000);
+    if (fail.get()) {
+      Assert.fail();
+    }
+  }
+
+  @Test
   public void testUnSeqFileWithFileIndexBeenDeletedDuringSelectionAndBeforeSettingCandidate()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
@@ -1166,8 +1541,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
 
-                // the other thread want to hold write lock to delete files, but is stuck
-                cd1.countDown();
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
                 if (!crossCompactionTaskResource.isValid()) {
@@ -1179,10 +1552,10 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
-                candidate.releaseReadLock();
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
+                cd1.countDown();
                 cd2.await();
 
                 CrossSpaceCompactionTask crossSpaceCompactionTask =
@@ -1289,7 +1662,6 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
                   throw new RuntimeException("selected unseq file num is not 5");
                 }
-                candidate.releaseReadLock();
 
                 // the other thread holds write lock and delete file successfully before setting
                 // file status to COMPACTION_CANDIDATE
@@ -1371,7 +1743,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testUnSeqFileWithFileIndexBeenDeletedDuringSelection()
+  public void testUnSeqFileWithFileIndexBeenDeletedBeforeSelection()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, false);
@@ -1389,30 +1761,31 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
         new Thread(
             () -> {
               try {
+                // the file is deleted before selection
+                cd1.countDown();
+                cd2.await();
                 RewriteCrossSpaceCompactionSelector selector =
                     new RewriteCrossSpaceCompactionSelector("", "", 0, null);
-                // copy candidate source file list and add read lock, hold read lock
                 CrossSpaceCompactionCandidate candidate =
                     new CrossSpaceCompactionCandidate(
                         seqResources, unseqResources, System.currentTimeMillis() - Long.MAX_VALUE);
 
-                // other thread want to hold write lock to delete files, but is stuck
-                cd1.countDown();
                 CrossCompactionTaskResource crossCompactionTaskResource =
                     selector.selectOneTaskResources(candidate);
-                if (crossCompactionTaskResource.getSeqFiles().size() != 5) {
-                  throw new RuntimeException("selected seq file num is not 5");
+                if (!crossCompactionTaskResource.isValid()) {
+                  throw new RuntimeException("compaction task resource is not valid");
                 }
-                if (crossCompactionTaskResource.getUnseqFiles().size() != 5) {
-                  throw new RuntimeException("selected unseq file num is not 5");
+                if (crossCompactionTaskResource.getSeqFiles().size() != 1) {
+                  throw new RuntimeException("selected seq file num is not 1");
                 }
-                candidate.releaseReadLock();
+                if (crossCompactionTaskResource.getUnseqFiles().size() != 1) {
+                  throw new RuntimeException("selected unseq file num is not 1");
+                }
 
-                // other thread holds write lock and delete files successfully
-                cd2.await();
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
+                Assert.fail(e.getMessage());
               }
             });
 
@@ -1431,6 +1804,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
               } catch (Exception e) {
                 fail.set(true);
                 e.printStackTrace();
+                Assert.fail(e.getMessage());
               }
             });
 
