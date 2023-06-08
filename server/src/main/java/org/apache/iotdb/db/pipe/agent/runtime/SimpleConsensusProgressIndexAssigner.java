@@ -106,8 +106,7 @@ public class SimpleConsensusProgressIndexAssigner {
         new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement()));
   }
 
-  public void assignSimpleProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
-    tsFileResource.updateProgressIndex(
-        new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement()));
+  public SimpleProgressIndex getSimpleProgressIndexForTsFileRecovery() {
+    return new SimpleProgressIndex(rebootTimes, memtableFlushOrderId.getAndIncrement());
   }
 }
