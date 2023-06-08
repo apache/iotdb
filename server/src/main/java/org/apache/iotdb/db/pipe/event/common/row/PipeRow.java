@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.event.common.row;
 
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
-import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.pipe.api.type.Type;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -95,13 +94,16 @@ public class PipeRow implements Row {
   }
 
   @Override
-  public Binary getBinary(int columnIndex) {
-    return ((Binary[]) valueColumns[columnIndex])[rowIndex];
+  public org.apache.iotdb.pipe.api.type.Binary getBinary(int columnIndex) {
+    return PipeBinaryTransformer.transformToPipeBinary(
+        ((org.apache.iotdb.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex]);
   }
 
   @Override
   public String getString(int columnIndex) {
-    return ((Binary[]) valueColumns[columnIndex])[rowIndex].getStringValue();
+    final org.apache.iotdb.tsfile.utils.Binary binary =
+        ((org.apache.iotdb.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex];
+    return binary == null ? null : binary.getStringValue();
   }
 
   @Override
