@@ -103,7 +103,7 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.db.d01.s01,null,root.db,INT32,RLE,SNAPPY,{\"tag1=value1\",\"tag2=value2\"},{\"attribute1=value1\"},;",
+                "root.db.d01.s01,null,root.db,INT32,RLE,SNAPPY,{\"tag1\":\"value1\",\"tag2\":\"value2\"},{\"attribute1\":\"value1\"},;",
                 "root.db.d01.s02,null,root.db,INT32,RLE,SNAPPY,null,null,;",
                 "root.db.d02.s01,null,root.db,INT32,RLE,SNAPPY,null,null,;",
                 "root.db.d02.s02,null,root.db,INT32,RLE,SNAPPY,null,null,;"));
