@@ -26,7 +26,6 @@ import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.processor.PipeDoNothingProcessor;
-import org.apache.iotdb.db.pipe.task.connection.BlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -38,8 +37,6 @@ import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfig
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import javax.annotation.Nullable;
-
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
   protected final PipeProcessorSubtaskExecutor executor =
@@ -49,15 +46,10 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   protected final PipeProcessor pipeProcessor;
   protected final PipeProcessorSubtask pipeProcessorSubtask;
 
-  protected final BlockingPendingQueue<Event> pipeCollectorInputPendingQueue;
-  protected final BlockingPendingQueue<Event> pipeConnectorOutputPendingQueue;
-
   /**
    * @param pipeName pipe name
    * @param dataRegionId data region id
    * @param pipeCollectorInputEventSupplier used to input events from pipe collector
-   * @param pipeCollectorInputPendingQueue used to listen whether pipe collector event queue is from
-   *     empty to not empty or from not empty to empty, null means no need to listen
    * @param pipeProcessorParameters used to create pipe processor
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
    */
@@ -65,12 +57,10 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       String pipeName,
       TConsensusGroupId dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
-      @Nullable BlockingPendingQueue<Event> pipeCollectorInputPendingQueue,
       PipeParameters pipeProcessorParameters,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     this.pipeProcessorParameters = pipeProcessorParameters;
 
-    final String taskId = pipeName + "_" + dataRegionId;
     pipeProcessor =
         pipeProcessorParameters
                 .getStringOrDefault(
@@ -79,22 +69,8 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
                 .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
             ? new PipeDoNothingProcessor()
             : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
-    final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueue);
-
-    this.pipeProcessorSubtask =
-        new PipeProcessorSubtask(
-            taskId,
-            pipeCollectorInputEventSupplier,
-            pipeProcessor,
-            pipeConnectorOutputEventCollector);
-
-    this.pipeCollectorInputPendingQueue = pipeCollectorInputPendingQueue;
-    this.pipeConnectorOutputPendingQueue = pipeConnectorOutputPendingQueue;
-  }
-
-  @Override
-  public void createSubtask() throws PipeException {
+    // validate and customize should be called before createSubtask. this allows collector exposing
+    // exceptions in advance.
     try {
       // 1. validate processor parameters
       pipeProcessor.validate(new PipeParameterValidator(pipeProcessorParameters));
@@ -103,11 +79,23 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
           new PipeProcessorRuntimeConfiguration();
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
-      // TODO: use runtimeConfiguration to configure processor
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
 
+    final String taskId = pipeName + "_" + dataRegionId;
+    final PipeEventCollector pipeConnectorOutputEventCollector =
+        new PipeEventCollector(pipeConnectorOutputPendingQueue);
+    this.pipeProcessorSubtask =
+        new PipeProcessorSubtask(
+            taskId,
+            pipeCollectorInputEventSupplier,
+            pipeProcessor,
+            pipeConnectorOutputEventCollector);
+  }
+
+  @Override
+  public void createSubtask() throws PipeException {
     executor.register(pipeProcessorSubtask);
   }
 

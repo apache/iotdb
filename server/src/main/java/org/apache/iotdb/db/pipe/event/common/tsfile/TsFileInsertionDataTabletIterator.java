@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -47,13 +48,16 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
   private final String deviceId;
   private final List<String> measurements;
 
+  private final IExpression timeFilterExpression;
+
   private final QueryDataSet queryDataSet;
 
   public TsFileInsertionDataTabletIterator(
       TsFileReader tsFileReader,
       Map<String, TSDataType> measurementDataTypeMap,
       String deviceId,
-      List<String> measurements)
+      List<String> measurements,
+      IExpression timeFilterExpression)
       throws IOException {
     this.tsFileReader = tsFileReader;
     this.measurementDataTypeMap = measurementDataTypeMap;
@@ -68,6 +72,8 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
             .sorted()
             .collect(Collectors.toList());
 
+    this.timeFilterExpression = timeFilterExpression;
+
     this.queryDataSet = buildQueryDataSet();
   }
 
@@ -76,7 +82,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
     for (String measurement : measurements) {
       paths.add(new Path(deviceId, measurement, false));
     }
-    return tsFileReader.query(QueryExpression.create(paths, null));
+    return tsFileReader.query(QueryExpression.create(paths, timeFilterExpression));
   }
 
   @Override
