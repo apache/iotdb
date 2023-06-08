@@ -1806,11 +1806,17 @@ public class IoTDBDescriptor {
         memTableProportion = Integer.parseInt(proportions[0].trim());
         timePartitionInfo = Integer.parseInt(proportions[1].trim());
       }
+      // memtableProportionForWrite = 19/20 default
       double memtableProportionForWrite =
           ((double) memTableProportion / (double) writeProportionSum);
+
+      // timePartitionInfoForWrite = 1/20 default
       double timePartitionInfoForWrite = ((double) timePartitionInfo / (double) writeProportionSum);
+      // proportionForWrite = 8/10 default
       double proportionForWrite = ((double) (writeProportion) / (double) proportionSum);
+      // writeProportionForMemtable = 8/10 * 19/20 = 0.76 default
       conf.setWriteProportionForMemtable(proportionForWrite * memtableProportionForWrite);
+      // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
       conf.setAllocateMemoryForTimePartitionInfo(
           (long) ((proportionForWrite * timePartitionInfoForWrite) * storageMemoryTotal));
     }
