@@ -33,12 +33,14 @@ import org.apache.iotdb.db.mpp.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
 import org.apache.iotdb.metrics.metricsets.cpu.CpuUsageMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,16 +77,20 @@ public class DataNodeMetricsHelper {
   }
 
   private static void initCpuMetrics() {
-    List<String> threadModules = new ArrayList<>();
-    Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
-    List<String> pools = new ArrayList<>();
-    Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
-    MetricService.getInstance()
-        .addMetricSet(
-            new CpuUsageMetrics(
-                threadModules,
-                pools,
-                x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
-                x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
+    if (MetricLevel.higherOrEqual(
+        MetricLevel.IMPORTANT,
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
+      List<String> threadModules = new ArrayList<>();
+      Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
+      List<String> pools = new ArrayList<>();
+      Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
+      MetricService.getInstance()
+          .addMetricSet(
+              new CpuUsageMetrics(
+                  threadModules,
+                  pools,
+                  x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
+                  x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
+    }
   }
 }
