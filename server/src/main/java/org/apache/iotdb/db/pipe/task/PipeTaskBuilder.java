@@ -58,7 +58,6 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getPipeName(),
             dataRegionId,
             collectorStage.getEventSupplier(),
-            collectorStage.getCollectorPendingQueue(),
             pipeStaticMeta.getProcessorParameters(),
             connectorStage.getPipeConnectorPendingQueue());
 
