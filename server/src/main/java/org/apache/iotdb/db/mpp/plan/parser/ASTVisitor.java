@@ -1058,8 +1058,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitRenameLogicalView(IoTDBSqlParser.RenameLogicalViewContext ctx) {
     RenameLogicalViewStatement renameLogicalViewStatement = new RenameLogicalViewStatement();
-    renameLogicalViewStatement.setOldName(parsePrefixPath(ctx.prefixPath(0)));
-    renameLogicalViewStatement.setNewName(parsePrefixPath(ctx.prefixPath(1)));
+    renameLogicalViewStatement.setOldName(parseFullPath(ctx.fullPath(0)));
+    renameLogicalViewStatement.setNewName(parseFullPath(ctx.fullPath(1)));
     return renameLogicalViewStatement;
   }
 
