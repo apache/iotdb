@@ -443,7 +443,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         alterTimeSeriesStatement.getAlterMap(),
         alterTimeSeriesStatement.getAlias(),
         alterTimeSeriesStatement.getTagsMap(),
-        alterTimeSeriesStatement.getAttributesMap());
+        alterTimeSeriesStatement.getAttributesMap(),
+        alterTimeSeriesStatement.isAlterView());
   }
 
   @Override
