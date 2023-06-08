@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.processor;
 
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
@@ -82,11 +83,11 @@ public class PipeDoNothingProcessor implements PipeProcessor {
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    if (tsFileInsertionEvent instanceof EnrichedEvent) {
-      final EnrichedEvent enrichedEvent = (EnrichedEvent) tsFileInsertionEvent;
-      if (enrichedEvent
-          .getPattern()
-          .equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+    if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+      final PipeTsFileInsertionEvent enrichedEvent =
+          (PipeTsFileInsertionEvent) tsFileInsertionEvent;
+      if (enrichedEvent.getPattern().equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)
+          && !enrichedEvent.hasTimeFilter()) {
         eventCollector.collect(tsFileInsertionEvent);
       } else {
         for (final TabletInsertionEvent tabletInsertionEvent :
