@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -72,7 +73,15 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus dropPipe(String pipeName) {
-    return configManager.getProcedureManager().dropPipe(pipeName);
+    boolean isPipeExisted = pipeTaskInfo.isPipeExisted(pipeName);
+    TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return isPipeExisted
+          ? status
+          : RpcUtils.getStatus(
+              TSStatusCode.PIPE_NOT_EXIST_ERROR, String.format("%s does not exist.", pipeName));
+    }
+    return status;
   }
 
   public TShowPipeResp showPipes(TShowPipeReq req) {
