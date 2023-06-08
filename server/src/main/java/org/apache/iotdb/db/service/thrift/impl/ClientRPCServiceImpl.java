@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.service.thrift.impl;
 
-import io.jsonwebtoken.lang.Strings;
-import org.apache.commons.lang.StringUtils;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -97,7 +95,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.protocol.rest.StringUtil;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
@@ -168,6 +165,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import io.airlift.units.Duration;
+import io.jsonwebtoken.lang.Strings;
+import org.apache.commons.lang.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
