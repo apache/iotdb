@@ -79,7 +79,9 @@ public class PipeTaskCoordinator {
       return isPipeExisted
           ? status
           : RpcUtils.getStatus(
-              TSStatusCode.PIPE_NOT_EXIST_ERROR, String.format("%s does not exist.", pipeName));
+              TSStatusCode.PIPE_NOT_EXIST_ERROR,
+              String.format(
+                  "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
     }
     return status;
   }
