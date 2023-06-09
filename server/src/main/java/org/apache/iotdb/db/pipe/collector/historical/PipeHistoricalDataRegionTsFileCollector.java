@@ -44,11 +44,11 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_PATTERN_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_HISTORY_END_TIME;
 import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_HISTORY_START_TIME;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_PATTERN_KEY;
 
 public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataRegionCollector {
 
@@ -97,10 +97,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
     dataRegionId = configuration.getRuntimeEnvironment().getRegionId();
 
-    pattern =
-        parameters.getStringOrDefault(
-            COLLECTOR_PATTERN_KEY,
-            COLLECTOR_PATTERN_DEFAULT_VALUE);
+    pattern = parameters.getStringOrDefault(COLLECTOR_PATTERN_KEY, COLLECTOR_PATTERN_DEFAULT_VALUE);
 
     // user may set the COLLECTOR_HISTORY_START_TIME and COLLECTOR_HISTORY_END_TIME without
     // enabling the historical data collection, which may affect the realtime data collection.

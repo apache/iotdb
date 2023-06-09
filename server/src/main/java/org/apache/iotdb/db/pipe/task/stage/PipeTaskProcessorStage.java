@@ -62,13 +62,15 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       TConsensusGroupId dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
-    PipeRuntimeEnvironment pipeRuntimeEnvironment = new PipeTaskRuntimeEnvironment(pipeName, creationTime, dataRegionId.getId());
+    PipeRuntimeEnvironment pipeRuntimeEnvironment =
+        new PipeTaskRuntimeEnvironment(pipeName, creationTime, dataRegionId.getId());
 
-    PipeProcessor pipeProcessor = pipeProcessorParameters
-            .getStringOrDefault(
+    PipeProcessor pipeProcessor =
+        pipeProcessorParameters
+                .getStringOrDefault(
                     PipeProcessorConstant.PROCESSOR_KEY,
                     BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-            .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+                .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
             ? new PipeDoNothingProcessor()
             : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
 
@@ -78,7 +80,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-              new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
+          new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
@@ -86,13 +88,13 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
 
     final String taskId = pipeName + "_" + dataRegionId;
     final PipeEventCollector pipeConnectorOutputEventCollector =
-            new PipeEventCollector(pipeConnectorOutputPendingQueue);
+        new PipeEventCollector(pipeConnectorOutputPendingQueue);
 
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
             pipeCollectorInputEventSupplier,
-                pipeProcessor,
+            pipeProcessor,
             pipeConnectorOutputEventCollector);
   }
 

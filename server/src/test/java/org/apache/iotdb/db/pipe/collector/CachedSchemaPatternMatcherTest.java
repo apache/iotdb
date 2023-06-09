@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.pipe.collector;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -64,8 +63,7 @@ public class CachedSchemaPatternMatcherTest {
 
   @Test
   public void testCachedMatcher() throws Exception {
-    PipeRealtimeDataRegionCollector databaseCollector =
-        new PipeRealtimeDataRegionFakeCollector();
+    PipeRealtimeDataRegionCollector databaseCollector = new PipeRealtimeDataRegionFakeCollector();
     databaseCollector.customize(
         new PipeParameters(
             new HashMap<String, String>() {
@@ -79,8 +77,7 @@ public class CachedSchemaPatternMatcherTest {
     int deviceCollectorNum = 10;
     int seriesCollectorNum = 10;
     for (int i = 0; i < deviceCollectorNum; i++) {
-      PipeRealtimeDataRegionCollector deviceCollector =
-          new PipeRealtimeDataRegionFakeCollector();
+      PipeRealtimeDataRegionCollector deviceCollector = new PipeRealtimeDataRegionFakeCollector();
       int finalI1 = i;
       deviceCollector.customize(
           new PipeParameters(
@@ -92,8 +89,7 @@ public class CachedSchemaPatternMatcherTest {
           null);
       collectorList.add(deviceCollector);
       for (int j = 0; j < seriesCollectorNum; j++) {
-        PipeRealtimeDataRegionCollector seriesCollector =
-            new PipeRealtimeDataRegionFakeCollector();
+        PipeRealtimeDataRegionCollector seriesCollector = new PipeRealtimeDataRegionFakeCollector();
         int finalI = i;
         int finalJ = j;
         seriesCollector.customize(
@@ -149,7 +145,7 @@ public class CachedSchemaPatternMatcherTest {
 
   public static class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionCollector {
 
-    public PipeRealtimeDataRegionFakeCollector(){}
+    public PipeRealtimeDataRegionFakeCollector() {}
 
     @Override
     public Event supply() {
