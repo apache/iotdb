@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -103,9 +104,16 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
-            (regionGroup, regionLeaderNodeId) ->
+            (regionGroup, regionLeaderNodeId) -> {
+              if (!env.getConfigManager()
+                  .getPartitionManager()
+                  .getRegionStorageGroup(regionGroup)
+                  .equals(IoTDBMetricsUtils.DATABASE)) {
+                // pipe only collect user's data, filter metric database here.
                 consensusGroupIdToTaskMetaMap.put(
-                    regionGroup, new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId)));
+                    regionGroup, new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId));
+              }
+            });
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }
 
