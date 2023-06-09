@@ -955,8 +955,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   @Test
   public void testMaxFileSelection() throws MergeException, IOException {
     int oldMaxCrossCompactionCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(5);
+        IoTDBDescriptor.getInstance().getConfig().getFileLimitPerCrossTask();
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerCrossTask(5);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
     List<CrossCompactionTaskResource> selected =
@@ -969,14 +969,13 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionCandidateFileNum);
+        .setFileLimitPerCrossTask(oldMaxCrossCompactionCandidateFileNum);
   }
 
   @Test
   public void testAtLeastOneUnseqFileBeenSelected() throws IOException, MergeException {
-    int maxCrossFilesNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);
+    int maxCrossFilesNum = IoTDBDescriptor.getInstance().getConfig().getFileLimitPerCrossTask();
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerCrossTask(1);
 
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector("", "", 0, null);
@@ -988,9 +987,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     assertEquals(1, seqSelected.size());
     assertEquals(1, unseqSelected.size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerCrossTask(maxCrossFilesNum);
   }
 
   @Test

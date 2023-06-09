@@ -58,7 +58,7 @@ public class SystemInfo {
 
   private AtomicInteger compactionFileNumCost = new AtomicInteger(0);
 
-  private int maxFileNumForCompaction = config.getMaxCompactionCandidateFileNum();
+  private int totalFileLimitForCrossTask = config.getTotalFileLimitForCrossTask();
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
@@ -190,22 +190,22 @@ public class SystemInfo {
 
   public void addCompactionFileNum(int fileNum, long timeOutInSecond)
       throws InterruptedException, CompactionFileCountExceededException {
-    if (fileNum > maxFileNumForCompaction) {
+    if (fileNum > totalFileLimitForCrossTask) {
       // source file num is greater than the max file num for compaction
       throw new CompactionFileCountExceededException(
           String.format(
               "Required file num %d is greater than the max file num %d for compaction.",
-              fileNum, maxFileNumForCompaction));
+              fileNum, totalFileLimitForCrossTask));
     }
     long startTime = System.currentTimeMillis();
     int originFileNum = this.compactionFileNumCost.get();
-    while (originFileNum + fileNum > maxFileNumForCompaction
+    while (originFileNum + fileNum > totalFileLimitForCrossTask
         || !compactionFileNumCost.compareAndSet(originFileNum, originFileNum + fileNum)) {
       if (System.currentTimeMillis() - startTime >= timeOutInSecond * 1000L) {
         throw new CompactionFileCountExceededException(
             String.format(
                 "Failed to allocate %d files for compaction after %d seconds, max file num for compaction module is %d, %d files is used.",
-                fileNum, timeOutInSecond, maxFileNumForCompaction, originFileNum));
+                fileNum, timeOutInSecond, totalFileLimitForCrossTask, originFileNum));
       }
       Thread.sleep(100);
       originFileNum = this.compactionFileNumCost.get();
@@ -273,13 +273,13 @@ public class SystemInfo {
   }
 
   @TestOnly
-  public void setMaxFileNumForCompaction(int maxFileNumForCompaction) {
-    this.maxFileNumForCompaction = maxFileNumForCompaction;
+  public void setTotalFileLimitForCrossTask(int totalFileLimitForCrossTask) {
+    this.totalFileLimitForCrossTask = totalFileLimitForCrossTask;
   }
 
   @TestOnly
-  public int getMaxFileNumForCompaction() {
-    return maxFileNumForCompaction;
+  public int getTotalFileLimitForCrossTask() {
+    return totalFileLimitForCrossTask;
   }
 
   @TestOnly
