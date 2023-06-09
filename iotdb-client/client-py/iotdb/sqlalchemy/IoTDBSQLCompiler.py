@@ -66,9 +66,7 @@ class IoTDBSQLCompiler(SQLCompiler):
 
         kwargs["within_columns_clause"] = False
 
-        compile_state = select_stmt._compile_state_factory(
-            select_stmt, self, **kwargs
-        )
+        compile_state = select_stmt._compile_state_factory(select_stmt, self, **kwargs)
         select_stmt = compile_state.statement
 
         toplevel = not self.stack
@@ -101,9 +99,9 @@ class IoTDBSQLCompiler(SQLCompiler):
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
         populate_result_map = need_column_expressions = (
-                toplevel
-                or entry.get("need_result_map_for_compound", False)
-                or entry.get("need_result_map_for_nested", False)
+            toplevel
+            or entry.get("need_result_map_for_compound", False)
+            or entry.get("need_result_map_for_nested", False)
         )
 
         # indicates there is a CompoundSelect in play and we are not the
@@ -181,22 +179,22 @@ class IoTDBSQLCompiler(SQLCompiler):
                     [
                         name
                         for (
-                        key,
-                        proxy_name,
-                        fallback_label_name,
-                        name,
-                        repeated,
-                    ) in compile_state.columns_plus_names
+                            key,
+                            proxy_name,
+                            fallback_label_name,
+                            name,
+                            repeated,
+                        ) in compile_state.columns_plus_names
                     ],
                     [
                         name
                         for (
-                        key,
-                        proxy_name,
-                        fallback_label_name,
-                        name,
-                        repeated,
-                    ) in compile_state_wraps_for.columns_plus_names
+                            key,
+                            proxy_name,
+                            fallback_label_name,
+                            name,
+                            repeated,
+                        ) in compile_state_wraps_for.columns_plus_names
                     ],
                 )
             )
@@ -236,18 +234,18 @@ class IoTDBSQLCompiler(SQLCompiler):
         inner_columns = list(
             filter(
                 lambda x: "Time"
-                          not in x.replace(self.preparer.initial_quote, "").split(),
+                not in x.replace(self.preparer.initial_quote, "").split(),
                 inner_columns,
             )
         )
 
         if inner_columns and time_column_index:
             inner_columns[-1] = (
-                    inner_columns[-1]
-                    + " \n FROM Time Index "
-                    + " ".join(time_column_index)
-                    + " \n FROM Time Name "
-                    + " ".join(time_column_names)
+                inner_columns[-1]
+                + " \n FROM Time Index "
+                + " ".join(time_column_index)
+                + " \n FROM Time Name "
+                + " ".join(time_column_names)
             )
 
         text = self._compose_select_body(
@@ -274,11 +272,11 @@ class IoTDBSQLCompiler(SQLCompiler):
         if self.ctes and (not is_embedded_select or toplevel):
             nesting_level = len(self.stack) if not toplevel else None
             text = (
-                    self._render_cte_clause(
-                        nesting_level=nesting_level,
-                        visiting_cte=kwargs.get("visiting_cte"),
-                    )
-                    + text
+                self._render_cte_clause(
+                    nesting_level=nesting_level,
+                    visiting_cte=kwargs.get("visiting_cte"),
+                )
+                + text
             )
 
         if select_stmt._suffixes:
