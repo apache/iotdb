@@ -28,12 +28,12 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 /**
- * This class is a placeholder and should not be initialized. It represents the IoTDB Sync
- * connector. There is a real implementation in the server module but cannot be imported here. The
- * pipe agent in the server module will replace this class with the real implementation when
- * initializing the IoTDB Sync connector.
+ * This class is a placeholder and should not be initialized. It represents the IoTDB Sync connector
+ * (for IoTDB v1.1). There is a real implementation in the server module but cannot be imported
+ * here. The pipe agent in the server module will replace this class with the real implementation
+ * when initializing the IoTDB Sync connector.
  */
-public class IoTDBSyncConnector implements PipeConnector {
+public class IoTDBSyncConnectorV1_1 implements PipeConnector {
 
   @Override
   public void validate(PipeParameterValidator validator) {
