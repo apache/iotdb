@@ -37,6 +37,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
  */
 public class LogicalViewInfo implements IMeasurementInfo {
 
+  /** tag/attribute's start offset in tag file */
+  private long offset = -1;
   /** whether this measurement is pre deleted and considered in black list */
   private boolean preDeleted = false;
 
@@ -107,17 +109,18 @@ public class LogicalViewInfo implements IMeasurementInfo {
   @Override
   public void setAlias(String alias) {
     // can not set alias for a logical view
+    throw new UnsupportedOperationException("View doesn't support alias");
   }
 
   @Override
   public long getOffset() {
     // tag/attribute's start offset in tag file
-    return -1;
+    return offset;
   }
 
   @Override
   public void setOffset(long offset) {
-    // can not set offset for a logical view
+    this.offset = offset;
   }
 
   @Override
@@ -135,6 +138,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
    *
    * <ol>
    *   <li>object header, 8B
+   *   <li>offset, 8B
    *   <li>boolean preDeleted, 1B
    *   <li>estimated schema size, 32B
    *   <li>viewExpression
@@ -142,7 +146,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
    */
   @Override
   public int estimateSize() {
-    return 8 + 1 + 32 + 64;
+    return 8 + 8 + 1 + 32 + 64;
   }
 
   @Override

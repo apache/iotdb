@@ -51,34 +51,36 @@ public class IoTDBCreateAndShowViewIT {
   private static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.db;",
-        "CREATE DATABASE root.myview;",
-        "CREATE DATABASE root.cal_view;",
+        "CREATE DATABASE root.view;",
         "CREATE TIMESERIES root.db.d01.s01 INT32 encoding=RLE compression=SNAPPY;",
         "CREATE TIMESERIES root.db.d01.s02 INT32 encoding=RLE compression=SNAPPY;",
         "CREATE TIMESERIES root.db.d02.s01 INT32 encoding=RLE compression=SNAPPY;",
         "CREATE TIMESERIES root.db.d02.s02 INT32 encoding=RLE compression=SNAPPY;",
-        "CREATE VIEW root.myview.d01.s01 AS root.db.d01.s01;",
-        "CREATE VIEW root.myview.d01.s02 AS SELECT s02 FROM root.db.d01;",
-        "CREATE VIEW root.myview.d02(s01, s02) AS SELECT s01, s02 FROM root.db.d02;",
-        "CREATE VIEW root.cal_view.avg AS SELECT (s01+s02)/2 FROM root.db.d01;",
-        "CREATE VIEW root.cal_view(multiple, divide) AS SELECT s01*s02, s01/s02 FROM root.db.d02;",
-        "CREATE VIEW root.cal_view.cast_view AS SELECT CAST(s01 as TEXT) FROM root.db.d01;",
-        "CREATE VIEW root.multi_view.all_in_one(${2}_${3}) AS SELECT * FROM root.db.**;",
-        "CREATE VIEW root.copy_view.${2}(${3}) AS SELECT * FROM root.db.**;"
+        "CREATE VIEW root.view.myview.d01.s01 AS root.db.d01.s01;",
+        "CREATE VIEW root.view.myview.d01.s02 AS SELECT s02 FROM root.db.d01;",
+        "CREATE VIEW root.view.myview.d02(s01, s02) AS SELECT s01, s02 FROM root.db.d02;",
+        "CREATE VIEW root.view.cal_view.avg AS SELECT (s01+s02)/2 FROM root.db.d01;",
+        "CREATE VIEW root.view.cal_view(multiple, divide) AS SELECT s01*s02, s01/s02 FROM root.db.d02;",
+        "CREATE VIEW root.view.cal_view.cast_view AS SELECT CAST(s01 as TEXT) FROM root.db.d01;",
+        "CREATE VIEW root.view.multi_view.all_in_one(${2}_${3}) AS SELECT * FROM root.db.**;",
+        "CREATE VIEW root.view.copy_view.${2}(${3}) AS SELECT * FROM root.db.**;",
+        "ALTER VIEW root.view.myview.d01.s01 UPSERT TAGS(tag1=value1, tag2=value2) ATTRIBUTES(attribute1=value1)",
+        "ALTER VIEW root.view.myview.d02.s01 UPSERT TAGS(tag1=value2, tag2=value3) ATTRIBUTES(attribute1=value1)"
       };
 
   private static final String[] unsupportedSQLs =
       new String[] {
-        "CREATE VIEW root.myview.nested_view AS root.myview.d01.s01;",
-        "CREATE VIEW root.agg_view(agg_avg1, agg_avg2) AS SELECT AVG(s01)+1 FROM root.db.d01, root.db.d02;",
-        "CREATE VIEW root.agg_view(agg_max1, agg_max2) AS SELECT MAX_VALUE(s01) FROM root.db.d01, root.db.d02;",
-        "CREATE VIEW root.myview.illegal_view AS root.myview.d01.s01 + 1;",
-        "CREATE VIEW root.multi_view($illegal_name) AS root.db.d01.s01;",
-        "CREATE VIEW root.multi_view.multi_nodes(${3}.${2}) AS SELECT * FROM root.db.**;",
-        "CREATE VIEW root.copy_view.$illegal_char(${3}) AS SELECT * FROM root.db.**;",
-        "CREATE VIEW root.copy_view.mismatched_count(${3}) AS SELECT * FROM root.db.**;",
-        "CREATE VIEW root.repeated_view(a, a) AS SELECT s01, s02 FROM root.db.d01;",
-        "CREATE VIEW root.repeated_view.abc, root.repeated_view.abc  AS SELECT s01, s02 FROM root.db.d01;",
+        "CREATE VIEW root.view.myview.nested_view AS root.view.myview.d01.s01;",
+        "CREATE VIEW root.view.agg_view(agg_avg1, agg_avg2) AS SELECT AVG(s01)+1 FROM root.db.d01, root.db.d02;",
+        "CREATE VIEW root.view.agg_view(agg_max1, agg_max2) AS SELECT MAX_VALUE(s01) FROM root.db.d01, root.db.d02;",
+        "CREATE VIEW root.view.myview.illegal_view AS root.view.myview.d01.s01 + 1;",
+        "CREATE VIEW root.view.multi_view($illegal_name) AS root.db.d01.s01;",
+        "CREATE VIEW root.view.multi_view.multi_nodes(${3}.${2}) AS SELECT * FROM root.db.**;",
+        "CREATE VIEW root.view.copy_view.$illegal_char(${3}) AS SELECT * FROM root.db.**;",
+        "CREATE VIEW root.view.copy_view.mismatched_count(${3}) AS SELECT * FROM root.db.**;",
+        "CREATE VIEW root.view.repeated_view(a, a) AS SELECT s01, s02 FROM root.db.d01;",
+        "CREATE VIEW root.view.repeated_view.abc, root.view.repeated_view.abc  AS SELECT s01, s02 FROM root.db.d01;",
+        "ALTER VIW root.db.d01.s01 UPSERT TAGS(tag1=value1, tag2=value2) ATTRIBUTES(attribute1=value1)"
       };
 
   @BeforeClass
@@ -108,7 +110,7 @@ public class IoTDBCreateAndShowViewIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.db.**;");
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.db.**;");
       int count = 0;
       while (resultSet.next()) {
         String ans =
@@ -149,15 +151,15 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.myview.d01.s01,null,root.myview,INT32,null,null,null,null,logical;",
-                "root.myview.d01.s02,null,root.myview,INT32,null,null,null,null,logical;",
-                "root.myview.d02.s01,null,root.myview,INT32,null,null,null,null,logical;",
-                "root.myview.d02.s02,null,root.myview,INT32,null,null,null,null,logical;"));
+                "root.view.myview.d01.s01,null,root.view,INT32,null,null,{\"tag1\":\"value1\",\"tag2\":\"value2\"},{\"attribute1\":\"value1\"},logical;",
+                "root.view.myview.d01.s02,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.myview.d02.s01,null,root.view,INT32,null,null,{\"tag1\":\"value2\",\"tag2\":\"value3\"},{\"attribute1\":\"value1\"},logical;",
+                "root.view.myview.d02.s02,null,root.view,INT32,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.myview.**;");
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.view.myview.**;");
       int count = 0;
       while (resultSet.next()) {
         String ans =
@@ -198,15 +200,15 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.cal_view.avg,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
-                "root.cal_view.multiple,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
-                "root.cal_view.divide,null,root.cal_view,DOUBLE,null,null,null,null,logical;",
-                "root.cal_view.cast_view,null,root.cal_view,TEXT,null,null,null,null,logical;"));
+                "root.view.cal_view.avg,null,root.view,DOUBLE,null,null,null,null,logical;",
+                "root.view.cal_view.multiple,null,root.view,DOUBLE,null,null,null,null,logical;",
+                "root.view.cal_view.divide,null,root.view,DOUBLE,null,null,null,null,logical;",
+                "root.view.cal_view.cast_view,null,root.view,TEXT,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.cal_view.**;");
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.view.cal_view.**;");
       int count = 0;
       while (resultSet.next()) {
         String ans =
@@ -247,15 +249,15 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.multi_view.all_in_one.d01_s01,null,root.multi_view,INT32,null,null,null,null,logical;",
-                "root.multi_view.all_in_one.d01_s02,null,root.multi_view,INT32,null,null,null,null,logical;",
-                "root.multi_view.all_in_one.d02_s01,null,root.multi_view,INT32,null,null,null,null,logical;",
-                "root.multi_view.all_in_one.d02_s02,null,root.multi_view,INT32,null,null,null,null,logical;"));
+                "root.view.multi_view.all_in_one.d01_s01,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.multi_view.all_in_one.d01_s02,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.multi_view.all_in_one.d02_s01,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.multi_view.all_in_one.d02_s02,null,root.view,INT32,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.multi_view.**;");
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.view.multi_view.**;");
       int count = 0;
       while (resultSet.next()) {
         String ans =
@@ -296,15 +298,15 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.copy_view.d01.s01,null,root.copy_view,INT32,null,null,null,null,logical;",
-                "root.copy_view.d01.s02,null,root.copy_view,INT32,null,null,null,null,logical;",
-                "root.copy_view.d02.s01,null,root.copy_view,INT32,null,null,null,null,logical;",
-                "root.copy_view.d02.s02,null,root.copy_view,INT32,null,null,null,null,logical;"));
+                "root.view.copy_view.d01.s01,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.copy_view.d01.s02,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.copy_view.d02.s01,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.copy_view.d02.s02,null,root.view,INT32,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("SHOW TiMESERIES root.copy_view.**;");
+      ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.view.copy_view.**;");
       int count = 0;
       while (resultSet.next()) {
         String ans =
@@ -347,22 +349,22 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.myview.d01.s01,root.myview,INT32,null,null,logical,root.db.d01.s01;",
-                "root.myview.d01.s02,root.myview,INT32,null,null,logical,root.db.d01.s02;",
-                "root.myview.d02.s01,root.myview,INT32,null,null,logical,root.db.d02.s01;",
-                "root.myview.d02.s02,root.myview,INT32,null,null,logical,root.db.d02.s02;",
-                "root.cal_view.avg,root.cal_view,DOUBLE,null,null,logical,(root.db.d01.s01 + root.db.d01.s02) / 2;",
-                "root.cal_view.multiple,root.cal_view,DOUBLE,null,null,logical,root.db.d02.s01 * root.db.d02.s02;",
-                "root.cal_view.divide,root.cal_view,DOUBLE,null,null,logical,root.db.d02.s01 / root.db.d02.s02;",
-                "root.cal_view.cast_view,root.cal_view,TEXT,null,null,logical,cast(type=TEXT)(root.db.d01.s01);",
-                "root.multi_view.all_in_one.d01_s01,root.multi_view,INT32,null,null,logical,root.db.d01.s01;",
-                "root.multi_view.all_in_one.d01_s02,root.multi_view,INT32,null,null,logical,root.db.d01.s02;",
-                "root.multi_view.all_in_one.d02_s01,root.multi_view,INT32,null,null,logical,root.db.d02.s01;",
-                "root.multi_view.all_in_one.d02_s02,root.multi_view,INT32,null,null,logical,root.db.d02.s02;",
-                "root.copy_view.d01.s01,root.copy_view,INT32,null,null,logical,root.db.d01.s01;",
-                "root.copy_view.d01.s02,root.copy_view,INT32,null,null,logical,root.db.d01.s02;",
-                "root.copy_view.d02.s01,root.copy_view,INT32,null,null,logical,root.db.d02.s01;",
-                "root.copy_view.d02.s02,root.copy_view,INT32,null,null,logical,root.db.d02.s02;"));
+                "root.view.myview.d01.s01,root.view,INT32,{\"tag1\":\"value1\",\"tag2\":\"value2\"},{\"attribute1\":\"value1\"},logical,root.db.d01.s01;",
+                "root.view.myview.d01.s02,root.view,INT32,null,null,logical,root.db.d01.s02;",
+                "root.view.myview.d02.s01,root.view,INT32,{\"tag1\":\"value2\",\"tag2\":\"value3\"},{\"attribute1\":\"value1\"},logical,root.db.d02.s01;",
+                "root.view.myview.d02.s02,root.view,INT32,null,null,logical,root.db.d02.s02;",
+                "root.view.cal_view.avg,root.view,DOUBLE,null,null,logical,(root.db.d01.s01 + root.db.d01.s02) / 2;",
+                "root.view.cal_view.multiple,root.view,DOUBLE,null,null,logical,root.db.d02.s01 * root.db.d02.s02;",
+                "root.view.cal_view.divide,root.view,DOUBLE,null,null,logical,root.db.d02.s01 / root.db.d02.s02;",
+                "root.view.cal_view.cast_view,root.view,TEXT,null,null,logical,cast(type=TEXT)(root.db.d01.s01);",
+                "root.view.multi_view.all_in_one.d01_s01,root.view,INT32,null,null,logical,root.db.d01.s01;",
+                "root.view.multi_view.all_in_one.d01_s02,root.view,INT32,null,null,logical,root.db.d01.s02;",
+                "root.view.multi_view.all_in_one.d02_s01,root.view,INT32,null,null,logical,root.db.d02.s01;",
+                "root.view.multi_view.all_in_one.d02_s02,root.view,INT32,null,null,logical,root.db.d02.s02;",
+                "root.view.copy_view.d01.s01,root.view,INT32,null,null,logical,root.db.d01.s01;",
+                "root.view.copy_view.d01.s02,root.view,INT32,null,null,logical,root.db.d01.s02;",
+                "root.view.copy_view.d02.s01,root.view,INT32,null,null,logical,root.db.d02.s01;",
+                "root.view.copy_view.d02.s02,root.view,INT32,null,null,logical,root.db.d02.s02;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
