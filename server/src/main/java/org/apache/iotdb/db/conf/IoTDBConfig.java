@@ -1019,17 +1019,16 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
+  private int[] schemaMemoryProportion = new int[] {5, 4, 1};
+
   /** Memory allocated for schemaRegion */
-  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
+  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
 
   /** Memory allocated for SchemaCache */
-  private long allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
+  private long allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
 
   /** Memory allocated for PartitionCache */
-  private long allocateMemoryForPartitionCache = 0;
-
-  /** Memory allocated for LastCache */
-  private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
+  private long allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
 
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
@@ -1945,9 +1944,9 @@ public class IoTDBConfig {
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
 
-    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
-    this.allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
-    this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
+    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
+    this.allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
+    this.allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
   }
 
   public long getAllocateMemoryForConsensus() {
@@ -3377,6 +3376,14 @@ public class IoTDBConfig {
     return new TEndPoint(rpcAddress, rpcPort);
   }
 
+  public int[] getSchemaMemoryProportion() {
+    return schemaMemoryProportion;
+  }
+
+  public void setSchemaMemoryProportion(int[] schemaMemoryProportion) {
+    this.schemaMemoryProportion = schemaMemoryProportion;
+  }
+
   public long getAllocateMemoryForSchemaRegion() {
     return allocateMemoryForSchemaRegion;
   }
@@ -3399,14 +3406,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPartitionCache(long allocateMemoryForPartitionCache) {
     this.allocateMemoryForPartitionCache = allocateMemoryForPartitionCache;
-  }
-
-  public long getAllocateMemoryForLastCache() {
-    return allocateMemoryForLastCache;
-  }
-
-  public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
-    this.allocateMemoryForLastCache = allocateMemoryForLastCache;
   }
 
   public String getDataNodeSchemaCacheEvictionPolicy() {
