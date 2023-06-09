@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -70,7 +71,12 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
         .getLeaderMap()
         .forEach(
             (regionId, pair) -> {
-              if (regionId.getType().equals(TConsensusGroupType.DataRegion)) {
+              if (regionId.getType().equals(TConsensusGroupType.DataRegion)
+                  && !configManager
+                      .getPartitionManager()
+                      .getRegionStorageGroup(regionId)
+                      .equals(IoTDBMetricsUtils.DATABASE)) {
+                // pipe only collect user's data, filter metric database here.
                 dataRegionGroupToOldAndNewLeaderPairMap.put(
                     regionId,
                     new Pair<>( // null or -1 means empty origin leader
