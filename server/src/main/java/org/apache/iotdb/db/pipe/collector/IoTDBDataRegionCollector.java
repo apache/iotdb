@@ -28,11 +28,12 @@ import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionFakeCol
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionLogCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionTsFileCollector;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -140,7 +141,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   @Override
   public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
       throws Exception {
-    dataRegionId = configuration.getRuntimeEnvironment().getRegionId();
+    dataRegionId = ((PipeTaskCollectorRuntimeEnvironment) configuration).getRegionId();
 
     historicalCollector.customize(parameters, configuration);
     realtimeCollector.customize(parameters, configuration);

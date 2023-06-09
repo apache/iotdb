@@ -23,7 +23,7 @@ import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollect
 import org.apache.iotdb.db.pipe.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 

@@ -19,61 +19,24 @@
 
 package org.apache.iotdb.db.pipe.config.plugin.configuraion;
 
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeEnvironment;
-import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.connector.parallel.ParallelStrategy;
-import org.apache.iotdb.pipe.api.customizer.connector.retry.RetryStrategy;
-import org.apache.iotdb.pipe.api.customizer.connector.reuse.ReuseStrategy;
-import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 
 public class PipeTaskRuntimeConfiguration
     implements PipeCollectorRuntimeConfiguration,
         PipeProcessorRuntimeConfiguration,
         PipeConnectorRuntimeConfiguration {
-  private final PipeRuntimeEnvironment environment;
 
-  private ReuseStrategy reuseStrategy;
-  private ParallelStrategy parallelStrategy;
-  private RetryStrategy retryStrategy;
+  private final PipeRuntimeEnvironment environment;
 
   public PipeTaskRuntimeConfiguration(PipeRuntimeEnvironment environment) {
     this.environment = environment;
   }
 
-  public PipeConnectorRuntimeConfiguration reuseStrategy(ReuseStrategy reuseStrategy) {
-    this.reuseStrategy = reuseStrategy;
-    return this;
-  }
-
-  public PipeConnectorRuntimeConfiguration parallelStrategy(ParallelStrategy parallelStrategy) {
-    this.parallelStrategy = parallelStrategy;
-    return this;
-  }
-
-  public PipeConnectorRuntimeConfiguration retryStrategy(RetryStrategy retryStrategy) {
-    this.retryStrategy = retryStrategy;
-    return this;
-  }
-
   @Override
   public PipeRuntimeEnvironment getRuntimeEnvironment() {
     return environment;
-  }
-
-  @Override
-  public void check() throws PipeException {
-    if (reuseStrategy != null) {
-      reuseStrategy.check();
-    }
-
-    if (parallelStrategy != null) {
-      parallelStrategy.check();
-    }
-
-    if (retryStrategy != null) {
-      retryStrategy.check();
-    }
   }
 }

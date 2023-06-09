@@ -19,18 +19,16 @@
 
 package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeEnvironment;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 
 public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
+
   private final String pipeName;
   private final long creationTime;
 
-  private final int regionId;
-
-  public PipeTaskRuntimeEnvironment(String pipeName, long creationTime, int regionId) {
+  public PipeTaskRuntimeEnvironment(String pipeName, long creationTime) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
-    this.regionId = regionId;
   }
 
   @Override
@@ -41,10 +39,5 @@ public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
   @Override
   public long getCreationTime() {
     return creationTime;
-  }
-
-  @Override
-  public int getRegionId() {
-    return regionId;
   }
 }

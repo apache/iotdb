@@ -17,9 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.collector;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
-
-// TODO: complete this class
-public interface PipeCollectorRuntimeConfiguration extends PipeRuntimeConfiguration {}
+public interface PipeConnectorRuntimeConfiguration extends PipeRuntimeConfiguration {}

@@ -17,8 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.connector.parallel;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
-
-public interface ParallelStrategy extends PipeStrategy {}
+public interface PipeCollectorRuntimeConfiguration extends PipeRuntimeConfiguration {}
