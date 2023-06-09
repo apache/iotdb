@@ -423,7 +423,7 @@ public class QueryStatement extends Statement {
     int expressionIndex = 0;
     for (SortItem sortItem : sortItems) {
       SortItem newSortItem =
-              new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
+          new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
       if (sortItem.isExpression()) {
         newSortItem.setExpression(sortItemExpressions[expressionIndex]);
         expressionIndex++;

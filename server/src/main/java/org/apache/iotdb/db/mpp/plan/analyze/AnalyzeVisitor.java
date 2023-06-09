@@ -1349,8 +1349,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
                 expression, device, schemaTree);
 
-        if (groupByExpressionsOfOneDevice.size() != 1) {
-          throw new SemanticException("Expression in group by should indicate one value");
+        if (groupByExpressionsOfOneDevice.size() == 0) {
+          throw new SemanticException(
+              String.format("%s in group by clause doesn't exist.", expression));
+        }
+        if (groupByExpressionsOfOneDevice.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "%s in group by clause shouldn't refer to more than one timeseries.",
+                  expression));
         }
         Expression groupByExpressionOfOneDevice = groupByExpressionsOfOneDevice.get(0);
 
