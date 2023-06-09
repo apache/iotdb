@@ -151,10 +151,10 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.view.myview.d01.s01,null,root.view.myview,INT32,null,null,{\"tag1\":\"value1\",\"tag2\":\"value2\"},{\"attribute1\":\"value1\"},logical;",
-                "root.view.myview.d01.s02,null,root.view.myview,INT32,null,null,null,null,logical;",
-                "root.view.myview.d02.s01,null,root.view.myview,INT32,null,null,{\"tag1\":\"value2\",\"tag2\":\"value3\"},{\"attribute1\":\"value1\"},logical;",
-                "root.view.myview.d02.s02,null,root.view.myview,INT32,null,null,null,null,logical;"));
+                "root.view.myview.d01.s01,null,root.view,INT32,null,null,{\"tag1\":\"value1\",\"tag2\":\"value2\"},{\"attribute1\":\"value1\"},logical;",
+                "root.view.myview.d01.s02,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.myview.d02.s01,null,root.view,INT32,null,null,{\"tag1\":\"value2\",\"tag2\":\"value3\"},{\"attribute1\":\"value1\"},logical;",
+                "root.view.myview.d02.s02,null,root.view,INT32,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -200,10 +200,10 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.view.cal_view.avg,null,root.view.cal_view,DOUBLE,null,null,null,null,logical;",
-                "root.view.cal_view.multiple,null,root.view.cal_view,DOUBLE,null,null,null,null,logical;",
-                "root.view.cal_view.divide,null,root.view.cal_view,DOUBLE,null,null,null,null,logical;",
-                "root.view.cal_view.cast_view,null,root.view.cal_view,TEXT,null,null,null,null,logical;"));
+                "root.view.cal_view.avg,null,root.view,DOUBLE,null,null,null,null,logical;",
+                "root.view.cal_view.multiple,null,root.view,DOUBLE,null,null,null,null,logical;",
+                "root.view.cal_view.divide,null,root.view,DOUBLE,null,null,null,null,logical;",
+                "root.view.cal_view.cast_view,null,root.view,TEXT,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -249,10 +249,10 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.view.multi_view.all_in_one.d01_s01,null,root.view.multi_view,INT32,null,null,null,null,logical;",
-                "root.view.multi_view.all_in_one.d01_s02,null,root.view.multi_view,INT32,null,null,null,null,logical;",
-                "root.view.multi_view.all_in_one.d02_s01,null,root.view.multi_view,INT32,null,null,null,null,logical;",
-                "root.view.multi_view.all_in_one.d02_s02,null,root.view.multi_view,INT32,null,null,null,null,logical;"));
+                "root.view.multi_view.all_in_one.d01_s01,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.multi_view.all_in_one.d01_s02,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.multi_view.all_in_one.d02_s01,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.multi_view.all_in_one.d02_s02,null,root.view,INT32,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -298,10 +298,10 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.view.copy_view.d01.s01,null,root.view.copy_view,INT32,null,null,null,null,logical;",
-                "root.view.copy_view.d01.s02,null,root.view.copy_view,INT32,null,null,null,null,logical;",
-                "root.view.copy_view.d02.s01,null,root.view.copy_view,INT32,null,null,null,null,logical;",
-                "root.view.copy_view.d02.s02,null,root.view.copy_view,INT32,null,null,null,null,logical;"));
+                "root.view.copy_view.d01.s01,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.copy_view.d01.s02,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.copy_view.d02.s01,null,root.view,INT32,null,null,null,null,logical;",
+                "root.view.copy_view.d02.s02,null,root.view,INT32,null,null,null,null,logical;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -349,22 +349,22 @@ public class IoTDBCreateAndShowViewIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "root.view.myview.d01.s01,root.view.myview,INT32,{\"tag1\":\"value1\",\"tag2\":\"value2\"},{\"attribute1\":\"value1\"},logical,root.db.d01.s01;",
-                "root.view.myview.d01.s02,root.view.myview,INT32,null,null,logical,root.db.d01.s02;",
-                "root.view.myview.d02.s01,root.view.myview,INT32,{\"tag1\":\"value2\",\"tag2\":\"value3\"},{\"attribute1\":\"value1\"},logical,root.db.d02.s01;",
-                "root.view.myview.d02.s02,root.view.myview,INT32,null,null,logical,root.db.d02.s02;",
-                "root.view.cal_view.avg,root.view.cal_view,DOUBLE,null,null,logical,(root.db.d01.s01 + root.db.d01.s02) / 2;",
-                "root.view.cal_view.multiple,root.view.cal_view,DOUBLE,null,null,logical,root.db.d02.s01 * root.db.d02.s02;",
-                "root.view.cal_view.divide,root.view.cal_view,DOUBLE,null,null,logical,root.db.d02.s01 / root.db.d02.s02;",
-                "root.view.cal_view.cast_view,root.view.cal_view,TEXT,null,null,logical,cast(type=TEXT)(root.db.d01.s01);",
-                "root.view.multi_view.all_in_one.d01_s01,root.view.multi_view,INT32,null,null,logical,root.db.d01.s01;",
-                "root.view.multi_view.all_in_one.d01_s02,root.view.multi_view,INT32,null,null,logical,root.db.d01.s02;",
-                "root.view.multi_view.all_in_one.d02_s01,root.view.multi_view,INT32,null,null,logical,root.db.d02.s01;",
-                "root.view.multi_view.all_in_one.d02_s02,root.view.multi_view,INT32,null,null,logical,root.db.d02.s02;",
-                "root.view.copy_view.d01.s01,root.view.copy_view,INT32,null,null,logical,root.db.d01.s01;",
-                "root.view.copy_view.d01.s02,root.view.copy_view,INT32,null,null,logical,root.db.d01.s02;",
-                "root.view.copy_view.d02.s01,root.view.copy_view,INT32,null,null,logical,root.db.d02.s01;",
-                "root.view.copy_view.d02.s02,root.view.copy_view,INT32,null,null,logical,root.db.d02.s02;"));
+                "root.view.myview.d01.s01,root.view,INT32,{\"tag1\":\"value1\",\"tag2\":\"value2\"},{\"attribute1\":\"value1\"},logical,root.db.d01.s01;",
+                "root.view.myview.d01.s02,root.view,INT32,null,null,logical,root.db.d01.s02;",
+                "root.view.myview.d02.s01,root.view,INT32,{\"tag1\":\"value2\",\"tag2\":\"value3\"},{\"attribute1\":\"value1\"},logical,root.db.d02.s01;",
+                "root.view.myview.d02.s02,root.view,INT32,null,null,logical,root.db.d02.s02;",
+                "root.view.cal_view.avg,root.view,DOUBLE,null,null,logical,(root.db.d01.s01 + root.db.d01.s02) / 2;",
+                "root.view.cal_view.multiple,root.view,DOUBLE,null,null,logical,root.db.d02.s01 * root.db.d02.s02;",
+                "root.view.cal_view.divide,root.view,DOUBLE,null,null,logical,root.db.d02.s01 / root.db.d02.s02;",
+                "root.view.cal_view.cast_view,root.view,TEXT,null,null,logical,cast(type=TEXT)(root.db.d01.s01);",
+                "root.view.multi_view.all_in_one.d01_s01,root.view,INT32,null,null,logical,root.db.d01.s01;",
+                "root.view.multi_view.all_in_one.d01_s02,root.view,INT32,null,null,logical,root.db.d01.s02;",
+                "root.view.multi_view.all_in_one.d02_s01,root.view,INT32,null,null,logical,root.db.d02.s01;",
+                "root.view.multi_view.all_in_one.d02_s02,root.view,INT32,null,null,logical,root.db.d02.s02;",
+                "root.view.copy_view.d01.s01,root.view,INT32,null,null,logical,root.db.d01.s01;",
+                "root.view.copy_view.d01.s02,root.view,INT32,null,null,logical,root.db.d01.s02;",
+                "root.view.copy_view.d02.s01,root.view,INT32,null,null,logical,root.db.d02.s01;",
+                "root.view.copy_view.d02.s02,root.view,INT32,null,null,logical,root.db.d02.s02;"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
