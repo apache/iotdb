@@ -45,10 +45,10 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
-        run: mvn -B clean compile test -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer'
+        run: mvn -B clean compile test -pl distribution -am -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer'
       - name: Coveralls
         run: |
-          mvn -B test -Pcode-coverage -pl code-coverage
+          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \
           -DserviceName=travis_ci \
           -Dbranch=$BRANCH_NAME \
