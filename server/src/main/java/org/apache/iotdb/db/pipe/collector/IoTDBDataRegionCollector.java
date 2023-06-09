@@ -57,7 +57,6 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   private final AtomicBoolean hasBeenStarted;
   private final UnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
-  // TODO: support pattern in historical collector
   private PipeHistoricalDataRegionCollector historicalCollector;
   private PipeRealtimeDataRegionCollector realtimeCollector;
 

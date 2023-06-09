@@ -23,7 +23,6 @@ import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtaskManager;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -38,14 +37,12 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
       String pipeName, long creationTime, PipeParameters pipeConnectorParameters) {
     this.pipeConnectorParameters = pipeConnectorParameters;
 
-    final PipeRuntimeEnvironment pipeRuntimeEnvironment =
-        new PipeTaskRuntimeEnvironment(pipeName, creationTime);
     connectorSubtaskId =
         PipeConnectorSubtaskManager.instance()
             .register(
                 PipeSubtaskExecutorManager.getInstance().getConnectorSubtaskExecutor(),
                 pipeConnectorParameters,
-                pipeRuntimeEnvironment);
+                new PipeTaskRuntimeEnvironment(pipeName, creationTime));
   }
 
   @Override

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -56,11 +55,12 @@ public class PipeConnectorSubtaskManager {
       // TODO: construct all PipeConnector with the same reflection method, avoid using if-else
       // 1. construct, validate and customize PipeConnector, and then handshake (create connection)
       // with the target
-      PipeConnector pipeConnector;
-      String connectorKey =
+      final String connectorKey =
           pipeConnectorParameters.getStringOrDefault(
               PipeConnectorConstant.CONNECTOR_KEY,
               BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+
+      PipeConnector pipeConnector;
       if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBThriftConnectorV1();
       } else if (connectorKey.equals(BuiltinPipePlugin.IOTDB_SYNC_CONNECTOR.getPipePluginName())) {
@@ -68,12 +68,11 @@ public class PipeConnectorSubtaskManager {
       } else {
         pipeConnector = PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
       }
+
       try {
         pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
-        final PipeConnectorRuntimeConfiguration runtimeConfiguration =
-            new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
-        pipeConnector.customize(pipeConnectorParameters, runtimeConfiguration);
-        // TODO: use runtimeConfiguration to configure PipeConnector
+        pipeConnector.customize(
+            pipeConnectorParameters, new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment));
         pipeConnector.handshake();
       } catch (Exception e) {
         throw new PipeException(

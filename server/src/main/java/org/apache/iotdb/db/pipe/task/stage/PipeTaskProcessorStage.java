@@ -34,7 +34,6 @@ import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -62,10 +61,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       TConsensusGroupId dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
-    PipeRuntimeEnvironment pipeRuntimeEnvironment =
-        new PipeTaskRuntimeEnvironment(pipeName, creationTime);
-
-    PipeProcessor pipeProcessor =
+    final PipeProcessor pipeProcessor =
         pipeProcessorParameters
                 .getStringOrDefault(
                     PipeProcessorConstant.PROCESSOR_KEY,
@@ -74,13 +70,15 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             ? new PipeDoNothingProcessor()
             : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
 
+    // validate and customize should be called before createSubtask. this allows collector exposing
+    // exceptions in advance.
     try {
       // 1. validate processor parameters
       pipeProcessor.validate(new PipeParameterValidator(pipeProcessorParameters));
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-          new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
+          new PipeTaskRuntimeConfiguration(new PipeTaskRuntimeEnvironment(pipeName, creationTime));
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
@@ -89,7 +87,6 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     final String taskId = pipeName + "_" + dataRegionId;
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(pipeConnectorOutputPendingQueue);
-
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
