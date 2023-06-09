@@ -70,17 +70,18 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     event
         .getLeaderMap()
         .forEach(
-            (regionId, pair) -> {
-              if (regionId.getType().equals(TConsensusGroupType.DataRegion)
-                  && !configManager
-                      .getPartitionManager()
-                      .getRegionStorageGroup(regionId)
-                      .equals(IoTDBMetricsUtils.DATABASE)) {
-                // pipe only collect user's data, filter metric database here.
-                dataRegionGroupToOldAndNewLeaderPairMap.put(
-                    regionId,
-                    new Pair<>( // null or -1 means empty origin leader
-                        pair.left == null ? -1 : pair.left, pair.right == null ? -1 : pair.right));
+            (regionGroupId, pair) -> {
+              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
+                final String databaseName =
+                    configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
+                if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
+                  // pipe only collect user's data, filter metric database here.
+                  dataRegionGroupToOldAndNewLeaderPairMap.put(
+                      regionGroupId,
+                      new Pair<>( // null or -1 means empty origin leader
+                          pair.left == null ? -1 : pair.left,
+                          pair.right == null ? -1 : pair.right));
+                }
               }
             });
 
