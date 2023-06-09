@@ -51,8 +51,7 @@ public class IoTDBCreateAndShowViewIT {
   private static final String[] SQLs =
       new String[] {
         "CREATE DATABASE root.db;",
-        "CREATE DATABASE root.view.myview;",
-        "CREATE DATABASE root.view.cal_view;",
+        "CREATE DATABASE root.view;",
         "CREATE TIMESERIES root.db.d01.s01 INT32 encoding=RLE compression=SNAPPY;",
         "CREATE TIMESERIES root.db.d01.s02 INT32 encoding=RLE compression=SNAPPY;",
         "CREATE TIMESERIES root.db.d02.s01 INT32 encoding=RLE compression=SNAPPY;",
