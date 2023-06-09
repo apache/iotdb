@@ -61,9 +61,9 @@ public abstract class AbstractCompactionEstimator {
     return reader;
   }
 
-  public void clear() throws IOException {
-    for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
-      sequenceReader.close();
+  public void close() throws IOException {
+    for (TsFileSequenceReader reader : fileReaderCache.values()) {
+      reader.close();
     }
     fileReaderCache.clear();
   }
