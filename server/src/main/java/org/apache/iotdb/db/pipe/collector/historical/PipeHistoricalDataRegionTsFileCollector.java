@@ -62,16 +62,17 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
   private String pattern;
 
-  private long historicalDataCollectionTimeLowerBound; // arrival time
   private long historicalDataCollectionStartTime; // event time
   private long historicalDataCollectionEndTime; // event time
+
+  private long historicalDataCollectionTimeLowerBound; // arrival time
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
   public PipeHistoricalDataRegionTsFileCollector() {}
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
+  public void validate(PipeParameterValidator validator) {}
 
   @Override
   public void customize(
@@ -85,18 +86,6 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
     dataRegionId = environment.getRegionId();
 
     pattern = parameters.getStringOrDefault(COLLECTOR_PATTERN_KEY, COLLECTOR_PATTERN_DEFAULT_VALUE);
-
-    // enable historical collector by default
-    historicalDataCollectionTimeLowerBound =
-        parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true)
-            ? Long.MIN_VALUE
-            // We define the realtime data as the data generated after the creation time
-            // of the pipe from user's perspective. But we still need to use
-            // PipeHistoricalDataRegionCollector to collect the realtime data generated between the
-            // creation time of the pipe and the time when the pipe starts, because those data
-            // can not be listened by PipeRealtimeDataRegionCollector, and should be collected by
-            // PipeHistoricalDataRegionCollector from implementation perspective.
-            : environment.getCreationTime();
 
     // user may set the COLLECTOR_HISTORY_START_TIME and COLLECTOR_HISTORY_END_TIME without
     // enabling the historical data collection, which may affect the realtime data collection.
@@ -112,6 +101,18 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
             ? DateTimeUtils.convertDatetimeStrToLong(
                 parameters.getString(COLLECTOR_HISTORY_END_TIME), ZoneId.systemDefault())
             : Long.MAX_VALUE;
+
+    // enable historical collector by default
+    historicalDataCollectionTimeLowerBound =
+        parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true)
+            ? Long.MIN_VALUE
+            // We define the realtime data as the data generated after the creation time
+            // of the pipe from user's perspective. But we still need to use
+            // PipeHistoricalDataRegionCollector to collect the realtime data generated between the
+            // creation time of the pipe and the time when the pipe starts, because those data
+            // can not be listened by PipeRealtimeDataRegionCollector, and should be collected by
+            // PipeHistoricalDataRegionCollector from implementation perspective.
+            : environment.getCreationTime();
 
     // Only invoke flushDataRegionAllTsFiles() when the pipe runs in the realtime only mode.
     // realtime only mode -> (historicalDataCollectionTimeLowerBound != Long.MIN_VALUE)
