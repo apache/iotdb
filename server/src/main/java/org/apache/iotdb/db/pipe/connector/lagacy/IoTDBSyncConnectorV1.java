@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v1;
+package org.apache.iotdb.db.pipe.connector.lagacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
@@ -64,11 +64,11 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 
 public class IoTDBSyncConnectorV1 implements PipeConnector {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1.class);
+
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final String IOTDB_SYNC_CONNECTOR_VERSION = "1.1";
-
-  private IoTDBThriftConnectorClient client = null;
 
   private String ipAddress;
   private int port;
@@ -78,6 +78,8 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
 
   private String pipeName;
   private Long creationTime;
+
+  private IoTDBThriftConnectorClient client;
 
   private static SessionPool sessionPool;
 
@@ -93,24 +95,20 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
       throws Exception {
     this.ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
     this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
+
     this.user =
         parameters.getStringOrDefault(CONNECTOR_IOTDB_USER_KEY, CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
     this.password =
         parameters.getStringOrDefault(
             CONNECTOR_IOTDB_PASSWORD_KEY, CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
+
     pipeName = configuration.getRuntimeEnvironment().getPipeName();
     creationTime = configuration.getRuntimeEnvironment().getCreationTime();
   }
 
   @Override
   public void handshake() throws Exception {
-    // Create transport for old pipe
-    if (client != null) {
-      client.close();
-    }
-    if (sessionPool != null) {
-      sessionPool.close();
-    }
+    close();
 
     client =
         new IoTDBThriftConnectorClient(
@@ -122,9 +120,9 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
             port);
 
     try {
-      TSyncIdentityInfo identityInfo =
+      final TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(pipeName, creationTime, IOTDB_SYNC_CONNECTOR_VERSION, "");
-      TSStatus status = client.handshake(identityInfo);
+      final TSStatus status = client.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         String errorMsg =
             String.format(
@@ -138,7 +136,6 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
       throw new PipeConnectionException(e.getMessage(), e);
     }
 
-    // Build session pool
     sessionPool =
         new SessionPool.Builder()
             .host(ipAddress)
@@ -154,8 +151,6 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    // TODO: support more TabletInsertionEvent
-    // PipeProcessor can change the type of TabletInsertionEvent
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
@@ -188,8 +183,6 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // TODO: support more TsFileInsertionEvent
-    // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
           "IoTDBSyncConnectorV1 only support PipeTsFileInsertionEvent.");
@@ -219,7 +212,7 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
     long position = 0;
 
     // Try small piece to rebase the file position.
-    byte[] buffer = new byte[PipeConfig.getInstance().getPipeConnectorReadFileBufferSize()];
+    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeConnectorReadFileBufferSize()];
     try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);
@@ -227,10 +220,11 @@ public class IoTDBSyncConnectorV1 implements PipeConnector {
           break;
         }
 
-        ByteBuffer buffToSend = ByteBuffer.wrap(buffer, 0, dataLength);
-        TSyncTransportMetaInfo metaInfo = new TSyncTransportMetaInfo(file.getName(), position);
+        final ByteBuffer buffToSend = ByteBuffer.wrap(buffer, 0, dataLength);
+        final TSyncTransportMetaInfo metaInfo =
+            new TSyncTransportMetaInfo(file.getName(), position);
 
-        TSStatus status = client.sendFile(metaInfo, buffToSend);
+        final TSStatus status = client.sendFile(metaInfo, buffToSend);
 
         if ((status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode())) {
           // Success
