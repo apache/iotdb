@@ -17,16 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.view;
+package org.apache.iotdb.db.pipe.event.common.row;
 
-public enum ViewPathType {
-  /** Example: root.db.d01.s01, root.db.d02.s01, root.db.d02.s02 */
-  FULL_PATH_LIST,
-  /** Example: root.db(d01.s01, d02.s02, status) */
-  PATHS_GROUP,
-  /** Example: SELECT s01, s02 FROM root.db.*; */
-  QUERY_STATEMENT,
+public class PipeBinaryTransformer {
 
-  /** Example: root.db.view(${2}_temperature) */
-  BATCH_GENERATION,
+  public static org.apache.iotdb.tsfile.utils.Binary transformToBinary(
+      org.apache.iotdb.pipe.api.type.Binary binary) {
+    return binary == null ? null : new org.apache.iotdb.tsfile.utils.Binary(binary.getValues());
+  }
+
+  public static org.apache.iotdb.pipe.api.type.Binary transformToPipeBinary(
+      org.apache.iotdb.tsfile.utils.Binary binary) {
+    return binary == null ? null : new org.apache.iotdb.pipe.api.type.Binary(binary.getValues());
+  }
+
+  private PipeBinaryTransformer() {
+    // util class
+  }
 }

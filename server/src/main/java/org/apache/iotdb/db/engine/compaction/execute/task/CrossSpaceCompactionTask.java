@@ -274,7 +274,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           true);
     } finally {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      releaseAllLock();
+      releaseAllLocksAndResetStatus();
       return isSuccess;
     }
   }
@@ -290,16 +290,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         && this.performer.getClass().isInstance(otherCrossCompactionTask.performer);
   }
 
-  private void releaseAllLock() {
-    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
+  private void releaseAllLocksAndResetStatus() {
+    resetCompactionCandidateStatusForAllSourceFiles();
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     }
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();
@@ -350,6 +347,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
+    // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
     selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
     selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
@@ -378,6 +376,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public boolean checkValidAndSetMerging() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return false;
+    }
     try {
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
       SystemInfo.getInstance()
@@ -407,20 +408,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
-    if (!tsFileManager.isAllowCompaction()) {
-      return false;
-    }
     try {
       for (TsFileResource tsFileResource : tsFileResourceList) {
         tsFileResource.readLock();
         holdReadLockList.add(tsFileResource);
         if (!tsFileResource.setStatus(TsFileResourceStatus.COMPACTING)) {
-          releaseAllLock();
+          releaseAllLocksAndResetStatus();
           return false;
         }
       }
     } catch (Throwable e) {
-      releaseAllLock();
+      releaseAllLocksAndResetStatus();
       throw e;
     }
     return true;

@@ -16,17 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.metadata.view;
 
-package org.apache.iotdb.db.metadata.view;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public enum ViewPathType {
-  /** Example: root.db.d01.s01, root.db.d02.s01, root.db.d02.s02 */
-  FULL_PATH_LIST,
-  /** Example: root.db(d01.s01, d02.s02, status) */
-  PATHS_GROUP,
-  /** Example: SELECT s01, s02 FROM root.db.*; */
-  QUERY_STATEMENT,
+public class UnsupportedViewException extends MetadataException {
 
-  /** Example: root.db.view(${2}_temperature) */
-  BATCH_GENERATION,
+  private static final String VIEW_IS_UNSUPPORTED = "View unsupported, because: %s";
+
+  public UnsupportedViewException(String message) {
+    super(
+        String.format(VIEW_IS_UNSUPPORTED, message),
+        TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode());
+  }
+
+  public UnsupportedViewException(String message, boolean isUserException) {
+    super(
+        String.format(VIEW_IS_UNSUPPORTED, message),
+        TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+        isUserException);
+  }
 }
