@@ -119,7 +119,7 @@ public class AccumulatorFactory {
     // We have check semantic in FE,
     // keep expression must be ConstantOperand or CompareBinaryExpression here
     if (keepExpression instanceof ConstantOperand) {
-      return keep -> keep >= Long.parseLong(keepExpression.toString());
+      return keep -> keep >= Long.parseLong(keepExpression.getExpressionString());
     } else {
       long constant =
           Long.parseLong(

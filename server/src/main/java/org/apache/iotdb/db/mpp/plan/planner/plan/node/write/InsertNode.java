@@ -19,14 +19,13 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.iot.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -41,13 +40,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-public abstract class InsertNode extends WritePlanNode {
+public abstract class InsertNode extends WritePlanNode implements ComparableConsensusRequest {
 
   /** this insert node doesn't need to participate in iot consensus */
   public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
@@ -62,11 +57,8 @@ public abstract class InsertNode extends WritePlanNode {
   protected MeasurementSchema[] measurementSchemas;
   protected String[] measurements;
   protected TSDataType[] dataTypes;
-  // TODO(INSERT) need to change it to a function handle to update last time value
-  //  protected IMeasurementMNode[] measurementMNodes;
 
-  /** index of failed measurements -> info including measurement, data type and value */
-  protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
+  protected int failedMeasurementNumber = 0;
 
   /**
    * device id reference, for reuse device id in both id table and memtable <br>
@@ -82,6 +74,8 @@ public abstract class InsertNode extends WritePlanNode {
 
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
+
+  protected ProgressIndex progressIndex;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -242,55 +236,7 @@ public abstract class InsertNode extends WritePlanNode {
     return dataRegionReplicaSet;
   }
 
-  public ISchemaValidation getSchemaValidation() {
-    throw new UnsupportedOperationException();
-  }
-
-  public void updateAfterSchemaValidation() throws QueryProcessException {}
-
-  /** Check whether data types are matched with measurement schemas */
-  protected void selfCheckDataTypes(int index)
-      throws DataTypeMismatchException, PathNotExistException {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-      // if enable partial insert, mark failed measurements with exception
-      if (measurementSchemas[index] == null) {
-        markFailedMeasurement(
-            index,
-            new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath()));
-      } else if ((dataTypes[index] != measurementSchemas[index].getType()
-          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
-        markFailedMeasurement(
-            index,
-            new DataTypeMismatchException(
-                devicePath.getFullPath(),
-                measurements[index],
-                dataTypes[index],
-                measurementSchemas[index].getType(),
-                getMinTime(),
-                getFirstValueOfIndex(index)));
-      }
-    } else {
-      // if not enable partial insert, throw the exception directly
-      if (measurementSchemas[index] == null) {
-        throw new PathNotExistException(devicePath.concatNode(measurements[index]).getFullPath());
-      } else if ((dataTypes[index] != measurementSchemas[index].getType()
-          && !checkAndCastDataType(index, measurementSchemas[index].getType()))) {
-        throw new DataTypeMismatchException(
-            devicePath.getFullPath(),
-            measurements[index],
-            dataTypes[index],
-            measurementSchemas[index].getType(),
-            getMinTime(),
-            getFirstValueOfIndex(index));
-      }
-    }
-  }
-
-  protected abstract boolean checkAndCastDataType(int columnIndex, TSDataType dataType);
-
   public abstract long getMinTime();
-
-  public abstract Object getFirstValueOfIndex(int index);
 
   /**
    * Notice: Call this method ONLY when using IOT_CONSENSUS, other consensus protocol cannot
@@ -302,16 +248,8 @@ public abstract class InsertNode extends WritePlanNode {
   }
 
   // region partial insert
-  /**
-   * Mark failed measurement, measurements[index], dataTypes[index] and values/columns[index] would
-   * be null. We'd better use "measurements[index] == null" to determine if the measurement failed.
-   * <br>
-   * This method is not concurrency-safe.
-   *
-   * @param index failed measurement index
-   * @param cause cause Exception of failure
-   */
-  public void markFailedMeasurement(int index, Exception cause) {
+  @TestOnly
+  public void markFailedMeasurement(int index) {
     throw new UnsupportedOperationException();
   }
 
@@ -324,59 +262,27 @@ public abstract class InsertNode extends WritePlanNode {
     return false;
   }
 
-  public boolean hasFailedMeasurements() {
-    return failedMeasurementIndex2Info != null && !failedMeasurementIndex2Info.isEmpty();
+  public void setFailedMeasurementNumber(int failedMeasurementNumber) {
+    this.failedMeasurementNumber = failedMeasurementNumber;
   }
 
   public int getFailedMeasurementNumber() {
-    return failedMeasurementIndex2Info == null ? 0 : failedMeasurementIndex2Info.size();
+    return failedMeasurementNumber;
+  }
+  // endregion
+
+  // region progress index
+
+  @Override
+  public final ProgressIndex getProgressIndex() {
+    return progressIndex;
   }
 
-  public List<String> getFailedMeasurements() {
-    return failedMeasurementIndex2Info == null
-        ? Collections.emptyList()
-        : failedMeasurementIndex2Info.values().stream()
-            .map(info -> info.measurement)
-            .collect(Collectors.toList());
+  @Override
+  public void setProgressIndex(ProgressIndex progressIndex) {
+    this.progressIndex = progressIndex;
   }
 
-  public List<Exception> getFailedExceptions() {
-    return failedMeasurementIndex2Info == null
-        ? Collections.emptyList()
-        : failedMeasurementIndex2Info.values().stream()
-            .map(info -> info.cause)
-            .collect(Collectors.toList());
-  }
-
-  public List<String> getFailedMessages() {
-    return failedMeasurementIndex2Info == null
-        ? Collections.emptyList()
-        : failedMeasurementIndex2Info.values().stream()
-            .map(
-                info -> {
-                  Throwable cause = info.cause;
-                  while (cause.getCause() != null) {
-                    cause = cause.getCause();
-                  }
-                  return cause.getMessage();
-                })
-            .collect(Collectors.toList());
-  }
-
-  protected static class FailedMeasurementInfo {
-    protected String measurement;
-    protected TSDataType dataType;
-    protected Object value;
-    protected Exception cause;
-
-    public FailedMeasurementInfo(
-        String measurement, TSDataType dataType, Object value, Exception cause) {
-      this.measurement = measurement;
-      this.dataType = dataType;
-      this.value = value;
-      this.cause = cause;
-    }
-  }
   // endregion
 
   @Override

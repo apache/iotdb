@@ -18,6 +18,7 @@
  */
 
 import { sidebar } from 'vuepress-theme-hope';
+import { enSidebar as V102xSidebar } from './V1.2.x/en.js';
 import { enSidebar as V101xSidebar } from './V1.1.x/en.js';
 import { enSidebar as V100xSidebar } from './V1.0.x/en.js';
 import { enSidebar as V013xSidebar } from './V0.13.x/en.js';
@@ -153,7 +154,7 @@ export const enSidebar = sidebar({
         { text: 'Where Condition', link: 'Where-Condition' },
         { text: 'Group By', link: 'Group-By' },
         { text: 'Having Condition', link: 'Having-Condition' },
-        // { text:  'Order By', link: 'Order-By' },
+        { text: 'Order By', link: 'Order-By' },
         { text: 'Fill Null Value', link: 'Fill' },
         { text: 'Pagination', link: 'Pagination' },
         { text: 'Select Into', link: 'Select-Into' },
@@ -309,6 +310,7 @@ export const enSidebar = sidebar({
       ],
     },
   ],
+  ...V102xSidebar,
   ...V101xSidebar,
   ...V100xSidebar,
   ...V013xSidebar,

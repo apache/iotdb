@@ -64,7 +64,11 @@ public class BetweenExpression extends TernaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return firstExpression + " BETWEEN " + secondExpression + " AND " + thirdExpression;
+    return firstExpression.getExpressionString()
+        + " BETWEEN "
+        + secondExpression.getExpressionString()
+        + " AND "
+        + thirdExpression.getExpressionString();
   }
 
   @Override
@@ -82,6 +86,15 @@ public class BetweenExpression extends TernaryExpression {
   protected void serialize(DataOutputStream stream) throws IOException {
     super.serialize(stream);
     ReadWriteIOUtils.write(isNotBetween, stream);
+  }
+
+  @Override
+  public String getOutputSymbolInternal() {
+    return firstExpression.getOutputSymbol()
+        + " BETWEEN "
+        + secondExpression.getOutputSymbol()
+        + " AND "
+        + thirdExpression.getOutputSymbol();
   }
 
   @Override

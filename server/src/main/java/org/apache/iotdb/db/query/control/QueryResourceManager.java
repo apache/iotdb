@@ -55,7 +55,7 @@ public class QueryResourceManager {
    * queryId = xx + Long.MIN_VALUE
    */
   public long assignCompactionQueryId() {
-    long threadNum = Long.parseLong((Thread.currentThread().getName().split("-"))[4]);
+    long threadNum = Long.parseLong((Thread.currentThread().getName().split("-"))[5]);
     long queryId = Long.MIN_VALUE + threadNum;
     filePathsManager.addQueryId(queryId);
     return queryId;

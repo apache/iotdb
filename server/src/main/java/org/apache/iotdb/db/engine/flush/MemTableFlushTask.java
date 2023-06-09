@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
-import org.apache.iotdb.db.service.metrics.recorder.WritingMetricsManager;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -59,7 +58,7 @@ public class MemTableFlushTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER =
       FlushSubTaskPoolManager.getInstance();
-  private static final WritingMetricsManager WRITING_METRICS = WritingMetricsManager.getInstance();
+  private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;

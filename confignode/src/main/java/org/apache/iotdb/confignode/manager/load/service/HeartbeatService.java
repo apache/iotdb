@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.ConfigNodeHeartbeatHandler;
@@ -43,7 +44,7 @@ import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Maintain the Cluster-Heartbeat-Service. */
 public class HeartbeatService {
@@ -63,7 +64,7 @@ public class HeartbeatService {
   private Future<?> currentHeartbeatFuture;
   private final ScheduledExecutorService heartBeatExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
-  private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
+  private final AtomicLong heartbeatCounter = new AtomicLong(0);
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {
     this.configManager = configManager;
@@ -124,14 +125,20 @@ public class HeartbeatService {
     // We sample DataNode's load in every 10 heartbeat loop
     heartbeatReq.setNeedSamplingLoad(heartbeatCounter.get() % 10 == 0);
     heartbeatReq.setSchemaQuotaCount(configManager.getClusterSchemaManager().getSchemaQuotaCount());
-
-    /* Update heartbeat counter */
-    heartbeatCounter.getAndUpdate(x -> (x + 1) % 10);
+    // We collect pipe meta in every 100 heartbeat loop
+    heartbeatReq.setNeedPipeMetaList(
+        heartbeatCounter.get()
+                % PipeConfig.getInstance().getHeartbeatLoopCyclesForCollectingPipeMeta()
+            == 0);
     if (!configManager.getClusterQuotaManager().hasSpaceQuotaLimit()) {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());
       heartbeatReq.setSpaceQuotaUsage(configManager.getClusterQuotaManager().getSpaceQuotaUsage());
     }
+
+    /* Update heartbeat counter */
+    heartbeatCounter.getAndIncrement();
+
     return heartbeatReq;
   }
 
@@ -175,7 +182,8 @@ public class HeartbeatService {
               configManager.getClusterQuotaManager().getDeviceNum(),
               configManager.getClusterQuotaManager().getTimeSeriesNum(),
               configManager.getClusterQuotaManager().getRegionDisk(),
-              configManager.getClusterSchemaManager()::updateSchemaQuota);
+              configManager.getClusterSchemaManager()::updateSchemaQuota,
+              configManager.getPipeManager().getPipeRuntimeCoordinator());
       configManager.getClusterQuotaManager().updateSpaceQuotaUsage();
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(

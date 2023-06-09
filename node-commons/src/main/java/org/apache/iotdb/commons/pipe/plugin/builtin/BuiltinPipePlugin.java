@@ -19,20 +19,22 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.collector.DefaultCollector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.collector.IoTDBCollector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 
 public enum BuiltinPipePlugin {
 
   // collectors
-  DEFAULT_COLLECTOR("default_collector", DefaultCollector.class),
+  IOTDB_COLLECTOR("iotdb_collector", IoTDBCollector.class),
 
   // processors
   DO_NOTHING_PROCESSOR("do_nothing_processor", DoNothingProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do_nothing_connector", DoNothingConnector.class),
+  IOTDB_THRIFT_CONNECTOR("iotdb_thrift_connector", IoTDBThriftConnector.class);
   ;
 
   private final String pipePluginName;

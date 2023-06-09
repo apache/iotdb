@@ -39,7 +39,7 @@ jobs:
       - name: Check Apache Header
         run: mvn apache-rat:check
       - name: Test compile website
-        run: mvn -P site -P compile-site -P compile-site-1.1 -P compile-site-1.0 -P compile-site-0.13 compile -pl site
+        run: mvn -P site -P compile-site -P compile-site-1.2 -P compile-site-1.1 -P compile-site-1.0 -P compile-site-0.13 compile -pl site
 
   deploy:
     runs-on: ubuntu-latest
@@ -60,4 +60,4 @@ jobs:
           git config --global url."https://asf-ci-deploy:$IOTDB_WEBSITE_BUILD@github.com/apache/".insteadOf "https://gitbox.apache.org/repos/asf/"
           git config --global user.name github-actions
           git config --global user.email 41898282+github-actions[bot]@users.noreply.github.com
-          mvn -P site -P compile-site -P compile-site-1.1 -P compile-site-1.0 -P compile-site-0.13 compile scm-publish:publish-scm -pl site
+          mvn -P site -P compile-site -P compile-site-1.2 -P compile-site-1.1 -P compile-site-1.0 -P compile-site-0.13 compile scm-publish:publish-scm -pl site

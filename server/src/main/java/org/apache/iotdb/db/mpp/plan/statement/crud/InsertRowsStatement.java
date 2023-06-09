@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class InsertRowsStatement extends InsertBaseStatement {
 
@@ -94,5 +98,59 @@ public class InsertRowsStatement extends InsertBaseStatement {
       result.addAll(insertRowStatement.getPaths());
     }
     return result;
+  }
+
+  @Override
+  public ISchemaValidation getSchemaValidation() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<ISchemaValidation> getSchemaValidationList() {
+    return insertRowStatementList.stream()
+        .map(InsertRowStatement::getSchemaValidation)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public void updateAfterSchemaValidation() throws QueryProcessException {
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      insertRowStatement.updateAfterSchemaValidation();
+      if (!this.hasFailedMeasurements() && insertRowStatement.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertRowStatement.failedMeasurementIndex2Info;
+      }
+    }
+  }
+
+  @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
+  }
+
+  @Override
+  public long getMinTime() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public InsertBaseStatement removeLogicalView() {
+    List<InsertRowStatement> mergedList = new ArrayList<>();
+    boolean needSplit = false;
+    for (InsertRowStatement child : this.insertRowStatementList) {
+      List<InsertRowStatement> childSplitResult = child.getSplitList();
+      needSplit = needSplit || child.isNeedSplit();
+      mergedList.addAll(childSplitResult);
+    }
+    if (!needSplit) {
+      return this;
+    }
+    InsertRowsStatement splitResult = new InsertRowsStatement();
+    splitResult.setInsertRowStatementList(mergedList);
+    return splitResult;
   }
 }

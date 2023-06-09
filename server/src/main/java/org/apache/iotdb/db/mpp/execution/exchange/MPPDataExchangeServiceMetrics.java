@@ -54,12 +54,4 @@ public class MPPDataExchangeServiceMetrics implements IMetricSet {
         Tag.NAME.toString(),
         ThreadName.MPP_DATA_EXCHANGE_RPC_SERVICE.getName());
   }
-
-  public AbstractThriftServiceThread getThriftServiceThread() {
-    return thriftServiceThread;
-  }
-
-  public void setThriftServiceThread(AbstractThriftServiceThread thriftServiceThread) {
-    this.thriftServiceThread = thriftServiceThread;
-  }
 }

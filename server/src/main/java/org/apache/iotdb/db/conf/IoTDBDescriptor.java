@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
@@ -67,6 +67,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
 
@@ -369,9 +371,14 @@ public class IoTDBDescriptor {
 
     conf.setQueryDir(
         FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
-
-    conf.setDataDirs(
-        properties.getProperty("dn_data_dirs", String.join(",", conf.getDataDirs())).split(","));
+    String[] defaultTierDirs = new String[conf.getTierDataDirs().length];
+    for (int i = 0; i < defaultTierDirs.length; ++i) {
+      defaultTierDirs[i] = String.join(",", conf.getTierDataDirs()[i]);
+    }
+    conf.setTierDataDirs(
+        parseDataDirs(
+            properties.getProperty(
+                "dn_data_dirs", String.join(IoTDBConstant.TIER_SEPARATOR, defaultTierDirs))));
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
@@ -768,6 +775,9 @@ public class IoTDBDescriptor {
 
     conf.setTsFileStorageFs(
         properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().toString()));
+    conf.setEnableHDFS(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_hdfs", String.valueOf(conf.isEnableHDFS()))));
     conf.setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
     conf.setHdfsSitePath(properties.getProperty("hdfs_site_path", conf.getHdfsSitePath()));
     conf.setHdfsIp(properties.getProperty("hdfs_ip", conf.getRawHDFSIp()).split(","));
@@ -963,11 +973,13 @@ public class IoTDBDescriptor {
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
     // At the same time, set TSFileConfig
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setTSFileStorageFs(
-            FSType.valueOf(
-                properties.getProperty("tsfile_storage_fs", conf.getTsFileStorageFs().name())));
+    List<FSType> fsTypes = new ArrayList<>();
+    fsTypes.add(FSType.LOCAL);
+    if (Boolean.parseBoolean(
+        properties.getProperty("enable_hdfs", String.valueOf(conf.isEnableHDFS())))) {
+      fsTypes.add(FSType.HDFS);
+    }
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(fsTypes.toArray(new FSType[0]));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setCoreSitePath(properties.getProperty("core_site_path", conf.getCoreSitePath()));
@@ -1065,10 +1077,6 @@ public class IoTDBDescriptor {
 
     // author cache
     loadAuthorCache(properties);
-
-    conf.setTimePartitionInterval(
-        DateTimeUtils.convertMilliTimeWithPrecision(
-            conf.getTimePartitionInterval(), conf.getTimestampPrecision()));
 
     conf.setQuotaEnable(
         Boolean.parseBoolean(
@@ -1502,22 +1510,32 @@ public class IoTDBDescriptor {
     }
   }
 
+  private String[][] parseDataDirs(String dataDirs) {
+    String[] tiers = dataDirs.split(IoTDBConstant.TIER_SEPARATOR);
+    String[][] tierDataDirs = new String[tiers.length][];
+    for (int i = 0; i < tiers.length; ++i) {
+      tierDataDirs[i] = tiers[i].split(",");
+    }
+    return tierDataDirs;
+  }
+
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
       // update data dirs
       String dataDirs = properties.getProperty("dn_data_dirs", null);
       if (dataDirs != null) {
-        conf.reloadDataDirs(dataDirs.split(","));
+        conf.reloadDataDirs(parseDataDirs(dataDirs));
       }
 
-      // update dir strategy, must update after data dirs
+      // update dir strategy
       String multiDirStrategyClassName = properties.getProperty("dn_multi_dir_strategy", null);
       if (multiDirStrategyClassName != null
           && !multiDirStrategyClassName.equals(conf.getMultiDirStrategyClassName())) {
         conf.setMultiDirStrategyClassName(multiDirStrategyClassName);
         conf.confirmMultiDirStrategy();
-        DirectoryManager.getInstance().updateDirectoryStrategy();
       }
+
+      TierManager.getInstance().resetFolders();
 
       // update timed flush & close conf
       loadTimedService(properties);
@@ -1749,36 +1767,59 @@ public class IoTDBDescriptor {
   }
 
   private void initStorageEngineAllocate(Properties properties) {
-    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
-    String[] proportions = allocationRatio.split(":");
-    int proportionForWrite = Integer.parseInt(proportions[0].trim());
-    int proportionForCompaction = Integer.parseInt(proportions[1].trim());
+    long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
 
-    double writeProportion =
-        ((double) (proportionForWrite) / (double) (proportionForCompaction + proportionForWrite));
+    int proportionSum = 10;
+    int writeProportion = 8;
+    int compactionProportion = 2;
+    int writeProportionSum = 20;
+    int memTableProportion = 19;
+    int timePartitionInfo = 1;
 
-    String allocationRatioForWrite = properties.getProperty("write_memory_proportion", "19:1");
-    proportions = allocationRatioForWrite.split(":");
-    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
-    int proportionForTimePartitionInfo = Integer.parseInt(proportions[1].trim());
+    String storageMemoryAllocatePortion =
+        properties.getProperty("storage_engine_memory_proportion");
+    if (storageMemoryAllocatePortion != null) {
+      String[] proportions = storageMemoryAllocatePortion.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
 
-    double memtableProportionForWrite =
-        ((double) (proportionForMemTable)
-            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
+      if (loadedProportionSum != 0) {
+        proportionSum = loadedProportionSum;
+        writeProportion = Integer.parseInt(proportions[0].trim());
+        compactionProportion = Integer.parseInt(proportions[1].trim());
+      }
+      conf.setCompactionProportion((double) compactionProportion / (double) proportionSum);
+    }
 
-    double timePartitionInfoForWrite =
-        ((double) (proportionForTimePartitionInfo)
-            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
-    conf.setWriteProportionForMemtable(writeProportion * memtableProportionForWrite);
+    String allocationRatioForWrite = properties.getProperty("write_memory_proportion");
+    if (allocationRatioForWrite != null) {
+      String[] proportions = allocationRatioForWrite.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
 
-    conf.setAllocateMemoryForTimePartitionInfo(
-        (long)
-            ((writeProportion * timePartitionInfoForWrite)
-                * conf.getAllocateMemoryForStorageEngine()));
+      if (loadedProportionSum != 0) {
+        writeProportionSum = loadedProportionSum;
+        memTableProportion = Integer.parseInt(proportions[0].trim());
+        timePartitionInfo = Integer.parseInt(proportions[1].trim());
+      }
+      // memtableProportionForWrite = 19/20 default
+      double memtableProportionForWrite =
+          ((double) memTableProportion / (double) writeProportionSum);
 
-    conf.setCompactionProportion(
-        ((double) (proportionForCompaction)
-            / (double) (proportionForCompaction + proportionForWrite)));
+      // timePartitionInfoForWrite = 1/20 default
+      double timePartitionInfoForWrite = ((double) timePartitionInfo / (double) writeProportionSum);
+      // proportionForWrite = 8/10 default
+      double proportionForWrite = ((double) (writeProportion) / (double) proportionSum);
+      // writeProportionForMemtable = 8/10 * 19/20 = 0.76 default
+      conf.setWriteProportionForMemtable(proportionForWrite * memtableProportionForWrite);
+      // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
+      conf.setAllocateMemoryForTimePartitionInfo(
+          (long) ((proportionForWrite * timePartitionInfoForWrite) * storageMemoryTotal));
+    }
   }
 
   private void initSchemaMemoryAllocate(Properties properties) {
@@ -1786,12 +1827,11 @@ public class IoTDBDescriptor {
 
     int proportionSum = 10;
     int schemaRegionProportion = 5;
-    int schemaCacheProportion = 3;
+    int schemaCacheProportion = 4;
     int partitionCacheProportion = 1;
-    int lastCacheProportion = 1;
+    int lastCacheProportion = 0;
 
-    String schemaMemoryAllocatePortion =
-        properties.getProperty("schema_memory_allocate_proportion");
+    String schemaMemoryAllocatePortion = properties.getProperty("schema_memory_proportion");
     if (schemaMemoryAllocatePortion != null) {
       String[] proportions = schemaMemoryAllocatePortion.split(":");
       int loadedProportionSum = 0;
@@ -1804,7 +1844,24 @@ public class IoTDBDescriptor {
         schemaRegionProportion = Integer.parseInt(proportions[0].trim());
         schemaCacheProportion = Integer.parseInt(proportions[1].trim());
         partitionCacheProportion = Integer.parseInt(proportions[2].trim());
-        lastCacheProportion = Integer.parseInt(proportions[3].trim());
+      }
+
+    } else {
+      schemaMemoryAllocatePortion = properties.getProperty("schema_memory_allocate_proportion");
+      if (schemaMemoryAllocatePortion != null) {
+        String[] proportions = schemaMemoryAllocatePortion.split(":");
+        int loadedProportionSum = 0;
+        for (String proportion : proportions) {
+          loadedProportionSum += Integer.parseInt(proportion.trim());
+        }
+
+        if (loadedProportionSum != 0) {
+          proportionSum = loadedProportionSum;
+          schemaRegionProportion = Integer.parseInt(proportions[0].trim());
+          schemaCacheProportion = Integer.parseInt(proportions[1].trim());
+          partitionCacheProportion = Integer.parseInt(proportions[2].trim());
+          lastCacheProportion = Integer.parseInt(proportions[3].trim());
+        }
       }
     }
 
@@ -1914,16 +1971,10 @@ public class IoTDBDescriptor {
   }
 
   private void loadPipeProps(Properties properties) {
-    conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()));
+    conf.setPipeLibDir(properties.getProperty("pipe_lib_dir", conf.getPipeLibDir()));
 
-    conf.setPipeSubtaskExecutorMaxThreadNum(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_max_thread_num",
-                Integer.toString(conf.getPipeSubtaskExecutorMaxThreadNum()))));
-    if (conf.getPipeSubtaskExecutorMaxThreadNum() <= 0) {
-      conf.setPipeSubtaskExecutorMaxThreadNum(5);
-    }
+    conf.setPipeReceiverFileDir(
+        properties.getProperty("pipe_receiver_file_dir", conf.getPipeReceiverFileDir()));
   }
 
   private void loadCQProps(Properties properties) {

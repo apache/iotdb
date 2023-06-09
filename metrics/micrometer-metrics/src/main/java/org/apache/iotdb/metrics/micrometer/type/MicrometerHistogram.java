@@ -42,6 +42,6 @@ public class MicrometerHistogram implements Histogram {
 
   @Override
   public org.apache.iotdb.metrics.type.HistogramSnapshot takeSnapshot() {
-    return new MicrometerHistogramSnapshot(distributionSummary.takeSnapshot());
+    return new MicrometerHistogramSnapshot(distributionSummary);
   }
 }

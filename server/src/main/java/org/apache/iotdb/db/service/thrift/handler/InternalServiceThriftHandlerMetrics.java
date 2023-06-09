@@ -58,8 +58,12 @@ public class InternalServiceThriftHandlerMetrics implements IMetricSet {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     InternalServiceThriftHandlerMetrics that = (InternalServiceThriftHandlerMetrics) o;
     return Objects.equals(thriftConnectionNumber, that.thriftConnectionNumber);
   }

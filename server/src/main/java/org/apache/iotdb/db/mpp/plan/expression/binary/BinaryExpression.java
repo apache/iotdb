@@ -93,7 +93,7 @@ public abstract class BinaryExpression extends Expression {
     leftExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
     rightExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
-    final String digest = toString();
+    final String digest = getExpressionString();
 
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
@@ -144,5 +144,27 @@ public abstract class BinaryExpression extends Expression {
   protected void serialize(DataOutputStream stream) throws IOException {
     Expression.serialize(leftExpression, stream);
     Expression.serialize(rightExpression, stream);
+  }
+
+  @Override
+  public String getOutputSymbolInternal() {
+    String left = this.getLeftExpression().getOutputSymbol();
+    String right = this.getRightExpression().getOutputSymbol();
+
+    StringBuilder builder = new StringBuilder();
+    if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
+      builder.append("(").append(left).append(")");
+    } else {
+      builder.append(left);
+    }
+    builder.append(" ").append(operator()).append(" ");
+    if (rightExpression.getExpressionType().getPriority()
+        < this.getExpressionType().getPriority()) {
+      builder.append("(").append(right).append(")");
+    } else {
+      builder.append(right);
+    }
+
+    return builder.toString();
   }
 }

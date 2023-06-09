@@ -63,14 +63,15 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       // delete chunk metadata temp file
       FileUtils.delete(chunkMetadataTempFile);
     }
-    if (!tsFile.exists()) {
-      logger.error("TsFile {} is missing, will skip its recovery.", tsFile);
-      return;
-    }
 
     if (tsFileResource.resourceFileExists()) {
       // .resource file exists, just deserialize it into memory
       loadResourceFile();
+      return;
+    }
+
+    if (!tsFile.exists()) {
+      logger.error("TsFile {} is missing, will skip its recovery.", tsFile);
       return;
     }
 

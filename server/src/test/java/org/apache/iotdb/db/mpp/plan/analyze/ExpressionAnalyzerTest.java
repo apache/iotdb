@@ -51,7 +51,7 @@ public class ExpressionAnalyzerTest {
             gt(timeSeries("root.sg.d2.s1"), intValue("1")),
             gt(timeSeries("root.sg.d1.s2"), intValue("1")),
             gt(timeSeries("root.sg.d2.s2"), intValue("1"))),
-        ExpressionAnalyzer.removeWildcardInFilter(
+        ExpressionAnalyzer.bindSchemaForPredicate(
             and(gt(timeSeries("s1"), intValue("1")), gt(timeSeries("s2"), intValue("1"))),
             prefixPaths,
             fakeSchemaTree,
@@ -75,7 +75,7 @@ public class ExpressionAnalyzerTest {
                 and(
                     gt(timeSeries("root.sg.d2.s1"), intValue("1")),
                     gt(timeSeries("root.sg.d2.s2"), intValue("1"))))),
-        ExpressionAnalyzer.removeWildcardInFilter(
+        ExpressionAnalyzer.bindSchemaForPredicate(
             count(and(gt(timeSeries("s1"), intValue("1")), gt(timeSeries("s2"), intValue("1")))),
             prefixPaths,
             fakeSchemaTree,

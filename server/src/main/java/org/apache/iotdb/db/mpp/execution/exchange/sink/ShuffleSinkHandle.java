@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.execution.exchange.sink;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
-import org.apache.iotdb.db.mpp.metric.QueryMetricsManager;
+import org.apache.iotdb.db.mpp.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -64,8 +64,8 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private volatile boolean closed = false;
 
-  private static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
-
+  private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
+      DataExchangeCostMetricSet.getInstance();
   private final Lock lock = new ReentrantLock();
 
   /** max bytes this ShuffleSinkHandle can reserve. */
@@ -123,7 +123,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
       currentChannel.send(tsBlock);
     } finally {
       switchChannelIfNecessary();
-      QUERY_METRICS.recordDataExchangeCost(
+      DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
           SINK_HANDLE_SEND_TSBLOCK_REMOTE, System.nanoTime() - startTime);
     }
   }

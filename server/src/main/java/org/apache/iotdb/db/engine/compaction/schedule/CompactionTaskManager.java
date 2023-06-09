@@ -71,6 +71,7 @@ public class CompactionTaskManager implements IService {
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
+
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(
           config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());
@@ -109,13 +110,13 @@ public class CompactionTaskManager implements IService {
     this.taskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
-                compactionThreadNum, ThreadName.COMPACTION_SERVICE.getName());
+                compactionThreadNum, ThreadName.COMPACTION_WORKER.getName());
     this.subCompactionTaskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 compactionThreadNum
                     * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
-                ThreadName.COMPACTION_SUB_SERVICE.getName());
+                ThreadName.COMPACTION_SUB_TASK.getName());
     for (int i = 0; i < compactionThreadNum; ++i) {
       taskExecutionPool.submit(new CompactionWorker(i, candidateCompactionTaskQueue));
     }
@@ -220,10 +221,9 @@ public class CompactionTaskManager implements IService {
       throws InterruptedException {
     if (init
         && !candidateCompactionTaskQueue.contains(compactionTask)
-        && !isTaskRunning(compactionTask)) {
-      compactionTask.setSourceFilesToCompactionCandidate();
+        && !isTaskRunning(compactionTask)
+        && compactionTask.setSourceFilesToCompactionCandidate()) {
       candidateCompactionTaskQueue.put(compactionTask);
-
       return true;
     }
     return false;

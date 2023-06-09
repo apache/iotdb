@@ -218,6 +218,37 @@ public class IoTDBInsertAlignedValuesIT {
   }
 
   @Test
+  public void testInsertAlignedValuesWithSameTimestamp() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.addBatch("insert into root.sg.d1(time,s2) aligned values(1,2)");
+      statement.addBatch("insert into root.sg.d1(time,s1) aligned values(1,2)");
+      statement.executeBatch();
+
+      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
+
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertEquals(2.0F, resultSet.getObject(2));
+        assertEquals(2.0F, resultSet.getObject(3));
+
+        assertFalse(resultSet.next());
+      }
+
+      statement.execute("flush");
+      try (ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg.d1")) {
+
+        assertTrue(resultSet.next());
+        assertEquals(1, resultSet.getLong(1));
+        assertEquals(2.0F, resultSet.getObject(2));
+        assertEquals(2.0F, resultSet.getObject(3));
+
+        assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
   public void testInsertWithWrongMeasurementNum1() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

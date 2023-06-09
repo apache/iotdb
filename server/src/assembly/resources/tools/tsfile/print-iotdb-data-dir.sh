@@ -48,5 +48,5 @@ done
 
 MAIN_CLASS=org.apache.iotdb.db.tools.IoTDBDataDirViewer
 
-"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" -cp "$CLASSPATH" "-Dlogback.configurationFile=${IOTDB_HOME}/conf/logback-tool.xml" "$MAIN_CLASS" "$@"
 exit $?

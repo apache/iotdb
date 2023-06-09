@@ -39,13 +39,13 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   private boolean isUnderAlignedDevice;
 
   public ShowTimeSeriesResult(
-      String name,
+      String path,
       String alias,
       IMeasurementSchema measurementSchema,
       Map<String, String> tags,
       Map<String, String> attributes,
       boolean isUnderAlignedDevice) {
-    super(name);
+    super(path);
     this.alias = alias;
     this.measurementSchema = measurementSchema;
     this.tags = tags;
@@ -84,6 +84,11 @@ public class ShowTimeSeriesResult extends ShowSchemaResult implements ITimeSerie
   @Override
   public boolean isLogicalView() {
     return this.measurementSchema.isLogicalView();
+  }
+
+  @Override
+  public ITimeSeriesSchemaInfo snapshot() {
+    return this;
   }
 
   public TSDataType getDataType() {

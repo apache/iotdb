@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -152,7 +153,8 @@ public class DeleteDatabaseProcedure
               env.deleteDatabaseConfig(deleteDatabaseSchema.getName());
 
           // Delete Database metrics
-          PartitionMetrics.unbindDatabasePartitionMetrics(deleteDatabaseSchema.getName());
+          PartitionMetrics.unbindDatabasePartitionMetrics(
+              MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // try sync delete schema region
           AsyncClientHandler<TConsensusGroupId, TSStatus> asyncClientHandler =

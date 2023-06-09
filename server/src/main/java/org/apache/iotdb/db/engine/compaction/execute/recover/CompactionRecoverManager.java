@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -68,9 +68,9 @@ public class CompactionRecoverManager {
   private void recoverCompaction(boolean isInnerSpace, boolean isLogSequence) {
     List<String> dirs;
     if (isLogSequence) {
-      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
+      dirs = TierManager.getInstance().getAllLocalSequenceFileFolders();
     } else {
-      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
+      dirs = TierManager.getInstance().getAllLocalUnSequenceFileFolders();
     }
     for (String dir : dirs) {
       File storageGroupDir =

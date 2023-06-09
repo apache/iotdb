@@ -19,25 +19,93 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
-import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
-import org.apache.iotdb.pipe.api.exception.PipeRuntimeException;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.resource.file.PipeHardlinkFileDirStartupCleaner;
+import org.apache.iotdb.db.service.ResourcesInformationHolder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeRuntimeAgent {
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class PipeRuntimeAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
+  private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
-  public void report(PipeSubtask subtask) {
-    // TODO: terminate the task by the given taskID
-    LOGGER.warn(
-        "Failed to execute task {} after many retries, last failed cause by {}",
-        subtask.getTaskID(),
-        subtask.getLastFailedCause());
+  private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
+
+  private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
+      new SimpleConsensusProgressIndexAssigner();
+
+  //////////////////////////// System Service Interface ////////////////////////////
+
+  public synchronized void preparePipeResources(
+      ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+    PipeHardlinkFileDirStartupCleaner.clean();
+    PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
+    simpleConsensusProgressIndexAssigner.start();
   }
 
-  public void report(PipeRuntimeException pipeRuntimeException) {
-    // TODO: complete this method
+  @Override
+  public synchronized void start() throws StartupException {
+    PipeConfig.getInstance().printAllConfigs();
+    PipeAgentLauncher.launchPipeTaskAgent();
+
+    isShutdown.set(false);
+  }
+
+  @Override
+  public synchronized void stop() {
+    if (isShutdown.get()) {
+      return;
+    }
+    isShutdown.set(true);
+
+    PipeAgent.task().dropAllPipeTasks();
+  }
+
+  public boolean isShutdown() {
+    return isShutdown.get();
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.PIPE_RUNTIME_AGENT;
+  }
+
+  ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////
+
+  public void assignSimpleProgressIndexIfNeeded(TsFileResource tsFileResource) {
+    simpleConsensusProgressIndexAssigner.assignIfNeeded(tsFileResource);
+  }
+
+  ////////////////////// Recover ProgressIndex Assigner //////////////////////
+
+  public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+    tsFileResource.updateProgressIndex(
+        new RecoverProgressIndex(
+            DATA_NODE_ID,
+            simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
+  }
+
+  //////////////////////////// Runtime Exception Handlers ////////////////////////////
+
+  public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
+    LOGGER.warn(
+        String.format(
+            "PipeRuntimeException: pipe task meta %s, exception %s",
+            pipeTaskMeta, pipeRuntimeException),
+        pipeRuntimeException);
+    pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
   }
 }

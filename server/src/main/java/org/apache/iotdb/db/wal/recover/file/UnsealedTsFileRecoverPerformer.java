@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
@@ -241,6 +242,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMinPlanIndex());
           tsFileResource.updatePlanIndexes(recoveryMemTable.getMaxPlanIndex());
         }
+
+        // set recover progress index for pipe
+        PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(tsFileResource);
 
         // if we put following codes in if clause above, this file can be continued writing into it
         // currently, we close this file anyway

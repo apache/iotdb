@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -46,8 +46,8 @@ import java.util.List;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBSnapshotTest {
-  private String[] testDataDirs =
-      new String[] {"target/data/data1", "target/data/data2", "target/data/data3"};
+  private String[][] testDataDirs =
+      new String[][] {{"target/data/data1", "target/data/data2", "target/data/data3"}};
   private String testSgName = "root.testsg";
 
   @Before
@@ -66,7 +66,7 @@ public class IoTDBSnapshotTest {
     List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
       String filePath =
-          testDataDirs[i % 3]
+          testDataDirs[0][i % 3]
               + File.separator
               + "sequence"
               + File.separator
@@ -85,7 +85,7 @@ public class IoTDBSnapshotTest {
         resource.updateEndTime(testSgName + PATH_SEPARATOR + "d" + i, (i + 1) * 100);
       }
       resource.updatePlanIndexes(i);
-      resource.setStatus(TsFileResourceStatus.CLOSED);
+      resource.setStatusForTest(TsFileResourceStatus.NORMAL);
       resource.serialize();
     }
     return resources;
@@ -94,9 +94,9 @@ public class IoTDBSnapshotTest {
   @Test
   public void testCreateSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
-    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
-    DirectoryManager.getInstance().resetFolders();
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
     try {
       List<TsFileResource> resources = writeTsFiles();
       DataRegion region = new DataRegion(testSgName, "0");
@@ -120,20 +120,20 @@ public class IoTDBSnapshotTest {
         FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
-      DirectoryManager.getInstance().resetFolders();
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
     }
   }
 
   @Test
   public void testCreateSnapshotWithUnclosedTsFile()
       throws IOException, WriteProcessException, DirectoryNotLegalException {
-    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
-    DirectoryManager.getInstance().resetFolders();
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
     try {
       List<TsFileResource> resources = writeTsFiles();
-      resources.subList(50, 100).forEach(x -> x.setStatus(TsFileResourceStatus.UNCLOSED));
+      resources.subList(50, 100).forEach(x -> x.setStatusForTest(TsFileResourceStatus.UNCLOSED));
       DataRegion region = new DataRegion(testSgName, "0");
       region.getTsFileManager().addAll(resources, true);
       File snapshotDir = new File("target" + File.separator + "snapshot");
@@ -156,17 +156,17 @@ public class IoTDBSnapshotTest {
         FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
-      DirectoryManager.getInstance().resetFolders();
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
     }
   }
 
   @Test
   public void testLoadSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
-    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
-    DirectoryManager.getInstance().resetFolders();
+    String[][] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(testDataDirs);
+    TierManager.getInstance().resetFolders();
     try {
       List<TsFileResource> resources = writeTsFiles();
       DataRegion region = new DataRegion(testSgName, "0");
@@ -186,8 +186,8 @@ public class IoTDBSnapshotTest {
         FileUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
-      DirectoryManager.getInstance().resetFolders();
+      IoTDBDescriptor.getInstance().getConfig().setTierDataDirs(originDataDirs);
+      TierManager.getInstance().resetFolders();
     }
   }
 
@@ -195,7 +195,7 @@ public class IoTDBSnapshotTest {
   public void testGetSnapshotFile() throws IOException {
     File tsFile =
         new File(
-            IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+            IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()[0]
                 + File.separator
                 + "sequence"
                 + File.separator
@@ -213,7 +213,7 @@ public class IoTDBSnapshotTest {
         new SnapshotTaker(region).getSnapshotFilePathForTsFile(tsFile, "test-snapshotId");
     Assert.assertEquals(
         new File(
-                IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+                IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs()[0]
                     + File.separator
                     + "snapshot"
                     + File.separator

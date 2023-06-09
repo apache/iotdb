@@ -1223,4 +1223,122 @@ public class IoTDBOrderByIT {
     int[] ans = {12, 14, 13, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     orderByUDFTest(sql, ans);
   }
+
+  @Test
+  public void errorTest1() {
+    String sql = "select num from root.sg.d order by avg(bigNum)";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        fail();
+      }
+    } catch (Exception e) {
+      assertEquals("701: Raw data and aggregation hybrid query is not supported.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void errorTest2() {
+    String sql = "select avg(num) from root.sg.d order by bigNum";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        fail();
+      }
+    } catch (Exception e) {
+      assertEquals("701: Raw data and aggregation hybrid query is not supported.", e.getMessage());
+    }
+  }
+
+  // last query
+  public void testLastQueryOrderBy(String sql, String[][] ans) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        int i = 0;
+        while (resultSet.next()) {
+          String time = resultSet.getString(1);
+          String num = resultSet.getString(2);
+          String value = resultSet.getString(3);
+          String dataType = resultSet.getString(4);
+
+          assertEquals(time, ans[0][i]);
+          assertEquals(num, ans[1][i]);
+          assertEquals(value, ans[2][i]);
+          assertEquals(dataType, ans[3][i]);
+
+          i++;
+        }
+        assertEquals(i, 4);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void lastQueryOrderBy() {
+    String ans[][] =
+        new String[][] {
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d.num", "root.sg.d2.num", "root.sg.d.bigNum", "root.sg.d2.bigNum"},
+          {"15", "15", "3147483648", "3147483648"},
+          {"INT32", "INT32", "INT64", "INT64"}
+        };
+    String sql = "select last bigNum,num from root.** order by value";
+    testLastQueryOrderBy(sql, ans);
+  }
+
+  @Test
+  public void lastQueryOrderBy2() {
+    String ans[][] =
+        new String[][] {
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
+          {"15", "3147483648", "15", "3147483648"},
+          {"INT32", "INT64", "INT32", "INT64"}
+        };
+    String sql = "select last bigNum,num from root.** order by timeseries desc";
+    testLastQueryOrderBy(sql, ans);
+  }
+
+  @Test
+  public void lastQueryOrderBy3() {
+    String ans[][] =
+        new String[][] {
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
+          {"15", "3147483648", "15", "3147483648"},
+          {"INT32", "INT64", "INT32", "INT64"}
+        };
+    String sql = "select last bigNum,num from root.** order by timeseries desc, value asc";
+    testLastQueryOrderBy(sql, ans);
+  }
+
+  @Test
+  public void lastQueryOrderBy4() {
+    String ans[][] =
+        new String[][] {
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"15", "15", "3147483648", "3147483648"},
+          {"INT32", "INT32", "INT64", "INT64"}
+        };
+    String sql = "select last bigNum,num from root.** order by value, timeseries desc";
+    testLastQueryOrderBy(sql, ans);
+  }
+
+  @Test
+  public void lastQueryOrderBy5() {
+    String ans[][] =
+        new String[][] {
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"15", "15", "3147483648", "3147483648"},
+          {"INT32", "INT32", "INT64", "INT64"}
+        };
+    String sql = "select last bigNum,num from root.** order by datatype, timeseries desc";
+    testLastQueryOrderBy(sql, ans);
+  }
 }

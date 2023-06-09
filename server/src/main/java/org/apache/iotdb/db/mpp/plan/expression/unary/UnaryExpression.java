@@ -37,7 +37,7 @@ import java.util.Map;
 
 public abstract class UnaryExpression extends Expression {
 
-  protected final Expression expression;
+  protected Expression expression;
 
   protected UnaryExpression(Expression expression) {
     this.expression = expression;
@@ -45,6 +45,10 @@ public abstract class UnaryExpression extends Expression {
 
   public final Expression getExpression() {
     return expression;
+  }
+
+  public void setExpression(Expression expression) {
+    this.expression = expression;
   }
 
   @Override
@@ -73,7 +77,7 @@ public abstract class UnaryExpression extends Expression {
       Map<String, List<InputLocation>> inputLocations) {
     expression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
-    final String digest = toString();
+    final String digest = getExpressionString();
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }

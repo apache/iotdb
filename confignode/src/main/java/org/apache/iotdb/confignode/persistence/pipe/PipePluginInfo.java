@@ -38,7 +38,7 @@ import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -56,8 +56,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.DEFAULT_COLLECTOR;
 import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_PROCESSOR;
+import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_COLLECTOR;
 
 public class PipePluginInfo implements SnapshotProcessor {
 
@@ -93,14 +93,14 @@ public class PipePluginInfo implements SnapshotProcessor {
   public void validateBeforeCreatingPipePlugin(String pluginName, String jarName, String jarMD5) {
     // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
-      throw new PipeManagementException(
+      throw new PipeException(
           String.format(
               "Failed to create PipePlugin [%s], the same name PipePlugin has been created",
               pluginName));
     }
 
     if (pipePluginMetaKeeper.jarNameExistsAndMatchesMd5(jarName, jarMD5)) {
-      throw new PipeManagementException(
+      throw new PipeException(
           String.format(
               "Failed to create PipePlugin [%s], the same name Jar [%s] but different MD5 [%s] has existed",
               pluginName, jarName, jarMD5));
@@ -110,7 +110,7 @@ public class PipePluginInfo implements SnapshotProcessor {
   public void validateBeforeDroppingPipePlugin(String pluginName) {
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)
         && pipePluginMetaKeeper.getPipePluginMeta(pluginName).isBuiltin()) {
-      throw new PipeManagementException(
+      throw new PipeException(
           String.format(
               "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin",
               pluginName));
@@ -121,17 +121,19 @@ public class PipePluginInfo implements SnapshotProcessor {
     return !pipePluginMetaKeeper.containsJar(jarName);
   }
 
-  public boolean checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) {
+  public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) {
     final PipeParameters collectorParameters =
         new PipeParameters(createPipeRequest.getCollectorAttributes());
     final String collectorPluginName =
         collectorParameters.getStringOrDefault(
-            PipeCollectorConstant.COLLECTOR_KEY, DEFAULT_COLLECTOR.getPipePluginName());
+            PipeCollectorConstant.COLLECTOR_KEY, IOTDB_COLLECTOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(collectorPluginName)) {
-      LOGGER.warn(
-          "Failed to create pipe, the pipe collector plugin {} does not exist",
-          collectorPluginName);
-      return false;
+      final String exceptionMessage =
+          String.format(
+              "Failed to create pipe, the pipe collector plugin %s does not exist",
+              collectorPluginName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
 
     final PipeParameters processorParameters =
@@ -140,28 +142,32 @@ public class PipePluginInfo implements SnapshotProcessor {
         processorParameters.getStringOrDefault(
             PipeProcessorConstant.PROCESSOR_KEY, DO_NOTHING_PROCESSOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(processorPluginName)) {
-      LOGGER.warn(
-          "Failed to create pipe, the pipe processor plugin {} does not exist",
-          processorPluginName);
-      return false;
+      final String exceptionMessage =
+          String.format(
+              "Failed to create pipe, the pipe processor plugin %s does not exist",
+              processorPluginName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
 
     final PipeParameters connectorParameters =
         new PipeParameters(createPipeRequest.getConnectorAttributes());
     if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
-      LOGGER.warn("Failed to create pipe, the pipe connector plugin is not specified");
-      return false;
+      final String exceptionMessage =
+          "Failed to create pipe, the pipe connector plugin is not specified";
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
     final String connectorPluginName =
         connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY);
     if (!pipePluginMetaKeeper.containsPipePlugin(connectorPluginName)) {
-      LOGGER.warn(
-          "Failed to create pipe, the pipe connector plugin {} does not exist",
-          connectorPluginName);
-      return false;
+      final String exceptionMessage =
+          String.format(
+              "Failed to create pipe, the pipe connector plugin %s does not exist",
+              connectorPluginName);
+      LOGGER.warn(exceptionMessage);
+      throw new PipeException(exceptionMessage);
     }
-
-    return true;
   }
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////

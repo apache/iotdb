@@ -118,7 +118,7 @@ public class SeriesScanLimitOffsetPushDownTest {
       seqFileResource1.updateEndTime(TEST_DEVICE, 9);
       tsFileIOWriter.endFile();
     }
-    seqFileResource1.setStatus(TsFileResourceStatus.CLOSED);
+    seqFileResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource1);
 
     // prepare file 2
@@ -151,7 +151,7 @@ public class SeriesScanLimitOffsetPushDownTest {
       seqFileResource2.updateEndTime(TEST_DEVICE, 29);
       tsFileIOWriter.endFile();
     }
-    seqFileResource2.setStatus(TsFileResourceStatus.CLOSED);
+    seqFileResource2.setStatusForTest(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource2);
 
     // prepare file 3
@@ -186,7 +186,7 @@ public class SeriesScanLimitOffsetPushDownTest {
       seqFileResource3.updateEndTime(TEST_DEVICE, 59);
       tsFileIOWriter.endFile();
     }
-    seqFileResource3.setStatus(TsFileResourceStatus.CLOSED);
+    seqFileResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
     seqResources.add(seqFileResource3);
 
     // prepare file 4
@@ -210,7 +210,7 @@ public class SeriesScanLimitOffsetPushDownTest {
       unseqFileResource4.updateEndTime(TEST_DEVICE, 69);
       tsFileIOWriter.endFile();
     }
-    unseqFileResource4.setStatus(TsFileResourceStatus.CLOSED);
+    unseqFileResource4.setStatusForTest(TsFileResourceStatus.NORMAL);
     unSeqResources.add(unseqFileResource4);
   }
 

@@ -214,6 +214,7 @@ keyWords
     | VARIATION
     | VERIFY
     | VERSION
+    | VIEW
     | WHEN
     | WHERE
     | WITH

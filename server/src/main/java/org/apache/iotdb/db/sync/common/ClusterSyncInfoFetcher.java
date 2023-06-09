@@ -25,10 +25,8 @@ import org.apache.iotdb.commons.exception.sync.PipeSinkException;
 import org.apache.iotdb.commons.sync.pipe.PipeInfo;
 import org.apache.iotdb.commons.sync.pipe.PipeMessage;
 import org.apache.iotdb.commons.sync.pipesink.PipeSink;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRecordPipeMessageReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
@@ -42,7 +40,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /** Only fetch read request. For write request, return SUCCESS directly. */
 public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
@@ -112,29 +109,12 @@ public class ClusterSyncInfoFetcher implements ISyncInfoFetcher {
 
   @Override
   public List<PipeInfo> getAllPipeInfos() {
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetAllPipeInfoResp resp = configNodeClient.getAllPipeInfo();
-      return resp.getAllPipeInfo().stream()
-          .map(PipeInfo::deserializePipeInfo)
-          .collect(Collectors.toList());
-    } catch (Exception e) {
-      LOGGER.error("Get AllPipeInfos error because {}", e.getMessage(), e);
-      return Collections.emptyList();
-    }
+    return Collections.emptyList();
   }
 
   @Override
   public TSStatus recordMsg(String pipeName, PipeMessage message) {
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TRecordPipeMessageReq req =
-          new TRecordPipeMessageReq(pipeName, message.serializeToByteBuffer());
-      return configNodeClient.recordPipeMessage(req);
-    } catch (Exception e) {
-      LOGGER.error("RecordMsg error because {}", e.getMessage(), e);
-      return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, e.getMessage());
-    }
+    return RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, "method not supported");
   }
 
   // endregion

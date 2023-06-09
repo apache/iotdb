@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -205,8 +206,10 @@ public class NodeManager {
   }
 
   private TRuntimeConfiguration getRuntimeConfiguration() {
-    getPipeManager().getPipePluginCoordinator().lock();
+    // getPipeTaskCoordinator.lock() should be called outside the getPipePluginCoordinator().lock()
+    // to avoid deadlock
     getPipeManager().getPipeTaskCoordinator().lock();
+    getPipeManager().getPipePluginCoordinator().lock();
     getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
     getUDFManager().getUdfInfo().acquireUDFTableLock();
 
@@ -225,8 +228,11 @@ public class NodeManager {
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
       getUDFManager().getUdfInfo().releaseUDFTableLock();
-      getPipeManager().getPipeTaskCoordinator().unlock();
       getPipeManager().getPipePluginCoordinator().unlock();
+      // getPipeTaskCoordinator.unlock() should be called outside the
+      // getPipePluginCoordinator().unlock()
+      // to avoid deadlock
+      getPipeManager().getPipeTaskCoordinator().unlock();
     }
   }
 
@@ -246,7 +252,8 @@ public class NodeManager {
     getConsensusManager().write(registerDataNodePlan);
 
     // Bind DataNode metrics
-    PartitionMetrics.bindDataNodePartitionMetrics(configManager, dataNodeId);
+    PartitionMetrics.bindDataNodePartitionMetrics(
+        MetricService.getInstance(), configManager, dataNodeId);
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     getClusterSchemaManager().adjustMaxRegionGroupNum();

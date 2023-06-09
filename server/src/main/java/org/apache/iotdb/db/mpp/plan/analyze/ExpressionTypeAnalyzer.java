@@ -119,7 +119,7 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitLikeExpression(LikeExpression likeExpression, Void context) {
       checkInputExpressionDataType(
-          likeExpression.getExpression().toString(),
+          likeExpression.getExpression().getExpressionString(),
           process(likeExpression.getExpression(), null),
           TSDataType.TEXT);
       return setExpressionType(likeExpression, TSDataType.BOOLEAN);
@@ -128,7 +128,7 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitRegularExpression(RegularExpression regularExpression, Void context) {
       checkInputExpressionDataType(
-          regularExpression.getExpression().toString(),
+          regularExpression.getExpression().getExpressionString(),
           process(regularExpression.getExpression(), null),
           TSDataType.TEXT);
       return setExpressionType(regularExpression, TSDataType.BOOLEAN);
@@ -137,7 +137,7 @@ public class ExpressionTypeAnalyzer {
     @Override
     public TSDataType visitLogicNotExpression(LogicNotExpression logicNotExpression, Void context) {
       checkInputExpressionDataType(
-          logicNotExpression.getExpression().toString(),
+          logicNotExpression.getExpression().getExpressionString(),
           process(logicNotExpression.getExpression(), null),
           TSDataType.BOOLEAN);
       return setExpressionType(logicNotExpression, TSDataType.BOOLEAN);
@@ -147,7 +147,7 @@ public class ExpressionTypeAnalyzer {
     public TSDataType visitNegationExpression(NegationExpression negationExpression, Void context) {
       TSDataType inputExpressionType = process(negationExpression.getExpression(), null);
       checkInputExpressionDataType(
-          negationExpression.getExpression().toString(),
+          negationExpression.getExpression().getExpressionString(),
           inputExpressionType,
           TSDataType.INT32,
           TSDataType.INT64,
@@ -160,14 +160,14 @@ public class ExpressionTypeAnalyzer {
     public TSDataType visitArithmeticBinaryExpression(
         ArithmeticBinaryExpression arithmeticBinaryExpression, Void context) {
       checkInputExpressionDataType(
-          arithmeticBinaryExpression.getLeftExpression().toString(),
+          arithmeticBinaryExpression.getLeftExpression().getExpressionString(),
           process(arithmeticBinaryExpression.getLeftExpression(), null),
           TSDataType.INT32,
           TSDataType.INT64,
           TSDataType.FLOAT,
           TSDataType.DOUBLE);
       checkInputExpressionDataType(
-          arithmeticBinaryExpression.getRightExpression().toString(),
+          arithmeticBinaryExpression.getRightExpression().getExpressionString(),
           process(arithmeticBinaryExpression.getRightExpression(), null),
           TSDataType.INT32,
           TSDataType.INT64,
@@ -180,11 +180,11 @@ public class ExpressionTypeAnalyzer {
     public TSDataType visitLogicBinaryExpression(
         LogicBinaryExpression logicBinaryExpression, Void context) {
       checkInputExpressionDataType(
-          logicBinaryExpression.getLeftExpression().toString(),
+          logicBinaryExpression.getLeftExpression().getExpressionString(),
           process(logicBinaryExpression.getLeftExpression(), null),
           TSDataType.BOOLEAN);
       checkInputExpressionDataType(
-          logicBinaryExpression.getRightExpression().toString(),
+          logicBinaryExpression.getRightExpression().getExpressionString(),
           process(logicBinaryExpression.getRightExpression(), null),
           TSDataType.BOOLEAN);
       return setExpressionType(logicBinaryExpression, TSDataType.BOOLEAN);
@@ -201,9 +201,10 @@ public class ExpressionTypeAnalyzer {
       if (leftExpressionDataType != null
           && rightExpressionDataType != null
           && !leftExpressionDataType.equals(rightExpressionDataType)) {
-        final String leftExpressionString = compareBinaryExpression.getLeftExpression().toString();
+        final String leftExpressionString =
+            compareBinaryExpression.getLeftExpression().getExpressionString();
         final String rightExpressionString =
-            compareBinaryExpression.getRightExpression().toString();
+            compareBinaryExpression.getRightExpression().getExpressionString();
 
         if (TSDataType.BOOLEAN.equals(leftExpressionDataType)
             || TSDataType.BOOLEAN.equals(rightExpressionDataType)) {
@@ -271,7 +272,7 @@ public class ExpressionTypeAnalyzer {
             new UDTFInformationInferrer(functionExpression.getFunctionName())
                 .inferOutputType(
                     inputExpressions.stream()
-                        .map(Expression::toString)
+                        .map(Expression::getExpressionString)
                         .collect(Collectors.toList()),
                     inputExpressions.stream()
                         .map(f -> expressionTypes.get(NodeRef.of(f)))

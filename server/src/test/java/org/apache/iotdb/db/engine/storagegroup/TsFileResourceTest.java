@@ -55,7 +55,7 @@ public class TsFileResourceTest {
               deviceTimeIndex.updateEndTime("root.sg.d" + i, i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
+    tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
   }
 
   @After

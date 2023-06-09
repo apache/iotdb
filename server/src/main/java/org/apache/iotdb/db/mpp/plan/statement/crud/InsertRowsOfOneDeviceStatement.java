@@ -21,14 +21,19 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
 
@@ -93,5 +98,63 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
       ret.add(fullPath);
     }
     return ret;
+  }
+
+  @Override
+  public ISchemaValidation getSchemaValidation() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<ISchemaValidation> getSchemaValidationList() {
+    return insertRowStatementList.stream()
+        .map(InsertRowStatement::getSchemaValidation)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public void updateAfterSchemaValidation() throws QueryProcessException {
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      insertRowStatement.updateAfterSchemaValidation();
+      if (!this.hasFailedMeasurements() && insertRowStatement.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertRowStatement.failedMeasurementIndex2Info;
+      }
+    }
+  }
+
+  @Override
+  protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
+    return false;
+  }
+
+  @Override
+  public long getMinTime() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public InsertBaseStatement removeLogicalView() {
+    boolean needSplit = false;
+    for (InsertRowStatement child : this.insertRowStatementList) {
+      if (child.isNeedSplit()) {
+        needSplit = true;
+      }
+    }
+    if (needSplit) {
+      List<InsertRowStatement> mergedList = new ArrayList<>();
+      for (InsertRowStatement child : this.insertRowStatementList) {
+        List<InsertRowStatement> childSplitResult = child.getSplitList();
+        mergedList.addAll(childSplitResult);
+      }
+      InsertRowsStatement splitResult = new InsertRowsStatement();
+      splitResult.setInsertRowStatementList(mergedList);
+      return splitResult;
+    }
+    return this;
   }
 }

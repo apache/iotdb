@@ -112,6 +112,8 @@ public class QueryStatement extends Statement {
 
   private boolean isOutputEndTime = false;
 
+  private boolean useWildcard = true;
+
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
   }
@@ -307,6 +309,24 @@ public class QueryStatement extends Statement {
     return groupByComponent != null && groupByComponent.getWindowType() == WindowType.COUNT_WINDOW;
   }
 
+  private boolean hasAggregationFunction(Expression expression) {
+    if (expression instanceof FunctionExpression) {
+      if (!expression.isBuiltInAggregationFunctionExpression()) {
+        return false;
+      }
+    } else {
+      if (expression instanceof TimeSeriesOperand) {
+        return false;
+      }
+      for (Expression subExpression : expression.getExpressions()) {
+        if (!subExpression.isBuiltInAggregationFunctionExpression()) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   public boolean hasGroupByExpression() {
     return isGroupByVariation() || isGroupByCondition() || isGroupByCount();
   }
@@ -333,6 +353,10 @@ public class QueryStatement extends Statement {
 
   public boolean isOrderByTimeseries() {
     return orderByComponent != null && orderByComponent.isOrderByTimeseries();
+  }
+
+  public boolean onlyOrderByTimeseries() {
+    return isOrderByTimeseries() && orderByComponent.getSortItemList().size() == 1;
   }
 
   public boolean isOrderByDevice() {
@@ -448,6 +472,14 @@ public class QueryStatement extends Statement {
     return rowOffset > 0;
   }
 
+  public void setUseWildcard(boolean useWildcard) {
+    this.useWildcard = useWildcard;
+  }
+
+  public boolean useWildcard() {
+    return useWildcard;
+  }
+
   public void semanticCheck() {
     if (isAggregationQuery()) {
       if (disableAlign()) {
@@ -473,20 +505,8 @@ public class QueryStatement extends Statement {
                 : resultColumn.getExpression().getExpressionString());
       }
       for (Expression expression : getExpressionSortItemList()) {
-        if (expression instanceof FunctionExpression) {
-          if (!expression.isBuiltInAggregationFunctionExpression()) {
-            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
-          }
-        } else {
-          if (expression instanceof TimeSeriesOperand) {
-            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
-          }
-          for (Expression subExpression : expression.getExpressions()) {
-            if (!subExpression.isBuiltInAggregationFunctionExpression()) {
-              throw new SemanticException(
-                  "Raw data and aggregation hybrid query is not supported.");
-            }
-          }
+        if (!hasAggregationFunction(expression)) {
+          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
         }
       }
       if (isGroupByTag()) {
@@ -517,10 +537,8 @@ public class QueryStatement extends Statement {
             "Common queries and aggregated queries are not allowed to appear at the same time");
       }
       for (Expression expression : getExpressionSortItemList()) {
-        for (Expression subExpression : expression.getExpressions()) {
-          if (subExpression.isBuiltInAggregationFunctionExpression()) {
-            throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
-          }
+        if (hasAggregationFunction(expression)) {
+          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
         }
       }
     }
@@ -585,9 +603,6 @@ public class QueryStatement extends Statement {
       if (isOrderByDevice()) {
         throw new SemanticException(
             "Sorting by device is only supported in ALIGN BY DEVICE queries.");
-      }
-      if (isOrderByTime()) {
-        throw new SemanticException("Sorting by time is not yet supported in last queries.");
       }
       if (seriesLimit != 0 || seriesOffset != 0) {
         throw new SemanticException("SLIMIT and SOFFSET can not be used in LastQuery.");

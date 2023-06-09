@@ -30,6 +30,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static org.testcontainers.shaded.com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
+
 public class LocalSourceHandleTest {
   @Test
   public void testReceive() {
@@ -47,7 +49,11 @@ public class LocalSourceHandleTest {
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a shared TsBlock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(localFragmentInstanceId, localPlanNodeId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(
+            localFragmentInstanceId,
+            localPlanNodeId,
+            mockLocalMemoryManager,
+            newDirectExecutorService());
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(
@@ -91,7 +97,11 @@ public class LocalSourceHandleTest {
     SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
     // Construct a shared tsblock queue.
     SharedTsBlockQueue queue =
-        new SharedTsBlockQueue(localFragmentInstanceId, localPlanNodeId, mockLocalMemoryManager);
+        new SharedTsBlockQueue(
+            localFragmentInstanceId,
+            localPlanNodeId,
+            mockLocalMemoryManager,
+            newDirectExecutorService());
 
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(

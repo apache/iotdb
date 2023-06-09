@@ -364,6 +364,15 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 
 #### 元数据引擎配置
 
+* schema\_engine\_mode
+
+|名字| schema\_engine\_mode |
+|:---:|:---|
+|描述| 元数据引擎的运行模式，支持 Memory 和 Schema_File两种模式；Schema_File 模式下支持将内存中暂时不用的序列元数据实时置换到磁盘上，需要使用时再加载进内存；此参数在集群中所有的 DataNode 上务必保持相同。|
+|类型| string |
+|默认值| Memory |
+|改后生效方式|仅允许在第一次启动服务前修改|
+
 * mlog\_buffer\_size
 
 |名字| mlog\_buffer\_size |
@@ -960,11 +969,11 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 * target\_compaction\_file\_size
 
 |     名字     | target\_compaction\_file\_size |
-| :----------: | :----------------------------- |
-|     描述     | 空间内合并的目标文件大小       |
+| :----------: |:-------------------------------|
+|     描述     | 合并后的目标文件大小                     |
 |     类型     | Int64                          |
-|    默认值    | 1073741824                     |
-| 改后生效方式 | 重启服务生效                   |
+|    默认值    | 2147483648                     |
+| 改后生效方式 | 重启服务生效                         |
 
 * target\_chunk\_size
 

@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.pipe.task.subtask;
 
-import org.apache.iotdb.db.pipe.core.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
+import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.deletion.DeletionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -52,43 +50,44 @@ public class PipeProcessorSubtask extends PipeSubtask {
   }
 
   @Override
-  protected void executeForAWhile() throws Exception {
-    Event event = inputEventSupplier.supply();
+  protected synchronized boolean executeOnce() throws Exception {
+    final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
+    // record the last event for retry when exception occurs
+    lastEvent = event;
     if (event == null) {
-      return;
+      return false;
     }
 
     try {
-      switch (event.getType()) {
-        case TABLET_INSERTION:
-          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
-          break;
-        case TSFILE_INSERTION:
-          pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-          break;
-        case DELETION:
-          pipeProcessor.process((DeletionEvent) event, outputEventCollector);
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              "Unsupported event type: " + event.getClass().getName());
+      if (event instanceof TabletInsertionEvent) {
+        pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+      } else if (event instanceof TsFileInsertionEvent) {
+        pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+      } else {
+        pipeProcessor.process(event, outputEventCollector);
       }
+
+      releaseLastEvent();
     } catch (Exception e) {
       e.printStackTrace();
       throw new PipeException(
           "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
-    } finally {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).decreaseReferenceCount(PipeProcessorSubtask.class.getName());
-      }
     }
+
+    return true;
   }
 
   @Override
-  public void close() {
+  // synchronized for pipeProcessor.close() and releaseLastEvent() in super.close().
+  // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
+  // resource leak because of the lastEvent is not released.
+  public synchronized void close() {
     try {
       pipeProcessor.close();
+
+      // should be called after pipeProcessor.close()
+      super.close();
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.info(

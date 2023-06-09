@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 public class PipeConnectorSubtaskExecutor extends PipeSubtaskExecutor {
 
-  PipeConnectorSubtaskExecutor() {
+  public PipeConnectorSubtaskExecutor() {
     super(
-        IoTDBDescriptor.getInstance().getConfig().getPipeSubtaskExecutorMaxThreadNum(),
+        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
         ThreadName.PIPE_CONNECTOR_EXECUTOR_POOL);
   }
 }

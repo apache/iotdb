@@ -1,10 +1,10 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
- * distributed with COMPACTION_METRICS_MANAGER work for additional information
- * regarding copyright ownership.  The ASF licenses COMPACTION_METRICS_MANAGER file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use COMPACTION_METRICS_MANAGER file except in compliance
+ * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
@@ -21,34 +21,240 @@ package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class CompactionMetrics implements IMetricSet {
-  private final CompactionMetricsManager COMPACTION_METRICS_MANAGER =
-      CompactionMetricsManager.getInstance();
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
-  @Override
-  public void bindTo(AbstractMetricService metricService) {
-    bindTaskInfo(metricService);
-    bindPerformanceInfo(metricService);
+public class CompactionMetrics implements IMetricSet {
+  private static final List<String> TYPES = Arrays.asList("aligned", "not_aligned");
+  private static final CompactionMetrics INSTANCE = new CompactionMetrics();
+  private long lastUpdateTime = 0L;
+  private static final long UPDATE_INTERVAL = 10_000L;
+  private final AtomicInteger waitingSeqInnerCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger waitingUnseqInnerCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger waitingCrossCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger runningSeqInnerCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger runningUnseqInnerCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger runningCrossCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger finishSeqInnerCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger finishUnseqInnerCompactionTaskNum = new AtomicInteger(0);
+  private final AtomicInteger finishCrossCompactionTaskNum = new AtomicInteger(0);
+
+  private CompactionMetrics() {
+    for (String type : TYPES) {
+      Map<CompactionType, Map<ProcessChunkType, Counter>> compactionTypeProcessChunkTypeMap =
+          writeInfoCounterMap.computeIfAbsent(type, k -> new ConcurrentHashMap<>());
+      for (CompactionType compactionType : CompactionType.values()) {
+        Map<ProcessChunkType, Counter> counterMap =
+            compactionTypeProcessChunkTypeMap.computeIfAbsent(
+                compactionType, k -> new ConcurrentHashMap<>());
+        for (ProcessChunkType processChunkType : ProcessChunkType.values()) {
+          counterMap.put(processChunkType, DoNothingMetricManager.DO_NOTHING_COUNTER);
+        }
+      }
+    }
   }
 
-  @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    unbindTaskInfo(metricService);
-    unbindPerformanceInfo(metricService);
+  // region compaction write info
+  private Map<String, Map<CompactionType, Map<ProcessChunkType, Counter>>> writeInfoCounterMap =
+      new ConcurrentHashMap<>();
+  private Counter totalCompactionWriteInfoCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+
+  private void bindWriteInfo(AbstractMetricService metricService) {
+    for (String type : TYPES) {
+      Map<CompactionType, Map<ProcessChunkType, Counter>> compactionTypeProcessChunkTypeMap =
+          writeInfoCounterMap.computeIfAbsent(type, k -> new ConcurrentHashMap<>());
+      for (CompactionType compactionType : CompactionType.values()) {
+        Map<ProcessChunkType, Counter> counterMap =
+            compactionTypeProcessChunkTypeMap.computeIfAbsent(
+                compactionType, k -> new ConcurrentHashMap<>());
+        for (ProcessChunkType processChunkType : ProcessChunkType.values()) {
+          Counter counter =
+              metricService.getOrCreateCounter(
+                  Metric.DATA_WRITTEN.toString(),
+                  MetricLevel.IMPORTANT,
+                  Tag.NAME.toString(),
+                  "compaction_" + compactionType.toString(),
+                  Tag.STATUS.toString(),
+                  type + "_" + processChunkType.toString());
+          counterMap.put(processChunkType, counter);
+        }
+      }
+    }
+    totalCompactionWriteInfoCounter =
+        metricService.getOrCreateCounter(
+            Metric.DATA_WRITTEN.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "compaction",
+            Tag.TYPE.toString(),
+            "total");
+  }
+
+  private void unbindWriteInfo(AbstractMetricService metricService) {
+    for (String type : TYPES) {
+      for (CompactionType compactionType : CompactionType.values()) {
+        for (ProcessChunkType processChunkType : ProcessChunkType.values()) {
+          metricService.remove(
+              MetricType.COUNTER,
+              Metric.DATA_WRITTEN.toString(),
+              Tag.NAME.toString(),
+              "compaction_" + compactionType.toString(),
+              Tag.STATUS.toString(),
+              type + "_" + processChunkType.toString());
+          writeInfoCounterMap
+              .get(type)
+              .get(compactionType)
+              .put(processChunkType, DoNothingMetricManager.DO_NOTHING_COUNTER);
+        }
+      }
+    }
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.DATA_WRITTEN.toString(),
+        Tag.NAME.toString(),
+        "compaction",
+        Tag.TYPE.toString(),
+        "total");
+  }
+
+  public void recordWriteInfo(
+      CompactionType compactionType,
+      ProcessChunkType processChunkType,
+      boolean aligned,
+      long byteNum) {
+    String type = aligned ? "aligned" : "not_aligned";
+    writeInfoCounterMap.get(type).get(compactionType).get(processChunkType).inc(byteNum / 1024L);
+    totalCompactionWriteInfoCounter.inc(byteNum / 1024L);
+  }
+
+  // endregion
+
+  // region compaction read info
+  private Counter totalCompactionReadInfoCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+
+  private void bindReadInfo(AbstractMetricService metricService) {
+    totalCompactionReadInfoCounter =
+        metricService.getOrCreateCounter(
+            Metric.DATA_READ.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), "compaction");
+  }
+
+  private void unbindReadInfo(AbstractMetricService metricService) {
+    metricService.remove(
+        MetricType.COUNTER, Metric.DATA_READ.toString(), Tag.NAME.toString(), "compaction");
+  }
+
+  public void recordReadInfo(long byteNum) {
+    totalCompactionReadInfoCounter.inc(byteNum / 1024L);
+  }
+  // endregion
+
+  // region compaction summary info
+  private Counter totalCompactedPointCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter totalCompactedChunkCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter totalDirectlyFlushChunkCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter totalDeserializedChunkCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter totalMergedChunkCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+
+  private void bindPerformanceInfo(AbstractMetricService metricService) {
+    totalCompactedPointCounter =
+        metricService.getOrCreateCounter(
+            "compacted_point_num", MetricLevel.IMPORTANT, Tag.NAME.toString(), "compaction");
+    totalCompactedChunkCounter =
+        metricService.getOrCreateCounter(
+            "compacted_chunk_num", MetricLevel.IMPORTANT, Tag.NAME.toString(), "compaction");
+    totalDirectlyFlushChunkCounter =
+        metricService.getOrCreateCounter(
+            "directly_flush_chunk_num", MetricLevel.NORMAL, Tag.NAME.toString(), "compaction");
+    totalDeserializedChunkCounter =
+        metricService.getOrCreateCounter(
+            "deserialized_chunk_num", MetricLevel.NORMAL, Tag.NAME.toString(), "compaction");
+    totalMergedChunkCounter =
+        metricService.getOrCreateCounter(
+            "merged_chunk_num", MetricLevel.NORMAL, Tag.NAME.toString(), "compaction");
+  }
+
+  private void unbindPerformanceInfo(AbstractMetricService metricService) {
+    metricService.remove(
+        MetricType.COUNTER, "compacted_point_num", Tag.NAME.toString(), "compaction");
+    metricService.remove(
+        MetricType.COUNTER, "compacted_chunk_num", Tag.NAME.toString(), "compaction");
+    metricService.remove(
+        MetricType.COUNTER, "directly_flush_chunk_num", Tag.NAME.toString(), "compaction");
+    metricService.remove(
+        MetricType.COUNTER, "deserialized_chunk_num", Tag.NAME.toString(), "compaction");
+    metricService.remove(MetricType.COUNTER, "merged_chunk_num", Tag.NAME.toString(), "compaction");
+  }
+
+  public void recordSummaryInfo(CompactionTaskSummary summary) {
+    totalCompactedPointCounter.inc(summary.getProcessPointNum());
+    totalCompactedChunkCounter.inc(summary.getProcessChunkNum());
+    totalDirectlyFlushChunkCounter.inc(summary.getDirectlyFlushChunkNum());
+    totalDeserializedChunkCounter.inc(summary.getDeserializeChunkCount());
+    totalMergedChunkCounter.inc(summary.getMergedChunkNum());
+  }
+  // endregion
+
+  // region task info
+  private Timer seqCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer unSeqCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer crossCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public void recordTaskFinishOrAbort(boolean isCrossTask, boolean isSeq, long timeCost) {
+    if (isCrossTask) {
+      finishCrossCompactionTaskNum.incrementAndGet();
+      crossCompactionCostTimer.update(timeCost, TimeUnit.MILLISECONDS);
+    } else if (isSeq) {
+      finishSeqInnerCompactionTaskNum.incrementAndGet();
+      seqCompactionCostTimer.update(timeCost, TimeUnit.MILLISECONDS);
+    } else {
+      finishUnseqInnerCompactionTaskNum.incrementAndGet();
+      unSeqCompactionCostTimer.update(timeCost, TimeUnit.MILLISECONDS);
+    }
   }
 
   private void bindTaskInfo(AbstractMetricService metricService) {
+    seqCompactionCostTimer =
+        metricService.getOrCreateTimer(
+            Metric.COST_TASK.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "inner_seq_compaction");
+    unSeqCompactionCostTimer =
+        metricService.getOrCreateTimer(
+            Metric.COST_TASK.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "inner_unseq_compaction");
+    crossCompactionCostTimer =
+        metricService.getOrCreateTimer(
+            Metric.COST_TASK.toString(), MetricLevel.CORE, Tag.NAME.toString(), "cross_compaction");
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getWaitingCrossCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return waitingCrossCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "compaction_cross",
         Tag.STATUS.toString(),
@@ -56,8 +262,11 @@ public class CompactionMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getWaitingSeqInnerCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return waitingSeqInnerCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "compaction_inner_seq",
         Tag.STATUS.toString(),
@@ -65,8 +274,11 @@ public class CompactionMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getWaitingUnseqInnerCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return waitingUnseqInnerCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "compaction_inner_unseq",
         Tag.STATUS.toString(),
@@ -74,8 +286,11 @@ public class CompactionMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getRunningCrossCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return runningCrossCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "compaction_cross",
         Tag.STATUS.toString(),
@@ -83,8 +298,11 @@ public class CompactionMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getRunningSeqInnerCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return runningSeqInnerCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "compaction_inner_seq",
         Tag.STATUS.toString(),
@@ -92,8 +310,11 @@ public class CompactionMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.QUEUE.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getRunningUnseqInnerCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return runningUnseqInnerCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "compaction_inner_unseq",
         Tag.STATUS.toString(),
@@ -101,93 +322,39 @@ public class CompactionMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.COMPACTION_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getFinishSeqInnerCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return finishSeqInnerCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "inner_seq");
     metricService.createAutoGauge(
         Metric.COMPACTION_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getFinishUnseqInnerCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return finishUnseqInnerCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "inner_unseq");
     metricService.createAutoGauge(
         Metric.COMPACTION_TASK_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        COMPACTION_METRICS_MANAGER,
-        CompactionMetricsManager::getFinishCrossCompactionTaskNum,
+        this,
+        (metrics) -> {
+          updateCompactionTaskInfo();
+          return finishCrossCompactionTaskNum.get();
+        },
         Tag.NAME.toString(),
         "cross");
-    metricService.getOrCreateTimer(
-        Metric.COST_TASK.toString(), MetricLevel.CORE, Tag.NAME.toString(), "inner_seq_compaction");
-    metricService.getOrCreateTimer(
-        Metric.COST_TASK.toString(),
-        MetricLevel.CORE,
-        Tag.NAME.toString(),
-        "inner_unseq_compaction");
-    metricService.getOrCreateTimer(
-        Metric.COST_TASK.toString(), MetricLevel.CORE, Tag.NAME.toString(), "cross_compaction");
   }
 
   private void unbindTaskInfo(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_cross",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_inner_seq",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_inner_unseq",
-        Tag.STATUS.toString(),
-        "waiting");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_cross",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_inner_seq",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.QUEUE.toString(),
-        Tag.NAME.toString(),
-        "compaction_inner_unseq",
-        Tag.STATUS.toString(),
-        "running");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        Tag.NAME.toString(),
-        "inner_seq");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        Tag.NAME.toString(),
-        "inner_unseq");
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.COMPACTION_TASK_COUNT.toString(),
-        Tag.NAME.toString(),
-        "cross");
+    seqCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    unSeqCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    crossCompactionCostTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     metricService.remove(
         MetricType.TIMER, Metric.COST_TASK.toString(), Tag.NAME.toString(), "inner_seq_compaction");
     metricService.remove(
@@ -197,30 +364,117 @@ public class CompactionMetrics implements IMetricSet {
         "inner_unseq_compaction");
     metricService.remove(
         MetricType.TIMER, Metric.COST_TASK.toString(), Tag.NAME.toString(), "cross_compaction");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        "compaction_cross",
+        Tag.STATUS.toString(),
+        "waiting");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        "compaction_inner_seq",
+        Tag.STATUS.toString(),
+        "waiting");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        "compaction_inner_unseq",
+        Tag.STATUS.toString(),
+        "waiting");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        "compaction_cross",
+        Tag.STATUS.toString(),
+        "running");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        "compaction_inner_seq",
+        Tag.STATUS.toString(),
+        "running");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.QUEUE.toString(),
+        Tag.NAME.toString(),
+        "compaction_inner_unseq",
+        Tag.STATUS.toString(),
+        "running");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.COMPACTION_TASK_COUNT.toString(),
+        Tag.NAME.toString(),
+        "inner_seq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.COMPACTION_TASK_COUNT.toString(),
+        Tag.NAME.toString(),
+        "inner_unseq");
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.COMPACTION_TASK_COUNT.toString(),
+        Tag.NAME.toString(),
+        "cross");
   }
 
-  private void bindPerformanceInfo(AbstractMetricService metricService) {
-    metricService.getOrCreateCounter(
-        "Compacted_Point_Num", MetricLevel.IMPORTANT, Tag.NAME.toString(), "compaction");
-    metricService.getOrCreateCounter(
-        "Compacted_Chunk_Num", MetricLevel.IMPORTANT, Tag.NAME.toString(), "compaction");
-    metricService.getOrCreateCounter(
-        "Directly_Flush_Chunk_Num", MetricLevel.NORMAL, Tag.NAME.toString(), "compaction");
-    metricService.getOrCreateCounter(
-        "Deserialized_Chunk_Num", MetricLevel.NORMAL, Tag.NAME.toString(), "compaction");
-    metricService.getOrCreateCounter(
-        "Merged_Chunk_Num", MetricLevel.NORMAL, Tag.NAME.toString(), "compaction");
+  // endregion
+
+  @Override
+  public void bindTo(AbstractMetricService metricService) {
+    bindTaskInfo(metricService);
+    bindWriteInfo(metricService);
+    bindReadInfo(metricService);
+    bindPerformanceInfo(metricService);
   }
 
-  private void unbindPerformanceInfo(AbstractMetricService metricService) {
-    metricService.remove(
-        MetricType.COUNTER, "Compacted_Point_Num", Tag.NAME.toString(), "compaction");
-    metricService.remove(
-        MetricType.COUNTER, "Compacted_Chunk_Num", Tag.NAME.toString(), "compaction");
-    metricService.remove(
-        MetricType.COUNTER, "Directly_Flush_Chunk_Num", Tag.NAME.toString(), "compaction");
-    metricService.remove(
-        MetricType.COUNTER, "Deserialized_Chunk_Num", Tag.NAME.toString(), "compaction");
-    metricService.remove(MetricType.COUNTER, "Merged_Chunk_Num", Tag.NAME.toString(), "compaction");
+  @Override
+  public void unbindFrom(AbstractMetricService metricService) {
+    unbindTaskInfo(metricService);
+    unbindWriteInfo(metricService);
+    unbindReadInfo(metricService);
+    unbindPerformanceInfo(metricService);
+  }
+
+  private void updateCompactionTaskInfo() {
+    if (System.currentTimeMillis() - lastUpdateTime < UPDATE_INTERVAL) {
+      return;
+    }
+    lastUpdateTime = System.currentTimeMillis();
+    Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> compactionTaskStatisticMap =
+        CompactionTaskManager.getInstance().getCompactionTaskStatistic();
+    this.waitingSeqInnerCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.INNER_SEQ, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.WAITING, 0));
+    this.waitingUnseqInnerCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.INNER_UNSEQ, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.WAITING, 0));
+    this.waitingCrossCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.CROSS, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.WAITING, 0));
+    this.runningSeqInnerCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.INNER_SEQ, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.RUNNING, 0));
+    this.runningUnseqInnerCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.INNER_UNSEQ, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.RUNNING, 0));
+    this.runningCrossCompactionTaskNum.set(
+        compactionTaskStatisticMap
+            .getOrDefault(CompactionTaskType.CROSS, Collections.emptyMap())
+            .getOrDefault(CompactionTaskStatus.RUNNING, 0));
+  }
+
+  public static CompactionMetrics getInstance() {
+    return INSTANCE;
   }
 }

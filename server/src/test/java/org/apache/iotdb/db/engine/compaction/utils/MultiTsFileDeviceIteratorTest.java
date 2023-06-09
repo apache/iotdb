@@ -66,7 +66,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
@@ -292,6 +292,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     deleteTimeseriesInMManager(seriesPaths);
 
     createFiles(2, 10, 5, 100, 2000, 2000, 50, 50, true, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
 
     // sort the deviceId in lexicographical order from small to large
     List<String> deviceIds = new ArrayList<>();
@@ -347,6 +349,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with aligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -456,7 +460,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
-    tsFileManager.getTsFileList(true).get(0).setStatus(TsFileResourceStatus.CLOSED);
+    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -491,6 +495,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -601,7 +607,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
-    tsFileManager.getTsFileList(true).get(0).setStatus(TsFileResourceStatus.CLOSED);
+    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -634,6 +640,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with aligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -744,7 +752,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
-    tsFileManager.getTsFileList(true).get(0).setStatus(TsFileResourceStatus.CLOSED);
+    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -777,6 +785,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -895,7 +905,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
-    tsFileManager.getTsFileList(true).get(0).setStatus(TsFileResourceStatus.CLOSED);
+    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -907,9 +917,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
    * nonAligned property. Check whether the deviceID and its property can be obtained correctly.
    */
   @Test
-  public void getDeletedDevicesWithSameNameFromSeqFilesByFastPerformer()
-      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
-          InterruptedException {
+  public void getDeletedDevicesWithSameNameFromSeqFilesByFastPerformer() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
     TsFileGeneratorUtils.alignDeviceOffset = 0;
@@ -930,6 +938,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with aligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, true, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -1040,7 +1050,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
-    tsFileManager.getTsFileList(true).get(0).setStatus(TsFileResourceStatus.CLOSED);
+    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());
@@ -1052,9 +1062,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
    * aligned property. Check whether the deviceID and its property can be obtained correctly.
    */
   @Test
-  public void getDeletedDevicesWithSameNameFromSeqFilesByFastPerformer2()
-      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
-          InterruptedException {
+  public void getDeletedDevicesWithSameNameFromSeqFilesByFastPerformer2() throws Exception {
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     int oldAlignedDeviceOffset = TsFileGeneratorUtils.alignDeviceOffset;
     TsFileGeneratorUtils.alignDeviceOffset = 0;
@@ -1075,6 +1083,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
 
     // generate d0 ~ d9 with nonAligned property
     createFiles(2, 10, 15, 100, 2000, 2000, 50, 50, false, true);
+    resetFileName(seqResources.get(7), 100);
+    resetFileName(seqResources.get(8), 101);
     tsFileManager.addAll(seqResources, true);
 
     // sort the deviceId in lexicographical order from small to large
@@ -1193,7 +1203,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     tsFileManager.replace(
         tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources, 0, true);
-    tsFileManager.getTsFileList(true).get(0).setStatus(TsFileResourceStatus.CLOSED);
+    tsFileManager.getTsFileList(true).get(0).setStatusForTest(TsFileResourceStatus.NORMAL);
 
     validateSeqFiles(true);
     validateTargetDatas(sourceData, Collections.emptyList());

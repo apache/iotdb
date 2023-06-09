@@ -46,13 +46,10 @@ import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.TraverserWithLimitOffsetWrapper;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.EntityUpdater;
 import org.apache.iotdb.db.metadata.mtree.traverser.updater.MeasurementUpdater;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
@@ -63,10 +60,14 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowNodesResult;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.metadata.query.info.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
+import org.apache.iotdb.db.metadata.query.reader.SchemaReaderLimitOffsetWrapper;
+import org.apache.iotdb.db.metadata.query.reader.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.visitor.DeviceFilterVisitor;
 import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -628,7 +629,7 @@ public class MTreeBelowSGMemoryImpl {
    * @return true if the device node exists
    */
   public boolean checkDeviceNodeExists(PartialPath deviceId) {
-    IMemMNode deviceMNode = null;
+    IMemMNode deviceMNode;
     try {
       deviceMNode = getNodeByPath(deviceId);
       return deviceMNode.isDevice();
@@ -704,13 +705,6 @@ public class MTreeBelowSGMemoryImpl {
     } else {
       throw new MNodeTypeMismatchException(
           path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
-    }
-  }
-
-  public long countAllMeasurement() throws MetadataException {
-    try (MeasurementCounter<IMemMNode> measurementCounter =
-        new MeasurementCounter<>(rootNode, MetadataConstant.ALL_MATCH_PATTERN, store, false)) {
-      return measurementCounter.count();
     }
   }
 
@@ -823,7 +817,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
+      PartialPath activatePath, int templateId, boolean isAligned) {
     String[] nodes = activatePath.getNodes();
     IMemMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
@@ -875,31 +869,46 @@ public class MTreeBelowSGMemoryImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
-    TraverserWithLimitOffsetWrapper<IDeviceSchemaInfo, IMemMNode> traverser =
-        new TraverserWithLimitOffsetWrapper<>(
-            collector, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
-    return new ISchemaReader<IDeviceSchemaInfo>() {
+    ISchemaReader<IDeviceSchemaInfo> reader =
+        new ISchemaReader<IDeviceSchemaInfo>() {
 
-      public boolean isSuccess() {
-        return traverser.isSuccess();
-      }
+          private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
+          private IDeviceSchemaInfo next;
 
-      public Throwable getFailure() {
-        return traverser.getFailure();
-      }
+          public boolean isSuccess() {
+            return collector.isSuccess();
+          }
 
-      public void close() {
-        traverser.close();
-      }
+          public Throwable getFailure() {
+            return collector.getFailure();
+          }
 
-      public boolean hasNext() {
-        return traverser.hasNext();
-      }
+          public void close() {
+            collector.close();
+          }
 
-      public IDeviceSchemaInfo next() {
-        return traverser.next();
-      }
-    };
+          public boolean hasNext() {
+            while (next == null && collector.hasNext()) {
+              IDeviceSchemaInfo temp = collector.next();
+              if (filterVisitor.process(showDevicesPlan.getSchemaFilter(), temp)) {
+                next = temp;
+              }
+            }
+            return next != null;
+          }
+
+          public IDeviceSchemaInfo next() {
+            IDeviceSchemaInfo result = next;
+            next = null;
+            return result;
+          }
+        };
+    if (showDevicesPlan.getLimit() > 0 || showDevicesPlan.getOffset() > 0) {
+      return new SchemaReaderLimitOffsetWrapper<>(
+          reader, showDevicesPlan.getLimit(), showDevicesPlan.getOffset());
+    } else {
+      return reader;
+    }
   }
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
@@ -953,40 +962,25 @@ public class MTreeBelowSGMemoryImpl {
               public PartialPath getPartialPath() {
                 return getPartialPathFromRootToNode(node.getAsMNode());
               }
+
+              @Override
+              public ITimeSeriesSchemaInfo snapshot() {
+                return new TimeseriesSchemaInfo(
+                    node, getPartialPath(), getTags(), getAttributes(), isUnderAlignedDevice());
+              }
             };
           }
         };
+
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
-    Traverser<ITimeSeriesSchemaInfo, IMemMNode> traverser;
+    ISchemaReader<ITimeSeriesSchemaInfo> reader =
+        new TimeseriesReaderWithViewFetch(collector, showTimeSeriesPlan.getSchemaFilter());
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
-      traverser =
-          new TraverserWithLimitOffsetWrapper<>(
-              collector, showTimeSeriesPlan.getLimit(), showTimeSeriesPlan.getOffset());
+      return new SchemaReaderLimitOffsetWrapper<>(
+          reader, showTimeSeriesPlan.getLimit(), showTimeSeriesPlan.getOffset());
     } else {
-      traverser = collector;
+      return reader;
     }
-    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-
-      public boolean isSuccess() {
-        return traverser.isSuccess();
-      }
-
-      public Throwable getFailure() {
-        return traverser.getFailure();
-      }
-
-      public void close() {
-        traverser.close();
-      }
-
-      public boolean hasNext() {
-        return traverser.hasNext();
-      }
-
-      public ITimeSeriesSchemaInfo next() {
-        return traverser.next();
-      }
-    };
   }
 
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
@@ -1060,12 +1054,6 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
-        throw new AlignedTimeseriesException(
-            "timeseries under this entity is aligned, can not create view under this entity.",
-            device.getFullPath());
-      }
-
       IDeviceMNode<IMemMNode> entityMNode;
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
@@ -1086,6 +1074,60 @@ public class MTreeBelowSGMemoryImpl {
 
       return measurementMNode;
     }
+  }
+
+  public List<PartialPath> constructLogicalViewBlackList(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    try (MeasurementUpdater<IMemMNode> updater =
+        new MeasurementUpdater<IMemMNode>(rootNode, pathPattern, store, false) {
+
+          protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
+            if (node.isLogicalView()) {
+              node.setPreDeleted(true);
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+          }
+        }) {
+      updater.update();
+    }
+    return result;
+  }
+
+  public List<PartialPath> rollbackLogicalViewBlackList(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new ArrayList<>();
+    try (MeasurementUpdater<IMemMNode> updater =
+        new MeasurementUpdater<IMemMNode>(rootNode, pathPattern, store, false) {
+
+          protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
+            if (node.isLogicalView()) {
+              node.setPreDeleted(false);
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+          }
+        }) {
+      updater.update();
+    }
+    return result;
+  }
+
+  public List<PartialPath> getPreDeletedLogicalView(PartialPath pathPattern)
+      throws MetadataException {
+    List<PartialPath> result = new LinkedList<>();
+    try (MeasurementCollector<Void, IMemMNode> collector =
+        new MeasurementCollector<Void, IMemMNode>(rootNode, pathPattern, store, false) {
+
+          protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
+            if (node.isLogicalView() && node.isPreDeleted()) {
+              result.add(getPartialPathFromRootToNode(node.getAsMNode()));
+            }
+            return null;
+          }
+        }) {
+      collector.traverse();
+    }
+    return result;
   }
   // endregion
 }

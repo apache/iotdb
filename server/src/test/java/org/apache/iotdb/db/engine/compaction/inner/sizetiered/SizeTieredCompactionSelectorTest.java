@@ -20,14 +20,19 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.selector.impl.SizeTieredCompactionSelector;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,5 +69,40 @@ public class SizeTieredCompactionSelectorTest {
         new SizeTieredCompactionSelector("root.test", "0", 9, true, manager)
             .selectInnerSpaceTask(manager.getOrCreateSequenceListByTimePartition(9))
             .size());
+  }
+
+  @Test
+  public void testSubmitWhenSequenceFileIsEmpty() throws Exception {
+    DataRegion region = new DataRegion("root.test", "1");
+    TsFileManager manager = region.getTsFileManager();
+    int originCandidate =
+        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(30);
+    boolean enableUnseqCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    CompactionTaskManager.getInstance().start();
+    try {
+      for (int i = 1; i < 91; ++i) {
+        TsFileResource resource = Mockito.mock(TsFileResource.class);
+        Mockito.when(resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE))
+            .thenReturn(true);
+        Mockito.when(resource.getTimePartition()).thenReturn(0L);
+        Mockito.when(resource.getTsFileSize()).thenReturn(100L);
+        Mockito.when(resource.getTsFile())
+            .thenReturn(new File(String.format("%d-%d-0-0.tsfile", i, i)));
+        Mockito.when(resource.getStatus()).thenReturn(TsFileResourceStatus.NORMAL);
+        manager.add(resource, false);
+      }
+      Assert.assertEquals(3, region.compact());
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxInnerCompactionCandidateFileNum(originCandidate);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(enableUnseqCompaction);
+      CompactionTaskManager.getInstance().shutdown(60_000L);
+    }
   }
 }

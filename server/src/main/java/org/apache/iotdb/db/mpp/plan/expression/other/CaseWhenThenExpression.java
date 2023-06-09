@@ -115,7 +115,7 @@ public class CaseWhenThenExpression extends Expression {
       Map<String, List<InputLocation>> inputLocations) {
     this.getExpressions()
         .forEach(expression -> expression.bindInputLayerColumnIndexWithExpression(inputLocations));
-    final String digest = toString();
+    final String digest = getExpressionString();
 
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
@@ -134,10 +134,10 @@ public class CaseWhenThenExpression extends Expression {
     StringBuilder builder = new StringBuilder();
     builder.append("CASE ");
     for (Expression expression : this.whenThenExpressions) {
-      builder.append(expression.toString()).append(" ");
+      builder.append(expression.getExpressionString()).append(" ");
     }
     if (!(this.elseExpression instanceof NullOperand)) {
-      builder.append("ELSE ").append(this.elseExpression.toString()).append(" ");
+      builder.append("ELSE ").append(this.elseExpression.getExpressionString()).append(" ");
     }
     builder.append("END");
     return builder.toString();
@@ -163,6 +163,20 @@ public class CaseWhenThenExpression extends Expression {
     List<Expression> result = new ArrayList<>(whenThenExpressions);
     result.add(elseExpression);
     return result;
+  }
+
+  @Override
+  public String getOutputSymbolInternal() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("CASE ");
+    for (Expression expression : this.whenThenExpressions) {
+      builder.append(expression.getOutputSymbol()).append(" ");
+    }
+    if (!(this.elseExpression instanceof NullOperand)) {
+      builder.append("ELSE ").append(this.elseExpression.getOutputSymbol()).append(" ");
+    }
+    builder.append("END");
+    return builder.toString();
   }
 
   @Override

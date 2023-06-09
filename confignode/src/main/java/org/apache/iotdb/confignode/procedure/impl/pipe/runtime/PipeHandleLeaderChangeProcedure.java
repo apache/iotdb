@@ -21,13 +21,13 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.coordinator.PipeHandleLeaderChangePlan;
-import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.impl.pipe.task.AbstractOperatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -65,11 +65,10 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   }
 
   @Override
-  protected boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromValidateTask");
 
     // nothing needs to be checked
-    return true;
   }
 
   @Override
@@ -96,15 +95,15 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     final ConsensusWriteResponse response =
         env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
     if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
+      throw new PipeException(response.getErrorMessage());
     }
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromHandleOnDataNodes");
 
-    pushPipeMetaToDataNodes(env);
+    pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override
@@ -138,15 +137,15 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
     final ConsensusWriteResponse response =
         env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
     if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
+      throw new PipeException(response.getErrorMessage());
     }
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCreateOnDataNodes");
 
-    pushPipeMetaToDataNodes(env);
+    pushPipeMetaToDataNodesIgnoreException(env);
   }
 
   @Override

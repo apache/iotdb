@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LogicalViewSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
@@ -109,6 +111,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -148,7 +151,7 @@ public class LogicalPlanBuilder {
               && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
-                .setType(expression.toString(), getPreAnalyzedType.apply(expression));
+                .setType(expression.getExpressionString(), getPreAnalyzedType.apply(expression));
           }
         });
   }
@@ -201,28 +204,88 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(
-      Set<Expression> sourceExpressions,
-      Filter globalTimeFilter,
-      OrderByParameter mergeOrderParameter) {
+      Set<Expression> sourceExpressions, Filter globalTimeFilter, Ordering timeseriesOrdering) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    List<PartialPath> selectedPaths =
-        sourceExpressions.stream()
-            .map(expression -> ((TimeSeriesOperand) expression).getPath())
-            .collect(Collectors.toList());
 
-    List<PartialPath> groupedPaths =
-        mergeOrderParameter.getSortItemList().isEmpty()
-            ? MetaUtils.groupAlignedSeries(selectedPaths)
-            : MetaUtils.groupAlignedSeriesWithOrder(selectedPaths, mergeOrderParameter);
-    for (PartialPath path : groupedPaths) {
-      if (path instanceof MeasurementPath) { // non-aligned series
-        sourceNodeList.add(
-            new LastQueryScanNode(context.getQueryId().genPlanNodeId(), (MeasurementPath) path));
-      } else if (path instanceof AlignedPath) { // aligned series
-        sourceNodeList.add(
-            new AlignedLastQueryScanNode(context.getQueryId().genPlanNodeId(), (AlignedPath) path));
+    Map<String, Boolean> deviceAlignedMap = new HashMap<>();
+    Map<String, Boolean> deviceExistViewMap = new HashMap<>();
+    Map<String, Map<String, Expression>> outputPathToSourceExpressionMap =
+        timeseriesOrdering != null
+            ? new TreeMap<>(timeseriesOrdering.getStringComparator())
+            : new LinkedHashMap<>();
+    for (Expression sourceExpression : sourceExpressions) {
+      MeasurementPath outputPath =
+          (MeasurementPath)
+              (sourceExpression.isViewExpression()
+                  ? sourceExpression.getViewPath()
+                  : ((TimeSeriesOperand) sourceExpression).getPath());
+      String outputDevice = outputPath.getDevice();
+      outputPathToSourceExpressionMap
+          .computeIfAbsent(
+              outputDevice,
+              k ->
+                  timeseriesOrdering != null
+                      ? new TreeMap<>(timeseriesOrdering.getStringComparator())
+                      : new LinkedHashMap<>())
+          .put(outputPath.getMeasurement(), sourceExpression);
+      if (!deviceAlignedMap.containsKey(outputDevice)) {
+        deviceAlignedMap.put(outputDevice, outputPath.isUnderAlignedEntity());
+      }
+      deviceExistViewMap.put(
+          outputDevice,
+          deviceExistViewMap.getOrDefault(outputDevice, false)
+              || sourceExpression.isViewExpression());
+    }
+
+    for (Map.Entry<String, Map<String, Expression>> deviceMeasurementExpressionEntry :
+        outputPathToSourceExpressionMap.entrySet()) {
+      String outputDevice = deviceMeasurementExpressionEntry.getKey();
+      if (deviceExistViewMap.get(outputDevice)) {
+        // exist view
+        for (Expression sourceExpression : deviceMeasurementExpressionEntry.getValue().values()) {
+          MeasurementPath selectedPath =
+              (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+          if (selectedPath.isUnderAlignedEntity()) { // aligned series
+            sourceNodeList.add(
+                new AlignedLastQueryScanNode(
+                    context.getQueryId().genPlanNodeId(),
+                    new AlignedPath(selectedPath),
+                    sourceExpression.isViewExpression()
+                        ? sourceExpression.getViewPath().getFullPath()
+                        : null));
+          } else { // non-aligned series
+            sourceNodeList.add(
+                new LastQueryScanNode(
+                    context.getQueryId().genPlanNodeId(),
+                    selectedPath,
+                    sourceExpression.isViewExpression()
+                        ? sourceExpression.getViewPath().getFullPath()
+                        : null));
+          }
+        }
       } else {
-        throw new IllegalArgumentException("unexpected path type");
+        if (deviceAlignedMap.get(outputDevice)) {
+          // aligned series
+          List<MeasurementPath> measurementPaths =
+              deviceMeasurementExpressionEntry.getValue().values().stream()
+                  .map(expression -> (MeasurementPath) ((TimeSeriesOperand) expression).getPath())
+                  .collect(Collectors.toList());
+          AlignedPath alignedPath = new AlignedPath(measurementPaths.get(0).getDevicePath());
+          for (MeasurementPath measurementPath : measurementPaths) {
+            alignedPath.addMeasurement(measurementPath);
+          }
+          sourceNodeList.add(
+              new AlignedLastQueryScanNode(
+                  context.getQueryId().genPlanNodeId(), alignedPath, null));
+        } else {
+          // non-aligned series
+          for (Expression sourceExpression : deviceMeasurementExpressionEntry.getValue().values()) {
+            MeasurementPath selectedPath =
+                (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
+            sourceNodeList.add(
+                new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectedPath, null));
+          }
+        }
       }
     }
 
@@ -231,7 +294,7 @@ public class LogicalPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             sourceNodeList,
             globalTimeFilter,
-            mergeOrderParameter);
+            timeseriesOrdering);
     ColumnHeaderConstant.lastQueryColumnHeaders.forEach(
         columnHeader ->
             context
@@ -499,7 +562,8 @@ public class LogicalPlanBuilder {
       AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
     List<TAggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
-    String inputExpressionStr = aggregationDescriptor.getInputExpressions().get(0).toString();
+    String inputExpressionStr =
+        aggregationDescriptor.getInputExpressions().get(0).getExpressionString();
     for (TAggregationType aggregation : splitAggregations) {
       String functionName = aggregation.toString().toLowerCase();
       TSDataType aggregationType = SchemaUtils.getAggregationType(functionName);
@@ -780,7 +844,7 @@ public class LogicalPlanBuilder {
         tagKeys,
         tagValuesToAggregationDescriptors,
         groupByTagOutputExpressions.stream()
-            .map(Expression::toString)
+            .map(Expression::getExpressionString)
             .collect(Collectors.toList()));
   }
 
@@ -981,34 +1045,41 @@ public class LogicalPlanBuilder {
   /** Meta Query* */
   public LogicalPlanBuilder planTimeSeriesSchemaSource(
       PartialPath pathPattern,
-      String key,
-      String value,
+      SchemaFilter schemaFilter,
       long limit,
       long offset,
       boolean orderByHeat,
-      boolean contains,
       boolean prefixPath,
       Map<Integer, Template> templateMap) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
             pathPattern,
-            key,
-            value,
+            schemaFilter,
             limit,
             offset,
             orderByHeat,
-            contains,
             prefixPath,
             templateMap);
     return this;
   }
 
   public LogicalPlanBuilder planDeviceSchemaSource(
-      PartialPath pathPattern, long limit, long offset, boolean prefixPath, boolean hasSgCol) {
+      PartialPath pathPattern,
+      long limit,
+      long offset,
+      boolean prefixPath,
+      boolean hasSgCol,
+      SchemaFilter schemaFilter) {
     this.root =
         new DevicesSchemaScanNode(
-            context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
+            context.getQueryId().genPlanNodeId(),
+            pathPattern,
+            limit,
+            offset,
+            prefixPath,
+            hasSgCol,
+            schemaFilter);
     return this;
   }
 
@@ -1082,38 +1153,23 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planTimeSeriesCountSource(
       PartialPath partialPath,
       boolean prefixPath,
-      String key,
-      String value,
-      boolean isContains,
+      SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     this.root =
         new TimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
             partialPath,
             prefixPath,
-            key,
-            value,
-            isContains,
+            schemaFilter,
             templateMap);
     return this;
   }
 
   public LogicalPlanBuilder planLevelTimeSeriesCountSource(
-      PartialPath partialPath,
-      boolean prefixPath,
-      int level,
-      String key,
-      String value,
-      boolean isContains) {
+      PartialPath partialPath, boolean prefixPath, int level, SchemaFilter schemaFilter) {
     this.root =
         new LevelTimeSeriesCountNode(
-            context.getQueryId().genPlanNodeId(),
-            partialPath,
-            prefixPath,
-            level,
-            key,
-            value,
-            isContains);
+            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level, schemaFilter);
     return this;
   }
 
@@ -1152,6 +1208,14 @@ public class LogicalPlanBuilder {
     this.root =
         new PathsUsingTemplateScanNode(
             context.getQueryId().genPlanNodeId(), pathPatternList, templateId);
+    return this;
+  }
+
+  public LogicalPlanBuilder planLogicalViewSchemaSource(
+      PartialPath pathPattern, SchemaFilter schemaFilter, long limit, long offset) {
+    this.root =
+        new LogicalViewSchemaScanNode(
+            context.getQueryId().genPlanNodeId(), pathPattern, schemaFilter, limit, offset);
     return this;
   }
 
@@ -1210,6 +1274,17 @@ public class LogicalPlanBuilder {
 
   private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
     this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+    return this;
+  }
+
+  public LogicalPlanBuilder planOrderBy(List<SortItem> sortItemList) {
+    if (sortItemList.isEmpty()) {
+      return this;
+    }
+
+    this.root =
+        new SortNode(
+            context.getQueryId().genPlanNodeId(), root, new OrderByParameter(sortItemList));
     return this;
   }
 

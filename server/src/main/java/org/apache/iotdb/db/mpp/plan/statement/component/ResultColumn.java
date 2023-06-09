@@ -98,7 +98,13 @@ public class ResultColumn extends StatementNode {
 
   @Override
   public String toString() {
-    return "ResultColumn{" + "expression=" + expression + ", alias='" + alias + '\'' + '}';
+    return "ResultColumn{"
+        + "expression="
+        + expression.getExpressionString()
+        + ", alias='"
+        + alias
+        + '\''
+        + '}';
   }
 
   @Override
