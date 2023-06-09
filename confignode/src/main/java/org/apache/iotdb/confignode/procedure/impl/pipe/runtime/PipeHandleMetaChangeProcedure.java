@@ -189,11 +189,30 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
                           .getPipeTaskInfo()
                           .showPipes())
                   .filter(true, pipeName).getAllPipeMeta().stream()
-                      .map(pipeMeta -> pipeMeta.getRuntimeMeta().getStatus())
-                      .filter(status -> !status.get().equals(PipeStatus.STOPPED))
+                      .filter(
+                          pipeMeta ->
+                              !pipeMeta
+                                  .getRuntimeMeta()
+                                  .getStatus()
+                                  .get()
+                                  .equals(PipeStatus.STOPPED))
                       .forEach(
-                          status -> {
-                            status.set(PipeStatus.STOPPED);
+                          pipeMeta -> {
+                            pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+                            if (!pipeMeta
+                                .getStaticMeta()
+                                .getPipeName()
+                                .equals(pipeMetaOnConfigNode.getStaticMeta().getPipeName())) {
+                              pipeMeta
+                                  .getRuntimeMeta()
+                                  .getConsensusGroupIdToTaskMetaMap()
+                                  .get(runtimeMetaOnConfigNode.getKey())
+                                  .trackExceptionMessage(
+                                      new PipeRuntimeConnectorCriticalException(
+                                          String.format(
+                                              "This pipe has been stopped due to critical exceptions with pipe %s that shares the same connector.",
+                                              pipeMetaOnConfigNode.getStaticMeta().getPipeName())));
+                            }
 
                             needWriteConsensusOnConfigNodes = true;
                             needPushPipeMetaToDataNodes = true;
