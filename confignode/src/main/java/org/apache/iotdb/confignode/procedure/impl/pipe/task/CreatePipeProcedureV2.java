@@ -108,7 +108,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             (regionGroupId, regionLeaderNodeId) -> {
               if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
                 final String databaseName =
-                    env.getConfigManager().getPartitionManager().getRegionStorageGroup(regionGroupId);
+                    env.getConfigManager()
+                        .getPartitionManager()
+                        .getRegionStorageGroup(regionGroupId);
                 if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
                   // pipe only collect user's data, filter metric database here.
                   consensusGroupIdToTaskMetaMap.put(
