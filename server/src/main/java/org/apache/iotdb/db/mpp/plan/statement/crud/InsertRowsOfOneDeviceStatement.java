@@ -151,6 +151,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
         List<InsertRowStatement> childSplitResult = child.getSplitList();
         mergedList.addAll(childSplitResult);
       }
+      InsertRowsStatement.validateInsertRowList(mergedList);
       InsertRowsStatement splitResult = new InsertRowsStatement();
       splitResult.setInsertRowStatementList(mergedList);
       return splitResult;
