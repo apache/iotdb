@@ -58,8 +58,7 @@ public class SystemInfo {
 
   private AtomicInteger compactionFileNumCost = new AtomicInteger(0);
 
-  private int maxFileNumForCompaction =
-      config.getMaxCrossCompactionCandidateFileNum() * config.getCompactionThreadCount();
+  private int maxFileNumForCompaction = config.getMaxCompactionCandidateFileNum();
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
