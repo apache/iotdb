@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -614,6 +616,32 @@ public class RegionWriteExecutor {
       result.setMessage(status.getMessage());
       result.setStatus(status);
       return result;
+    }
+
+    @Override
+    public RegionExecutionResult visitAlterTimeSeries(
+        AlterTimeSeriesNode node, WritePlanNodeExecutionContext context) {
+      ISchemaRegion schemaRegion =
+          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+      try {
+        List<MeasurementPath> measurementPathList =
+            schemaRegion.fetchSchema(node.getPath(), Collections.emptyMap(), false);
+        if (node.isAlterView()) {
+          if (measurementPathList.isEmpty()) {
+            throw new PathNotExistException(node.getPath().getFullPath());
+          } else if (!measurementPathList.get(0).getMeasurementSchema().isLogicalView()) {
+            throw new MetadataException(
+                String.format("%s is not view.", measurementPathList.get(0).getFullPath()));
+          }
+        }
+        return super.visitAlterTimeSeries(node, context);
+      } catch (MetadataException e) {
+        RegionExecutionResult result = new RegionExecutionResult();
+        result.setAccepted(true);
+        result.setMessage(e.getMessage());
+        result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        return result;
+      }
     }
 
     @Override

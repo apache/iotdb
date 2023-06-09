@@ -572,11 +572,12 @@ dropLogicalView
     ;
 
 renameLogicalView
-    : ALTER VIEW prefixPath RENAME TO prefixPath
+    : ALTER VIEW fullPath RENAME TO fullPath
     ;
 
 alterLogicalView
     : ALTER VIEW viewTargetPaths AS viewSourcePaths
+    | ALTER VIEW fullPath alterClause
     ;
 
 viewSuffixPaths
