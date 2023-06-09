@@ -23,35 +23,19 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
-import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
-import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
-import org.apache.iotdb.db.pipe.task.queue.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
+import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.PipeParameters;
 import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashMap;
 
 public class PipeTaskCollectorStage extends PipeTaskStage {
-
-  private final PipeParameters collectorParameters;
-
-  /**
-   * TODO: have a better way to control busy/idle status of PipeTaskCollectorStage.
-   *
-   * <p>Currently, this field is for IoTDBDataRegionCollector only. IoTDBDataRegionCollector uses
-   * collectorPendingQueue as an internal data structure to store realtime events.
-   *
-   * <p>PendingQueue can detect whether the queue is empty or not, and it can notify the
-   * PipeTaskProcessorStage to stop processing data when the queue is empty to avoid unnecessary
-   * processing, and it also can notify the PipeTaskProcessorStage to start processing data when the
-   * queue is not empty.
-   */
-  private UnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   private final PipeCollector pipeCollector;
 
@@ -60,6 +44,8 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       PipeTaskMeta pipeTaskMeta,
       long creationTime,
       PipeParameters collectorParameters) {
+    PipeParameters localizedCollectorParameters;
+
     // TODO: avoid if-else, use reflection to create collector all the time
     if (collectorParameters
         .getStringOrDefault(
@@ -69,38 +55,41 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       // we want to pass data region id to collector, so we need to create a new collector
       // parameters and put data region id into it. we can't put data region id into collector
       // parameters directly, because the given collector parameters may be used by other pipe task.
-      this.collectorParameters =
+      localizedCollectorParameters =
           new PipeParameters(new HashMap<>(collectorParameters.getAttribute()));
       // set data region id to collector parameters, so that collector can get data region id inside
       // collector
-      this.collectorParameters
+      localizedCollectorParameters
           .getAttribute()
           .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
 
-      collectorPendingQueue = new UnboundedBlockingPendingQueue<>();
       this.pipeCollector =
-          new IoTDBDataRegionCollector(pipeTaskMeta, creationTime, collectorPendingQueue);
+          new IoTDBDataRegionCollector(
+              pipeTaskMeta, creationTime, new UnboundedBlockingPendingQueue<>());
     } else {
-      this.collectorParameters = collectorParameters;
+      localizedCollectorParameters = collectorParameters;
 
-      this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
+      this.pipeCollector = PipeAgent.plugin().reflectCollector(localizedCollectorParameters);
+    }
+
+    // validate and customize should be called before createSubtask. this allows collector exposing
+    // exceptions in advance.
+    try {
+      // 1. validate collector parameters
+      pipeCollector.validate(new PipeParameterValidator(localizedCollectorParameters));
+
+      // 2. customize collector
+      final PipeCollectorRuntimeConfiguration runtimeConfiguration =
+          new PipeCollectorRuntimeConfiguration();
+      pipeCollector.customize(localizedCollectorParameters, runtimeConfiguration);
+    } catch (Exception e) {
+      throw new PipeException(e.getMessage(), e);
     }
   }
 
   @Override
   public void createSubtask() throws PipeException {
-    try {
-      // 1. validate collector parameters
-      pipeCollector.validate(new PipeParameterValidator(collectorParameters));
-
-      // 2. customize collector
-      final PipeCollectorRuntimeConfiguration runtimeConfiguration =
-          new PipeCollectorRuntimeConfiguration();
-      pipeCollector.customize(collectorParameters, runtimeConfiguration);
-      // TODO: use runtimeConfiguration to configure collector
-    } catch (Exception e) {
-      throw new PipeException(e.getMessage(), e);
-    }
+    // do nothing
   }
 
   @Override
@@ -128,9 +117,5 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
 
   public EventSupplier getEventSupplier() {
     return pipeCollector::supply;
-  }
-
-  public UnboundedBlockingPendingQueue<Event> getCollectorPendingQueue() {
-    return collectorPendingQueue;
   }
 }

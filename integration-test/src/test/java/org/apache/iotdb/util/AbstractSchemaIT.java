@@ -113,8 +113,7 @@ public abstract class AbstractSchemaIT {
   protected static void allocateMemoryForSchemaRegion(int allocateMemoryForSchemaRegion) {
     int schemaAllMemory = 25742540;
     int sumProportion = schemaAllMemory / allocateMemoryForSchemaRegion;
-    int[] proportion =
-        new int[] {1, (sumProportion - 1) / 2, (sumProportion - 1) / 4, (sumProportion - 1) / 4};
+    int[] proportion = new int[] {1, (sumProportion - 1) * 3 / 4, (sumProportion - 1) / 4};
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()

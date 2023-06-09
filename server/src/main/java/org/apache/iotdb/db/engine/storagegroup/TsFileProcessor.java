@@ -53,7 +53,7 @@ import org.apache.iotdb.db.mpp.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.pipe.core.collector.realtime.listener.PipeInsertionDataNodeListener;
+import org.apache.iotdb.db.pipe.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -710,6 +710,11 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
+        logger.info(
+            "[Deletion] Deletion with path: {}, time:{}-{} in workMemTable",
+            deletion.getPath(),
+            deletion.getStartTime(),
+            deletion.getEndTime());
         for (PartialPath device : devicePaths) {
           workMemTable.delete(
               deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
@@ -987,7 +992,15 @@ public class TsFileProcessor {
     Map<String, Long> lastTimeForEachDevice = new HashMap<>();
     if (sequence) {
       lastTimeForEachDevice = tobeFlushed.getMaxTime();
-      tsFileResource.updateEndTime(lastTimeForEachDevice);
+      // If some devices have been removed in MemTable, the number of device in MemTable and
+      // tsFileResource will not be the same. And the endTime of these devices in resource will be
+      // Long.minValue.
+      // In the case, we need to delete the removed devices in tsFileResource.
+      if (lastTimeForEachDevice.size() != tsFileResource.getDevices().size()) {
+        tsFileResource.deleteRemovedDeviceAndUpdateEndTime(lastTimeForEachDevice);
+      } else {
+        tsFileResource.updateEndTime(lastTimeForEachDevice);
+      }
     }
 
     for (FlushListener flushListener : flushListeners) {

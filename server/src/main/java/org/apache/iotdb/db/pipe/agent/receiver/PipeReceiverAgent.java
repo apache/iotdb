@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.agent.receiver;
 
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.IoTDBThriftConnectorVersion;
-import org.apache.iotdb.db.pipe.core.connector.impl.iotdb.v1.IoTDBThriftReceiverV1;
+import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftReceiverV1;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;

@@ -142,11 +142,16 @@ class Session(object):
                     self.__default_connection = self.init_connection(
                         self.__default_endpoint
                     )
-                except Exception:
+                except Exception as e:
                     if not self.reconnect():
-                        raise IoTDBConnectionException(
-                            "Cluster has no nodes to connect"
-                        ) from None
+                        if str(e).startswith("Could not connect to any of"):
+                            error_msg = (
+                                "Cluster has no nodes to connect because: "
+                                + self.connection_error_msg()
+                            )
+                        else:
+                            error_msg = str(e)
+                        raise IoTDBConnectionException(error_msg) from None
                 break
         self.__client = self.__default_connection.client
         self.__session_id = self.__default_connection.session_id
@@ -1739,9 +1744,10 @@ class Session(object):
                 and self.__default_connection.transport is not None
             ):
                 self.__default_connection.transport.close()
-            curr_host_index = random.randint(0, len(self.__hosts))
+            curr_host_index = random.randint(0, len(self.__hosts) - 1)
             try_host_num = 0
-            for j in range(curr_host_index, len(self.__hosts)):
+            j = curr_host_index
+            while j < len(self.__hosts):
                 if try_host_num == len(self.__hosts):
                     break
                 self.__default_endpoint = TEndPoint(self.__hosts[j], self.__ports[j])
@@ -1762,6 +1768,8 @@ class Session(object):
                         }
                 except IoTDBConnectionException:
                     pass
+                    j += 1
+                    continue
                 break
             if connected:
                 break

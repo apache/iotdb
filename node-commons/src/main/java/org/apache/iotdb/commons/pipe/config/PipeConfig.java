@@ -85,10 +85,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
   }
 
-  public long getPipeConnectorSessionId() {
-    return COMMON_CONFIG.getPipeConnectorSessionId();
-  }
-
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public int getHeartbeatLoopCyclesForCollectingPipeMeta() {
