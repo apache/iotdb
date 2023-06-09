@@ -120,7 +120,6 @@ public class LogicalViewInfo implements IMeasurementInfo {
 
   @Override
   public void setOffset(long offset) {
-    // can not set offset for a logical view
     this.offset = offset;
   }
 
