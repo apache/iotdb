@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.cpu;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -143,6 +144,11 @@ public class CpuUsageMetrics implements IMetricSet {
   }
 
   private synchronized void checkAndMayUpdate() {
+    if (!MetricLevel.higherOrEqual(
+        MetricLevel.IMPORTANT,
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
+      return;
+    }
     long currentTime = System.currentTimeMillis();
     if (currentTime - lastUpdateTime.get() > UPDATE_INTERVAL) {
       lastUpdateTime.set(currentTime);
