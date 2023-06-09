@@ -73,17 +73,16 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus dropPipe(String pipeName) {
-    boolean isPipeExisted = pipeTaskInfo.isPipeExisted(pipeName);
     TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return isPipeExisted
-          ? status
-          : RpcUtils.getStatus(
-              TSStatusCode.PIPE_NOT_EXIST_ERROR,
-              String.format(
-                  "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(String.format("Failed to drop pipe %s. Result status: %s.", pipeName, status));
     }
-    return status;
+    return pipeTaskInfo.isPipeExisted(pipeName)
+        ? status
+        : RpcUtils.getStatus(
+            TSStatusCode.PIPE_NOT_EXIST_ERROR,
+            String.format(
+                "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
   }
 
   public TShowPipeResp showPipes(TShowPipeReq req) {
