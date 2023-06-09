@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionFileNumNotEnoughException;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionInfo;
@@ -190,10 +190,10 @@ public class SystemInfo {
   }
 
   public void addCompactionFileNum(int fileNum, long timeOutInSecond)
-      throws InterruptedException, CompactionFileNumNotEnoughException {
+      throws InterruptedException, CompactionFileCountExceededException {
     if (fileNum > maxFileNumForCompaction) {
       // source file num is greater than the max file num for compaction
-      throw new CompactionFileNumNotEnoughException(
+      throw new CompactionFileCountExceededException(
           String.format(
               "Required file num %d is greater than the max file num %d for compaction.",
               fileNum, maxFileNumForCompaction));
@@ -203,7 +203,7 @@ public class SystemInfo {
     while (originFileNum + fileNum > maxFileNumForCompaction
         || !compactionFileNumCost.compareAndSet(originFileNum, originFileNum + fileNum)) {
       if (System.currentTimeMillis() - startTime >= timeOutInSecond * 1000L) {
-        throw new CompactionFileNumNotEnoughException(
+        throw new CompactionFileCountExceededException(
             String.format(
                 "Failed to allocate %d files for compaction after %d seconds, max file num for compaction module is %d, %d files is used.",
                 fileNum, timeOutInSecond, maxFileNumForCompaction, originFileNum));
@@ -246,7 +246,7 @@ public class SystemInfo {
     this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
   }
 
-  public synchronized void resetCompactionFileNumCost(int fileNum) {
+  public synchronized void decreaseCompactionFileNumCost(int fileNum) {
     this.compactionFileNumCost.addAndGet(-fileNum);
   }
 

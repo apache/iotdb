@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
-import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionFileNumNotEnoughException;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -387,7 +387,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         LOGGER.warn("Interrupted when allocating memory for compaction", t);
       } else if (t instanceof CompactionMemoryNotEnoughException) {
         LOGGER.info("No enough memory for current compaction task {}", this, t);
-      } else if (t instanceof CompactionFileNumNotEnoughException) {
+      } else if (t instanceof CompactionFileCountExceededException) {
         LOGGER.info("No enough file num for current compaction task {}", this, t);
         SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       }
@@ -400,7 +400,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     if (!addReadLockSuccess) {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       SystemInfo.getInstance()
-          .resetCompactionFileNumCost(
+          .decreaseCompactionFileNumCost(
               selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
     }
     return addReadLockSuccess;

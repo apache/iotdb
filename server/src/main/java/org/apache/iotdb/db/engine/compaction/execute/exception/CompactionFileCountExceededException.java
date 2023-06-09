@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.execute.exception;
 
-public class CompactionFileNumNotEnoughException extends Exception {
-  public CompactionFileNumNotEnoughException(String message) {
+public class CompactionFileCountExceededException extends Exception {
+  public CompactionFileCountExceededException(String message) {
     super(message);
   }
 }
