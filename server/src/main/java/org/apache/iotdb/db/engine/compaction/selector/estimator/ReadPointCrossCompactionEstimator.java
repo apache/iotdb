@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -56,11 +57,42 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
   @Override
   public long estimateCrossCompactionMemory(
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
-    long cost = 0;
-    cost += calculateReadingUnseqFile(unseqResource);
-    cost += calculateReadingSeqFiles(seqResources);
-    cost += calculatingWritingTargetFiles(seqResources, unseqResource);
-    return cost;
+    if (!addReadLock(seqResources, unseqResource)) {
+      // there is file been deleted during selection, return -1
+      return -1L;
+    }
+    try {
+      long cost = 0;
+      cost += calculateReadingUnseqFile(unseqResource);
+      cost += calculateReadingSeqFiles(seqResources);
+      cost += calculatingWritingTargetFiles(seqResources, unseqResource);
+      return cost;
+    } finally {
+      releaseReadLock(seqResources, unseqResource);
+    }
+  }
+
+  /** Add read lock. Return false if any of the file were deleted. */
+  private boolean addReadLock(List<TsFileResource> seqResources, TsFileResource unseqResource) {
+    List<TsFileResource> allResources = new ArrayList<>(seqResources);
+    allResources.add(unseqResource);
+    for (int i = 0; i < allResources.size(); i++) {
+      TsFileResource resource = allResources.get(i);
+      resource.readLock();
+      if (resource.isDeleted()) {
+        // release read lock
+        for (int j = 0; j <= i; j++) {
+          allResources.get(j).readUnlock();
+        }
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void releaseReadLock(List<TsFileResource> seqResources, TsFileResource unseqResource) {
+    seqResources.forEach(TsFileResource::readUnlock);
+    unseqResource.readUnlock();
   }
 
   /**
