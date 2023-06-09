@@ -500,6 +500,9 @@ public class IoTDBConfig {
   /** The max candidate file num in cross space compaction */
   private int maxCrossCompactionCandidateFileNum = 500;
 
+  /** The max candidate file num in compaction */
+  private int maxCompactionCandidateFileNum = 5000;
+
   /** The max total size of candidate files in cross space compaction */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
@@ -2972,6 +2975,10 @@ public class IoTDBConfig {
 
   public int getMaxCrossCompactionCandidateFileNum() {
     return maxCrossCompactionCandidateFileNum;
+  }
+
+  public int getMaxCompactionCandidateFileNum() {
+    return maxCompactionCandidateFileNum;
   }
 
   public void setMaxCrossCompactionCandidateFileNum(int maxCrossCompactionCandidateFileNum) {
