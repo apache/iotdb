@@ -1700,36 +1700,59 @@ public class IoTDBDescriptor {
   }
 
   private void initStorageEngineAllocate(Properties properties) {
-    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
-    String[] proportions = allocationRatio.split(":");
-    int proportionForWrite = Integer.parseInt(proportions[0].trim());
-    int proportionForCompaction = Integer.parseInt(proportions[1].trim());
+    long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
 
-    double writeProportion =
-        ((double) (proportionForWrite) / (double) (proportionForCompaction + proportionForWrite));
+    int proportionSum = 10;
+    int writeProportion = 8;
+    int compactionProportion = 2;
+    int writeProportionSum = 20;
+    int memTableProportion = 19;
+    int timePartitionInfo = 1;
 
-    String allocationRatioForWrite = properties.getProperty("write_memory_proportion", "19:1");
-    proportions = allocationRatioForWrite.split(":");
-    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
-    int proportionForTimePartitionInfo = Integer.parseInt(proportions[1].trim());
+    String storageMemoryAllocatePortion =
+        properties.getProperty("storage_engine_memory_proportion");
+    if (storageMemoryAllocatePortion != null) {
+      String[] proportions = storageMemoryAllocatePortion.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
 
-    double memtableProportionForWrite =
-        ((double) (proportionForMemTable)
-            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
+      if (loadedProportionSum != 0) {
+        proportionSum = loadedProportionSum;
+        writeProportion = Integer.parseInt(proportions[0].trim());
+        compactionProportion = Integer.parseInt(proportions[1].trim());
+      }
+      conf.setCompactionProportion((double) compactionProportion / (double) proportionSum);
+    }
 
-    double timePartitionInfoForWrite =
-        ((double) (proportionForTimePartitionInfo)
-            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
-    conf.setWriteProportionForMemtable(writeProportion * memtableProportionForWrite);
+    String allocationRatioForWrite = properties.getProperty("write_memory_proportion");
+    if (allocationRatioForWrite != null) {
+      String[] proportions = allocationRatioForWrite.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
 
-    conf.setAllocateMemoryForTimePartitionInfo(
-        (long)
-            ((writeProportion * timePartitionInfoForWrite)
-                * conf.getAllocateMemoryForStorageEngine()));
+      if (loadedProportionSum != 0) {
+        writeProportionSum = loadedProportionSum;
+        memTableProportion = Integer.parseInt(proportions[0].trim());
+        timePartitionInfo = Integer.parseInt(proportions[1].trim());
+      }
+      // memtableProportionForWrite = 19/20 default
+      double memtableProportionForWrite =
+          ((double) memTableProportion / (double) writeProportionSum);
 
-    conf.setCompactionProportion(
-        ((double) (proportionForCompaction)
-            / (double) (proportionForCompaction + proportionForWrite)));
+      // timePartitionInfoForWrite = 1/20 default
+      double timePartitionInfoForWrite = ((double) timePartitionInfo / (double) writeProportionSum);
+      // proportionForWrite = 8/10 default
+      double proportionForWrite = ((double) (writeProportion) / (double) proportionSum);
+      // writeProportionForMemtable = 8/10 * 19/20 = 0.76 default
+      conf.setWriteProportionForMemtable(proportionForWrite * memtableProportionForWrite);
+      // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
+      conf.setAllocateMemoryForTimePartitionInfo(
+          (long) ((proportionForWrite * timePartitionInfoForWrite) * storageMemoryTotal));
+    }
   }
 
   private void initSchemaMemoryAllocate(Properties properties) {
