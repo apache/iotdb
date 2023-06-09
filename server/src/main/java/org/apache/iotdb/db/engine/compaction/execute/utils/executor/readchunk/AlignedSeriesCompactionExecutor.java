@@ -135,7 +135,7 @@ public class AlignedSeriesCompactionExecutor {
       List<AlignedChunkMetadata> alignedChunkMetadataList = readerListPair.right;
 
       if (reader instanceof CompactionTsFileReader) {
-        ((CompactionTsFileReader) reader).markStartAlignedSeries();
+        ((CompactionTsFileReader) reader).markStartOfAlignedSeries();
       }
 
       TsFileAlignedSeriesReaderIterator readerIterator =
@@ -149,7 +149,7 @@ public class AlignedSeriesCompactionExecutor {
             nextAlignedChunkInfo.getReader(), nextAlignedChunkInfo.getNotNullChunkNum());
       }
       if (reader instanceof CompactionTsFileReader) {
-        ((CompactionTsFileReader) reader).markEndAlignedSeries();
+        ((CompactionTsFileReader) reader).markEndOfAlignedSeries();
       }
     }
 
