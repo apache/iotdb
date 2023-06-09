@@ -716,8 +716,8 @@ public class DataRegionTest {
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     int originCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(9);
+        IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(9);
     boolean originEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     boolean originEnableUnseqSpaceCompaction =
@@ -772,9 +772,7 @@ public class DataRegionTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxInnerCompactionCandidateFileNum(originCandidateFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(originCandidateFileNum);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
@@ -786,7 +784,7 @@ public class DataRegionTest {
   @Ignore
   @Test
   public void testDeleteStorageGroupWhenCompacting() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(10);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(10);
     try {
       for (int j = 0; j < 10; j++) {
         TSRecord record = new TSRecord(j, deviceId);

@@ -110,15 +110,15 @@ public class SettleRequestHandlerTest {
     config.setEnableSeqSpaceCompaction(true);
 
     // compaction candidate file num
-    int maxInnerCompactionCandidateFileNum = config.getMaxInnerCompactionCandidateFileNum();
-    config.setMaxInnerCompactionCandidateFileNum(2);
+    int maxInnerCompactionCandidateFileNum = config.getFileLimitPerInnerTask();
+    config.setFileLimitPerInnerTask(2);
     result = reqHandler.handleSettleRequest(req);
     Assert.assertEquals(result.code, TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode());
     String firstTsFilePath = paths.remove(0);
     result = reqHandler.handleSettleRequest(req);
     Assert.assertEquals(result.code, TSStatusCode.SUCCESS_STATUS.getStatusCode());
     paths.add(0, firstTsFilePath);
-    config.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    config.setFileLimitPerInnerTask(maxInnerCompactionCandidateFileNum);
 
     // not continuous
     paths.remove(1);

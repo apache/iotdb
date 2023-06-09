@@ -81,8 +81,8 @@ public class MemoryControlTest {
   @Test
   public void testFailedToAllocateFileNumInCrossTask() {
     int oldMaxCrossCompactionCandidateFileNum =
-        SystemInfo.getInstance().getMaxFileNumForCompaction();
-    SystemInfo.getInstance().setMaxFileNumForCompaction(2);
+        SystemInfo.getInstance().getTotalFileLimitForCrossTask();
+    SystemInfo.getInstance().setTotalFileLimitForCrossTask(2);
     try {
       List<TsFileResource> sequenceFiles = new ArrayList<>();
       for (int i = 1; i <= 10; i++) {
@@ -125,7 +125,7 @@ public class MemoryControlTest {
         Assert.assertTrue(tsFileResource.tryWriteLock());
       }
     } finally {
-      SystemInfo.getInstance().setMaxFileNumForCompaction(oldMaxCrossCompactionCandidateFileNum);
+      SystemInfo.getInstance().setTotalFileLimitForCrossTask(oldMaxCrossCompactionCandidateFileNum);
     }
   }
 }

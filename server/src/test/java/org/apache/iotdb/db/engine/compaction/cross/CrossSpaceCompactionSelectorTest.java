@@ -175,8 +175,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectWithTooManySourceFiles()
       throws IOException, MetadataException, WriteProcessException {
-    int oldMaxFileNumForCompaction = SystemInfo.getInstance().getMaxFileNumForCompaction();
-    SystemInfo.getInstance().setMaxFileNumForCompaction(1);
+    int oldMaxFileNumForCompaction = SystemInfo.getInstance().getTotalFileLimitForCrossTask();
+    SystemInfo.getInstance().setTotalFileLimitForCrossTask(1);
     try {
       createFiles(19, 2, 3, 50, 0, 10000, 50, 50, false, true);
       createFiles(1, 2, 3, 3000, 0, 10000, 50, 50, false, false);
@@ -214,7 +214,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
         Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
       }
     } finally {
-      SystemInfo.getInstance().setMaxFileNumForCompaction(oldMaxFileNumForCompaction);
+      SystemInfo.getInstance().setTotalFileLimitForCrossTask(oldMaxFileNumForCompaction);
     }
   }
 }
