@@ -185,13 +185,13 @@ public class IoTDBConfig {
   private volatile WALMode walMode = WALMode.ASYNC;
 
   /** Max number of wal nodes, each node corresponds to one wal directory */
-  private int maxWalNodesNum = 0;
+  private int maxWalNodesNum = 9;
 
   /**
    * Duration a wal flush operation will wait before calling fsync in the async mode. Unit:
    * millisecond
    */
-  private volatile long walAsyncModeFsyncDelayInMs = 1_000;
+  private volatile long walAsyncModeFsyncDelayInMs = 3_000;
 
   /**
    * Duration a wal flush operation will wait before calling fsync in the sync mode. Unit:
@@ -203,7 +203,7 @@ public class IoTDBConfig {
   private int walBufferSize = 32 * 1024 * 1024;
 
   /** Blocking queue capacity of each wal buffer */
-  private int walBufferQueueCapacity = 500;
+  private int walBufferQueueCapacity = 5000;
 
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 30 * 1024 * 1024L;
