@@ -45,9 +45,6 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   private final PipeProcessorSubtaskExecutor executor =
       PipeSubtaskExecutorManager.getInstance().getProcessorSubtaskExecutor();
 
-  private final PipeRuntimeEnvironment pipeRuntimeEnvironment;
-  private final PipeParameters pipeProcessorParameters;
-  private final PipeProcessor pipeProcessor;
   private final PipeProcessorSubtask pipeProcessorSubtask;
 
   /**
@@ -65,45 +62,42 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       TConsensusGroupId dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
-    this.pipeRuntimeEnvironment =
-        new PipeTaskRuntimeEnvironment(pipeName, creationTime, dataRegionId.getId());
-    this.pipeProcessorParameters = pipeProcessorParameters;
+    PipeRuntimeEnvironment pipeRuntimeEnvironment = new PipeTaskRuntimeEnvironment(pipeName, creationTime, dataRegionId.getId());
 
-    final String taskId = pipeName + "_" + dataRegionId;
-    pipeProcessor =
-        pipeProcessorParameters
-                .getStringOrDefault(
+    PipeProcessor pipeProcessor = pipeProcessorParameters
+            .getStringOrDefault(
                     PipeProcessorConstant.PROCESSOR_KEY,
                     BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-                .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+            .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
             ? new PipeDoNothingProcessor()
             : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
-    final PipeEventCollector pipeConnectorOutputEventCollector =
-        new PipeEventCollector(pipeConnectorOutputPendingQueue);
 
-    this.pipeProcessorSubtask =
-        new PipeProcessorSubtask(
-            taskId,
-            pipeCollectorInputEventSupplier,
-            pipeProcessor,
-            pipeConnectorOutputEventCollector);
-  }
-
-  @Override
-  public void createSubtask() throws PipeException {
     try {
       // 1. validate processor parameters
       pipeProcessor.validate(new PipeParameterValidator(pipeProcessorParameters));
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-          new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
+              new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
-      // TODO: use runtimeConfiguration to configure processor
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
 
+    final String taskId = pipeName + "_" + dataRegionId;
+    final PipeEventCollector pipeConnectorOutputEventCollector =
+            new PipeEventCollector(pipeConnectorOutputPendingQueue);
+
+    this.pipeProcessorSubtask =
+        new PipeProcessorSubtask(
+            taskId,
+            pipeCollectorInputEventSupplier,
+                pipeProcessor,
+            pipeConnectorOutputEventCollector);
+  }
+
+  @Override
+  public void createSubtask() throws PipeException {
     executor.register(pipeProcessorSubtask);
   }
 

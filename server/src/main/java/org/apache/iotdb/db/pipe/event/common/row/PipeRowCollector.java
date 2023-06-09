@@ -56,7 +56,15 @@ public class PipeRowCollector implements RowCollector {
     final int rowIndex = tablet.rowSize;
     tablet.addTimestamp(rowIndex, row.getTime());
     for (int i = 0; i < row.size(); i++) {
-      tablet.addValue(measurementSchemaArray[i].getMeasurementId(), rowIndex, row.getObject(i));
+      final Object value = row.getObject(i);
+      if (value instanceof org.apache.iotdb.pipe.api.type.Binary) {
+        tablet.addValue(
+            measurementSchemaArray[i].getMeasurementId(),
+            rowIndex,
+            PipeBinaryTransformer.transformToBinary((org.apache.iotdb.pipe.api.type.Binary) value));
+      } else {
+        tablet.addValue(measurementSchemaArray[i].getMeasurementId(), rowIndex, value);
+      }
       if (row.isNull(i)) {
         tablet.bitMaps[i].mark(rowIndex);
       }

@@ -77,12 +77,11 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       this.collectorPendingQueue = new UnboundedBlockingPendingQueue<>();
       this.pipeCollector = new IoTDBDataRegionCollector(collectorPendingQueue);
     } else {
-      this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
+        this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
     }
-  }
 
-  @Override
-  public void createSubtask() throws PipeException {
+    // validate and customize should be called before createSubtask. this allows collector exposing
+    // exceptions in advance.
     try {
       // 1. validate collector parameters
       pipeCollector.validate(new PipeParameterValidator(collectorParameters));
@@ -91,10 +90,14 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       final PipeCollectorRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment);
       pipeCollector.customize(collectorParameters, runtimeConfiguration);
-      // TODO: use runtimeConfiguration to configure collector
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
+  }
+
+  @Override
+  public void createSubtask() throws PipeException {
+    // do nothing
   }
 
   @Override
@@ -122,9 +125,5 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
 
   public EventSupplier getEventSupplier() {
     return pipeCollector::supply;
-  }
-
-  public UnboundedBlockingPendingQueue<Event> getCollectorPendingQueue() {
-    return collectorPendingQueue;
   }
 }
