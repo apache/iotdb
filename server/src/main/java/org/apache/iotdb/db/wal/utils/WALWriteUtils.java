@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.utils;
 
+import org.apache.iotdb.db.metadata.cache.WalStringBytesCache;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -124,7 +125,7 @@ public class WALWriteUtils {
       return write(NO_BYTE_TO_READ, buffer);
     }
     int len = 0;
-    byte[] bytes = s.getBytes();
+    byte[] bytes = WalStringBytesCache.getInstance().getBytes(s);
     len += write(bytes.length, buffer);
     buffer.put(bytes);
     len += bytes.length;
