@@ -40,6 +40,8 @@ import java.io.Serializable;
 public class CompactionTsFileWriter extends TsFileIOWriter {
   CompactionType type;
 
+  private volatile boolean isWritingAligned = false;
+
   public CompactionTsFileWriter(
       File file, boolean enableMemoryControl, long maxMetadataSize, CompactionType type)
       throws IOException {
@@ -50,13 +52,16 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   @Override
   public void writeChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     long beforeOffset = this.getPos();
-    CompactionTaskManager.getInstance()
-        .getMergeWriteRateLimiter()
-        .acquire(chunk.getHeader().getDataSize() + chunk.getHeader().getSerializedSize());
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
+    if (writtenDataSize > 0) {
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
+    }
     CompactionMetrics.getInstance()
-        .recordWriteInfo(type, CompactionIoDataType.NOT_ALIGNED, writtenDataSize);
+        .recordWriteInfo(
+            type,
+            isWritingAligned ? CompactionIoDataType.ALIGNED : CompactionIoDataType.NOT_ALIGNED,
+            writtenDataSize);
   }
 
   @Override
@@ -73,6 +78,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, CompactionIoDataType.ALIGNED, writtenDataSize);
+    if (writtenDataSize > 0) {
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
+    }
   }
 
   public void writeChunk(IChunkWriter chunkWriter) throws IOException {
@@ -80,6 +88,9 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeOffset = this.getPos();
     chunkWriter.writeToFileWriter(this);
     long writtenDataSize = this.getPos() - beforeOffset;
+    if (writtenDataSize > 0) {
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
+    }
     CompactionMetrics.getInstance()
         .recordWriteInfo(
             type,
@@ -92,7 +103,18 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeSize = this.getPos();
     super.endFile();
     long writtenDataSize = this.getPos() - beforeSize;
+    if (writtenDataSize > 0) {
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
+    }
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
+  }
+
+  public void markStartingWritingAligned() {
+    isWritingAligned = true;
+  }
+
+  public void markEndingWritingAligned() {
+    isWritingAligned = false;
   }
 }

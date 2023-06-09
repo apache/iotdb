@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileWriter;
-import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -38,8 +37,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -60,8 +57,6 @@ public class AlignedSeriesCompactionExecutor {
   private final List<IMeasurementSchema> schemaList;
   private long remainingPointInChunkWriter = 0L;
   private final CompactionTaskSummary summary;
-  private final RateLimiter rateLimiter =
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
 
   private final long chunkSizeThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -99,6 +94,9 @@ public class AlignedSeriesCompactionExecutor {
     for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair :
         readerAndChunkMetadataList) {
       TsFileSequenceReader reader = readerListPair.left;
+      if (reader instanceof CompactionTsFileReader) {
+        ((CompactionTsFileReader) reader).markStartOfAlignedSeries();
+      }
       List<AlignedChunkMetadata> alignedChunkMetadataList = readerListPair.right;
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         List<IChunkMetadata> valueChunkMetadataList =
@@ -120,6 +118,9 @@ public class AlignedSeriesCompactionExecutor {
                   header.getEncodingType(),
                   header.getCompressionType()));
         }
+      }
+      if (reader instanceof CompactionTsFileReader) {
+        ((CompactionTsFileReader) reader).markEndOfAlignedSeries();
       }
     }
     List<IMeasurementSchema> schemaList = new ArrayList<>(schemaSet);

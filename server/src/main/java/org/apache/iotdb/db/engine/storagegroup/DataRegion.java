@@ -1555,6 +1555,11 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.addAll(tsFileManager.getTsFileList(false));
       tsFileResourceList.forEach(
           x -> {
+            FileMetrics.getInstance()
+                .deleteFile(
+                    new long[] {x.getTsFileSize()},
+                    x.isSeq(),
+                    Collections.singletonList(x.getTsFile().getName()));
             if (x.getModFile().exists()) {
               FileMetrics.getInstance().decreaseModFileNum(1);
               FileMetrics.getInstance().decreaseModFileSize(x.getModFile().getSize());

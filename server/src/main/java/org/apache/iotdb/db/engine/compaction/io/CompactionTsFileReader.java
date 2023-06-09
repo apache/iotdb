@@ -39,13 +39,13 @@ import java.util.List;
  */
 public class CompactionTsFileReader extends TsFileSequenceReader {
   /** Tracks the total amount of data (in bytes) that has been read. */
-  long readDataSize = 0L;
+  private volatile long readDataSize = 0L;
 
   /** The type of compaction running. */
   CompactionType compactionType;
 
   /** A flag that indicates if an aligned series is being read. */
-  boolean readingAlignedSeries = false;
+  private volatile boolean readingAlignedSeries = false;
 
   /**
    * Constructs a new instance of CompactionTsFileReader.
@@ -78,15 +78,20 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
   @Override
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
-    long before = readDataSize;
-    Chunk chunk = super.readMemChunk(metaData);
-    long dataSize = readDataSize - before;
-    CompactionMetrics.getInstance()
-        .recordReadInfo(
-            compactionType,
-            readingAlignedSeries ? CompactionIoDataType.ALIGNED : CompactionIoDataType.NOT_ALIGNED,
-            dataSize);
-    return chunk;
+    synchronized (this) {
+      // using synchronized to avoid concurrent read that makes readDataSize not correct
+      long before = readDataSize;
+      Chunk chunk = super.readMemChunk(metaData);
+      long dataSize = readDataSize - before;
+      CompactionMetrics.getInstance()
+          .recordReadInfo(
+              compactionType,
+              readingAlignedSeries
+                  ? CompactionIoDataType.ALIGNED
+                  : CompactionIoDataType.NOT_ALIGNED,
+              dataSize);
+      return chunk;
+    }
   }
 
   @Override
