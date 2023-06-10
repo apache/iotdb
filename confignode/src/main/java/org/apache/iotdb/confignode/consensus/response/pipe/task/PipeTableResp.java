@@ -49,7 +49,7 @@ public class PipeTableResp implements DataSet {
   }
 
   public PipeTableResp filter(Boolean whereClause, String pipeName) {
-    if (whereClause == null) {
+    if (whereClause == null || !whereClause) {
       if (pipeName == null) {
         return this;
       } else {
