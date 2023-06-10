@@ -291,7 +291,6 @@ public class TestUtils {
       start();
     }
 
-
     public List<RatisConsensus> getServers() {
       return Collections.unmodifiableList(servers);
     }

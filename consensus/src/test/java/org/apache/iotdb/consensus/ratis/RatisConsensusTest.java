@@ -36,9 +36,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -127,7 +125,8 @@ public class RatisConsensusTest {
     servers.get(2).createPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).changePeer(group.getGroupId(), peers);
 
-    Assert.assertEquals(((TestUtils.IntegerCounter)stateMachines.get(0)).getConfiguration().size(), 3);
+    Assert.assertEquals(
+        ((TestUtils.IntegerCounter) stateMachines.get(0)).getConfiguration().size(), 3);
     doConsensus(servers.get(0), group.getGroupId(), 10, 20);
   }
 
