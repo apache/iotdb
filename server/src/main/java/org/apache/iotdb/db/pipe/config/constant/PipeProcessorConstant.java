@@ -17,12 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer;
+package org.apache.iotdb.db.pipe.config.constant;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
+public class PipeProcessorConstant {
 
-public interface PipeRuntimeConfiguration {
+  public static final String PROCESSOR_KEY = "processor";
 
-  /** @throws PipeException if invalid runtime configuration is set */
-  void check() throws PipeException;
+  private PipeProcessorConstant() {
+    throw new IllegalStateException("Utility class");
+  }
 }

@@ -17,12 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-import org.apache.iotdb.pipe.api.exception.PipeStrategyNotValidException;
-
-public interface PipeStrategy {
-
-  /** @throws PipeStrategyNotValidException if invalid strategy is set */
-  void check() throws PipeStrategyNotValidException;
-}
+public interface PipeConnectorRuntimeConfiguration extends PipeRuntimeConfiguration {}

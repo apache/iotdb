@@ -22,7 +22,9 @@ package org.apache.iotdb.db.pipe.task.stage;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.processor.PipeDoNothingProcessor;
@@ -31,37 +33,35 @@ import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskProcessorStage extends PipeTaskStage {
 
-  protected final PipeProcessorSubtaskExecutor executor =
+  private final PipeProcessorSubtaskExecutor executor =
       PipeSubtaskExecutorManager.getInstance().getProcessorSubtaskExecutor();
 
-  protected final PipeParameters pipeProcessorParameters;
-  protected final PipeProcessor pipeProcessor;
-  protected final PipeProcessorSubtask pipeProcessorSubtask;
+  private final PipeProcessorSubtask pipeProcessorSubtask;
 
   /**
    * @param pipeName pipe name
+   * @param creationTime pipe creation time
+   * @param pipeProcessorParameters used to create pipe processor
    * @param dataRegionId data region id
    * @param pipeCollectorInputEventSupplier used to input events from pipe collector
-   * @param pipeProcessorParameters used to create pipe processor
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
    */
   public PipeTaskProcessorStage(
       String pipeName,
+      long creationTime,
+      PipeParameters pipeProcessorParameters,
       TConsensusGroupId dataRegionId,
       EventSupplier pipeCollectorInputEventSupplier,
-      PipeParameters pipeProcessorParameters,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
-    this.pipeProcessorParameters = pipeProcessorParameters;
-
-    pipeProcessor =
+    final PipeProcessor pipeProcessor =
         pipeProcessorParameters
                 .getStringOrDefault(
                     PipeProcessorConstant.PROCESSOR_KEY,
@@ -69,6 +69,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
                 .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
             ? new PipeDoNothingProcessor()
             : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
+
     // validate and customize should be called before createSubtask. this allows collector exposing
     // exceptions in advance.
     try {
@@ -77,7 +78,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-          new PipeProcessorRuntimeConfiguration();
+          new PipeTaskRuntimeConfiguration(new PipeTaskRuntimeEnvironment(pipeName, creationTime));
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);

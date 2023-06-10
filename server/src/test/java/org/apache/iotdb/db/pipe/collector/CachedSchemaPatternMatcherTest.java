@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.pipe.collector;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.matcher.CachedSchemaPatternMatcher;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
@@ -64,38 +65,34 @@ public class CachedSchemaPatternMatcherTest {
 
   @Test
   public void testCachedMatcher() throws Exception {
-    PipeRealtimeDataRegionCollector databaseCollector =
-        new PipeRealtimeDataRegionFakeCollector(null);
+    PipeRealtimeDataRegionCollector databaseCollector = new PipeRealtimeDataRegionFakeCollector();
     databaseCollector.customize(
         new PipeParameters(
             new HashMap<String, String>() {
               {
                 put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root");
-                put(PipeCollectorConstant.DATA_REGION_KEY, "1");
               }
             }),
-        null);
+        new PipeTaskRuntimeConfiguration(new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
     collectorList.add(databaseCollector);
 
     int deviceCollectorNum = 10;
     int seriesCollectorNum = 10;
     for (int i = 0; i < deviceCollectorNum; i++) {
-      PipeRealtimeDataRegionCollector deviceCollector =
-          new PipeRealtimeDataRegionFakeCollector(null);
+      PipeRealtimeDataRegionCollector deviceCollector = new PipeRealtimeDataRegionFakeCollector();
       int finalI1 = i;
       deviceCollector.customize(
           new PipeParameters(
               new HashMap<String, String>() {
                 {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root." + finalI1);
-                  put(PipeCollectorConstant.DATA_REGION_KEY, "1");
                 }
               }),
-          null);
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
       collectorList.add(deviceCollector);
       for (int j = 0; j < seriesCollectorNum; j++) {
-        PipeRealtimeDataRegionCollector seriesCollector =
-            new PipeRealtimeDataRegionFakeCollector(null);
+        PipeRealtimeDataRegionCollector seriesCollector = new PipeRealtimeDataRegionFakeCollector();
         int finalI = i;
         int finalJ = j;
         seriesCollector.customize(
@@ -105,10 +102,10 @@ public class CachedSchemaPatternMatcherTest {
                     put(
                         PipeCollectorConstant.COLLECTOR_PATTERN_KEY,
                         "root." + finalI + "." + finalJ);
-                    put(PipeCollectorConstant.DATA_REGION_KEY, "1");
                   }
                 }),
-            null);
+            new PipeTaskRuntimeConfiguration(
+                new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
         collectorList.add(seriesCollector);
       }
     }
@@ -152,9 +149,7 @@ public class CachedSchemaPatternMatcherTest {
 
   public static class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionCollector {
 
-    public PipeRealtimeDataRegionFakeCollector(PipeTaskMeta pipeTaskMeta) {
-      super(pipeTaskMeta);
-    }
+    public PipeRealtimeDataRegionFakeCollector() {}
 
     @Override
     public Event supply() {
