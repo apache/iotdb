@@ -27,12 +27,12 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -44,51 +44,48 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_HISTORY_END_TIME;
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.COLLECTOR_HISTORY_START_TIME;
-import static org.apache.iotdb.db.pipe.config.PipeCollectorConstant.DATA_REGION_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_HISTORY_END_TIME;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_HISTORY_START_TIME;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_PATTERN_KEY;
 
 public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataRegionCollector {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileCollector.class);
 
-  private final PipeTaskMeta pipeTaskMeta;
-  private final ProgressIndex startIndex;
+  private PipeTaskMeta pipeTaskMeta;
+  private ProgressIndex startIndex;
 
   private int dataRegionId;
 
   private String pattern;
 
-  private final long historicalDataCollectionTimeLowerBound; // arrival time
   private long historicalDataCollectionStartTime; // event time
   private long historicalDataCollectionEndTime; // event time
 
+  private long historicalDataCollectionTimeLowerBound; // arrival time
+
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
-  public PipeHistoricalDataRegionTsFileCollector(
-      PipeTaskMeta pipeTaskMeta, long historicalDataCollectionTimeLowerBound) {
-    this.pipeTaskMeta = pipeTaskMeta;
-    this.startIndex = pipeTaskMeta.getProgressIndex();
-
-    this.historicalDataCollectionTimeLowerBound = historicalDataCollectionTimeLowerBound;
-  }
+  public PipeHistoricalDataRegionTsFileCollector() {}
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    validator.validateRequiredAttribute(DATA_REGION_KEY);
-  }
+  public void validate(PipeParameterValidator validator) {}
 
   @Override
   public void customize(
       PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
-    dataRegionId = parameters.getInt(DATA_REGION_KEY);
+    final PipeTaskCollectorRuntimeEnvironment environment =
+        (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
-    pattern =
-        parameters.getStringOrDefault(
-            PipeCollectorConstant.COLLECTOR_PATTERN_KEY,
-            PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE);
+    pipeTaskMeta = environment.getPipeTaskMeta();
+    startIndex = environment.getPipeTaskMeta().getProgressIndex();
+
+    dataRegionId = environment.getRegionId();
+
+    pattern = parameters.getStringOrDefault(COLLECTOR_PATTERN_KEY, COLLECTOR_PATTERN_DEFAULT_VALUE);
 
     // user may set the COLLECTOR_HISTORY_START_TIME and COLLECTOR_HISTORY_END_TIME without
     // enabling the historical data collection, which may affect the realtime data collection.
@@ -104,6 +101,18 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
             ? DateTimeUtils.convertDatetimeStrToLong(
                 parameters.getString(COLLECTOR_HISTORY_END_TIME), ZoneId.systemDefault())
             : Long.MAX_VALUE;
+
+    // enable historical collector by default
+    historicalDataCollectionTimeLowerBound =
+        parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true)
+            ? Long.MIN_VALUE
+            // We define the realtime data as the data generated after the creation time
+            // of the pipe from user's perspective. But we still need to use
+            // PipeHistoricalDataRegionCollector to collect the realtime data generated between the
+            // creation time of the pipe and the time when the pipe starts, because those data
+            // can not be listened by PipeRealtimeDataRegionCollector, and should be collected by
+            // PipeHistoricalDataRegionCollector from implementation perspective.
+            : environment.getCreationTime();
 
     // Only invoke flushDataRegionAllTsFiles() when the pipe runs in the realtime only mode.
     // realtime only mode -> (historicalDataCollectionTimeLowerBound != Long.MIN_VALUE)

@@ -17,16 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.db.pipe.config.plugin.env;
 
-public class PipeConnectorConstant {
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
-  public static final String CONNECTOR_KEY = "connector";
+public class PipeTaskCollectorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
-  public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
+  private final int regionId;
 
-  private PipeConnectorConstant() {
-    throw new IllegalStateException("Utility class");
+  private final PipeTaskMeta pipeTaskMeta;
+
+  public PipeTaskCollectorRuntimeEnvironment(
+      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
+    super(pipeName, creationTime);
+    this.regionId = regionId;
+    this.pipeTaskMeta = pipeTaskMeta;
+  }
+
+  public int getRegionId() {
+    return regionId;
+  }
+
+  public PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
   }
 }

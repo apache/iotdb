@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer;
+package org.apache.iotdb.pipe.api.customizer.parameter;
 
 import org.apache.iotdb.pipe.api.exception.PipeAttributeNotProvidedException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
