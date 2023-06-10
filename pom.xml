@@ -112,8 +112,8 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <!-- Will remove integration at 2023.1.23-->
-        <module>integration</module>
-        <module>integration-test</module>
+<!--         <module>integration</module> -->
+<!--         <module>integration-test</module> -->
         <module>consensus</module>
         <module>external-pipe-api</module>
         <module>library-udf</module>

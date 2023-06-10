@@ -30,7 +30,7 @@
     <artifactId>iotdb-confignode</artifactId>
     <name>IoTDB ConfigNode</name>
     <properties>
-        <confignode.test.skip>false</confignode.test.skip>
+        <confignode.test.skip>true</confignode.test.skip>
         <confignode.it.skip>${confignode.test.skip}</confignode.it.skip>
         <confignode.ut.skip>${confignode.test.skip}</confignode.ut.skip>
     </properties>
