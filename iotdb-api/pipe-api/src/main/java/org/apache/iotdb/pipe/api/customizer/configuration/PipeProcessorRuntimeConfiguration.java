@@ -17,13 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-public class PipeProcessorConstant {
-
-  public static final String PROCESSOR_KEY = "processor";
-
-  private PipeProcessorConstant() {
-    throw new IllegalStateException("Utility class");
-  }
-}
+public interface PipeProcessorRuntimeConfiguration extends PipeRuntimeConfiguration {}

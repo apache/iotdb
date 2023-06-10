@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -33,7 +35,9 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -101,9 +105,20 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
-            (regionGroup, regionLeaderNodeId) ->
-                consensusGroupIdToTaskMetaMap.put(
-                    regionGroup, new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId)));
+            (regionGroupId, regionLeaderNodeId) -> {
+              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
+                final String databaseName =
+                    env.getConfigManager()
+                        .getPartitionManager()
+                        .getRegionStorageGroup(regionGroupId);
+                if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
+                  // pipe only collect user's data, filter metric database here.
+                  consensusGroupIdToTaskMetaMap.put(
+                      regionGroupId,
+                      new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId));
+                }
+              }
+            });
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }
 
@@ -130,7 +145,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    pushPipeMetaToDataNodes(env);
+    TSStatus result = pushPipeMetaToDataNodes(env);
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Failed to create pipe %s on data nodes. Failures: %s",
+              pipeStaticMeta.getPipeName(), result.getMessage()));
+    }
   }
 
   @Override
@@ -169,7 +190,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    pushPipeMetaToDataNodes(env);
+    TSStatus result = pushPipeMetaToDataNodes(env);
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Failed to rollback create pipe %s on data nodes. Failures: %s",
+              pipeStaticMeta.getPipeName(), result.getMessage()));
+    }
   }
 
   @Override

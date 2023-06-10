@@ -20,9 +20,9 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin.collector;
 
 import org.apache.iotdb.pipe.api.PipeCollector;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 /**

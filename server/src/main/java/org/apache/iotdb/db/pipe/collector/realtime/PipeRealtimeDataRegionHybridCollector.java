@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.collector.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.collector.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
@@ -33,7 +32,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO: make this collector as a builtin pipe plugin. register it in BuiltinPipePlugin.
 public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegionCollector {
 
   private static final Logger LOGGER =
@@ -43,10 +41,8 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionHybridCollector(
-      PipeTaskMeta pipeTaskMeta, UnboundedBlockingPendingQueue<Event> pendingQueue) {
-    super(pipeTaskMeta);
-    this.pendingQueue = pendingQueue;
+  public PipeRealtimeDataRegionHybridCollector() {
+    this.pendingQueue = new UnboundedBlockingPendingQueue<>();
   }
 
   @Override

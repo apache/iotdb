@@ -16,20 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.metadata.view;
 
-package org.apache.iotdb.pipe.api.customizer.processor;
+public class ViewContainsAggregationException extends UnsupportedViewException {
 
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+  private static final String VIEW_CONTAINS_AGGREGATION_FUNCTION =
+      "This view contains aggregation function(s) named [%s]";
 
-/**
- * Used in {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} to
- * customize the runtime behavior of the PipeProcessor.
- */
-public class PipeProcessorRuntimeConfiguration implements PipeRuntimeConfiguration {
-
-  @Override
-  public void check() throws PipeException {}
+  public ViewContainsAggregationException(String namesOfAggregationFunctions) {
+    super(String.format(VIEW_CONTAINS_AGGREGATION_FUNCTION, namesOfAggregationFunctions), true);
+  }
 }

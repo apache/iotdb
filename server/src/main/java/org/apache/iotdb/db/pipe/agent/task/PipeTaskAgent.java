@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -86,42 +87,52 @@ public class PipeTaskAgent {
       return;
     }
 
+    final List<Exception> exceptions = new ArrayList<>();
+
     // iterate through pipe meta list from config node, check if pipe meta exists on data node
     // or has changed
     for (final PipeMeta metaFromConfigNode : pipeMetaListFromConfigNode) {
       final String pipeName = metaFromConfigNode.getStaticMeta().getPipeName();
 
-      final PipeMeta metaOnDataNode = pipeMetaKeeper.getPipeMeta(pipeName);
+      try {
+        final PipeMeta metaOnDataNode = pipeMetaKeeper.getPipeMeta(pipeName);
 
-      // if pipe meta does not exist on data node, create a new pipe
-      if (metaOnDataNode == null) {
-        if (createPipe(metaFromConfigNode)) {
-          // if the status recorded in config node is RUNNING, start the pipe
-          startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
+        // if pipe meta does not exist on data node, create a new pipe
+        if (metaOnDataNode == null) {
+          if (createPipe(metaFromConfigNode)) {
+            // if the status recorded in config node is RUNNING, start the pipe
+            startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
+          }
+          // if the status recorded in config node is STOPPED or DROPPED, do nothing
+          continue;
         }
-        // if the status recorded in config node is STOPPED or DROPPED, do nothing
-        continue;
-      }
 
-      // if pipe meta exists on data node, check if it has changed
-      final PipeStaticMeta staticMetaOnDataNode = metaOnDataNode.getStaticMeta();
-      final PipeStaticMeta staticMetaFromConfigNode = metaFromConfigNode.getStaticMeta();
+        // if pipe meta exists on data node, check if it has changed
+        final PipeStaticMeta staticMetaOnDataNode = metaOnDataNode.getStaticMeta();
+        final PipeStaticMeta staticMetaFromConfigNode = metaFromConfigNode.getStaticMeta();
 
-      // first check if pipe static meta has changed, if so, drop the pipe and create a new one
-      if (!staticMetaOnDataNode.equals(staticMetaFromConfigNode)) {
-        dropPipe(pipeName);
-        if (createPipe(metaFromConfigNode)) {
-          startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
+        // first check if pipe static meta has changed, if so, drop the pipe and create a new one
+        if (!staticMetaOnDataNode.equals(staticMetaFromConfigNode)) {
+          dropPipe(pipeName);
+          if (createPipe(metaFromConfigNode)) {
+            startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
+          }
+          // if the status is STOPPED or DROPPED, do nothing
+          continue;
         }
-        // if the status is STOPPED or DROPPED, do nothing
-        continue;
-      }
 
-      // then check if pipe runtime meta has changed, if so, update the pipe
-      final PipeRuntimeMeta runtimeMetaOnDataNode = metaOnDataNode.getRuntimeMeta();
-      final PipeRuntimeMeta runtimeMetaFromConfigNode = metaFromConfigNode.getRuntimeMeta();
-      handlePipeRuntimeMetaChanges(
-          staticMetaFromConfigNode, runtimeMetaFromConfigNode, runtimeMetaOnDataNode);
+        // then check if pipe runtime meta has changed, if so, update the pipe
+        final PipeRuntimeMeta runtimeMetaOnDataNode = metaOnDataNode.getRuntimeMeta();
+        final PipeRuntimeMeta runtimeMetaFromConfigNode = metaFromConfigNode.getRuntimeMeta();
+        handlePipeRuntimeMetaChanges(
+            staticMetaFromConfigNode, runtimeMetaFromConfigNode, runtimeMetaOnDataNode);
+      } catch (Exception e) {
+        final String errorMessage =
+            String.format(
+                "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
+        LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
+        exceptions.add(new PipeException(errorMessage, e));
+      }
     }
 
     // check if there are pipes on data node that do not exist on config node, if so, drop them
@@ -130,9 +141,25 @@ public class PipeTaskAgent {
             .map(meta -> meta.getStaticMeta().getPipeName())
             .collect(Collectors.toSet());
     for (final PipeMeta metaOnDataNode : pipeMetaKeeper.getPipeMetaList()) {
-      if (!pipeNamesFromConfigNode.contains(metaOnDataNode.getStaticMeta().getPipeName())) {
-        dropPipe(metaOnDataNode.getStaticMeta().getPipeName());
+      final String pipeName = metaOnDataNode.getStaticMeta().getPipeName();
+
+      try {
+        if (!pipeNamesFromConfigNode.contains(pipeName)) {
+          dropPipe(metaOnDataNode.getStaticMeta().getPipeName());
+        }
+      } catch (Exception e) {
+        final String errorMessage =
+            String.format(
+                "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
+        LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
+        exceptions.add(new PipeException(errorMessage, e));
       }
+    }
+
+    if (!exceptions.isEmpty()) {
+      throw new PipeException(
+          String.format(
+              "Failed to handle pipe meta changes on data node, because: %s", exceptions));
     }
   }
 
@@ -239,7 +266,16 @@ public class PipeTaskAgent {
 
   public synchronized void dropAllPipeTasks() {
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-      dropPipe(pipeMeta.getStaticMeta().getPipeName(), pipeMeta.getStaticMeta().getCreationTime());
+      try {
+        dropPipe(
+            pipeMeta.getStaticMeta().getPipeName(), pipeMeta.getStaticMeta().getCreationTime());
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to drop pipe {} with creation time {}",
+            pipeMeta.getStaticMeta().getPipeName(),
+            pipeMeta.getStaticMeta().getCreationTime(),
+            e);
+      }
     }
   }
 

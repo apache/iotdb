@@ -17,12 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer;
+package org.apache.iotdb.db.pipe.event.common.row;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
+public class PipeBinaryTransformer {
 
-public interface PipeRuntimeConfiguration {
+  public static org.apache.iotdb.tsfile.utils.Binary transformToBinary(
+      org.apache.iotdb.pipe.api.type.Binary binary) {
+    return binary == null ? null : new org.apache.iotdb.tsfile.utils.Binary(binary.getValues());
+  }
 
-  /** @throws PipeException if invalid runtime configuration is set */
-  void check() throws PipeException;
+  public static org.apache.iotdb.pipe.api.type.Binary transformToPipeBinary(
+      org.apache.iotdb.tsfile.utils.Binary binary) {
+    return binary == null ? null : new org.apache.iotdb.pipe.api.type.Binary(binary.getValues());
+  }
+
+  private PipeBinaryTransformer() {
+    // util class
+  }
 }

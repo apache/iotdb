@@ -223,10 +223,6 @@ public class QueryStatement extends Statement {
     this.orderByComponent = orderByComponent;
   }
 
-  public ResultSetFormat getResultSetFormat() {
-    return resultSetFormat;
-  }
-
   public void setResultSetFormat(ResultSetFormat resultSetFormat) {
     this.resultSetFormat = resultSetFormat;
   }
@@ -311,9 +307,7 @@ public class QueryStatement extends Statement {
 
   private boolean hasAggregationFunction(Expression expression) {
     if (expression instanceof FunctionExpression) {
-      if (!expression.isBuiltInAggregationFunctionExpression()) {
-        return false;
-      }
+      return expression.isBuiltInAggregationFunctionExpression();
     } else {
       if (expression instanceof TimeSeriesOperand) {
         return false;
@@ -333,10 +327,6 @@ public class QueryStatement extends Statement {
 
   public boolean hasOrderByExpression() {
     return !getExpressionSortItemList().isEmpty();
-  }
-
-  public boolean isAlignByTime() {
-    return resultSetFormat == ResultSetFormat.ALIGN_BY_TIME;
   }
 
   public boolean isAlignByDevice() {
@@ -431,8 +421,7 @@ public class QueryStatement extends Statement {
     List<SortItem> sortItems = getSortItemList();
     List<SortItem> newSortItems = new ArrayList<>();
     int expressionIndex = 0;
-    for (int i = 0; i < sortItems.size(); i++) {
-      SortItem sortItem = sortItems.get(i);
+    for (SortItem sortItem : sortItems) {
       SortItem newSortItem =
           new SortItem(sortItem.getSortKey(), sortItem.getOrdering(), sortItem.getNullOrdering());
       if (sortItem.isExpression()) {
@@ -574,6 +563,15 @@ public class QueryStatement extends Statement {
       try {
         for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
           ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
+        }
+        if (hasGroupByExpression()) {
+          ExpressionAnalyzer.checkIsAllMeasurement(
+              getGroupByComponent().getControlColumnExpression());
+        }
+        if (hasOrderByExpression()) {
+          for (Expression expression : getExpressionSortItemList()) {
+            ExpressionAnalyzer.checkIsAllMeasurement(expression);
+          }
         }
         if (getWhereCondition() != null) {
           ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());

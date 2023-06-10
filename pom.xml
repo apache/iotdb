@@ -831,17 +831,16 @@
                     <sourceDirectories>
                         <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
-                        <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>thrift-commons/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>thrift-confignode/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
-                        <sourceDirectory>openapi/target/generated-sources/java/src/main/java</sourceDirectory>
-                        <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>
-                        <sourceDirectory>spark-tsfile/src/main/scala</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-commons/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-confignode/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/main/java</sourceDirectory>
+                        <sourceDirectory>server/target/generated-sources/freemarker/</sourceDirectory>
+                        <sourceDirectory>iotdb-connector/spark-iotdb-connector/src/main/scala</sourceDirectory>
+                        <sourceDirectory>iotdb-connector/spark-tsfile/src/main/scala</sourceDirectory>
                     </sourceDirectories>
                 </configuration>
                 <!-- JDK11 removes the following libs. We have to add them-->

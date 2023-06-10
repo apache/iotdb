@@ -41,6 +41,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
+  // used to filter data
+  private final long startTime;
+  private final long endTime;
+
   private final TsFileResource resource;
   private File tsFile;
 
@@ -49,12 +53,19 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
-    this(resource, null, null);
+    this(resource, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
-      TsFileResource resource, PipeTaskMeta pipeTaskMeta, String pattern) {
+      TsFileResource resource,
+      PipeTaskMeta pipeTaskMeta,
+      String pattern,
+      long startTime,
+      long endTime) {
     super(pipeTaskMeta, pattern);
+
+    this.startTime = startTime;
+    this.endTime = endTime;
 
     this.resource = resource;
     tsFile = resource.getTsFile();
@@ -87,6 +98,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public File getTsFile() {
     return tsFile;
+  }
+
+  public boolean hasTimeFilter() {
+    return startTime != Long.MIN_VALUE || endTime != Long.MAX_VALUE;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -138,7 +153,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern);
+    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
@@ -148,7 +163,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       if (dataContainer == null) {
         waitForTsFileClose();
-        dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern());
+        dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern(), startTime, endTime);
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {

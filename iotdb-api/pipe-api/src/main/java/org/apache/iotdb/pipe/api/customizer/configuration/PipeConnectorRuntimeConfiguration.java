@@ -17,16 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.config;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-public class PipeConnectorConstant {
-
-  public static final String CONNECTOR_KEY = "connector";
-
-  public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
-  public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
-
-  private PipeConnectorConstant() {
-    throw new IllegalStateException("Utility class");
-  }
-}
+public interface PipeConnectorRuntimeConfiguration extends PipeRuntimeConfiguration {}

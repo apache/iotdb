@@ -75,6 +75,7 @@ public class DataNodeMetricsHelper {
   }
 
   private static void initCpuMetrics() {
+
     List<String> threadModules = new ArrayList<>();
     Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
     List<String> pools = new ArrayList<>();
