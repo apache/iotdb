@@ -213,8 +213,8 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {
-    return historicalDataCollectionStartTime <= resource.getFileEndTime()
-        || resource.getFileStartTime() <= historicalDataCollectionEndTime;
+    return !(resource.getFileEndTime() < historicalDataCollectionStartTime
+        || historicalDataCollectionEndTime < resource.getFileStartTime());
   }
 
   private boolean isTsFileGeneratedAfterCollectionTimeLowerBound(TsFileResource resource) {
