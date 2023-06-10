@@ -1058,31 +1058,39 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitRenameLogicalView(IoTDBSqlParser.RenameLogicalViewContext ctx) {
     RenameLogicalViewStatement renameLogicalViewStatement = new RenameLogicalViewStatement();
-    renameLogicalViewStatement.setOldName(parsePrefixPath(ctx.prefixPath(0)));
-    renameLogicalViewStatement.setNewName(parsePrefixPath(ctx.prefixPath(1)));
+    renameLogicalViewStatement.setOldName(parseFullPath(ctx.fullPath(0)));
+    renameLogicalViewStatement.setNewName(parseFullPath(ctx.fullPath(1)));
     return renameLogicalViewStatement;
   }
 
   @Override
   public Statement visitAlterLogicalView(IoTDBSqlParser.AlterLogicalViewContext ctx) {
-    AlterLogicalViewStatement alterLogicalViewStatement = new AlterLogicalViewStatement();
-    // parse target
-    parseViewTargetPaths(
-        ctx.viewTargetPaths(),
-        alterLogicalViewStatement::setTargetFullPaths,
-        alterLogicalViewStatement::setTargetPathsGroup,
-        alterLogicalViewStatement::setTargetIntoItem);
-    if (alterLogicalViewStatement.getIntoItem() != null) {
-      throw new SemanticException("Can not use char '$' or into item in alter view statement.");
-    }
-    // parse source
-    parseViewSourcePaths(
-        ctx.viewSourcePaths(),
-        alterLogicalViewStatement::setSourceFullPaths,
-        alterLogicalViewStatement::setSourcePathsGroup,
-        alterLogicalViewStatement::setSourceQueryStatement);
+    if (ctx.alterClause() == null) {
+      AlterLogicalViewStatement alterLogicalViewStatement = new AlterLogicalViewStatement();
+      // parse target
+      parseViewTargetPaths(
+          ctx.viewTargetPaths(),
+          alterLogicalViewStatement::setTargetFullPaths,
+          alterLogicalViewStatement::setTargetPathsGroup,
+          alterLogicalViewStatement::setTargetIntoItem);
+      if (alterLogicalViewStatement.getIntoItem() != null) {
+        throw new SemanticException("Can not use char '$' or into item in alter view statement.");
+      }
+      // parse source
+      parseViewSourcePaths(
+          ctx.viewSourcePaths(),
+          alterLogicalViewStatement::setSourceFullPaths,
+          alterLogicalViewStatement::setSourcePathsGroup,
+          alterLogicalViewStatement::setSourceQueryStatement);
 
-    return alterLogicalViewStatement;
+      return alterLogicalViewStatement;
+    } else {
+      AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement();
+      alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
+      parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
+      alterTimeSeriesStatement.setAlterView(true);
+      return alterTimeSeriesStatement;
+    }
   }
 
   // parse suffix paths in logical view with into item
