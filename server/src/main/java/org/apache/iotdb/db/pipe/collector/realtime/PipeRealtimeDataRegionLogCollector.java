@@ -39,8 +39,8 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionLogCollector(UnboundedBlockingPendingQueue<Event> pendingQueue) {
-    this.pendingQueue = pendingQueue;
+  public PipeRealtimeDataRegionLogCollector() {
+    this.pendingQueue = new UnboundedBlockingPendingQueue<>();
   }
 
   @Override

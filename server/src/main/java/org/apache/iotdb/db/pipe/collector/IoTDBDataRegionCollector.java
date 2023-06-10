@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionHybridC
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionLogCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionTsFileCollector;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -55,16 +54,14 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionCollector.class);
 
   private final AtomicBoolean hasBeenStarted;
-  private final UnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   private PipeHistoricalDataRegionCollector historicalCollector;
   private PipeRealtimeDataRegionCollector realtimeCollector;
 
   private int dataRegionId;
 
-  public IoTDBDataRegionCollector(UnboundedBlockingPendingQueue<Event> collectorPendingQueue) {
+  public IoTDBDataRegionCollector() {
     this.hasBeenStarted = new AtomicBoolean(false);
-    this.collectorPendingQueue = collectorPendingQueue;
   }
 
   @Override
@@ -114,22 +111,22 @@ public class IoTDBDataRegionCollector implements PipeCollector {
 
     // use hybrid mode by default
     if (!parameters.hasAttribute(COLLECTOR_REALTIME_MODE)) {
-      realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
+      realtimeCollector = new PipeRealtimeDataRegionHybridCollector();
       return;
     }
 
     switch (parameters.getString(COLLECTOR_REALTIME_MODE)) {
       case COLLECTOR_REALTIME_MODE_FILE:
-        realtimeCollector = new PipeRealtimeDataRegionTsFileCollector(collectorPendingQueue);
+        realtimeCollector = new PipeRealtimeDataRegionTsFileCollector();
         break;
       case COLLECTOR_REALTIME_MODE_LOG:
-        realtimeCollector = new PipeRealtimeDataRegionLogCollector(collectorPendingQueue);
+        realtimeCollector = new PipeRealtimeDataRegionLogCollector();
         break;
       case COLLECTOR_REALTIME_MODE_HYBRID:
-        realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
+        realtimeCollector = new PipeRealtimeDataRegionHybridCollector();
         break;
       default:
-        realtimeCollector = new PipeRealtimeDataRegionHybridCollector(collectorPendingQueue);
+        realtimeCollector = new PipeRealtimeDataRegionHybridCollector();
         LOGGER.warn(
             String.format(
                 "Unsupported collector realtime mode: %s, create a hybrid collector.",

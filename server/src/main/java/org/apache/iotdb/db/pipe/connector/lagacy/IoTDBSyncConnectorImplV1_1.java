@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorClient;
@@ -121,7 +122,8 @@ public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
 
     try {
       final TSyncIdentityInfo identityInfo =
-          new TSyncIdentityInfo(pipeName, creationTime, IOTDB_SYNC_CONNECTOR_VERSION, "");
+          new TSyncIdentityInfo(
+              pipeName, creationTime, IOTDB_SYNC_CONNECTOR_VERSION, IoTDBConstant.PATH_ROOT);
       final TSStatus status = client.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         String errorMsg =

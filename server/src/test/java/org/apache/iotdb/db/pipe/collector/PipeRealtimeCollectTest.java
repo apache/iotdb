@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollect
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -102,13 +101,13 @@ public class PipeRealtimeCollectTest {
     // set up realtime collector
 
     try (PipeRealtimeDataRegionHybridCollector collector1 =
-            new PipeRealtimeDataRegionHybridCollector(new UnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector();
         PipeRealtimeDataRegionHybridCollector collector2 =
-            new PipeRealtimeDataRegionHybridCollector(new UnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector();
         PipeRealtimeDataRegionHybridCollector collector3 =
-            new PipeRealtimeDataRegionHybridCollector(new UnboundedBlockingPendingQueue<>());
+            new PipeRealtimeDataRegionHybridCollector();
         PipeRealtimeDataRegionHybridCollector collector4 =
-            new PipeRealtimeDataRegionHybridCollector(new UnboundedBlockingPendingQueue<>())) {
+            new PipeRealtimeDataRegionHybridCollector()) {
 
       collector1.customize(
           new PipeParameters(
