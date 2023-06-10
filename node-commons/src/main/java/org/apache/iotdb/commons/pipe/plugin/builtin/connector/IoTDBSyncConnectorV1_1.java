@@ -27,46 +27,52 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
-public class DoNothingConnector implements PipeConnector {
+/**
+ * This class is a placeholder and should not be initialized. It represents the IoTDB Sync connector
+ * (for IoTDB v1.1). There is a real implementation in the server module but cannot be imported
+ * here. The pipe agent in the server module will replace this class with the real implementation
+ * when initializing the IoTDB Sync connector.
+ */
+public class IoTDBSyncConnectorV1_1 implements PipeConnector {
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void handshake() {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void heartbeat() {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void transfer(Event event) {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
   public void close() {
-    // do nothing
+    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 }

@@ -17,19 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.processor;
+package org.apache.iotdb.db.pipe.config.constant;
 
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+public class PipeConnectorConstant {
 
-/**
- * Used in {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} to
- * customize the runtime behavior of the PipeProcessor.
- */
-public class PipeProcessorRuntimeConfiguration implements PipeRuntimeConfiguration {
+  public static final String CONNECTOR_KEY = "connector";
 
-  @Override
-  public void check() throws PipeException {}
+  public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
+  public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
+
+  public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
+  public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
+  public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
+  public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
+
+  private PipeConnectorConstant() {
+    throw new IllegalStateException("Utility class");
+  }
 }
