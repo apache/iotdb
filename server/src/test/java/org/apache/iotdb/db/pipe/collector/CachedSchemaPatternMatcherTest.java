@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.collector;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -71,7 +73,7 @@ public class CachedSchemaPatternMatcherTest {
                 put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root");
               }
             }),
-        null);
+        new PipeTaskRuntimeConfiguration(new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
     collectorList.add(databaseCollector);
 
     int deviceCollectorNum = 10;
@@ -86,7 +88,8 @@ public class CachedSchemaPatternMatcherTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root." + finalI1);
                 }
               }),
-          null);
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
       collectorList.add(deviceCollector);
       for (int j = 0; j < seriesCollectorNum; j++) {
         PipeRealtimeDataRegionCollector seriesCollector = new PipeRealtimeDataRegionFakeCollector();
@@ -101,7 +104,8 @@ public class CachedSchemaPatternMatcherTest {
                         "root." + finalI + "." + finalJ);
                   }
                 }),
-            null);
+            new PipeTaskRuntimeConfiguration(
+                new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
         collectorList.add(seriesCollector);
       }
     }

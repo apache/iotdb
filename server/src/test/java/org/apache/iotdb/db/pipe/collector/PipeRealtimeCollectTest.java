@@ -29,6 +29,8 @@ import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollect
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionHybridCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -97,7 +99,7 @@ public class PipeRealtimeCollectTest {
   }
 
   @Test
-  public void testRealtimeCollectProcess() throws ExecutionException, InterruptedException {
+  public void testRealtimeCollectProcess() {
     // set up realtime collector
 
     try (PipeRealtimeDataRegionHybridCollector collector1 =
@@ -116,7 +118,9 @@ public class PipeRealtimeCollectTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                 }
               }),
-          null);
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskCollectorRuntimeEnvironment(
+                  "1", 1, Integer.parseInt(dataRegion1), null)));
       collector2.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -124,7 +128,9 @@ public class PipeRealtimeCollectTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                 }
               }),
-          null);
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskCollectorRuntimeEnvironment(
+                  "1", 1, Integer.parseInt(dataRegion1), null)));
       collector3.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -132,7 +138,9 @@ public class PipeRealtimeCollectTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                 }
               }),
-          null);
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskCollectorRuntimeEnvironment(
+                  "1", 1, Integer.parseInt(dataRegion2), null)));
       collector4.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -140,7 +148,9 @@ public class PipeRealtimeCollectTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                 }
               }),
-          null);
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskCollectorRuntimeEnvironment(
+                  "1", 1, Integer.parseInt(dataRegion2), null)));
 
       PipeRealtimeDataRegionCollector[] collectors =
           new PipeRealtimeDataRegionCollector[] {collector1, collector2, collector3, collector4};
