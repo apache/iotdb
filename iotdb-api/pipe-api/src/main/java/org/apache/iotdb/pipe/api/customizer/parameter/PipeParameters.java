@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer;
+package org.apache.iotdb.pipe.api.customizer.parameter;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.processor.PipeProcessorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 
 import java.util.Map;
 

@@ -17,12 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer;
-
-import org.apache.iotdb.pipe.api.exception.PipeException;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
 public interface PipeRuntimeConfiguration {
 
-  /** @throws PipeException if invalid runtime configuration is set */
-  void check() throws PipeException;
+  PipeRuntimeEnvironment getRuntimeEnvironment();
 }

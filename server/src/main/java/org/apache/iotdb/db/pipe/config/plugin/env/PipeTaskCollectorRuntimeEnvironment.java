@@ -17,19 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.processor;
+package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
-/**
- * Used in {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} to
- * customize the runtime behavior of the PipeProcessor.
- */
-public class PipeProcessorRuntimeConfiguration implements PipeRuntimeConfiguration {
+public class PipeTaskCollectorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  @Override
-  public void check() throws PipeException {}
+  private final int regionId;
+
+  private final PipeTaskMeta pipeTaskMeta;
+
+  public PipeTaskCollectorRuntimeEnvironment(
+      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
+    super(pipeName, creationTime);
+    this.regionId = regionId;
+    this.pipeTaskMeta = pipeTaskMeta;
+  }
+
+  public int getRegionId() {
+    return regionId;
+  }
+
+  public PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
+  }
 }

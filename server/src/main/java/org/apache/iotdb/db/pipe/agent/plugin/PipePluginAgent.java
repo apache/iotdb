@@ -25,14 +25,14 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
-import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
-import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
