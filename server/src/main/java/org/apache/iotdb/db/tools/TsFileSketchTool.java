@@ -22,6 +22,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
@@ -37,6 +38,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -100,26 +102,87 @@ public class TsFileSketchTool {
           // chunk begins
           for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
             Chunk chunk = reader.readMemChunk(chunkMetadata);
+            //            printlnBoth(
+            //                pw,
+            //                String.format("%20d", chunkMetadata.getOffsetOfChunkHeader())
+            //                    + "|\t[Chunk] of "
+            //                    + chunkMetadata.getMeasurementUid()
+            //                    + ", numOfPoints:"
+            //                    + chunkMetadata.getNumOfPoints()
+            //                    + ", time range:["
+            //                    + chunkMetadata.getStartTime()
+            //                    + ","
+            //                    + chunkMetadata.getEndTime()
+            //                    + "], tsDataType:"
+            //                    + chunkMetadata.getDataType()
+            //                    + ", \n"
+            //                    + String.format("%20s", "")
+            //                    + " \t"
+            //                    + chunkMetadata.getStatistics());
+            //            printlnBoth(
+            //                pw,
+            //                String.format("%20s", "") + "|\t\t[marker] " +
+            // chunk.getHeader().getChunkType());
             printlnBoth(
                 pw,
                 String.format("%20d", chunkMetadata.getOffsetOfChunkHeader())
                     + "|\t[Chunk] of "
-                    + chunkMetadata.getMeasurementUid()
-                    + ", numOfPoints:"
-                    + chunkMetadata.getNumOfPoints()
-                    + ", time range:["
-                    + chunkMetadata.getStartTime()
-                    + ","
-                    + chunkMetadata.getEndTime()
-                    + "], tsDataType:"
-                    + chunkMetadata.getDataType()
-                    + ", \n"
-                    + String.format("%20s", "")
-                    + " \t"
+                    + new Path(chunkGroupHeader.getDeviceID(), chunkMetadata.getMeasurementUid())
+                    + ", "
                     + chunkMetadata.getStatistics());
             printlnBoth(
                 pw,
-                String.format("%20s", "") + "|\t\t[marker] " + chunk.getHeader().getChunkType());
+                String.format("%20s", "")
+                    + "|\t\t[chunk header] "
+                    + "marker="
+                    + chunk.getHeader().getChunkType()
+                    + ", measurementID="
+                    + chunk.getHeader().getMeasurementID()
+                    + ", dataSize="
+                    + chunk.getHeader().getDataSize()
+                    + ", dataType="
+                    + chunk.getHeader().getDataType()
+                    + ", compressionType="
+                    + chunk.getHeader().getCompressionType()
+                    + ", encodingType="
+                    + chunk.getHeader().getEncodingType());
+            PageHeader pageHeader;
+            if (((byte) (chunk.getHeader().getChunkType() & 0x3F))
+                == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+              pageHeader =
+                  PageHeader.deserializeFrom(chunk.getData(), chunkMetadata.getStatistics());
+              printlnBoth(
+                  pw,
+                  String.format("%20s", "")
+                      + "|\t\t[page] "
+                      + " UncompressedSize:"
+                      + pageHeader.getUncompressedSize()
+                      + ", CompressedSize:"
+                      + pageHeader.getCompressedSize());
+            } else { // more than one page in this chunk
+              ByteBuffer chunkDataBuffer = chunk.getData();
+              int pageID = 0;
+              while (chunkDataBuffer.remaining() > 0) {
+                pageID++;
+                // deserialize a PageHeader from chunkDataBuffer
+                pageHeader =
+                    PageHeader.deserializeFrom(chunkDataBuffer, chunk.getHeader().getDataType());
+                // skip the compressed bytes
+                chunkDataBuffer.position(
+                    chunkDataBuffer.position() + pageHeader.getCompressedSize());
+                // print page info
+                printlnBoth(
+                    pw,
+                    String.format("%20s", "")
+                        + String.format("|\t\t[page-%s] ", pageID)
+                        + " UncompressedSize:"
+                        + pageHeader.getUncompressedSize()
+                        + ", CompressedSize:"
+                        + pageHeader.getCompressedSize()
+                        + ", "
+                        + pageHeader.getStatistics());
+              }
+            }
             nextChunkGroupHeaderPos =
                 chunkMetadata.getOffsetOfChunkHeader()
                     + chunk.getHeader().getSerializedSize()
