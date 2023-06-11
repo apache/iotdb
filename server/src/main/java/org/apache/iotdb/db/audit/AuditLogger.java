@@ -192,6 +192,10 @@ public class AuditLogger {
       case DEACTIVATE_TEMPLATE:
       case CREATE_PIPEPLUGIN:
       case DROP_PIPEPLUGIN:
+      case CREATE_LOGICAL_VIEW:
+      case ALTER_LOGICAL_VIEW:
+      case DELETE_LOGICAL_VIEW:
+      case RENAME_LOGICAL_VIEW:
         return AuditLogOperation.DDL;
       case LOAD_DATA:
       case INSERT:
