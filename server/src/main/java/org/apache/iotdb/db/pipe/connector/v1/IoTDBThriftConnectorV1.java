@@ -132,7 +132,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
             "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
     } catch (TException e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException(
@@ -183,7 +183,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     try {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Network error when transfer tsfile insertion event: {}.", tsFileInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException(
