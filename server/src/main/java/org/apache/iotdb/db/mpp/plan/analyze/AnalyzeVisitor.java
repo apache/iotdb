@@ -2897,6 +2897,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
       }
       deleteDataStatement.setPathList(new ArrayList<>(deletePatternSet));
+    } else {
+      for (String devicePattern : patternTree.getAllDevicePatterns()) {
+        try {
+          schemaTree
+              .getMatchedDevices(new PartialPath(devicePattern))
+              .forEach(
+                  deviceSchemaInfo ->
+                      deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
+        } catch (IllegalPathException ignored) {
+          // won't happen
+        }
+      }
     }
     analysis.setSchemaTree(schemaTree);
 
