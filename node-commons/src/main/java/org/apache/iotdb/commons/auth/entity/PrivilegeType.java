@@ -65,6 +65,10 @@ public enum PrivilegeType {
   STOP_PIPE,
   DROP_PIPE,
   SHOW_PIPES,
+  CREATE_VIEW(true),
+  ALTER_VIEW(true),
+  RENAME_VIEW(true),
+  DELETE_VIEW(true),
   ;
 
   private static final int PRIVILEGE_COUNT = values().length;
