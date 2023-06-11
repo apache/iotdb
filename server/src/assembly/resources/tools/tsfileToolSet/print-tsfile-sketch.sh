@@ -26,6 +26,8 @@ if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
 fi
 
+IOTDB_CONF=${IOTDB_HOME}/conf
+
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
         if [ -x "$java" ]; then
@@ -44,5 +46,5 @@ done
 
 MAIN_CLASS=org.apache.iotdb.db.tools.TsFileSketchTool
 
-"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" "-DTSFILE_CONF=${IOTDB_CONF}" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?
