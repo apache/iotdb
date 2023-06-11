@@ -68,7 +68,7 @@ public enum PrivilegeType {
   CREATE_VIEW(true),
   ALTER_VIEW(true),
   RENAME_VIEW(true),
-  DELETE_VIEW(true)
+  DELETE_VIEW(true),
   ;
 
   private static final int PRIVILEGE_COUNT = values().length;
