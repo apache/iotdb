@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
@@ -54,6 +55,7 @@ public class MemoryControlTest {
     TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
     Mockito.when(tsFileManager.getStorageGroupName()).thenReturn("root.sg");
     Mockito.when(tsFileManager.getDataRegionId()).thenReturn("1");
+    Mockito.when(tsFileManager.isAllowCompaction()).thenReturn(true);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
             0L,
@@ -126,6 +128,81 @@ public class MemoryControlTest {
       }
     } finally {
       SystemInfo.getInstance().setTotalFileLimitForCrossTask(oldMaxCrossCompactionCandidateFileNum);
+    }
+  }
+
+  /**
+   * AllowCompaction is false.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testFailedToCheckValidInCrossTask() {
+    List<TsFileResource> sequenceFiles = new ArrayList<>();
+    for (int i = 1; i <= 10; i++) {
+      sequenceFiles.add(
+          new TsFileResource(
+              new File(String.format("%d-%d-0-0.tsfile", i, i)),
+              TsFileResourceStatus.COMPACTION_CANDIDATE));
+    }
+    List<TsFileResource> unsequenceFiles = new ArrayList<>();
+    for (int i = 11; i <= 20; i++) {
+      unsequenceFiles.add(
+          new TsFileResource(
+              new File(String.format("%d-%d-0-0.tsfile", i, i)),
+              TsFileResourceStatus.COMPACTION_CANDIDATE));
+    }
+    TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+    Mockito.when(tsFileManager.getStorageGroupName()).thenReturn("root.sg");
+    Mockito.when(tsFileManager.getDataRegionId()).thenReturn("1");
+
+    // fail to check valid when tsfile manager is not allowed to compaction in cross task
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0L, tsFileManager, sequenceFiles, unsequenceFiles, null, new AtomicInteger(0), 1000, 0);
+    boolean success = task.checkValidAndSetMerging();
+    Assert.assertFalse(success);
+    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+    for (TsFileResource tsFileResource : sequenceFiles) {
+      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
+      Assert.assertTrue(tsFileResource.tryWriteLock());
+    }
+    for (TsFileResource tsFileResource : unsequenceFiles) {
+      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
+      Assert.assertTrue(tsFileResource.tryWriteLock());
+    }
+  }
+
+  /**
+   * AllowCompaction is false.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testFailedToCheckValidInInnerTask() {
+    List<TsFileResource> sequenceFiles = new ArrayList<>();
+    for (int i = 1; i <= 10; i++) {
+      sequenceFiles.add(
+          new TsFileResource(
+              new File(String.format("%d-%d-0-0.tsfile", i, i)),
+              TsFileResourceStatus.COMPACTION_CANDIDATE));
+    }
+    TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+    Mockito.when(tsFileManager.getStorageGroupName()).thenReturn("root.sg");
+    Mockito.when(tsFileManager.getDataRegionId()).thenReturn("1");
+
+    // fail to check valid when tsfile manager is not allowed to compaction in inner task
+    InnerSpaceCompactionTask innerTask =
+        new InnerSpaceCompactionTask(
+            0L, tsFileManager, sequenceFiles, true, null, new AtomicInteger(0), 0L);
+    boolean success = innerTask.checkValidAndSetMerging();
+    Assert.assertFalse(success);
+    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+    Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+    for (TsFileResource tsFileResource : sequenceFiles) {
+      Assert.assertEquals(TsFileResourceStatus.NORMAL, tsFileResource.getStatus());
+      Assert.assertTrue(tsFileResource.tryWriteLock());
     }
   }
 }
