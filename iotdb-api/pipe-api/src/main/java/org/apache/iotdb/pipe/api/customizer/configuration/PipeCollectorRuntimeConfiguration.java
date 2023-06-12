@@ -17,18 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.connector.retry;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
-import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
-
-/**
- * Used to customize the strategy for reconnecting to sinks in {@link
- * PipeConnector#customize(PipeParameters, PipeConnectorRuntimeConfiguration)}.
- *
- * <p>When the PipeConnector fails to connect to the sink, it will try to reconnect by the specified
- * strategy.
- */
-public interface RetryStrategy extends PipeStrategy {}
+public interface PipeCollectorRuntimeConfiguration extends PipeRuntimeConfiguration {}

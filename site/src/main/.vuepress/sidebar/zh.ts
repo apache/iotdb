@@ -153,7 +153,7 @@ export const zhSidebar = sidebar({
         { text: '查询过滤条件', link: 'Where-Condition' },
         { text: '分段分组聚合', link: 'Group-By' },
         { text: '聚合结果过滤', link: 'Having-Condition' },
-        // { text:'结果集排序', link: 'Order-By' },
+        { text: '结果集排序', link: 'Order-By' },
         { text: '结果集补空值', link: 'Fill' },
         { text: '结果集分页', link: 'Pagination' },
         { text: '查询写回', link: 'Select-Into' },

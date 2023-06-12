@@ -176,6 +176,7 @@ abstract class MergeTest {
       }
     }
     fileWriter.close();
+    tsFileResource.serialize();
   }
 
   void mkdirs(File file) {
