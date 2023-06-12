@@ -407,12 +407,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return equalsOtherTask((InnerSpaceCompactionTask) other);
   }
 
-  @Override
-  public void resetCompactionCandidateStatusForAllSourceFiles() {
-    // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
-    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-  }
-
   /**
    * release the read lock and write lock of files if it is held, and set the merging status of
    * selected files to false
@@ -433,6 +427,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     if (!tsFileManager.isAllowCompaction()) {
+      resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
     try {

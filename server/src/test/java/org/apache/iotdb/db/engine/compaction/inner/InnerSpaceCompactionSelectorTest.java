@@ -46,7 +46,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
   }
 
   @After

@@ -107,7 +107,7 @@ public class AbstractCompactionTest {
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final int oldMaxCrossCompactionFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+      IoTDBDescriptor.getInstance().getConfig().getFileLimitPerCrossTask();
 
   private final int oldMaxDegreeOfIndexNode =
       TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
@@ -395,7 +395,7 @@ public class AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(oldTargetChunkPointNum);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionFileNum);
+        .setFileLimitPerCrossTask(oldMaxCrossCompactionFileNum);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setChunkSizeLowerBoundInCompaction(oldTargetChunkPointNum);

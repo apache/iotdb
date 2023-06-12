@@ -47,7 +47,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   int oldConcurrentCompactionThread =
       IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
   int oldMaxCompactionCandidateFileNum =
-      IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
+      IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
 
   @Before
   public void setUp()
@@ -73,7 +73,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
         .setCompactionThreadCount(oldConcurrentCompactionThread);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setMaxInnerCompactionCandidateFileNum(oldMaxCompactionCandidateFileNum);
+        .setFileLimitPerInnerTask(oldMaxCompactionCandidateFileNum);
     super.tearDown();
   }
 
@@ -83,7 +83,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(4);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(4);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1000000);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     registerTimeseriesInMManger(2, 3, false);
@@ -107,7 +107,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   public void testFileSelector2()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
@@ -137,7 +137,7 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
   public void testFileSelectorWithUnclosedFile()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(50);
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
     createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
