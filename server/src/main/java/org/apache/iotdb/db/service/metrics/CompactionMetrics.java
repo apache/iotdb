@@ -159,7 +159,9 @@ public class CompactionMetrics implements IMetricSet {
   public void recordWriteInfo(
       CompactionType compactionType, CompactionIoDataType dataType, long byteNum) {
     Counter[] counters = writeCounters.get(compactionType.toString());
-    counters[dataType.getValue()].inc(byteNum);
+    if (counters != null) {
+      counters[dataType.getValue()].inc(byteNum);
+    }
     totalCompactionWriteInfoCounter.inc(byteNum);
   }
 
@@ -232,7 +234,9 @@ public class CompactionMetrics implements IMetricSet {
   public void recordReadInfo(
       CompactionType compactionType, CompactionIoDataType dataType, long byteNum) {
     Counter[] counters = readCounters.get(compactionType.toString());
-    counters[dataType.getValue()].inc(byteNum);
+    if (counters != null) {
+      counters[dataType.getValue()].inc(byteNum);
+    }
     totalCompactionReadInfoCounter.inc(byteNum);
   }
   // endregion
