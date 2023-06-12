@@ -33,6 +33,9 @@ class TSDataType(Enum):
     def __eq__(self, other) -> bool:
         return self.value == other.value
 
+    def __hash__(self):
+        return self.value
+
 
 @unique
 class TSEncoding(Enum):

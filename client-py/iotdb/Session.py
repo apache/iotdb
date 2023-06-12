@@ -168,6 +168,13 @@ class Session(object):
 
         return Session.verify_success(status)
 
+    def execute_finish(self):
+        resp = self.__client.executeFinish()
+        logger.debug(
+          "execute_finish message: {}".format(resp.executionInfo)
+        )
+        return resp.executionInfo
+
     def delete_storage_group(self, storage_group):
         """
         delete one storage group.
