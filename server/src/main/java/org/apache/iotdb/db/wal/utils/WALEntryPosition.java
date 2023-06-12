@@ -34,6 +34,7 @@ import java.util.Objects;
  */
 public class WALEntryPosition {
   private static final WALInsertNodeCache CACHE = WALInsertNodeCache.getInstance();
+  private volatile String identifier = "";
   private volatile long walFileVersionId = -1;
   private volatile long position;
   private volatile int size;
@@ -44,7 +45,8 @@ public class WALEntryPosition {
 
   public WALEntryPosition() {}
 
-  public WALEntryPosition(long walFileVersionId, long position, int size) {
+  public WALEntryPosition(String identifier, long walFileVersionId, long position, int size) {
+    this.identifier = identifier;
     this.walFileVersionId = walFileVersionId;
     this.position = position;
     this.size = size;
@@ -111,11 +113,16 @@ public class WALEntryPosition {
 
   public void setWalNode(WALNode walNode) {
     this.walNode = walNode;
+    this.identifier = walNode.getIdentifier();
   }
 
   public void setEntryPosition(long walFileVersionId, long position) {
     this.position = position;
     this.walFileVersionId = walFileVersionId;
+  }
+
+  public String getIdentifier() {
+    return identifier;
   }
 
   public long getWalFileVersionId() {
@@ -140,7 +147,7 @@ public class WALEntryPosition {
 
   @Override
   public int hashCode() {
-    return Objects.hash(walFileVersionId, position);
+    return Objects.hash(identifier, walFileVersionId, position);
   }
 
   @Override
@@ -152,6 +159,8 @@ public class WALEntryPosition {
       return false;
     }
     WALEntryPosition that = (WALEntryPosition) o;
-    return walFileVersionId == that.walFileVersionId && position == that.position;
+    return identifier.equals(that.identifier)
+        && walFileVersionId == that.walFileVersionId
+        && position == that.position;
   }
 }
