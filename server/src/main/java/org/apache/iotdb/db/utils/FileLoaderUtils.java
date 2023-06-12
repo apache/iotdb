@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.IOMonitor;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -144,6 +146,7 @@ public class FileLoaderUtils {
     }
     long duration = System.nanoTime() - start;
     IOMonitor.incMeta(duration);
+    IOMonitor2.addMeasure(Operation.DCP_A_GET_CHUNK_METADATAS, System.nanoTime() - start);
     return timeSeriesMetadata;
   }
 

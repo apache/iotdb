@@ -128,6 +128,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.IOMonitor;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -628,6 +629,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
+    long start = System.nanoTime();
     try {
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
@@ -638,17 +640,21 @@ public class TSServiceImpl implements TSIService.Iface {
           processor.parseSQLToPhysicalPlan(
               statement, sessionManager.getZoneId(req.sessionId), req.fetchSize);
       //      System.out.println("====DEBUG====: fetchSize=" + req.fetchSize);
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              statement,
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              req.timeout,
-              sessionManager.getUsername(req.getSessionId()),
-              req.isEnableRedirectQuery())
-          : RpcUtils.getTSExecuteStatementResp(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      TSExecuteStatementResp resp =
+          physicalPlan.isQuery()
+              ? internalExecuteQueryStatement(
+                  statement,
+                  req.statementId,
+                  physicalPlan,
+                  req.fetchSize,
+                  req.timeout,
+                  sessionManager.getUsername(req.getSessionId()),
+                  req.isEnableRedirectQuery())
+              : RpcUtils.getTSExecuteStatementResp(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      IOMonitor2.addMeasure(
+          IOMonitor2.Operation.DCP_Server_Query_Execute, System.nanoTime() - start);
+      return resp;
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -664,7 +670,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSExecuteFinishResp executeFinish() throws TException {
     TSExecuteFinishResp ret = new TSExecuteFinishResp();
     ret.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    ret.setExecutionInfo(IOMonitor.print());
+    ret.setExecutionInfo(IOMonitor.print() + "\n" + IOMonitor2.print());
     IOMonitor.finish();
     return ret;
   }
@@ -719,8 +725,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
     // start record execution time
     IOMonitor.setSQL(statement);
-    queryCount.incrementAndGet();
     long start = System.nanoTime();
+    queryCount.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
     long startTime = System.currentTimeMillis();
@@ -1017,6 +1023,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
+    long start = System.nanoTime();
     try {
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getTSFetchResultsResp(TSStatusCode.NOT_LOGIN_ERROR);
@@ -1032,6 +1039,7 @@ public class TSServiceImpl implements TSIService.Iface {
           req.queryId, System.currentTimeMillis(), req.statement, req.timeout);
 
       QueryDataSet queryDataSet = sessionManager.getDataset(req.queryId);
+      TSFetchResultsResp resp;
       if (req.isAlign) {
         TSQueryDataSet result =
             fillRpcReturnData(
@@ -1040,13 +1048,12 @@ public class TSServiceImpl implements TSIService.Iface {
         if (!hasResultSet) {
           releaseQueryResourceNoExceptions(req.queryId);
         }
-        TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
+        resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
         resp.setHasResultSet(hasResultSet);
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
 
         queryTimeManager.unRegisterQuery(req.queryId);
-        return resp;
       } else {
         TSQueryNonAlignDataSet nonAlignResult =
             fillRpcNonAlignReturnData(
@@ -1061,14 +1068,15 @@ public class TSServiceImpl implements TSIService.Iface {
         if (!hasResultSet) {
           sessionManager.removeDataset(req.queryId);
         }
-        TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
+        resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
         resp.setHasResultSet(hasResultSet);
         resp.setNonAlignQueryDataSet(nonAlignResult);
         resp.setIsAlign(false);
 
         queryTimeManager.unRegisterQuery(req.queryId);
-        return resp;
       }
+      IOMonitor2.addMeasure(IOMonitor2.Operation.DCP_Server_Query_Fetch, System.nanoTime() - start);
+      return resp;
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();

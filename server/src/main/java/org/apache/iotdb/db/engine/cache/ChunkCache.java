@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.IOMonitor;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -80,6 +82,8 @@ public class ChunkCache {
                             .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
                     long start = System.nanoTime();
                     Chunk ret = reader.readMemChunk(chunkMetadata);
+                    IOMonitor2.addMeasure(
+                        Operation.DCP_B_READ_MEM_CHUNK, System.nanoTime() - start);
                     IOMonitor.incReadMemChunkTime(System.nanoTime() - start);
                     return ret;
                   } catch (IOException e) {
@@ -102,7 +106,9 @@ public class ChunkCache {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(chunkMetaData.getFilePath(), chunkMetaData.isClosed());
+      long start = System.nanoTime();
       Chunk chunk = reader.readMemChunk(chunkMetaData);
+      IOMonitor2.addMeasure(Operation.DCP_B_READ_MEM_CHUNK, System.nanoTime() - start);
       return new Chunk(
           chunk.getHeader(),
           chunk.getData().duplicate(),

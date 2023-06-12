@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
@@ -81,6 +83,7 @@ public class ChunkReader implements IChunkReader {
   }
 
   private void initAllPageReaders(Statistics chunkStatistic) throws IOException {
+    long start = System.nanoTime();
     // construct next satisfied page header
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
@@ -97,6 +100,8 @@ public class ChunkReader implements IChunkReader {
         skipBytesInStreamByLength(pageHeader.getCompressedSize());
       }
     }
+    IOMonitor2.addMeasure(
+        Operation.DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA, System.nanoTime() - start);
   }
 
   /** judge if has next page whose page header satisfies the filter. */
