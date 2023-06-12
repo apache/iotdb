@@ -892,10 +892,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
 
       // update outputExpressionToRawExpressionsMap
-      FunctionExpression measurementAggregationExpression =
+      FunctionExpression rawMeasurementAggregationExpression =
           (FunctionExpression) ExpressionAnalyzer.getMeasurementExpression(rawExpression);
       Expression rawExpressionWithoutAlias =
           ExpressionAnalyzer.removeAliasFromExpression(rawExpression);
+      FunctionExpression measurementAggregationExpression =
+          (FunctionExpression)
+              ExpressionAnalyzer.getMeasurementExpression(rawExpressionWithoutAlias);
       analyzeExpression(analysis, rawExpressionWithoutAlias);
       outputExpressionToRawExpressionsMap
           .computeIfAbsent(measurementAggregationExpression, v -> new HashSet<>())
@@ -903,7 +906,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // get tagMap
       TimeSeriesOperand measurementExpression =
-          (TimeSeriesOperand) measurementAggregationExpression.getExpressions().get(0);
+          (TimeSeriesOperand) rawMeasurementAggregationExpression.getExpressions().get(0);
       MeasurementPath pathWithTag =
           (MeasurementPath)
               (measurementExpression.isViewExpression()
@@ -919,7 +922,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       tagValuesToGroupedTimeseriesOperands
           .computeIfAbsent(tagValues, key -> new LinkedHashMap<>())
           .computeIfAbsent(measurementAggregationExpression, key -> new ArrayList<>())
-          .add(rawExpression.getExpressions().get(0));
+          .add(rawExpressionWithoutAlias.getExpressions().get(0));
     }
 
     // update outputExpressions
