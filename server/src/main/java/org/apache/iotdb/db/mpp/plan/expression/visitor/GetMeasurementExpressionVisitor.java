@@ -35,8 +35,11 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Void> {
     Expression newExpression = expression.accept(this, context);
 
     if (expression.getViewPath() != null) {
-      PartialPath viewPath = expression.getViewPath();
-      newExpression.setViewPath(new PartialPath(viewPath.getMeasurement(), false));
+      MeasurementPath viewPath = (MeasurementPath) expression.getViewPath();
+      MeasurementPath copiedViewPath = new MeasurementPath(viewPath.getMeasurement(), false);
+      copiedViewPath.setMeasurementSchema(viewPath.getMeasurementSchema());
+      copiedViewPath.setTagMap(viewPath.getTagMap());
+      newExpression.setViewPath(copiedViewPath);
     }
     return newExpression;
   }
