@@ -201,7 +201,7 @@ public class TestUtils {
   }
 
   /** A Mini Raft CLuster Wrapper for Test Env. */
-  public static class MiniCluster {
+  static class MiniCluster {
     private final ConsensusGroupId gid;
     private final int replicas;
     private final List<Peer> peers;
@@ -265,58 +265,58 @@ public class TestUtils {
       }
     }
 
-    public void start() throws IOException {
+    void start() throws IOException {
       for (RatisConsensus server : servers) {
         server.start();
       }
     }
 
-    public void stop() throws IOException {
+    void stop() throws IOException {
       for (RatisConsensus server : servers) {
         server.stop();
       }
     }
 
-    public void cleanUp() throws IOException {
+    void cleanUp() throws IOException {
       stop();
       for (File storage : peerStorage) {
         FileUtils.deleteFully(storage);
       }
     }
 
-    public void restart() throws IOException {
+    void restart() throws IOException {
       stop();
       servers.clear();
       makeServers();
       start();
     }
 
-    public List<RatisConsensus> getServers() {
+    List<RatisConsensus> getServers() {
       return Collections.unmodifiableList(servers);
     }
 
-    public RatisConsensus getServer(int index) {
+    RatisConsensus getServer(int index) {
       return servers.get(index);
     }
 
-    public List<IStateMachine> getStateMachines() {
+    List<IStateMachine> getStateMachines() {
       return Collections.unmodifiableList(stateMachines);
     }
 
-    public ConsensusGroupId getGid() {
+    ConsensusGroupId getGid() {
       return gid;
     }
 
-    public List<Peer> getPeers() {
+    List<Peer> getPeers() {
       return peers;
     }
 
-    public ConsensusGroup getGroup() {
+    ConsensusGroup getGroup() {
       return group;
     }
   }
 
-  public static class MiniClusterFactory {
+  static class MiniClusterFactory {
     private int replicas = 3;
     private ConsensusGroupId gid = new DataRegionId(1);
     private Function<Integer, File> peerStorageProvider =
@@ -325,12 +325,12 @@ public class TestUtils {
     private Supplier<IStateMachine> smProvider = TestUtils.IntegerCounter::new;
     private RatisConfig ratisConfig;
 
-    public MiniClusterFactory setRatisConfig(RatisConfig ratisConfig) {
+    MiniClusterFactory setRatisConfig(RatisConfig ratisConfig) {
       this.ratisConfig = ratisConfig;
       return this;
     }
 
-    public MiniCluster create() {
+    MiniCluster create() {
       return new MiniCluster(gid, replicas, peerStorageProvider, smProvider, ratisConfig);
     }
   }

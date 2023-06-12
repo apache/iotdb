@@ -55,7 +55,7 @@ public class RatisConsensusTest {
 
   private TestUtils.MiniCluster miniCluster;
 
-  private RatisConfig config =
+  private final RatisConfig config =
       RatisConfig.newBuilder()
           .setLog(
               RatisConfig.Log.newBuilder()
