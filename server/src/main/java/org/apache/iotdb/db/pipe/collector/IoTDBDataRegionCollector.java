@@ -137,7 +137,8 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   @Override
   public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
       throws Exception {
-    dataRegionId = ((PipeTaskCollectorRuntimeEnvironment) configuration).getRegionId();
+    dataRegionId =
+        ((PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment()).getRegionId();
 
     historicalCollector.customize(parameters, configuration);
     realtimeCollector.customize(parameters, configuration);
