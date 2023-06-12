@@ -223,16 +223,22 @@ public class CrossSpaceCompactionCandidate {
       }
       deviceInfoMap = new LinkedHashMap<>();
       if (resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE) {
-        if (!resource.resourceFileExists()) {
-          hasDetailedDeviceInfo = false;
-          return;
-        }
-        DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
-        for (String deviceId : timeIndex.getDevices()) {
-          deviceInfoMap.put(
-              deviceId,
-              new DeviceInfo(
-                  deviceId, timeIndex.getStartTime(deviceId), timeIndex.getEndTime(deviceId)));
+        // deserialize resource file
+        resource.readLock();
+        try {
+          if (!resource.resourceFileExists()) {
+            hasDetailedDeviceInfo = false;
+            return;
+          }
+          DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
+          for (String deviceId : timeIndex.getDevices()) {
+            deviceInfoMap.put(
+                deviceId,
+                new DeviceInfo(
+                    deviceId, timeIndex.getStartTime(deviceId), timeIndex.getEndTime(deviceId)));
+          }
+        } finally {
+          resource.readUnlock();
         }
       } else {
         for (String deviceId : resource.getDevices()) {
@@ -245,7 +251,7 @@ public class CrossSpaceCompactionCandidate {
       hasDetailedDeviceInfo = true;
     }
 
-    protected void markAsSelected() {
+    public void markAsSelected() {
       this.selected = true;
     }
 

@@ -305,7 +305,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       }
     } finally {
-      releaseFileLocksAndResetMergingStatus();
+      releaseAllLocksAndResetStatus();
       return isSuccess;
     }
   }
@@ -401,6 +401,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
+    // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
     selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
@@ -408,7 +409,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
    * release the read lock and write lock of files if it is held, and set the merging status of
    * selected files to false
    */
-  protected void releaseFileLocksAndResetMergingStatus() {
+  private void releaseAllLocksAndResetStatus() {
+    resetCompactionCandidateStatusForAllSourceFiles();
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       if (isHoldingReadLock[i]) {
@@ -416,13 +418,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
       if (isHoldingWriteLock[i]) {
         resource.writeUnlock();
-      }
-      try {
-        // try to set the file's status back to NORMAL. If the status is Deleted, its status won't
-        // be changed
-        selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.NORMAL);
-      } catch (Throwable e) {
-        LOGGER.error("Exception occurs when resetting resource status", e);
       }
     }
   }
@@ -438,12 +433,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         resource.readLock();
         isHoldingReadLock[i] = true;
         if (!resource.setStatus(TsFileResourceStatus.COMPACTING)) {
-          releaseFileLocksAndResetMergingStatus();
+          releaseAllLocksAndResetStatus();
           return false;
         }
       }
     } catch (Throwable e) {
-      releaseFileLocksAndResetMergingStatus();
+      releaseAllLocksAndResetStatus();
       throw e;
     }
     return true;
