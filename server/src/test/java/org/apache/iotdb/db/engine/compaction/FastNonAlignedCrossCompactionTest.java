@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompacti
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -282,6 +283,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -545,6 +552,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -807,6 +820,18 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -1087,6 +1112,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -1466,6 +1497,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -1852,6 +1889,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -2248,6 +2291,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -2629,6 +2678,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -3011,6 +3066,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -3403,6 +3464,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -3850,6 +3917,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -4300,6 +4373,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -4750,6 +4829,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -5252,6 +5337,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -5699,6 +5790,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -5930,6 +6027,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -6223,6 +6326,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -6643,6 +6752,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -7025,6 +7140,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -7292,6 +7413,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -7445,6 +7572,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -7649,6 +7782,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
@@ -7883,6 +8022,12 @@ public class FastNonAlignedCrossCompactionTest extends AbstractCompactionTest {
             0,
             0);
     Assert.assertTrue(task.start());
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
 
     validateSeqFiles(true);
 
