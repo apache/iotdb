@@ -76,7 +76,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * config.getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+        IoTDBDescriptor.getInstance().getConfig().getFileLimitPerCrossTask();
     this.maxCrossCompactionFileSize =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
 
