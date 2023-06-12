@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.collector;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.pipe.collector.historical.PipeHistoricalDataRegionCollector;
@@ -58,7 +59,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   private PipeHistoricalDataRegionCollector historicalCollector;
   private PipeRealtimeDataRegionCollector realtimeCollector;
 
-  private int dataRegionId;
+  private DataRegionId dataRegionId;
 
   public IoTDBDataRegionCollector() {
     this.hasBeenStarted = new AtomicBoolean(false);
@@ -138,7 +139,10 @@ public class IoTDBDataRegionCollector implements PipeCollector {
   public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
       throws Exception {
     dataRegionId =
-        ((PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment()).getRegionId();
+        (DataRegionId)
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                ((PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment())
+                    .getRegionId());
 
     historicalCollector.customize(parameters, configuration);
     realtimeCollector.customize(parameters, configuration);
@@ -152,7 +156,6 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     hasBeenStarted.set(true);
 
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
-    final DataRegionId dataRegionId = new DataRegionId(this.dataRegionId);
     while (true) {
       // try to start collectors in the data region ...
       // first try to run if data region exists, then try to run if data region does not exist.

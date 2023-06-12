@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.collector.historical;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -34,8 +35,8 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-
 import org.apache.iotdb.pipe.api.exception.PipeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +61,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
 
-  private int dataRegionId;
+  private DataRegionId dataRegionId;
 
   private String pattern;
 
@@ -85,7 +86,9 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
-    dataRegionId = environment.getRegionId();
+    dataRegionId =
+        (DataRegionId)
+            ConsensusGroupId.Factory.createFromTConsensusGroupId(environment.getRegionId());
 
     pattern = parameters.getStringOrDefault(COLLECTOR_PATTERN_KEY, COLLECTOR_PATTERN_DEFAULT_VALUE);
 
@@ -149,8 +152,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   }
 
   private void flushDataRegionAllTsFiles() {
-    final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
+    final DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(dataRegionId);
     if (dataRegion == null) {
       return;
     }
@@ -165,8 +167,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
   @Override
   public synchronized void start() {
-    final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
+    final DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(dataRegionId);
     if (dataRegion == null) {
       pendingQueue = new ArrayDeque<>();
       return;

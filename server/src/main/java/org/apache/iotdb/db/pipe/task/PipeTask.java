@@ -25,7 +25,7 @@ import org.apache.iotdb.db.pipe.task.stage.PipeTaskStage;
 public class PipeTask {
 
   private final String pipeName;
-  private final TConsensusGroupId dataRegionId;
+  private final TConsensusGroupId regionId;
 
   private final PipeTaskStage collectorStage;
   private final PipeTaskStage processorStage;
@@ -33,12 +33,12 @@ public class PipeTask {
 
   PipeTask(
       String pipeName,
-      TConsensusGroupId dataRegionId,
+      TConsensusGroupId regionId,
       PipeTaskStage collectorStage,
       PipeTaskStage processorStage,
       PipeTaskStage connectorStage) {
     this.pipeName = pipeName;
-    this.dataRegionId = dataRegionId;
+    this.regionId = regionId;
 
     this.collectorStage = collectorStage;
     this.processorStage = processorStage;
@@ -69,8 +69,8 @@ public class PipeTask {
     connectorStage.stop();
   }
 
-  public TConsensusGroupId getDataRegionId() {
-    return dataRegionId;
+  public TConsensusGroupId getRegionId() {
+    return regionId;
   }
 
   public String getPipeName() {

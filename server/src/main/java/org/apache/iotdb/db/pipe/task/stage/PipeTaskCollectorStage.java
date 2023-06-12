@@ -41,7 +41,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       String pipeName,
       long creationTime,
       PipeParameters collectorParameters,
-      TConsensusGroupId dataRegionId,
+      TConsensusGroupId regionId,
       PipeTaskMeta pipeTaskMeta) {
     // TODO: avoid if-else, use reflection to create collector all the time
     this.pipeCollector =
@@ -63,7 +63,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskCollectorRuntimeEnvironment(
-                  pipeName, creationTime, dataRegionId.getId(), pipeTaskMeta));
+                  pipeName, creationTime, regionId, pipeTaskMeta));
       pipeCollector.customize(collectorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);

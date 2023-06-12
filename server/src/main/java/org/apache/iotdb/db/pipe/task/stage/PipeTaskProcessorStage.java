@@ -50,7 +50,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param pipeName pipe name
    * @param creationTime pipe creation time
    * @param pipeProcessorParameters used to create pipe processor
-   * @param dataRegionId data region id
+   * @param regionId data region id
    * @param pipeCollectorInputEventSupplier used to input events from pipe collector
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
    */
@@ -58,7 +58,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       String pipeName,
       long creationTime,
       PipeParameters pipeProcessorParameters,
-      TConsensusGroupId dataRegionId,
+      TConsensusGroupId regionId,
       EventSupplier pipeCollectorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     final PipeProcessor pipeProcessor =
@@ -78,13 +78,14 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
-          new PipeTaskRuntimeConfiguration(new PipeTaskRuntimeEnvironment(pipeName, creationTime));
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskRuntimeEnvironment(pipeName, creationTime, regionId));
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
 
-    final String taskId = pipeName + "_" + dataRegionId;
+    final String taskId = pipeName + "_" + regionId;
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(pipeConnectorOutputPendingQueue);
     this.pipeProcessorSubtask =

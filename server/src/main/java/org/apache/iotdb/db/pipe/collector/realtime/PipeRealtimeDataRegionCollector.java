@@ -50,7 +50,7 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
 
     final PipeTaskCollectorRuntimeEnvironment environment =
         (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();
-    dataRegionId = String.valueOf(environment.getRegionId());
+    dataRegionId = String.valueOf(environment.getRegionId().getId());
     pipeTaskMeta = environment.getPipeTaskMeta();
   }
 

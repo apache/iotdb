@@ -29,13 +29,13 @@ import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 public class PipeTaskBuilder {
 
   private final PipeStaticMeta pipeStaticMeta;
-  private final TConsensusGroupId dataRegionId;
+  private final TConsensusGroupId regionId;
   private final PipeTaskMeta pipeTaskMeta;
 
   public PipeTaskBuilder(
-      PipeStaticMeta pipeStaticMeta, TConsensusGroupId dataRegionId, PipeTaskMeta pipeTaskMeta) {
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, PipeTaskMeta pipeTaskMeta) {
     this.pipeStaticMeta = pipeStaticMeta;
-    this.dataRegionId = dataRegionId;
+    this.regionId = regionId;
     this.pipeTaskMeta = pipeTaskMeta;
   }
 
@@ -48,14 +48,15 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
             pipeStaticMeta.getCollectorParameters(),
-            dataRegionId,
+            regionId,
             pipeTaskMeta);
 
     final PipeTaskConnectorStage connectorStage =
         new PipeTaskConnectorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            pipeStaticMeta.getConnectorParameters());
+            pipeStaticMeta.getConnectorParameters(),
+            regionId);
 
     // the processor connects the collector and connector.
     final PipeTaskProcessorStage processorStage =
@@ -63,11 +64,11 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
             pipeStaticMeta.getProcessorParameters(),
-            dataRegionId,
+            regionId,
             collectorStage.getEventSupplier(),
             connectorStage.getPipeConnectorPendingQueue());
 
     return new PipeTask(
-        pipeStaticMeta.getPipeName(), dataRegionId, collectorStage, processorStage, connectorStage);
+        pipeStaticMeta.getPipeName(), regionId, collectorStage, processorStage, connectorStage);
   }
 }

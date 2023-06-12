@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.collector;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -65,8 +67,10 @@ public class PipeRealtimeCollectTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRealtimeCollectTest.class);
 
-  private final String dataRegion1 = "1";
-  private final String dataRegion2 = "2";
+  private final TConsensusGroupId dataRegion1 =
+      new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
+  private final TConsensusGroupId dataRegion2 =
+      new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
@@ -119,8 +123,7 @@ public class PipeRealtimeCollectTest {
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
-                  "1", 1, Integer.parseInt(dataRegion1), null)));
+              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegion1, null)));
       collector2.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -129,8 +132,7 @@ public class PipeRealtimeCollectTest {
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
-                  "1", 1, Integer.parseInt(dataRegion1), null)));
+              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegion1, null)));
       collector3.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -139,8 +141,7 @@ public class PipeRealtimeCollectTest {
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
-                  "1", 1, Integer.parseInt(dataRegion2), null)));
+              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegion2, null)));
       collector4.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -149,8 +150,7 @@ public class PipeRealtimeCollectTest {
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
-                  "1", 1, Integer.parseInt(dataRegion2), null)));
+              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegion2, null)));
 
       PipeRealtimeDataRegionCollector[] collectors =
           new PipeRealtimeDataRegionCollector[] {collector1, collector2, collector3, collector4};
@@ -238,10 +238,11 @@ public class PipeRealtimeCollectTest {
     }
   }
 
-  private Future<?> write2DataRegion(int writeNum, String dataRegionId, int startNum) {
+  private Future<?> write2DataRegion(int writeNum, TConsensusGroupId dataRegionId, int startNum) {
 
-    File dataRegionDir =
-        new File(tsFileDir.getPath() + File.separator + dataRegionId + File.separator + "0");
+    final String dataRegionIdString = String.valueOf(dataRegionId.getId());
+    final File dataRegionDir =
+        new File(tsFileDir.getPath() + File.separator + dataRegionIdString + File.separator + "0");
     boolean ignored = dataRegionDir.mkdirs();
     return writeService.submit(
         () -> {
@@ -259,7 +260,7 @@ public class PipeRealtimeCollectTest {
 
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
-                    dataRegionId,
+                    dataRegionIdString,
                     mock(WALEntryHandler.class),
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
@@ -273,7 +274,7 @@ public class PipeRealtimeCollectTest {
                     resource);
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
-                    dataRegionId,
+                    dataRegionIdString,
                     mock(WALEntryHandler.class),
                     new InsertRowNode(
                         new PlanNodeId(String.valueOf(i)),
@@ -285,7 +286,8 @@ public class PipeRealtimeCollectTest {
                         null,
                         false),
                     resource);
-            PipeInsertionDataNodeListener.getInstance().listenToTsFile(dataRegionId, resource);
+            PipeInsertionDataNodeListener.getInstance()
+                .listenToTsFile(dataRegionIdString, resource);
           }
         });
   }

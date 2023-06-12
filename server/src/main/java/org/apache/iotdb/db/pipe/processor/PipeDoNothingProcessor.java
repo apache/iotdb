@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.pipe.processor;
 
-import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
@@ -36,6 +39,8 @@ import java.io.IOException;
 
 public class PipeDoNothingProcessor implements PipeProcessor {
 
+  private String database;
+
   @Override
   public void validate(PipeParameterValidator validator) {
     // do nothing
@@ -44,7 +49,14 @@ public class PipeDoNothingProcessor implements PipeProcessor {
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    // do nothing
+    database =
+        StorageEngine.getInstance()
+            .getDataRegion(
+                (DataRegionId)
+                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                        ((PipeTaskRuntimeEnvironment) configuration.getRuntimeEnvironment())
+                            .getRegionId()))
+            .getDatabaseName();
   }
 
   @Override
@@ -52,9 +64,7 @@ public class PipeDoNothingProcessor implements PipeProcessor {
       throws IOException {
     if (tabletInsertionEvent instanceof EnrichedEvent) {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) tabletInsertionEvent;
-      if (enrichedEvent
-          .getPattern()
-          .equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+      if (enrichedEvent.getPattern().equals(database)) {
         eventCollector.collect(tabletInsertionEvent);
       } else {
         tabletInsertionEvent
@@ -86,8 +96,7 @@ public class PipeDoNothingProcessor implements PipeProcessor {
     if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
       final PipeTsFileInsertionEvent enrichedEvent =
           (PipeTsFileInsertionEvent) tsFileInsertionEvent;
-      if (enrichedEvent.getPattern().equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)
-          && !enrichedEvent.hasTimeFilter()) {
+      if (enrichedEvent.getPattern().equals(database) && !enrichedEvent.hasTimeFilter()) {
         eventCollector.collect(tsFileInsertionEvent);
       } else {
         for (final TabletInsertionEvent tabletInsertionEvent :

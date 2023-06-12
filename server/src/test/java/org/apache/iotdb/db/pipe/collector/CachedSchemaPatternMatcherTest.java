@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.collector;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
@@ -50,6 +52,8 @@ public class CachedSchemaPatternMatcherTest {
   private CachedSchemaPatternMatcher matcher;
   private ExecutorService executorService;
   private List<PipeRealtimeDataRegionCollector> collectorList;
+  private final TConsensusGroupId dataRegionId =
+      new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
 
   @Before
   public void setUp() {
@@ -73,7 +77,8 @@ public class CachedSchemaPatternMatcherTest {
                 put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root");
               }
             }),
-        new PipeTaskRuntimeConfiguration(new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
+        new PipeTaskRuntimeConfiguration(
+            new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegionId, null)));
     collectorList.add(databaseCollector);
 
     int deviceCollectorNum = 10;
@@ -89,7 +94,7 @@ public class CachedSchemaPatternMatcherTest {
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
+              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegionId, null)));
       collectorList.add(deviceCollector);
       for (int j = 0; j < seriesCollectorNum; j++) {
         PipeRealtimeDataRegionCollector seriesCollector = new PipeRealtimeDataRegionFakeCollector();
@@ -105,7 +110,7 @@ public class CachedSchemaPatternMatcherTest {
                   }
                 }),
             new PipeTaskRuntimeConfiguration(
-                new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
+                new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegionId, null)));
         collectorList.add(seriesCollector);
       }
     }
