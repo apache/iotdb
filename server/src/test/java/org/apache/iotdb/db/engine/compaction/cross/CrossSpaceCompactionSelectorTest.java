@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.junit.After;
@@ -175,6 +176,51 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void testSelectWithTooManySourceFiles()
+      throws IOException, MetadataException, WriteProcessException {
+    int oldMaxFileNumForCompaction = SystemInfo.getInstance().getTotalFileLimitForCrossTask();
+    SystemInfo.getInstance().setTotalFileLimitForCrossTask(1);
+    try {
+      createFiles(19, 2, 3, 50, 0, 10000, 50, 50, false, true);
+      createFiles(1, 2, 3, 3000, 0, 10000, 50, 50, false, false);
+      RewriteCrossSpaceCompactionSelector selector =
+          new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+      List<CrossCompactionTaskResource> selected =
+          selector.selectCrossSpaceTask(seqResources, unseqResources);
+      Assert.assertEquals(1, selected.size());
+      Assert.assertEquals(19, selected.get(0).getSeqFiles().size());
+      Assert.assertEquals(1, selected.get(0).getUnseqFiles().size());
+
+      CrossSpaceCompactionTask crossSpaceCompactionTask =
+          new CrossSpaceCompactionTask(
+              0,
+              tsFileManager,
+              selected.get(0).getSeqFiles(),
+              selected.get(0).getUnseqFiles(),
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getCrossCompactionPerformer()
+                  .createInstance(),
+              CompactionTaskManager.currentTaskNum,
+              1000,
+              tsFileManager.getNextCompactionTaskId());
+      // set file status to COMPACTION_CANDIDATE
+      Assert.assertTrue(crossSpaceCompactionTask.setSourceFilesToCompactionCandidate());
+
+      Assert.assertFalse(crossSpaceCompactionTask.checkValidAndSetMerging());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+      for (TsFileResource resource : seqResources) {
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
+      }
+      for (TsFileResource resource : unseqResources) {
+        Assert.assertEquals(TsFileResourceStatus.NORMAL, resource.getStatus());
+      }
+    } finally {
+      SystemInfo.getInstance().setTotalFileLimitForCrossTask(oldMaxFileNumForCompaction);
+    }
+  }
+
   public void testSeqFileWithDeviceIndexBeenDeletedBeforeSelection()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);

@@ -680,16 +680,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "chunk_size_lower_bound_in_compaction",
                 Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
-    conf.setMaxInnerCompactionCandidateFileNum(
+    conf.setFileLimitPerInnerTask(
         Integer.parseInt(
             properties.getProperty(
                 "max_inner_compaction_candidate_file_num",
-                Integer.toString(conf.getMaxInnerCompactionCandidateFileNum()))));
-    conf.setMaxCrossCompactionCandidateFileNum(
+                Integer.toString(conf.getFileLimitPerInnerTask()))));
+    conf.setFileLimitPerCrossTask(
         Integer.parseInt(
             properties.getProperty(
                 "max_cross_compaction_candidate_file_num",
-                Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
+                Integer.toString(conf.getFileLimitPerCrossTask()))));
     conf.setMaxCrossCompactionCandidateFileSize(
         Long.parseLong(
             properties.getProperty(

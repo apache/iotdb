@@ -974,12 +974,12 @@ Different configuration parameters take effect in the following three ways:
 
 * max\_cross\_compaction\_file\_num
 
-|Name| max\_cross\_compaction\_candidate\_file\_num |
-|:---:|:---|
+|Name| max\_cross\_compaction\_candidate\_file\_num             |
+|:---:|:---------------------------------------------------------|
 |Description| The max num of files encounter in cross space compaction |
-|Type| int32 |
-|Default| 1000 |
-|Effective|After restart system|
+|Type| int32                                                    |
+|Default| 500                                                      |
+|Effective| After restart system                                     |
 
 * max\_cross\_compaction\_file\_size
 
