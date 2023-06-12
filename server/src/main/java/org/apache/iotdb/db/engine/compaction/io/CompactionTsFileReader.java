@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class extends the TsFileSequenceReader class to read and manage TsFile with a focus on
@@ -39,7 +40,7 @@ import java.util.List;
  */
 public class CompactionTsFileReader extends TsFileSequenceReader {
   /** Tracks the total amount of data (in bytes) that has been read. */
-  private volatile long readDataSize = 0L;
+  private AtomicLong readDataSize = new AtomicLong(0L);
 
   /** The type of compaction running. */
   CompactionType compactionType;
@@ -62,7 +63,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   @Override
   protected ByteBuffer readData(long position, int totalSize) throws IOException {
     ByteBuffer buffer = super.readData(position, totalSize);
-    readDataSize += totalSize;
+    readDataSize.addAndGet(totalSize);
     return buffer;
   }
 
@@ -80,9 +81,9 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
     synchronized (this) {
       // using synchronized to avoid concurrent read that makes readDataSize not correct
-      long before = readDataSize;
+      long before = readDataSize.get();
       Chunk chunk = super.readMemChunk(metaData);
-      long dataSize = readDataSize - before;
+      long dataSize = readDataSize.get() - before;
       CompactionMetrics.getInstance()
           .recordReadInfo(
               compactionType,
@@ -96,9 +97,9 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
   @Override
   public TsFileDeviceIterator getAllDevicesIteratorWithIsAligned() throws IOException {
-    long before = readDataSize;
+    long before = readDataSize.get();
     TsFileDeviceIterator iterator = super.getAllDevicesIteratorWithIsAligned();
-    long dataSize = readDataSize - before;
+    long dataSize = readDataSize.get() - before;
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
     return iterator;
@@ -107,10 +108,10 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   @Override
   public List<IChunkMetadata> getChunkMetadataListByTimeseriesMetadataOffset(
       long startOffset, long endOffset) throws IOException {
-    long before = readDataSize;
+    long before = readDataSize.get();
     List<IChunkMetadata> chunkMetadataList =
         super.getChunkMetadataListByTimeseriesMetadataOffset(startOffset, endOffset);
-    long dataSize = readDataSize - before;
+    long dataSize = readDataSize.get() - before;
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
     return chunkMetadataList;
