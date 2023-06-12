@@ -143,7 +143,7 @@ public class SingleSeriesCompactionExecutor {
 
     // after all the chunk of this sensor is read, flush the remaining data
     if (cachedChunk != null) {
-      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
+      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
       cachedChunk = null;
       cachedChunkMetadata = null;
     } else if (pointCountInChunkWriter != 0L) {
@@ -199,7 +199,7 @@ public class SingleSeriesCompactionExecutor {
       // there is no points remaining in ChunkWriter and no cached chunk
       // flush it to file directly
       summary.increaseDirectlyFlushChunkNum(1);
-      flushChunkToFileWriter(chunk, chunkMetadata, false);
+      flushChunkToFileWriter(chunk, chunkMetadata);
     }
   }
 
@@ -315,8 +315,7 @@ public class SingleSeriesCompactionExecutor {
     }
   }
 
-  private void flushChunkToFileWriter(
-      Chunk chunk, ChunkMetadata chunkMetadata, boolean isCachedChunk) throws IOException {
+  private void flushChunkToFileWriter(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     if (chunkMetadata.getStartTime() < minStartTimestamp) {
       minStartTimestamp = chunkMetadata.getStartTime();
     }
@@ -337,7 +336,7 @@ public class SingleSeriesCompactionExecutor {
   private void flushCachedChunkIfLargeEnough() throws IOException {
     if (cachedChunk.getChunkStatistic().getCount() >= targetChunkPointNum
         || getChunkSize(cachedChunk) >= targetChunkSize) {
-      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
+      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
       cachedChunk = null;
       cachedChunkMetadata = null;
     }

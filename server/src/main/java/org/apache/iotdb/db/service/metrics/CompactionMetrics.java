@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -45,7 +44,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionMetrics implements IMetricSet {
-  private static final List<String> TYPES = Arrays.asList("aligned", "not_aligned");
+  private static final String NOT_ALIGNED = "not_aligned";
+  private static final String ALIGNED = "aligned";
+  private static final String METADATA = "metadata";
+  private static final List<String> TYPES = Arrays.asList(ALIGNED, NOT_ALIGNED);
   private static final CompactionMetrics INSTANCE = new CompactionMetrics();
   private long lastUpdateTime = 0L;
   private static final long UPDATE_INTERVAL = 10_000L;
@@ -81,9 +83,6 @@ public class CompactionMetrics implements IMetricSet {
     }
   }
 
-  // region compaction write info
-  private Map<String, Map<CompactionType, Map<ProcessChunkType, Counter>>> writeInfoCounterMap =
-      new ConcurrentHashMap<>();
   private Counter totalCompactionWriteInfoCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   private void bindWriteInfo(AbstractMetricService metricService) {
@@ -97,21 +96,21 @@ public class CompactionMetrics implements IMetricSet {
                 Tag.TYPE.toString(),
                 compactionType.toString(),
                 Tag.NAME.toString(),
-                "not_aligned"),
+                NOT_ALIGNED),
             metricService.getOrCreateCounter(
                 Metric.DATA_WRITTEN.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.TYPE.toString(),
                 compactionType.toString(),
                 Tag.NAME.toString(),
-                "aligned"),
+                ALIGNED),
             metricService.getOrCreateCounter(
                 Metric.DATA_WRITTEN.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.TYPE.toString(),
                 compactionType.toString(),
                 Tag.NAME.toString(),
-                "metadata")
+                METADATA)
           });
     }
     totalCompactionWriteInfoCounter =
@@ -132,21 +131,21 @@ public class CompactionMetrics implements IMetricSet {
           Tag.TYPE.toString(),
           compactionType.toString(),
           Tag.NAME.toString(),
-          "not_aligned");
+          NOT_ALIGNED);
       metricService.remove(
           MetricType.COUNTER,
           Metric.DATA_WRITTEN.toString(),
           Tag.TYPE.toString(),
           compactionType.toString(),
           Tag.NAME.toString(),
-          "aligned");
+          ALIGNED);
       metricService.remove(
           MetricType.COUNTER,
           Metric.DATA_WRITTEN.toString(),
           Tag.TYPE.toString(),
           compactionType.toString(),
           Tag.NAME.toString(),
-          "metadata");
+          METADATA);
     }
     metricService.remove(
         MetricType.COUNTER,
@@ -180,21 +179,21 @@ public class CompactionMetrics implements IMetricSet {
                 Tag.TYPE.toString(),
                 compactionType.toString(),
                 Tag.NAME.toString(),
-                "not_aligned"),
+                NOT_ALIGNED),
             metricService.getOrCreateCounter(
                 Metric.DATA_READ.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.TYPE.toString(),
                 compactionType.toString(),
                 Tag.NAME.toString(),
-                "aligned"),
+                ALIGNED),
             metricService.getOrCreateCounter(
                 Metric.DATA_READ.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.TYPE.toString(),
                 compactionType.toString(),
                 Tag.NAME.toString(),
-                "metadata")
+                METADATA)
           });
     }
     totalCompactionReadInfoCounter =
@@ -210,21 +209,21 @@ public class CompactionMetrics implements IMetricSet {
           Tag.TYPE.toString(),
           compactionType.toString(),
           Tag.NAME.toString(),
-          "not_aligned");
+          NOT_ALIGNED);
       metricService.remove(
           MetricType.COUNTER,
           Metric.DATA_READ.toString(),
           Tag.TYPE.toString(),
           compactionType.toString(),
           Tag.NAME.toString(),
-          "aligned");
+          ALIGNED);
       metricService.remove(
           MetricType.COUNTER,
           Metric.DATA_READ.toString(),
           Tag.TYPE.toString(),
           compactionType.toString(),
           Tag.NAME.toString(),
-          "metadata");
+          METADATA);
     }
     metricService.remove(
         MetricType.COUNTER, Metric.DATA_READ.toString(), Tag.NAME.toString(), "compaction");

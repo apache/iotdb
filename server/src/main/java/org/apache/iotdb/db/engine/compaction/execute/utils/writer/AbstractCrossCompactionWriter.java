@@ -133,7 +133,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     writeDataPoint(timestamp, value, chunkWriters[subTaskId]);
     chunkPointNumArray[subTaskId]++;
     checkChunkSizeAndMayOpenANewChunk(
-        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId, true);
+        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
     lastTime[subTaskId] = timestamp;
@@ -169,8 +169,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   @Override
   public void checkAndMayFlushChunkMetadata() throws IOException {
     for (int i = 0; i < targetFileWriters.size(); i++) {
-      CompactionTsFileWriter fileIOWriter = targetFileWriters.get(i);
-      fileIOWriter.checkMetadataSizeAndMayFlush();
+      CompactionTsFileWriter fileIoWriter = targetFileWriters.get(i);
+      fileIoWriter.checkMetadataSizeAndMayFlush();
     }
   }
 

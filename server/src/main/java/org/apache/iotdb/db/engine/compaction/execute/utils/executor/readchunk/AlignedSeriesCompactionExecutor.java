@@ -98,27 +98,7 @@ public class AlignedSeriesCompactionExecutor {
         ((CompactionTsFileReader) reader).markStartOfAlignedSeries();
       }
       List<AlignedChunkMetadata> alignedChunkMetadataList = readerListPair.right;
-      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
-        List<IChunkMetadata> valueChunkMetadataList =
-            alignedChunkMetadata.getValueChunkMetadataList();
-        for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-          if (chunkMetadata == null) {
-            continue;
-          }
-          if (measurementSet.contains(chunkMetadata.getMeasurementUid())) {
-            continue;
-          }
-          measurementSet.add(chunkMetadata.getMeasurementUid());
-          Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
-          ChunkHeader header = chunk.getHeader();
-          schemaSet.add(
-              new MeasurementSchema(
-                  header.getMeasurementID(),
-                  header.getDataType(),
-                  header.getEncodingType(),
-                  header.getCompressionType()));
-        }
-      }
+      collectSchemaFromOneFile(alignedChunkMetadataList, reader, schemaSet, measurementSet);
       if (reader instanceof CompactionTsFileReader) {
         ((CompactionTsFileReader) reader).markEndOfAlignedSeries();
       }
@@ -126,6 +106,35 @@ public class AlignedSeriesCompactionExecutor {
     List<IMeasurementSchema> schemaList = new ArrayList<>(schemaSet);
     schemaList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementId));
     return schemaList;
+  }
+
+  private void collectSchemaFromOneFile(
+      List<AlignedChunkMetadata> alignedChunkMetadataList,
+      TsFileSequenceReader reader,
+      Set<MeasurementSchema> schemaSet,
+      Set<String> measurementSet)
+      throws IOException {
+    for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+      List<IChunkMetadata> valueChunkMetadataList =
+          alignedChunkMetadata.getValueChunkMetadataList();
+      for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+        if (chunkMetadata == null) {
+          continue;
+        }
+        if (measurementSet.contains(chunkMetadata.getMeasurementUid())) {
+          continue;
+        }
+        measurementSet.add(chunkMetadata.getMeasurementUid());
+        Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
+        ChunkHeader header = chunk.getHeader();
+        schemaSet.add(
+            new MeasurementSchema(
+                header.getMeasurementID(),
+                header.getDataType(),
+                header.getEncodingType(),
+                header.getCompressionType()));
+      }
+    }
   }
 
   public void execute() throws IOException {

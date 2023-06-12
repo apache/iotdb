@@ -126,42 +126,43 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
    */
   public abstract void checkAndMayFlushChunkMetadata() throws IOException;
 
-  protected void writeDataPoint(long timestamp, TsPrimitiveType value, IChunkWriter iChunkWriter) {
-    if (iChunkWriter instanceof ChunkWriterImpl) {
-      ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
-      switch (chunkWriter.getDataType()) {
+  protected void writeDataPoint(long timestamp, TsPrimitiveType value, IChunkWriter chunkWriter) {
+    if (chunkWriter instanceof ChunkWriterImpl) {
+      ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
+      switch (chunkWriterImpl.getDataType()) {
         case TEXT:
-          chunkWriter.write(timestamp, value.getBinary());
+          chunkWriterImpl.write(timestamp, value.getBinary());
           break;
         case DOUBLE:
-          chunkWriter.write(timestamp, value.getDouble());
+          chunkWriterImpl.write(timestamp, value.getDouble());
           break;
         case BOOLEAN:
-          chunkWriter.write(timestamp, value.getBoolean());
+          chunkWriterImpl.write(timestamp, value.getBoolean());
           break;
         case INT64:
-          chunkWriter.write(timestamp, value.getLong());
+          chunkWriterImpl.write(timestamp, value.getLong());
           break;
         case INT32:
-          chunkWriter.write(timestamp, value.getInt());
+          chunkWriterImpl.write(timestamp, value.getInt());
           break;
         case FLOAT:
-          chunkWriter.write(timestamp, value.getFloat());
+          chunkWriterImpl.write(timestamp, value.getFloat());
           break;
         default:
-          throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+          throw new UnsupportedOperationException(
+              "Unknown data type " + chunkWriterImpl.getDataType());
       }
     } else {
-      AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) iChunkWriter;
+      AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
       alignedChunkWriter.write(timestamp, value.getVector());
     }
   }
 
   protected void sealChunk(
-      CompactionTsFileWriter targetWriter, IChunkWriter iChunkWriter, int subTaskId)
+      CompactionTsFileWriter targetWriter, IChunkWriter chunkWriter, int subTaskId)
       throws IOException {
     synchronized (targetWriter) {
-      targetWriter.writeChunk(iChunkWriter);
+      targetWriter.writeChunk(chunkWriter);
     }
     chunkPointNumArray[subTaskId] = 0;
   }
@@ -282,16 +283,13 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(
-      CompactionTsFileWriter fileWriter,
-      IChunkWriter iChunkWriter,
-      int subTaskId,
-      boolean isCrossSpace)
+      CompactionTsFileWriter fileWriter, IChunkWriter chunkWriter, int subTaskId)
       throws IOException {
     if (chunkPointNumArray[subTaskId] >= (lastCheckIndex + 1) * checkPoint) {
       // if chunk point num reaches the check point, then check if the chunk size over threshold
       lastCheckIndex = chunkPointNumArray[subTaskId] / checkPoint;
-      if (iChunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
-        sealChunk(fileWriter, iChunkWriter, subTaskId);
+      if (chunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, false)) {
+        sealChunk(fileWriter, chunkWriter, subTaskId);
         lastCheckIndex = 0;
       }
     }

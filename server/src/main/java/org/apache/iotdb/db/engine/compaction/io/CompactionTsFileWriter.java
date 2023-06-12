@@ -83,6 +83,18 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     }
   }
 
+  @Override
+  public void endFile() throws IOException {
+    long beforeSize = this.getPos();
+    super.endFile();
+    long writtenDataSize = this.getPos() - beforeSize;
+    if (writtenDataSize > 0) {
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
+    }
+    CompactionMetrics.getInstance()
+        .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
+  }
+
   public void writeChunk(IChunkWriter chunkWriter) throws IOException {
     boolean isAligned = chunkWriter instanceof AlignedChunkWriterImpl;
     long beforeOffset = this.getPos();
@@ -96,18 +108,6 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
             type,
             isAligned ? CompactionIoDataType.ALIGNED : CompactionIoDataType.NOT_ALIGNED,
             writtenDataSize);
-  }
-
-  @Override
-  public void endFile() throws IOException {
-    long beforeSize = this.getPos();
-    super.endFile();
-    long writtenDataSize = this.getPos() - beforeSize;
-    if (writtenDataSize > 0) {
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
-    }
-    CompactionMetrics.getInstance()
-        .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
   }
 
   public void markStartingWritingAligned() {

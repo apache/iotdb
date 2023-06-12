@@ -82,7 +82,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
     writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
     chunkPointNumArray[subTaskId]++;
-    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId, false);
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
     isEmptyFile = false;
   }
 
