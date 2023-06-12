@@ -177,6 +177,7 @@ public class WALRecoverManagerTest {
     for (Future<Void> future : futures) {
       future.get();
     }
+    executorService.shutdown();
     // wait a moment
     while (!walBuffer.isAllWALEntriesConsumed()) {
       Thread.sleep(1_000);
@@ -235,6 +236,7 @@ public class WALRecoverManagerTest {
     for (Future<Void> future : futures) {
       future.get();
     }
+    executorService.shutdown();
     // wait a moment
     while (!walBuffer.isAllWALEntriesConsumed()) {
       Thread.sleep(1_000);
