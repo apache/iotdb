@@ -32,6 +32,7 @@
                 <include>*:iotdb-server:zip:*</include>
                 <include>*:iotdb-cli:zip:*</include>
                 <include>*:iotdb-confignode:zip:*</include>
+                <include>*:iotdb-standalone:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
@@ -59,6 +60,10 @@
             <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/standalone/src/assembly/resources/conf</directory>
+        </fileSet>
+        <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
@@ -71,6 +76,11 @@
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/node-commons/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/standalone/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>

@@ -122,6 +122,7 @@
         <module>mlnode</module>
         <module>iotdb-api/pipe-api</module>
         <module>iotdb-api/subscription-api</module>
+        <module>standalone</module>
     </modules>
     <!-- Properties Management -->
     <properties>
