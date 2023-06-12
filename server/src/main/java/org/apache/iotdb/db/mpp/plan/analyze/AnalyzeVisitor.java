@@ -491,8 +491,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Map<Integer, List<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
-
     boolean isGroupByLevel = queryStatement.isGroupByLevel();
+    boolean isGroupByTag = queryStatement.isGroupByTag();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(),
@@ -522,6 +522,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement
                 .getGroupByLevelComponent()
                 .updateIsCountStar(resultColumn.getExpression());
+          } else if (isGroupByTag) {
+            analyzeExpression(analysis, expression);
+            outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
           } else {
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
@@ -876,24 +879,46 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         new LinkedHashMap<>();
 
     for (Pair<Expression, String> outputExpressionAndAlias : outputExpressions) {
-      FunctionExpression rawExpression = (FunctionExpression) outputExpressionAndAlias.getLeft();
-      FunctionExpression measurementExpression =
-          (FunctionExpression) ExpressionAnalyzer.getMeasurementExpression(rawExpression);
-      outputExpressionToRawExpressionsMap
-          .computeIfAbsent(measurementExpression, v -> new HashSet<>())
-          .add(rawExpression);
+      Expression rawExpression = outputExpressionAndAlias.getLeft();
 
-      Map<String, String> tagMap =
-          ((MeasurementPath)
-                  ((TimeSeriesOperand) measurementExpression.getExpressions().get(0)).getPath())
-              .getTagMap();
+      if (!(rawExpression instanceof FunctionExpression
+          && rawExpression.getExpressions().get(0) instanceof TimeSeriesOperand
+          && rawExpression.isBuiltInAggregationFunctionExpression())) {
+        throw new SemanticException(
+            String.format(
+                "View %s with source expression [%s] can't be used in group by tag. It will be supported in the future.",
+                rawExpression.getExpressions().get(0).getOutputSymbol(),
+                rawExpression.getExpressions().get(0).getExpressionString()));
+      }
+
+      // update outputExpressionToRawExpressionsMap
+      FunctionExpression measurementAggregationExpression =
+          (FunctionExpression) ExpressionAnalyzer.getMeasurementExpression(rawExpression);
+      Expression rawExpressionWithoutAlias =
+          ExpressionAnalyzer.removeAliasFromExpression(rawExpression);
+      analyzeExpression(analysis, rawExpressionWithoutAlias);
+      outputExpressionToRawExpressionsMap
+          .computeIfAbsent(measurementAggregationExpression, v -> new HashSet<>())
+          .add(rawExpressionWithoutAlias);
+
+      // get tagMap
+      TimeSeriesOperand measurementExpression =
+          (TimeSeriesOperand) measurementAggregationExpression.getExpressions().get(0);
+      MeasurementPath pathWithTag =
+          (MeasurementPath)
+              (measurementExpression.isViewExpression()
+                  ? measurementExpression.getViewPath()
+                  : measurementExpression.getPath());
+      Map<String, String> tagMap = pathWithTag.getTagMap();
+
+      // update tagValuesToGroupedTimeseriesOperands
       List<String> tagValues = new ArrayList<>();
       for (String tagKey : tagKeys) {
         tagValues.add(tagMap.get(tagKey));
       }
       tagValuesToGroupedTimeseriesOperands
           .computeIfAbsent(tagValues, key -> new LinkedHashMap<>())
-          .computeIfAbsent(measurementExpression, key -> new ArrayList<>())
+          .computeIfAbsent(measurementAggregationExpression, key -> new ArrayList<>())
           .add(rawExpression.getExpressions().get(0));
     }
 
@@ -908,7 +933,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Expression outputExpression : outputExpressionToRawExpressionsMap.keySet()) {
       // TODO: support alias
       analyzeExpression(analysis, outputExpression);
-      outputExpressions.add(new Pair<>(outputExpression, null));
+      Expression outputExpressionWithoutAlias =
+          ExpressionAnalyzer.removeAliasFromExpression(outputExpression);
+      analyzeExpression(analysis, outputExpressionWithoutAlias);
+      outputExpressions.add(
+          new Pair<>(outputExpressionWithoutAlias, outputExpression.getOutputSymbol()));
     }
     analysis.setTagKeys(queryStatement.getGroupByTagComponent().getTagKeys());
     analysis.setTagValuesToGroupedTimeseriesOperands(tagValuesToGroupedTimeseriesOperands);

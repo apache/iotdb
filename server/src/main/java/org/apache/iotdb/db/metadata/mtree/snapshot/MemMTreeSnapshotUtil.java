@@ -346,6 +346,8 @@ public class MemMTreeSnapshotUtil {
             ReadWriteIOUtils.write(LOGICAL_VIEW_MNODE_TYPE, outputStream);
             ReadWriteIOUtils.write(node.getName(), outputStream);
             node.getSchema().serializeTo(outputStream);
+            ReadWriteIOUtils.write(node.getOffset(), outputStream);
+            ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
           } else {
             ReadWriteIOUtils.write(MEASUREMENT_MNODE_TYPE, outputStream);
             ReadWriteIOUtils.write(node.getName(), outputStream);
@@ -422,8 +424,11 @@ public class MemMTreeSnapshotUtil {
     public IMemMNode deserializeLogicalViewMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       LogicalViewSchema logicalViewSchema = LogicalViewSchema.deserializeFrom(inputStream);
+      long tagOffset = ReadWriteIOUtils.readLong(inputStream);
       IMeasurementMNode<IMemMNode> node =
           nodeFactory.createLogicalViewMNode(null, name, new LogicalViewInfo(logicalViewSchema));
+      node.setOffset(tagOffset);
+      node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
       return node.getAsMNode();
     }
   }

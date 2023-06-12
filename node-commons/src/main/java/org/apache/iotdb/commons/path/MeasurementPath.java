@@ -56,6 +56,10 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath() {}
 
+  public MeasurementPath(String path, boolean needSplit) {
+    super(path, needSplit);
+  }
+
   public MeasurementPath(String measurementPath) throws IllegalPathException {
     super(measurementPath);
   }
