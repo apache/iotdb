@@ -711,11 +711,7 @@ public class IoTDBDescriptor {
     conf.setCompactionValidationLevel(
         CompactionValidationLevel.valueOf(
             properties.getProperty(
-                "compaction_validation_level",
-                CompactionValidationLevel.NONE.toString()
-            )
-        )
-    );
+                "compaction_validation_level", CompactionValidationLevel.NONE.toString())));
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(

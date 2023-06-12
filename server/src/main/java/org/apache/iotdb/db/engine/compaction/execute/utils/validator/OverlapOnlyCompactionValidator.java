@@ -28,7 +28,12 @@ import java.util.List;
 
 public class OverlapOnlyCompactionValidator implements CompactionValidator {
   @Override
-  public boolean validateCompaction(TsFileManager manager, List<TsFileResource> targetTsFileList, String storageGroupName, long timePartition) throws IOException {
+  public boolean validateCompaction(
+      TsFileManager manager,
+      List<TsFileResource> targetTsFileList,
+      String storageGroupName,
+      long timePartition)
+      throws IOException {
     return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition);
   }
 }

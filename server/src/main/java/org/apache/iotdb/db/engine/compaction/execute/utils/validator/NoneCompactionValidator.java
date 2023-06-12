@@ -26,7 +26,11 @@ import java.util.List;
 
 public class NoneCompactionValidator implements CompactionValidator {
   @Override
-  public boolean validateCompaction(TsFileManager manager, List<TsFileResource> targetTsFileList, String storageGroupName, long timePartition) {
+  public boolean validateCompaction(
+      TsFileManager manager,
+      List<TsFileResource> targetTsFileList,
+      String storageGroupName,
+      long timePartition) {
     return true;
   }
 }

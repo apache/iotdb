@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -192,7 +190,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         }
 
         CompactionValidator validator = CompactionValidator.getInstance();
-        if (!validator.validateCompaction(tsFileManager, targetTsFileList, storageGroupName, timePartition)) {
+        if (!validator.validateCompaction(
+            tsFileManager, targetTsFileList, storageGroupName, timePartition)) {
           LOGGER.error(
               "Failed to pass compaction validation, source files is: {}, target files is {}",
               selectedTsFileResourceList,

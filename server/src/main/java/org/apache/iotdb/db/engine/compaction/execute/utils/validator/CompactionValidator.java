@@ -28,13 +28,16 @@ import java.io.IOException;
 import java.util.List;
 
 public interface CompactionValidator {
-  boolean validateCompaction(TsFileManager manager,
-                             List<TsFileResource> targetTsFileList,
-                             String storageGroupName,
-                             long timePartition) throws IOException;
+  boolean validateCompaction(
+      TsFileManager manager,
+      List<TsFileResource> targetTsFileList,
+      String storageGroupName,
+      long timePartition)
+      throws IOException;
 
   static CompactionValidator getInstance() {
-    CompactionValidationLevel level = IoTDBDescriptor.getInstance().getConfig().getCompactionValidationLevel();
+    CompactionValidationLevel level =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionValidationLevel();
     switch (level) {
       case NONE:
         return new NoneCompactionValidator();
