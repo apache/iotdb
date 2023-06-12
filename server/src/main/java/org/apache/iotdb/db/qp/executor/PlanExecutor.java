@@ -135,6 +135,8 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2.DataSetType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
@@ -524,14 +526,14 @@ public class PlanExecutor implements IPlanExecutor {
         // no time series are selected, return EmptyDataSet
         return new EmptyDataSet();
       } else if (queryPlan instanceof UDTFPlan) {
-        logger.info("UDTFPlan");
+        IOMonitor2.dataSetType = DataSetType.UDTFAlignByTimeDataSet;
         UDTFPlan udtfPlan = (UDTFPlan) queryPlan;
         queryDataSet = queryRouter.udtfQuery(udtfPlan, context);
       } else if (queryPlan instanceof GroupByTimeFillPlan) {
         GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) queryPlan;
         queryDataSet = queryRouter.groupByFill(groupByFillPlan, context);
       } else if (queryPlan instanceof GroupByTimePlan) {
-        logger.info("GroupByTimePlan");
+        IOMonitor2.dataSetType = DataSetType.GroupByWithoutValueFilterDataSet;
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
         queryDataSet = queryRouter.groupBy(groupByTimePlan, context);
       } else if (queryPlan instanceof QueryIndexPlan) {
@@ -545,7 +547,7 @@ public class PlanExecutor implements IPlanExecutor {
       } else if (queryPlan instanceof LastQueryPlan) {
         queryDataSet = queryRouter.lastQuery((LastQueryPlan) queryPlan, context);
       } else {
-        logger.info("RawDataQueryPlan");
+        IOMonitor2.dataSetType = DataSetType.RawQueryDataSetWithoutValueFilter;
         queryDataSet = queryRouter.rawDataQuery((RawDataQueryPlan) queryPlan, context);
       }
     }
@@ -1045,7 +1047,9 @@ public class PlanExecutor implements IPlanExecutor {
     Collections.sort(
         tsfiles,
         (o1, o2) -> {
-          if (establishTime[o1] == establishTime[o2]) return 0;
+          if (establishTime[o1] == establishTime[o2]) {
+            return 0;
+          }
           return establishTime[o1] < establishTime[o2] ? -1 : 1;
         });
     for (Integer i : tsfiles) {

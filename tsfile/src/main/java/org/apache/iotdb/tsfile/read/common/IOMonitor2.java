@@ -23,6 +23,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IOMonitor2 {
+  public enum DataSetType { // dataSet, executor, reader, file
+    NONE,
+    RawQueryDataSetWithoutValueFilter,
+    UDTFAlignByTimeDataSet,
+    GroupByWithoutValueFilterDataSet
+  }
 
   public enum Operation {
     DCP_Server_Query_Execute("DCP_Server_Query_Execute"),
@@ -76,6 +82,8 @@ public class IOMonitor2 {
 
   public static long DCP_D_traversedPointNum = 0;
 
+  public static DataSetType dataSetType = DataSetType.NONE;
+
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("IOMonitor2");
 
   private static void reset() {
@@ -101,6 +109,8 @@ public class IOMonitor2 {
     DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns = 0;
 
     DCP_D_traversedPointNum = 0;
+
+    dataSetType = DataSetType.NONE;
   }
 
   public static void addMeasure(Operation operation, long elapsedTimeInNanosecond) {
@@ -179,6 +189,8 @@ public class IOMonitor2 {
 
   public static String print() {
     StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder.append("dataSetType").append(",").append(dataSetType).append("\n");
+
     stringBuilder
         .append("Server_Query_Execute_ns")
         .append(",")
