@@ -323,6 +323,24 @@ initConfigNodeEnv() {
   fi
 }
 
+initStandaloneEnv() {
+  if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
+      if [ "x$PRINT_GC" != "x" ]; then
+        . "$IOTDB_CONF/iotdb-env.sh" "printgc"
+      else
+          . "$IOTDB_CONF/iotdb-env.sh"
+      fi
+  elif [ -f "${IOTDB_HOME}/conf/iotdb-env.sh" ]; then
+      if [ "x$PRINT_GC" != "x" ]; then
+        . "${IOTDB_HOME}/conf/iotdb-env.sh" "printgc"
+      else
+        . "${IOTDB_HOME}/conf/iotdb-env.sh"
+      fi
+  else
+      echo "Can't find $IOTDB_CONF/iotdb-env.sh"
+  fi
+}
+
 get_iotdb_include() {
   #reset $1 to $* for this command
   eval set -- "$1"

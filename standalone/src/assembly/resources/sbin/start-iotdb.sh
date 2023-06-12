@@ -124,7 +124,7 @@ checkDataNodePortUsages
 PARAMS="-s $PARAMS"
 
 #initEnv is in iotdb-common.sh
-initEnv
+initStandaloneEnv
 
 
 CLASSPATH=""
@@ -143,7 +143,7 @@ launch_service() {
   	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
     iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_CONF=${IOTDB_CONF}"
-  	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_HOME}"
+  	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_CONF}"
   	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
     iotdb_parms="$iotdb_parms -DIOTDB_LOG_DIR=${IOTDB_LOG_DIR}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_LOGS=${IOTDB_LOG_DIR}"
