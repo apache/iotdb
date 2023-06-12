@@ -49,6 +49,29 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     this.type = type;
   }
 
+  public void markStartingWritingAligned() {
+    isWritingAligned = true;
+  }
+
+  public void markEndingWritingAligned() {
+    isWritingAligned = false;
+  }
+
+  public void writeChunk(IChunkWriter chunkWriter) throws IOException {
+    boolean isAligned = chunkWriter instanceof AlignedChunkWriterImpl;
+    long beforeOffset = this.getPos();
+    chunkWriter.writeToFileWriter(this);
+    long writtenDataSize = this.getPos() - beforeOffset;
+    if (writtenDataSize > 0) {
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
+    }
+    CompactionMetrics.getInstance()
+        .recordWriteInfo(
+            type,
+            isAligned ? CompactionIoDataType.ALIGNED : CompactionIoDataType.NOT_ALIGNED,
+            writtenDataSize);
+  }
+
   @Override
   public void writeChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     long beforeOffset = this.getPos();
@@ -93,28 +116,5 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     }
     CompactionMetrics.getInstance()
         .recordWriteInfo(type, CompactionIoDataType.METADATA, writtenDataSize);
-  }
-
-  public void writeChunk(IChunkWriter chunkWriter) throws IOException {
-    boolean isAligned = chunkWriter instanceof AlignedChunkWriterImpl;
-    long beforeOffset = this.getPos();
-    chunkWriter.writeToFileWriter(this);
-    long writtenDataSize = this.getPos() - beforeOffset;
-    if (writtenDataSize > 0) {
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire((int) writtenDataSize);
-    }
-    CompactionMetrics.getInstance()
-        .recordWriteInfo(
-            type,
-            isAligned ? CompactionIoDataType.ALIGNED : CompactionIoDataType.NOT_ALIGNED,
-            writtenDataSize);
-  }
-
-  public void markStartingWritingAligned() {
-    isWritingAligned = true;
-  }
-
-  public void markEndingWritingAligned() {
-    isWritingAligned = false;
   }
 }
