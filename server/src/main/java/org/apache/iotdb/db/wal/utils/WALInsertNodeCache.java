@@ -52,7 +52,7 @@ public class WALInsertNodeCache {
   private final LoadingCache<WALEntryPosition, InsertNode> lruCache;
 
   /** ids of all pinned memTables */
-  private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();;
+  private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
   private WALInsertNodeCache() {
     lruCache =
@@ -142,7 +142,9 @@ public class WALInsertNodeCache {
               buffer.clear();
               InsertNode node = parse(buffer);
               if (node != null) {
-                res.put(new WALEntryPosition(walFileVersionId, position, size), node);
+                res.put(
+                    new WALEntryPosition(pos.getIdentifier(), walFileVersionId, position, size),
+                    node);
               }
             }
             position += size;

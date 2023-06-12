@@ -117,6 +117,7 @@ public class WALNodeTest {
     for (Future<Void> future : futures) {
       future.get();
     }
+    executorService.shutdown();
     // wait a moment
     while (!walNode.isAllWALEntriesConsumed()) {
       Thread.sleep(1_000);
@@ -247,6 +248,7 @@ public class WALNodeTest {
     for (Future<Void> future : futures) {
       future.get();
     }
+    executorService.shutdown();
     // recover info from checkpoint file
     Map<Long, MemTableInfo> actualMemTableId2Info =
         CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();

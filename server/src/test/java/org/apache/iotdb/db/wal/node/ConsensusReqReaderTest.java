@@ -227,6 +227,7 @@ public class ConsensusReqReaderTest {
     InsertRowNode insertRowNode = getInsertRowNode(devicePath);
     walNode.log(0, insertRowNode); // put -1 after 6
     Assert.assertTrue(future.get());
+    checkThread.shutdown();
   }
 
   @Test
@@ -272,6 +273,7 @@ public class ConsensusReqReaderTest {
     insertRowNode = getInsertRowNode(devicePath);
     walNode.log(0, insertRowNode); // put -1 after 6
     Assert.assertTrue(future.get());
+    checkThread.shutdown();
   }
 
   @Test
