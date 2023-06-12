@@ -345,13 +345,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return equalsOtherTask((CrossSpaceCompactionTask) other);
   }
 
-  @Override
-  public void resetCompactionCandidateStatusForAllSourceFiles() {
-    // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
-    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-  }
-
   private long[] deleteOldFiles(List<TsFileResource> tsFileResourceList) {
     long[] size = new long[tsFileResourceList.size()];
     for (int i = 0, length = tsFileResourceList.size(); i < length; ++i) {
@@ -377,6 +370,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     if (!tsFileManager.isAllowCompaction()) {
+      resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
     try {
