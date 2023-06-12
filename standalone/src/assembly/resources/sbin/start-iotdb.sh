@@ -135,7 +135,7 @@ classname=org.apache.iotdb.StandaloneIoTDB
 
 launch_service() {
     class="$1"
-    iotdb_parms="-Dlogback.configurationFile=${IOTDB_LOG_CONFIG}"
+    iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback-standalone.xml"
 	  iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
   	iotdb_parms="$iotdb_parms -DCONFIGNODE_HOME=${IOTDB_HOME}"
   	iotdb_parms="$iotdb_parms -DIOTDB_DATA_HOME=${IOTDB_DATA_HOME}"
