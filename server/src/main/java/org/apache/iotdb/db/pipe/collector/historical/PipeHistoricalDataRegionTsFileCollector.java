@@ -35,10 +35,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -75,8 +77,8 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   public void validate(PipeParameterValidator validator) {}
 
   @Override
-  public void customize(
-      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
+      throws Exception {
     final PipeTaskCollectorRuntimeEnvironment environment =
         (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
@@ -87,20 +89,30 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
     pattern = parameters.getStringOrDefault(COLLECTOR_PATTERN_KEY, COLLECTOR_PATTERN_DEFAULT_VALUE);
 
-    // user may set the COLLECTOR_HISTORY_START_TIME and COLLECTOR_HISTORY_END_TIME without
-    // enabling the historical data collection, which may affect the realtime data collection.
-    final boolean isHistoricalCollectorEnabledByUser =
-        parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true);
-    historicalDataCollectionStartTime =
-        isHistoricalCollectorEnabledByUser && parameters.hasAttribute(COLLECTOR_HISTORY_START_TIME)
-            ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getString(COLLECTOR_HISTORY_START_TIME), ZoneId.systemDefault())
-            : Long.MIN_VALUE;
-    historicalDataCollectionEndTime =
-        isHistoricalCollectorEnabledByUser && parameters.hasAttribute(COLLECTOR_HISTORY_END_TIME)
-            ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getString(COLLECTOR_HISTORY_END_TIME), ZoneId.systemDefault())
-            : Long.MAX_VALUE;
+    try {
+      // user may set the COLLECTOR_HISTORY_START_TIME and COLLECTOR_HISTORY_END_TIME without
+      // enabling the historical data collection, which may affect the realtime data collection.
+      final boolean isHistoricalCollectorEnabledByUser =
+          parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true);
+      historicalDataCollectionStartTime =
+          isHistoricalCollectorEnabledByUser
+                  && parameters.hasAttribute(COLLECTOR_HISTORY_START_TIME)
+              ? DateTimeUtils.convertDatetimeStrToLong(
+                  parameters.getString(COLLECTOR_HISTORY_START_TIME), ZoneId.systemDefault())
+              : Long.MIN_VALUE;
+      historicalDataCollectionEndTime =
+          isHistoricalCollectorEnabledByUser && parameters.hasAttribute(COLLECTOR_HISTORY_END_TIME)
+              ? DateTimeUtils.convertDatetimeStrToLong(
+                  parameters.getString(COLLECTOR_HISTORY_END_TIME), ZoneId.systemDefault())
+              : Long.MAX_VALUE;
+    } catch (DateTimeException e) {
+      String errorMsg =
+          String.format(
+              "Customize %s error, can not parse start time or end time format.",
+              PipeHistoricalDataRegionTsFileCollector.class.getSimpleName());
+      LOGGER.warn(errorMsg, e);
+      throw new PipeException(errorMsg);
+    }
 
     // enable historical collector by default
     historicalDataCollectionTimeLowerBound =

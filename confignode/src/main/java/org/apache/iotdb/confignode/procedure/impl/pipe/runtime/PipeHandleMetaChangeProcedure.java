@@ -97,6 +97,18 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
       pipeMetaMapFromDataNode.put(pipeMeta.getStaticMeta(), pipeMeta);
     }
 
+    // clean cached messages
+    env.getConfigManager()
+        .getPipeManager()
+        .getPipeTaskCoordinator()
+        .getPipeTaskInfo()
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta ->
+                pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap().entrySet().stream()
+                    .filter(entry -> entry.getValue().getLeaderDataNodeId() == dataNodeId)
+                    .forEach(entry -> entry.getValue().clearExceptionMessages()));
+
     for (final PipeMeta pipeMetaOnConfigNode :
         env.getConfigManager()
             .getPipeManager()
@@ -157,7 +169,6 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
         // update runtime exception
         final PipeTaskMeta pipeTaskMetaOnConfigNode = runtimeMetaOnConfigNode.getValue();
-        pipeTaskMetaOnConfigNode.clearExceptionMessages();
         for (final PipeRuntimeException exception :
             runtimeMetaFromDataNode.getExceptionMessages()) {
 
@@ -189,11 +200,30 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
                           .getPipeTaskInfo()
                           .showPipes())
                   .filter(true, pipeName).getAllPipeMeta().stream()
-                      .map(pipeMeta -> pipeMeta.getRuntimeMeta().getStatus())
-                      .filter(status -> !status.get().equals(PipeStatus.STOPPED))
+                      .filter(
+                          pipeMeta ->
+                              !pipeMeta
+                                  .getRuntimeMeta()
+                                  .getStatus()
+                                  .get()
+                                  .equals(PipeStatus.STOPPED))
                       .forEach(
-                          status -> {
-                            status.set(PipeStatus.STOPPED);
+                          pipeMeta -> {
+                            pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+                            if (!pipeMeta
+                                .getStaticMeta()
+                                .getPipeName()
+                                .equals(pipeMetaOnConfigNode.getStaticMeta().getPipeName())) {
+                              pipeMeta
+                                  .getRuntimeMeta()
+                                  .getConsensusGroupIdToTaskMetaMap()
+                                  .get(runtimeMetaOnConfigNode.getKey())
+                                  .trackExceptionMessage(
+                                      new PipeRuntimeConnectorCriticalException(
+                                          String.format(
+                                              "This pipe has been stopped due to critical exceptions with pipe %s that shares the same connector.",
+                                              pipeMetaOnConfigNode.getStaticMeta().getPipeName())));
+                            }
 
                             needWriteConsensusOnConfigNodes = true;
                             needPushPipeMetaToDataNodes = true;
