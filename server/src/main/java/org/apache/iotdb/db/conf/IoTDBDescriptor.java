@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -707,11 +708,14 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
-    conf.setEnableCompactionValidation(
-        Boolean.parseBoolean(
+    conf.setCompactionValidationLevel(
+        CompactionValidationLevel.valueOf(
             properties.getProperty(
-                "enable_compaction_validation",
-                Boolean.toString(conf.isEnableCompactionValidation()))));
+                "compaction_validation_level",
+                CompactionValidationLevel.NONE.toString()
+            )
+        )
+    );
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(
