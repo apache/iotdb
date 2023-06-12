@@ -34,6 +34,7 @@ import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
+import org.apache.iotdb.db.wal.utils.WALInsertNodeCache;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,8 +62,10 @@ public class WALEntryHandlerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier1 = String.valueOf(Integer.MAX_VALUE);
   private static final String identifier2 = String.valueOf(Integer.MAX_VALUE - 1);
-  private static final String logDirectory1 = TestConstant.BASE_OUTPUT_PATH.concat("wal-test1");
-  private static final String logDirectory2 = TestConstant.BASE_OUTPUT_PATH.concat("wal-test2");
+  private static final String logDirectory1 =
+      TestConstant.BASE_OUTPUT_PATH.concat("wal-test" + identifier1);
+  private static final String logDirectory2 =
+      TestConstant.BASE_OUTPUT_PATH.concat("wal-test" + identifier2);
 
   private static final String devicePath = "root.test_sg.test_d";
   private WALMode prevMode;
@@ -90,6 +93,7 @@ public class WALEntryHandlerTest {
     config.setClusterMode(prevIsClusterMode);
     EnvironmentUtils.cleanDir(logDirectory1);
     EnvironmentUtils.cleanDir(logDirectory2);
+    WALInsertNodeCache.getInstance().clear();
   }
 
   @Test(expected = MemTablePinException.class)
@@ -240,10 +244,11 @@ public class WALEntryHandlerTest {
     List<Future<Void>> futures = new ArrayList<>();
     for (int i = 0; i < threadsNum; ++i) {
       WALNode walNode = i % 2 == 0 ? walNode1 : walNode2;
+      String logDirectory = i % 2 == 0 ? logDirectory1 : logDirectory2;
       Callable<Void> writeTask =
           () -> {
             IMemTable memTable = new PrimitiveMemTable();
-            walNode.onMemTableCreated(memTable, logDirectory1 + "/" + "fake.tsfile");
+            walNode.onMemTableCreated(memTable, logDirectory + "/" + "fake.tsfile");
 
             List<WALFlushListener> walFlushListeners = new ArrayList<>();
             List<InsertRowNode> expectedInsertRowNodes = new ArrayList<>();
@@ -285,6 +290,7 @@ public class WALEntryHandlerTest {
     for (Future<Void> future : futures) {
       future.get();
     }
+    executorService.shutdown();
   }
 
   private InsertRowNode getInsertRowNode(String devicePath, long time) throws IllegalPathException {
