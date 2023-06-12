@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfig
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeCollector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -61,7 +60,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       pipeCollector.validate(new PipeParameterValidator(collectorParameters));
 
       // 2. customize collector
-      final PipeCollectorRuntimeConfiguration runtimeConfiguration =
+      final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskCollectorRuntimeEnvironment(
                   pipeName, creationTime, dataRegionId.getId(), pipeTaskMeta));
