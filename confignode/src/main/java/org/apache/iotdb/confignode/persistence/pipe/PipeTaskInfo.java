@@ -243,6 +243,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public void clearPipeMetaExceptionMessages(String pipeName) {
+    pipeMetaKeeper
+        .getPipeMeta(pipeName)
+        .getRuntimeMeta()
+        .getConsensusGroupIdToTaskMetaMap()
+        .values()
+        .forEach(PipeTaskMeta::clearExceptionMessages);
+  }
+
   /////////////////////////////// Snapshot ///////////////////////////////
 
   @Override

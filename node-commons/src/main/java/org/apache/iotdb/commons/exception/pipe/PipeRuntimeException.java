@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.exception.pipe;
 
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -28,8 +29,15 @@ import java.util.Objects;
 
 public abstract class PipeRuntimeException extends PipeException {
 
+  protected long generationTime;
+
   public PipeRuntimeException(String message) {
     super(message);
+    this.generationTime = System.currentTimeMillis();
+  }
+
+  public long getGenerationTime() {
+    return generationTime;
   }
 
   @Override
@@ -43,7 +51,17 @@ public abstract class PipeRuntimeException extends PipeException {
     return Objects.hash(getMessage());
   }
 
-  public abstract void serialize(ByteBuffer byteBuffer);
+  public void serialize(ByteBuffer byteBuffer) {
+    serializeAttr(byteBuffer);
+    ReadWriteIOUtils.write(generationTime, byteBuffer);
+  }
 
-  public abstract void serialize(OutputStream stream) throws IOException;
+  protected abstract void serializeAttr(ByteBuffer byteBuffer);
+
+  public void serialize(OutputStream stream) throws IOException {
+    serializeAttr(stream);
+    ReadWriteIOUtils.write(generationTime, stream);
+  }
+
+  protected abstract void serializeAttr(OutputStream stream) throws IOException;
 }
