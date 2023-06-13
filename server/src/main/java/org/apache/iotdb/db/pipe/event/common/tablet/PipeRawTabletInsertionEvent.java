@@ -23,7 +23,6 @@ import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.Objects;
@@ -59,6 +58,10 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
     return pattern == null ? PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
+  public boolean isAligned() {
+    return isAligned;
+  }
+
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
@@ -70,20 +73,19 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
   }
 
   @Override
-  public Iterable<TabletInsertionEvent> processTablet(
-      BiConsumer<Pair<Tablet, Boolean>, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer = new TabletInsertionDataContainer(tablet, isAligned, getPattern());
     }
     return dataContainer.processTablet(consumer);
   }
 
-  public Pair<Tablet, Boolean> convertToTabletWithIsAligned() {
+  public Tablet convertToTablet() {
     final String pattern = getPattern();
 
     // if pattern is "root", we don't need to convert, just return the original tablet
     if (pattern.equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
-      return new Pair<>(tablet, isAligned);
+      return tablet;
     }
 
     // if pattern is not "root", we need to convert the tablet

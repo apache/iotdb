@@ -155,7 +155,6 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                         tsFileReader,
                         measurementDataTypeMap,
                         entry.getKey(),
-                        deviceIsAlignedMap.getOrDefault(entry.getKey(), false),
                         entry.getValue(),
                         timeFilterExpression);
               } catch (IOException e) {
@@ -174,10 +173,9 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               throw new NoSuchElementException();
             }
 
-            Pair<Tablet, Boolean> tabletWithIsAligned = tabletWithIsAlignedIterator.next();
-            final TabletInsertionEvent next =
-                new PipeRawTabletInsertionEvent(
-                    tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
+            Tablet tablet = tabletWithIsAlignedIterator.next();
+            boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
+            final TabletInsertionEvent next = new PipeRawTabletInsertionEvent(tablet, isAligned);
 
             if (!hasNext()) {
               close();

@@ -159,6 +159,4 @@ public interface Row {
    * @return the device id of the Row
    */
   String getDeviceId();
-
-  boolean isAligned();
 }

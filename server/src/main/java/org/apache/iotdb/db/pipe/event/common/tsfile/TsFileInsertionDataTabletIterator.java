@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -41,13 +40,12 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
-public class TsFileInsertionDataTabletIterator implements Iterator<Pair<Tablet, Boolean>> {
+public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
 
   private final TsFileReader tsFileReader;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
   private final String deviceId;
-  private final boolean isAligned;
   private final List<String> measurements;
 
   private final IExpression timeFilterExpression;
@@ -58,7 +56,6 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Pair<Tablet, 
       TsFileReader tsFileReader,
       Map<String, TSDataType> measurementDataTypeMap,
       String deviceId,
-      boolean isAligned,
       List<String> measurements,
       IExpression timeFilterExpression)
       throws IOException {
@@ -66,7 +63,6 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Pair<Tablet, 
     this.measurementDataTypeMap = measurementDataTypeMap;
 
     this.deviceId = deviceId;
-    this.isAligned = isAligned;
     this.measurements =
         measurements.stream()
             .filter(
@@ -99,19 +95,19 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Pair<Tablet, 
   }
 
   @Override
-  public Pair<Tablet, Boolean> next() {
+  public Tablet next() {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
 
     try {
-      return buildNextTabletWithIsAligned();
+      return buildNextTablet();
     } catch (IOException e) {
       throw new PipeException("Failed to build tablet", e);
     }
   }
 
-  private Pair<Tablet, Boolean> buildNextTabletWithIsAligned() throws IOException {
+  private Tablet buildNextTablet() throws IOException {
     final List<MeasurementSchema> schemas = new ArrayList<>();
     for (final String measurement : measurements) {
       final TSDataType dataType =
@@ -146,6 +142,6 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Pair<Tablet, 
       }
     }
 
-    return new Pair<>(tablet, isAligned);
+    return tablet;
   }
 }

@@ -30,7 +30,6 @@ import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
@@ -66,6 +65,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   public InsertNode getInsertNode() throws WALPipeException {
     return walEntryHandler.getValue();
+  }
+
+  public boolean isAligned() {
+    return dataContainer != null && dataContainer.isAligned();
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -128,8 +131,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public Iterable<TabletInsertionEvent> processTablet(
-      BiConsumer<Pair<Tablet, Boolean>, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
         dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
@@ -141,7 +143,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
-  public Pair<Tablet, Boolean> convertToTabletWithIsAligned() {
+  public Tablet convertToTablet() {
     try {
       if (dataContainer == null) {
         dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());

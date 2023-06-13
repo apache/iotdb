@@ -168,7 +168,6 @@ public class PipeRow implements Row {
     return deviceId;
   }
 
-  @Override
   public boolean isAligned() {
     return isAligned;
   }

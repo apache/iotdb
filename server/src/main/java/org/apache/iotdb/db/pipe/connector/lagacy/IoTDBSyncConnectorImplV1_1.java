@@ -46,7 +46,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.apache.commons.lang.NotImplementedException;
@@ -177,23 +176,21 @@ public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    Pair<Tablet, Boolean> tabletWithIsAligned =
-        pipeInsertNodeInsertionEvent.convertToTabletWithIsAligned();
-    if (tabletWithIsAligned.getRight()) { // Tablet is aligned
-      sessionPool.insertAlignedTablet(tabletWithIsAligned.getLeft());
+    Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
+    if (pipeInsertNodeInsertionEvent.isAligned()) { // Tablet is aligned
+      sessionPool.insertAlignedTablet(tablet);
     } else {
-      sessionPool.insertTablet(tabletWithIsAligned.getLeft());
+      sessionPool.insertTablet(tablet);
     }
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
       throws PipeException, TException, IoTDBConnectionException, StatementExecutionException {
-    Pair<Tablet, Boolean> tabletWithIsAligned =
-        pipeTabletInsertionEvent.convertToTabletWithIsAligned();
-    if (tabletWithIsAligned.getRight()) { // Tablet is aligned
-      sessionPool.insertAlignedTablet(tabletWithIsAligned.getLeft());
+    Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
+    if (pipeTabletInsertionEvent.isAligned()) { // Tablet is aligned
+      sessionPool.insertAlignedTablet(tablet);
     } else {
-      sessionPool.insertTablet(tabletWithIsAligned.getLeft());
+      sessionPool.insertTablet(tablet);
     }
   }
 

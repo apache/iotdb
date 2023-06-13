@@ -29,7 +29,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.TabletInsertionDataContainer
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -222,62 +221,58 @@ public class PipeTabletInsertionEventTest {
 
   @Test
   public void convertToTabletForTest() {
-    Pair<Tablet, Boolean> tabletWithIsAligned1 =
-        new TabletInsertionDataContainer(insertRowNode, pattern).convertToTablet();
-    Tablet tablet1 = tabletWithIsAligned1.getLeft();
-    boolean isAligned1 = tabletWithIsAligned1.getRight();
+    TabletInsertionDataContainer container1 =
+        new TabletInsertionDataContainer(insertRowNode, pattern);
+    Tablet tablet1 = container1.convertToTablet();
+    boolean isAligned1 = container1.isAligned();
     Assert.assertEquals(tablet1, tabletForInsertRowNode);
     Assert.assertFalse(isAligned1);
 
-    Pair<Tablet, Boolean> tabletWithIsAligned2 =
-        new TabletInsertionDataContainer(insertTabletNode, pattern).convertToTablet();
-    Tablet tablet2 = tabletWithIsAligned2.getLeft();
-    boolean isAligned2 = tabletWithIsAligned2.getRight();
+    TabletInsertionDataContainer container2 =
+        new TabletInsertionDataContainer(insertTabletNode, pattern);
+    Tablet tablet2 = container2.convertToTablet();
+    boolean isAligned2 = container2.isAligned();
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);
     Assert.assertFalse(isAligned2);
 
     PipeRawTabletInsertionEvent event3 = new PipeRawTabletInsertionEvent(tablet1, pattern);
-    Pair<Tablet, Boolean> tabletWithIsAligned3 = event3.convertToTabletWithIsAligned();
-    Tablet tablet3 = tabletWithIsAligned3.getLeft();
-    boolean isAligned3 = tabletWithIsAligned3.getRight();
+    Tablet tablet3 = event3.convertToTablet();
+    boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertFalse(isAligned3);
 
     PipeRawTabletInsertionEvent event4 = new PipeRawTabletInsertionEvent(tablet2, pattern);
-    Pair<Tablet, Boolean> tabletWithIsAligned4 = event4.convertToTabletWithIsAligned();
-    Tablet tablet4 = tabletWithIsAligned4.getLeft();
-    boolean isAligned4 = tabletWithIsAligned4.getRight();
+    Tablet tablet4 = event4.convertToTablet();
+    boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
     Assert.assertFalse(isAligned4);
   }
 
   @Test
   public void convertToAlignedTabletForTest() {
-    Pair<Tablet, Boolean> tabletWithIsAligned1 =
-        new TabletInsertionDataContainer(insertRowNodeAligned, pattern).convertToTablet();
-    Tablet tablet1 = tabletWithIsAligned1.getLeft();
-    boolean isAligned1 = tabletWithIsAligned1.getRight();
+    TabletInsertionDataContainer container1 =
+        new TabletInsertionDataContainer(insertRowNodeAligned, pattern);
+    Tablet tablet1 = container1.convertToTablet();
+    boolean isAligned1 = container1.isAligned();
     Assert.assertEquals(tablet1, tabletForInsertRowNode);
     Assert.assertTrue(isAligned1);
 
-    Pair<Tablet, Boolean> tabletWithIsAligned2 =
-        new TabletInsertionDataContainer(insertTabletNodeAligned, pattern).convertToTablet();
-    Tablet tablet2 = tabletWithIsAligned2.getLeft();
-    boolean isAligned2 = tabletWithIsAligned2.getRight();
+    TabletInsertionDataContainer container2 =
+        new TabletInsertionDataContainer(insertTabletNodeAligned, pattern);
+    Tablet tablet2 = container2.convertToTablet();
+    boolean isAligned2 = container2.isAligned();
     Assert.assertEquals(tablet2, tabletForInsertTabletNode);
     Assert.assertTrue(isAligned2);
 
     PipeRawTabletInsertionEvent event3 = new PipeRawTabletInsertionEvent(tablet1, true, pattern);
-    Pair<Tablet, Boolean> tabletWithIsAligned3 = event3.convertToTabletWithIsAligned();
-    Tablet tablet3 = tabletWithIsAligned3.getLeft();
-    boolean isAligned3 = tabletWithIsAligned3.getRight();
+    Tablet tablet3 = event3.convertToTablet();
+    boolean isAligned3 = event3.isAligned();
     Assert.assertEquals(tablet1, tablet3);
     Assert.assertTrue(isAligned3);
 
     PipeRawTabletInsertionEvent event4 = new PipeRawTabletInsertionEvent(tablet2, true, pattern);
-    Pair<Tablet, Boolean> tabletWithIsAligned4 = event4.convertToTabletWithIsAligned();
-    Tablet tablet4 = tabletWithIsAligned4.getLeft();
-    boolean isAligned4 = tabletWithIsAligned4.getRight();
+    Tablet tablet4 = event4.convertToTablet();
+    boolean isAligned4 = event4.isAligned();
     Assert.assertEquals(tablet2, tablet4);
     Assert.assertTrue(isAligned4);
   }

@@ -50,7 +50,7 @@ import java.util.Comparator;
 public class PipeTransferTabletReq extends TPipeTransferReq {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
   private Tablet tablet;
-  private short isAlignedMarker; // 0 for non-aligned, 1 for aligned
+  private boolean isAligned; // 0 for non-aligned, 1 for aligned
 
   public static TPipeTransferReq toTPipeTransferReq(Tablet tablet) throws IOException {
     return toTPipeTransferReq(tablet, false);
@@ -66,7 +66,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write((short) (isAligned ? 1 : 0), outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
       tablet.serialize(outputStream);
       tabletReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
@@ -210,7 +210,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       }
 
       request.setPrefixPath(tablet.deviceId);
-      request.setIsAligned(isAlignedMarker == (short) 1);
+      request.setIsAligned(isAligned);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);
@@ -227,7 +227,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   public static PipeTransferTabletReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
 
-    tabletReq.isAlignedMarker = ReadWriteIOUtils.readShort(transferReq.body);
+    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
     tabletReq.tablet = Tablet.deserialize(transferReq.body);
 
     tabletReq.version = transferReq.version;

@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -80,6 +79,10 @@ public class TabletInsertionDataContainer {
 
   public TabletInsertionDataContainer(Tablet tablet, boolean isAligned, String pattern) {
     parse(tablet, isAligned, pattern);
+  }
+
+  public boolean isAligned() {
+    return isAligned;
   }
 
   //////////////////////////// parse ////////////////////////////
@@ -328,8 +331,7 @@ public class TabletInsertionDataContainer {
     return rowCollector.convertToTabletInsertionEvents();
   }
 
-  public Iterable<TabletInsertionEvent> processTablet(
-      BiConsumer<Pair<Tablet, Boolean>, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector();
     consumer.accept(convertToTablet(), rowCollector);
     return rowCollector.convertToTabletInsertionEvents();
@@ -337,9 +339,9 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  convert  ////////////////////////////
 
-  public Pair<Tablet, Boolean> convertToTablet() {
+  public Tablet convertToTablet() {
     if (tablet != null) {
-      return new Pair<>(tablet, isAligned);
+      return tablet;
     }
 
     final int columnSize = measurementSchemaList.length;
@@ -353,6 +355,6 @@ public class TabletInsertionDataContainer {
 
     tablet = newTablet;
 
-    return new Pair<>(tablet, isAligned);
+    return tablet;
   }
 }
