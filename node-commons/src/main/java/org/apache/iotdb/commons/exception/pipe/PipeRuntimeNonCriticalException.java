@@ -45,26 +45,30 @@ public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  public void serializeAttr(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);
   }
 
   @Override
-  public void serialize(OutputStream stream) throws IOException {
+  public void serializeAttr(OutputStream stream) throws IOException {
     PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(stream);
     ReadWriteIOUtils.write(getMessage(), stream);
   }
 
   public static PipeRuntimeNonCriticalException deserializeFrom(ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipeRuntimeNonCriticalException(message);
+    PipeRuntimeNonCriticalException exception = new PipeRuntimeNonCriticalException(message);
+    exception.generationTime = ReadWriteIOUtils.readLong(byteBuffer);
+    return exception;
   }
 
   public static PipeRuntimeNonCriticalException deserializeFrom(InputStream stream)
       throws IOException {
     final String message = ReadWriteIOUtils.readString(stream);
-    return new PipeRuntimeNonCriticalException(message);
+    PipeRuntimeNonCriticalException exception = new PipeRuntimeNonCriticalException(message);
+    exception.generationTime = ReadWriteIOUtils.readLong(stream);
+    return exception;
   }
 
   @Override

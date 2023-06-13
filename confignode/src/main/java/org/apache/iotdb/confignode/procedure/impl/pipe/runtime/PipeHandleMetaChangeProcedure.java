@@ -50,6 +50,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -96,18 +99,6 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
       final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
       pipeMetaMapFromDataNode.put(pipeMeta.getStaticMeta(), pipeMeta);
     }
-
-    // clean cached messages
-    env.getConfigManager()
-        .getPipeManager()
-        .getPipeTaskCoordinator()
-        .getPipeTaskInfo()
-        .getPipeMetaList()
-        .forEach(
-            pipeMeta ->
-                pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap().entrySet().stream()
-                    .filter(entry -> entry.getValue().getLeaderDataNodeId() == dataNodeId)
-                    .forEach(entry -> entry.getValue().clearExceptionMessages()));
 
     for (final PipeMeta pipeMetaOnConfigNode :
         env.getConfigManager()
@@ -169,8 +160,18 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
 
         // update runtime exception
         final PipeTaskMeta pipeTaskMetaOnConfigNode = runtimeMetaOnConfigNode.getValue();
+        final Set<Long> recordedExceptionGenerationTime =
+            StreamSupport.stream(
+                    pipeTaskMetaOnConfigNode.getExceptionMessages().spliterator(), false)
+                .mapToLong(PipeRuntimeException::getGenerationTime)
+                .boxed()
+                .collect(Collectors.toSet());
+
         for (final PipeRuntimeException exception :
             runtimeMetaFromDataNode.getExceptionMessages()) {
+          if (recordedExceptionGenerationTime.contains(exception.getGenerationTime())) {
+            continue;
+          }
 
           pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
 

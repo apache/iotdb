@@ -65,7 +65,11 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus startPipe(String pipeName) {
-    return configManager.getProcedureManager().startPipe(pipeName);
+    TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      pipeTaskInfo.clearPipeMetaExceptionMessages(pipeName);
+    }
+    return status;
   }
 
   public TSStatus stopPipe(String pipeName) {
