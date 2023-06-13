@@ -75,9 +75,8 @@ public class SizeTieredCompactionSelectorTest {
   public void testSubmitWhenSequenceFileIsEmpty() throws Exception {
     DataRegion region = new DataRegion("root.test", "1");
     TsFileManager manager = region.getTsFileManager();
-    int originCandidate =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(30);
+    int originCandidate = IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(30);
     boolean enableUnseqCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
@@ -96,9 +95,7 @@ public class SizeTieredCompactionSelectorTest {
       }
       Assert.assertEquals(3, region.compact());
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(originCandidate);
+      IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(originCandidate);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setEnableUnseqSpaceCompaction(enableUnseqCompaction);

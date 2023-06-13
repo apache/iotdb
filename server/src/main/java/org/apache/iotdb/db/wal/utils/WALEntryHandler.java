@@ -94,11 +94,18 @@ public class WALEntryHandler {
       }
     }
     // read from the wal file
+    InsertNode node = null;
     try {
-      return walEntryPosition.readInsertNodeViaCache();
+      node = walEntryPosition.readInsertNodeViaCache();
     } catch (Exception e) {
       throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
     }
+
+    if (node == null) {
+      throw new WALPipeException(
+          String.format("Fail to get the wal value of the position %s.", walEntryPosition));
+    }
+    return node;
   }
 
   public long getMemTableId() {
