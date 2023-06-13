@@ -122,6 +122,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -493,7 +494,19 @@ public class ConfigPlanExecutor {
       Pair<Set<TSchemaNode>, Set<PartialPath>> matchedChildInNextLevel =
           clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
       alreadyMatchedNode = matchedChildInNextLevel.left;
-      needMatchedNode = matchedChildInNextLevel.right;
+      if (partialPath.hasMultiLevelMatchWildcard()) {
+        needMatchedNode = new HashSet<>();
+        for (PartialPath databasePath : matchedChildInNextLevel.right) {
+          if (databasePath.getNodeLength() == partialPath.getNodeLength() + 1) {
+            // this database node is already the target child node, no need to traverse its schema
+            // region
+            continue;
+          }
+          needMatchedNode.add(databasePath);
+        }
+      } else {
+        needMatchedNode = matchedChildInNextLevel.right;
+      }
     } else {
       // count nodes
       Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =
