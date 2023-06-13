@@ -145,4 +145,8 @@ public class GroupByFilter implements Filter, Serializable {
   public long getEndTime() {
     return endTime;
   }
+
+  public long getInterval() {
+    return interval;
+  }
 }

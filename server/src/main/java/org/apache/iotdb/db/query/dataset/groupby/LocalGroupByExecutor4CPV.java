@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.ChunkSuit4CPV;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -129,6 +130,13 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           });
 
       if (M4_CHUNK_METADATA.isDebugEnabled()) {
+        if (timeFilter instanceof GroupByFilter) {
+          M4_CHUNK_METADATA.debug(
+              "M4_QUERY_PARAM,{},{},{}",
+              ((GroupByFilter) timeFilter).getStartTime(),
+              ((GroupByFilter) timeFilter).getEndTime(),
+              ((GroupByFilter) timeFilter).getInterval());
+        }
         for (ChunkSuit4CPV chunkSuit4CPV : futureChunkList) {
           Statistics statistics = chunkSuit4CPV.getChunkMetadata().getStatistics();
           long FP_t = statistics.getStartTime();
