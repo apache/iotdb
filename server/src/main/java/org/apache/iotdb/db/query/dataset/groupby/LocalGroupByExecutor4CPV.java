@@ -32,11 +32,19 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReade
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.ChunkSuit4CPV;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -55,6 +63,8 @@ import java.util.Set;
  */
 // This is the CPVGroupByExecutor in M4-LSM paper.
 public class LocalGroupByExecutor4CPV implements GroupByExecutor {
+
+  private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
 
   // Aggregate result buffer of this path
   private final List<AggregateResult> results = new ArrayList<>();
@@ -117,6 +127,93 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .compareTo(o2.getChunkMetadata().getStartTime());
             }
           });
+
+      if (M4_CHUNK_METADATA.isDebugEnabled()) {
+        for (ChunkSuit4CPV chunkSuit4CPV : futureChunkList) {
+          Statistics statistics = chunkSuit4CPV.getChunkMetadata().getStatistics();
+          long FP_t = statistics.getStartTime();
+          long LP_t = statistics.getEndTime();
+          long BP_t = statistics.getBottomTimestamp();
+          long TP_t = statistics.getTopTimestamp();
+          switch (statistics.getType()) {
+            case INT32:
+              int FP_v_int = ((IntegerStatistics) statistics).getFirstValue();
+              int LP_v_int = ((IntegerStatistics) statistics).getLastValue();
+              int BP_v_int = ((IntegerStatistics) statistics).getMinValue();
+              int TP_v_int = ((IntegerStatistics) statistics).getMaxValue();
+              M4_CHUNK_METADATA.debug(
+                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{}",
+                  FP_t,
+                  LP_t,
+                  BP_t,
+                  TP_t,
+                  FP_v_int,
+                  LP_v_int,
+                  BP_v_int,
+                  TP_v_int,
+                  chunkSuit4CPV.getChunkMetadata().getVersion(),
+                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader());
+              break;
+            case INT64:
+              long FP_v_long = ((LongStatistics) statistics).getFirstValue();
+              long LP_v_long = ((LongStatistics) statistics).getLastValue();
+              long BP_v_long = ((LongStatistics) statistics).getMinValue();
+              long TP_v_long = ((LongStatistics) statistics).getMaxValue();
+              M4_CHUNK_METADATA.debug(
+                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{}",
+                  FP_t,
+                  LP_t,
+                  BP_t,
+                  TP_t,
+                  FP_v_long,
+                  LP_v_long,
+                  BP_v_long,
+                  TP_v_long,
+                  chunkSuit4CPV.getChunkMetadata().getVersion(),
+                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader());
+              break;
+            case FLOAT:
+              float FP_v_float = ((FloatStatistics) statistics).getFirstValue();
+              float LP_v_float = ((FloatStatistics) statistics).getLastValue();
+              float BP_v_float = ((FloatStatistics) statistics).getMinValue();
+              float TP_v_float = ((FloatStatistics) statistics).getMaxValue();
+              M4_CHUNK_METADATA.debug(
+                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{}",
+                  FP_t,
+                  LP_t,
+                  BP_t,
+                  TP_t,
+                  FP_v_float,
+                  LP_v_float,
+                  BP_v_float,
+                  TP_v_float,
+                  chunkSuit4CPV.getChunkMetadata().getVersion(),
+                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader());
+              break;
+            case DOUBLE:
+              double FP_v_double = ((DoubleStatistics) statistics).getFirstValue();
+              double LP_v_double = ((DoubleStatistics) statistics).getLastValue();
+              double BP_v_double = ((DoubleStatistics) statistics).getMinValue();
+              double TP_v_double = ((DoubleStatistics) statistics).getMaxValue();
+              M4_CHUNK_METADATA.debug(
+                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{}",
+                  FP_t,
+                  LP_t,
+                  BP_t,
+                  TP_t,
+                  FP_v_double,
+                  LP_v_double,
+                  BP_v_double,
+                  TP_v_double,
+                  chunkSuit4CPV.getChunkMetadata().getVersion(),
+                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader());
+              break;
+            default:
+              throw new QueryProcessException("unsupported data type!");
+          }
+        }
+      }
+
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
     }
