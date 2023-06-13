@@ -321,6 +321,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         // can use pageHeader
         if (reader.canUseCurrentPageStatistics()
             && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
+          // here embodies the number of chunks that moc waste loading and decompressing
           calcFromStatistics(pageStatistics);
           reader.skipCurrentPage();
           if (isEndCalc()) {
