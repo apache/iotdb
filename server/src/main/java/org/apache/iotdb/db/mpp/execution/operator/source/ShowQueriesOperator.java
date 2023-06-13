@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -33,6 +34,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
@@ -125,7 +127,9 @@ public class ShowQueriesOperator implements SourceOperator {
       int DataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
       for (IQueryExecution queryExecution : queryExecutions) {
-        timeColumnBuilder.writeLong(queryExecution.getStartExecutionTime());
+        timeColumnBuilder.writeLong(
+            TimestampPrecisionUtils.convertToCurrPrecision(
+                queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
         columnBuilders[0].writeBinary(Binary.valueOf(queryExecution.getQueryId()));
         columnBuilders[1].writeInt(DataNodeId);
         columnBuilders[2].writeFloat(
