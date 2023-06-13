@@ -141,7 +141,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
-  public Tablet convertToTablet() {
+  public Pair<Tablet, Boolean> convertToTabletWithIsAligned() {
     try {
       if (dataContainer == null) {
         dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());

@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -39,13 +41,16 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
 
 public class PipeTransferTabletReq extends TPipeTransferReq {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
   private Tablet tablet;
+  private short isAlignedMarker; // 0 for non-aligned, 1 for aligned
 
   public static TPipeTransferReq toTPipeTransferReq(Tablet tablet) throws IOException {
     return toTPipeTransferReq(tablet, false);
@@ -58,12 +63,14 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     tabletReq.tablet = tablet;
 
     tabletReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
-    if (isAligned) {
-      tabletReq.type = PipeRequestType.TRANSFER_ALIGNED_TABLET.getType();
-    } else {
-      tabletReq.type = PipeRequestType.TRANSFER_NON_ALIGNED_TABLET.getType();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write((short) (isAligned ? 1 : 0), outputStream);
+      tablet.serialize(outputStream);
+      tabletReq.body =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
-    tabletReq.body = tablet.serialize();
     return tabletReq;
   }
 
@@ -203,7 +210,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       }
 
       request.setPrefixPath(tablet.deviceId);
-      request.setIsAligned(PipeRequestType.valueOf(type) == PipeRequestType.TRANSFER_ALIGNED_TABLET);
+      request.setIsAligned(isAlignedMarker == (short) 1);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);
@@ -220,6 +227,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   public static PipeTransferTabletReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
 
+    tabletReq.isAlignedMarker = ReadWriteIOUtils.readShort(transferReq.body);
     tabletReq.tablet = Tablet.deserialize(transferReq.body);
 
     tabletReq.version = transferReq.version;

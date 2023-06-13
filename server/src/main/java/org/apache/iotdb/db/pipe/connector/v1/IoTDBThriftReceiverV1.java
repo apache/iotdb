@@ -71,8 +71,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         case TRANSFER_INSERT_NODE:
           return handleTransferInsertNode(
               PipeTransferInsertNodeReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        case TRANSFER_NON_ALIGNED_TABLET:
-        case TRANSFER_ALIGNED_TABLET:
+        case TRANSFER_TABLET:
           return handleTransferTablet(
               PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
         case TRANSFER_FILE_PIECE:

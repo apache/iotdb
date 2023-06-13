@@ -27,8 +27,7 @@ public enum PipeRequestType {
   HANDSHAKE((short) 1),
 
   TRANSFER_INSERT_NODE((short) 2),
-  TRANSFER_NON_ALIGNED_TABLET((short) 3),
-  TRANSFER_ALIGNED_TABLET((short) 6),
+  TRANSFER_TABLET((short) 3),
 
   TRANSFER_FILE_PIECE((short) 4),
   TRANSFER_FILE_SEAL((short) 5),
