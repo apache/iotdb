@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.execute.task;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -273,7 +274,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           true);
     } finally {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
-      releaseAllLock();
+      releaseAllLocksAndResetStatus();
       return isSuccess;
     }
   }
@@ -289,16 +290,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         && this.performer.getClass().isInstance(otherCrossCompactionTask.performer);
   }
 
-  private void releaseAllLock() {
-    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
+  private void releaseAllLocksAndResetStatus() {
+    resetCompactionCandidateStatusForAllSourceFiles();
     for (TsFileResource tsFileResource : holdReadLockList) {
       tsFileResource.readUnlock();
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     }
     for (TsFileResource tsFileResource : holdWriteLockList) {
       tsFileResource.writeUnlock();
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
     }
     holdReadLockList.clear();
     holdWriteLockList.clear();
@@ -347,12 +345,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     return equalsOtherTask((CrossSpaceCompactionTask) other);
   }
 
-  @Override
-  public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedSequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-    selectedUnsequenceFiles.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-  }
-
   private long[] deleteOldFiles(List<TsFileResource> tsFileResourceList) {
     long[] size = new long[tsFileResourceList.size()];
     for (int i = 0, length = tsFileResourceList.size(); i < length; ++i) {
@@ -377,38 +369,50 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public boolean checkValidAndSetMerging() {
-    try {
-      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
-    } catch (InterruptedException e) {
-      LOGGER.error("Interrupted when allocating memory for compaction", e);
-      return false;
-    } catch (CompactionMemoryNotEnoughException e) {
-      LOGGER.error("No enough memory for current compaction task {}", this, e);
+    if (!tsFileManager.isAllowCompaction()) {
+      resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
+    try {
+      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
+      SystemInfo.getInstance()
+          .addCompactionFileNum(selectedSequenceFiles.size() + selectedUnsequenceFiles.size(), 60);
+    } catch (Throwable t) {
+      if (t instanceof InterruptedException) {
+        LOGGER.warn("Interrupted when allocating memory for compaction", t);
+      } else if (t instanceof CompactionMemoryNotEnoughException) {
+        LOGGER.info("No enough memory for current compaction task {}", this, t);
+      } else if (t instanceof CompactionFileCountExceededException) {
+        LOGGER.info("No enough file num for current compaction task {}", this, t);
+        SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      }
+      resetCompactionCandidateStatusForAllSourceFiles();
+      return false;
+    }
+
     boolean addReadLockSuccess =
         addReadLock(selectedSequenceFiles) && addReadLock(selectedUnsequenceFiles);
     if (!addReadLockSuccess) {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      SystemInfo.getInstance()
+          .decreaseCompactionFileNumCost(
+              selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
     }
     return addReadLockSuccess;
   }
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
-    if (!tsFileManager.isAllowCompaction()) {
-      return false;
-    }
     try {
       for (TsFileResource tsFileResource : tsFileResourceList) {
         tsFileResource.readLock();
         holdReadLockList.add(tsFileResource);
         if (!tsFileResource.setStatus(TsFileResourceStatus.COMPACTING)) {
-          releaseAllLock();
+          releaseAllLocksAndResetStatus();
           return false;
         }
       }
     } catch (Throwable e) {
-      releaseAllLock();
+      releaseAllLocksAndResetStatus();
       throw e;
     }
     return true;

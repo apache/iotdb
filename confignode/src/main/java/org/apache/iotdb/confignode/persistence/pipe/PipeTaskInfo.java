@@ -145,7 +145,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     // DO NOTHING HERE!
   }
 
-  private boolean isPipeExisted(String pipeName) {
+  public boolean isPipeExisted(String pipeName) {
     return pipeMetaKeeper.containsPipeMeta(pipeName);
   }
 

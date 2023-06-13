@@ -17,12 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer;
+package org.apache.iotdb.db.pipe.config.constant;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
+public class PipeConnectorConstant {
 
-public interface PipeRuntimeConfiguration {
+  public static final String CONNECTOR_KEY = "connector";
 
-  /** @throws PipeException if invalid runtime configuration is set */
-  void check() throws PipeException;
+  public static final String CONNECTOR_IOTDB_IP_KEY = "connector.ip";
+  public static final String CONNECTOR_IOTDB_PORT_KEY = "connector.port";
+
+  public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
+  public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
+  public static final String CONNECTOR_IOTDB_PASSWORD_KEY = "connector.password";
+  public static final String CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE = "root";
+
+  private PipeConnectorConstant() {
+    throw new IllegalStateException("Utility class");
+  }
 }

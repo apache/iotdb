@@ -141,6 +141,18 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
+  public Tablet convertToTablet() {
+    try {
+      if (dataContainer == null) {
+        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+      }
+      return dataContainer.convertToTablet();
+    } catch (Exception e) {
+      LOGGER.error("Convert to tablet error.", e);
+      throw new PipeException("Convert to tablet error.", e);
+    }
+  }
+
   /////////////////////////// Object ///////////////////////////
 
   @Override

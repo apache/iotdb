@@ -1023,11 +1023,11 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 * max\_cross\_compaction\_candidate\_file\_num
 
 |名字| max\_cross\_compaction\_candidate\_file\_num |
-|:---:|:---|
-|描述| 跨空间合并中一次合并最多参与的文件数 |
-|类型| int32 |
-|默认值| 1000|
-|改后生效方式|重启服务生效|
+|:---:|:---------------------------------------------|
+|描述| 跨空间合并中一次合并最多参与的文件数                           |
+|类型| int32                                        |
+|默认值| 500                                          |
+|改后生效方式| 重启服务生效                                       |
 
 * max\_cross\_compaction\_candidate\_file\_size
 

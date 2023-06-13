@@ -1224,30 +1224,62 @@ public class IoTDBOrderByIT {
     orderByUDFTest(sql, ans);
   }
 
-  @Test
-  public void errorTest1() {
-    String sql = "select num from root.sg.d order by avg(bigNum)";
+  private void errorTest(String sql, String error) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        fail();
-      }
+      statement.executeQuery(sql);
     } catch (Exception e) {
-      assertEquals("701: Raw data and aggregation hybrid query is not supported.", e.getMessage());
+      assertEquals(error, e.getMessage());
     }
   }
 
   @Test
+  public void errorTest1() {
+    errorTest(
+        "select num from root.sg.d order by avg(bigNum)",
+        "701: Raw data and aggregation hybrid query is not supported.");
+  }
+
+  @Test
   public void errorTest2() {
-    String sql = "select avg(num) from root.sg.d order by bigNum";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
-        fail();
-      }
-    } catch (Exception e) {
-      assertEquals("701: Raw data and aggregation hybrid query is not supported.", e.getMessage());
-    }
+    errorTest(
+        "select avg(num) from root.sg.d order by bigNum",
+        "701: Raw data and aggregation hybrid query is not supported.");
+  }
+
+  @Test
+  public void errorTest3() {
+    errorTest(
+        "select bigNum,floatNum from root.sg.d order by s1",
+        "701: root.sg.d.s1 in order by clause doesn't exist.");
+  }
+
+  @Test
+  public void errorTest4() {
+    errorTest(
+        "select bigNum,floatNum from root.** order by bigNum",
+        "701: root.**.bigNum in order by clause shouldn't refer to more than one timeseries.");
+  }
+
+  @Test
+  public void errorTest5() {
+    errorTest(
+        "select bigNum,floatNum from root.** order by s1 align by device",
+        "701: s1 in order by clause doesn't exist.");
+  }
+
+  @Test
+  public void errorTest6() {
+    errorTest(
+        "select bigNum,floatNum from root.** order by root.sg.d.bigNum align by device",
+        "701: ALIGN BY DEVICE: the suffix paths can only be measurement or one-level wildcard");
+  }
+
+  @Test
+  public void errorTest7() {
+    errorTest(
+        "select last bigNum,floatNum from root.** order by root.sg.d.bigNum",
+        "701: root.sg.d.bigNum in order by clause doesn't exist in the result of last query.");
   }
 
   // last query
@@ -1279,7 +1311,7 @@ public class IoTDBOrderByIT {
 
   @Test
   public void lastQueryOrderBy() {
-    String ans[][] =
+    String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
           {"root.sg.d.num", "root.sg.d2.num", "root.sg.d.bigNum", "root.sg.d2.bigNum"},
@@ -1292,7 +1324,7 @@ public class IoTDBOrderByIT {
 
   @Test
   public void lastQueryOrderBy2() {
-    String ans[][] =
+    String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
           {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
@@ -1305,7 +1337,7 @@ public class IoTDBOrderByIT {
 
   @Test
   public void lastQueryOrderBy3() {
-    String ans[][] =
+    String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
           {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
@@ -1318,7 +1350,7 @@ public class IoTDBOrderByIT {
 
   @Test
   public void lastQueryOrderBy4() {
-    String ans[][] =
+    String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
           {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
@@ -1331,7 +1363,7 @@ public class IoTDBOrderByIT {
 
   @Test
   public void lastQueryOrderBy5() {
-    String ans[][] =
+    String[][] ans =
         new String[][] {
           {"51536000000", "51536000000", "51536000000", "51536000000"},
           {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},

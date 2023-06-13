@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -137,6 +138,23 @@ public class SelectIntoUtils {
       } else {
         checkState(actualTargetPaths.size() == 1);
         MeasurementPath actualTargetPath = actualTargetPaths.get(0);
+        if (actualTargetPath.getMeasurementSchema().isLogicalView()) {
+          LogicalViewSchema viewSchema =
+              (LogicalViewSchema) actualTargetPath.getMeasurementSchema();
+          if (viewSchema.isWritable()) {
+            MeasurementPath viewSourceSeriesPath =
+                targetSchemaTree
+                    .searchMeasurementPaths(viewSchema.getSourcePathIfWritable())
+                    .left
+                    .get(0);
+            actualTargetPath =
+                new MeasurementPath(targetPath, viewSourceSeriesPath.getSeriesType());
+            actualTargetPath.setUnderAlignedEntity(viewSourceSeriesPath.isUnderAlignedEntity());
+          } else {
+            throw new SemanticException(
+                String.format("View %s doesn't support data insertion.", targetPath));
+          }
+        }
         if (!TypeInferenceUtils.canAutoCast(sourceColumnType, actualTargetPath.getSeriesType())) {
           throw new SemanticException(
               String.format(

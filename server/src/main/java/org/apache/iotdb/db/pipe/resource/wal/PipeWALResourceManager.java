@@ -5,9 +5,9 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +26,8 @@ public class PipeWALResourceManager implements AutoCloseable {
   private final ScheduledFuture<?> ttlCheckerFuture;
 
   public PipeWALResourceManager() {
-    memtableIdToPipeWALResourceMap = new HashMap<>();
+    // memtableIdToPipeWALResourceMap can be concurrently accessed by multiple threads
+    memtableIdToPipeWALResourceMap = new ConcurrentHashMap<>();
 
     memtableIdSegmentLocks = new ReentrantLock[SEGMENT_LOCK_COUNT];
     for (int i = 0; i < SEGMENT_LOCK_COUNT; i++) {

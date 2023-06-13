@@ -17,19 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.processor;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.exception.PipeException;
-
-/**
- * Used in {@link PipeProcessor#customize(PipeParameters, PipeProcessorRuntimeConfiguration)} to
- * customize the runtime behavior of the PipeProcessor.
- */
-public class PipeProcessorRuntimeConfiguration implements PipeRuntimeConfiguration {
-
-  @Override
-  public void check() throws PipeException {}
-}
+public interface PipeConnectorRuntimeConfiguration extends PipeRuntimeConfiguration {}

@@ -17,14 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.collector;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-import org.apache.iotdb.pipe.api.customizer.PipeRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+public interface PipeRuntimeConfiguration {
 
-// TODO: complete this class
-public class PipeCollectorRuntimeConfiguration implements PipeRuntimeConfiguration {
-
-  @Override
-  public void check() throws PipeException {}
+  PipeRuntimeEnvironment getRuntimeEnvironment();
 }
