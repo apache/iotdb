@@ -61,12 +61,10 @@ public class TimePageReader {
     return timeDecoder.readLong(timeBuffer);
   }
 
-  public long[] nextTimeBatch() throws IOException {
-    long[] timeBatch = new long[(int) pageHeader.getStatistics().getCount()];
-    int index = 0;
-    while (timeDecoder.hasNext(timeBuffer)) {
-      timeBatch[index++] = timeDecoder.readLong(timeBuffer);
-    }
+  public long[] nextTimeBatch() {
+    int length = (int) pageHeader.getStatistics().getCount();
+    long[] timeBatch = new long[length];
+    timeDecoder.readLong(timeBuffer, timeBatch, length);
     return timeBatch;
   }
 

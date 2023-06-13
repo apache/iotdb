@@ -172,6 +172,10 @@ public abstract class Decoder {
     throw new TsFileDecodingException("Method readInt is not supported by Decoder");
   }
 
+  public void readInt(ByteBuffer buffer, int[] data, int length) {
+    throw new TsFileDecodingException("Method readInt is not supported by Decoder");
+  }
+
   public boolean readBoolean(ByteBuffer buffer) {
     throw new TsFileDecodingException("Method readBoolean is not supported by Decoder");
   }
@@ -182,6 +186,10 @@ public abstract class Decoder {
 
   public long readLong(ByteBuffer buffer) {
     throw new TsFileDecodingException("Method readLong is not supported by Decoder");
+  }
+
+  public void readLong(ByteBuffer buffer, long[] data, int length) {
+    throw new TsFileDecodingException("Method readInt is not supported by Decoder");
   }
 
   public float readFloat(ByteBuffer buffer) {

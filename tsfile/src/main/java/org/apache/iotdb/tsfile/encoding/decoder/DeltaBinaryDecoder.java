@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -36,11 +35,10 @@ import java.nio.ByteBuffer;
  */
 public abstract class DeltaBinaryDecoder extends Decoder {
 
-  protected long count = 0;
-  protected byte[] deltaBuf;
+  protected static final int[] MASK =
+      new int[] {0xFF, 0xFF >> 1, 0xFF >> 2, 0xFF >> 3, 0xFF >> 4, 0xFF >> 5, 0xFF >> 6, 0xFF >> 7};
 
-  /** the first value in one pack. */
-  protected int readIntTotalCount = 0;
+  protected byte[] deltaBuf;
 
   protected int nextReadIndex = 0;
   /** max bit length of all value in a pack. */
@@ -51,15 +49,9 @@ public abstract class DeltaBinaryDecoder extends Decoder {
   /** how many bytes data takes after encoding. */
   protected int encodingLength;
 
-  public DeltaBinaryDecoder() {
+  protected DeltaBinaryDecoder() {
     super(TSEncoding.TS_2DIFF);
   }
-
-  protected abstract void readHeader(ByteBuffer buffer) throws IOException;
-
-  protected abstract void allocateDataArray();
-
-  protected abstract void readValue(int i);
 
   /**
    * calculate the bytes length containing v bits.
@@ -68,12 +60,37 @@ public abstract class DeltaBinaryDecoder extends Decoder {
    * @return number of bytes
    */
   protected int ceil(int v) {
-    return (int) Math.ceil((double) (v) / 8.0);
+    return (int) Math.ceil(v / 8.0);
   }
+
+  /**
+   * if remaining data has been run out, load next pack from InputStream.
+   *
+   * @param buffer ByteBuffer
+   */
+  protected void loadBatch(ByteBuffer buffer) {
+    packNum = ReadWriteIOUtils.readInt(buffer);
+    packWidth = ReadWriteIOUtils.readInt(buffer);
+    readHeader(buffer);
+
+    encodingLength = ceil(packNum * packWidth);
+    deltaBuf = new byte[encodingLength];
+    buffer.get(deltaBuf);
+    allocateDataArray();
+
+    nextReadIndex = 0;
+    readPack();
+  }
+
+  protected abstract void readHeader(ByteBuffer buffer);
+
+  protected abstract void allocateDataArray();
+
+  protected abstract void readPack();
 
   @Override
   public boolean hasNext(ByteBuffer buffer) throws IOException {
-    return (nextReadIndex < readIntTotalCount) || buffer.remaining() > 0;
+    return (nextReadIndex < packNum) || buffer.remaining() > 0;
   }
 
   public static class IntDeltaDecoder extends DeltaBinaryDecoder {
@@ -94,46 +111,51 @@ public abstract class DeltaBinaryDecoder extends Decoder {
      * @param buffer ByteBuffer
      * @return int
      */
-    protected int readT(ByteBuffer buffer) {
-      if (nextReadIndex == readIntTotalCount) {
-        return loadIntBatch(buffer);
+    @Override
+    public int readInt(ByteBuffer buffer) {
+      if (nextReadIndex == packNum) {
+        loadBatch(buffer);
+        return firstValue;
       }
       return data[nextReadIndex++];
     }
 
     @Override
-    public int readInt(ByteBuffer buffer) {
-      return readT(buffer);
-    }
+    public void readInt(ByteBuffer buffer, int[] data, int length) {
+      int offset = 0;
+      while (offset < length) {
+        packNum = ReadWriteIOUtils.readInt(buffer);
+        packWidth = ReadWriteIOUtils.readInt(buffer);
+        readHeader(buffer);
+        data[offset++] = firstValue;
+        encodingLength = ceil(packNum * packWidth);
+        deltaBuf = new byte[encodingLength];
+        buffer.get(deltaBuf);
 
-    /**
-     * if remaining data has been run out, load next pack from InputStream.
-     *
-     * @param buffer ByteBuffer
-     * @return int
-     */
-    protected int loadIntBatch(ByteBuffer buffer) {
-      packNum = ReadWriteIOUtils.readInt(buffer);
-      packWidth = ReadWriteIOUtils.readInt(buffer);
-      count++;
-      readHeader(buffer);
+        int value;
+        int index = 0;
+        int currentByteOffset = 0;
+        int width;
 
-      encodingLength = ceil(packNum * packWidth);
-      deltaBuf = new byte[encodingLength];
-      buffer.get(deltaBuf);
-      allocateDataArray();
-
-      previous = firstValue;
-      readIntTotalCount = packNum;
-      nextReadIndex = 0;
-      readPack();
-      return firstValue;
-    }
-
-    private void readPack() {
-      for (int i = 0; i < packNum; i++) {
-        readValue(i);
-        previous = data[i];
+        for (int i = 0; i < packNum; i++) {
+          value = 0;
+          width = packWidth;
+          while (width > 0) {
+            int m = width + currentByteOffset >= 8 ? 8 - currentByteOffset : width;
+            width -= m;
+            value = value << m;
+            int y = deltaBuf[index] & MASK[currentByteOffset];
+            currentByteOffset += m;
+            y >>>= (8 - currentByteOffset);
+            value |= y;
+            if (currentByteOffset == 8) {
+              currentByteOffset = 0;
+              ++index;
+            }
+          }
+          data[offset] = data[offset - 1] + minDeltaBase + value;
+          ++offset;
+        }
       }
     }
 
@@ -141,6 +163,7 @@ public abstract class DeltaBinaryDecoder extends Decoder {
     protected void readHeader(ByteBuffer buffer) {
       minDeltaBase = ReadWriteIOUtils.readInt(buffer);
       firstValue = ReadWriteIOUtils.readInt(buffer);
+      previous = firstValue;
     }
 
     @Override
@@ -149,9 +172,31 @@ public abstract class DeltaBinaryDecoder extends Decoder {
     }
 
     @Override
-    protected void readValue(int i) {
-      int v = BytesUtils.bytesToInt(deltaBuf, packWidth * i, packWidth);
-      data[i] = previous + minDeltaBase + v;
+    protected void readPack() {
+      int value;
+      int index = 0;
+      int currentByteOffset = 0;
+      int width;
+
+      for (int i = 0; i < packNum; i++) {
+        value = 0;
+        width = packWidth;
+        while (width > 0) {
+          int m = width + currentByteOffset >= 8 ? 8 - currentByteOffset : width;
+          width -= m;
+          value = value << m;
+          int y = deltaBuf[index] & MASK[currentByteOffset];
+          currentByteOffset += m;
+          y >>>= (8 - currentByteOffset);
+          value |= y;
+          if (currentByteOffset == 8) {
+            currentByteOffset = 0;
+            index++;
+          }
+        }
+        data[i] = previous + minDeltaBase + value;
+        previous = data[i];
+      }
     }
 
     @Override
@@ -178,65 +223,90 @@ public abstract class DeltaBinaryDecoder extends Decoder {
      * @param buffer ByteBuffer
      * @return long value
      */
-    protected long readT(ByteBuffer buffer) {
-      if (nextReadIndex == readIntTotalCount) {
-        return loadIntBatch(buffer);
+    @Override
+    public long readLong(ByteBuffer buffer) {
+      if (nextReadIndex == packNum) {
+        loadBatch(buffer);
+        return firstValue;
       }
       return data[nextReadIndex++];
     }
 
-    /**
-     * if remaining data has been run out, load next pack from InputStream.
-     *
-     * @param buffer ByteBuffer
-     * @return long value
-     */
-    protected long loadIntBatch(ByteBuffer buffer) {
-      packNum = ReadWriteIOUtils.readInt(buffer);
-      packWidth = ReadWriteIOUtils.readInt(buffer);
-      count++;
-      readHeader(buffer);
+    @Override
+    public void readLong(ByteBuffer buffer, long[] data, int length) {
+      int offset = 0;
+      while (offset < length) {
+        packNum = ReadWriteIOUtils.readInt(buffer);
+        packWidth = ReadWriteIOUtils.readInt(buffer);
+        readHeader(buffer);
+        data[offset++] = firstValue;
+        encodingLength = ceil(packNum * packWidth);
+        deltaBuf = new byte[encodingLength];
+        buffer.get(deltaBuf);
 
-      encodingLength = ceil(packNum * packWidth);
-      deltaBuf = new byte[encodingLength];
-      buffer.get(deltaBuf);
-      allocateDataArray();
+        long value;
+        int index = 0;
+        int currentByteOffset = 0;
+        int width;
 
-      previous = firstValue;
-      readIntTotalCount = packNum;
-      nextReadIndex = 0;
-      readPack();
-      return firstValue;
-    }
-
-    private void readPack() {
-      for (int i = 0; i < packNum; i++) {
-        readValue(i);
-        previous = data[i];
+        for (int i = 0; i < packNum; i++) {
+          value = 0;
+          width = packWidth;
+          while (width > 0) {
+            int m = width + currentByteOffset >= 8 ? 8 - currentByteOffset : width;
+            width -= m;
+            value = value << m;
+            int y = deltaBuf[index] & MASK[currentByteOffset];
+            currentByteOffset += m;
+            y >>>= (8 - currentByteOffset);
+            value |= y;
+            if (currentByteOffset == 8) {
+              currentByteOffset = 0;
+              ++index;
+            }
+          }
+          data[offset] = data[offset - 1] + minDeltaBase + value;
+          ++offset;
+        }
       }
     }
 
-    @Override
-    public long readLong(ByteBuffer buffer) {
-
-      return readT(buffer);
-    }
-
-    @Override
     protected void readHeader(ByteBuffer buffer) {
       minDeltaBase = ReadWriteIOUtils.readLong(buffer);
       firstValue = ReadWriteIOUtils.readLong(buffer);
     }
 
-    @Override
     protected void allocateDataArray() {
       data = new long[packNum];
     }
 
     @Override
-    protected void readValue(int i) {
-      long v = BytesUtils.bytesToLong(deltaBuf, packWidth * i, packWidth);
-      data[i] = previous + minDeltaBase + v;
+    protected void readPack() {
+      long value;
+      int index = 0;
+      int currentByteOffset = 0;
+      int width;
+
+      for (int i = 0; i < packNum; i++) {
+        value = 0;
+        width = packWidth;
+        while (width > 0) {
+          int m = width + currentByteOffset >= 8 ? 8 - currentByteOffset : width;
+          width -= m;
+          value = value << m;
+          int y = deltaBuf[index] & MASK[currentByteOffset];
+          currentByteOffset += m;
+          y >>>= (8 - currentByteOffset);
+          value |= y;
+          if (currentByteOffset == 8) {
+            currentByteOffset = 0;
+            index++;
+          }
+        }
+
+        data[i] = previous + minDeltaBase + value;
+        previous = data[i];
+      }
     }
 
     @Override
