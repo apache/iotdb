@@ -790,6 +790,10 @@ public class WALNode implements IWALNode {
     checkpointManager.close();
   }
 
+  public String getIdentifier() {
+    return identifier;
+  }
+
   public File getLogDirectory() {
     return logDirectory;
   }

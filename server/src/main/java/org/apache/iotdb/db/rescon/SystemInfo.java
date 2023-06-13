@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionInfo;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SystemInfo {
@@ -53,6 +55,10 @@ public class SystemInfo {
 
   private long flushingMemTablesCost = 0L;
   private AtomicLong compactionMemoryCost = new AtomicLong(0L);
+
+  private AtomicInteger compactionFileNumCost = new AtomicInteger(0);
+
+  private int totalFileLimitForCrossTask = config.getTotalFileLimitForCrossTask();
 
   private ExecutorService flushTaskSubmitThreadPool =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
@@ -182,6 +188,30 @@ public class SystemInfo {
     this.flushingMemTablesCost -= flushingMemTableCost;
   }
 
+  public void addCompactionFileNum(int fileNum, long timeOutInSecond)
+      throws InterruptedException, CompactionFileCountExceededException {
+    if (fileNum > totalFileLimitForCrossTask) {
+      // source file num is greater than the max file num for compaction
+      throw new CompactionFileCountExceededException(
+          String.format(
+              "Required file num %d is greater than the max file num %d for compaction.",
+              fileNum, totalFileLimitForCrossTask));
+    }
+    long startTime = System.currentTimeMillis();
+    int originFileNum = this.compactionFileNumCost.get();
+    while (originFileNum + fileNum > totalFileLimitForCrossTask
+        || !compactionFileNumCost.compareAndSet(originFileNum, originFileNum + fileNum)) {
+      if (System.currentTimeMillis() - startTime >= timeOutInSecond * 1000L) {
+        throw new CompactionFileCountExceededException(
+            String.format(
+                "Failed to allocate %d files for compaction after %d seconds, max file num for compaction module is %d, %d files is used.",
+                fileNum, timeOutInSecond, totalFileLimitForCrossTask, originFileNum));
+      }
+      Thread.sleep(100);
+      originFileNum = this.compactionFileNumCost.get();
+    }
+  }
+
   public void addCompactionMemoryCost(long memoryCost, long timeOutInSecond)
       throws InterruptedException, CompactionMemoryNotEnoughException {
     if (!config.isEnableCompactionMemControl()) {
@@ -215,6 +245,10 @@ public class SystemInfo {
     this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
   }
 
+  public synchronized void decreaseCompactionFileNumCost(int fileNum) {
+    this.compactionFileNumCost.addAndGet(-fileNum);
+  }
+
   public long getMemorySizeForCompaction() {
     if (config.isEnableMemControl()) {
       return memorySizeForCompaction;
@@ -236,6 +270,26 @@ public class SystemInfo {
   @TestOnly
   public void setMemorySizeForCompaction(long size) {
     memorySizeForCompaction = size;
+  }
+
+  @TestOnly
+  public void setTotalFileLimitForCrossTask(int totalFileLimitForCrossTask) {
+    this.totalFileLimitForCrossTask = totalFileLimitForCrossTask;
+  }
+
+  @TestOnly
+  public int getTotalFileLimitForCrossTask() {
+    return totalFileLimitForCrossTask;
+  }
+
+  @TestOnly
+  public AtomicLong getCompactionMemoryCost() {
+    return compactionMemoryCost;
+  }
+
+  @TestOnly
+  public AtomicInteger getCompactionFileNumCost() {
+    return compactionFileNumCost;
   }
 
   private void logCurrentTotalSGMemory() {

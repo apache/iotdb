@@ -24,64 +24,47 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
-import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeCollector;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-
-import java.util.HashMap;
 
 public class PipeTaskCollectorStage extends PipeTaskStage {
 
   private final PipeCollector pipeCollector;
 
   public PipeTaskCollectorStage(
-      TConsensusGroupId dataRegionId,
-      PipeTaskMeta pipeTaskMeta,
+      String pipeName,
       long creationTime,
-      PipeParameters collectorParameters) {
-    PipeParameters localizedCollectorParameters;
-
+      PipeParameters collectorParameters,
+      TConsensusGroupId dataRegionId,
+      PipeTaskMeta pipeTaskMeta) {
     // TODO: avoid if-else, use reflection to create collector all the time
-    if (collectorParameters
-        .getStringOrDefault(
-            PipeCollectorConstant.COLLECTOR_KEY,
-            BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
-        .equals(BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())) {
-      // we want to pass data region id to collector, so we need to create a new collector
-      // parameters and put data region id into it. we can't put data region id into collector
-      // parameters directly, because the given collector parameters may be used by other pipe task.
-      localizedCollectorParameters =
-          new PipeParameters(new HashMap<>(collectorParameters.getAttribute()));
-      // set data region id to collector parameters, so that collector can get data region id inside
-      // collector
-      localizedCollectorParameters
-          .getAttribute()
-          .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
-
-      this.pipeCollector =
-          new IoTDBDataRegionCollector(
-              pipeTaskMeta, creationTime, new UnboundedBlockingPendingQueue<>());
-    } else {
-      localizedCollectorParameters = collectorParameters;
-
-      this.pipeCollector = PipeAgent.plugin().reflectCollector(localizedCollectorParameters);
-    }
+    this.pipeCollector =
+        collectorParameters
+                .getStringOrDefault(
+                    PipeCollectorConstant.COLLECTOR_KEY,
+                    BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
+                .equals(BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
+            ? new IoTDBDataRegionCollector()
+            : PipeAgent.plugin().reflectCollector(collectorParameters);
 
     // validate and customize should be called before createSubtask. this allows collector exposing
     // exceptions in advance.
     try {
       // 1. validate collector parameters
-      pipeCollector.validate(new PipeParameterValidator(localizedCollectorParameters));
+      pipeCollector.validate(new PipeParameterValidator(collectorParameters));
 
       // 2. customize collector
-      final PipeCollectorRuntimeConfiguration runtimeConfiguration =
-          new PipeCollectorRuntimeConfiguration();
-      pipeCollector.customize(localizedCollectorParameters, runtimeConfiguration);
+      final PipeTaskRuntimeConfiguration runtimeConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskCollectorRuntimeEnvironment(
+                  pipeName, creationTime, dataRegionId.getId(), pipeTaskMeta));
+      pipeCollector.customize(collectorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }

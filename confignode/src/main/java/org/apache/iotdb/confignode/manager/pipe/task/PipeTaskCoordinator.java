@@ -73,11 +73,12 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus dropPipe(String pipeName) {
-    TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
+    final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
+    final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(String.format("Failed to drop pipe %s. Result status: %s.", pipeName, status));
     }
-    return pipeTaskInfo.isPipeExisted(pipeName)
+    return isPipeExistedBeforeDrop
         ? status
         : RpcUtils.getStatus(
             TSStatusCode.PIPE_NOT_EXIST_ERROR,

@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -104,14 +105,18 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
-            (regionGroup, regionLeaderNodeId) -> {
-              if (!env.getConfigManager()
-                  .getPartitionManager()
-                  .getRegionStorageGroup(regionGroup)
-                  .equals(IoTDBMetricsUtils.DATABASE)) {
-                // pipe only collect user's data, filter metric database here.
-                consensusGroupIdToTaskMetaMap.put(
-                    regionGroup, new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId));
+            (regionGroupId, regionLeaderNodeId) -> {
+              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
+                final String databaseName =
+                    env.getConfigManager()
+                        .getPartitionManager()
+                        .getRegionStorageGroup(regionGroupId);
+                if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
+                  // pipe only collect user's data, filter metric database here.
+                  consensusGroupIdToTaskMetaMap.put(
+                      regionGroupId,
+                      new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId));
+                }
               }
             });
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
