@@ -147,7 +147,7 @@ public class PipeTabletInsertionEventTest {
             values,
             times.length);
 
-    this.insertTabletNode =
+    this.insertTabletNodeAligned =
         new InsertTabletNode(
             new PlanNodeId("plannode 1"),
             new PartialPath(deviceId),
