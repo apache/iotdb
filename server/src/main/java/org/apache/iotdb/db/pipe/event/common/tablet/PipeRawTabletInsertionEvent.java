@@ -23,6 +23,7 @@ import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.Objects;
@@ -31,16 +32,26 @@ import java.util.function.BiConsumer;
 public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
 
   private final Tablet tablet;
+  private final boolean isAligned;
   private final String pattern;
 
   private TabletInsertionDataContainer dataContainer;
 
   public PipeRawTabletInsertionEvent(Tablet tablet) {
-    this(Objects.requireNonNull(tablet), null);
+    this(Objects.requireNonNull(tablet), false, null);
   }
 
   public PipeRawTabletInsertionEvent(Tablet tablet, String pattern) {
+    this(tablet, false, pattern);
+  }
+
+  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
+    this(tablet, isAligned, null);
+  }
+
+  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
     this.tablet = Objects.requireNonNull(tablet);
+    this.isAligned = isAligned;
     this.pattern = pattern;
   }
 
@@ -53,30 +64,31 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
+      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, getPattern());
     }
     return dataContainer.processRowByRow(consumer);
   }
 
   @Override
-  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(
+      BiConsumer<Pair<Tablet, Boolean>, RowCollector> consumer) {
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
+      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, getPattern());
     }
     return dataContainer.processTablet(consumer);
   }
 
-  public Tablet convertToTablet() {
+  public Pair<Tablet, Boolean> convertToTabletWithIsAligned() {
     final String pattern = getPattern();
 
     // if pattern is "root", we don't need to convert, just return the original tablet
     if (pattern.equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
-      return tablet;
+      return new Pair<>(tablet, isAligned);
     }
 
     // if pattern is not "root", we need to convert the tablet
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, pattern);
+      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, pattern);
     }
     return dataContainer.convertToTablet();
   }

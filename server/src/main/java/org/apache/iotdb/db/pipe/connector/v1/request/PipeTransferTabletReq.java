@@ -48,12 +48,21 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   private Tablet tablet;
 
   public static TPipeTransferReq toTPipeTransferReq(Tablet tablet) throws IOException {
+    return toTPipeTransferReq(tablet, false);
+  }
+
+  public static TPipeTransferReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
+      throws IOException {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
 
     tabletReq.tablet = tablet;
 
     tabletReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
-    tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
+    if (isAligned) {
+      tabletReq.type = PipeRequestType.TRANSFER_ALIGNED_TABLET.getType();
+    } else {
+      tabletReq.type = PipeRequestType.TRANSFER_NON_ALIGNED_TABLET.getType();
+    }
     tabletReq.body = tablet.serialize();
     return tabletReq;
   }
@@ -194,7 +203,11 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       }
 
       request.setPrefixPath(tablet.deviceId);
-      request.setIsAligned(false);
+      if (PipeRequestType.valueOf(type) == PipeRequestType.TRANSFER_ALIGNED_TABLET) {
+        request.setIsAligned(true);
+      } else {
+        request.setIsAligned(false);
+      }
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);

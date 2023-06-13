@@ -35,6 +35,7 @@ public class PipeRow implements Row {
   private final int rowIndex;
 
   private final String deviceId;
+  private final boolean isAligned;
   private final MeasurementSchema[] measurementSchemaList;
 
   private final long[] timestampColumn;
@@ -47,6 +48,7 @@ public class PipeRow implements Row {
   public PipeRow(
       int rowIndex,
       String deviceId,
+      boolean isAligned,
       MeasurementSchema[] measurementSchemaList,
       long[] timestampColumn,
       TSDataType[] valueColumnTypes,
@@ -55,6 +57,7 @@ public class PipeRow implements Row {
       String[] columnNameStringList) {
     this.rowIndex = rowIndex;
     this.deviceId = deviceId;
+    this.isAligned = isAligned;
     this.measurementSchemaList = measurementSchemaList;
     this.timestampColumn = timestampColumn;
     this.valueColumnTypes = valueColumnTypes;
@@ -163,6 +166,11 @@ public class PipeRow implements Row {
   @Override
   public String getDeviceId() {
     return deviceId;
+  }
+
+  @Override
+  public boolean isAligned() {
+    return isAligned;
   }
 
   public MeasurementSchema[] getMeasurementSchemaList() {

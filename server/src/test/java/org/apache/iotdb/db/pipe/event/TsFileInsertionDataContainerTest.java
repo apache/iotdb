@@ -230,8 +230,10 @@ public class TsFileInsertionDataContainerTest {
                                   .forEach(
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet)
+                                              (tabletWithIsAligned, rowCollector) -> {
+                                                new PipeRawTabletInsertionEvent(
+                                                        tabletWithIsAligned.getLeft(),
+                                                        tabletWithIsAligned.getRight())
                                                     .processRowByRow(
                                                         (row, collector) -> {
                                                           try {
@@ -255,8 +257,9 @@ public class TsFileInsertionDataContainerTest {
               event ->
                   event
                       .processTablet(
-                          (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet)
+                          (tabletWithIsAligned, rowCollector) -> {
+                            new PipeRawTabletInsertionEvent(
+                                    tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
                                 .processRowByRow(
                                     (row, collector) -> {
                                       try {
@@ -379,8 +382,10 @@ public class TsFileInsertionDataContainerTest {
                                   .forEach(
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet)
+                                              (tabletWithIsAligned, rowCollector) -> {
+                                                new PipeRawTabletInsertionEvent(
+                                                        tabletWithIsAligned.getLeft(),
+                                                        tabletWithIsAligned.getRight())
                                                     .processRowByRow(
                                                         (row, collector) -> {
                                                           try {
@@ -404,8 +409,9 @@ public class TsFileInsertionDataContainerTest {
               event ->
                   event
                       .processTablet(
-                          (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet)
+                          (tabletWithIsAligned, rowCollector) -> {
+                            new PipeRawTabletInsertionEvent(
+                                    tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
                                 .processRowByRow(
                                     (row, collector) -> {
                                       try {
@@ -493,8 +499,10 @@ public class TsFileInsertionDataContainerTest {
                                   .forEach(
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet)
+                                              (tabletWithIsAligned, rowCollector) -> {
+                                                new PipeRawTabletInsertionEvent(
+                                                        tabletWithIsAligned.getLeft(),
+                                                        tabletWithIsAligned.getRight())
                                                     .processRowByRow(
                                                         (row, collector) -> {
                                                           try {
@@ -517,8 +525,9 @@ public class TsFileInsertionDataContainerTest {
               event ->
                   event
                       .processTablet(
-                          (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet)
+                          (tabletWithIsAligned, rowCollector) -> {
+                            new PipeRawTabletInsertionEvent(
+                                    tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
                                 .processRowByRow(
                                     (row, collector) -> {
                                       try {
@@ -605,8 +614,10 @@ public class TsFileInsertionDataContainerTest {
                                   .forEach(
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
-                                              (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet)
+                                              (tabletWithIsAligned, rowCollector) -> {
+                                                new PipeRawTabletInsertionEvent(
+                                                        tabletWithIsAligned.getLeft(),
+                                                        tabletWithIsAligned.getRight())
                                                     .processRowByRow(
                                                         (row, collector) -> {
                                                           try {
@@ -629,8 +640,9 @@ public class TsFileInsertionDataContainerTest {
               event ->
                   event
                       .processTablet(
-                          (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet)
+                          (tabletWithIsAligned, rowCollector) -> {
+                            new PipeRawTabletInsertionEvent(
+                                    tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight())
                                 .processRowByRow(
                                     (row, collector) -> {
                                       try {

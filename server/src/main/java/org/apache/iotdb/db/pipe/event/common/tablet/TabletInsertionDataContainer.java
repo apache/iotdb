@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -48,6 +49,7 @@ import java.util.stream.IntStream;
 public class TabletInsertionDataContainer {
 
   private String deviceId;
+  private boolean isAligned;
   private MeasurementSchema[] measurementSchemaList;
   private String[] columnNameStringList;
 
@@ -76,8 +78,8 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  public TabletInsertionDataContainer(Tablet tablet, String pattern) {
-    parse(tablet, pattern);
+  public TabletInsertionDataContainer(Tablet tablet, boolean isAligned, String pattern) {
+    parse(tablet, isAligned, pattern);
   }
 
   //////////////////////////// parse ////////////////////////////
@@ -87,6 +89,7 @@ public class TabletInsertionDataContainer {
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     this.deviceId = insertRowNode.getDevicePath().getFullPath();
+    this.isAligned = insertRowNode.isAligned();
     this.timestampColumn = new long[] {insertRowNode.getTime()};
 
     generateColumnIndexMapper(
@@ -153,6 +156,7 @@ public class TabletInsertionDataContainer {
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     this.deviceId = insertTabletNode.getDevicePath().getFullPath();
+    this.isAligned = insertTabletNode.isAligned();
     this.timestampColumn = insertTabletNode.getTimes();
 
     generateColumnIndexMapper(
@@ -204,11 +208,12 @@ public class TabletInsertionDataContainer {
     rowCount = timestampColumn.length;
   }
 
-  private void parse(Tablet tablet, String pattern) {
+  private void parse(Tablet tablet, boolean isAligned, String pattern) {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     this.deviceId = tablet.deviceId;
+    this.isAligned = isAligned;
     this.timestampColumn = tablet.timestamps;
 
     final List<MeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
@@ -311,6 +316,7 @@ public class TabletInsertionDataContainer {
           new PipeRow(
               i,
               deviceId,
+              isAligned,
               measurementSchemaList,
               timestampColumn,
               valueColumnTypes,
@@ -322,7 +328,8 @@ public class TabletInsertionDataContainer {
     return rowCollector.convertToTabletInsertionEvents();
   }
 
-  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(
+      BiConsumer<Pair<Tablet, Boolean>, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector();
     consumer.accept(convertToTablet(), rowCollector);
     return rowCollector.convertToTabletInsertionEvents();
@@ -330,9 +337,9 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  convert  ////////////////////////////
 
-  public Tablet convertToTablet() {
+  public Pair<Tablet, Boolean> convertToTablet() {
     if (tablet != null) {
-      return tablet;
+      return new Pair<>(tablet, isAligned);
     }
 
     final int columnSize = measurementSchemaList.length;
@@ -346,6 +353,6 @@ public class TabletInsertionDataContainer {
 
     tablet = newTablet;
 
-    return tablet;
+    return new Pair<>(tablet, isAligned);
   }
 }

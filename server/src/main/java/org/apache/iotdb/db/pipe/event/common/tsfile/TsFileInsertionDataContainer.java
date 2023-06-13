@@ -24,12 +24,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +58,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private final TsFileReader tsFileReader;
 
   private final Iterator<Map.Entry<String, List<String>>> deviceMeasurementsMapIterator;
+  private final Map<String, Boolean> deviceIsAlignedMap;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
@@ -72,6 +76,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
       deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
+      deviceIsAlignedMap = new HashMap<>();
+      readDeviceIsAlignedMap();
       measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
     } catch (Exception e) {
       LOGGER.error("failed to create TsFileInsertionDataContainer", e);
@@ -119,16 +125,24 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     return filteredDeviceMeasurementsMap;
   }
 
+  private void readDeviceIsAlignedMap() throws IOException {
+    TsFileDeviceIterator deviceIterator = tsFileSequenceReader.getAllDevicesIteratorWithIsAligned();
+    while (deviceIterator.hasNext()) {
+      Pair<String, Boolean> deviceIsAlignedPair = deviceIterator.next();
+      deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
+    }
+  }
+
   /** @return TabletInsertionEvent in a streaming way */
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     return () ->
         new Iterator<TabletInsertionEvent>() {
 
-          private TsFileInsertionDataTabletIterator tabletIterator = null;
+          private TsFileInsertionDataTabletIterator tabletWithIsAlignedIterator = null;
 
           @Override
           public boolean hasNext() {
-            while (tabletIterator == null || !tabletIterator.hasNext()) {
+            while (tabletWithIsAlignedIterator == null || !tabletWithIsAlignedIterator.hasNext()) {
               if (!deviceMeasurementsMapIterator.hasNext()) {
                 return false;
               }
@@ -136,11 +150,12 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterator.next();
 
               try {
-                tabletIterator =
+                tabletWithIsAlignedIterator =
                     new TsFileInsertionDataTabletIterator(
                         tsFileReader,
                         measurementDataTypeMap,
                         entry.getKey(),
+                        deviceIsAlignedMap.getOrDefault(entry.getKey(), false),
                         entry.getValue(),
                         timeFilterExpression);
               } catch (IOException e) {
@@ -159,8 +174,10 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               throw new NoSuchElementException();
             }
 
+            Pair<Tablet, Boolean> tabletWithIsAligned = tabletWithIsAlignedIterator.next();
             final TabletInsertionEvent next =
-                new PipeRawTabletInsertionEvent(tabletIterator.next());
+                new PipeRawTabletInsertionEvent(
+                    tabletWithIsAligned.getLeft(), tabletWithIsAligned.getRight());
 
             if (!hasNext()) {
               close();
