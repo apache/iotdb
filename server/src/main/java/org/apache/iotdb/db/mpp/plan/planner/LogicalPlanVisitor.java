@@ -83,8 +83,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewState
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.commons.lang3.Validate;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -346,12 +344,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   private boolean cannotUseStatistics(Set<Expression> expressions) {
     for (Expression expression : expressions) {
-      Validate.isTrue(
-          expression instanceof FunctionExpression,
-          String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
-      if (!BuiltinAggregationFunction.canUseStatistics(
-          ((FunctionExpression) expression).getFunctionName())) {
-        return true;
+      if (expression instanceof FunctionExpression) {
+        if (!BuiltinAggregationFunction.canUseStatistics(
+            ((FunctionExpression) expression).getFunctionName())) {
+          return true;
+        }
+      } else {
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
       }
     }
     return false;
