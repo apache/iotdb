@@ -138,11 +138,11 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     return () ->
         new Iterator<TabletInsertionEvent>() {
 
-          private TsFileInsertionDataTabletIterator tabletWithIsAlignedIterator = null;
+          private TsFileInsertionDataTabletIterator tabletIterator = null;
 
           @Override
           public boolean hasNext() {
-            while (tabletWithIsAlignedIterator == null || !tabletWithIsAlignedIterator.hasNext()) {
+            while (tabletIterator == null || !tabletIterator.hasNext()) {
               if (!deviceMeasurementsMapIterator.hasNext()) {
                 return false;
               }
@@ -150,7 +150,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               final Map.Entry<String, List<String>> entry = deviceMeasurementsMapIterator.next();
 
               try {
-                tabletWithIsAlignedIterator =
+                tabletIterator =
                     new TsFileInsertionDataTabletIterator(
                         tsFileReader,
                         measurementDataTypeMap,
@@ -173,7 +173,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               throw new NoSuchElementException();
             }
 
-            Tablet tablet = tabletWithIsAlignedIterator.next();
+            Tablet tablet = tabletIterator.next();
             boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
             final TabletInsertionEvent next = new PipeRawTabletInsertionEvent(tablet, isAligned);
 
