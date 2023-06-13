@@ -150,7 +150,6 @@ public class WALNode implements IWALNode {
   private WALFlushListener log(WALEntry walEntry) {
     buffer.write(walEntry);
     // set handler for pipe
-    walEntry.getWalFlushListener().getWalEntryHandler().setMemTableId(walEntry.getMemTableId());
     walEntry.getWalFlushListener().getWalEntryHandler().setWalNode(this);
     return walEntry.getWalFlushListener();
   }

@@ -29,7 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
-import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.wal.utils.RawByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -89,7 +89,7 @@ public class WALFileTest {
     for (WALEntry walEntry : expectedWALEntries) {
       size += walEntry.serializedSize();
     }
-    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
+    RawByteBufferView buffer = new RawByteBufferView(ByteBuffer.allocate(size));
     // test WALEntry.serialize
     for (WALEntry walEntry : expectedWALEntries) {
       walEntry.serialize(buffer);
@@ -133,7 +133,7 @@ public class WALFileTest {
     for (WALEntry walEntry : expectedWALEntries) {
       size += walEntry.serializedSize();
     }
-    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
+    RawByteBufferView buffer = new RawByteBufferView(ByteBuffer.allocate(size));
     // test WALEntry.serialize
     for (WALEntry walEntry : expectedWALEntries) {
       walEntry.serialize(buffer);

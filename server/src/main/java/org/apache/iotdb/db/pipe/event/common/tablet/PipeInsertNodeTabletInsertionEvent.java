@@ -63,6 +63,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     this.progressIndex = progressIndex;
   }
 
+  //
   public InsertNode getInsertNode() throws WALPipeException {
     return walEntryHandler.getValue();
   }

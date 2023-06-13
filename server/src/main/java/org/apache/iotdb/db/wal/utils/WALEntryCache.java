@@ -20,9 +20,6 @@ package org.apache.iotdb.db.wal.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.io.WALByteBufReader;
 
@@ -45,27 +42,27 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** This cache is used by {@link WALEntryPosition} */
-public class WALInsertNodeCache {
-  private static final Logger logger = LoggerFactory.getLogger(WALInsertNodeCache.class);
+public class WALEntryCache {
+  private static final Logger logger = LoggerFactory.getLogger(WALEntryCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /** LRU cache, find InsertNode by WALEntryPosition */
-  private final LoadingCache<WALEntryPosition, InsertNode> lruCache;
+  private final LoadingCache<WALEntryPosition, ByteBuffer> lruCache;
 
   /** ids of all pinned memTables */
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
-  private WALInsertNodeCache() {
+  private WALEntryCache() {
     lruCache =
         Caffeine.newBuilder()
             // TODO: pipe module should determine how to configure this param
             .maximumWeight(config.getAllocateMemoryForWALPipeCache())
             .weigher(
-                (Weigher<WALEntryPosition, InsertNode>) (position, buffer) -> position.getSize())
-            .build(new WALInsertNodeCacheLoader());
+                (Weigher<WALEntryPosition, ByteBuffer>) (position, buffer) -> buffer.capacity())
+            .build(new WALEntryCacheLoader());
   }
 
-  public InsertNode get(WALEntryPosition position) {
-    InsertNode res = lruCache.getIfPresent(position);
+  public ByteBuffer get(WALEntryPosition position) {
+    ByteBuffer res = lruCache.getIfPresent(position);
     // batch load from the wal file
     if (res == null) {
       res = lruCache.getAll(Collections.singleton(position)).get(position);
@@ -90,26 +87,17 @@ public class WALInsertNodeCache {
     memTablesNeedSearch.clear();
   }
 
-  class WALInsertNodeCacheLoader implements CacheLoader<WALEntryPosition, InsertNode> {
-    private InsertNode parse(ByteBuffer buffer) {
-      PlanNode node = WALEntry.deserializeForConsensus(buffer);
-      if (node instanceof InsertNode) {
-        return (InsertNode) node;
-      } else {
-        return null;
-      }
-    }
-
+  class WALEntryCacheLoader implements CacheLoader<WALEntryPosition, ByteBuffer> {
     @Override
-    public @Nullable InsertNode load(@NonNull WALEntryPosition key) throws Exception {
-      return parse(key.read());
+    public @Nullable ByteBuffer load(@NonNull WALEntryPosition key) throws Exception {
+      return key.read();
     }
 
     /** Batch load all wal entries in the file when any one key is absent. */
     @Override
-    public @NonNull Map<@NonNull WALEntryPosition, @NonNull InsertNode> loadAll(
+    public @NonNull Map<@NonNull WALEntryPosition, @NonNull ByteBuffer> loadAll(
         @NonNull Iterable<? extends @NonNull WALEntryPosition> keys) {
-      Map<WALEntryPosition, InsertNode> res = new HashMap<>();
+      Map<WALEntryPosition, ByteBuffer> res = new HashMap<>();
       for (WALEntryPosition pos : keys) {
         if (res.containsKey(pos) || !pos.canRead()) {
           continue;
@@ -140,12 +128,9 @@ public class WALInsertNodeCache {
             if ((memTablesNeedSearch.contains(memTableId) || pos.getPosition() == position)
                 && type.needSearch()) {
               buffer.clear();
-              InsertNode node = parse(buffer);
-              if (node != null) {
-                res.put(
-                    new WALEntryPosition(pos.getIdentifier(), walFileVersionId, position, size),
-                    node);
-              }
+              res.put(
+                  new WALEntryPosition(pos.getIdentifier(), walFileVersionId, position, size),
+                  buffer);
             }
             position += size;
           }
@@ -160,13 +145,13 @@ public class WALInsertNodeCache {
     }
   }
 
-  public static WALInsertNodeCache getInstance() {
+  public static WALEntryCache getInstance() {
     return InstanceHolder.INSTANCE;
   }
 
   private static class InstanceHolder {
     private InstanceHolder() {}
 
-    private static final WALInsertNodeCache INSTANCE = new WALInsertNodeCache();
+    private static final WALEntryCache INSTANCE = new WALEntryCache();
   }
 }

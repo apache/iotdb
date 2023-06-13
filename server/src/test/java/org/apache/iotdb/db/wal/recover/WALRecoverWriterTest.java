@@ -28,7 +28,7 @@ import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.wal.io.WALMetaData;
 import org.apache.iotdb.db.wal.io.WALWriter;
-import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.wal.utils.RawByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -106,7 +106,7 @@ public class WALRecoverWriterTest {
     WALMetaData walMetaData = new WALMetaData();
     WALEntry walEntry = new WALInfoEntry(1, getInsertRowNode());
     int size = walEntry.serializedSize();
-    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
+    RawByteBufferView buffer = new RawByteBufferView(ByteBuffer.allocate(size));
     walEntry.serialize(buffer);
     walMetaData.add(size, 1);
     try (WALWriter walWriter = new WALWriter(logFile)) {
@@ -130,7 +130,7 @@ public class WALRecoverWriterTest {
     WALMetaData walMetaData = new WALMetaData();
     WALEntry walEntry = new WALInfoEntry(1, getInsertRowNode());
     int size = walEntry.serializedSize();
-    WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
+    RawByteBufferView buffer = new RawByteBufferView(ByteBuffer.allocate(size));
     walEntry.serialize(buffer);
     walMetaData.add(size, 1);
     try (WALWriter walWriter = new WALWriter(logFile)) {

@@ -32,7 +32,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.wal.utils.RawByteBufferView;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -560,7 +560,7 @@ public class PrimitiveMemTableTest {
     writeVector(memTable);
 
     int serializedSize = memTable.serializedSize();
-    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.allocate(serializedSize));
+    RawByteBufferView walBuffer = new RawByteBufferView(ByteBuffer.allocate(serializedSize));
     memTable.serializeToWAL(walBuffer);
     assertEquals(0, walBuffer.getBuffer().remaining());
   }

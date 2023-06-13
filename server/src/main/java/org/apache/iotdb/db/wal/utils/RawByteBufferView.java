@@ -22,10 +22,10 @@ import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 
 import java.nio.ByteBuffer;
 
-public class WALByteBufferForTest implements IWALByteBufferView {
+public class RawByteBufferView implements IWALByteBufferView {
   private final ByteBuffer buffer;
 
-  public WALByteBufferForTest(ByteBuffer buffer) {
+  public RawByteBufferView(ByteBuffer buffer) {
     this.buffer = buffer;
   }
 

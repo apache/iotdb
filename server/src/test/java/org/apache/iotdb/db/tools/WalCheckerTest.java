@@ -27,7 +27,7 @@ import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALFileTest;
 import org.apache.iotdb.db.wal.io.WALWriter;
-import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.wal.utils.RawByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
@@ -95,7 +95,7 @@ public class WalCheckerTest {
         for (WALEntry walEntry : walEntries) {
           size += walEntry.serializedSize();
         }
-        WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
+        RawByteBufferView buffer = new RawByteBufferView(ByteBuffer.allocate(size));
         for (WALEntry walEntry : walEntries) {
           walEntry.serialize(buffer);
         }
@@ -134,7 +134,7 @@ public class WalCheckerTest {
         for (WALEntry walEntry : walEntries) {
           size += walEntry.serializedSize();
         }
-        WALByteBufferForTest buffer = new WALByteBufferForTest(ByteBuffer.allocate(size));
+        RawByteBufferView buffer = new RawByteBufferView(ByteBuffer.allocate(size));
         for (WALEntry walEntry : walEntries) {
           walEntry.serialize(buffer);
         }

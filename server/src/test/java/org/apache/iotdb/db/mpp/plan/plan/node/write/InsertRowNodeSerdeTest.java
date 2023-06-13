@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
+import org.apache.iotdb.db.wal.utils.RawByteBufferView;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -76,7 +76,7 @@ public class InsertRowNodeSerdeTest {
     int serializedSize = insertRowNode.serializedSize();
 
     byte[] bytes = new byte[serializedSize];
-    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+    RawByteBufferView walBuffer = new RawByteBufferView(ByteBuffer.wrap(bytes));
 
     insertRowNode.serializeToWAL(walBuffer);
     Assert.assertFalse(walBuffer.getBuffer().hasRemaining());

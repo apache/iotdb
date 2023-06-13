@@ -27,7 +27,7 @@ import org.apache.iotdb.db.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
-import org.apache.iotdb.db.wal.utils.WALInsertNodeCache;
+import org.apache.iotdb.db.wal.utils.WALEntryCache;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -257,7 +257,7 @@ public class CheckpointManager implements AutoCloseable {
       }
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance().addMemTable(memTableId);
+        WALEntryCache.getInstance().addMemTable(memTableId);
       }
       memTableInfo.pin();
     } finally {
@@ -287,7 +287,7 @@ public class CheckpointManager implements AutoCloseable {
       MemTableInfo memTableInfo = memTableId2Info.get(memTableId);
       memTableInfo.unpin();
       if (!memTableInfo.isPinned()) {
-        WALInsertNodeCache.getInstance().removeMemTable(memTableId);
+        WALEntryCache.getInstance().removeMemTable(memTableId);
         if (memTableInfo.isFlushed()) {
           memTableId2Info.remove(memTableId);
         }

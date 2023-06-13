@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,12 +43,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class WALInsertNodeCacheTest {
+public class WALEntryCacheTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String devicePath = "root.test_sg.test_d";
-  private static final WALInsertNodeCache cache = WALInsertNodeCache.getInstance();
+  private static final WALEntryCache cache = WALEntryCache.getInstance();
   private WALMode prevMode;
   private boolean prevIsClusterMode;
   private WALNode walNode;
@@ -85,7 +86,7 @@ public class WALInsertNodeCacheTest {
       Thread.sleep(50);
     }
     // load by cache
-    assertEquals(node1, cache.get(position));
+    assertEquals(node1, WALEntry.deserializeForConsensus(cache.get(position)));
   }
 
   @Test
@@ -115,14 +116,14 @@ public class WALInsertNodeCacheTest {
     }
     // check batch load memTable1
     cache.addMemTable(memTable1.getMemTableId());
-    assertEquals(node1, cache.get(position1));
+    assertEquals(node1, WALEntry.deserializeForConsensus(cache.get(position1)));
     assertTrue(cache.contains(position1));
     assertTrue(cache.contains(position2));
     assertFalse(cache.contains(position3));
     // check batch load none
     cache.removeMemTable(memTable1.getMemTableId());
     cache.clear();
-    assertEquals(node1, cache.get(position1));
+    assertEquals(node1, WALEntry.deserializeForConsensus(cache.get(position1)));
     assertTrue(cache.contains(position1));
     assertFalse(cache.contains(position2));
     assertFalse(cache.contains(position3));

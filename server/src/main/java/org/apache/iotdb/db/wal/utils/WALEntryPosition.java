@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.utils;
 
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.wal.node.WALNode;
 
 import java.io.File;
@@ -33,7 +32,7 @@ import java.util.Objects;
  * some methods to read the content from the disk.
  */
 public class WALEntryPosition {
-  private static final WALInsertNodeCache CACHE = WALInsertNodeCache.getInstance();
+  private static final WALEntryCache CACHE = WALEntryCache.getInstance();
   private volatile String identifier = "";
   private volatile long walFileVersionId = -1;
   private volatile long position;
@@ -52,8 +51,8 @@ public class WALEntryPosition {
     this.size = size;
   }
 
-  /** Read the wal entry and parse it to the InsertNode. Use LRU cache to accelerate read. */
-  public InsertNode readInsertNodeViaCache() throws IOException {
+  /** Read the wal entry buffer. Use LRU cache to accelerate read. */
+  public ByteBuffer readByteBufferViaCache() throws IOException {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }

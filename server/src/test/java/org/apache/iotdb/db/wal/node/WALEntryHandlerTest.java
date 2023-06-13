@@ -33,8 +33,8 @@ import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
+import org.apache.iotdb.db.wal.utils.WALEntryCache;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
-import org.apache.iotdb.db.wal.utils.WALInsertNodeCache;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -93,7 +93,7 @@ public class WALEntryHandlerTest {
     config.setClusterMode(prevIsClusterMode);
     EnvironmentUtils.cleanDir(logDirectory1);
     EnvironmentUtils.cleanDir(logDirectory2);
-    WALInsertNodeCache.getInstance().clear();
+    WALEntryCache.getInstance().clear();
   }
 
   @Test(expected = MemTablePinException.class)

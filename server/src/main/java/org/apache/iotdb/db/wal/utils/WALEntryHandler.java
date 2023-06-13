@@ -18,14 +18,20 @@
  */
 package org.apache.iotdb.db.wal.utils;
 
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.db.wal.node.WALNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
 
 /**
  * This handler is used by the Pipe to find the corresponding insert node. Besides, it can try to
@@ -34,7 +40,7 @@ import org.slf4j.LoggerFactory;
 public class WALEntryHandler {
   private static final Logger logger = LoggerFactory.getLogger(WALEntryHandler.class);
 
-  private long memTableId = -1;
+  private final long memTableId;
   /** cached value, null after this value is flushed to wal successfully */
   private volatile WALEntryValue value;
   /** wal entry's position in the wal, valid after the value is flushed to wal successfully */
@@ -42,8 +48,9 @@ public class WALEntryHandler {
   /** wal node, null when wal is disabled */
   private WALNode walNode = null;
 
-  public WALEntryHandler(WALEntryValue value) {
+  public WALEntryHandler(WALEntryValue value, long memTableId) {
     this.value = value;
+    this.memTableId = memTableId;
   }
 
   /**
@@ -82,6 +89,34 @@ public class WALEntryHandler {
         throw new WALPipeException("Fail to get value because the entry type isn't InsertNode.");
       }
     }
+
+    ByteBuffer buffer = getRawValue();
+    PlanNode node = WALEntry.deserializeForConsensus(buffer);
+    if (node instanceof InsertNode) {
+      return (InsertNode) node;
+    } else {
+      return null;
+    }
+  }
+
+  /** Get this handler's raw value */
+  public ByteBuffer getRawValue() throws WALPipeException {
+    // return local cache
+    WALEntryValue res = value;
+    if (res != null) {
+      if (res instanceof InsertNode) {
+        WALInfoEntry entry = new WALInfoEntry(memTableId, value);
+        int size = entry.serializedSize();
+        ByteBuffer buffer = ByteBuffer.allocate(size);
+        IWALByteBufferView view = new RawByteBufferView(buffer);
+        entry.serialize(view);
+        buffer.clear();
+        return buffer;
+      } else {
+        throw new WALPipeException("Fail to get value because the entry type isn't InsertNode.");
+      }
+    }
+
     // wait until the position is ready
     while (!walEntryPosition.canRead()) {
       try {
@@ -94,26 +129,22 @@ public class WALEntryHandler {
       }
     }
     // read from the wal file
-    InsertNode node = null;
+    ByteBuffer buffer;
     try {
-      node = walEntryPosition.readInsertNodeViaCache();
+      buffer = walEntryPosition.readByteBufferViaCache();
     } catch (Exception e) {
       throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
     }
 
-    if (node == null) {
+    if (buffer == null) {
       throw new WALPipeException(
           String.format("Fail to get the wal value of the position %s.", walEntryPosition));
     }
-    return node;
+    return buffer;
   }
 
   public long getMemTableId() {
     return memTableId;
-  }
-
-  public void setMemTableId(long memTableId) {
-    this.memTableId = memTableId;
   }
 
   public void setWalNode(WALNode walNode) {

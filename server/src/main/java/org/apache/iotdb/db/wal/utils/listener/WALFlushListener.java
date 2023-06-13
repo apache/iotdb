@@ -26,9 +26,9 @@ public class WALFlushListener extends AbstractResultListener {
   // handler for pipeline, only exists then value is InsertNode
   private final WALEntryHandler walEntryHandler;
 
-  public WALFlushListener(boolean wait, WALEntryValue value) {
+  public WALFlushListener(boolean wait, WALEntryValue value, long memTableId) {
     super(wait);
-    walEntryHandler = new WALEntryHandler(value);
+    walEntryHandler = new WALEntryHandler(value, memTableId);
   }
 
   public WALEntryHandler getWalEntryHandler() {
