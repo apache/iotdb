@@ -168,6 +168,7 @@ public class PageReader implements IPageReader {
   }
 
   public void updateBPTP(ChunkSuit4CPV chunkSuit4CPV) {
+    long start = System.nanoTime();
     deleteCursor = 0; // TODO DEBUG
     Statistics statistics = null;
     switch (dataType) {
@@ -187,6 +188,7 @@ public class PageReader implements IPageReader {
     int count = 0; // update here, not in statistics
     for (int pos = chunkSuit4CPV.startPos; pos <= chunkSuit4CPV.endPos; pos++) {
       IOMonitor.incPointsTravered();
+      IOMonitor2.DCP_D_traversedPointNum++;
       long timestamp = timeBuffer.getLong(pos * 8);
       switch (dataType) {
         case INT64:
@@ -229,6 +231,7 @@ public class PageReader implements IPageReader {
     } else {
       chunkSuit4CPV.statistics.setCount(0); // otherwise count won't be zero
     }
+    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
   }
 
   /** @return the returned BatchData may be empty, but never be null */

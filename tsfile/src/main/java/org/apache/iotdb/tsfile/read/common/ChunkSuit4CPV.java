@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.StepRegress;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 import java.io.IOException;
@@ -245,10 +246,12 @@ public class ChunkSuit4CPV {
    * @return the position of the point, starting from 0
    */
   public int updateFPwithTheClosetPointEqualOrAfter(long targetTimestamp) throws IOException {
+    long start = System.nanoTime();
+    int estimatedPos;
     if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
-      int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+      estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
 
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or larger
       // than the given timestamp
@@ -256,15 +259,18 @@ public class ChunkSuit4CPV {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
           estimatedPos++;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         }
       } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         }
         if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
           estimatedPos++;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         } // else equal
       } // else equal
       this.startPos = estimatedPos; // note this
@@ -298,16 +304,16 @@ public class ChunkSuit4CPV {
         default:
           throw new IOException("Unsupported data type!");
       }
-      return estimatedPos;
     } else {
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or larger
       // than the given timestamp
-      int estimatedPos = -1;
+      estimatedPos = -1;
       pageReader.timeBuffer.position(0);
       pageReader.valueBuffer.position(pageReader.timeBufferLength);
       while (pageReader.timeBuffer.remaining() > 0) {
         estimatedPos++;
         IOMonitor.incPointsTravered();
+        IOMonitor2.DCP_D_traversedPointNum++;
         long t = pageReader.timeBuffer.getLong();
         if (t >= targetTimestamp) {
           break;
@@ -346,6 +352,8 @@ public class ChunkSuit4CPV {
       }
       return estimatedPos;
     }
+    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_b_genFP, System.nanoTime() - start);
+    return estimatedPos;
   }
 
   /**
@@ -356,10 +364,12 @@ public class ChunkSuit4CPV {
    * @return the position of the point, starting from 0
    */
   public int updateLPwithTheClosetPointEqualOrBefore(long targetTimestamp) throws IOException {
+    long start = System.nanoTime();
+    int estimatedPos;
     if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
-      int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+      estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
 
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
       // than the given timestamp
@@ -367,15 +377,18 @@ public class ChunkSuit4CPV {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         }
       } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
           estimatedPos++;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         }
         if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         } // else equal
       } // else equal
       this.endPos = estimatedPos; // note this
@@ -413,12 +426,13 @@ public class ChunkSuit4CPV {
     } else {
       // to find the closet timestamp equal to or smaller
       // than the given timestamp
-      int estimatedPos = -1;
+      estimatedPos = -1;
       pageReader.timeBuffer.position(0);
       pageReader.valueBuffer.position(pageReader.timeBufferLength);
       while (pageReader.timeBuffer.remaining() > 0) {
         estimatedPos++;
         IOMonitor.incPointsTravered();
+        IOMonitor2.DCP_D_traversedPointNum++;
         long t = pageReader.timeBuffer.getLong();
         if (t >= targetTimestamp) {
           break;
@@ -426,6 +440,7 @@ public class ChunkSuit4CPV {
       }
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         IOMonitor.incPointsTravered();
+        IOMonitor2.DCP_D_traversedPointNum++;
         estimatedPos--;
       } // else equals no need to minus 1
 
@@ -460,8 +475,9 @@ public class ChunkSuit4CPV {
         default:
           throw new IOException("Unsupported data type!");
       }
-      return estimatedPos;
     }
+    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_b_genLP, System.nanoTime() - start);
+    return estimatedPos;
   }
 
   /**
@@ -471,6 +487,8 @@ public class ChunkSuit4CPV {
    * @return true if exists; false not exist
    */
   public boolean checkIfExist(long targetTimestamp) throws IOException {
+    long start = System.nanoTime();
+    boolean exist;
     if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
@@ -483,22 +501,25 @@ public class ChunkSuit4CPV {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         }
       } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
           estimatedPos++;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         }
         if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         } // else equal
       } // else equal
 
       // since we have constrained that targetTimestamp must be within the chunk time range
       // [startTime, endTime],
       // estimatedPos will not be out of range.
-      return pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
+      exist = pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
     } else {
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
       // than the given timestamp
@@ -510,6 +531,7 @@ public class ChunkSuit4CPV {
         if (!flag) {
           estimatedPos++;
           IOMonitor.incPointsTravered();
+          IOMonitor2.DCP_D_traversedPointNum++;
         }
         long t = pageReader.timeBuffer.getLong();
         if (t >= targetTimestamp) {
@@ -520,8 +542,10 @@ public class ChunkSuit4CPV {
       // since we have constrained that targetTimestamp must be within the chunk time range
       // [startTime, endTime],
       // estimatedPos will not be out of range.
-      return pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
+      exist = pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
     }
+    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_a_verifBPTP, System.nanoTime() - start);
+    return exist;
   }
 
   public void updateFP(MinMaxInfo point) {

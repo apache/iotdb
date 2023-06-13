@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class IOMonitor2 {
+
   public enum DataSetType { // dataSet, executor, reader, file
     NONE,
     RawQueryDataSetWithoutValueFilter,
@@ -33,12 +31,21 @@ public class IOMonitor2 {
   public enum Operation {
     DCP_Server_Query_Execute("DCP_Server_Query_Execute"),
     DCP_Server_Query_Fetch("DCP_Server_Query_Fetch"),
-    DCP_SeriesScanOperator_hasNext("DCP_SeriesScanOperator_hasNext"),
     DCP_A_GET_CHUNK_METADATAS("DCP_A_GET_CHUNK_METADATAS"),
     DCP_B_READ_MEM_CHUNK("DCP_B_READ_MEM_CHUNK"),
     DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA(
         "DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA"),
-    DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS("DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS");
+    DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS("DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS"),
+    SEARCH_ARRAY_a_verifBPTP("SEARCH_ARRAY_a_verifBPTP"),
+    SEARCH_ARRAY_b_genFP("SEARCH_ARRAY_b_genFP"),
+    SEARCH_ARRAY_b_genLP("SEARCH_ARRAY_b_genLP"),
+    SEARCH_ARRAY_c_genBPTP("SEARCH_ARRAY_c_genBPTP"),
+    M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS("M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS"),
+    M4_LSM_MERGE_M4_TIME_SPAN("M4_LSM_MERGE_M4_TIME_SPAN"),
+    M4_LSM_FP("M4_LSM_FP"),
+    M4_LSM_LP("M4_LSM_LP"),
+    M4_LSM_BP("M4_LSM_BP"),
+    M4_LSM_TP("M4_LSM_TP");
 
     public String getName() {
       return name;
@@ -51,22 +58,13 @@ public class IOMonitor2 {
     }
   }
 
-  /**
-   * [Raw data query metrics] - server端execute&fetch的次数和耗时 -
-   * SeriesScanOperator.hasNext的次数和耗时（问题：root.hasNext执行次数等于decode
-   * page次数，但是SeriesScanOperator.hasNext次数大于那个次数？破案了：是root.isFinished->SeriesScanOperator.isFinished里面调用了hasNext，和root.hasNext里调用SeriesScanOperator.hasNext的次数加起来就对了。）
-   * - A：从磁盘解读chunk元数据的次数和耗时 - B：从磁盘加载chunk数据的次数和耗时 - C：解压缩所有page构造pageReaderList的次数和耗时 -
-   * D：解码page并遍历点的次数和耗时 （遍历点数不用统计，因为一定是全量点）
-   */
-  public static int DCP_Server_Query_Execute_count = 0;
+  public static DataSetType dataSetType = DataSetType.NONE;
 
+  public static int DCP_Server_Query_Execute_count = 0;
   public static long DCP_Server_Query_Execute_ns = 0;
 
   public static int DCP_Server_Query_Fetch_count = 0;
   public static long DCP_Server_Query_Fetch_ns = 0;
-
-  public static int DCP_SeriesScanOperator_hasNext_count = 0;
-  public static long DCP_SeriesScanOperator_hasNext_ns = 0;
 
   public static int DCP_A_GET_CHUNK_METADATAS_count = 0;
   public static long DCP_A_GET_CHUNK_METADATAS_ns = 0;
@@ -77,24 +75,48 @@ public class IOMonitor2 {
   public static int DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_count = 0;
   public static long DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns = 0;
 
+  public static long DCP_D_traversedPointNum = 0;
   public static int DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count = 0;
   public static long DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns = 0;
 
-  public static long DCP_D_traversedPointNum = 0;
+  public static int SEARCH_ARRAY_a_verifBPTP_count = 0;
+  public static long SEARCH_ARRAY_a_verifBPTP_ns = 0;
 
-  public static DataSetType dataSetType = DataSetType.NONE;
+  public static int SEARCH_ARRAY_b_genFP_count = 0;
+  public static long SEARCH_ARRAY_b_genFP_ns = 0;
 
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("IOMonitor2");
+  public static int SEARCH_ARRAY_b_genLP_count = 0;
+  public static long SEARCH_ARRAY_b_genLP_ns = 0;
+
+  public static int SEARCH_ARRAY_c_genBPTP_count = 0;
+  public static long SEARCH_ARRAY_c_genBPTP_ns = 0;
+
+  public static int M4_LSM_init_loadAllChunkMetadatas_count = 0;
+  public static long M4_LSM_init_loadAllChunkMetadatas_ns = 0;
+
+  public static int M4_LSM_merge_M4_time_span_count = 0;
+  public static long M4_LSM_merge_M4_time_span_ns = 0;
+
+  public static int M4_LSM_FP_count = 0;
+  public static long M4_LSM_FP_ns = 0;
+
+  public static int M4_LSM_LP_count = 0;
+  public static long M4_LSM_LP_ns = 0;
+
+  public static int M4_LSM_BP_count = 0;
+  public static long M4_LSM_BP_ns = 0;
+
+  public static int M4_LSM_TP_count = 0;
+  public static long M4_LSM_TP_ns = 0;
 
   private static void reset() {
+    dataSetType = DataSetType.NONE;
+
     DCP_Server_Query_Execute_count = 0;
     DCP_Server_Query_Execute_ns = 0;
 
     DCP_Server_Query_Fetch_count = 0;
     DCP_Server_Query_Fetch_ns = 0;
-
-    DCP_SeriesScanOperator_hasNext_count = 0;
-    DCP_SeriesScanOperator_hasNext_ns = 0;
 
     DCP_A_GET_CHUNK_METADATAS_count = 0;
     DCP_A_GET_CHUNK_METADATAS_ns = 0;
@@ -105,17 +127,39 @@ public class IOMonitor2 {
     DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_count = 0;
     DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns = 0;
 
+    DCP_D_traversedPointNum = 0;
     DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count = 0;
     DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns = 0;
 
-    DCP_D_traversedPointNum = 0;
+    SEARCH_ARRAY_a_verifBPTP_count = 0;
+    SEARCH_ARRAY_a_verifBPTP_ns = 0;
+    SEARCH_ARRAY_b_genFP_count = 0;
+    SEARCH_ARRAY_b_genFP_ns = 0;
+    SEARCH_ARRAY_b_genLP_count = 0;
+    SEARCH_ARRAY_b_genLP_ns = 0;
+    SEARCH_ARRAY_c_genBPTP_count = 0;
+    SEARCH_ARRAY_c_genBPTP_ns = 0;
 
-    dataSetType = DataSetType.NONE;
+    M4_LSM_init_loadAllChunkMetadatas_count = 0;
+    M4_LSM_init_loadAllChunkMetadatas_ns = 0;
+
+    M4_LSM_merge_M4_time_span_count = 0;
+    M4_LSM_merge_M4_time_span_ns = 0;
+
+    M4_LSM_FP_count = 0;
+    M4_LSM_FP_ns = 0;
+
+    M4_LSM_LP_count = 0;
+    M4_LSM_LP_ns = 0;
+
+    M4_LSM_BP_count = 0;
+    M4_LSM_BP_ns = 0;
+
+    M4_LSM_TP_count = 0;
+    M4_LSM_TP_ns = 0;
   }
 
   public static void addMeasure(Operation operation, long elapsedTimeInNanosecond) {
-    // TODO tmp for debug
-    // DEBUG_LOGGER.info(operation.getName() + ": " + elapsedTimeInNanosecond + " ns");
     switch (operation) {
       case DCP_Server_Query_Execute:
         DCP_Server_Query_Execute_count++;
@@ -124,10 +168,6 @@ public class IOMonitor2 {
       case DCP_Server_Query_Fetch:
         DCP_Server_Query_Fetch_count++;
         DCP_Server_Query_Fetch_ns += elapsedTimeInNanosecond;
-        break;
-      case DCP_SeriesScanOperator_hasNext:
-        DCP_SeriesScanOperator_hasNext_count++;
-        DCP_SeriesScanOperator_hasNext_ns += elapsedTimeInNanosecond;
         break;
       case DCP_A_GET_CHUNK_METADATAS:
         DCP_A_GET_CHUNK_METADATAS_count++;
@@ -145,6 +185,46 @@ public class IOMonitor2 {
         DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count++;
         DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns += elapsedTimeInNanosecond;
         break;
+      case SEARCH_ARRAY_a_verifBPTP:
+        SEARCH_ARRAY_a_verifBPTP_count++;
+        SEARCH_ARRAY_a_verifBPTP_ns += elapsedTimeInNanosecond;
+        break;
+      case SEARCH_ARRAY_b_genFP:
+        SEARCH_ARRAY_b_genFP_count++;
+        SEARCH_ARRAY_b_genFP_ns += elapsedTimeInNanosecond;
+        break;
+      case SEARCH_ARRAY_b_genLP:
+        SEARCH_ARRAY_b_genLP_count++;
+        SEARCH_ARRAY_b_genLP_ns += elapsedTimeInNanosecond;
+        break;
+      case SEARCH_ARRAY_c_genBPTP:
+        SEARCH_ARRAY_c_genBPTP_count++;
+        SEARCH_ARRAY_c_genBPTP_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS:
+        M4_LSM_init_loadAllChunkMetadatas_count++;
+        M4_LSM_init_loadAllChunkMetadatas_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_MERGE_M4_TIME_SPAN:
+        M4_LSM_merge_M4_time_span_count++;
+        M4_LSM_merge_M4_time_span_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_FP:
+        M4_LSM_FP_count++;
+        M4_LSM_FP_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_LP:
+        M4_LSM_LP_count++;
+        M4_LSM_LP_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_BP:
+        M4_LSM_BP_count++;
+        M4_LSM_BP_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_TP:
+        M4_LSM_TP_count++;
+        M4_LSM_TP_ns += elapsedTimeInNanosecond;
+        break;
       default:
         System.out.println("not supported operation type"); // this will not happen
         break;
@@ -161,10 +241,6 @@ public class IOMonitor2 {
         DCP_Server_Query_Fetch_count += count;
         DCP_Server_Query_Fetch_ns += elapsedTimeInNanosecond;
         break;
-      case DCP_SeriesScanOperator_hasNext:
-        DCP_SeriesScanOperator_hasNext_count += count;
-        DCP_SeriesScanOperator_hasNext_ns += elapsedTimeInNanosecond;
-        break;
       case DCP_A_GET_CHUNK_METADATAS:
         DCP_A_GET_CHUNK_METADATAS_count += count;
         DCP_A_GET_CHUNK_METADATAS_ns += elapsedTimeInNanosecond;
@@ -180,6 +256,46 @@ public class IOMonitor2 {
       case DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS:
         DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count += count;
         DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns += elapsedTimeInNanosecond;
+        break;
+      case SEARCH_ARRAY_a_verifBPTP:
+        SEARCH_ARRAY_a_verifBPTP_count += count;
+        SEARCH_ARRAY_a_verifBPTP_ns += elapsedTimeInNanosecond;
+        break;
+      case SEARCH_ARRAY_b_genFP:
+        SEARCH_ARRAY_b_genFP_count += count;
+        SEARCH_ARRAY_b_genFP_ns += elapsedTimeInNanosecond;
+        break;
+      case SEARCH_ARRAY_b_genLP:
+        SEARCH_ARRAY_b_genLP_count += count;
+        SEARCH_ARRAY_b_genLP_ns += elapsedTimeInNanosecond;
+        break;
+      case SEARCH_ARRAY_c_genBPTP:
+        SEARCH_ARRAY_c_genBPTP_count += count;
+        SEARCH_ARRAY_c_genBPTP_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS:
+        M4_LSM_init_loadAllChunkMetadatas_count += count;
+        M4_LSM_init_loadAllChunkMetadatas_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_MERGE_M4_TIME_SPAN:
+        M4_LSM_merge_M4_time_span_count += count;
+        M4_LSM_merge_M4_time_span_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_FP:
+        M4_LSM_FP_count += count;
+        M4_LSM_FP_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_LP:
+        M4_LSM_LP_count += count;
+        M4_LSM_LP_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_BP:
+        M4_LSM_BP_count += count;
+        M4_LSM_BP_ns += elapsedTimeInNanosecond;
+        break;
+      case M4_LSM_TP:
+        M4_LSM_TP_count += count;
+        M4_LSM_TP_ns += elapsedTimeInNanosecond;
         break;
       default:
         System.out.println("not supported operation type"); // this will not happen
@@ -202,21 +318,58 @@ public class IOMonitor2 {
         .append(DCP_Server_Query_Fetch_ns)
         .append("\n");
     stringBuilder
-        .append("SeriesScanOperator_hasNext_ns")
+        .append("M4_LSM_init_loadAllChunkMetadatas_ns")
         .append(",")
-        .append(DCP_SeriesScanOperator_hasNext_ns)
+        .append(M4_LSM_init_loadAllChunkMetadatas_ns)
         .append("\n");
-    stringBuilder.append("A_ns").append(",").append(DCP_A_GET_CHUNK_METADATAS_ns).append("\n");
-    stringBuilder.append("B_ns").append(",").append(DCP_B_READ_MEM_CHUNK_ns).append("\n");
     stringBuilder
-        .append("C_ns")
+        .append("M4_LSM_merge_M4_time_span_ns")
+        .append(",")
+        .append(M4_LSM_merge_M4_time_span_ns)
+        .append("\n");
+    stringBuilder.append("M4_LSM_FP_ns").append(",").append(M4_LSM_FP_ns).append("\n");
+    stringBuilder.append("M4_LSM_LP_ns").append(",").append(M4_LSM_LP_ns).append("\n");
+    stringBuilder.append("M4_LSM_BP_ns").append(",").append(M4_LSM_BP_ns).append("\n");
+    stringBuilder.append("M4_LSM_TP_ns").append(",").append(M4_LSM_TP_ns).append("\n");
+    stringBuilder
+        .append("DCP_A_GET_CHUNK_METADATAS_ns")
+        .append(",")
+        .append(DCP_A_GET_CHUNK_METADATAS_ns)
+        .append("\n");
+    stringBuilder
+        .append("DCP_B_READ_MEM_CHUNK_ns")
+        .append(",")
+        .append(DCP_B_READ_MEM_CHUNK_ns)
+        .append("\n");
+    stringBuilder
+        .append("DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns")
         .append(",")
         .append(DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns)
         .append("\n");
     stringBuilder
-        .append("D_ns")
+        .append("DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns")
         .append(",")
         .append(DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns)
+        .append("\n");
+    stringBuilder
+        .append("SEARCH_ARRAY_a_verifBPTP_ns")
+        .append(",")
+        .append(SEARCH_ARRAY_a_verifBPTP_ns)
+        .append("\n");
+    stringBuilder
+        .append("SEARCH_ARRAY_b_genFP_ns")
+        .append(",")
+        .append(SEARCH_ARRAY_b_genFP_ns)
+        .append("\n");
+    stringBuilder
+        .append("SEARCH_ARRAY_b_genLP_ns")
+        .append(",")
+        .append(SEARCH_ARRAY_b_genLP_ns)
+        .append("\n");
+    stringBuilder
+        .append("SEARCH_ARRAY_c_genBPTP_ns")
+        .append(",")
+        .append(SEARCH_ARRAY_c_genBPTP_ns)
         .append("\n");
 
     stringBuilder
@@ -230,21 +383,58 @@ public class IOMonitor2 {
         .append(DCP_Server_Query_Fetch_count)
         .append("\n");
     stringBuilder
-        .append("SeriesScanOperator_hasNext_cnt")
+        .append("M4_LSM_init_loadAllChunkMetadatas_cnt")
         .append(",")
-        .append(DCP_SeriesScanOperator_hasNext_count)
+        .append(M4_LSM_init_loadAllChunkMetadatas_count)
         .append("\n");
-    stringBuilder.append("A_cnt").append(",").append(DCP_A_GET_CHUNK_METADATAS_count).append("\n");
-    stringBuilder.append("B_cnt").append(",").append(DCP_B_READ_MEM_CHUNK_count).append("\n");
     stringBuilder
-        .append("C_cnt")
+        .append("M4_LSM_merge_M4_time_span_cnt")
+        .append(",")
+        .append(M4_LSM_merge_M4_time_span_count)
+        .append("\n");
+    stringBuilder.append("M4_LSM_FP_cnt").append(",").append(M4_LSM_FP_count).append("\n");
+    stringBuilder.append("M4_LSM_LP_cnt").append(",").append(M4_LSM_LP_count).append("\n");
+    stringBuilder.append("M4_LSM_BP_cnt").append(",").append(M4_LSM_BP_count).append("\n");
+    stringBuilder.append("M4_LSM_TP_cnt").append(",").append(M4_LSM_TP_count).append("\n");
+    stringBuilder
+        .append("DCP_A_GET_CHUNK_METADATAS_cnt")
+        .append(",")
+        .append(DCP_A_GET_CHUNK_METADATAS_count)
+        .append("\n");
+    stringBuilder
+        .append("DCP_B_READ_MEM_CHUNK_cnt")
+        .append(",")
+        .append(DCP_B_READ_MEM_CHUNK_count)
+        .append("\n");
+    stringBuilder
+        .append("DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt")
         .append(",")
         .append(DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_count)
         .append("\n");
     stringBuilder
-        .append("D_cnt")
+        .append("DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_cnt")
         .append(",")
         .append(DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count)
+        .append("\n");
+    stringBuilder
+        .append("SEARCH_ARRAY_a_verifBPTP_cnt")
+        .append(",")
+        .append(SEARCH_ARRAY_a_verifBPTP_count)
+        .append("\n");
+    stringBuilder
+        .append("SEARCH_ARRAY_b_genFP_cnt")
+        .append(",")
+        .append(SEARCH_ARRAY_b_genFP_count)
+        .append("\n");
+    stringBuilder
+        .append("SEARCH_ARRAY_b_genLP_cnt")
+        .append(",")
+        .append(SEARCH_ARRAY_b_genLP_count)
+        .append("\n");
+    stringBuilder
+        .append("SEARCH_ARRAY_c_genBPTP_cnt")
+        .append(",")
+        .append(SEARCH_ARRAY_c_genBPTP_count)
         .append("\n");
     stringBuilder
         .append("DCP_D_traversedPointNum")

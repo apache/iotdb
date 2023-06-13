@@ -38,6 +38,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.ChunkSuit4CPV;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -93,6 +95,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       TsFileFilter fileFilter,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
+    long start = System.nanoTime();
 
     this.tsDataType = dataType;
     //    this.mergeReader = new PriorityMergeReader();
@@ -225,6 +228,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
     }
+
+    IOMonitor2.addMeasure(Operation.M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS, System.nanoTime() - start);
   }
 
   @Override
@@ -309,16 +314,29 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       result.reset();
     }
 
+    long start = System.nanoTime();
     getCurrentChunkListFromFutureChunkList(curStartTime, curEndTime, startTime, endTime, interval);
+    IOMonitor2.addMeasure(Operation.M4_LSM_MERGE_M4_TIME_SPAN, System.nanoTime() - start);
 
     if (currentChunkList.size() == 0) {
       return results;
     }
 
+    start = System.nanoTime();
     calculateFirstPoint(currentChunkList, startTime, endTime, interval, curStartTime);
+    IOMonitor2.addMeasure(Operation.M4_LSM_FP, System.nanoTime() - start);
+
+    start = System.nanoTime();
     calculateLastPoint(currentChunkList, startTime, endTime, interval, curStartTime);
+    IOMonitor2.addMeasure(Operation.M4_LSM_LP, System.nanoTime() - start);
+
+    start = System.nanoTime();
     calculateBottomPoint(currentChunkList, startTime, endTime, interval, curStartTime);
+    IOMonitor2.addMeasure(Operation.M4_LSM_BP, System.nanoTime() - start);
+
+    start = System.nanoTime();
     calculateTopPoint(currentChunkList, startTime, endTime, interval, curStartTime);
+    IOMonitor2.addMeasure(Operation.M4_LSM_TP, System.nanoTime() - start);
 
     return results;
   }
