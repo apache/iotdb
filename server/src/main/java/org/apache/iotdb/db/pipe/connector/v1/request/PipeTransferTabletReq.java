@@ -203,11 +203,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       }
 
       request.setPrefixPath(tablet.deviceId);
-      if (PipeRequestType.valueOf(type) == PipeRequestType.TRANSFER_ALIGNED_TABLET) {
-        request.setIsAligned(true);
-      } else {
-        request.setIsAligned(false);
-      }
+      request.setIsAligned(PipeRequestType.valueOf(type) == PipeRequestType.TRANSFER_ALIGNED_TABLET);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);
