@@ -26,12 +26,12 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import java.io.IOException;
 import java.util.List;
 
-public class OverlapOnlyCompactionValidator implements CompactionValidator {
+public class ResourceOnlyCompactionValidator implements CompactionValidator {
 
-  private OverlapOnlyCompactionValidator() {}
+  private ResourceOnlyCompactionValidator() {}
 
-  public static OverlapOnlyCompactionValidator getInstance() {
-    return OverlapOnlyCompactionValidatorHolder.INSTANCE;
+  public static ResourceOnlyCompactionValidator getInstance() {
+    return ResourceOnlyCompactionValidatorHolder.INSTANCE;
   }
 
   @Override
@@ -44,8 +44,8 @@ public class OverlapOnlyCompactionValidator implements CompactionValidator {
     return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition);
   }
 
-  private static class OverlapOnlyCompactionValidatorHolder {
-    private static final OverlapOnlyCompactionValidator INSTANCE =
-        new OverlapOnlyCompactionValidator();
+  private static class ResourceOnlyCompactionValidatorHolder {
+    private static final ResourceOnlyCompactionValidator INSTANCE =
+        new ResourceOnlyCompactionValidator();
   }
 }

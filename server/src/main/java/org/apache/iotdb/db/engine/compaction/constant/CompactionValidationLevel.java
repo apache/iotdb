@@ -21,6 +21,6 @@ package org.apache.iotdb.db.engine.compaction.constant;
 
 public enum CompactionValidationLevel {
   NONE,
-  OVERLAP_ONLY,
-  OVERLAP_AND_FILE
+  RESOURCE_ONLY,
+  RESOURCE_AND_TSFILE
 }

@@ -41,10 +41,10 @@ public interface CompactionValidator {
     switch (level) {
       case NONE:
         return NoneCompactionValidator.getInstance();
-      case OVERLAP_ONLY:
-        return OverlapOnlyCompactionValidator.getInstance();
+      case RESOURCE_ONLY:
+        return ResourceOnlyCompactionValidator.getInstance();
       default:
-        return OverlapAndFileCompactionValidator.getInstance();
+        return ResourceAndTsfileCompactionValidator.getInstance();
     }
   }
 }
