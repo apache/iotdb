@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
@@ -47,20 +48,17 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
   private final PipeProcessorSubtask pipeProcessorSubtask;
 
   /**
-   * @param pipeName pipe name
-   * @param creationTime pipe creation time
-   * @param pipeProcessorParameters used to create pipe processor
+   * @param pipeStaticMeta static meta
    * @param regionId data region id
    * @param pipeCollectorInputEventSupplier used to input events from pipe collector
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
    */
   public PipeTaskProcessorStage(
-      String pipeName,
-      long creationTime,
-      PipeParameters pipeProcessorParameters,
+      PipeStaticMeta pipeStaticMeta,
       TConsensusGroupId regionId,
       EventSupplier pipeCollectorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
+    final PipeParameters pipeProcessorParameters = pipeStaticMeta.getProcessorParameters();
     final PipeProcessor pipeProcessor =
         pipeProcessorParameters
                 .getStringOrDefault(
@@ -79,13 +77,13 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskRuntimeEnvironment(pipeName, creationTime, regionId));
+              new PipeTaskRuntimeEnvironment(pipeStaticMeta, regionId));
       pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
 
-    final String taskId = pipeName + "_" + regionId;
+    final String taskId = pipeStaticMeta.getPipeName() + "_" + regionId;
     final PipeEventCollector pipeConnectorOutputEventCollector =
         new PipeEventCollector(pipeConnectorOutputPendingQueue);
     this.pipeProcessorSubtask =

@@ -20,29 +20,27 @@
 package org.apache.iotdb.db.pipe.config.plugin.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 
 public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
 
-  private final String pipeName;
-  private final long creationTime;
+  private final PipeStaticMeta pipeStaticMeta;
   private final TConsensusGroupId regionId;
 
-  public PipeTaskRuntimeEnvironment(
-      String pipeName, long creationTime, TConsensusGroupId regionId) {
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
+  public PipeTaskRuntimeEnvironment(PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId) {
+    this.pipeStaticMeta = pipeStaticMeta;
     this.regionId = regionId;
   }
 
   @Override
   public String getPipeName() {
-    return pipeName;
+    return pipeStaticMeta.getPipeName();
   }
 
   @Override
   public long getCreationTime() {
-    return creationTime;
+    return pipeStaticMeta.getCreationTime();
   }
 
   public TConsensusGroupId getRegionId() {

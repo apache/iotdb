@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.collector;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
@@ -54,6 +55,9 @@ public class CachedSchemaPatternMatcherTest {
   private List<PipeRealtimeDataRegionCollector> collectorList;
   private final TConsensusGroupId dataRegionId =
       new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
+  private final PipeTaskCollectorRuntimeEnvironment environment =
+      new PipeTaskCollectorRuntimeEnvironment(
+          new PipeStaticMeta("1", 1, null, null, null), dataRegionId, null);
 
   @Before
   public void setUp() {
@@ -77,8 +81,7 @@ public class CachedSchemaPatternMatcherTest {
                 put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root");
               }
             }),
-        new PipeTaskRuntimeConfiguration(
-            new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegionId, null)));
+        new PipeTaskRuntimeConfiguration(environment));
     collectorList.add(databaseCollector);
 
     int deviceCollectorNum = 10;
@@ -93,8 +96,7 @@ public class CachedSchemaPatternMatcherTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, "root." + finalI1);
                 }
               }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegionId, null)));
+          new PipeTaskRuntimeConfiguration(environment));
       collectorList.add(deviceCollector);
       for (int j = 0; j < seriesCollectorNum; j++) {
         PipeRealtimeDataRegionCollector seriesCollector = new PipeRealtimeDataRegionFakeCollector();
@@ -109,8 +111,7 @@ public class CachedSchemaPatternMatcherTest {
                         "root." + finalI + "." + finalJ);
                   }
                 }),
-            new PipeTaskRuntimeConfiguration(
-                new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegionId, null)));
+            new PipeTaskRuntimeConfiguration(environment));
         collectorList.add(seriesCollector);
       }
     }

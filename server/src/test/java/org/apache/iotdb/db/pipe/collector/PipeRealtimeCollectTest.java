@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -71,6 +72,13 @@ public class PipeRealtimeCollectTest {
       new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
   private final TConsensusGroupId dataRegion2 =
       new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
+  private final PipeTaskCollectorRuntimeEnvironment environment1 =
+      new PipeTaskCollectorRuntimeEnvironment(
+          new PipeStaticMeta("1", 1, null, null, null), dataRegion1, null);
+  private final PipeTaskCollectorRuntimeEnvironment environment2 =
+      new PipeTaskCollectorRuntimeEnvironment(
+          new PipeStaticMeta("2", 1, null, null, null), dataRegion2, null);
+
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
   private final String[] device = new String[] {"root", "sg", "d"};
@@ -122,8 +130,7 @@ public class PipeRealtimeCollectTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                 }
               }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegion1, null)));
+          new PipeTaskRuntimeConfiguration(environment1));
       collector2.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -131,8 +138,7 @@ public class PipeRealtimeCollectTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                 }
               }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegion1, null)));
+          new PipeTaskRuntimeConfiguration(environment1));
       collector3.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -140,8 +146,7 @@ public class PipeRealtimeCollectTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                 }
               }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegion2, null)));
+          new PipeTaskRuntimeConfiguration(environment2));
       collector4.customize(
           new PipeParameters(
               new HashMap<String, String>() {
@@ -149,8 +154,7 @@ public class PipeRealtimeCollectTest {
                   put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                 }
               }),
-          new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment("1", 1, dataRegion2, null)));
+          new PipeTaskRuntimeConfiguration(environment2));
 
       PipeRealtimeDataRegionCollector[] collectors =
           new PipeRealtimeDataRegionCollector[] {collector1, collector2, collector3, collector4};

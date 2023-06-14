@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.config.plugin.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 public class PipeTaskCollectorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
@@ -27,8 +28,8 @@ public class PipeTaskCollectorRuntimeEnvironment extends PipeTaskRuntimeEnvironm
   private final PipeTaskMeta pipeTaskMeta;
 
   public PipeTaskCollectorRuntimeEnvironment(
-      String pipeName, long creationTime, TConsensusGroupId regionId, PipeTaskMeta pipeTaskMeta) {
-    super(pipeName, creationTime, regionId);
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, PipeTaskMeta pipeTaskMeta) {
+    super(pipeStaticMeta, regionId);
     this.pipeTaskMeta = pipeTaskMeta;
   }
 

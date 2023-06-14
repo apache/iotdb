@@ -21,12 +21,14 @@ package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -38,11 +40,9 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
   private final PipeCollector pipeCollector;
 
   public PipeTaskCollectorStage(
-      String pipeName,
-      long creationTime,
-      PipeParameters collectorParameters,
-      TConsensusGroupId regionId,
-      PipeTaskMeta pipeTaskMeta) {
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, PipeTaskMeta pipeTaskMeta) {
+    final PipeParameters collectorParameters = pipeStaticMeta.getCollectorParameters();
+
     // TODO: avoid if-else, use reflection to create collector all the time
     this.pipeCollector =
         collectorParameters
@@ -62,8 +62,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       // 2. customize collector
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
-                  pipeName, creationTime, regionId, pipeTaskMeta));
+              new PipeTaskCollectorRuntimeEnvironment(pipeStaticMeta, regionId, pipeTaskMeta));
       pipeCollector.customize(collectorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
