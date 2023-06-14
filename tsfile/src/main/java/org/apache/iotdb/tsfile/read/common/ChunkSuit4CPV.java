@@ -422,7 +422,6 @@ public class ChunkSuit4CPV {
         default:
           throw new IOException("Unsupported data type!");
       }
-      return estimatedPos;
     } else {
       // to find the closet timestamp equal to or smaller
       // than the given timestamp
