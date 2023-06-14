@@ -72,12 +72,11 @@ public class PipeRealtimeCollectTest {
       new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
   private final TConsensusGroupId dataRegion2 =
       new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
+
   private final PipeTaskCollectorRuntimeEnvironment environment1 =
-      new PipeTaskCollectorRuntimeEnvironment(
-          new PipeStaticMeta("1", 1, null, null, null), dataRegion1, null);
+      new PipeTaskCollectorRuntimeEnvironment(null, dataRegion1, null);
   private final PipeTaskCollectorRuntimeEnvironment environment2 =
-      new PipeTaskCollectorRuntimeEnvironment(
-          new PipeStaticMeta("2", 1, null, null, null), dataRegion2, null);
+      new PipeTaskCollectorRuntimeEnvironment(null, dataRegion2, null);
 
   private final String pattern1 = "root.sg.d";
   private final String pattern2 = "root.sg.d.a";
