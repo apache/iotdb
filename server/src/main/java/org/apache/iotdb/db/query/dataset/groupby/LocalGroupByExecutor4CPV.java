@@ -240,6 +240,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
   private void getCurrentChunkListFromFutureChunkList(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException {
+    IOMonitor2.M4_LSM_status = Operation.M4_LSM_MERGE_M4_TIME_SPAN;
+
     // empty currentChunkList
     currentChunkList = new ArrayList<>();
 
@@ -348,6 +350,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       long interval,
       long curStartTime)
       throws IOException {
+    IOMonitor2.M4_LSM_status = Operation.M4_LSM_BP;
     // check size>0 because after updateBPTP because empty ChunkSuit4CPV will be removed from
     // currentChunkList
     while (currentChunkList.size() > 0) { // loop 1
@@ -542,6 +545,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       long interval,
       long curStartTime)
       throws IOException {
+    IOMonitor2.M4_LSM_status = Operation.M4_LSM_TP;
     // check size>0 because after updateBPTP empty ChunkSuit4CPV will be removed from
     // currentChunkList
     while (currentChunkList.size() > 0) { // loop 1
@@ -742,6 +746,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       long interval,
       long curStartTime)
       throws IOException {
+    IOMonitor2.M4_LSM_status = Operation.M4_LSM_FP;
     while (currentChunkList.size() > 0) { // loop 1
       // sorted by startTime and version, find FP candidate
       currentChunkList.sort(
@@ -852,6 +857,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       long interval,
       long curStartTime)
       throws IOException {
+    IOMonitor2.M4_LSM_status = Operation.M4_LSM_LP;
     while (currentChunkList.size() > 0) { // loop 1
       // sorted by endTime and version, find LP candidate
       currentChunkList.sort(
