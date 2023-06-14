@@ -129,7 +129,7 @@ public class SizeTieredCompactionSelector
           selectedFileSize);
       // if the file size or file num reach threshold
       if (selectedFileSize >= targetCompactionFileSize
-          || selectedFileList.size() >= config.getMaxInnerCompactionCandidateFileNum()) {
+          || selectedFileList.size() >= config.getFileLimitPerInnerTask()) {
         // submit the task
         if (selectedFileList.size() > 1) {
           taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));

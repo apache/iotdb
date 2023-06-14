@@ -188,6 +188,10 @@ public class AuthUtils {
         case START_TRIGGER:
         case STOP_TRIGGER:
         case APPLY_TEMPLATE:
+        case CREATE_VIEW:
+        case ALTER_VIEW:
+        case RENAME_VIEW:
+        case DELETE_VIEW:
           return;
         default:
           throw new AuthException(
@@ -203,6 +207,10 @@ public class AuthUtils {
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
         case ALTER_TIMESERIES:
+        case CREATE_VIEW:
+        case ALTER_VIEW:
+        case RENAME_VIEW:
+        case DELETE_VIEW:
           validatePath(path);
           return;
         default:
