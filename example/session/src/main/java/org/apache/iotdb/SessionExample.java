@@ -74,19 +74,19 @@ public class SessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    try {
-      session.createDatabase("root.sg1");
-    } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-        throw e;
-      }
-    }
-
-    //     createTemplate();
-    createTimeseries();
-    createMultiTimeseries();
-    insertRecord();
-    insertTablet();
+//    try {
+//      session.createDatabase("root.sg1");
+//    } catch (StatementExecutionException e) {
+//      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+//        throw e;
+//      }
+//    }
+//
+//    //     createTemplate();
+//    createTimeseries();
+//    createMultiTimeseries();
+//    insertRecord();
+//    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
     //    insertRecords();
@@ -94,27 +94,27 @@ public class SessionExample {
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    query();
+//    query();
     //    queryWithTimeout();
     rawDataQuery();
-    lastDataQuery();
-    aggregationQuery();
-    groupByQuery();
+//    lastDataQuery();
+//    aggregationQuery();
+//    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
     //    setTimeout();
 
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
-
-    // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
-
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
+//    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+//    sessionEnableRedirect.setEnableQueryRedirection(true);
+//    sessionEnableRedirect.open(false);
+//
+//    // set session fetchSize
+//    sessionEnableRedirect.setFetchSize(10000);
+//
+//    insertRecord4Redirect();
+//    query4Redirect();
+//    sessionEnableRedirect.close();
     session.close();
   }
 
@@ -759,7 +759,7 @@ public class SessionExample {
     long endTime = 200L;
     long timeOut = 60000;
 
-    try (SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
+    try (SessionDataSet dataSet = session.executeRawDataQuery(null, startTime, endTime, timeOut)) {
 
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024);
