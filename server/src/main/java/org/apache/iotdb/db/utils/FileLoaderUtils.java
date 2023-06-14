@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.IOMonitor;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -144,8 +143,7 @@ public class FileLoaderUtils {
         return null;
       }
     }
-    long duration = System.nanoTime() - start;
-    IOMonitor.incMeta(duration);
+    //    IOMonitor.incMeta(duration);
     IOMonitor2.addMeasure(Operation.DCP_A_GET_CHUNK_METADATAS, System.nanoTime() - start);
     return timeSeriesMetadata;
   }
@@ -168,7 +166,7 @@ public class FileLoaderUtils {
    */
   public static List<IPageReader> loadPageReaderList(ChunkMetadata chunkMetaData, Filter timeFilter)
       throws IOException {
-    long start = System.nanoTime();
+    //    long start = System.nanoTime();
     if (chunkMetaData == null) {
       throw new IOException("Can't init null chunkMeta");
     }
@@ -185,8 +183,8 @@ public class FileLoaderUtils {
             new ChunkReader(chunk, timeFilter); // decompress page data, split time&value buffers
         chunkReader.hasNextSatisfiedPage();
       }
-      long duration = System.nanoTime() - start;
-      IOMonitor.incDataIOTime(duration);
+      //      long duration = System.nanoTime() - start;
+      //      IOMonitor.incDataIOTime(duration);
       return chunkReader.loadPageReaderList();
     } catch (IOException e) {
       logger.error(
@@ -203,7 +201,7 @@ public class FileLoaderUtils {
    */
   public static PageReader loadPageReaderList4CPV(ChunkMetadata chunkMetaData, Filter timeFilter)
       throws IOException {
-    long start = System.nanoTime();
+    //    long start = System.nanoTime();
     if (chunkMetaData == null) {
       throw new IOException("Can't init null chunkMeta");
     }
@@ -220,8 +218,8 @@ public class FileLoaderUtils {
             new ChunkReader(chunk, timeFilter); // decompress page data, split time&value buffers
         chunkReader.hasNextSatisfiedPage();
       }
-      long duration = System.nanoTime() - start;
-      IOMonitor.incDataIOTime(duration);
+      //      long duration = System.nanoTime() - start;
+      //      IOMonitor.incDataIOTime(duration);
       List<IPageReader> pageReaderList = chunkReader.loadPageReaderList();
       if (pageReaderList.size() > 1) {
         // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,

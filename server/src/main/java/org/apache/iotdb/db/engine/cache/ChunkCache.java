@@ -26,7 +26,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.IOMonitor;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -84,7 +83,7 @@ public class ChunkCache {
                     Chunk ret = reader.readMemChunk(chunkMetadata);
                     IOMonitor2.addMeasure(
                         Operation.DCP_B_READ_MEM_CHUNK, System.nanoTime() - start);
-                    IOMonitor.incReadMemChunkTime(System.nanoTime() - start);
+                    //                    IOMonitor.incReadMemChunkTime(System.nanoTime() - start);
                     return ret;
                   } catch (IOException e) {
                     logger.error("Something wrong happened in reading {}", chunkMetadata, e);

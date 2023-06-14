@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.ChunkSuit4CPV;
-import org.apache.iotdb.tsfile.read.common.IOMonitor;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -122,13 +121,11 @@ public class PageReader implements IPageReader {
       Map<Integer, List<ChunkSuit4CPV>> splitChunkList,
       ChunkMetadata chunkMetadata)
       throws IOException { // note: [startTime,endTime), [curStartTime,curEndTime)
-    //    int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval); // global
-    // index
+    // endTime is excluded so -1
     int numberOfSpans =
         (int)
                 Math.floor(
-                    (Math.min(chunkMetadata.getEndTime(), endTime - 1) // endTime is excluded so -1
-                            - curStartTime)
+                    (Math.min(chunkMetadata.getEndTime(), endTime - 1) - curStartTime)
                         * 1.0
                         / interval)
             + 1;
@@ -148,7 +145,7 @@ public class PageReader implements IPageReader {
         LP_pos = chunkSuit4CPV.updateLPwithTheClosetPointEqualOrBefore(rightEndExcluded - 1);
       }
       if (FP_pos != -1 && LP_pos != -1 && FP_pos > LP_pos) {
-        // means the chunk has no point in this span, do nothing
+        // means the chunk has no point in this span, do nothing.
         continue;
       } else { // add this chunkSuit4CPV into currentChunkList or splitChunkList
         if (n == 0) {
@@ -187,7 +184,7 @@ public class PageReader implements IPageReader {
     // [startPos,endPos] definitely for curStartTime interval, thanks to split4CPV
     int count = 0; // update here, not in statistics
     for (int pos = chunkSuit4CPV.startPos; pos <= chunkSuit4CPV.endPos; pos++) {
-      IOMonitor.incPointsTravered();
+      //      IOMonitor.incPointsTravered();
       IOMonitor2.DCP_D_traversedPointNum++;
       long timestamp = timeBuffer.getLong(pos * 8);
       switch (dataType) {
@@ -242,7 +239,7 @@ public class PageReader implements IPageReader {
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
 
     while (timeDecoder.hasNext(timeBuffer)) {
-      IOMonitor.incPointsTravered();
+      //      IOMonitor.incPointsTravered();
       IOMonitor2.DCP_D_traversedPointNum++;
       long timestamp = timeDecoder.readLong(timeBuffer);
       switch (dataType) {

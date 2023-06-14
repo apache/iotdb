@@ -127,7 +127,6 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.IOMonitor;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -670,8 +669,9 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSExecuteFinishResp executeFinish() throws TException {
     TSExecuteFinishResp ret = new TSExecuteFinishResp();
     ret.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    ret.setExecutionInfo(IOMonitor.print() + "\n" + IOMonitor2.print());
-    IOMonitor.finish();
+    //    ret.setExecutionInfo(IOMonitor.print() + "\n" + IOMonitor2.print());
+    //    IOMonitor.finish();
+    ret.setExecutionInfo(IOMonitor2.print()); // reset is called at the end of IOMonitor2.print()
     return ret;
   }
 
@@ -724,8 +724,8 @@ public class TSServiceImpl implements TSIService.Iface {
           TException, AuthException {
 
     // start record execution time
-    IOMonitor.setSQL(statement);
-    long start = System.nanoTime();
+    //    IOMonitor.setSQL(statement);
+    //    long start = System.nanoTime();
     queryCount.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
@@ -836,8 +836,8 @@ public class TSServiceImpl implements TSIService.Iface {
         queryTimeManager.unRegisterQuery(queryId);
       }
 
-      IOMonitor.incTotalTime(System.nanoTime() - start);
-      IOMonitor.reset();
+      //      IOMonitor.incTotalTime(System.nanoTime() - start);
+      //      IOMonitor.reset();
       return resp;
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(queryId);
