@@ -3,14 +3,14 @@ name: Grafana plugin build
 on:
   push:
     branches:
-      - master
+      - grafana_plugin
       - "new_*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
   pull_request:
     branches:
-      - master
+      - grafana_plugin
       - "new_*"
     paths-ignore:
       - 'docs/**'
@@ -63,3 +63,21 @@ jobs:
         run: |
           cd iotdb-connector/grafana-plugin/
           ./backend-compile.sh
+
+      - name: Sign grafana plugin
+        run: npx @grafana/sign-plugin@latest
+        env:
+          GRAFANA_API_KEY: ${{ secrets.GRAFANA_PLUGIN_TOKEN }}
+
+      - name: Package plugin
+        run: |
+          cd iotdb-connector/grafana-plugin
+          mv dist apache-iotdb-datasource
+          zip -r apache-iotdb-datasource.zip apache-iotdb-datasource
+
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: apache-iotdb-datasource
+          path: iotdb-connector/grafana-plugin/apache-iotdb-datasource.zip
