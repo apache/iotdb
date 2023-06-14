@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -37,13 +36,13 @@ public abstract class EnrichedEvent implements Event {
 
   private final AtomicInteger referenceCount;
 
-  private final PipeTaskMeta pipeTaskMeta;
+  private final PipeStaticMeta pipeStaticMeta;
 
   private final String pattern;
 
-  public EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
-    referenceCount = new AtomicInteger(0);
-    this.pipeTaskMeta = pipeTaskMeta;
+  public EnrichedEvent(PipeStaticMeta pipeStaticMeta, String pattern) {
+    this.referenceCount = new AtomicInteger(0);
+    this.pipeStaticMeta = pipeStaticMeta;
     this.pattern = pattern;
   }
 
@@ -104,8 +103,8 @@ public abstract class EnrichedEvent implements Event {
   public abstract boolean decreaseResourceReferenceCount(String holderMessage);
 
   private void reportProgress() {
-    if (pipeTaskMeta != null) {
-      pipeTaskMeta.updateProgressIndex(getProgressIndex());
+    if (pipeStaticMeta != null) {
+      PipeAgent.runtime().report(pipeStaticMeta, getProgressIndex());
     }
   }
 
@@ -129,10 +128,10 @@ public abstract class EnrichedEvent implements Event {
     return pattern == null ? PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
-  public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern);
+  public abstract EnrichedEvent shallowCopySelfAndBindPipeStaticMetaForProgressReport(
+      PipeStaticMeta pipeStaticMeta, String pattern);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
-    PipeAgent.runtime().report(this.pipeTaskMeta, pipeRuntimeException);
+    PipeAgent.runtime().report(this.pipeStaticMeta, pipeRuntimeException);
   }
 }

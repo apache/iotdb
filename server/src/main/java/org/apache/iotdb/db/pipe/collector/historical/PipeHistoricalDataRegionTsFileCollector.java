@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.collector.historical;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -58,7 +59,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileCollector.class);
 
-  private PipeTaskMeta pipeTaskMeta;
+  private PipeStaticMeta pipeStaticMeta;
   private ProgressIndex startIndex;
 
   private DataRegionId dataRegionId;
@@ -83,7 +84,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
     final PipeTaskCollectorRuntimeEnvironment environment =
         (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
-    pipeTaskMeta = environment.getPipeTaskMeta();
+    pipeStaticMeta = environment.getPipeStaticMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
     dataRegionId =
@@ -192,7 +193,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                     resource ->
                         new PipeTsFileInsertionEvent(
                             resource,
-                            pipeTaskMeta,
+                            pipeStaticMeta,
                             pattern,
                             historicalDataCollectionStartTime,
                             historicalDataCollectionEndTime))
@@ -208,7 +209,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                     resource ->
                         new PipeTsFileInsertionEvent(
                             resource,
-                            pipeTaskMeta,
+                            pipeStaticMeta,
                             pattern,
                             historicalDataCollectionStartTime,
                             historicalDataCollectionEndTime))

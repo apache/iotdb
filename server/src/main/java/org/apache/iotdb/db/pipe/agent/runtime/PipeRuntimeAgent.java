@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -98,14 +100,18 @@ public class PipeRuntimeAgent implements IService {
             simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
   }
 
-  //////////////////////////// Runtime Exception Handlers ////////////////////////////
+  //////////////////////////// Runtime report ////////////////////////////
 
-  public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
+  public void report(PipeStaticMeta pipeStaticMeta, ProgressIndex progressIndex) {
+    // TODO:
+  }
+
+  public void report(PipeStaticMeta pipeStaticMeta, PipeRuntimeException pipeRuntimeException) {
     LOGGER.warn(
         String.format(
-            "PipeRuntimeException: pipe task meta %s, exception %s",
-            pipeTaskMeta, pipeRuntimeException),
+            "PipeRuntimeException: pipe static meta %s, exception %s",
+            pipeStaticMeta, pipeRuntimeException),
         pipeRuntimeException);
-    pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+    //    pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
   }
 }

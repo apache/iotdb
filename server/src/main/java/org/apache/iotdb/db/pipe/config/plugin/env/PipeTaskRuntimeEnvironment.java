@@ -46,4 +46,8 @@ public class PipeTaskRuntimeEnvironment implements PipeRuntimeEnvironment {
   public TConsensusGroupId getRegionId() {
     return regionId;
   }
+
+  public PipeStaticMeta getPipeStaticMeta() {
+    return pipeStaticMeta;
+  }
 }

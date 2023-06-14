@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -56,9 +57,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
       ProgressIndex progressIndex,
-      PipeTaskMeta pipeTaskMeta,
+      PipeStaticMeta pipeStaticMeta,
       String pattern) {
-    super(pipeTaskMeta, pattern);
+    super(pipeStaticMeta, pattern);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
   }
@@ -106,10 +107,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+  public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeStaticMetaForProgressReport(
+      PipeStaticMeta pipeStaticMeta, String pattern) {
     return new PipeInsertNodeTabletInsertionEvent(
-        walEntryHandler, progressIndex, pipeTaskMeta, pattern);
+        walEntryHandler, progressIndex, pipeStaticMeta, pattern);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

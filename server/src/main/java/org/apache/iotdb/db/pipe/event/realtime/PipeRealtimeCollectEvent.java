@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.collector.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -57,12 +57,12 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
       EnrichedEvent event,
       TsFileEpoch tsFileEpoch,
       Map<String, String[]> device2Measurements,
-      PipeTaskMeta pipeTaskMeta,
+      PipeStaticMeta pipeStaticMeta,
       String pattern) {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
     // is only used in the realtime event collector, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(pipeTaskMeta, pattern);
+    super(pipeStaticMeta, pattern);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -119,13 +119,13 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
-  public PipeRealtimeCollectEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
+  public PipeRealtimeCollectEvent shallowCopySelfAndBindPipeStaticMetaForProgressReport(
+      PipeStaticMeta pipeStaticMeta, String pattern) {
     return new PipeRealtimeCollectEvent(
-        event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta, pattern),
+        event.shallowCopySelfAndBindPipeStaticMetaForProgressReport(pipeStaticMeta, pattern),
         this.tsFileEpoch,
         this.device2Measurements,
-        pipeTaskMeta,
+        pipeStaticMeta,
         pattern);
   }
 

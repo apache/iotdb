@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.collector.realtime;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
@@ -31,9 +32,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
 
-  protected String pattern;
-  protected String dataRegionId;
-  protected PipeTaskMeta pipeTaskMeta;
+  private String pattern;
+  private String dataRegionId;
+  private PipeStaticMeta pipeStaticMeta;
 
   public PipeRealtimeDataRegionCollector() {}
 
@@ -51,7 +52,7 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
     final PipeTaskCollectorRuntimeEnvironment environment =
         (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();
     dataRegionId = String.valueOf(environment.getRegionId().getId());
-    pipeTaskMeta = environment.getPipeTaskMeta();
+    pipeStaticMeta = environment.getPipeStaticMeta();
   }
 
   @Override
@@ -75,8 +76,8 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
     return pattern;
   }
 
-  public final PipeTaskMeta getPipeTaskMeta() {
-    return pipeTaskMeta;
+  public final PipeStaticMeta getPipeStaticMeta() {
+    return pipeStaticMeta;
   }
 
   @Override

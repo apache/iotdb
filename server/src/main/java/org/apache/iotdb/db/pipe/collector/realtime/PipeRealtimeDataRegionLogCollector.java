@@ -90,7 +90,7 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
                     + "the data represented by this event is lost",
                 collectEvent.getEvent());
         LOGGER.warn(errorMessage);
-        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        PipeAgent.runtime().report(getPipeStaticMeta(), new PipeRuntimeNonCriticalException(errorMessage));
       }
 
       collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogCollector.class.getName());

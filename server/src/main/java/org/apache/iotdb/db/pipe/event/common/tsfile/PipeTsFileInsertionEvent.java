@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -58,11 +59,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
-      PipeTaskMeta pipeTaskMeta,
+      PipeStaticMeta pipeStaticMeta,
       String pattern,
       long startTime,
       long endTime) {
-    super(pipeTaskMeta, pattern);
+    super(pipeStaticMeta, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -151,9 +152,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern, startTime, endTime);
+  public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeStaticMetaForProgressReport(
+      PipeStaticMeta pipeStaticMeta, String pattern) {
+    return new PipeTsFileInsertionEvent(resource, pipeStaticMeta, pattern, startTime, endTime);
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
