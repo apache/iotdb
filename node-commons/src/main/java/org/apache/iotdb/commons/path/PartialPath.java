@@ -114,6 +114,15 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return false;
   }
 
+  public boolean hasMultiLevelMatchWildcard() {
+    for (String node : nodes) {
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * it will return a new partial path
    *
