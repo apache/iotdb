@@ -89,8 +89,9 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   protected void doCompaction() throws Exception {
     try {
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost);
-    } catch (InterruptedException e) {
+    } catch (Exception e) {
       logger.error("Thread get interrupted when allocating memory for compaction", e);
+      releaseAllLock();
       return;
     }
     try {
