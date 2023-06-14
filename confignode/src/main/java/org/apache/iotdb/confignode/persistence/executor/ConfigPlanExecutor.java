@@ -494,7 +494,7 @@ public class ConfigPlanExecutor {
       Pair<Set<TSchemaNode>, Set<PartialPath>> matchedChildInNextLevel =
           clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
       alreadyMatchedNode = matchedChildInNextLevel.left;
-      if (partialPath.hasMultiLevelMatchWildcard()) {
+      if (!partialPath.hasMultiLevelMatchWildcard()) {
         needMatchedNode = new HashSet<>();
         for (PartialPath databasePath : matchedChildInNextLevel.right) {
           if (databasePath.getNodeLength() == partialPath.getNodeLength() + 1) {
