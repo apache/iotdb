@@ -10,7 +10,7 @@ public class TimestampPrecisionUtils {
 
   @FunctionalInterface
   private interface ConvertFunction<T1, T2, R> {
-    public R apply(T1 t1, T2 t2);
+    R apply(T1 t1, T2 t2);
   }
 
   private static final ConvertFunction<Long, TimeUnit, Long> convertFunction;
