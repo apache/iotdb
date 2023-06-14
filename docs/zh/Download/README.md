@@ -35,7 +35,7 @@
             <td rowspan="2"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.1.1/apache-iotdb-1.1.1-source-release.zip">源代码</a></td>
             <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.1.1/apache-iotdb-1.1.1-source-release.zip.sha512">SHA512</a></td>
             <td rowspan="2"><a href="https://downloads.apache.org/iotdb/1.1.1/apache-iotdb-1.1.1-source-release.zip.asc">ASC</a></td>
-            <td rowspan="2"><a href="https://archive.apache.org/dist/iotdb/1.1.1/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="2"><a href="https://dlcdn.apache.org/iotdb/1.1.1/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/1.1.1/apache-iotdb-1.1.1-grafana-plugin-bin.zip">Grafana 插件</a></td>
