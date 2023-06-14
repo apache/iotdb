@@ -238,7 +238,7 @@ public class MTreeBelowSGMemoryImpl {
 
       if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+            "timeseries under this device is aligned, please use createAlignedTimeseries or change device.",
             device.getFullPath());
       }
 
@@ -318,7 +318,7 @@ public class MTreeBelowSGMemoryImpl {
 
       if (device.isDevice() && !device.getAsDeviceMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+            "Timeseries under this device is not aligned, please use createTimeseries or change device.",
             devicePath.getFullPath());
       }
 
