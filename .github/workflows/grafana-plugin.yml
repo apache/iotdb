@@ -65,7 +65,7 @@ jobs:
           ./backend-compile.sh
 
       - name: Sign grafana plugin
-        run: npx @grafana/sign-plugin@latest
+        run: npx @grafana/sign-plugin@latest --distDir iotdb-connector/grafana-plugin/dist
         env:
           GRAFANA_API_KEY: ${{ secrets.GRAFANA_PLUGIN_TOKEN }}
 
