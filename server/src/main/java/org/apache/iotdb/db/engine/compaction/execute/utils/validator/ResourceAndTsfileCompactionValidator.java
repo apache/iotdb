@@ -30,7 +30,7 @@ public class ResourceAndTsfileCompactionValidator implements CompactionValidator
 
   private ResourceAndTsfileCompactionValidator() {}
 
-  public static org.apache.iotdb.db.engine.compaction.execute.utils.validator.ResourceAndTsfileCompactionValidator getInstance() {
+  public static ResourceAndTsfileCompactionValidator getInstance() {
     return ResourceAndTsfileCompactionValidatorHolder.INSTANCE;
   }
 
@@ -46,7 +46,7 @@ public class ResourceAndTsfileCompactionValidator implements CompactionValidator
   }
 
   private static class ResourceAndTsfileCompactionValidatorHolder {
-    private static final org.apache.iotdb.db.engine.compaction.execute.utils.validator.ResourceAndTsfileCompactionValidator INSTANCE =
-        new org.apache.iotdb.db.engine.compaction.execute.utils.validator.ResourceAndTsfileCompactionValidator();
+    private static final ResourceAndTsfileCompactionValidator INSTANCE =
+        new ResourceAndTsfileCompactionValidator();
   }
 }
