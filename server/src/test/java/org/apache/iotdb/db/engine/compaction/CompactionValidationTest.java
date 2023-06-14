@@ -133,7 +133,7 @@ public class CompactionValidationTest {
   }
 
   @Test
-  public void testSingleCompleteFile() throws IOException {
+  public void testSingleCompleteFile() {
     String path = dir + File.separator + "test.tsfile";
     writeOneFile(path);
     TsFileResource mockTsFile = Mockito.mock(TsFileResource.class);
@@ -142,7 +142,7 @@ public class CompactionValidationTest {
   }
 
   @Test
-  public void testMultiCompleteFile() throws IOException {
+  public void testMultiCompleteFile() {
     List<TsFileResource> resources = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       String path = dir + File.separator + "test" + i + ".tsfile";

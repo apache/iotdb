@@ -40,11 +40,11 @@ public interface CompactionValidator {
         IoTDBDescriptor.getInstance().getConfig().getCompactionValidationLevel();
     switch (level) {
       case NONE:
-        return new NoneCompactionValidator();
+        return NoneCompactionValidator.getInstance();
       case OVERLAP_ONLY:
-        return new OverlapOnlyCompactionValidator();
+        return OverlapOnlyCompactionValidator.getInstance();
       default:
-        return new OverlapAndFileCompactionValidator();
+        return OverlapAndFileCompactionValidator.getInstance();
     }
   }
 }

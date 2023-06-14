@@ -25,6 +25,13 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import java.util.List;
 
 public class NoneCompactionValidator implements CompactionValidator {
+
+  private NoneCompactionValidator() {}
+
+  public static NoneCompactionValidator getInstance() {
+    return NoneCompactionValidatorHolder.INSTANCE;
+  }
+
   @Override
   public boolean validateCompaction(
       TsFileManager manager,
@@ -32,5 +39,9 @@ public class NoneCompactionValidator implements CompactionValidator {
       String storageGroupName,
       long timePartition) {
     return true;
+  }
+
+  private static class NoneCompactionValidatorHolder {
+    private static final NoneCompactionValidator INSTANCE = new NoneCompactionValidator();
   }
 }

@@ -333,10 +333,8 @@ public class CompactionUtils {
    *
    * @param tsFileResourceList the tsfiles to be checked
    * @return true if all tsfiles are valid, false if any of the tsfiles is invalid
-   * @throws IOException if an I/O error occurs
    */
-  public static boolean validateTsFiles(List<TsFileResource> tsFileResourceList)
-      throws IOException {
+  public static boolean validateTsFiles(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!validateSingleTsFiles(tsFileResource)) {
         return false;

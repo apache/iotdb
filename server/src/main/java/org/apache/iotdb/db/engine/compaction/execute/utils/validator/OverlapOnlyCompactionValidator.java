@@ -27,6 +27,13 @@ import java.io.IOException;
 import java.util.List;
 
 public class OverlapOnlyCompactionValidator implements CompactionValidator {
+
+  private OverlapOnlyCompactionValidator() {}
+
+  public static OverlapOnlyCompactionValidator getInstance() {
+    return OverlapOnlyCompactionValidatorHolder.INSTANCE;
+  }
+
   @Override
   public boolean validateCompaction(
       TsFileManager manager,
@@ -35,5 +42,10 @@ public class OverlapOnlyCompactionValidator implements CompactionValidator {
       long timePartition)
       throws IOException {
     return CompactionUtils.validateTsFileResources(manager, storageGroupName, timePartition);
+  }
+
+  private static class OverlapOnlyCompactionValidatorHolder {
+    private static final OverlapOnlyCompactionValidator INSTANCE =
+        new OverlapOnlyCompactionValidator();
   }
 }
