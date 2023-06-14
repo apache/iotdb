@@ -176,9 +176,7 @@ public class ClusterSchemaTree implements ISchemaTree {
     if (cur == null) {
       return indexOfTargetMeasurements;
     }
-    if (cur.isEntity()) {
-      schemaComputation.computeDevice(cur.getAsEntityNode().isAligned());
-    }
+    boolean firstNonViewMeasurement = true;
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     SchemaNode node;
     for (int index : indexOfTargetMeasurements) {
@@ -186,6 +184,12 @@ public class ClusterSchemaTree implements ISchemaTree {
       if (node == null) {
         indexOfMissingMeasurements.add(index);
       } else {
+        if (firstNonViewMeasurement) {
+          if (!node.getAsMeasurementNode().isLogicalView()) {
+            schemaComputation.computeDevice(cur.getAsEntityNode().isAligned());
+            firstNonViewMeasurement = false;
+          }
+        }
         schemaComputation.computeMeasurement(index, node.getAsMeasurementNode());
       }
     }
