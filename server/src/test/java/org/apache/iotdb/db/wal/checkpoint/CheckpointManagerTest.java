@@ -114,6 +114,7 @@ public class CheckpointManagerTest {
     for (Future<Void> future : futures) {
       future.get();
     }
+    executorService.shutdown();
     // check first valid version id
     assertEquals(memTablesNum / 2, checkpointManager.getFirstValidWALVersionId());
     // recover info from checkpoint file
