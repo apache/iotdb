@@ -174,6 +174,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
           }
 
           pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
+          needWriteConsensusOnConfigNodes = true;
 
           if (exception instanceof PipeRuntimeCriticalException) {
             final String pipeName = pipeMetaOnConfigNode.getStaticMeta().getPipeName();
@@ -184,9 +185,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
                 .equals(PipeStatus.STOPPED)) {
               pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
 
-              needWriteConsensusOnConfigNodes = true;
               needPushPipeMetaToDataNodes = true;
-
               LOGGER.warn(
                   String.format(
                       "Detect PipeRuntimeCriticalException %s from DataNode, stop pipe %s.",
@@ -226,9 +225,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
                                               pipeMetaOnConfigNode.getStaticMeta().getPipeName())));
                             }
 
-                            needWriteConsensusOnConfigNodes = true;
                             needPushPipeMetaToDataNodes = true;
-
                             LOGGER.warn(
                                 String.format(
                                     "Detect PipeRuntimeConnectorCriticalException %s from DataNode, stop pipe %s.",
