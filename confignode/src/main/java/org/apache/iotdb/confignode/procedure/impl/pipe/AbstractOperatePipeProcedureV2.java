@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -208,13 +209,17 @@ public abstract class AbstractOperatePipeProcedureV2
                 .flatMap(
                     resp ->
                         Stream.concat(
-                            Stream.of(resp.status.getMessage()),
+                            resp.status.isSetMessage()
+                                ? Stream.of(resp.status.getMessage())
+                                : Stream.empty(),
                             resp.messageEntries.stream()
                                 .map(
                                     entry ->
                                         String.format(
                                             "Pipe %s failed because %s",
-                                            entry.pipeStaticMeta, entry.message))))
+                                            PipeStaticMeta.deserialize(entry.pipeStaticMeta)
+                                                .getPipeName(),
+                                            entry.message))))
                 .distinct()
                 .collect(Collectors.joining("; ")));
   }
