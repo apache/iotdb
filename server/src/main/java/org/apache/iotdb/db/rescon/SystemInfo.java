@@ -282,10 +282,20 @@ public class SystemInfo {
       return;
     }
     long originSize = this.compactionMemoryCost.get();
+    long waittingTime = 0L;
     while (originSize + memoryCost > memorySizeForCompaction
         || !compactionMemoryCost.compareAndSet(originSize, originSize + memoryCost)) {
       Thread.sleep(100);
       originSize = this.compactionMemoryCost.get();
+      waittingTime += 100L;
+      if (waittingTime >= 60_000L) {
+        throw new RuntimeException(
+            "Cannot get enough memory for compaction, want "
+                + memoryCost
+                + " bytes but only "
+                + (memorySizeForCompaction - compactionMemoryCost.get())
+                + " bytes left.");
+      }
     }
   }
 
