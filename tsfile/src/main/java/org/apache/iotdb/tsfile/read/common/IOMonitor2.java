@@ -451,124 +451,143 @@ public class IOMonitor2 {
 
   public static String print() {
     StringBuilder stringBuilder = new StringBuilder();
-    // [1] is client elapsed time, not measured by the server side
+    // [1-cnt] is client elapsed time, not measured by the server side
     stringBuilder
-        .append("[2]Server_Query_Execute_ns_cnt")
+        .append("[2-ns]Server_Query_Execute")
         .append(",")
         .append(DCP_Server_Query_Execute_ns)
-        .append(",")
-        .append(DCP_Server_Query_Execute_count)
         .append("\n");
     stringBuilder
-        .append("[2]Server_Query_Fetch_ns_cnt")
+        .append("[2-ns]Server_Query_Fetch")
         .append(",")
         .append(DCP_Server_Query_Fetch_ns)
-        .append(",")
-        .append(DCP_Server_Query_Fetch_count)
         .append("\n");
 
     stringBuilder.append("[3]dataSetType").append(",").append(dataSetType).append("\n");
     stringBuilder
-        .append("[3]M4_LSM_init_loadAllChunkMetadatas_ns_cnt")
+        .append("[3-ns]M4_LSM_init_loadAllChunkMetadatas")
         .append(",")
         .append(M4_LSM_init_loadAllChunkMetadatas_ns)
+        .append("\n");
+    stringBuilder
+        .append("[3-ns]M4_LSM_merge_M4_time_span")
+        .append(",")
+        .append(M4_LSM_merge_M4_time_span_ns)
+        .append("\n");
+    stringBuilder.append("[3-ns]M4_LSM_FP").append(",").append(M4_LSM_FP_ns).append("\n");
+    stringBuilder.append("[3-ns]M4_LSM_LP").append(",").append(M4_LSM_LP_ns).append("\n");
+    stringBuilder.append("[3-ns]M4_LSM_BP").append(",").append(M4_LSM_BP_ns).append("\n");
+    stringBuilder.append("[3-ns]M4_LSM_TP").append(",").append(M4_LSM_TP_ns).append("\n");
+
+    stringBuilder
+        .append("[4-ns]DCP_A_GET_CHUNK_METADATAS")
+        .append(",")
+        .append(DCP_A_GET_CHUNK_METADATAS_ns)
+        .append("\n");
+    stringBuilder
+        .append("[4-ns]DCP_B_READ_MEM_CHUNK")
+        .append(",")
+        .append(DCP_B_READ_MEM_CHUNK_ns)
+        .append("\n");
+    stringBuilder
+        .append("[4-ns]DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA")
+        .append(",")
+        .append(DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns)
+        .append("\n");
+    stringBuilder
+        .append("[4-ns]DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS")
+        .append(",")
+        .append(DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns)
+        .append("\n");
+    stringBuilder
+        .append("[4-ns]SEARCH_ARRAY_a_verifBPTP")
+        .append(",")
+        .append(SEARCH_ARRAY_a_verifBPTP_ns)
+        .append("\n");
+    stringBuilder
+        .append("[4-ns]SEARCH_ARRAY_b_genFP")
+        .append(",")
+        .append(SEARCH_ARRAY_b_genFP_ns)
+        .append("\n");
+    stringBuilder
+        .append("[4-ns]SEARCH_ARRAY_b_genLP")
+        .append(",")
+        .append(SEARCH_ARRAY_b_genLP_ns)
+        .append("\n");
+    stringBuilder
+        .append("[4-ns]SEARCH_ARRAY_c_genBPTP")
+        .append(",")
+        .append(SEARCH_ARRAY_c_genBPTP_ns)
+        .append("\n");
+
+    stringBuilder
+        .append("[2-cnt]Server_Query_Execute")
+        .append(",")
+        .append(DCP_Server_Query_Execute_count)
+        .append("\n");
+    stringBuilder
+        .append("[2-cnt]Server_Query_Fetch")
+        .append(",")
+        .append(DCP_Server_Query_Fetch_count)
+        .append("\n");
+
+    stringBuilder
+        .append("[3-cnt]M4_LSM_init_loadAllChunkMetadatas")
         .append(",")
         .append(M4_LSM_init_loadAllChunkMetadatas_count)
         .append("\n");
     stringBuilder
-        .append("[3]M4_LSM_merge_M4_time_span_ns_cnt")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_ns)
+        .append("[3-cnt]M4_LSM_merge_M4_time_span")
         .append(",")
         .append(M4_LSM_merge_M4_time_span_count)
         .append("\n");
-    stringBuilder
-        .append("[3]M4_LSM_FP_ns_cnt")
-        .append(",")
-        .append(M4_LSM_FP_ns)
-        .append(",")
-        .append(M4_LSM_FP_count)
-        .append("\n");
-    stringBuilder
-        .append("[3]M4_LSM_LP_ns_cnt")
-        .append(",")
-        .append(M4_LSM_LP_ns)
-        .append(",")
-        .append(M4_LSM_LP_count)
-        .append("\n");
-    stringBuilder
-        .append("[3]M4_LSM_BP_ns_cnt")
-        .append(",")
-        .append(M4_LSM_BP_ns)
-        .append(",")
-        .append(M4_LSM_BP_count)
-        .append("\n");
-    stringBuilder
-        .append("[3]M4_LSM_TP_ns_cnt")
-        .append(",")
-        .append(M4_LSM_TP_ns)
-        .append(",")
-        .append(M4_LSM_TP_count)
-        .append("\n");
+    stringBuilder.append("[3-cnt]M4_LSM_FP").append(",").append(M4_LSM_FP_count).append("\n");
+    stringBuilder.append("[3-cnt]M4_LSM_LP").append(",").append(M4_LSM_LP_count).append("\n");
+    stringBuilder.append("[3-cnt]M4_LSM_BP").append(",").append(M4_LSM_BP_count).append("\n");
+    stringBuilder.append("[3-cnt]M4_LSM_TP").append(",").append(M4_LSM_TP_count).append("\n");
 
     stringBuilder
-        .append("[4]DCP_A_GET_CHUNK_METADATAS_ns_cnt")
-        .append(",")
-        .append(DCP_A_GET_CHUNK_METADATAS_ns)
+        .append("[4-cnt]DCP_A_GET_CHUNK_METADATAS")
         .append(",")
         .append(DCP_A_GET_CHUNK_METADATAS_count)
         .append("\n");
     stringBuilder
-        .append("[4]DCP_B_READ_MEM_CHUNK_ns_cnt")
-        .append(",")
-        .append(DCP_B_READ_MEM_CHUNK_ns)
+        .append("[4-cnt]DCP_B_READ_MEM_CHUNK")
         .append(",")
         .append(DCP_B_READ_MEM_CHUNK_count)
         .append("\n");
     stringBuilder
-        .append("[4]DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns_cnt")
-        .append(",")
-        .append(DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns)
+        .append("[4-cnt]DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA")
         .append(",")
         .append(DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_count)
         .append("\n");
     stringBuilder
-        .append("[4]DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns_cnt")
-        .append(",")
-        .append(DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns)
+        .append("[4-cnt]DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS")
         .append(",")
         .append(DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count)
         .append("\n");
     stringBuilder
-        .append("[4]SEARCH_ARRAY_a_verifBPTP_ns_cnt")
-        .append(",")
-        .append(SEARCH_ARRAY_a_verifBPTP_ns)
+        .append("[4-cnt]SEARCH_ARRAY_a_verifBPTP")
         .append(",")
         .append(SEARCH_ARRAY_a_verifBPTP_count)
         .append("\n");
     stringBuilder
-        .append("[4]SEARCH_ARRAY_b_genFP_ns_cnt")
-        .append(",")
-        .append(SEARCH_ARRAY_b_genFP_ns)
+        .append("[4-cnt]SEARCH_ARRAY_b_genFP")
         .append(",")
         .append(SEARCH_ARRAY_b_genFP_count)
         .append("\n");
     stringBuilder
-        .append("[4]SEARCH_ARRAY_b_genLP_ns_cnt")
-        .append(",")
-        .append(SEARCH_ARRAY_b_genLP_ns)
+        .append("[4-cnt]SEARCH_ARRAY_b_genLP")
         .append(",")
         .append(SEARCH_ARRAY_b_genLP_count)
         .append("\n");
     stringBuilder
-        .append("[4]SEARCH_ARRAY_c_genBPTP_ns_cnt")
-        .append(",")
-        .append(SEARCH_ARRAY_c_genBPTP_ns)
+        .append("[4-cnt]SEARCH_ARRAY_c_genBPTP")
         .append(",")
         .append(SEARCH_ARRAY_c_genBPTP_count)
         .append("\n");
     stringBuilder
-        .append("[4]DCP_D_traversedPointNum")
+        .append("[4-cnt]DCP_D_traversedPointNum")
         .append(",")
         .append(DCP_D_traversedPointNum)
         .append("\n");
