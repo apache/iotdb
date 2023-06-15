@@ -20,15 +20,12 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
-import org.apache.iotdb.db.pipe.processor.PipeDoNothingProcessor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
@@ -58,27 +55,20 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       TConsensusGroupId regionId,
       EventSupplier pipeCollectorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
-    final PipeParameters pipeProcessorParameters = pipeStaticMeta.getProcessorParameters();
-    final PipeProcessor pipeProcessor =
-        pipeProcessorParameters
-                .getStringOrDefault(
-                    PipeProcessorConstant.PROCESSOR_KEY,
-                    BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-                .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
-            ? new PipeDoNothingProcessor()
-            : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
+    final PipeParameters processorParameters = pipeStaticMeta.getProcessorParameters();
+    final PipeProcessor pipeProcessor = PipeAgent.plugin().reflectProcessor(processorParameters);
 
     // validate and customize should be called before createSubtask. this allows collector exposing
     // exceptions in advance.
     try {
       // 1. validate processor parameters
-      pipeProcessor.validate(new PipeParameterValidator(pipeProcessorParameters));
+      pipeProcessor.validate(new PipeParameterValidator(processorParameters));
 
       // 2. customize processor
       final PipeProcessorRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskRuntimeEnvironment(pipeStaticMeta, regionId));
-      pipeProcessor.customize(pipeProcessorParameters, runtimeConfiguration);
+      pipeProcessor.customize(processorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }

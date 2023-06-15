@@ -25,9 +25,13 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncConnectorImplV1_1;
+import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.processor.PipeDoNothingProcessor;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipePlugin;
@@ -193,19 +197,25 @@ public class PipePluginAgent {
   }
 
   public PipeCollector reflectCollector(PipeParameters collectorParameters) {
-    return (PipeCollector)
-        reflect(
-            collectorParameters.getStringOrDefault(
+    return collectorParameters
+            .getStringOrDefault(
                 PipeCollectorConstant.COLLECTOR_KEY,
-                BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName()));
+                BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
+            .equals(BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
+        ? new IoTDBDataRegionCollector()
+        : (PipeCollector)
+            reflect(collectorParameters.getString(PipeCollectorConstant.COLLECTOR_KEY));
   }
 
   public PipeProcessor reflectProcessor(PipeParameters processorParameters) {
-    return (PipeProcessor)
-        reflect(
-            processorParameters.getStringOrDefault(
+    return processorParameters
+            .getStringOrDefault(
                 PipeProcessorConstant.PROCESSOR_KEY,
-                BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName()));
+                BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+            .equals(BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+        ? new PipeDoNothingProcessor()
+        : (PipeProcessor)
+            reflect(processorParameters.getString(PipeProcessorConstant.PROCESSOR_KEY));
   }
 
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
@@ -213,8 +223,18 @@ public class PipePluginAgent {
       throw new PipeException(
           "Failed to reflect PipeConnector instance because 'connector' is not specified in the parameters.");
     }
-    return (PipeConnector)
-        reflect(connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY));
+
+    final String connectorKey =
+        connectorParameters.getStringOrDefault(
+            PipeConnectorConstant.CONNECTOR_KEY,
+            BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
+    if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())) {
+      return new IoTDBThriftConnectorV1();
+    } else if (connectorKey.equals(
+        BuiltinPipePlugin.IOTDB_SYNC_CONNECTOR_V_1_1.getPipePluginName())) {
+      return new IoTDBSyncConnectorImplV1_1();
+    }
+    return (PipeConnector) reflect(connectorKey);
   }
 
   private PipePlugin reflect(String pluginName) {

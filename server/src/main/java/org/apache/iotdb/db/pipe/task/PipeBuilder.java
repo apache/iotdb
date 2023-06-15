@@ -26,11 +26,19 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class PipeBuilder {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeBuilder.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final PipeMeta pipeMeta;
@@ -59,6 +67,31 @@ public class PipeBuilder {
       }
     }
 
+    if (pipeRuntimeMeta.getConsensusGroupIdToTaskMetaMap().isEmpty()) {
+      validatePipePlugin(pipeStaticMeta);
+    }
+
     return consensusGroupIdToPipeTaskMap;
+  }
+
+  private void validatePipePlugin(PipeStaticMeta pipeStaticMeta) {
+    try {
+      final PipeParameters collectorParameters = pipeStaticMeta.getCollectorParameters();
+      final PipeParameters processorParameters = pipeStaticMeta.getProcessorParameters();
+      final PipeParameters connectorParameters = pipeStaticMeta.getConnectorParameters();
+
+      PipeAgent.plugin()
+          .reflectCollector(collectorParameters)
+          .validate(new PipeParameterValidator(collectorParameters));
+      PipeAgent.plugin()
+          .reflectProcessor(processorParameters)
+          .validate(new PipeParameterValidator(processorParameters));
+      PipeAgent.plugin()
+          .reflectConnector(connectorParameters)
+          .validate(new PipeParameterValidator(connectorParameters));
+    } catch (Exception e) {
+      LOGGER.warn(String.format("Validate pipe %s error.", pipeStaticMeta.getPipeName()), e);
+      throw new PipeException(e.getMessage(), e);
+    }
   }
 }

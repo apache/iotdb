@@ -20,12 +20,9 @@
 package org.apache.iotdb.db.pipe.task.stage;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
-import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
@@ -43,14 +40,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
     final PipeParameters collectorParameters = pipeStaticMeta.getCollectorParameters();
 
     // TODO: avoid if-else, use reflection to create collector all the time
-    this.pipeCollector =
-        collectorParameters
-                .getStringOrDefault(
-                    PipeCollectorConstant.COLLECTOR_KEY,
-                    BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
-                .equals(BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
-            ? new IoTDBDataRegionCollector()
-            : PipeAgent.plugin().reflectCollector(collectorParameters);
+    this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
 
     // validate and customize should be called before createSubtask. this allows collector exposing
     // exceptions in advance.
