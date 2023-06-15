@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeDevicePathCache;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
@@ -33,13 +32,13 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.ClientSession;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.validation.constraints.NotNull;
 
 import java.util.List;
 
@@ -72,8 +71,7 @@ public class AuditLogger {
 
   @NotNull
   private static InsertRowStatement generateInsertStatement(
-      String log, String address, String username)
-      throws IoTDBConnectionException, IllegalPathException, QueryProcessException {
+      String log, String address, String username) throws IllegalPathException {
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(
         DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, username)));
@@ -110,7 +108,7 @@ public class AuditLogger {
               "",
               ClusterPartitionFetcher.getInstance(),
               SCHEMA_FETCHER);
-        } catch (IllegalPathException | IoTDBConnectionException | QueryProcessException e) {
+        } catch (IllegalPathException e) {
           logger.error("write audit log series error,", e);
         }
       }

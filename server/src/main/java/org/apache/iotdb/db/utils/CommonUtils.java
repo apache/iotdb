@@ -18,29 +18,19 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import com.google.common.base.Throwables;
-import io.airlift.airline.Cli;
-import io.airlift.airline.Help;
-import io.airlift.airline.ParseArgumentsMissingException;
-import io.airlift.airline.ParseArgumentsUnexpectedException;
-import io.airlift.airline.ParseCommandMissingException;
-import io.airlift.airline.ParseCommandUnrecognizedException;
-import io.airlift.airline.ParseOptionConversionException;
-import io.airlift.airline.ParseOptionMissingException;
-import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
-import java.util.List;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
+
+  private static final String ERROR_MSG = "data type is not consistent, input %s, registered %s";
 
   private CommonUtils() {}
 
@@ -53,78 +43,54 @@ public class CommonUtils {
         case BOOLEAN:
           return parseBoolean(value);
         case INT32:
-          try {
-            return Integer.parseInt(StringUtils.trim(value));
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
+          return Integer.parseInt(StringUtils.trim(value));
         case INT64:
-          try {
-            return Long.parseLong(StringUtils.trim(value));
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
+          return Long.parseLong(StringUtils.trim(value));
         case FLOAT:
-          float f;
-          try {
-            f = Float.parseFloat(value);
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
+          float f = Float.parseFloat(value);
           if (Float.isInfinite(f)) {
-            throw new NumberFormatException("The input float value is Infinity");
+            throw new QueryProcessException("The input float value is Infinity");
           }
           return f;
         case DOUBLE:
-          double d;
-          try {
-            d = Double.parseDouble(value);
-          } catch (NumberFormatException e) {
-            throw new NumberFormatException(
-                "data type is not consistent, input " + value + ", registered " + dataType);
-          }
+          double d = Double.parseDouble(value);
           if (Double.isInfinite(d)) {
-            throw new NumberFormatException("The input double value is Infinity");
+            throw new QueryProcessException("The input double value is Infinity");
           }
           return d;
         case TEXT:
-          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
-              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
-            if (value.length() == 1) {
-              return new Binary(value);
-            } else {
-              return new Binary(value.substring(1, value.length() - 1));
-            }
-          }
-
-          return new Binary(value);
+          return parseBinary(value);
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
     } catch (NumberFormatException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new QueryProcessException(String.format(ERROR_MSG, value, dataType));
     }
+  }
+
+  private static Binary parseBinary(String value) {
+    if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+        || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
+      if (value.length() == 1) {
+        return new Binary(value);
+      } else {
+        return new Binary(value.substring(1, value.length() - 1));
+      }
+    }
+
+    return new Binary(value);
   }
 
   public static boolean checkCanCastType(TSDataType src, TSDataType dest) {
     switch (src) {
       case INT32:
-        if (dest == TSDataType.INT64 || dest == TSDataType.FLOAT || dest == TSDataType.DOUBLE) {
-          return true;
-        }
+        return dest == TSDataType.INT64 || dest == TSDataType.FLOAT || dest == TSDataType.DOUBLE;
       case INT64:
-        if (dest == TSDataType.DOUBLE) {
-          return true;
-        }
       case FLOAT:
-        if (dest == TSDataType.DOUBLE) {
-          return true;
-        }
+        return dest == TSDataType.DOUBLE;
+      default:
+        return false;
     }
-    return false;
   }
 
   public static Object castValue(TSDataType srcDataType, TSDataType destDataType, Object value) {
@@ -137,19 +103,20 @@ public class CommonUtils {
         } else if (destDataType == TSDataType.DOUBLE) {
           value = (double) ((int) value);
         }
-        break;
+        return value;
       case INT64:
         if (destDataType == TSDataType.DOUBLE) {
           value = (double) ((long) value);
         }
-        break;
+        return value;
       case FLOAT:
         if (destDataType == TSDataType.DOUBLE) {
           value = (double) ((float) value);
         }
-        break;
+        return value;
+      default:
+        return value;
     }
-    return value;
   }
 
   public static Object castArray(TSDataType srcDataType, TSDataType destDataType, Object value) {
@@ -167,12 +134,12 @@ public class CommonUtils {
         } else if (destDataType == TSDataType.DOUBLE) {
           value = Arrays.stream((int[]) value).mapToDouble(Double::valueOf).toArray();
         }
-        break;
+        return value;
       case INT64:
         if (destDataType == TSDataType.DOUBLE) {
           value = Arrays.stream((long[]) value).mapToDouble(Double::valueOf).toArray();
         }
-        break;
+        return value;
       case FLOAT:
         if (destDataType == TSDataType.DOUBLE) {
           float[] tmp = (float[]) value;
@@ -182,33 +149,9 @@ public class CommonUtils {
           }
           value = result;
         }
-        break;
-    }
-    return value;
-  }
-
-  @TestOnly
-  public static Object parseValueForTest(TSDataType dataType, String value)
-      throws QueryProcessException {
-    try {
-      switch (dataType) {
-        case BOOLEAN:
-          return parseBoolean(value);
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TEXT:
-          return new Binary(value);
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
-      }
-    } catch (NumberFormatException e) {
-      throw new QueryProcessException(e.getMessage());
+        return value;
+      default:
+        return value;
     }
   }
 
@@ -221,49 +164,5 @@ public class CommonUtils {
       return true;
     }
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
-  }
-
-  public static int runCli(
-      List<Class<? extends Runnable>> commands,
-      String[] args,
-      String cliName,
-      String cliDescription) {
-    Cli.CliBuilder<Runnable> builder = Cli.builder(cliName);
-
-    builder.withDescription(cliDescription).withDefaultCommand(Help.class).withCommands(commands);
-
-    Cli<Runnable> parser = builder.build();
-
-    int status = 0;
-    try {
-      Runnable parse = parser.parse(args);
-      parse.run();
-    } catch (IllegalArgumentException
-        | IllegalStateException
-        | ParseArgumentsMissingException
-        | ParseArgumentsUnexpectedException
-        | ParseOptionConversionException
-        | ParseOptionMissingException
-        | ParseOptionMissingValueException
-        | ParseCommandMissingException
-        | ParseCommandUnrecognizedException e) {
-      badUse(e);
-      status = 1;
-    } catch (Exception e) {
-      err(Throwables.getRootCause(e));
-      status = 2;
-    }
-    return status;
-  }
-
-  private static void badUse(Exception e) {
-    System.out.println("node-tool: " + e.getMessage());
-    System.out.println("See 'node-tool help' or 'node-tool help <command>'.");
-  }
-
-  private static void err(Throwable e) {
-    System.err.println("error: " + e.getMessage());
-    System.err.println("-- StackTrace --");
-    System.err.println(Throwables.getStackTraceAsString(e));
   }
 }

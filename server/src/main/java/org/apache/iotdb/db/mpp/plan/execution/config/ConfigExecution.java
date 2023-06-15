@@ -21,8 +21,6 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
@@ -41,10 +39,11 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
-import org.jetbrains.annotations.NotNull;
+import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.validation.constraints.NotNull;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,8 +54,6 @@ import java.util.concurrent.ExecutorService;
 public class ConfigExecution implements IQueryExecution {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigExecution.class);
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final MPPQueryContext context;
   private final ExecutorService executor;
@@ -145,13 +142,19 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public void stop(Throwable t) {}
+  public void stop(Throwable t) {
+    // do nothing
+  }
 
   @Override
-  public void stopAndCleanup() {}
+  public void stopAndCleanup() {
+    // do nothing
+  }
 
   @Override
-  public void stopAndCleanup(Throwable t) {}
+  public void stopAndCleanup(Throwable t) {
+    // do nothing
+  }
 
   @Override
   public void cancel() {
@@ -168,10 +171,12 @@ public class ConfigExecution implements IQueryExecution {
       String message =
           statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
-    } catch (InterruptedException | ExecutionException e) {
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return new ExecutionResult(
+          context.getQueryId(),
+          RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR, e.getMessage()));
+    } catch (ExecutionException e) {
       return new ExecutionResult(
           context.getQueryId(),
           RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR, e.getMessage()));

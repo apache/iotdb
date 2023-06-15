@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.metadata.logfile;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import javax.validation.constraints.NotNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;

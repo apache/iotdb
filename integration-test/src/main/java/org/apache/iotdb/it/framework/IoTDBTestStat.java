@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.it.framework;
 
-import org.jetbrains.annotations.NotNull;
+import javax.validation.constraints.NotNull;
+
+import java.util.Objects;
 
 public class IoTDBTestStat implements Comparable<IoTDBTestStat> {
   private final String name;
@@ -33,6 +35,23 @@ public class IoTDBTestStat implements Comparable<IoTDBTestStat> {
   public int compareTo(@NotNull IoTDBTestStat o) {
     // Compare in a reverse order
     return Double.compare(o.seconds, seconds);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    IoTDBTestStat that = (IoTDBTestStat) o;
+    return Double.compare(that.seconds, seconds) == 0 && Objects.equals(name, that.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, seconds);
   }
 
   @Override

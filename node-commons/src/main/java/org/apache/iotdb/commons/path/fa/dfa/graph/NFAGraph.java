@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.dfa.DFAState;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;

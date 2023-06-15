@@ -33,7 +33,6 @@
         <iotdb.test.skip>false</iotdb.test.skip>
         <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
         <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
-        <jjwt-api.version>0.10.8</jjwt-api.version>
         <oauth2-oidc-sdk.version>8.3</oauth2-oidc-sdk.version>
         <tomcat-embed-core.version>10.1.0-M1</tomcat-embed-core.version>
     </properties>
@@ -95,20 +94,6 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>stats</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.airlift</groupId>
-            <artifactId>airline</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.code.findbugs</groupId>
-                    <artifactId>jsr305</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>io.airlift</groupId>
-            <artifactId>concurrent</artifactId>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
@@ -208,14 +193,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
