@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
@@ -284,6 +285,16 @@ public class SchemaRegionPlanTxtSerializer implements ISerializer<ISchemaRegionP
     public Void visitDeleteLogicalView(
         IDeleteLogicalViewPlan deleteLogicalViewPlan, StringBuilder stringBuilder) {
       stringBuilder.append(deleteLogicalViewPlan.getPath().getFullPath());
+      return null;
+    }
+
+    @Override
+    public Void visitAlterLogicalView(
+        IAlterLogicalViewPlan alterLogicalViewPlan, StringBuilder stringBuilder) {
+      stringBuilder
+          .append(alterLogicalViewPlan.getViewPath())
+          .append(FIELD_SEPARATOR)
+          .append(alterLogicalViewPlan.getSourceExpression().toString());
       return null;
     }
   }

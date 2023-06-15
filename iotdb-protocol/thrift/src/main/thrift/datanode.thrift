@@ -402,6 +402,11 @@ struct TDeleteViewSchemaReq{
    2: required binary pathPatternTree
 }
 
+struct TAlterViewReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required list<binary> viewBinaryList
+}
+
 // ====================================================
 // CQ
 // ====================================================
@@ -784,6 +789,8 @@ service IDataNodeRPCService {
   common.TSStatus rollbackViewSchemaBlackList(TRollbackViewSchemaBlackListReq req)
 
   common.TSStatus deleteViewSchema(TDeleteViewSchemaReq req)
+
+  common.TSStatus alterView(TAlterViewReq req)
 
  /**
   * Send pipeMetas to DataNodes, for synchronization
