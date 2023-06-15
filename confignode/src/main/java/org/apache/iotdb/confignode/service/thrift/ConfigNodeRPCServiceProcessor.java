@@ -308,7 +308,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     if (!databaseSchema.isSetTimePartitionInterval()) {
-      databaseSchema.setTimePartitionInterval(CONFIG_NODE_CONFIG.getTimePartitionInterval());
+      databaseSchema.setTimePartitionInterval(
+          CommonDescriptor.getInstance().getConfig().getTimePartitionInterval());
     } else if (databaseSchema.getTimePartitionInterval() <= 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())

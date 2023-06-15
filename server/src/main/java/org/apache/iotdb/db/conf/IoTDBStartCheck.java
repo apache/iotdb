@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryChecker;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -83,31 +82,6 @@ public class IoTDBStartCheck {
   private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
   private static final String TIME_ENCODER_KEY = "time_encoder";
 
-  // Immutable system parameters
-  private static final Map<String, Supplier<String>> constantParamValueTable = new HashMap<>();
-
-  static {
-    constantParamValueTable.put(TIMESTAMP_PRECISION_STRING, config::getTimestampPrecision);
-    constantParamValueTable.put(
-        PARTITION_INTERVAL_STRING, () -> String.valueOf(config.getTimePartitionInterval()));
-    constantParamValueTable.put(
-        TSFILE_FILE_SYSTEM_STRING, () -> config.getTsFileStorageFs().toString());
-    constantParamValueTable.put(
-        TAG_ATTRIBUTE_SIZE_STRING, () -> String.valueOf(config.getTagAttributeTotalSize()));
-    constantParamValueTable.put(
-        TAG_ATTRIBUTE_FLUSH_INTERVAL, () -> String.valueOf(config.getTagAttributeFlushInterval()));
-    constantParamValueTable.put(
-        MAX_DEGREE_OF_INDEX_STRING,
-        () -> String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()));
-    constantParamValueTable.put(DATA_REGION_NUM, () -> String.valueOf(config.getDataRegionNum()));
-    constantParamValueTable.put(ENABLE_ID_TABLE, () -> String.valueOf(config.isEnableIDTable()));
-    constantParamValueTable.put(
-        ENABLE_ID_TABLE_LOG_FILE, () -> String.valueOf(config.isEnableIDTableLogFile()));
-    constantParamValueTable.put(
-        SCHEMA_ENGINE_MODE, () -> String.valueOf(config.getSchemaEngineMode()));
-    constantParamValueTable.put(
-        TIME_ENCODER_KEY, TSFileDescriptor.getInstance().getConfig()::getTimeEncoder);
-  }
   // endregion
   // region params don't need checking and can be updated
   private static final String INTERNAL_ADDRESS = "dn_internal_address";
@@ -154,9 +128,7 @@ public class IoTDBStartCheck {
   }
 
   private String getVal(String paramName) {
-    if (constantParamValueTable.containsKey(paramName)) {
-      return constantParamValueTable.get(paramName).get();
-    } else if (variableParamValueTable.containsKey(paramName)) {
+    if (variableParamValueTable.containsKey(paramName)) {
       return variableParamValueTable.get(paramName).get();
     } else {
       return null;
@@ -184,28 +156,7 @@ public class IoTDBStartCheck {
         SystemFileFactory.INSTANCE.getFile(
             IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
 
-    // Check time stamp precision
-    String timestampPrecision = getVal(TIMESTAMP_PRECISION_STRING);
-    if (!("ms".equals(timestampPrecision)
-        || "us".equals(timestampPrecision)
-        || "ns".equals(timestampPrecision))) {
-      logger.error(
-          "Wrong {}, please set as: ms, us or ns ! Current is: {}",
-          TIMESTAMP_PRECISION_STRING,
-          timestampPrecision);
-      System.exit(-1);
-    }
-
-    // check partition interval
-    if (Long.parseLong(getVal(PARTITION_INTERVAL_STRING)) <= 0) {
-      logger.error("Time partition interval must larger than 0!");
-      System.exit(-1);
-    }
-
     systemProperties.put(IOTDB_VERSION_STRING, () -> IoTDBConstant.VERSION);
-    for (String param : constantParamValueTable.keySet()) {
-      systemProperties.put(param, () -> getVal(param));
-    }
     for (String param : variableParamValueTable.keySet()) {
       systemProperties.put(param, () -> getVal(param));
     }
@@ -414,17 +365,11 @@ public class IoTDBStartCheck {
   }
 
   /** Check all immutable properties */
-  private void checkImmutableSystemProperties() throws ConfigurationException, IOException {
+  private void checkImmutableSystemProperties() throws IOException {
     for (Entry<String, Supplier<String>> entry : systemProperties.entrySet()) {
       if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
         logger.info("repair system.properties, lack {}", entry.getKey());
-      }
-    }
-
-    for (String param : constantParamValueTable.keySet()) {
-      if (!(properties.getProperty(param).equals(getVal(param)))) {
-        throwException(param, getVal(param));
       }
     }
 

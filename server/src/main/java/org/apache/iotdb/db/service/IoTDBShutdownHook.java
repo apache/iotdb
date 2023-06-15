@@ -53,7 +53,7 @@ public class IoTDBShutdownHook extends Thread {
   @Override
   public void run() {
     // close rocksdb if possible to avoid lose data
-    if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+    if (SchemaEngineMode.valueOf(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode())
         .equals(SchemaEngineMode.Rocksdb_based)) {
       SchemaEngine.getInstance().clear();
     }

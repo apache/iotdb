@@ -1154,7 +1154,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
       // disable updating last cache on follower
@@ -1208,7 +1208,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
       // disable updating last cache on follower
@@ -1639,7 +1639,7 @@ public class DataRegion implements IDataRegionForQuery {
           resource.getTsFilePath(),
           new Date(ttlLowerBound),
           dataTTL,
-          config.getTimestampPrecision());
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     } finally {
       resource.writeUnlock();
     }
@@ -2368,7 +2368,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void resetLastCacheWhenLoadingTsFile() throws IllegalPathException {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
     DataNodeSchemaCache.getInstance().takeWriteLock();
@@ -2807,7 +2807,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (dataTTL != Long.MAX_VALUE) {
       dataTTL =
           DateTimeUtils.convertMilliTimeWithPrecision(
-              dataTTL, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+              dataTTL, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
     this.dataTTL = dataTTL;
   }

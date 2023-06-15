@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
@@ -55,7 +55,7 @@ public class SchemaFileSketchTest {
 
   @Before
   public void setUp() {
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
     EnvironmentUtils.envSetUp();
@@ -66,7 +66,7 @@ public class SchemaFileSketchTest {
     File sketch = new File("sketch_schemafile.txt");
     sketch.deleteOnExit();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }

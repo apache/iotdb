@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.v1;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
@@ -93,11 +94,15 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
-    if (!IOTDB_CONFIG.getTimestampPrecision().equals(req.getTimestampPrecision())) {
+    if (!CommonDescriptor.getInstance()
+        .getConfig()
+        .getTimestampPrecision()
+        .equals(req.getTimestampPrecision())) {
       String msg =
           String.format(
               "IoTDB receiver's timestamp precision %s, connector's timestamp precision %s. validation fails.",
-              IOTDB_CONFIG.getTimestampPrecision(), req.getTimestampPrecision());
+              CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+              req.getTimestampPrecision());
       LOGGER.warn(msg);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR, msg));
     }

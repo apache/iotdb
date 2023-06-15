@@ -735,7 +735,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
     properties.setTimestampPrecision(
-        IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     properties.setMaxConcurrentClientNum(
         IoTDBDescriptor.getInstance().getConfig().getRpcMaxConcurrentClientNum());
     properties.setWatermarkSecretKey(

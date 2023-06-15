@@ -177,9 +177,6 @@ public class ConfigNodeConfig {
   /** External temporary lib directory for storing downloaded pipe JAR files */
   private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
-  /** Time partition interval in milliseconds */
-  private long timePartitionInterval = 604_800_000;
-
   /** Procedure Evict ttl */
   private int procedureCompletedEvictTTL = 800;
 
@@ -417,14 +414,6 @@ public class ConfigNodeConfig {
 
   public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
-  }
-
-  public long getTimePartitionInterval() {
-    return timePartitionInterval;
-  }
-
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    this.timePartitionInterval = timePartitionInterval;
   }
 
   public int getCnRpcMaxConcurrentClientNum() {

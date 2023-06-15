@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 
@@ -28,7 +28,7 @@ public class SchemaResourceManager {
   private SchemaResourceManager() {}
 
   public static void initSchemaResource(ISchemaEngineStatistics engineStatistics) {
-    if (IoTDBDescriptor.getInstance()
+    if (CommonDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()
         .equals(SchemaEngineMode.Schema_File.toString())) {
@@ -37,7 +37,7 @@ public class SchemaResourceManager {
   }
 
   public static void clearSchemaResource() {
-    if (IoTDBDescriptor.getInstance()
+    if (CommonDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()
         .equals(SchemaEngineMode.Schema_File.toString())) {

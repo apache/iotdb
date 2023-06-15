@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
 public class InternalPageTest {
   @Before
   public void setUp() {
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
     EnvironmentUtils.envSetUp();
@@ -45,7 +45,7 @@ public class InternalPageTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }
