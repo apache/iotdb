@@ -47,7 +47,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
   private Tablet tablet;
 
-  public static TPipeTransferReq toTPipeTransferReq(Tablet tablet) throws IOException {
+  public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet) throws IOException {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
 
     tabletReq.tablet = tablet;

@@ -64,9 +64,9 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 
-public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
+public class IoTDBSyncConnectorV1_1 implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorImplV1_1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1_1.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final String IOTDB_SYNC_CONNECTOR_VERSION = "1.1";

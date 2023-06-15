@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncClient
     implements ThriftClient {
@@ -45,6 +46,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager;
+
+  private final AtomicBoolean shouldReturnSelf = new AtomicBoolean(true);
 
   public AsyncPipeDataTransferServiceClient(
       ThriftClientProperty property,
@@ -97,7 +100,13 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
    * RPC is finished.
    */
   private void returnSelf() {
-    clientManager.returnClient(endpoint, this);
+    if (shouldReturnSelf.get()) {
+      clientManager.returnClient(endpoint, this);
+    }
+  }
+
+  public void setShouldReturnSelf(boolean shouldReturnSelf) {
+    this.shouldReturnSelf.set(shouldReturnSelf);
   }
 
   private void close() {
