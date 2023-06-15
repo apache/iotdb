@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -552,6 +553,8 @@ public interface IManager {
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
 
   TSStatus deleteLogicalView(TDeleteLogicalViewReq req);
+
+  TSStatus alterLogicalView(TAlterLogicalViewReq req);
 
   /**
    * Create Pipe

@@ -78,7 +78,8 @@ public enum ProcedureType {
   PIPE_HANDLE_META_CHANGE_PROCEDURE((short) 1102),
 
   /** logical view */
-  DELETE_LOGICAL_VIEW_PROCEDURE((short) 1200);
+  DELETE_LOGICAL_VIEW_PROCEDURE((short) 1200),
+  ALTER_LOGICAL_VIEW_PROCEDURE((short) 12001);
 
   private final short typeCode;
 

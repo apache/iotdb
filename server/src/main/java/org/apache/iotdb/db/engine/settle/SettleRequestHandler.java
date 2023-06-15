@@ -107,7 +107,7 @@ public class SettleRequestHandler {
             TSStatusCode.ILLEGAL_PARAMETER, "The files to settle is not offered.");
       }
 
-      int maxInnerCompactionCandidateFileNum = config.getMaxInnerCompactionCandidateFileNum();
+      int maxInnerCompactionCandidateFileNum = config.getFileLimitPerInnerTask();
       if (paths.size() > maxInnerCompactionCandidateFileNum) {
         return RpcUtils.getStatus(
             TSStatusCode.UNSUPPORTED_OPERATION,

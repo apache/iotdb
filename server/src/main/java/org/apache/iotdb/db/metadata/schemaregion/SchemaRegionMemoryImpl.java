@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -69,6 +70,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
@@ -835,6 +837,27 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         } catch (IOException e) {
           throw new MetadataException(e);
         }
+      }
+    }
+  }
+
+  @Override
+  public void alterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan)
+      throws MetadataException {
+    IMeasurementMNode<IMemMNode> leafMNode =
+        mtree.getMeasurementMNode(alterLogicalViewPlan.getViewPath());
+    if (!leafMNode.isLogicalView()) {
+      throw new MetadataException(
+          String.format("[%s] is no view.", alterLogicalViewPlan.getViewPath()));
+    }
+    leafMNode.setSchema(
+        new LogicalViewSchema(leafMNode.getName(), alterLogicalViewPlan.getSourceExpression()));
+    // write log
+    if (!isRecovering) {
+      try {
+        writeToMLog(alterLogicalViewPlan);
+      } catch (IOException e) {
+        throw new MetadataException(e);
       }
     }
   }

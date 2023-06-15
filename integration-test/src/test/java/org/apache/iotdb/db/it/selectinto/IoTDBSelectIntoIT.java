@@ -308,6 +308,36 @@ public class IoTDBSelectIntoIT {
         "select k1, k2, k3 from root.sg_expr.d;", expectedQueryHeader, queryRetArray);
   }
 
+  @Test
+  public void testUsingUnMatchedAlignment() {
+    String[] intoRetArray =
+        new String[] {
+          "root.sg.d1.s1,root.sg_bk1.new_aligned_d.t1,10,",
+          "root.sg.d2.s1,root.sg_bk1.new_aligned_d.t2,7,",
+          "root.sg.d1.s2,root.sg_bk1.new_aligned_d.t3,9,",
+          "root.sg.d2.s2,root.sg_bk1.new_aligned_d.t4,8,",
+        };
+    executeNonQuery(
+        "CREATE ALIGNED TIMESERIES root.sg_bk1.new_aligned_d(t1 INT32, t2 INT32, t3 FLOAT, t4 FLOAT);");
+    // use matched interface (aligned == aligned)
+    resultSetEqualTest(
+        "select s1, s2 into aligned root.sg_bk1.new_aligned_d(t1, t2, t3, t4) from root.sg.*;",
+        selectIntoHeader,
+        intoRetArray);
+    String expectedQueryHeader =
+        "Time,root.sg_bk1.new_aligned_d.t1,root.sg_bk1.new_aligned_d.t3,root.sg_bk1.new_aligned_d.t2,root.sg_bk1.new_aligned_d.t4,";
+    resultSetEqualTest(
+        "select t1, t3, t2, t4 from root.sg_bk1.new_aligned_d;", expectedQueryHeader, rawDataSet);
+
+    // use unmatched interface (non-aligned != aligned)
+    resultSetEqualTest(
+        "select s1, s2 into root.sg_bk1.new_aligned_d(t1, t2, t3, t4) from root.sg.*;",
+        selectIntoHeader,
+        intoRetArray);
+    resultSetEqualTest(
+        "select t1, t3, t2, t4 from root.sg_bk1.new_aligned_d;", expectedQueryHeader, rawDataSet);
+  }
+
   // -------------------------------------- ALIGN BY DEVICE -------------------------------------
 
   @Test
@@ -514,14 +544,6 @@ public class IoTDBSelectIntoIT {
   }
 
   // -------------------------------------- CHECK EXCEPTION -------------------------------------
-
-  @Test
-  public void testAlignmentInconsistent() {
-    executeNonQuery("CREATE ALIGNED TIMESERIES root.sg_error_bk2.new_d(t1 INT32, t2 INT32);");
-    assertTestFail(
-        "select s1, s2 into root.sg_error_bk2.new_d(t1, t2, t3, t4) from root.sg.*;",
-        "The specified alignment property of the target device (root.sg_error_bk2.new_d) conflicts with the actual (isAligned = true).");
-  }
 
   @Test
   public void testPermission1() throws SQLException {

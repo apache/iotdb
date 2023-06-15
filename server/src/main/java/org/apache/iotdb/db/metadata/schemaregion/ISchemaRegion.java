@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
@@ -182,6 +183,8 @@ public interface ISchemaRegion {
   void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException;
 
   void deleteLogicalView(PathPatternTree patternTree) throws MetadataException;
+
+  void alterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan) throws MetadataException;
 
   // endregion
 
