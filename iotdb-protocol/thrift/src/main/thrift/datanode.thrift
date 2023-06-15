@@ -387,6 +387,16 @@ struct TPushPipeMetaReq {
   1: required list<binary> pipeMetas
 }
 
+struct TPushPipeMetaResp {
+  1: required common.TSStatus status
+  2: optional list<TPushPipeMetaRespMessageEntry> messageEntries
+}
+
+struct TPushPipeMetaRespMessageEntry {
+  1: required binary pipeStaticMeta
+  2: required list<string> messages
+}
+
 struct TConstructViewSchemaBlackListReq{
     1: required list<common.TConsensusGroupId> schemaRegionIdList
     2: required binary pathPatternTree
@@ -788,7 +798,7 @@ service IDataNodeRPCService {
  /**
   * Send pipeMetas to DataNodes, for synchronization
   */
-  common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
+  TPushPipeMetaResp pushPipeMeta(TPushPipeMetaReq req)
 
  /**
   * Execute CQ on DataNode
