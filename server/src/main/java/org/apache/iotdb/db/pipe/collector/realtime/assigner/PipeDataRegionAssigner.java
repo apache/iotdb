@@ -55,7 +55,9 @@ public class PipeDataRegionAssigner {
             collector -> {
               final PipeRealtimeCollectEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeStaticMetaForProgressReport(
-                      collector.getPipeStaticMeta(), collector.getPattern());
+                      collector.getPipeStaticMeta(),
+                      collector.getDataRegionId(),
+                      collector.getPattern());
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               collector.collect(copiedEvent);
             });

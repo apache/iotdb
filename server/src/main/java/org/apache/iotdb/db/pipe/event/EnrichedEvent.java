@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -37,12 +38,14 @@ public abstract class EnrichedEvent implements Event {
   private final AtomicInteger referenceCount;
 
   private final PipeStaticMeta pipeStaticMeta;
+  private final TConsensusGroupId regionId;
 
   private final String pattern;
 
-  public EnrichedEvent(PipeStaticMeta pipeStaticMeta, String pattern) {
+  public EnrichedEvent(PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, String pattern) {
     this.referenceCount = new AtomicInteger(0);
     this.pipeStaticMeta = pipeStaticMeta;
+    this.regionId = regionId;
     this.pattern = pattern;
   }
 
@@ -129,7 +132,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeStaticMetaForProgressReport(
-      PipeStaticMeta pipeStaticMeta, String pattern);
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, String pattern);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     PipeAgent.runtime().report(this.pipeStaticMeta, pipeRuntimeException);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -54,16 +55,17 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(TsFileResource resource) {
-    this(resource, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    this(resource, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   public PipeTsFileInsertionEvent(
       TsFileResource resource,
       PipeStaticMeta pipeStaticMeta,
+      TConsensusGroupId regionId,
       String pattern,
       long startTime,
       long endTime) {
-    super(pipeStaticMeta, pattern);
+    super(pipeStaticMeta, regionId, pattern);
 
     this.startTime = startTime;
     this.endTime = endTime;
@@ -153,8 +155,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeStaticMetaForProgressReport(
-      PipeStaticMeta pipeStaticMeta, String pattern) {
-    return new PipeTsFileInsertionEvent(resource, pipeStaticMeta, pattern, startTime, endTime);
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, String pattern) {
+    return new PipeTsFileInsertionEvent(
+        resource, pipeStaticMeta, regionId, pattern, startTime, endTime);
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
