@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.pipe.agent.runtime;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.IService;
@@ -102,8 +104,22 @@ public class PipeRuntimeAgent implements IService {
 
   //////////////////////////// Runtime report ////////////////////////////
 
-  public void report(PipeStaticMeta pipeStaticMeta, ProgressIndex progressIndex) {
-    // TODO:
+  public void report(
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, ProgressIndex progressIndex) {
+    final PipeRuntimeMeta pipeRuntimeMeta =
+        PipeAgent.task().getRuntimeMetaWithCheck(pipeStaticMeta);
+    if (pipeRuntimeMeta != null) {
+      pipeRuntimeMeta
+          .getConsensusGroupIdToTaskMetaMap()
+          .get(regionId)
+          .updateProgressIndex(progressIndex);
+    } else {
+      LOGGER.warn(
+          "Report progress index error, because can not get Runtime Meta, pipeStaticMeta {}, regionId {}, progressIndex {}.",
+          pipeStaticMeta,
+          regionId,
+          progressIndex);
+    }
   }
 
   public void report(PipeStaticMeta pipeStaticMeta, PipeRuntimeException pipeRuntimeException) {
@@ -112,6 +128,15 @@ public class PipeRuntimeAgent implements IService {
             "PipeRuntimeException: pipe static meta %s, exception %s",
             pipeStaticMeta, pipeRuntimeException),
         pipeRuntimeException);
-    //    pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+    final PipeRuntimeMeta pipeRuntimeMeta =
+        PipeAgent.task().getRuntimeMetaWithCheck(pipeStaticMeta);
+    if (pipeRuntimeMeta != null) {
+      pipeRuntimeMeta.trackExceptionMessage(pipeRuntimeException);
+    } else {
+      LOGGER.warn(
+          "Report exception error, because can not get Runtime Meta, pipeStaticMeta {}, pipeRuntimeException {}",
+          pipeStaticMeta,
+          pipeRuntimeException);
+    }
   }
 }

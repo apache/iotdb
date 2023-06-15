@@ -106,8 +106,8 @@ public abstract class EnrichedEvent implements Event {
   public abstract boolean decreaseResourceReferenceCount(String holderMessage);
 
   private void reportProgress() {
-    if (pipeStaticMeta != null) {
-      PipeAgent.runtime().report(pipeStaticMeta, getProgressIndex());
+    if (pipeStaticMeta != null && regionId != null) {
+      PipeAgent.runtime().report(pipeStaticMeta, regionId, getProgressIndex());
     }
   }
 
