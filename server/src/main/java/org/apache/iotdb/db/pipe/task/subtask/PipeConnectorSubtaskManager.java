@@ -20,12 +20,8 @@
 package org.apache.iotdb.db.pipe.task.subtask;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncConnectorImplV1_1;
-import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -46,34 +42,21 @@ public class PipeConnectorSubtaskManager {
 
   public synchronized String register(
       PipeConnectorSubtaskExecutor executor,
-      PipeParameters pipeConnectorParameters,
+      PipeParameters connectorParameters,
       PipeRuntimeEnvironment pipeRuntimeEnvironment) {
     final String attributeSortedString =
-        new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
+        new TreeMap<>(connectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       // TODO: construct all PipeConnector with the same reflection method, avoid using if-else
       // 1. construct, validate and customize PipeConnector, and then handshake (create connection)
       // with the target
-      final String connectorKey =
-          pipeConnectorParameters.getStringOrDefault(
-              PipeConnectorConstant.CONNECTOR_KEY,
-              BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
-
-      PipeConnector pipeConnector;
-      if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())) {
-        pipeConnector = new IoTDBThriftConnectorV1();
-      } else if (connectorKey.equals(
-          BuiltinPipePlugin.IOTDB_SYNC_CONNECTOR_V_1_1.getPipePluginName())) {
-        pipeConnector = new IoTDBSyncConnectorImplV1_1();
-      } else {
-        pipeConnector = PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
-      }
+      final PipeConnector pipeConnector = PipeAgent.plugin().reflectConnector(connectorParameters);
 
       try {
-        pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
+        pipeConnector.validate(new PipeParameterValidator(connectorParameters));
         pipeConnector.customize(
-            pipeConnectorParameters, new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment));
+            connectorParameters, new PipeTaskRuntimeConfiguration(pipeRuntimeEnvironment));
         pipeConnector.handshake();
       } catch (Exception e) {
         throw new PipeException(
