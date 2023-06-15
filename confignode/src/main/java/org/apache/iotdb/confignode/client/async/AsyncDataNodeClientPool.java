@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemp
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
@@ -362,6 +363,12 @@ public class AsyncDataNodeClientPool {
         case DELETE_VIEW:
           client.deleteViewSchema(
               (TDeleteViewSchemaReq) clientHandler.getRequest(requestId),
+              (DeleteSchemaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case ALTER_VIEW:
+          client.alterView(
+              (TAlterViewReq) clientHandler.getRequest(requestId),
               (DeleteSchemaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;

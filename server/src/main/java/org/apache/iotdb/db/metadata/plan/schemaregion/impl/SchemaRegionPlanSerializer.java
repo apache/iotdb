@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
@@ -456,6 +457,18 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         IDeleteLogicalViewPlan deleteLogicalViewPlan, DataOutputStream dataOutputStream) {
       try {
         deleteLogicalViewPlan.getPath().serialize(dataOutputStream);
+        return SchemaRegionPlanSerializationResult.SUCCESS;
+      } catch (IOException e) {
+        return new SchemaRegionPlanSerializationResult(e);
+      }
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitAlterLogicalView(
+        IAlterLogicalViewPlan alterLogicalViewPlan, DataOutputStream stream) {
+      try {
+        alterLogicalViewPlan.getViewPath().serialize(stream);
+        ViewExpression.serialize(alterLogicalViewPlan.getSourceExpression(), stream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (IOException e) {
         return new SchemaRegionPlanSerializationResult(e);

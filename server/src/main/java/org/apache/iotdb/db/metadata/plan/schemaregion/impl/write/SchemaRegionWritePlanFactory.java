@@ -36,6 +36,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
@@ -84,6 +85,8 @@ public class SchemaRegionWritePlanFactory {
         return new RollbackPreDeleteLogicalViewPlanImpl();
       case DELETE_LOGICAL_VIEW:
         return new DeleteLogicalViewPlanImpl();
+      case ALTER_LOGICAL_VIEW:
+        return new AlterLogicalViewPlanImpl();
       default:
         throw new UnsupportedOperationException(
             String.format(
@@ -186,5 +189,10 @@ public class SchemaRegionWritePlanFactory {
 
   public static IDeleteLogicalViewPlan getDeleteLogicalViewPlan(PartialPath path) {
     return new DeleteLogicalViewPlanImpl(path);
+  }
+
+  public static IAlterLogicalViewPlan getAlterLogicalViewPlan(
+      PartialPath targetPath, ViewExpression sourceExpression) {
+    return new AlterLogicalViewPlanImpl(targetPath, sourceExpression);
   }
 }
