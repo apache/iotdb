@@ -484,11 +484,7 @@ public class PipeTaskAgent {
     // set pipe meta status to RUNNING
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
     // clear exception messages if started successfully
-    existedPipeMeta
-        .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
-        .values()
-        .forEach(PipeTaskMeta::clearExceptionMessages);
+    existedPipeMeta.getRuntimeMeta().clearExceptionMessages();
   }
 
   private void stopPipe(String pipeName, long creationTime) {
