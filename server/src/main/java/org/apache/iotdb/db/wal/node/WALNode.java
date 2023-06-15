@@ -263,31 +263,26 @@ public class WALNode implements IWALNode {
           costOfActiveMemTables,
           costOfFlushedMemTables);
 
-      // effective information ratio is too small or disk usage is too large
-      // update first valid version id by snapshotting or flushing memTable,
+      // try updating first valid version id by snapshotting or flushing memTable,
       // then delete old .wal files again
-      if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()
-          || WALManager.getInstance().shouldThrottle()) {
-        logger.debug(
-            "Effective information ratio {} (active memTables cost is {}, flushed memTables cost is {}) of wal node-{} is below wal min effective info ratio {}, some memTables will be snapshot or flushed.",
-            effectiveInfoRatio,
-            costOfActiveMemTables,
-            costOfFlushedMemTables,
-            identifier,
-            config.getWalMinEffectiveInfoRatio());
-        boolean isSuccess = snapshotOrFlushMemTable();
-        if (isSuccess && recursionTime < MAX_RECURSION_TIME) {
-          // wal is used to search, cannot optimize files deletion
-          if (safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
-            return;
-          }
-          recursionTime++;
-          run();
-        }
+      if (!shouldSnapshotOrFlush()) {
+        return;
+      }
+      logger.debug(
+          "Effective information ratio {} (active memTables cost is {}, flushed memTables cost is {}) of wal node-{} is below wal min effective info ratio {}, some memTables will be snapshot or flushed.",
+          effectiveInfoRatio,
+          costOfActiveMemTables,
+          costOfFlushedMemTables,
+          identifier,
+          config.getWalMinEffectiveInfoRatio());
+      boolean isSuccess = snapshotOrFlushMemTable();
+      if (isSuccess && recursionTime < MAX_RECURSION_TIME) {
+        recursionTime++;
+        run();
       }
     }
 
-    /** Return true iff cannot delete files because of IoTConsensus */
+    /** Return true iff cannot delete all outdated files because of IoTConsensus */
     private boolean deleteOutdatedFiles() {
       // find all files to delete
       // delete files whose version < firstValidVersionId
@@ -315,9 +310,6 @@ public class WALNode implements IWALNode {
         }
         endFileIndex++;
       }
-      if (endFileIndex == 0) {
-        return true;
-      }
 
       // delete files
       int deletedFilesNum = 0;
@@ -344,7 +336,7 @@ public class WALNode implements IWALNode {
           "Successfully delete {} outdated wal files for wal node-{}.",
           deletedFilesNum,
           identifier);
-      return false;
+      return endFileIndex < filesToDelete.length;
     }
 
     private boolean filterFilesToDelete(File dir, String name) {
@@ -356,6 +348,12 @@ public class WALNode implements IWALNode {
         toDelete = versionId < firstValidVersionId;
       }
       return toDelete;
+    }
+
+    /** Return true iff effective information ratio is too small or disk usage is too large */
+    private boolean shouldSnapshotOrFlush() {
+      return effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()
+          || WALManager.getInstance().shouldThrottle();
     }
 
     /**
