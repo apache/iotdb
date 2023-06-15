@@ -151,7 +151,7 @@ public class AlterLogicalViewProcedure
             "Alter view",
             env,
             targetSchemaRegionGroup,
-            DataNodeRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
+            DataNodeRequestType.ALTER_VIEW,
             (dataNodeLocation, consensusGroupIdList) -> {
               TAlterViewReq req = new TAlterViewReq();
               req.setSchemaRegionIdList(consensusGroupIdList);

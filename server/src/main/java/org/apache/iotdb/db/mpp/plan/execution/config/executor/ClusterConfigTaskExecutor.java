@@ -1916,6 +1916,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             alterLogicalViewStatement.getTargetPathList(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
       return future;
     } catch (ClientManagerException | TException e) {

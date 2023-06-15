@@ -31,11 +31,11 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class DeleteSchemaRPCHandler extends AsyncTSStatusRPCHandler {
+public class SchemaUpdateRPCHandler extends AsyncTSStatusRPCHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeleteSchemaRPCHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaUpdateRPCHandler.class);
 
-  public DeleteSchemaRPCHandler(
+  public SchemaUpdateRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
