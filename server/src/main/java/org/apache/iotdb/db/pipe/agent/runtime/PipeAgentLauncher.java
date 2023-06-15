@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespMessageEntry;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -160,17 +161,25 @@ class PipeAgentLauncher {
         throw new StartupException("Failed to get pipe task meta from config node.");
       }
 
-      PipeAgent.task()
-          .handlePipeMetaChanges(
-              getAllPipeInfoResp.getAllPipeInfo().stream()
-                  .map(
-                      byteBuffer -> {
-                        final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
-                        LOGGER.info(
-                            "Pulled pipe meta from config node: {}, recovering ...", pipeMeta);
-                        return pipeMeta;
-                      })
-                  .collect(Collectors.toList()));
+      final List<TPushPipeMetaRespMessageEntry> messageEntries =
+          PipeAgent.task()
+              .handlePipeMetaChanges(
+                  getAllPipeInfoResp.getAllPipeInfo().stream()
+                      .map(
+                          byteBuffer -> {
+                            final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
+                            LOGGER.info(
+                                "Pulled pipe meta from config node: {}, recovering ...", pipeMeta);
+                            return pipeMeta;
+                          })
+                      .collect(Collectors.toList()));
+      if (!messageEntries.isEmpty()) {
+        LOGGER.warn(
+            String.format(
+                "Failed to handle meta change on DataNode. Ignore the exceptions, "
+                    + "meta will be pushed by config node later. Exception sets: %s",
+                messageEntries));
+      }
     } catch (Exception e) {
       LOGGER.info(
           "Failed to get pipe task meta from config node. Ignore the exception, "

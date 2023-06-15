@@ -35,7 +35,7 @@ import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTaskManager;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespMessageEntry;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -82,13 +82,14 @@ public class PipeTaskAgent {
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
-  public synchronized void handlePipeMetaChanges(List<PipeMeta> pipeMetaListFromConfigNode) {
+  public synchronized List<TPushPipeMetaRespMessageEntry> handlePipeMetaChanges(
+      List<PipeMeta> pipeMetaListFromConfigNode) {
+    final List<TPushPipeMetaRespMessageEntry> messageEntries = new ArrayList<>();
+
     // do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
-      return;
+      return messageEntries;
     }
-
-    final List<Exception> exceptions = new ArrayList<>();
 
     // iterate through pipe meta list from config node, check if pipe meta exists on data node
     // or has changed
@@ -128,11 +129,10 @@ public class PipeTaskAgent {
         handlePipeRuntimeMetaChanges(
             staticMetaFromConfigNode, runtimeMetaFromConfigNode, runtimeMetaOnDataNode);
       } catch (Exception e) {
-        final String errorMessage =
-            String.format(
-                "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
         LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
-        exceptions.add(new PipeException(errorMessage, e));
+        messageEntries.add(
+            new TPushPipeMetaRespMessageEntry(
+                metaFromConfigNode.getStaticMeta().serialize(), e.getMessage()));
       }
     }
 
@@ -149,19 +149,14 @@ public class PipeTaskAgent {
           dropPipe(metaOnDataNode.getStaticMeta().getPipeName());
         }
       } catch (Exception e) {
-        final String errorMessage =
-            String.format(
-                "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
         LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
-        exceptions.add(new PipeException(errorMessage, e));
+        messageEntries.add(
+            new TPushPipeMetaRespMessageEntry(
+                metaOnDataNode.getStaticMeta().serialize(), e.getMessage()));
       }
     }
 
-    if (!exceptions.isEmpty()) {
-      throw new PipeException(
-          String.format(
-              "Failed to handle pipe meta changes on data node, because: %s", exceptions));
-    }
+    return messageEntries;
   }
 
   private void handlePipeRuntimeMetaChanges(

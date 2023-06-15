@@ -26,8 +26,10 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -38,6 +40,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
@@ -192,7 +196,27 @@ public abstract class AbstractOperatePipeProcedureV2
       pipeMetaBinaryList.add(pipeMeta.serialize());
     }
 
-    return RpcUtils.squashResponseStatusList(env.pushPipeMetaToDataNodes(pipeMetaBinaryList));
+    List<TPushPipeMetaResp> failedResponses =
+        env.pushPipeMetaToDataNodes(pipeMetaBinaryList).stream()
+            .filter(resp -> resp.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .collect(Collectors.toList());
+    return failedResponses.isEmpty()
+        ? RpcUtils.SUCCESS_STATUS
+        : RpcUtils.getStatus(
+            TSStatusCode.PIPE_PUSH_META_ERROR,
+            failedResponses.stream()
+                .flatMap(
+                    resp ->
+                        Stream.concat(
+                            Stream.of(resp.status.getMessage()),
+                            resp.messageEntries.stream()
+                                .map(
+                                    entry ->
+                                        String.format(
+                                            "Pipe %s failed because %s",
+                                            entry.pipeStaticMeta, entry.message))))
+                .distinct()
+                .collect(Collectors.joining("; ")));
   }
 
   protected void pushPipeMetaToDataNodesIgnoreException(ConfigNodeProcedureEnv env) {

@@ -199,7 +199,8 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                     + "the data represented by this event is lost",
                 event.getEvent());
         LOGGER.warn(errorMessage);
-        PipeAgent.runtime().report(getPipeStaticMeta(), new PipeRuntimeNonCriticalException(errorMessage));
+        PipeAgent.runtime()
+            .report(getPipeStaticMeta(), new PipeRuntimeNonCriticalException(errorMessage));
         return null;
       }
     }

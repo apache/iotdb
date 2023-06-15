@@ -171,6 +171,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespMessageEntry;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -894,17 +896,32 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus pushPipeMeta(TPushPipeMetaReq req) {
+  public TPushPipeMetaResp pushPipeMeta(TPushPipeMetaReq req) {
     final List<PipeMeta> pipeMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getPipeMetas()) {
       pipeMetas.add(PipeMeta.deserialize(byteBuffer));
     }
+
+    final TPushPipeMetaResp resp = new TPushPipeMetaResp();
     try {
-      PipeAgent.task().handlePipeMetaChanges(pipeMetas);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      List<TPushPipeMetaRespMessageEntry> messageEntries =
+          PipeAgent.task().handlePipeMetaChanges(pipeMetas);
+      if (messageEntries.isEmpty()) {
+        resp.setStatus(RpcUtils.SUCCESS_STATUS);
+      } else {
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.PIPE_PUSH_META_ERROR));
+        resp.setMessageEntries(messageEntries);
+      }
+      return resp;
     } catch (Exception e) {
-      LOGGER.error("Error occurred when pushing pipe meta", e);
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      LOGGER.warn("Critical Error occurred when pushing pipe meta", e);
+      resp.setStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_PUSH_META_ERROR,
+              String.format(
+                  "An unhandled exception was discovered when processing the meta change. exception message: %s",
+                  e.getMessage())));
+      return resp;
     }
   }
 
