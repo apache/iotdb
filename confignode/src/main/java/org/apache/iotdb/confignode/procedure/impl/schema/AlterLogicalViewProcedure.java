@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.exception.metadata.view.ViewNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -95,13 +97,16 @@ public class AlterLogicalViewProcedure
           return Flow.HAS_MORE_STATE;
         case ALTER_LOGICAL_VIEW:
           LOGGER.info("Alter view {}", viewPathToSourceMap.keySet());
-          alterLogicalView(env);
+          try {
+            alterLogicalView(env);
+          } catch (ProcedureException e) {
+            setFailure(e);
+          }
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized state " + state.toString()));
           return Flow.NO_MORE_STATE;
       }
-
     } finally {
       LOGGER.info(
           String.format(
@@ -131,14 +136,14 @@ public class AlterLogicalViewProcedure
     }
   }
 
-  private void alterLogicalView(ConfigNodeProcedureEnv env) {
+  private void alterLogicalView(ConfigNodeProcedureEnv env) throws ProcedureException {
     Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(pathPatternTree);
     Map<TConsensusGroupId, Map<PartialPath, ViewExpression>> schemaRegionRequestMap =
         new HashMap<>();
     for (Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceMap.entrySet()) {
       schemaRegionRequestMap
-          .computeIfAbsent(null, k -> new HashMap<>())
+          .computeIfAbsent(getBelongedSchemaRegion(env, entry.getKey()), k -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
     }
     AlterLogicalViewRegionTaskExecutor<TAlterViewReq> regionTaskExecutor =
@@ -170,6 +175,28 @@ public class AlterLogicalViewProcedure
               return req;
             });
     regionTaskExecutor.execute();
+
+    invalidateCache(env);
+  }
+
+  private TConsensusGroupId getBelongedSchemaRegion(
+      ConfigNodeProcedureEnv env, PartialPath viewPath) throws ProcedureException {
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendFullPath(viewPath);
+    patternTree.constructTree();
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        env.getConfigManager().getSchemaPartition(patternTree).schemaPartitionTable;
+    if (schemaPartitionTable.isEmpty()) {
+      throw new ProcedureException(new ViewNotExistException(viewPath.getFullPath()));
+    } else {
+      Map<TSeriesPartitionSlot, TConsensusGroupId> slotMap =
+          schemaPartitionTable.values().iterator().next();
+      if (slotMap.isEmpty()) {
+        throw new ProcedureException(new ViewNotExistException(viewPath.getFullPath()));
+      } else {
+        return slotMap.values().iterator().next();
+      }
+    }
   }
 
   @Override
