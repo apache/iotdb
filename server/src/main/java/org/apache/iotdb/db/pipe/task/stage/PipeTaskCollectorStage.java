@@ -28,7 +28,6 @@ import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;

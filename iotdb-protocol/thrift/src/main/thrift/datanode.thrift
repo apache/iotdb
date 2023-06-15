@@ -394,7 +394,7 @@ struct TPushPipeMetaResp {
 
 struct TPushPipeMetaRespMessageEntry {
   1: required binary pipeStaticMeta
-  2: required list<string> messages
+  2: required string message
 }
 
 struct TConstructViewSchemaBlackListReq{

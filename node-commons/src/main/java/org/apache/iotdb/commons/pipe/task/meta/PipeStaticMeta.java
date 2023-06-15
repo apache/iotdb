@@ -22,6 +22,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -32,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class PipeStaticMeta {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeStaticMeta.class);
 
   private String pipeName;
   private long creationTime;
@@ -75,11 +79,16 @@ public class PipeStaticMeta {
     return connectorParameters;
   }
 
-  public ByteBuffer serialize() throws IOException {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-    serialize(outputStream);
-    return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+  public ByteBuffer serialize() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      String errorMessage = String.format("Serialize pipe static meta %s error.", this);
+      LOGGER.warn(errorMessage, e);
+      throw new IllegalStateException(errorMessage);
+    }
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
