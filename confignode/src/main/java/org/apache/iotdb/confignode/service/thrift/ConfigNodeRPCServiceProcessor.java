@@ -163,6 +163,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -279,6 +280,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
+    boolean isSystemDatabase = databaseSchema.getName().equals(IoTDBMetricsUtils.DATABASE);
 
     // Set default configurations if necessary
     if (!databaseSchema.isSetTTL()) {
@@ -289,7 +291,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               .setMessage("Failed to create database. The TTL should be positive.");
     }
 
-    if (!databaseSchema.isSetSchemaReplicationFactor()) {
+    if (isSystemDatabase) {
+      databaseSchema.setSchemaReplicationFactor(1);
+    } else if (!databaseSchema.isSetSchemaReplicationFactor()) {
       databaseSchema.setSchemaReplicationFactor(CONFIG_NODE_CONFIG.getSchemaReplicationFactor());
     } else if (databaseSchema.getSchemaReplicationFactor() <= 0) {
       errorResp =
@@ -298,7 +302,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   "Failed to create database. The schemaReplicationFactor should be positive.");
     }
 
-    if (!databaseSchema.isSetDataReplicationFactor()) {
+    if (isSystemDatabase) {
+      databaseSchema.setDataReplicationFactor(1);
+    } else if (!databaseSchema.isSetDataReplicationFactor()) {
       databaseSchema.setDataReplicationFactor(CONFIG_NODE_CONFIG.getDataReplicationFactor());
     } else if (databaseSchema.getDataReplicationFactor() <= 0) {
       errorResp =
@@ -316,7 +322,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   "Failed to create database. The timePartitionInterval should be positive.");
     }
 
-    if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
+    if (isSystemDatabase) {
+      databaseSchema.setMinSchemaRegionGroupNum(1);
+    } else if (!databaseSchema.isSetMinSchemaRegionGroupNum()) {
       databaseSchema.setMinSchemaRegionGroupNum(
           CONFIG_NODE_CONFIG.getDefaultSchemaRegionGroupNumPerDatabase());
     } else if (databaseSchema.getMinSchemaRegionGroupNum() <= 0) {
@@ -326,7 +334,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   "Failed to create database. The schemaRegionGroupNum should be positive.");
     }
 
-    if (!databaseSchema.isSetMinDataRegionGroupNum()) {
+    if (isSystemDatabase) {
+      databaseSchema.setMinDataRegionGroupNum(1);
+    } else if (!databaseSchema.isSetMinDataRegionGroupNum()) {
       databaseSchema.setMinDataRegionGroupNum(
           CONFIG_NODE_CONFIG.getDefaultDataRegionGroupNumPerDatabase());
     } else if (databaseSchema.getMinDataRegionGroupNum() <= 0) {
