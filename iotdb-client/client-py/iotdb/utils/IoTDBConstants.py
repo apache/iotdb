@@ -60,7 +60,6 @@ class TSEncoding(Enum):
     REGULAR = 7
     GORILLA = 8
     ZIGZAG = 9
-    FREQ = 10
     CHIMP = 11
     SPRINTZ = 12
     RLBE = 13

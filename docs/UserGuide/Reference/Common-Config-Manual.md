@@ -1264,23 +1264,6 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 0.05                                                                                                                                                                                                                                                                                                                                                                                                             |
 |  Effective  | After restarting system                                                                                                                                                                                                                                                                                                                                                                                          |
 
-* freq\_snr
-
-|    Name     | freq\_snr                                        |
-| :---------: | :---------------------------------------------- |
-| Description | Signal-noise-ratio (SNR) of lossy FREQ encoding |
-|    Type     | Double                                          |
-|   Default   | 40.0                                            |
-|  Effective  | hot-load                                         |
-
-* freq\_block\_size
-
-|Name| freq\_block\_size |
-|:---:|:---|
-|Description| Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
-|Type|int32|
-|Default| 1024 |
-|Effective|hot-load|
 
 ### Authorization Configuration
 
