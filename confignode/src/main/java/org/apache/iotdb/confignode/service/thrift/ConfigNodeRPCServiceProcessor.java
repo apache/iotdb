@@ -866,7 +866,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus alterLogicalView(TAlterLogicalViewReq req) throws TException {
-    return null;
+    return configManager.alterLogicalView(req);
   }
 
   @Override
