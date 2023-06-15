@@ -212,14 +212,16 @@ public abstract class AbstractOperatePipeProcedureV2
                             resp.status.isSetMessage()
                                 ? Stream.of(resp.status.getMessage())
                                 : Stream.empty(),
-                            resp.messageEntries.stream()
-                                .map(
-                                    entry ->
-                                        String.format(
-                                            "Pipe %s failed because %s",
-                                            PipeStaticMeta.deserialize(entry.pipeStaticMeta)
-                                                .getPipeName(),
-                                            entry.message))))
+                            resp.isSetMessageEntries()
+                                ? resp.messageEntries.stream()
+                                    .map(
+                                        entry ->
+                                            String.format(
+                                                "Pipe %s failed because %s",
+                                                PipeStaticMeta.deserialize(entry.pipeStaticMeta)
+                                                    .getPipeName(),
+                                                entry.message))
+                                : Stream.empty()))
                 .distinct()
                 .collect(Collectors.joining("; ")));
   }
