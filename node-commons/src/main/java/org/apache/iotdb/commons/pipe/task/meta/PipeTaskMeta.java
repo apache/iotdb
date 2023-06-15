@@ -41,7 +41,6 @@ public class PipeTaskMeta {
 
   private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
   private final AtomicInteger leaderDataNodeId = new AtomicInteger(0);
-  private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
   public PipeTaskMeta(/* @NotNull */ ProgressIndex progressIndex, int leaderDataNodeId) {
     this.progressIndex.set(progressIndex);
@@ -65,60 +64,26 @@ public class PipeTaskMeta {
     this.leaderDataNodeId.set(leaderDataNodeId);
   }
 
-  public Iterable<PipeRuntimeException> getExceptionMessages() {
-    return exceptionMessages;
-  }
-
-  public void trackExceptionMessage(PipeRuntimeException exceptionMessage) {
-    exceptionMessages.add(exceptionMessage);
-  }
-
-  public void clearExceptionMessages() {
-    exceptionMessages.clear();
-  }
-
   public void serialize(DataOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
-    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
-      pipeRuntimeException.serialize(outputStream);
-    }
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
-    ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
-    for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
-      pipeRuntimeException.serialize(outputStream);
-    }
   }
 
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
     final int leaderDataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
-    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
-    final int size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; ++i) {
-      final PipeRuntimeException pipeRuntimeException =
-          PipeRuntimeExceptionType.deserializeFrom(byteBuffer);
-      PipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
-    }
-    return PipeTaskMeta;
+    return new PipeTaskMeta(progressIndex, leaderDataNodeId);
   }
 
   public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
     final int leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
-    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
-    final int size = ReadWriteIOUtils.readInt(inputStream);
-    for (int i = 0; i < size; ++i) {
-      final PipeRuntimeException pipeRuntimeException =
-          PipeRuntimeExceptionType.deserializeFrom(inputStream);
-      PipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
-    }
-    return PipeTaskMeta;
+    return new PipeTaskMeta(progressIndex, leaderDataNodeId);
   }
 
   @Override
@@ -131,26 +96,21 @@ public class PipeTaskMeta {
     }
     PipeTaskMeta that = (PipeTaskMeta) obj;
     return progressIndex.get().equals(that.progressIndex.get())
-        && leaderDataNodeId.get() == that.leaderDataNodeId.get()
-        && Arrays.equals(exceptionMessages.toArray(), that.exceptionMessages.toArray());
+        && leaderDataNodeId.get() == that.leaderDataNodeId.get();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex, leaderDataNodeId, exceptionMessages);
+    return Objects.hash(progressIndex, leaderDataNodeId);
   }
 
   @Override
   public String toString() {
-    return "PipeTask{"
-        + "progressIndex='"
+    return "PipeTaskMeta{"
+        + "progressIndex="
         + progressIndex
-        + '\''
-        + ", leaderDataNodeId='"
+        + ", leaderDataNodeId="
         + leaderDataNodeId
-        + '\''
-        + ", exceptionMessages="
-        + exceptionMessages
         + '}';
   }
 }

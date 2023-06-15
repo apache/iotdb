@@ -244,12 +244,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public void clearPipeMetaExceptionMessages(String pipeName) {
-    pipeMetaKeeper
-        .getPipeMeta(pipeName)
-        .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
-        .values()
-        .forEach(PipeTaskMeta::clearExceptionMessages);
+    pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().clearExceptionMessages();
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

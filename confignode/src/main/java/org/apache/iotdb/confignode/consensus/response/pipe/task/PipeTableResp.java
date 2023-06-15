@@ -105,10 +105,8 @@ public class PipeTableResp implements DataSet {
       final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
       final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
       final StringBuilder exceptionMessageBuilder = new StringBuilder();
-      for (PipeTaskMeta pipeTaskMeta : runtimeMeta.getConsensusGroupIdToTaskMetaMap().values()) {
-        for (Exception e : pipeTaskMeta.getExceptionMessages()) {
-          exceptionMessageBuilder.append(e.getMessage()).append("\n");
-        }
+      for (Exception e : runtimeMeta.getExceptionMessages()) {
+        exceptionMessageBuilder.append(e.getMessage()).append("\n");
       }
 
       showPipeInfoList.add(
