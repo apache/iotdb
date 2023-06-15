@@ -196,12 +196,14 @@ public class PipeTransferTsFileInsertionEventHandler
           if (connector.isClosed()) {
             LOGGER.info(
                 "IoTDBThriftConnectorV2 has been stopped, we will not retry to transfer tsfile {}.",
-                tsFile);
+                tsFile,
+                exception);
           } else {
             LOGGER.warn(
                 "IoTDBThriftConnectorV2 failed to transfer tsfile {} after {} times, retrying...",
                 tsFile,
-                retryCount);
+                retryCount,
+                exception);
 
             connector.transfer(requestCommitId, this);
           }
