@@ -578,9 +578,8 @@ public:
     * @param timeseries the list of measurement schemas for creating the tablet
     */
     Tablet(const std::string &deviceId,
-           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries) {
-        Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE);
-    }
+           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries)
+           : Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE) {}
 
     /**
      * Return a tablet with the specified number of rows (maxBatchSize). Only
