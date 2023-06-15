@@ -25,7 +25,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
 import org.apache.iotdb.db.pipe.collector.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEventFactory;
-import org.apache.iotdb.db.wal.utils.WALEntryHandler;
+import org.apache.iotdb.db.wal.cache.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;

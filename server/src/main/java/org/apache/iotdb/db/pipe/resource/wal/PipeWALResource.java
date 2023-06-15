@@ -21,8 +21,8 @@ package org.apache.iotdb.db.pipe.resource.wal;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.db.wal.cache.WALEntryHandler;
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
-import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

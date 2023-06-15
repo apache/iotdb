@@ -30,11 +30,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.cache.WALEntryCache;
+import org.apache.iotdb.db.wal.cache.WALEntryHandler;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
-import org.apache.iotdb.db.wal.utils.WALEntryCache;
-import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -216,7 +216,7 @@ public class WALEntryHandlerTest {
     WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
     walNode1.onMemTableFlushed(memTable);
-    assertEquals(node1, handler.getValue());
+    assertEquals(node1, handler.getInsertNode());
   }
 
   @Test
@@ -234,7 +234,7 @@ public class WALEntryHandlerTest {
     while (!walNode1.isAllWALEntriesConsumed()) {
       Thread.sleep(50);
     }
-    assertEquals(node1, handler.getValue());
+    assertEquals(node1, handler.getInsertNode());
   }
 
   @Test
@@ -276,7 +276,7 @@ public class WALEntryHandlerTest {
             for (int j = 0; j < expectedInsertRowNodes.size(); ++j) {
               InsertRowNode expect = expectedInsertRowNodes.get(j);
               InsertRowNode actual =
-                  (InsertRowNode) walFlushListeners.get(j).getWalEntryHandler().getValue();
+                  (InsertRowNode) walFlushListeners.get(j).getWalEntryHandler().getInsertNode();
               assertEquals(expect, actual);
             }
 
