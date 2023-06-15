@@ -66,24 +66,24 @@ public class IoTDBAlterViewIT {
   public void testAlterView() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create timeseries root.db1.d.s1 with datatype=INT32");
-      statement.execute("create timeseries root.db1.d.s2 with datatype=INT32");
-      statement.execute("create timeseries root.db1.d.s3 with datatype=INT32");
-      statement.execute("create timeseries root.db2.d.s1 with datatype=INT32");
-      statement.execute("create timeseries root.db2.d.s2 with datatype=INT32");
-      statement.execute("create timeseries root.db2.d.s3 with datatype=INT32");
+      statement.execute("create timeseries root.db.d1.s1 with datatype=INT32");
+      statement.execute("create timeseries root.db.d1.s2 with datatype=INT32");
+      statement.execute("create timeseries root.db.d1.s3 with datatype=INT32");
+      statement.execute("create timeseries root.db.d2.s1 with datatype=INT32");
+      statement.execute("create timeseries root.db.d2.s2 with datatype=INT32");
+      statement.execute("create timeseries root.db.d2.s3 with datatype=INT32");
 
       statement.execute(
-          "create view root(view1.d.s, view2.d.s, view3.d.s, view4.d.s, view5.d.s, view6.d.s) as root(db1.d.s1, db1.d.s2, db1.d.s3, db2.d.s1, db2.d.s2, db2.d.s3)");
+          "create view root(view.d1.s1, view.d1.s2, view.d1.s3, view.d2.s1, view.d2.s2, view.d2.s3) as root(db.d1.s1, db.d1.s2, db.d1.s3, db.d2.s1, db.d2.s2, db.d2.s3)");
 
       String[][] map =
           new String[][] {
-            new String[] {"root.view1.d.s", "root.db1.d.s1"},
-            new String[] {"root.view2.d.s", "root.db1.d.s2"},
-            new String[] {"root.view3.d.s", "root.db1.d.s3"},
-            new String[] {"root.view4.d.s", "root.db2.d.s1"},
-            new String[] {"root.view5.d.s", "root.db2.d.s2"},
-            new String[] {"root.view6.d.s", "root.db2.d.s3"},
+            new String[] {"root.view.d1.s1", "root.db.d1.s1"},
+            new String[] {"root.view.d1.s2", "root.db.d1.s2"},
+            new String[] {"root.view.d1.s3", "root.db.d1.s3"},
+            new String[] {"root.view.d2.s1", "root.db.d2.s1"},
+            new String[] {"root.view.d2.s2", "root.db.d2.s2"},
+            new String[] {"root.view.d2.s3", "root.db.d2.s3"},
           };
       for (String[] strings : map) {
         try (ResultSet resultSet =
@@ -94,16 +94,16 @@ public class IoTDBAlterViewIT {
       }
 
       statement.execute(
-          "alter view root(view1.d.s, view2.d.s, view3.d.s, view4.d.s, view5.d.s, view6.d.s) as root(db2.d.s2, db2.d.s3, db2.d.s1, db1.d.s2, db1.d.s3, db1.d.s1)");
+          "alter view root(view.d1.s1, view.d1.s2, view.d1.s3, view.d2.s1, view.d2.s2, view.d2.s3) as root(db.d2.s2, db.d2.s3, db.d2.s1, db.d1.s2, db.d1.s3, db.d1.s1)");
 
       map =
           new String[][] {
-            new String[] {"root.view1.d.s", "root.db2.d.s2"},
-            new String[] {"root.view2.d.s", "root.db2.d.s3"},
-            new String[] {"root.view3.d.s", "root.db2.d.s1"},
-            new String[] {"root.view4.d.s", "root.db1.d.s2"},
-            new String[] {"root.view5.d.s", "root.db1.d.s3"},
-            new String[] {"root.view6.d.s", "root.db1.d.s1"},
+            new String[] {"root.view.d1.s1", "root.db.d2.s2"},
+            new String[] {"root.view.d1.s2", "root.db.d2.s3"},
+            new String[] {"root.view.d1.s3", "root.db.d2.s1"},
+            new String[] {"root.view.d2.s1", "root.db.d1.s2"},
+            new String[] {"root.view.d2.s2", "root.db.d1.s3"},
+            new String[] {"root.view.d2.s3", "root.db.d1.s1"},
           };
       for (String[] strings : map) {
         try (ResultSet resultSet =
