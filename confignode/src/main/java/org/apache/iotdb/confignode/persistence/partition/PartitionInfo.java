@@ -102,7 +102,7 @@ public class PartitionInfo implements SnapshotProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
 
   // Allocate 8MB buffer for load snapshot of PartitionInfo
-  private static final int PARTITION_TABLE_BUFFER_SIZE = 8 * 1024 * 1024;
+  private static final int PARTITION_TABLE_BUFFER_SIZE = 32 * 1024 * 1024;
 
   /** For Cluster Partition */
   // For allocating Regions
