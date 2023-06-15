@@ -42,6 +42,7 @@ import org.apache.iotdb.db.wal.utils.WALMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -170,8 +171,16 @@ public class WALManager implements IService {
   }
 
   private void deleteOutdatedFiles() {
-    for (WALNode walNode : walNodesManager.getNodesSnapshot()) {
+    List<WALNode> walNodes = walNodesManager.getNodesSnapshot();
+    walNodes.sort((node1, node2) -> Long.compare(node2.getDiskUsage(), node1.getDiskUsage()));
+    for (WALNode walNode : walNodes) {
       walNode.deleteOutdatedFiles();
+    }
+    if (getTotalDiskUsage() >= config.getThrottleThreshold()) {
+      logger.warn(
+          "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
+          getTotalDiskUsage(),
+          config.getThrottleThreshold());
     }
   }
 
