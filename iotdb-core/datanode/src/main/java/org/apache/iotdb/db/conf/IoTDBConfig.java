@@ -672,6 +672,12 @@ public class IoTDBConfig {
    */
   private int compactionThreadCount = 10;
 
+  /**
+   * How many thread will be set up to schedule compaction, 2 by default. Set to 1 when less than or
+   * equal to 0.
+   */
+  private int compactionScheduledThreadCount = 2;
+
   /*
    * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
    */
@@ -1909,6 +1915,14 @@ public class IoTDBConfig {
 
   public void setCompactionThreadCount(int compactionThreadCount) {
     this.compactionThreadCount = compactionThreadCount;
+  }
+
+  public int getCompactionScheduledThreadCount() {
+    return compactionScheduledThreadCount;
+  }
+
+  public void setCompactionScheduledThreadCount(int compactionScheduledThreadCount) {
+    this.compactionScheduledThreadCount = compactionScheduledThreadCount;
   }
 
   public int getContinuousQueryThreadNum() {

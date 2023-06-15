@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.IService;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Abst
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -48,6 +50,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -63,6 +66,17 @@ public class CompactionTaskManager implements IService {
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private final int compactionScheduledThreadNum = config.getCompactionScheduledThreadCount();
+
+  private AtomicInteger dataRegionNum = new AtomicInteger(0);
+
+  // scheduledCompactionThreadID -> tsFileManager list
+  private final Map<Integer, List<TsFileManager>> dataRegionMap = new ConcurrentHashMap<>();
+
+  private final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
+
+  private ScheduledExecutorService compactionScheduledPool;
 
   // The thread pool that executes the compaction task. The default number of threads for this pool
   // is 10.
@@ -107,6 +121,17 @@ public class CompactionTaskManager implements IService {
   }
 
   private void initThreadPool() {
+    this.compactionScheduledPool =
+        IoTDBThreadPoolFactory.newScheduledThreadPool(
+            compactionScheduledThreadNum, ThreadName.COMPACTION_SCHEDULE.getName());
+    for (int i = 0; i < compactionScheduledThreadNum; i++) {
+      ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+          compactionScheduledPool,
+          new compactionScheduledWorker(i, dataRegionMap),
+          COMPACTION_TASK_SUBMIT_DELAY,
+          IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
+          TimeUnit.MILLISECONDS);
+    }
     int compactionThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
     this.taskExecutionPool =
         (WrappedThreadPoolExecutor)
@@ -128,6 +153,7 @@ public class CompactionTaskManager implements IService {
     if (taskExecutionPool != null) {
       subCompactionTaskExecutionPool.shutdownNow();
       taskExecutionPool.shutdownNow();
+      compactionScheduledPool.shutdownNow();
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
@@ -140,6 +166,7 @@ public class CompactionTaskManager implements IService {
     if (taskExecutionPool != null) {
       awaitTermination(subCompactionTaskExecutionPool, milliseconds);
       awaitTermination(taskExecutionPool, milliseconds);
+      awaitTermination(compactionScheduledPool, milliseconds);
       logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
       waitTermination();
       storageGroupTasks.clear();
@@ -176,10 +203,32 @@ public class CompactionTaskManager implements IService {
     }
   }
 
+  public synchronized void register(TsFileManager tsFileManager) {
+    int idx = dataRegionNum.getAndAdd(1) % compactionScheduledThreadNum;
+    dataRegionMap.computeIfAbsent(idx, k -> new ArrayList<>()).add(tsFileManager);
+  }
+
+  public synchronized void unRegister(TsFileManager tsFileManager) {
+    for (List<TsFileManager> tsFileManagerList : dataRegionMap.values()) {
+      if (tsFileManagerList.contains(tsFileManager)) {
+        tsFileManagerList.remove(tsFileManager);
+        dataRegionNum.getAndAdd(-1);
+
+        List<TsFileManager> tsFileManagers = dataRegionMap.get(dataRegionNum.get());
+        if (tsFileManagers != null && !tsFileManagers.isEmpty()) {
+          tsFileManagerList.add(tsFileManagers.remove(tsFileManagers.size() - 1));
+        }
+        break;
+      }
+    }
+  }
+
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
     int timeMillis = 0;
-    while (!subCompactionTaskExecutionPool.isTerminated() || !taskExecutionPool.isTerminated()) {
+    while (!subCompactionTaskExecutionPool.isTerminated()
+        || !taskExecutionPool.isTerminated()
+        || !compactionScheduledPool.isTerminated()) {
       try {
         Thread.sleep(200);
       } catch (InterruptedException e) {
@@ -418,6 +467,16 @@ public class CompactionTaskManager implements IService {
               "Has been waiting over "
                   + MAX_WAITING_TIME / 1000
                   + " seconds for all compaction tasks to finish.");
+        }
+      }
+      if (compactionScheduledPool != null) {
+        this.compactionScheduledPool.shutdownNow();
+        if (!this.compactionScheduledPool.awaitTermination(
+            MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new InterruptedException(
+              "Has been waiting over "
+                  + MAX_WAITING_TIME / 1000
+                  + " seconds for all scheduled compaction threads to finish.");
         }
       }
       initThreadPool();

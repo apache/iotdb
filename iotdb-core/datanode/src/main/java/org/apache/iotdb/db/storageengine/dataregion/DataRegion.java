@@ -21,9 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -573,15 +570,7 @@ public class DataRegion implements IDataRegionForQuery {
         && !config.isEnableCrossSpaceCompaction()) {
       return;
     }
-    timedCompactionScheduleTask =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.COMPACTION_SCHEDULE.getName() + "-" + databaseName + "-" + dataRegionId);
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        timedCompactionScheduleTask,
-        this::executeCompaction,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
-        TimeUnit.MILLISECONDS);
+    CompactionTaskManager.getInstance().register(tsFileManager);
   }
 
   private void recoverCompaction() {
@@ -2630,6 +2619,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void abortCompaction() {
     tsFileManager.setAllowCompaction(false);
+    CompactionTaskManager.getInstance().unRegister(tsFileManager);
     List<AbstractCompactionTask> runningTasks =
         CompactionTaskManager.getInstance().abortCompaction(databaseName + "-" + dataRegionId);
     while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {

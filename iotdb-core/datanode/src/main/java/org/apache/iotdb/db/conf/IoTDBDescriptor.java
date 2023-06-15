@@ -519,6 +519,15 @@ public class IoTDBDescriptor {
     subtaskNum = subtaskNum <= 0 ? 1 : subtaskNum;
     conf.setSubCompactionTaskNum(subtaskNum);
 
+    int compactionScheduledThreadNum =
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_schedule_thread_count",
+                Integer.toString(conf.getSubCompactionTaskNum())));
+    compactionScheduledThreadNum =
+        compactionScheduledThreadNum <= 0 ? 1 : compactionScheduledThreadNum;
+    conf.setCompactionScheduledThreadCount(compactionScheduledThreadNum);
+
     conf.setQueryTimeoutThreshold(
         Long.parseLong(
             properties.getProperty(
