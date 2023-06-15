@@ -102,7 +102,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
                 Math.min(
                     (long)
                         (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs()
-                            * Math.pow(2, retryCount - 1)),
+                            * Math.pow(2d, retryCount - 1d)),
                     MAX_RETRY_WAIT_TIME_MS));
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
