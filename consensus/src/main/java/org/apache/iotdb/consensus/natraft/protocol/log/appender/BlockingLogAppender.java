@@ -159,7 +159,7 @@ public class BlockingLogAppender implements LogAppender {
       ConfigChangeEntry configChangeEntry) {
     boolean resp;
     try {
-      logManager.getLock().writeLock().lock();
+      logManager.writeLock();
       resp = logManager.maybeAppend(logs);
 
       if (resp) {
@@ -177,7 +177,7 @@ public class BlockingLogAppender implements LogAppender {
         result.status = Response.RESPONSE_LOG_MISMATCH;
       }
     } finally {
-      logManager.getLock().writeLock().unlock();
+      logManager.writeUnlock();
     }
     return resp;
   }

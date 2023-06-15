@@ -168,7 +168,7 @@ public class HeartbeatThread implements Runnable {
   /** Send each node (except the local node) in the group of the member a heartbeat. */
   protected void sendHeartbeats() {
     try {
-      localMember.getLogManager().getLock().readLock().lock();
+      localMember.getLogManager().readLock();
       request.setTerm(localMember.getStatus().getTerm().get());
       request.setLeader(localMember.getThisNode().getEndpoint());
       request.setLeaderId(localMember.getThisNode().getNodeId());
@@ -176,7 +176,7 @@ public class HeartbeatThread implements Runnable {
       request.setCommitLogTerm(localMember.getLogManager().getCommitLogTerm());
       request.setGroupId(localMember.getRaftGroupId().convertToTConsensusGroupId());
     } finally {
-      localMember.getLogManager().getLock().readLock().unlock();
+      localMember.getLogManager().readUnlock();
     }
     sendHeartbeats(localMember.getAllNodes());
   }
@@ -269,7 +269,7 @@ public class HeartbeatThread implements Runnable {
 
     long nextTerm;
     try {
-      localMember.getLogManager().getLock().writeLock().lock();
+      localMember.getLogManager().writeLock();
 
       nextTerm = localMember.getStatus().getTerm().incrementAndGet();
       localMember.getStatus().setVoteFor(localMember.getThisNode());
@@ -277,7 +277,7 @@ public class HeartbeatThread implements Runnable {
       // erase the log index, so it can be updated in the next heartbeat
       electionRequest.unsetLastLogIndex();
     } finally {
-      localMember.getLogManager().getLock().writeLock().unlock();
+      localMember.getLogManager().writeUnlock();
     }
 
     // the number of votes needed to become a leader,

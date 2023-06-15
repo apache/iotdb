@@ -426,6 +426,10 @@ public class Timer {
     RAFT_PUT_ENTRY(RAFT_MEMBER_SENDER, "put one entry", TIME_SCALE, true, ROOT),
     RAFT_FOLLOWER_STRONG_ACCEPT(
         RAFT_MEMBER_SENDER, "follower strong accept", TIME_SCALE, true, ROOT),
+    LOG_WRITE_LOCK("Lock", "write lock", TIME_SCALE, true, ROOT),
+    LOG_WRITE_UNLOCK("Lock", "write unlock", TIME_SCALE, true, ROOT),
+    LOG_READ_LOCK("Lock", "read lock", TIME_SCALE, true, ROOT),
+    LOG_READ_UNLOCK("Lock", "read unlock", TIME_SCALE, true, ROOT),
     ENGINE_INSERT_TABLET(ENGINE_INSERTION, "insert tablet", TIME_SCALE, true, ROOT),
     ENGINE_INSERT_TABLET_LOCK(
         ENGINE_INSERTION, "insert tablet: lock", TIME_SCALE, true, ENGINE_INSERT_TABLET),

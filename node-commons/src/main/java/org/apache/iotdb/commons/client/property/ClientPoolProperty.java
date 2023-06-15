@@ -84,7 +84,7 @@ public class ClientPoolProperty<V> {
     private DefaultProperty() {}
 
     public static final long WAIT_CLIENT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
-    public static final int MAX_CLIENT_NUM_FOR_EACH_NODE = 300;
-    public static final int CORE_CLIENT_NUM_FOR_EACH_NODE = 200;
+    public static final int MAX_CLIENT_NUM_FOR_EACH_NODE = 3000;
+    public static final int CORE_CLIENT_NUM_FOR_EACH_NODE = 2000;
   }
 }

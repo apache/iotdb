@@ -55,7 +55,8 @@ public class LogDispatcher {
   protected Map<Peer, Double> nodesRate = new HashMap<>();
   protected boolean queueOrdered;
   protected boolean enableCompressedDispatching;
-  public int bindingThreadNum;
+  public int maxBindingThreadNum;
+  public int minBindingThreadNum;
   public int maxBatchSize = 10;
 
   public LogDispatcher(RaftMember member, RaftConfig config) {
@@ -63,7 +64,8 @@ public class LogDispatcher {
     this.config = config;
     this.queueOrdered = !(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance());
     this.enableCompressedDispatching = config.isEnableCompressedDispatching();
-    this.bindingThreadNum = config.getDispatcherBindingThreadNum();
+    this.minBindingThreadNum = config.getMinDispatcherBindingThreadNum();
+    this.maxBindingThreadNum = config.getMaxDispatcherBindingThreadNum();
     this.allNodes = member.getAllNodes();
     this.newNodes = member.getNewNodes();
     createDispatcherGroups(unionNodes(allNodes, newNodes));
@@ -81,7 +83,8 @@ public class LogDispatcher {
 
   void createDispatcherGroup(Peer node) {
     dispatcherGroupMap.computeIfAbsent(
-        node, n -> new CursorBasedDispatcherGroup(n, this, bindingThreadNum));
+        node,
+        n -> new QueueBasedDispatcherGroup(n, this, maxBindingThreadNum, minBindingThreadNum));
   }
 
   void createDispatcherGroups(Collection<Peer> peers) {

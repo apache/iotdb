@@ -51,7 +51,9 @@ public class RaftConfig {
   private boolean enableUsePersistLogOnDiskToCatchUp;
   private long writeOperationTimeoutMS = 20_000L;
   private int logNumInBatch = 100;
-  private int dispatcherBindingThreadNum = 16;
+
+  private int minDispatcherBindingThreadNum = 4;
+  private int maxDispatcherBindingThreadNum = 16;
   private int applierThreadNum = 16;
   private int followerLoadBalanceWindowsToUse = 1;
   private double followerLoadBalanceOverestimateFactor = 1.1;
@@ -219,12 +221,20 @@ public class RaftConfig {
     this.logNumInBatch = logNumInBatch;
   }
 
-  public int getDispatcherBindingThreadNum() {
-    return dispatcherBindingThreadNum;
+  public int getMinDispatcherBindingThreadNum() {
+    return minDispatcherBindingThreadNum;
   }
 
-  public void setDispatcherBindingThreadNum(int dispatcherBindingThreadNum) {
-    this.dispatcherBindingThreadNum = dispatcherBindingThreadNum;
+  public void setMinDispatcherBindingThreadNum(int minDispatcherBindingThreadNum) {
+    this.minDispatcherBindingThreadNum = minDispatcherBindingThreadNum;
+  }
+
+  public int getMaxDispatcherBindingThreadNum() {
+    return maxDispatcherBindingThreadNum;
+  }
+
+  public void setMaxDispatcherBindingThreadNum(int maxDispatcherBindingThreadNum) {
+    this.maxDispatcherBindingThreadNum = maxDispatcherBindingThreadNum;
   }
 
   public int getFollowerLoadBalanceWindowsToUse() {
@@ -619,11 +629,17 @@ public class RaftConfig {
             properties.getProperty(
                 "enable_weak_acceptance", String.valueOf(this.isEnableWeakAcceptance()))));
 
-    this.setDispatcherBindingThreadNum(
+    this.setMinDispatcherBindingThreadNum(
         Integer.parseInt(
             properties.getProperty(
-                "dispatcher_binding_thread_num",
-                String.valueOf(this.getDispatcherBindingThreadNum()))));
+                "min_dispatcher_binding_thread_num",
+                String.valueOf(this.getMinDispatcherBindingThreadNum()))));
+
+    this.setMaxDispatcherBindingThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_dispatcher_binding_thread_num",
+                String.valueOf(this.getMaxDispatcherBindingThreadNum()))));
 
     this.setApplierThreadNum(
         Integer.parseInt(

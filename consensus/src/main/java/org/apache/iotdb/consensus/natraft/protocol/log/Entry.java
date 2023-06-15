@@ -56,9 +56,7 @@ public abstract class Entry implements Comparable<Entry> {
   public long applyTime;
   public long waitEndTime;
 
-  protected volatile byte[] recycledBuffer;
-  protected volatile ByteBuffer preSerializationCache;
-  protected volatile ByteBuffer serializationCache;
+  public EntrySerialization serialization;
 
   public int getDefaultSerializationBufferSize() {
     return DEFAULT_SERIALIZATION_BUFFER_SIZE;
@@ -75,37 +73,11 @@ public abstract class Entry implements Comparable<Entry> {
    * second byte in the ByteBuffer).
    */
   public void preSerialize() {
-    if (preSerializationCache != null || serializationCache != null) {
-      return;
-    }
-    long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
-    ByteBuffer byteBuffer = serializeInternal(recycledBuffer);
-    Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
-    preSerializationCache = byteBuffer;
+    serialization.preSerialize(this);
   }
 
   public ByteBuffer serialize() {
-    ByteBuffer cache = serializationCache;
-    if (cache != null) {
-      return cache.slice();
-    }
-    if (preSerializationCache != null) {
-      ByteBuffer slice = preSerializationCache.slice();
-      slice.position(1);
-      slice.putLong(getCurrLogIndex());
-      slice.putLong(getCurrLogTerm());
-      slice.putLong(getPrevTerm());
-      slice.position(0);
-      serializationCache = slice;
-      preSerializationCache = null;
-    } else {
-      long startTime = Statistic.SERIALIZE_ENTRY.getOperationStartTime();
-      ByteBuffer byteBuffer = serializeInternal(recycledBuffer);
-      Statistic.SERIALIZE_ENTRY.calOperationCostTimeFromStart(startTime);
-      serializationCache = byteBuffer;
-    }
-    byteSize = serializationCache.remaining();
-    return serializationCache.slice();
+    return serialization.serialize(this);
   }
 
   public abstract void deserialize(ByteBuffer buffer);
@@ -186,13 +158,8 @@ public abstract class Entry implements Comparable<Entry> {
   }
 
   public long cachedSize() {
-    ByteBuffer cache;
-    if ((cache = serializationCache) != null) {
-      return cache.remaining();
-    } else if ((cache = preSerializationCache) != null) {
-      return cache.remaining();
-    }
-    return byteSize;
+    long serializedSize = serialization.serializedSize();
+    return serializedSize > 0 ? serializedSize : byteSize;
   }
 
   public long getByteSize() {
@@ -219,12 +186,8 @@ public abstract class Entry implements Comparable<Entry> {
     this.fromThisNode = fromThisNode;
   }
 
-  public ByteBuffer getSerializationCache() {
-    return serializationCache;
-  }
-
   public void setSerializationCache(ByteBuffer serializationCache) {
-    this.serializationCache = serializationCache;
+    serialization.setSerializationCache(serializationCache);
   }
 
   public void recycle() {
@@ -240,14 +203,7 @@ public abstract class Entry implements Comparable<Entry> {
     committedTime = 0;
     applyTime = 0;
     waitEndTime = 0;
-    if (preSerializationCache != null) {
-      recycledBuffer = preSerializationCache.array();
-      preSerializationCache = null;
-    }
-    if (serializationCache != null) {
-      recycledBuffer = serializationCache.array();
-      serializationCache = null;
-    }
+    serialization.clear();
     votingEntry = null;
   }
 

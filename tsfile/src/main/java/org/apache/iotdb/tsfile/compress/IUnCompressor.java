@@ -132,7 +132,9 @@ public interface IUnCompressor {
 
     @Override
     public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
-      throw new IOException("NoUnCompressor does not support this method.");
+      int initPos = uncompressed.position();
+      uncompressed.put(compressed);
+      return uncompressed.position() - initPos;
     }
 
     @Override

@@ -278,13 +278,13 @@ public class RaftMember {
 
   public void applyNewNodes() {
     try {
-      logManager.getLock().writeLock().lock();
+      logManager.writeLock();
       logDispatcher.applyNewNodes();
       allNodes = newNodes;
       newNodes = null;
       persistConfiguration();
     } finally {
-      logManager.getLock().writeLock().unlock();
+      logManager.writeUnlock();
     }
   }
 
@@ -433,7 +433,7 @@ public class RaftMember {
    */
   public void stepDown(long newTerm, Peer newLeader) {
     try {
-      logManager.getLock().writeLock().lock();
+      logManager.writeLock();
       long currTerm = status.term.get();
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
@@ -453,7 +453,7 @@ public class RaftMember {
         heartbeatThread.setLastHeartbeatReceivedTime(System.currentTimeMillis());
       }
     } finally {
-      logManager.getLock().writeLock().unlock();
+      logManager.writeUnlock();
     }
   }
 
@@ -1085,11 +1085,11 @@ public class RaftMember {
     } finally {
       snapshotApplyLock.unlock();
     }
-    logManager.getLock().writeLock().lock();
+    logManager.writeLock();
     try {
       logAppender.reset();
     } finally {
-      logManager.getLock().writeLock().unlock();
+      logManager.writeUnlock();
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -1130,12 +1130,12 @@ public class RaftMember {
     long commitTerm;
     long curTerm;
     try {
-      logManager.getLock().readLock().lock();
+      logManager.readLock();
       commitIndex = logManager.getCommitLogIndex();
       commitTerm = logManager.getCommitLogTerm();
       curTerm = status.getTerm().get();
     } finally {
-      logManager.getLock().readLock().unlock();
+      logManager.readUnlock();
     }
 
     return new RequestCommitIndexResponse(curTerm, commitIndex, commitTerm);
@@ -1241,7 +1241,7 @@ public class RaftMember {
     List<Peer> oldNodes = new ArrayList<>(allNodes);
     VotingEntry votingEntry;
     try {
-      logManager.getLock().writeLock().lock();
+      logManager.writeLock();
       if (this.newNodes != null) {
         return new TSStatus(TSStatusCode.CONFIGURATION_ERROR.getStatusCode())
             .setMessage("Last configuration change in progress");
@@ -1262,7 +1262,7 @@ public class RaftMember {
 
       logDispatcher.offer(votingEntry);
     } finally {
-      logManager.getLock().writeLock().unlock();
+      logManager.writeUnlock();
     }
 
     List<Peer> addedNodes = NodeUtils.computeAddedNodes(oldNodes, this.newNodes);

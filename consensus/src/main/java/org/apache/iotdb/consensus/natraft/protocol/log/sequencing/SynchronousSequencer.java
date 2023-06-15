@@ -25,6 +25,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.Entry;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
 import org.apache.iotdb.consensus.natraft.utils.LogUtils;
+import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,13 @@ public class SynchronousSequencer implements LogSequencer {
     // TODO: control the number of uncommitted entries while not letting the new leader be blocked
     RaftLogManager logManager = member.getLogManager();
     try {
-      logManager.getLock().writeLock().lock();
+      long startTime =
+          Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
+      logManager.writeLock();
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
+          startTime);
+
+      startTime = Statistic.RAFT_SENDER_OCCUPY_LOG_MANAGER_IN_APPEND.getOperationStartTime();
       Entry lastEntry = logManager.getLastEntry();
       long lastIndex = lastEntry.getCurrLogIndex();
       long lastTerm = lastEntry.getCurrLogTerm();
@@ -71,8 +78,10 @@ public class SynchronousSequencer implements LogSequencer {
       if (!(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance())) {
         votingEntry = LogUtils.enqueueEntry(votingEntry, member);
       }
+
+      Statistic.RAFT_SENDER_OCCUPY_LOG_MANAGER_IN_APPEND.calOperationCostTimeFromStart(startTime);
     } finally {
-      logManager.getLock().writeLock().unlock();
+      logManager.writeUnlock();
     }
 
     if (config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance()) {

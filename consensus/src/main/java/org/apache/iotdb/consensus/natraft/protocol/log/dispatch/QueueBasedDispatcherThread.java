@@ -22,25 +22,25 @@ package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 
-import java.util.concurrent.BlockingQueue;
+import java.util.Queue;
 
 class QueueBasedDispatcherThread extends DispatcherThread {
 
-  private final BlockingQueue<VotingEntry> logBlockingDeque;
+  private final Queue<VotingEntry> logQueue;
 
   protected QueueBasedDispatcherThread(
       LogDispatcher logDispatcher,
       Peer receiver,
-      BlockingQueue<VotingEntry> logBlockingDeque,
+      Queue<VotingEntry> logQueue,
       DispatcherGroup group) {
     super(logDispatcher, receiver, group);
-    this.logBlockingDeque = logBlockingDeque;
+    this.logQueue = logQueue;
   }
 
   @Override
   protected boolean fetchLogs() throws InterruptedException {
     if (group.isDelayed()) {
-      if (logBlockingDeque.size() < logDispatcher.maxBatchSize
+      if (logQueue.size() < logDispatcher.maxBatchSize
           && System.nanoTime() - lastDispatchTime < 1_000_000_000L) {
         // the follower is being delayed, if there is not enough requests, and it has
         // dispatched recently, wait for a while to get a larger batch
@@ -49,20 +49,44 @@ class QueueBasedDispatcherThread extends DispatcherThread {
       }
     }
 
-    synchronized (logBlockingDeque) {
-      VotingEntry poll = logBlockingDeque.poll();
+    return fetchLogsSyncLoop();
+  }
+
+  private boolean fetchLogsSyncLoop() throws InterruptedException {
+    synchronized (logQueue) {
+      VotingEntry poll = logQueue.poll();
       if (poll != null) {
         currBatch.add(poll);
-        logBlockingDeque.drainTo(currBatch, logDispatcher.maxBatchSize - 1);
+        while (!logQueue.isEmpty() && currBatch.size() < logDispatcher.maxBatchSize) {
+          currBatch.add(logQueue.poll());
+        }
       } else {
         if (group.getLogDispatcher().getMember().isLeader()) {
-          logBlockingDeque.wait(1000);
+          logQueue.wait(1000);
         } else {
-          logBlockingDeque.wait(5000);
+          logQueue.wait(5000);
         }
         return false;
       }
     }
     return true;
   }
+
+  //  private boolean fetchLogsSyncDrain() throws InterruptedException {
+  //    synchronized (logBlockingDeque) {
+  //      VotingEntry poll = logBlockingDeque.poll();
+  //      if (poll != null) {
+  //        currBatch.add(poll);
+  //        logBlockingDeque.drainTo(currBatch, logDispatcher.maxBatchSize - 1);
+  //      } else {
+  //        if (group.getLogDispatcher().getMember().isLeader()) {
+  //          logBlockingDeque.wait(1000);
+  //        } else {
+  //          logBlockingDeque.wait(5000);
+  //        }
+  //        return false;
+  //      }
+  //    }
+  //    return true;
+  //  }
 }

@@ -256,10 +256,10 @@ public abstract class RaftLogManager {
 
   public Entry getLastEntry() {
     try {
-      lock.readLock().lock();
+      readLock();
       return entries.get(entries.size() - 1);
     } finally {
-      lock.readLock().unlock();
+      readUnlock();
     }
   }
 
@@ -295,7 +295,7 @@ public abstract class RaftLogManager {
    */
   public long getTerm(long index) {
     try {
-      lock.readLock().lock();
+      readLock();
       long firstIndex = getFirstIndex();
       if (index < firstIndex) {
         // search in disk
@@ -318,7 +318,7 @@ public abstract class RaftLogManager {
       firstIndex = getFirstIndex();
       return entries.get((int) (index - firstIndex)).getCurrLogTerm();
     } finally {
-      lock.readLock().unlock();
+      readUnlock();
     }
   }
 
@@ -329,10 +329,10 @@ public abstract class RaftLogManager {
    */
   public long getLastLogTerm() {
     try {
-      lock.readLock().lock();
+      readLock();
       return entries.get(entries.size() - 1).getCurrLogTerm();
     } finally {
-      lock.readLock().unlock();
+      readUnlock();
     }
   }
 
@@ -362,7 +362,7 @@ public abstract class RaftLogManager {
     long lastTerm = entries.get(0).getPrevTerm();
     long startTime = Statistic.RAFT_RECEIVER_WAIT_LOCK.getOperationStartTime();
     try {
-      lock.writeLock().lock();
+      writeLock();
       Statistic.RAFT_RECEIVER_WAIT_LOCK.calOperationCostTimeFromStart(startTime);
       startTime = Statistic.RAFT_RECEIVER_APPEND_INTERNAL.getOperationStartTime();
       if (matchTerm(lastTerm, lastIndex)) {
@@ -403,7 +403,7 @@ public abstract class RaftLogManager {
       }
       return false;
     } finally {
-      lock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
@@ -492,7 +492,7 @@ public abstract class RaftLogManager {
         snapshot.getLastLogIndex(),
         snapshot.getLastLogTerm());
     try {
-      lock.writeLock().lock();
+      writeLock();
 
       long localIndex = commitIndex;
       long snapIndex = snapshot.getLastLogIndex();
@@ -515,7 +515,7 @@ public abstract class RaftLogManager {
         this.appliedIndex = snapshot.getLastLogIndex();
       }
     } finally {
-      lock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
@@ -547,14 +547,14 @@ public abstract class RaftLogManager {
       return Collections.emptyList();
     }
     try {
-      lock.readLock().lock();
+      readLock();
       long localFirst = getFirstIndex();
       long localLast = getLastLogIndex();
       low = Math.max(low, localFirst);
       high = Math.min(high, localLast + 1);
       return new ArrayList<>(entries.subList((int) (low - localFirst), (int) (high - localFirst)));
     } finally {
-      lock.readLock().unlock();
+      readUnlock();
     }
   }
 
@@ -655,7 +655,7 @@ public abstract class RaftLogManager {
 
     List<Entry> removedEntries;
     try {
-      lock.writeLock().lock();
+      writeLock();
       long startTime = Statistic.RAFT_SENDER_COMMIT_HOLD_LOCK.getOperationStartTime();
       long lo = commitIndex + 1;
       long hi = newCommitIndex + 1;
@@ -678,7 +678,7 @@ public abstract class RaftLogManager {
       applyEntries(entries);
       Statistic.RAFT_SENDER_COMMIT_HOLD_LOCK.calOperationCostTimeFromStart(startTime);
     } finally {
-      lock.writeLock().unlock();
+      writeUnlock();
     }
     recycleEntries(removedEntries);
   }
@@ -834,7 +834,7 @@ public abstract class RaftLogManager {
   void checkDeleteLog() {
     List<Entry> removedEntries = Collections.emptyList();
     try {
-      lock.writeLock().lock();
+      writeLock();
       if (appliedIndex - getFirstIndex() <= minNumOfLogsInMem) {
         return;
       }
@@ -842,7 +842,7 @@ public abstract class RaftLogManager {
     } catch (Exception e) {
       logger.error("{}, error occurred when checking delete log", name, e);
     } finally {
-      lock.writeLock().unlock();
+      writeUnlock();
     }
 
     try {
@@ -998,8 +998,28 @@ public abstract class RaftLogManager {
     return name;
   }
 
-  public ReentrantReadWriteLock getLock() {
-    return lock;
+  public void writeLock() {
+    long startTime = Statistic.LOG_WRITE_LOCK.getOperationStartTime();
+    lock.writeLock().lock();
+    Statistic.LOG_WRITE_LOCK.calOperationCostTimeFromStart(startTime);
+  }
+
+  public void writeUnlock() {
+    long startTime = Statistic.LOG_WRITE_UNLOCK.getOperationStartTime();
+    lock.writeLock().unlock();
+    Statistic.LOG_WRITE_UNLOCK.calOperationCostTimeFromStart(startTime);
+  }
+
+  public void readLock() {
+    long startTime = Statistic.LOG_READ_LOCK.getOperationStartTime();
+    lock.readLock().lock();
+    Statistic.LOG_READ_LOCK.calOperationCostTimeFromStart(startTime);
+  }
+
+  public void readUnlock() {
+    long startTime = Statistic.LOG_READ_UNLOCK.getOperationStartTime();
+    lock.readLock().unlock();
+    Statistic.LOG_READ_UNLOCK.calOperationCostTimeFromStart(startTime);
   }
 
   public long getPersistedLogIndex() {

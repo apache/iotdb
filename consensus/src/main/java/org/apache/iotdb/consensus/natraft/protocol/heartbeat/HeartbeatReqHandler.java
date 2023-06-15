@@ -70,7 +70,7 @@ public class HeartbeatReqHandler {
       if (leaderTerm > thisTerm || member.getStatus().getLeader() == null) {
         // try updating local term or leader
         try {
-          member.getLogManager().getLock().writeLock().lock();
+          member.getLogManager().writeLock();
           Peer peer =
               new Peer(
                   Factory.createFromTConsensusGroupId(request.groupId),
@@ -87,7 +87,7 @@ public class HeartbeatReqHandler {
             }
           }
         } finally {
-          member.getLogManager().getLock().writeLock().unlock();
+          member.getLogManager().writeUnlock();
         }
       }
 

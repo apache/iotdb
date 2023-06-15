@@ -28,8 +28,8 @@ public class CursorBasedDispatcherGroup extends DispatcherGroup {
   private AtomicLong cursor = new AtomicLong();
 
   public CursorBasedDispatcherGroup(
-      Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
-    super(peer, logDispatcher, maxBindingThreadNum);
+      Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum, int minBindingThreadNum) {
+    super(peer, logDispatcher, maxBindingThreadNum, minBindingThreadNum);
     this.cursor.set(logDispatcher.getMember().getSafeIndex() + 1);
     init();
   }

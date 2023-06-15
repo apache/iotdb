@@ -78,12 +78,12 @@ public class DirectorySnapshotRaftLogManager extends RaftLogManager {
                 + System.currentTimeMillis());
     List<Peer> currNodes;
     try {
-      lock.readLock().lock();
+      readLock();
       snapshotIndex = getAppliedIndex();
       snapshotTerm = getAppliedTerm();
       currNodes = member.getAllNodes();
     } finally {
-      lock.readLock().unlock();
+      readUnlock();
     }
     stateMachine.takeSnapshot(latestSnapshotDir);
     List<Path> snapshotFiles = stateMachine.getSnapshotFiles(latestSnapshotDir);

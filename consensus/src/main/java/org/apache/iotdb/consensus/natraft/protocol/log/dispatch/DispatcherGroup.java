@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 
-import org.apache.ratis.thirdparty.com.google.common.util.concurrent.RateLimiter;
+import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +43,8 @@ public abstract class DispatcherGroup implements Comparable<DispatcherGroup> {
   protected DynamicThreadGroup dynamicThreadGroup;
   protected String name;
 
-  public DispatcherGroup(Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
+  public DispatcherGroup(
+      Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum, int minBindingThreadNum) {
     this.logDispatcher = logDispatcher;
     this.nodeEnabled = true;
     this.rateLimiter = RateLimiter.create(Double.MAX_VALUE);
@@ -54,7 +55,7 @@ public abstract class DispatcherGroup implements Comparable<DispatcherGroup> {
             name,
             dispatcherThreadPool::submit,
             () -> newDispatcherThread(peer),
-            maxBindingThreadNum / 4,
+            minBindingThreadNum,
             maxBindingThreadNum);
   }
 

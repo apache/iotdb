@@ -22,17 +22,17 @@ package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.ArrayDeque;
+import java.util.Queue;
 
 public class QueueBasedDispatcherGroup extends DispatcherGroup {
 
-  private final BlockingQueue<VotingEntry> entryQueue;
+  private final Queue<VotingEntry> entryQueue;
 
   public QueueBasedDispatcherGroup(
-      Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum) {
-    super(peer, logDispatcher, maxBindingThreadNum);
-    this.entryQueue = new ArrayBlockingQueue<>(logDispatcher.getConfig().getMaxNumOfLogsInMem());
+      Peer peer, LogDispatcher logDispatcher, int maxBindingThreadNum, int minBindingThreadNum) {
+    super(peer, logDispatcher, maxBindingThreadNum, minBindingThreadNum);
+    this.entryQueue = new ArrayDeque<>(logDispatcher.getConfig().getMaxNumOfLogsInMem());
     init();
   }
 

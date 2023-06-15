@@ -131,17 +131,22 @@ public interface ICompressor extends Serializable {
 
     @Override
     public byte[] compress(byte[] data, int offset, int length) throws IOException {
-      throw new IOException("No Compressor does not support compression function");
+      byte[] result = new byte[length];
+      System.arraycopy(data, offset, result, 0, length);
+      return result;
     }
 
     @Override
     public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
-      throw new IOException("No Compressor does not support compression function");
+      System.arraycopy(data, offset, compressed, 0, length);
+      return length;
     }
 
     @Override
     public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
-      throw new IOException("No Compressor does not support compression function");
+      int initPos = compressed.position();
+      compressed.put(data);
+      return compressed.position() - initPos;
     }
 
     @Override
