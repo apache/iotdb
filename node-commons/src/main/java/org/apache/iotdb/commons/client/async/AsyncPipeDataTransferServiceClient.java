@@ -99,7 +99,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
    * return self, the method doesn't need to be called by the user and will be triggered after the
    * RPC is finished.
    */
-  private void returnSelf() {
+  public void returnSelf() {
     if (shouldReturnSelf.get()) {
       clientManager.returnClient(endpoint, this);
     }

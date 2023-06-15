@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.v1.request;
 
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -51,7 +51,7 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     fileSealReq.fileName = fileName;
     fileSealReq.fileLength = fileLength;
 
-    fileSealReq.version = IoTDBThriftConnectorVersion.VERSION_1.getVersion();
+    fileSealReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
     fileSealReq.type = PipeRequestType.TRANSFER_FILE_SEAL.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

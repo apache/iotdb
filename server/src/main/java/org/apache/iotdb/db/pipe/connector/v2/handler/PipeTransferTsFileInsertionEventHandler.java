@@ -130,6 +130,7 @@ public class PipeTransferTsFileInsertionEventHandler
       } finally {
         if (client != null) {
           client.setShouldReturnSelf(true);
+          client.returnSelf();
         }
 
         connector.commit(requestCommitId, event);
@@ -172,6 +173,7 @@ public class PipeTransferTsFileInsertionEventHandler
     } finally {
       if (client != null) {
         client.setShouldReturnSelf(true);
+        client.returnSelf();
       }
     }
 
