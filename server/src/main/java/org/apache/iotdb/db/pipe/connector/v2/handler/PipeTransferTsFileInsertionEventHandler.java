@@ -58,10 +58,11 @@ public class PipeTransferTsFileInsertionEventHandler
   private final byte[] readBuffer;
   private long position;
 
-  private final RandomAccessFile reader;
+  private RandomAccessFile reader;
+
+  private final AtomicBoolean isSealSignalSent;
 
   private AsyncPipeDataTransferServiceClient client;
-  private final AtomicBoolean isSealSignalSent;
 
   private static final long MAX_RETRY_WAIT_TIME_MS =
       (long) (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs() * Math.pow(2, 5));
@@ -205,7 +206,16 @@ public class PipeTransferTsFileInsertionEventHandler
                 retryCount,
                 exception);
 
-            connector.transfer(requestCommitId, this);
+            try {
+              position = 0;
+              reader = new RandomAccessFile(tsFile, "r");
+              isSealSignalSent.set(false);
+
+              connector.transfer(requestCommitId, this);
+            } catch (FileNotFoundException e) {
+              LOGGER.error("Exception occurred when retrying...", e);
+              onError(e);
+            }
           }
         });
   }
