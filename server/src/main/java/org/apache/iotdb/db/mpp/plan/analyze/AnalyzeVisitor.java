@@ -2644,6 +2644,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+      updateSchemaTreeByViews(analysis, schemaTree);
       logger.debug("[EndFetchSchema]]");
 
       analyzeLastSource(
