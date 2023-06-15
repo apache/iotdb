@@ -35,8 +35,8 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -279,13 +279,13 @@ public class AsyncDataNodeClientPool {
         case CONSTRUCT_SCHEMA_BLACK_LIST:
           client.constructSchemaBlackList(
               (TConstructSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST:
           client.rollbackSchemaBlackList(
               (TRollbackSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case FETCH_SCHEMA_BLACK_LIST:
@@ -303,31 +303,31 @@ public class AsyncDataNodeClientPool {
         case DELETE_DATA_FOR_DELETE_SCHEMA:
           client.deleteDataForDeleteSchema(
               (TDeleteDataForDeleteSchemaReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case DELETE_TIMESERIES:
           client.deleteTimeSeries(
               (TDeleteTimeSeriesReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.constructSchemaBlackListWithTemplate(
               (TConstructSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.rollbackSchemaBlackListWithTemplate(
               (TRollbackSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case DEACTIVATE_TEMPLATE:
           client.deactivateTemplate(
               (TDeactivateTemplateReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case UPDATE_TEMPLATE:
@@ -351,25 +351,25 @@ public class AsyncDataNodeClientPool {
         case CONSTRUCT_VIEW_SCHEMA_BLACK_LIST:
           client.constructViewSchemaBlackList(
               (TConstructViewSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case ROLLBACK_VIEW_SCHEMA_BLACK_LIST:
           client.rollbackViewSchemaBlackList(
               (TRollbackViewSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case DELETE_VIEW:
           client.deleteViewSchema(
               (TDeleteViewSchemaReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case ALTER_VIEW:
           client.alterView(
               (TAlterViewReq) clientHandler.getRequest(requestId),
-              (DeleteSchemaRPCHandler)
+              (SchemaUpdateRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case KILL_QUERY_INSTANCE:
