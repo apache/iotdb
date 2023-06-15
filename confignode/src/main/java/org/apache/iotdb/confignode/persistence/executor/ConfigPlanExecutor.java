@@ -512,7 +512,13 @@ public class ConfigPlanExecutor {
         .forEach(
             x -> {
               try {
+                long startTime = System.currentTimeMillis();
+                LOGGER.info("[LoadSnapshot] Start to load snapshot for {}", x.getClass().getName());
                 x.processLoadSnapshot(latestSnapshotRootDir);
+                LOGGER.info(
+                    "[LoadSnapshot] Load snapshot for {} cost {} ms",
+                    x.getClass().getName(),
+                    System.currentTimeMillis() - startTime);
               } catch (TException | IOException e) {
                 result.set(false);
                 LOGGER.error("Load snapshot error: {}", e.getMessage());
