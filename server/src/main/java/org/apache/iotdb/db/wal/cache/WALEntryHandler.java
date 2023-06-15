@@ -16,17 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.utils;
+package org.apache.iotdb.db.wal.cache;
 
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
-import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
 import org.apache.iotdb.db.wal.node.WALNode;
+import org.apache.iotdb.db.wal.utils.RawByteBufferView;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,7 +78,7 @@ public class WALEntryHandler {
   }
 
   /** Get this handler's value */
-  public InsertNode getValue() throws WALPipeException {
+  public InsertNode getInsertNode() throws WALPipeException {
     // return local cache
     WALEntryValue res = value;
     if (res != null) {
@@ -90,17 +89,11 @@ public class WALEntryHandler {
       }
     }
 
-    ByteBuffer buffer = getRawValue();
-    PlanNode node = WALEntry.deserializeForConsensus(buffer);
-    if (node instanceof InsertNode) {
-      return (InsertNode) node;
-    } else {
-      return null;
-    }
+    return getCacheValue().getInsertNode();
   }
 
   /** Get this handler's raw value */
-  public ByteBuffer getRawValue() throws WALPipeException {
+  public ByteBuffer getByteBuffer() throws WALPipeException {
     // return local cache
     WALEntryValue res = value;
     if (res != null) {
@@ -117,6 +110,10 @@ public class WALEntryHandler {
       }
     }
 
+    return getCacheValue().getByteBuffer();
+  }
+
+  private WALEntryCacheValue getCacheValue() throws WALPipeException {
     // wait until the position is ready
     while (!walEntryPosition.canRead()) {
       try {
@@ -129,18 +126,18 @@ public class WALEntryHandler {
       }
     }
     // read from the wal file
-    ByteBuffer buffer;
+    WALEntryCacheValue cacheValue;
     try {
-      buffer = walEntryPosition.readByteBufferViaCache();
+      cacheValue = walEntryPosition.readViaCache();
     } catch (Exception e) {
       throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
     }
 
-    if (buffer == null) {
+    if (cacheValue == null) {
       throw new WALPipeException(
           String.format("Fail to get the wal value of the position %s.", walEntryPosition));
     }
-    return buffer;
+    return cacheValue;
   }
 
   public long getMemTableId() {

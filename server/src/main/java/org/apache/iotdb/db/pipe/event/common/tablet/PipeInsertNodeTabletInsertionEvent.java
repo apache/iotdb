@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.wal.cache.WALEntryHandler;
 import org.apache.iotdb.db.wal.exception.WALPipeException;
-import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -67,7 +67,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   //
   public InsertNode getInsertNode() throws WALPipeException {
-    return walEntryHandler.getValue();
+    return walEntryHandler.getInsertNode();
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////

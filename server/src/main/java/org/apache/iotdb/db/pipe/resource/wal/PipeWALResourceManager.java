@@ -3,7 +3,7 @@
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.db.wal.utils.WALEntryHandler;
+import org.apache.iotdb.db.wal.cache.WALEntryHandler;
 
 import java.util.Iterator;
 import java.util.Map;

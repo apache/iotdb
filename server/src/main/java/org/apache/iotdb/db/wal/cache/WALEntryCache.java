@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.utils;
+package org.apache.iotdb.db.wal.cache;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -46,7 +46,7 @@ public class WALEntryCache {
   private static final Logger logger = LoggerFactory.getLogger(WALEntryCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /** LRU cache, find InsertNode by WALEntryPosition */
-  private final LoadingCache<WALEntryPosition, ByteBuffer> lruCache;
+  private final LoadingCache<WALEntryPosition, WALEntryCacheValue> lruCache;
 
   /** ids of all pinned memTables */
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
@@ -57,12 +57,13 @@ public class WALEntryCache {
             // TODO: pipe module should determine how to configure this param
             .maximumWeight(config.getAllocateMemoryForWALPipeCache())
             .weigher(
-                (Weigher<WALEntryPosition, ByteBuffer>) (position, buffer) -> buffer.capacity())
+                (Weigher<WALEntryPosition, WALEntryCacheValue>)
+                    (position, value) -> position.getSize() * 2)
             .build(new WALEntryCacheLoader());
   }
 
-  public ByteBuffer get(WALEntryPosition position) {
-    ByteBuffer res = lruCache.getIfPresent(position);
+  public WALEntryCacheValue get(WALEntryPosition position) {
+    WALEntryCacheValue res = lruCache.getIfPresent(position);
     // batch load from the wal file
     if (res == null) {
       res = lruCache.getAll(Collections.singleton(position)).get(position);
@@ -87,17 +88,17 @@ public class WALEntryCache {
     memTablesNeedSearch.clear();
   }
 
-  class WALEntryCacheLoader implements CacheLoader<WALEntryPosition, ByteBuffer> {
+  class WALEntryCacheLoader implements CacheLoader<WALEntryPosition, WALEntryCacheValue> {
     @Override
-    public @Nullable ByteBuffer load(@NonNull WALEntryPosition key) throws Exception {
-      return key.read();
+    public @Nullable WALEntryCacheValue load(@NonNull WALEntryPosition key) throws Exception {
+      return new WALEntryCacheValue(key.read());
     }
 
     /** Batch load all wal entries in the file when any one key is absent. */
     @Override
-    public @NonNull Map<@NonNull WALEntryPosition, @NonNull ByteBuffer> loadAll(
+    public @NonNull Map<@NonNull WALEntryPosition, @NonNull WALEntryCacheValue> loadAll(
         @NonNull Iterable<? extends @NonNull WALEntryPosition> keys) {
-      Map<WALEntryPosition, ByteBuffer> res = new HashMap<>();
+      Map<WALEntryPosition, WALEntryCacheValue> res = new HashMap<>();
       for (WALEntryPosition pos : keys) {
         if (res.containsKey(pos) || !pos.canRead()) {
           continue;
@@ -130,7 +131,7 @@ public class WALEntryCache {
               buffer.clear();
               res.put(
                   new WALEntryPosition(pos.getIdentifier(), walFileVersionId, position, size),
-                  buffer);
+                  new WALEntryCacheValue(buffer));
             }
             position += size;
           }

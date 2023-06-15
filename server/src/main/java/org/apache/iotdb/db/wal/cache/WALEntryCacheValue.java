@@ -16,22 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.utils.listener;
+package org.apache.iotdb.db.wal.cache;
 
-import org.apache.iotdb.db.wal.buffer.WALEntryValue;
-import org.apache.iotdb.db.wal.cache.WALEntryHandler;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 
-/** This class helps judge whether wal is flushed to the storage device. */
-public class WALFlushListener extends AbstractResultListener {
-  // handler for pipeline, only exists then value is InsertNode
-  private final WALEntryHandler walEntryHandler;
+import java.nio.ByteBuffer;
 
-  public WALFlushListener(boolean wait, WALEntryValue value, long memTableId) {
-    super(wait);
-    walEntryHandler = new WALEntryHandler(value, memTableId);
+public class WALEntryCacheValue {
+  private InsertNode node;
+  private final ByteBuffer buffer;
+
+  public WALEntryCacheValue(ByteBuffer buffer) {
+    this.buffer = buffer;
   }
 
-  public WALEntryHandler getWalEntryHandler() {
-    return walEntryHandler;
+  public synchronized InsertNode getInsertNode() {
+    if (node == null) {
+      PlanNode planNode = WALEntry.deserializeForConsensus(buffer);
+      if (planNode instanceof InsertNode) {
+        node = (InsertNode) planNode;
+      }
+    }
+    return node;
+  }
+
+  public ByteBuffer getByteBuffer() {
+    return buffer;
   }
 }

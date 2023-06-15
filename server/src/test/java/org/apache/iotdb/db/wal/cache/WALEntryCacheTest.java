@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.utils;
+package org.apache.iotdb.db.wal.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -28,8 +28,8 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.node.WALNode;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -86,7 +86,7 @@ public class WALEntryCacheTest {
       Thread.sleep(50);
     }
     // load by cache
-    assertEquals(node1, WALEntry.deserializeForConsensus(cache.get(position)));
+    assertEquals(node1, cache.get(position).getInsertNode());
   }
 
   @Test
@@ -116,14 +116,14 @@ public class WALEntryCacheTest {
     }
     // check batch load memTable1
     cache.addMemTable(memTable1.getMemTableId());
-    assertEquals(node1, WALEntry.deserializeForConsensus(cache.get(position1)));
+    assertEquals(node1, cache.get(position1).getInsertNode());
     assertTrue(cache.contains(position1));
     assertTrue(cache.contains(position2));
     assertFalse(cache.contains(position3));
     // check batch load none
     cache.removeMemTable(memTable1.getMemTableId());
     cache.clear();
-    assertEquals(node1, WALEntry.deserializeForConsensus(cache.get(position1)));
+    assertEquals(node1, cache.get(position1).getInsertNode());
     assertTrue(cache.contains(position1));
     assertFalse(cache.contains(position2));
     assertFalse(cache.contains(position3));

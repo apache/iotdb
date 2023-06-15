@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.utils;
+package org.apache.iotdb.db.wal.cache;
 
 import org.apache.iotdb.db.wal.node.WALNode;
 
@@ -52,7 +52,7 @@ public class WALEntryPosition {
   }
 
   /** Read the wal entry buffer. Use LRU cache to accelerate read. */
-  public ByteBuffer readByteBufferViaCache() throws IOException {
+  public WALEntryCacheValue readViaCache() throws IOException {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }
