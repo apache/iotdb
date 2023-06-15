@@ -846,6 +846,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     IMeasurementMNode<IMemMNode> leafMNode =
         mtree.getMeasurementMNode(alterLogicalViewPlan.getViewPath());
+    if (!leafMNode.isLogicalView()) {
+      throw new MetadataException(
+          String.format("[%s] is no view.", alterLogicalViewPlan.getViewPath()));
+    }
     leafMNode.setSchema(
         new LogicalViewSchema(leafMNode.getName(), alterLogicalViewPlan.getSourceExpression()));
     // write log

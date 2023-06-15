@@ -98,8 +98,7 @@ public class DeleteLogicalViewProcedure
                     new ViewNotExistException(
                         patternTree.getAllPathPatterns().stream()
                             .map(PartialPath::getFullPath)
-                            .collect(Collectors.toList()),
-                        false)));
+                            .collect(Collectors.toList()))));
             return Flow.NO_MORE_STATE;
           }
         case CLEAN_DATANODE_SCHEMA_CACHE:
