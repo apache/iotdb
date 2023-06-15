@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
 import org.slf4j.Logger;
@@ -68,9 +67,8 @@ public class SystemPropertiesUtils {
    * interface when restarted
    *
    * @throws IOException When read the confignode-system.properties file failed
-   * @throws ConfigurationException When some system parameters are inconsistent
    */
-  public static void checkSystemProperties() throws IOException, ConfigurationException {
+  public static void checkSystemProperties() throws IOException {
     Properties systemProperties = getSystemProperties();
     boolean needReWrite = false;
     final String format =

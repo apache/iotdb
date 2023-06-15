@@ -133,7 +133,7 @@ public class CommonConfig {
   /** Time partition interval in milliseconds */
   private long timePartitionInterval = 604_800_000;
 
-  /** This variable set timestamp precision as millisecond, microsecond or nanosecond */
+  /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */
   private String timestampPrecision = "ms";
 
   /** Pipe related */
@@ -144,7 +144,7 @@ public class CommonConfig {
    */
   private String pipeHardlinkTsFileDirName = "pipe";
 
-  /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
+  /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum = 5;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
@@ -165,10 +165,10 @@ public class CommonConfig {
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
 
-  /** whether to use persistent schema mode */
+  /** whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
-  /** Whether to enable Last cache */
+  /** Whether to enable Last cache. */
   private boolean lastCacheEnable = true;
 
   // max size for tag and attribute of one time series

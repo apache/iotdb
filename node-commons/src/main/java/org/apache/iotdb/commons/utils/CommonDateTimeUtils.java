@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.commons.utils;
 
-public class DateTimeUtils {
+public class CommonDateTimeUtils {
+
+  public CommonDateTimeUtils() {
+    // Empty constructor
+  }
 
   public static long convertMilliTimeWithPrecision(long milliTime, String timePrecision) {
     long result = milliTime;

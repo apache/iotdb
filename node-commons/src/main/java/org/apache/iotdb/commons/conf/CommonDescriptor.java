@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.DateTimeUtils;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
@@ -322,7 +322,7 @@ public class CommonDescriptor {
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     config.setTimePartitionInterval(
-        DateTimeUtils.convertMilliTimeWithPrecision(
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
             globalConfig.timePartitionInterval, config.getTimestampPrecision()));
     config.setTimestampPrecision(globalConfig.timestampPrecision);
     config.setSchemaEngineMode(globalConfig.schemaEngineMode);

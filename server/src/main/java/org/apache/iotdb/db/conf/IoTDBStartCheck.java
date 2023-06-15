@@ -70,17 +70,7 @@ public class IoTDBStartCheck {
 
   // region params need checking, determined when first start
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
-  private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
-  private static final String PARTITION_INTERVAL_STRING = "time_partition_interval";
-  private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
-  private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
-  private static final String TAG_ATTRIBUTE_FLUSH_INTERVAL = "tag_attribute_flush_interval";
-  private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
   private static final String DATA_REGION_NUM = "data_region_num";
-  private static final String ENABLE_ID_TABLE = "enable_id_table";
-  private static final String ENABLE_ID_TABLE_LOG_FILE = "enable_id_table_log_file";
-  private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
-  private static final String TIME_ENCODER_KEY = "time_encoder";
 
   // endregion
   // region params don't need checking and can be updated

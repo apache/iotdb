@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -2806,7 +2807,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       dataTTL =
-          DateTimeUtils.convertMilliTimeWithPrecision(
+          CommonDateTimeUtils.convertMilliTimeWithPrecision(
               dataTTL, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
     this.dataTTL = dataTTL;
