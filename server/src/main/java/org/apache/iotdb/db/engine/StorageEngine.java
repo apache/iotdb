@@ -394,6 +394,7 @@ public class StorageEngine implements IService {
       if (dataRegion != null) {
         ThreadUtils.stopThreadPool(
             dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        // todo: stop compaction schedule threads
       }
     }
     syncCloseAllProcessor();

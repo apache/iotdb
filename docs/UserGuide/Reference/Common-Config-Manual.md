@@ -999,14 +999,23 @@ Different configuration parameters take effect in the following three ways:
 |Default| 30000 |
 |Effective|After restart system|
 
+* compaction\_schedule\_thread\_count
+
+|Name| compaction\_schedule\_thread\_count |
+|:---:|:------------------------------------|
+|Description| thread num to schedule compaction   |
+|Type| int32                               |
+|Default| 2                                   |
+|Effective| After restart system                |
+
 * compaction\_thread\_count
 
-|Name| compaction\_thread\_count |
-|:---:|:---|
-|Description| thread num to execute compaction |
-|Type| int32 |
-|Default| 10 |
-|Effective|After restart system|
+|Name| compaction\_thread\_count            |
+|:---:|:-------------------------------------|
+|Description| thread num to execute compaction task |
+|Type| int32                                |
+|Default| 10                                   |
+|Effective| After restart system                 |
 
 * compaction\_schedule\_interval\_in\_ms
 
