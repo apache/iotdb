@@ -1863,8 +1863,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
     createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
     createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
-    createLogicalViewStatement.setSourceQueryStatement(
-        alterLogicalViewStatement.getQueryStatement());
+    createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
 
     Analyzer.validate(createLogicalViewStatement);
 
