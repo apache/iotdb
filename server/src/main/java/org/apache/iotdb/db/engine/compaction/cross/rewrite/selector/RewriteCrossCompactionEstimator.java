@@ -114,7 +114,11 @@ public class RewriteCrossCompactionEstimator extends AbstractCrossSpaceEstimator
         seqFileCost = 0;
       } else {
         // We need to multiply the compression ratio here.
-        seqFileCost = compressionRatio * concurrentSeriesNum * config.getTargetChunkSize();
+        seqFileCost =
+            compressionRatio
+                * seqResource.getTsFileSize()
+                * concurrentSeriesNum
+                / fileInfo.totalChunkNum;
       }
 
       if (seqFileCost > maxCostOfReadingSeqFile) {
