@@ -165,6 +165,7 @@ public class AsyncClientHandler<Q, R> {
       case CONSTRUCT_VIEW_SCHEMA_BLACK_LIST:
       case ROLLBACK_VIEW_SCHEMA_BLACK_LIST:
       case DELETE_VIEW:
+      case ALTER_VIEW:
         return new DeleteSchemaRPCHandler(
             requestType,
             requestId,
