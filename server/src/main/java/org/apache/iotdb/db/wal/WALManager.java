@@ -176,7 +176,7 @@ public class WALManager implements IService {
     for (WALNode walNode : walNodes) {
       walNode.deleteOutdatedFiles();
     }
-    if (getTotalDiskUsage() >= config.getThrottleThreshold()) {
+    if (shouldThrottle()) {
       logger.warn(
           "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
           getTotalDiskUsage(),
@@ -199,6 +199,10 @@ public class WALManager implements IService {
         }
       }
     }
+  }
+
+  public boolean shouldThrottle() {
+    return getTotalDiskUsage() >= config.getThrottleThreshold();
   }
 
   public long getTotalDiskUsage() {

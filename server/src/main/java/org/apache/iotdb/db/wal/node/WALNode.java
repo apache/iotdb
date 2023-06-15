@@ -267,7 +267,7 @@ public class WALNode implements IWALNode {
       // update first valid version id by snapshotting or flushing memTable,
       // then delete old .wal files again
       if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()
-          || WALManager.getInstance().getTotalDiskUsage() >= config.getThrottleThreshold()) {
+          || WALManager.getInstance().shouldThrottle()) {
         logger.debug(
             "Effective information ratio {} (active memTables cost is {}, flushed memTables cost is {}) of wal node-{} is below wal min effective info ratio {}, some memTables will be snapshot or flushed.",
             effectiveInfoRatio,
