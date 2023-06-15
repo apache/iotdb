@@ -41,6 +41,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 
 import java.io.IOException;
@@ -596,7 +597,7 @@ public class PipeTaskAgent {
     }
   }
 
-  ///////////////////////// Heartbeat /////////////////////////
+  ///////////////////////// Runtime /////////////////////////
 
   public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
       throws TException {
@@ -615,5 +616,17 @@ public class PipeTaskAgent {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
+  }
+
+  public @Nullable PipeRuntimeMeta getRuntimeMetaWithCheck(PipeStaticMeta pipeStaticMeta) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeStaticMeta.getPipeName());
+    if (pipeMeta.getStaticMeta().getCreationTime() != pipeStaticMeta.getCreationTime()) {
+      LOGGER.warn(
+          "Detected two pipes with the same name but different creation times. PipeMetaKeeper has pipe: {}, Runtime require pipe: {}",
+          pipeMeta.getStaticMeta(),
+          pipeStaticMeta);
+      return null;
+    }
+    return pipeMeta.getRuntimeMeta();
   }
 }
