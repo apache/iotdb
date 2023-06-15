@@ -660,6 +660,7 @@ class Session(object):
             self.__session_id,
             resp.queryDataSet,
             resp.ignoreTimeStamp,
+            self.__fetch_size
         )
 
     def execute_non_query_statement(self, sql):

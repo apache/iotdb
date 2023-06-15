@@ -71,6 +71,34 @@ public class SessionDataSet {
             0);
   }
 
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      TSIService.Iface client,
+      long sessionId,
+      TSQueryDataSet queryDataSet,
+      boolean ignoreTimeStamp,
+      int fetchSize) {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryDataSet,
+            fetchSize,
+            0);
+  }
+
   public SessionDataSet(String finishResult) {
     this.finishResult = finishResult;
     this.ioTDBRpcDataSet =
@@ -114,6 +142,35 @@ public class SessionDataSet {
             sessionId,
             queryDataSet,
             Config.DEFAULT_FETCH_SIZE,
+            timeout);
+  }
+
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      TSIService.Iface client,
+      long sessionId,
+      TSQueryDataSet queryDataSet,
+      boolean ignoreTimeStamp,
+      long timeout,
+      int fetchSize) {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryDataSet,
+            fetchSize,
             timeout);
   }
 

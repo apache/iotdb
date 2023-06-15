@@ -383,7 +383,8 @@ public class SessionConnection {
         sessionId,
         execResp.queryDataSet,
         execResp.isIgnoreTimeStamp(),
-        timeout);
+        timeout,
+        session.fetchSize);
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -443,7 +444,8 @@ public class SessionConnection {
         client,
         sessionId,
         execResp.queryDataSet,
-        execResp.isIgnoreTimeStamp());
+        execResp.isIgnoreTimeStamp(),
+        session.fetchSize);
   }
 
   protected void insertRecord(TSInsertRecordReq request)

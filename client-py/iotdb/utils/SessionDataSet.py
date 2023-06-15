@@ -43,6 +43,7 @@ class SessionDataSet(object):
         session_id,
         query_data_set,
         ignore_timestamp,
+        fetch_size
     ):
         self.iotdb_rpc_data_set = IoTDBRpcDataSet(
             sql,
@@ -55,7 +56,7 @@ class SessionDataSet(object):
             statement_id,
             session_id,
             query_data_set,
-            1024,
+            fetch_size
         )
 
     def get_fetch_size(self):
