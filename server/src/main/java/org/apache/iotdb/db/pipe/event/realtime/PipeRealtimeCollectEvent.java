@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.realtime;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.db.pipe.collector.realtime.epoch.TsFileEpoch;
@@ -46,7 +47,7 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
     // is only used in the realtime event collector, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(null, pattern);
+    super(null, null, pattern);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -58,11 +59,9 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
       TsFileEpoch tsFileEpoch,
       Map<String, String[]> device2Measurements,
       PipeStaticMeta pipeStaticMeta,
+      TConsensusGroupId regionId,
       String pattern) {
-    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
-    // is only used in the realtime event collector, which does not need to report the progress
-    // of the event, so the pipeTaskMeta is always null.
-    super(pipeStaticMeta, pattern);
+    super(pipeStaticMeta, regionId, pattern);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -120,12 +119,14 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
 
   @Override
   public PipeRealtimeCollectEvent shallowCopySelfAndBindPipeStaticMetaForProgressReport(
-      PipeStaticMeta pipeStaticMeta, String pattern) {
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, String pattern) {
     return new PipeRealtimeCollectEvent(
-        event.shallowCopySelfAndBindPipeStaticMetaForProgressReport(pipeStaticMeta, pattern),
+        event.shallowCopySelfAndBindPipeStaticMetaForProgressReport(
+            pipeStaticMeta, regionId, pattern),
         this.tsFileEpoch,
         this.device2Measurements,
         pipeStaticMeta,
+        regionId,
         pattern);
   }
 

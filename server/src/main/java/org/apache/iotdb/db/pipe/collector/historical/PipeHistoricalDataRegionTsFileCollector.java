@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.collector.historical;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -62,7 +63,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   private PipeStaticMeta pipeStaticMeta;
   private ProgressIndex startIndex;
 
-  private DataRegionId dataRegionId;
+  private TConsensusGroupId dataRegionId;
 
   private String pattern;
 
@@ -86,10 +87,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
     pipeStaticMeta = environment.getPipeStaticMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
-
-    dataRegionId =
-        (DataRegionId)
-            ConsensusGroupId.Factory.createFromTConsensusGroupId(environment.getRegionId());
+    dataRegionId = environment.getRegionId();
 
     pattern = parameters.getStringOrDefault(COLLECTOR_PATTERN_KEY, COLLECTOR_PATTERN_DEFAULT_VALUE);
 
@@ -153,7 +151,10 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
   }
 
   private void flushDataRegionAllTsFiles() {
-    final DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(dataRegionId);
+    final DataRegion dataRegion =
+        StorageEngine.getInstance()
+            .getDataRegion(
+                (DataRegionId) ConsensusGroupId.Factory.createFromTConsensusGroupId(dataRegionId));
     if (dataRegion == null) {
       return;
     }
@@ -168,7 +169,10 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
   @Override
   public synchronized void start() {
-    final DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(dataRegionId);
+    final DataRegion dataRegion =
+        StorageEngine.getInstance()
+            .getDataRegion(
+                (DataRegionId) ConsensusGroupId.Factory.createFromTConsensusGroupId(dataRegionId));
     if (dataRegion == null) {
       pendingQueue = new ArrayDeque<>();
       return;
@@ -194,6 +198,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                         new PipeTsFileInsertionEvent(
                             resource,
                             pipeStaticMeta,
+                            dataRegionId,
                             pattern,
                             historicalDataCollectionStartTime,
                             historicalDataCollectionEndTime))
@@ -210,6 +215,7 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
                         new PipeTsFileInsertionEvent(
                             resource,
                             pipeStaticMeta,
+                            dataRegionId,
                             pattern,
                             historicalDataCollectionStartTime,
                             historicalDataCollectionEndTime))

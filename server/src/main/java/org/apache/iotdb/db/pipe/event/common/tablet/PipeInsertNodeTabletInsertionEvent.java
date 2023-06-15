@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -51,15 +52,16 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   public PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
-    this(walEntryHandler, progressIndex, null, null);
+    this(walEntryHandler, progressIndex, null, null, null);
   }
 
   private PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
       ProgressIndex progressIndex,
       PipeStaticMeta pipeStaticMeta,
+      TConsensusGroupId regionId,
       String pattern) {
-    super(pipeStaticMeta, pattern);
+    super(pipeStaticMeta, regionId, pattern);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
   }
@@ -107,9 +109,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeStaticMetaForProgressReport(
-      PipeStaticMeta pipeStaticMeta, String pattern) {
+      PipeStaticMeta pipeStaticMeta, TConsensusGroupId regionId, String pattern) {
     return new PipeInsertNodeTabletInsertionEvent(
-        walEntryHandler, progressIndex, pipeStaticMeta, pattern);
+        walEntryHandler, progressIndex, pipeStaticMeta, regionId, pattern);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
