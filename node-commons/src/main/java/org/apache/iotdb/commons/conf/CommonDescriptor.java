@@ -68,10 +68,6 @@ public class CommonDescriptor {
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
     config.setOpenIdProviderUrl(
         properties.getProperty("openID_url", config.getOpenIdProviderUrl()).trim());
-    config.setAdminName(properties.getProperty("admin_name", config.getAdminName()).trim());
-
-    config.setAdminPassword(
-        properties.getProperty("admin_password", config.getAdminPassword()).trim());
     config.setEncryptDecryptProvider(
         properties
             .getProperty(

@@ -592,12 +592,12 @@ Different configuration parameters take effect in the following three ways:
 
 * slow\_query\_threshold
 
-|Name| slow\_query\_threshold |
-|:---:|:---|
+|Name| slow\_query\_threshold                  |
+|:---:|:----------------------------------------|
 |Description| Time cost(ms) threshold for slow query. |
-|Type| Int32 |
-|Default| 5000 |
-|Effective|Trigger|
+|Type| Int32                                   |
+|Default| 30000                                   |
+|Effective| Trigger                                 |
 
 * query\_timeout\_threshold
 
@@ -799,14 +799,6 @@ Different configuration parameters take effect in the following three ways:
 |Default| false                                                                 |
 |Effective| After restarting system                                               |
 
-* upgrade\_thread\_count
-
-|   Name    | upgrade\_thread\_count                                                                            |
-|:---------:|:--------------------------------------------------------------------------------------------------|
-|Description| When there exists old version(v2) TsFile, how many thread will be set up to perform upgrade tasks |
-|   Type    | Int32                                                                                             |
-|  Default  | 1                                                                                                 |
-| Effective | After restarting system                                                                           |
 
 * device\_path\_cache\_size
 
@@ -1219,15 +1211,6 @@ Different configuration parameters take effect in the following three ways:
 |Default| 128 |
 |Effective|hot-load|
 
-* time\_encoder
-
-|    Name     | time\_encoder                         |
-| :---------: | :------------------------------------ |
-| Description | Encoding type of time column          |
-|    Type     | Enum String: “TS_2DIFF”,“PLAIN”,“RLE” |
-|   Default   | TS_2DIFF                              |
-|  Effective  | hot-load                               |
-
 * value\_encoder
 
 |    Name     | value\_encoder                        |
@@ -1248,12 +1231,12 @@ Different configuration parameters take effect in the following three ways:
 
 * compressor
 
-|    Name     | compressor                                                     |
-|:-----------:|:---------------------------------------------------------------|
-| Description | Data compression method                                        |
-|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2" |
-|   Default   | SNAPPY                                                         |
-|  Effective  | hot-load                                                       |
+|    Name     | compressor                                                             |
+|:-----------:|:-----------------------------------------------------------------------|
+| Description | Data compression method; Time compression method in aligned timeseries |
+|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2"         |
+|   Default   | SNAPPY                                                                 |
+|  Effective  | hot-load                                                               |
 
 * bloomFilterErrorRate
 
@@ -1264,23 +1247,6 @@ Different configuration parameters take effect in the following three ways:
 |   Default   | 0.05                                                                                                                                                                                                                                                                                                                                                                                                             |
 |  Effective  | After restarting system                                                                                                                                                                                                                                                                                                                                                                                          |
 
-* freq\_snr
-
-|    Name     | freq\_snr                                        |
-| :---------: | :---------------------------------------------- |
-| Description | Signal-noise-ratio (SNR) of lossy FREQ encoding |
-|    Type     | Double                                          |
-|   Default   | 40.0                                            |
-|  Effective  | hot-load                                         |
-
-* freq\_block\_size
-
-|Name| freq\_block\_size |
-|:---:|:---|
-|Description| Block size of FREQ encoding. In other words, the number of data points in a time-frequency transformation. To speed up the encoding, it is recommended to be the power of 2. |
-|Type|int32|
-|Default| 1024 |
-|Effective|hot-load|
 
 ### Authorization Configuration
 
@@ -1302,24 +1268,6 @@ Different configuration parameters take effect in the following three ways:
 |    Type     | String (a http url)                              |
 |   Default   | no                                               |
 |  Effective  | After restarting system                          |
-
-* admin\_name
-
-|    Name     | admin\_name                                   |
-| :---------: | :-------------------------------------------- |
-| Description | The username of admin                         |
-|    Type     | String                                        |
-|   Default   | root                                          |
-|  Effective  | Only allowed to be modified in first start up |
-
-* admin\_password
-
-|    Name     | admin\_password                               |
-| :---------: | :-------------------------------------------- |
-| Description | The password of admin                         |
-|    Type     | String                                        |
-|   Default   | root                                          |
-|  Effective  | Only allowed to be modified in first start up |
 
 * iotdb\_server\_encrypt\_decrypt\_provider
 
@@ -2085,23 +2033,4 @@ Different configuration parameters take effect in the following three ways:
 |Default| 5000          |
 |Effective| After restarting system          |
 
-### InfluxDB RPC Service Configuration
-
-* enable\_influxdb\_rpc\_service
-
-|    Name     | enable\_influxdb\_rpc\_service            |
-| :---------: | :------------------------------------- |
-| Description | Whether to enable InfluxDB RPC service |
-|    Type     | Boolean                                |
-|   Default   | true                                   |
-|  Effective  | After restarting system                |
-
-* influxdb\_rpc\_port
-
-|    Name     | influxdb\_rpc\_port                     |
-| :---------: | :------------------------------------ |
-| Description | The port used by InfluxDB RPC service |
-|    Type     | int32                                 |
-|   Default   | 8086                                  |
-|  Effective  | After restarting system               |
 

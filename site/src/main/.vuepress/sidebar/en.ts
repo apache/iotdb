@@ -101,7 +101,6 @@ export const enSidebar = sidebar({
         { text: 'REST API V1 (Not Recommend)', link: 'RestServiceV1' },
         { text: 'REST API V2', link: 'RestServiceV2' },
         { text: 'TsFile API', link: 'Programming-TsFile-API' },
-        { text: 'InfluxDB Protocol', link: 'InfluxDB-Protocol' },
         { text: 'Interface Comparison', link: 'Interface-Comparison' },
       ],
     },
