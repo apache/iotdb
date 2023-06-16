@@ -71,10 +71,11 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -99,6 +100,9 @@ import java.util.stream.Collectors;
 public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
+
+  // Allocate 8MB buffer for load snapshot of PartitionInfo
+  private static final int PARTITION_TABLE_BUFFER_SIZE = 32 * 1024 * 1024;
 
   /** For Cluster Partition */
   // For allocating Regions
@@ -825,7 +829,9 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+    try (BufferedInputStream fileInputStream =
+            new BufferedInputStream(
+                Files.newInputStream(snapshotFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data
