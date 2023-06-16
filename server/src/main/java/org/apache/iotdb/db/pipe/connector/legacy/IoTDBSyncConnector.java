@@ -64,9 +64,9 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 
-public class IoTDBSyncConnectorV1_1 implements PipeConnector {
+public class IoTDBSyncConnector implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1_1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnector.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final String IOTDB_SYNC_CONNECTOR_VERSION = "1.1";
@@ -160,7 +160,7 @@ public class IoTDBSyncConnectorV1_1 implements PipeConnector {
         doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
         throw new NotImplementedException(
-            "IoTDBSyncConnectorV1_1 only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+            "IoTDBSyncConnector only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
       }
     } catch (TException e) {
       LOGGER.warn(
@@ -187,7 +187,7 @@ public class IoTDBSyncConnectorV1_1 implements PipeConnector {
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
-          "IoTDBSyncConnectorV1_1 only support PipeTsFileInsertionEvent.");
+          "IoTDBSyncConnector only support PipeTsFileInsertionEvent.");
     }
 
     try {
@@ -251,7 +251,7 @@ public class IoTDBSyncConnectorV1_1 implements PipeConnector {
 
   @Override
   public void transfer(Event event) throws Exception {
-    LOGGER.warn("IoTDBSyncConnectorV1_1 does not support transfer generic event: {}.", event);
+    LOGGER.warn("IoTDBSyncConnector does not support transfer generic event: {}.", event);
   }
 
   @Override

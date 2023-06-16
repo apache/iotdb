@@ -58,17 +58,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is responsible for implementing the RPC processing on the receiver-side. */
-public class IoTDBSyncReceiverV1_1 {
+public class IoTDBSyncReceiver {
 
-  public static IoTDBSyncReceiverV1_1 getInstance() {
-    return IoTDBSyncReceiverV1_1Holder.INSTANCE;
+  public static IoTDBSyncReceiver getInstance() {
+    return IoTDBSyncReceiverHolder.INSTANCE;
   }
 
-  private static class IoTDBSyncReceiverV1_1Holder {
-    private static final IoTDBSyncReceiverV1_1 INSTANCE = new IoTDBSyncReceiverV1_1();
+  private static class IoTDBSyncReceiverHolder {
+    private static final IoTDBSyncReceiver INSTANCE = new IoTDBSyncReceiver();
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBSyncReceiverV1_1.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSyncReceiver.class);
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -83,7 +83,7 @@ public class IoTDBSyncReceiverV1_1 {
   // The sync connectionId is unique in one IoTDB instance.
   private final AtomicLong connectionIdGenerator;
 
-  private IoTDBSyncReceiverV1_1() {
+  private IoTDBSyncReceiver() {
     currentConnectionId = new ThreadLocal<>();
     connectionIdToIdentityInfoMap = new ConcurrentHashMap<>();
     connectionIdToStartIndexRecord = new ConcurrentHashMap<>();
@@ -232,7 +232,7 @@ public class IoTDBSyncReceiverV1_1 {
    * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to receive or load; {@link
    *     TSStatusCode#SUCCESS_STATUS} if load successfully.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link IoTDBSyncReceiverV1_1#handshake}
+   *     by {@link IoTDBSyncReceiver#handshake}
    */
   public TSStatus transportPipeData(ByteBuffer buff) throws TException {
     // step1. check connection
@@ -288,7 +288,7 @@ public class IoTDBSyncReceiverV1_1 {
    *     TSStatusCode#SYNC_FILE_REDIRECTION_ERROR} if startIndex needs to rollback because
    *     mismatched; {@link TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link IoTDBSyncReceiverV1_1#handshake}
+   *     by {@link IoTDBSyncReceiver#handshake}
    */
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {

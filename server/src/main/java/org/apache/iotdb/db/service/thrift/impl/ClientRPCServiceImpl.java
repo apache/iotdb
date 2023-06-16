@@ -63,7 +63,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncReceiverV1_1;
+import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncReceiver;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
@@ -2082,7 +2082,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    return IoTDBSyncReceiverV1_1.getInstance()
+    return IoTDBSyncReceiver.getInstance()
         .handshake(
             info,
             SESSION_MANAGER.getCurrSession().getClientAddress(),
@@ -2092,12 +2092,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus sendPipeData(ByteBuffer buff) throws TException {
-    return IoTDBSyncReceiverV1_1.getInstance().transportPipeData(buff);
+    return IoTDBSyncReceiver.getInstance().transportPipeData(buff);
   }
 
   @Override
   public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
-    return IoTDBSyncReceiverV1_1.getInstance().transportFile(metaInfo, buff);
+    return IoTDBSyncReceiver.getInstance().transportFile(metaInfo, buff);
   }
 
   @Override
@@ -2242,7 +2242,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq();
       closeSession(req);
     }
-    IoTDBSyncReceiverV1_1.getInstance().handleClientExit();
+    IoTDBSyncReceiver.getInstance().handleClientExit();
     PipeAgent.receiver().handleClientExit();
   }
 }
