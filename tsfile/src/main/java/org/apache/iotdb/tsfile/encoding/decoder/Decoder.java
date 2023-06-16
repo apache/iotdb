@@ -121,8 +121,6 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
-      case FREQ:
-        return new FreqDecoder();
       case CHIMP:
         switch (dataType) {
           case FLOAT:

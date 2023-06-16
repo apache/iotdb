@@ -77,12 +77,9 @@ public class TSFileDescriptor {
     writer.setInt(conf::setMaxDegreeOfIndexNode, "max_degree_of_index_node");
     writer.setInt(conf::setMaxStringLength, "max_string_length");
     writer.setInt(conf::setFloatPrecision, "float_precision");
-    writer.setString(conf::setTimeEncoder, "time_encoder");
     writer.setString(conf::setValueEncoder, "value_encoder");
     writer.setString(conf::setCompressor, "compressor");
     writer.setInt(conf::setBatchSize, "batch_size");
-    writer.setInt(conf::setFreqEncodingBlockSize, "freq_block_size");
-    writer.setDouble(conf::setFreqEncodingSNR, "freq_snr");
   }
 
   private class PropertiesOverWriter {

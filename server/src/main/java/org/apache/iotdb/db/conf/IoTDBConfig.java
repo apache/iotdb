@@ -111,7 +111,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "127.0.0.1";
+  private String rpcAddress = "0.0.0.0";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -121,9 +121,6 @@ public class IoTDBConfig {
 
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
-
-  /** Port which the influxdb protocol server listens to. */
-  private int influxDBRpcPort = 8086;
 
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
@@ -840,7 +837,7 @@ public class IoTDBConfig {
   private int frequencyIntervalInMinute = 1;
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
-  private long slowQueryThreshold = 5000;
+  private long slowQueryThreshold = 30000;
 
   private int patternMatchingThreshold = 1000000;
 
@@ -849,12 +846,6 @@ public class IoTDBConfig {
    * iotdb-common.properties
    */
   private boolean enableRpcService = true;
-
-  /**
-   * whether enable the influxdb rpc service. This parameter has no a corresponding field in the
-   * iotdb-common.properties
-   */
-  private boolean enableInfluxDBRpcService = false;
 
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
@@ -1404,14 +1395,6 @@ public class IoTDBConfig {
 
   public void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
-  }
-
-  public int getInfluxDBRpcPort() {
-    return influxDBRpcPort;
-  }
-
-  public void setInfluxDBRpcPort(int influxDBRpcPort) {
-    this.influxDBRpcPort = influxDBRpcPort;
   }
 
   public String getTimestampPrecision() {
@@ -2797,14 +2780,6 @@ public class IoTDBConfig {
 
   public void setEnableRpcService(boolean enableRpcService) {
     this.enableRpcService = enableRpcService;
-  }
-
-  public boolean isEnableInfluxDBRpcService() {
-    return enableInfluxDBRpcService;
-  }
-
-  public void setEnableInfluxDBRpcService(boolean enableInfluxDBRpcService) {
-    this.enableInfluxDBRpcService = enableInfluxDBRpcService;
   }
 
   public int getIoTaskQueueSizeForFlushing() {

@@ -54,12 +54,6 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
 
-* FREQ
-
-FREQ encoding is lossy. Based on the idea of transform coding, it transforms the time sequence to the frequency domain and only reserve part of the frequency components with high energy. Thus, it greatly improves the space efficiency with little accuracy loss. It is suitable for data with high energy concentration (especially those with obvious periodicity), not suitable for data with uniformly distributed energy (such as white noise).
-
-> There are two parameters of FREQ encoding in the configuration file: `freq_snr` defines the signal-noise-ratio (SNR). There is a mathematical relationship between SNR and NRMSE as $NRMSE = 10^{-SNR/20}$. Both the compression ratio and accuracy loss decrease when it increases. `freq_block_size` defines the data size in a time-frequency transformation. It is not recommended to modify the default value. The detailed experimental results and analysis of the influences of parameters are in the design document. 
-
 * ZIGZAG 
   
 ZIGZAG encoding maps signed integers to unsigned integers so that numbers with a small absolute value (for instance, -1) have a small variant encoded value too. It does this in a way that "zig-zags" back and forth through the positive and negative integers.
@@ -84,14 +78,14 @@ The five encodings described in the previous sections are applicable to differen
 
 The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-| Data Type |                        Supported Encoding                         |
-|:---------:|:-----------------------------------------------------------------:|
-| BOOLEAN   |                            PLAIN, RLE                             |
-| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
-| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
-| FLOAT     |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
-| DOUBLE    |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
-| TEXT      |                         PLAIN, DICTIONARY                         |
+| Data Type |                     Supported Encoding                      |
+|:---------:|:-----------------------------------------------------------:|
+| BOOLEAN   |                         PLAIN, RLE                          |
+| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| FLOAT     |     PLAIN, RLE, TS_2DIFF, GORILLA, CHIMP, SPRINTZ, RLBE     |
+| DOUBLE    |     PLAIN, RLE, TS_2DIFF, GORILLA, CHIMP, SPRINTZ, RLBE     |
+| TEXT      |                      PLAIN, DICTIONARY                      |
 
 When the data type specified by the user does not correspond to the encoding method, the system will prompt an error. 
 
