@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.commons.schema.view;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public enum ViewType {
   /** BASE */
   BASE((byte) 0),
@@ -32,6 +36,22 @@ public enum ViewType {
 
   public byte getType() {
     return type;
+  }
+
+  public static ViewType deserialize(byte type) {
+    return getViewType(type);
+  }
+
+  public static ViewType deserializeFrom(ByteBuffer buffer) {
+    return deserialize(buffer.get());
+  }
+
+  public void serializeTo(ByteBuffer byteBuffer) {
+    byteBuffer.put(getType());
+  }
+
+  public void serializeTo(DataOutputStream outputStream) throws IOException {
+    outputStream.write(getType());
   }
 
   public static ViewType getViewType(byte type) {

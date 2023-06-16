@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.commons.schema.filter;
 
+import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
+import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -60,16 +62,20 @@ public abstract class SchemaFilter {
         return new PathContainsFilter(byteBuffer);
       case DATA_TYPE:
         return new DataTypeFilter(byteBuffer);
+      case VIEW_TYPE:
+        return new ViewTypeFilter(byteBuffer);
+      case AND:
+        return new AndFilter(byteBuffer);
       default:
         throw new IllegalArgumentException("Unsupported schema filter type: " + type);
     }
   }
 
-  public abstract <R, C> R accept(SchemaFilterVisitor<R, C> visitor, C node);
+  public abstract <C> boolean accept(SchemaFilterVisitor<C> visitor, C node);
 
   public abstract SchemaFilterType getSchemaFilterType();
 
-  protected abstract void serialize(ByteBuffer byteBuffer);
+  public abstract void serialize(ByteBuffer byteBuffer);
 
-  protected abstract void serialize(DataOutputStream stream) throws IOException;
+  public abstract void serialize(DataOutputStream stream) throws IOException;
 }
