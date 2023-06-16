@@ -68,7 +68,7 @@ public abstract class AbstractSchemaRegionTest {
         new SchemaRegionTestParams(
             "Raw-Config",
             COMMON_CONFIG.getSchemaEngineMode(),
-              config.getCachedMNodeSizeInPBTreeMode(),
+            config.getCachedMNodeSizeInPBTreeMode(),
             config.isClusterMode());
     COMMON_CONFIG.setSchemaEngineMode(testParams.schemaEngineMode);
     config.setCachedMNodeSizeInPBTreeMode(testParams.cachedMNodeSize);
