@@ -61,7 +61,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
@@ -617,18 +616,6 @@ public class IoTDBConfig {
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
-
-  /** Switch of watermark function */
-  private boolean enableWatermark = false;
-
-  /** Secret key for watermark */
-  private String watermarkSecretKey = "IoTDB*2019@Beijing";
-
-  /** Bit string of watermark */
-  private String watermarkBitString = "100101110100";
-
-  /** Watermark method and parameters */
-  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
 
   /** Switch of creating schema automatically */
   private boolean enableAutoCreateSchema = true;
@@ -2237,68 +2224,6 @@ public class IoTDBConfig {
 
   public void setEnableLastCache(boolean lastCacheEnable) {
     this.lastCacheEnable = lastCacheEnable;
-  }
-
-  public boolean isEnableWatermark() {
-    return enableWatermark;
-  }
-
-  public void setEnableWatermark(boolean enableWatermark) {
-    this.enableWatermark = enableWatermark;
-  }
-
-  public String getWatermarkSecretKey() {
-    return watermarkSecretKey;
-  }
-
-  public void setWatermarkSecretKey(String watermarkSecretKey) {
-    this.watermarkSecretKey = watermarkSecretKey;
-  }
-
-  public String getWatermarkBitString() {
-    return watermarkBitString;
-  }
-
-  public void setWatermarkBitString(String watermarkBitString) {
-    this.watermarkBitString = watermarkBitString;
-  }
-
-  public String getWatermarkMethod() {
-    return this.watermarkMethod;
-  }
-
-  public void setWatermarkMethod(String watermarkMethod) {
-    this.watermarkMethod = watermarkMethod;
-  }
-
-  public String getWatermarkMethodName() {
-    return watermarkMethod.split("\\(")[0];
-  }
-
-  public int getWatermarkParamMarkRate() {
-    return Integer.parseInt(getWatermarkParamValue("embed_row_cycle", "5"));
-  }
-
-  public int getWatermarkParamMaxRightBit() {
-    return Integer.parseInt(getWatermarkParamValue("embed_lsb_num", "5"));
-  }
-
-  private String getWatermarkParamValue(String key, String defaultValue) {
-    String res = getWatermarkParamValue(key);
-    if (res != null) {
-      return res;
-    }
-    return defaultValue;
-  }
-
-  private String getWatermarkParamValue(String key) {
-    String pattern = key + "=(\\w*)";
-    Pattern r = Pattern.compile(pattern);
-    Matcher m = r.matcher(watermarkMethod);
-    if (m.find() && m.groupCount() > 0) {
-      return m.group(1);
-    }
-    return null;
   }
 
   public boolean isAutoCreateSchemaEnabled() {

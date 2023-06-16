@@ -175,26 +175,6 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableWatermark(boolean enableWatermark) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkSecretKey(String watermarkSecretKey) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkBitString(String watermarkBitString) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkMethod(String watermarkMethod) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
     return this;
   }
