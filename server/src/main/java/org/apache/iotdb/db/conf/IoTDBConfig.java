@@ -861,16 +861,16 @@ public class IoTDBConfig {
   private String schemaEngineMode = "Memory";
 
   /** the memory used for metadata cache when using persistent schema */
-  private int cachedMNodeSizeInSchemaFileMode = -1;
+  private int cachedMNodeSizeInPBTreeMode = -1;
 
-  /** the minimum size (in bytes) of segment inside a schema file page */
-  private short minimumSegmentInSchemaFile = 0;
+  /** the minimum size (in bytes) of segment inside a pb-tree file page */
+  private short minimumSegmentInPBTree = 0;
 
-  /** cache size for pages in one schema file */
-  private int pageCacheSizeInSchemaFile = 1024;
+  /** cache size for pages in one pb-tree file */
+  private int pageCacheSizeInPBTree = 1024;
 
   /** maximum number of logged pages before log erased */
-  private int schemaFileLogSize = 16384;
+  private int pbTreeLogSize = 16384;
 
   /**
    * Maximum number of measurement in one create timeseries plan node. If the number of measurement
@@ -2956,37 +2956,37 @@ public class IoTDBConfig {
     this.schemaEngineMode = schemaEngineMode;
   }
 
-  public int getCachedMNodeSizeInSchemaFileMode() {
-    return cachedMNodeSizeInSchemaFileMode;
+  public int getCachedMNodeSizeInPBTreeMode() {
+    return cachedMNodeSizeInPBTreeMode;
   }
 
   @TestOnly
-  public void setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
-    this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
+  public void setCachedMNodeSizeInPBTreeMode(int cachedMNodeSizeInPBTreeMode) {
+    this.cachedMNodeSizeInPBTreeMode = cachedMNodeSizeInPBTreeMode;
   }
 
-  public short getMinimumSegmentInSchemaFile() {
-    return minimumSegmentInSchemaFile;
+  public short getMinimumSegmentInPBTree() {
+    return minimumSegmentInPBTree;
   }
 
-  public void setMinimumSegmentInSchemaFile(short minimumSegmentInSchemaFile) {
-    this.minimumSegmentInSchemaFile = minimumSegmentInSchemaFile;
+  public void setMinimumSegmentInPBTree(short minimumSegmentInPBTree) {
+    this.minimumSegmentInPBTree = minimumSegmentInPBTree;
   }
 
-  public int getPageCacheSizeInSchemaFile() {
-    return pageCacheSizeInSchemaFile;
+  public int getPageCacheSizeInPBTree() {
+    return pageCacheSizeInPBTree;
   }
 
-  public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
-    this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
+  public void setPageCacheSizeInPBTree(int pageCacheSizeInPBTree) {
+    this.pageCacheSizeInPBTree = pageCacheSizeInPBTree;
   }
 
-  public int getSchemaFileLogSize() {
-    return schemaFileLogSize;
+  public int getPBTreeLogSize() {
+    return pbTreeLogSize;
   }
 
-  public void setSchemaFileLogSize(int schemaFileLogSize) {
-    this.schemaFileLogSize = schemaFileLogSize;
+  public void setPBTreeLogSize(int pbTreeLogSize) {
+    this.pbTreeLogSize = pbTreeLogSize;
   }
 
   public int getMaxMeasurementNumOfInternalRequest() {

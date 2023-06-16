@@ -19,17 +19,17 @@
 
 -->
 
-## SchemaFile 解析工具
+## PBTreeFile 解析工具
 
-自 0.14.0 版本起，IoTDB 将每个 database 下序列的元数据存储为 schema_file.pst 文件。
+自 1.1 版本起，IoTDB 将每个 database 下序列的元数据存储为 pb_tree.pst 文件。
 
-如果需要将该文件转为便于阅读的的格式，可以使用本工具来解析指定 schema_file.pst 。
+如果需要将该文件转为便于阅读的的格式，可以使用本工具来解析指定 pb_tree.pst 。
 
 ### 使用方式
 
 Linux/MacOS
-> ./print-schema-file.sh -f your/path/to/schema_file.pst -o /your/path/to/sketch.txt
+> ./print-pb-tree-file.sh -f your/path/to/pb_tree.pst -o /your/path/to/sketch.txt
 
 Windows
 
-> ./print-schema-file.bat -f your/path/to/schema_file.pst -o /your/path/to/sketch.txt
+> ./print-pb-tree-file.bat -f your/path/to/pb_tree.pst -o /your/path/to/sketch.txt

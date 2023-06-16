@@ -30,7 +30,7 @@ public class ReleaseFlushStrategyNumBasedImpl implements IReleaseFlushStrategy {
 
   public ReleaseFlushStrategyNumBasedImpl(CachedSchemaEngineStatistics engineStatistics) {
     this.engineStatistics = engineStatistics;
-    this.capacity = IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode();
+    this.capacity = IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInPBTreeMode();
   }
 
   @Override
