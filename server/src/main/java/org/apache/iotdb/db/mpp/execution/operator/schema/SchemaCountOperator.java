@@ -83,7 +83,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
       if (schemaReader == null) {
         schemaReader = createSchemaReader();
       }
-      while (schemaReader.hasNext()) {
+      while (schemaReader.hasNextFuture()) {
         schemaReader.next();
         count++;
       }

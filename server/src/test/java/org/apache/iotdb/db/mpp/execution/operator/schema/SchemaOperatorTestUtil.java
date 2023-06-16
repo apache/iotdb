@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.mockito.Mockito;
 
 import java.util.Iterator;
@@ -53,8 +54,8 @@ public class SchemaOperatorTestUtil {
               public void close() {}
 
               @Override
-              public boolean hasNext() {
-                return iterator.hasNext();
+              public ListenableFuture<Boolean> hasNextFuture() {
+                return iterator.hasNext() ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
               }
 
               @Override

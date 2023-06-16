@@ -30,11 +30,17 @@ import org.apache.iotdb.db.metadata.view.viewExpression.visitor.TransformToExpre
 import org.apache.iotdb.db.metadata.visitor.TimeseriesFilterVisitor;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -45,12 +51,13 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 
 public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesSchemaInfo> {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(TimeseriesReaderWithViewFetch.class);
   private final Traverser<ITimeSeriesSchemaInfo, ?> traverser;
   private final Queue<ITimeSeriesSchemaInfo> cachedViewList = new ArrayDeque<>();
   private ITimeSeriesSchemaInfo next = null;
   private boolean consumeView = false;
   private final SchemaFilter schemaFilter;
+  private ListenableFuture<Boolean> hasNext = null;
 
   private static final int BATCH_CACHED_SIZE = 1000;
   private static final TimeseriesFilterVisitor FILTER_VISITOR = new TimeseriesFilterVisitor();
@@ -61,42 +68,19 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     this.schemaFilter = schemaFilter;
   }
 
+  @Override
   public boolean isSuccess() {
     return traverser.isSuccess();
   }
 
+  @Override
   public Throwable getFailure() {
     return traverser.getFailure();
   }
 
+  @Override
   public void close() {
     traverser.close();
-  }
-
-  public boolean hasNext() {
-    if (next == null && !consumeView) {
-      fetchAndCacheNextResult();
-    }
-    if (consumeView) {
-      return !cachedViewList.isEmpty();
-    } else {
-      return next != null;
-    }
-  }
-
-  public ITimeSeriesSchemaInfo next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
-    ITimeSeriesSchemaInfo result;
-    if (!consumeView) {
-      result = next;
-      next = null;
-    } else {
-      result = cachedViewList.poll();
-      consumeView = !cachedViewList.isEmpty();
-    }
-    return result;
   }
 
   /**
@@ -110,33 +94,60 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
    *   <li>no more info to be fetched. consumeView is false and next is null.
    * </ol>
    */
-  private void fetchAndCacheNextResult() {
-    ITimeSeriesSchemaInfo temp;
-    while (traverser.hasNext()) {
-      temp = traverser.next();
-      if (temp.isLogicalView()) {
-        cachedViewList.add(temp.snapshot());
-        if (cachedViewList.size() >= BATCH_CACHED_SIZE) {
-          fetchViewTimeSeriesSchemaInfo();
-          if (consumeView) {
+  @Override
+  public ListenableFuture<Boolean> hasNext2() {
+    if (hasNext != null) {
+      return hasNext;
+    }
+    ListenableFuture<Boolean> res = NOT_BLOCKED_FALSE;
+    if (next == null && !consumeView) {
+      ITimeSeriesSchemaInfo temp;
+      while (traverser.hasNext()) {
+        temp = traverser.next();
+        if (temp.isLogicalView()) {
+          // view timeseries
+          cachedViewList.add(temp.snapshot());
+          if (cachedViewList.size() >= BATCH_CACHED_SIZE) {
+            res = fetchViewTimeSeriesSchemaInfo();
             break;
           }
-        }
-      } else {
-        if (FILTER_VISITOR.process(schemaFilter, temp)) {
-          next = temp;
-          break;
+        } else {
+          // normal timeseries
+          if (FILTER_VISITOR.process(schemaFilter, temp)) {
+            next = temp;
+            res = NOT_BLOCKED_TRUE;
+          }
         }
       }
+      if (next == null && !cachedViewList.isEmpty()) {
+        // all schema info has been fetched, but there mau be still some view schema info in
+        // cachedViewList
+        res = fetchViewTimeSeriesSchemaInfo();
+      }
     }
-    if (next == null && !cachedViewList.isEmpty()) {
-      // all schema info has been fetched, but there mau be still some view schema info in
-      // cachedViewList
-      fetchViewTimeSeriesSchemaInfo();
-    }
+    hasNext = res;
+    return res;
   }
 
-  private void fetchViewTimeSeriesSchemaInfo() {
+  @Override
+  public ITimeSeriesSchemaInfo next() {
+    if (!hasNextFuture()) {
+      throw new NoSuchElementException();
+    }
+    ITimeSeriesSchemaInfo result;
+    if (!consumeView) {
+      result = next;
+      next = null;
+    } else {
+      // it may return null if cachedViewList is empty but consumeView is true
+      result = cachedViewList.poll();
+      consumeView = !cachedViewList.isEmpty();
+    }
+    hasNext = null;
+    return result;
+  }
+
+  private ListenableFuture<Boolean> fetchViewTimeSeriesSchemaInfo() {
     List<ITimeSeriesSchemaInfo> delayedLogicalViewList = new ArrayList<>();
     List<ViewExpression> viewExpressionList = new ArrayList<>();
 
@@ -154,33 +165,42 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     }
     // clear cachedViewList, all cached view will be added in the last step
     cachedViewList.clear();
-    ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
-    // process each view expression and get data type
-    TransformToExpressionVisitor transformToExpressionVisitor = new TransformToExpressionVisitor();
-    CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =
-        new CompleteMeasurementSchemaVisitor();
-    Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
-    for (int i = 0; i < delayedLogicalViewList.size(); i++) {
-      ViewExpression viewExpression = viewExpressionList.get(i);
-      Expression expression = null;
-      boolean viewIsBroken = false;
-      try {
-        expression = transformToExpressionVisitor.process(viewExpression, null);
-        expression = completeMeasurementSchemaVisitor.process(expression, schemaTree);
-        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, expression);
-      } catch (Exception e) {
-        viewIsBroken = true;
-      }
-      delayedLogicalViewList
-          .get(i)
-          .getSchema()
-          .setType(viewIsBroken ? TSDataType.UNKNOWN : expressionTypes.get(NodeRef.of(expression)));
-      if (FILTER_VISITOR.process(schemaFilter, delayedLogicalViewList.get(i))) {
-        cachedViewList.add(delayedLogicalViewList.get(i));
-      }
-    }
-    if (!cachedViewList.isEmpty()) {
-      consumeView = true;
-    }
+
+    return Futures.submit(
+        () -> {
+          ISchemaTree schemaTree =
+              ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
+          // process each view expression and get data type
+          TransformToExpressionVisitor transformToExpressionVisitor =
+              new TransformToExpressionVisitor();
+          CompleteMeasurementSchemaVisitor completeMeasurementSchemaVisitor =
+              new CompleteMeasurementSchemaVisitor();
+          Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
+          for (int i = 0; i < delayedLogicalViewList.size(); i++) {
+            ViewExpression viewExpression = viewExpressionList.get(i);
+            Expression expression = null;
+            boolean viewIsBroken = false;
+            try {
+              expression = transformToExpressionVisitor.process(viewExpression, null);
+              expression = completeMeasurementSchemaVisitor.process(expression, schemaTree);
+              ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, expression);
+            } catch (Exception e) {
+              viewIsBroken = true;
+            }
+            delayedLogicalViewList
+                .get(i)
+                .getSchema()
+                .setType(
+                    viewIsBroken
+                        ? TSDataType.UNKNOWN
+                        : expressionTypes.get(NodeRef.of(expression)));
+            if (FILTER_VISITOR.process(schemaFilter, delayedLogicalViewList.get(i))) {
+              cachedViewList.add(delayedLogicalViewList.get(i));
+            }
+          }
+          consumeView = true;
+          return true;
+        },
+        FragmentInstanceManager.getInstance().getIntoOperationExecutor());
   }
 }

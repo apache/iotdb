@@ -41,7 +41,7 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
     this.hasLimit = limit > 0 || offset > 0;
 
     if (hasLimit) {
-      while (curOffset < offset && schemaReader.hasNext()) {
+      while (curOffset < offset && schemaReader.hasNextFuture()) {
         schemaReader.next();
         curOffset++;
       }
@@ -64,17 +64,17 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNextFuture() {
     if (hasLimit) {
-      return count < limit && schemaReader.hasNext();
+      return count < limit && schemaReader.hasNextFuture();
     } else {
-      return schemaReader.hasNext();
+      return schemaReader.hasNextFuture();
     }
   }
 
   @Override
   public T next() {
-    if (!hasNext()) {
+    if (!hasNextFuture()) {
       throw new NoSuchElementException();
     }
     T result = schemaReader.next();

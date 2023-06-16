@@ -33,6 +33,7 @@ import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -237,10 +237,10 @@ public class TagManager {
       public void close() {}
 
       @Override
-      public boolean hasNext() {
+      public ListenableFuture<Boolean> hasNextFuture() {
         if (throwable == null) {
           if (hasLimit && count >= limit) {
-            return false;
+            return NOT_BLOCKED_FALSE;
           } else if (nextMatched == null) {
             try {
               getNext();
@@ -249,14 +249,11 @@ public class TagManager {
             }
           }
         }
-        return throwable == null && nextMatched != null;
+        return (throwable == null && nextMatched != null) ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
       }
 
       @Override
       public ITimeSeriesSchemaInfo next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
         ITimeSeriesSchemaInfo result = nextMatched;
         nextMatched = null;
         return result;

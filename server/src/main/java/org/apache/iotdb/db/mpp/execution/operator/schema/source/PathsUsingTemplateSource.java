@@ -29,6 +29,8 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.Iterator;
 import java.util.List;
 
@@ -96,19 +98,19 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     }
 
     @Override
-    public boolean hasNext() {
+    public ListenableFuture<Boolean> hasNextFuture() {
       try {
         if (throwable != null) {
-          return false;
+          return NOT_BLOCKED_FALSE;
         }
         if (currentDeviceReader != null) {
-          if (currentDeviceReader.hasNext()) {
-            return true;
+          if (currentDeviceReader.hasNextFuture()) {
+            return NOT_BLOCKED_TRUE;
           } else {
             currentDeviceReader.close();
             if (!currentDeviceReader.isSuccess()) {
               throwable = currentDeviceReader.getFailure();
-              return false;
+              return NOT_BLOCKED_FALSE;
             }
           }
         }
@@ -118,13 +120,13 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
               schemaRegion.getDeviceReader(
                   SchemaRegionReadPlanFactory.getShowDevicesPlan(
                       pathPatternIterator.next(), 0, 0, false, templateId));
-          if (currentDeviceReader.hasNext()) {
-            return true;
+          if (currentDeviceReader.hasNextFuture()) {
+            return NOT_BLOCKED_TRUE;
           } else {
             currentDeviceReader.close();
           }
         }
-        return false;
+        return NOT_BLOCKED_FALSE;
       } catch (Exception e) {
         throw new RuntimeException(e.getMessage(), e);
       }

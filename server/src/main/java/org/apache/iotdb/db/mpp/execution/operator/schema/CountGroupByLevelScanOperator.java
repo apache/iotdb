@@ -92,7 +92,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     if (schemaReader == null) {
       schemaReader = createTimeSeriesReader();
     }
-    return schemaReader.hasNext();
+    return schemaReader.hasNextFuture();
   }
 
   public ISchemaReader<T> createTimeSeriesReader() {
@@ -105,7 +105,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     T schemaInfo;
     PartialPath path;
     PartialPath levelPath;
-    while (schemaReader.hasNext()) {
+    while (schemaReader.hasNextFuture()) {
       schemaInfo = schemaReader.next();
       path = schemaInfo.getPartialPath();
       if (path.getNodeLength() < level) {

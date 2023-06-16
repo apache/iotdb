@@ -32,10 +32,11 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
@@ -119,6 +120,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     return "{" + content + "}";
   }
 
+  // TODO: remove this
   // TODO: this reader may be replaced by filter in the future
   private static class LogicalViewSchemaReader implements ISchemaReader<ITimeSeriesSchemaInfo> {
 
@@ -146,32 +148,35 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     }
 
     @Override
-    public boolean hasNext() {
+    public ListenableFuture<Boolean> hasNextFuture() {
+      return timeSeriesReader.hasNextFuture();
       if (nextResult == null) {
-        getNext();
+        ITimeSeriesSchemaInfo timeSeriesSchemaInfo;
+        while (true) {
+          ListenableFuture<Boolean> hasNext = timeSeriesReader.hasNextFuture();
+          if (!hasNext.isDone()) {
+            return hasNext;
+          } else if (hasNext.get()) {
+            timeSeriesSchemaInfo = timeSeriesReader.next();
+            if (timeSeriesSchemaInfo.isLogicalView()) {
+              nextResult = timeSeriesSchemaInfo;
+              return NOT_BLOCKED_TRUE;
+            }
+          } else {
+            return NOT_BLOCKED_FALSE;
+          }
+        }
       }
-      return nextResult != null;
+      return nextResult != null ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
     }
 
     @Override
     public ITimeSeriesSchemaInfo next() {
-      if (!hasNext()) {
-        throw new NoSuchElementException();
-      }
       ITimeSeriesSchemaInfo result = nextResult;
       nextResult = null;
       return result;
     }
 
-    private void getNext() {
-      ITimeSeriesSchemaInfo timeSeriesSchemaInfo;
-      while (timeSeriesReader.hasNext()) {
-        timeSeriesSchemaInfo = timeSeriesReader.next();
-        if (timeSeriesSchemaInfo.isLogicalView()) {
-          nextResult = timeSeriesSchemaInfo;
-          return;
-        }
-      }
-    }
+    private void getNext() {}
   }
 }

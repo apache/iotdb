@@ -77,6 +77,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -887,14 +889,14 @@ public class MTreeBelowSGMemoryImpl {
             collector.close();
           }
 
-          public boolean hasNext() {
+          public ListenableFuture<Boolean> hasNextFuture() {
             while (next == null && collector.hasNext()) {
               IDeviceSchemaInfo temp = collector.next();
               if (filterVisitor.process(showDevicesPlan.getSchemaFilter(), temp)) {
                 next = temp;
               }
             }
-            return next != null;
+            return next != null ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
           }
 
           public IDeviceSchemaInfo next() {
@@ -1010,8 +1012,8 @@ public class MTreeBelowSGMemoryImpl {
         collector.close();
       }
 
-      public boolean hasNext() {
-        return collector.hasNext();
+      public ListenableFuture<Boolean> hasNextFuture() {
+        return collector.hasNext() ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
       }
 
       public INodeSchemaInfo next() {

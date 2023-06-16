@@ -31,8 +31,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
@@ -58,6 +59,10 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   private ISchemaReader<T> schemaReader;
 
+  private final TsBlockBuilder tsBlockBuilder;
+
+  private ListenableFuture<Boolean> isBlocked;
+
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
@@ -74,6 +79,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
     this.sourceId = sourceId;
     this.outputDataTypes = outputDataTypes;
     this.schemaSource = null;
+    this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   public SchemaQueryScanOperator(
@@ -85,6 +91,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         schemaSource.getInfoQueryColumnHeaders().stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
+    this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   protected ISchemaReader<T> createSchemaReader() {
@@ -92,7 +99,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
   }
 
-  protected void setColumns(T element, TsBlockBuilder builder) {
+  private void setColumns(T element, TsBlockBuilder builder) {
     schemaSource.transformToTsBlockColumns(element, builder, getDatabase());
   }
 
@@ -126,23 +133,39 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    return isBlocked == null ? NOT_BLOCKED : isBlocked;
+  }
+
+  @Override
   public TsBlock next() throws Exception {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
+    if (isBlocked != null && !isBlocked.isDone()) {
+      // if blocked, return null
+      return null;
     }
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    T element;
-    while (schemaReader.hasNext()) {
-      element = schemaReader.next();
-      setColumns(element, tsBlockBuilder);
-      if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
-        break;
+    boolean hasNext = true;
+    while (hasNext) {
+      T element = schemaReader.next();
+      if (element != null) {
+        setColumns(element, tsBlockBuilder);
+        if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+          break;
+        }
       }
+      ListenableFuture<Boolean> future = schemaReader.hasNextFuture();
+      if (!future.isDone()) {
+        isBlocked = future;
+        return null;
+      }
+      hasNext = future.get();
     }
+
     if (!schemaReader.isSuccess()) {
       throw new RuntimeException(schemaReader.getFailure());
     }
-    return tsBlockBuilder.build();
+    TsBlock res = tsBlockBuilder.build();
+    tsBlockBuilder.reset();
+    return res;
   }
 
   @Override
@@ -150,7 +173,22 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
     if (schemaReader == null) {
       schemaReader = createSchemaReader();
     }
-    return schemaReader.hasNext();
+    if (!tsBlockBuilder.isEmpty()) {
+      return true;
+    } else {
+      ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
+      if (!hasNextFuture.isDone()) {
+        isBlocked = hasNextFuture;
+        // we do not know whether it has next or not now, so return true
+        return true;
+      } else {
+        // hasNextFuture is done but may not success
+        if (!schemaReader.isSuccess()) {
+          throw new RuntimeException(schemaReader.getFailure());
+        }
+        return hasNextFuture.get();
+      }
+    }
   }
 
   @Override

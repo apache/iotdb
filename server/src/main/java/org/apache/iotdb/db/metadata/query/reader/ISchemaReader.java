@@ -21,9 +21,15 @@ package org.apache.iotdb.db.metadata.query.reader;
 
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 
-import java.util.Iterator;
+import com.google.common.util.concurrent.ListenableFuture;
 
-public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoCloseable {
+import static com.google.common.util.concurrent.Futures.immediateFuture;
+
+public interface ISchemaReader<T extends ISchemaInfo> extends AutoCloseable {
+
+  ListenableFuture<Boolean> NOT_BLOCKED_TRUE = immediateFuture(true);
+  ListenableFuture<Boolean> NOT_BLOCKED_FALSE = immediateFuture(false);
+
   /**
    * Determines if the iteration is successful when it completes.
    *
@@ -37,4 +43,13 @@ public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoC
    * @return Throwable, null if no exception.
    */
   Throwable getFailure();
+
+  /**
+   * Invoked by Operator. Returns a future that will be completed when the schemaReader becomes
+   * unblocked. If the schemaReader is not blocked, this method should return {@code NOT_BLOCKED}.
+   */
+  ListenableFuture<Boolean> hasNextFuture();
+
+  /** Gets next tsBlock from this operator. If no data is currently available, return null. */
+  T next();
 }
