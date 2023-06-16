@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -48,7 +49,6 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   private final long offset;
 
   private final SchemaFilter schemaFilter;
-  private static final String viewTypeOfLogicalView = "logical";
 
   LogicalViewSchemaSource(
       PartialPath pathPattern, long limit, long offset, SchemaFilter schemaFilter) {
@@ -92,7 +92,7 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
     builder.writeNullableText(3, mapToString(series.getTags()));
     builder.writeNullableText(4, mapToString(series.getAttributes()));
 
-    builder.writeNullableText(5, viewTypeOfLogicalView);
+    builder.writeNullableText(5, ViewType.VIEW.name());
     builder.writeNullableText(
         6, ((LogicalViewSchema) series.getSchema()).getExpression().toString());
     builder.declarePosition();
