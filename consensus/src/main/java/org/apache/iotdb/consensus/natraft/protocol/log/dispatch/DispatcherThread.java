@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.Flow
 import org.apache.iotdb.consensus.natraft.utils.LogUtils;
 import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
+import org.apache.iotdb.consensus.raft.thrift.AppendCompressedSingleEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 import org.apache.iotdb.tsfile.compress.ICompressor;
@@ -81,7 +82,6 @@ abstract class DispatcherThread extends DynamicThread {
           logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
         }
 
-        serializeEntries();
         if (!logDispatcher.queueOrdered) {
           currBatch.sort(Comparator.comparingLong(s -> s.getEntry().getCurrLogIndex()));
         }
@@ -101,15 +101,7 @@ abstract class DispatcherThread extends DynamicThread {
     }
   }
 
-  protected void serializeEntries() throws InterruptedException {
-    for (VotingEntry request : currBatch) {
-      ByteBuffer serialized = request.getEntry().serialize();
-      request.getEntry().setByteSize(serialized.remaining());
-    }
-  }
-
-  private void appendEntriesAsync(
-      List<ByteBuffer> logList, AppendEntriesRequest request, List<VotingEntry> currBatch) {
+  private void appendEntriesAsync(AppendEntriesRequest request, List<VotingEntry> currBatch) {
     AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
     AsyncRaftServiceClient client = logDispatcher.member.getClient(receiver.getEndpoint());
     try {
@@ -124,19 +116,10 @@ abstract class DispatcherThread extends DynamicThread {
     } catch (Exception e) {
       handler.onError(e);
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: append entries {} with {} logs",
-          logDispatcher.member.getName(),
-          receiver,
-          logList.size());
-    }
   }
 
   private void appendEntriesAsync(
-      List<ByteBuffer> logList,
-      AppendCompressedEntriesRequest request,
-      List<VotingEntry> currBatch) {
+      AppendCompressedEntriesRequest request, List<VotingEntry> currBatch) {
     AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
     AsyncRaftServiceClient client = logDispatcher.member.getClient(receiver.getEndpoint());
     try {
@@ -152,12 +135,24 @@ abstract class DispatcherThread extends DynamicThread {
     } catch (Exception e) {
       handler.onError(e);
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: append entries {} with {} logs",
-          logDispatcher.member.getName(),
-          receiver,
-          logList.size());
+  }
+
+  private void appendEntriesAsync(
+      AppendCompressedSingleEntriesRequest request, List<VotingEntry> currBatch) {
+    AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
+    AsyncRaftServiceClient client = logDispatcher.member.getClient(receiver.getEndpoint());
+    try {
+      long startTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
+      AppendEntryResult appendEntryResult =
+          SyncClientAdaptor.appendCompressedSingleEntries(client, request);
+      Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
+      if (appendEntryResult != null) {
+        handler.onComplete(appendEntryResult);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } catch (Exception e) {
+      handler.onError(e);
     }
   }
 
@@ -189,6 +184,21 @@ abstract class DispatcherThread extends DynamicThread {
     return request;
   }
 
+  protected AppendCompressedSingleEntriesRequest prepareCompressedSingleRequest(
+      List<ByteBuffer> logList, List<Byte> compressionTypes, List<Integer> uncompressedSizes) {
+    AppendCompressedSingleEntriesRequest request = new AppendCompressedSingleEntriesRequest();
+
+    request.setGroupId(logDispatcher.member.getRaftGroupId().convertToTConsensusGroupId());
+    request.setLeader(logDispatcher.member.getThisNode().getEndpoint());
+    request.setLeaderId(logDispatcher.member.getThisNode().getNodeId());
+    request.setLeaderCommit(logDispatcher.member.getLogManager().getCommitLogIndex());
+    request.setTerm(logDispatcher.member.getStatus().getTerm().get());
+    request.setEntries(logList);
+    request.setCompressionTypes(compressionTypes);
+    request.setUncompressedSizes(uncompressedSizes);
+    return request;
+  }
+
   private void sendLogs(List<VotingEntry> currBatch) {
     if (currBatch.isEmpty()) {
       return;
@@ -203,27 +213,45 @@ abstract class DispatcherThread extends DynamicThread {
       long logSize = 0;
       long logSizeLimit = logDispatcher.getConfig().getThriftMaxFrameSize();
       List<ByteBuffer> logList = new ArrayList<>();
+      List<Byte> compressionTypes = new ArrayList<>();
+      List<Integer> uncompressedSizes = new ArrayList<>();
       int prevIndex = logIndex;
 
       for (; logIndex < currBatch.size(); logIndex++) {
         VotingEntry entry = currBatch.get(logIndex);
-        ByteBuffer serialized = entry.getEntry().serialize();
+        ByteBuffer serialized;
+        if (!logDispatcher.enableCompressedDispatching) {
+          serialized = entry.getEntry().serialize();
+        } else {
+          serialized = entry.getEntry().serialize(compressor);
+        }
+
         long curSize = serialized.remaining();
         if (logSizeLimit - curSize - logSize <= IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
           break;
         }
         logSize += curSize;
         logList.add(serialized);
+        if (logDispatcher.enableCompressedDispatching) {
+          compressionTypes.add(
+              entry.getEntry().getSerialization().getCompressionType().serialize());
+          uncompressedSizes.add(entry.getEntry().getSerialization().getUncompressedSize());
+        }
         Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENDING.calOperationCostTimeFromStart(
             entry.getEntry().createTime);
       }
 
       if (!logDispatcher.enableCompressedDispatching && !group.isDelayed()) {
         AppendEntriesRequest appendEntriesRequest = prepareRequest(logList);
-        appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+        appendEntriesAsync(appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
       } else {
-        AppendCompressedEntriesRequest appendEntriesRequest = prepareCompressedRequest(logList);
-        appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+        //        AppendCompressedEntriesRequest appendEntriesRequest =
+        // prepareCompressedRequest(logList);
+        //        appendEntriesAsync(appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+
+        AppendCompressedSingleEntriesRequest appendEntriesRequest =
+            prepareCompressedSingleRequest(logList, compressionTypes, uncompressedSizes);
+        appendEntriesAsync(appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
       }
 
       if (logDispatcher.getConfig().isUseFollowerLoadBalance()) {

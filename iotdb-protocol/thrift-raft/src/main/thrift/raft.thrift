@@ -29,6 +29,17 @@ struct AppendEntriesRequest {
   6: required i32 leaderId
 }
 
+struct AppendCompressedSingleEntriesRequest {
+  1: required i64 term // leader's
+  2: required common.TEndPoint leader
+  3: required list<binary> entries // data
+  4: required i64 leaderCommit
+  5: required common.TConsensusGroupId groupId
+  6: required i32 leaderId
+  7: required list<i8> compressionTypes
+  8: required list<i32> uncompressedSizes
+}
+
 struct AppendCompressedEntriesRequest {
   1: required i64 term // leader's
   2: required common.TEndPoint leader
@@ -160,6 +171,8 @@ service RaftService {
   AppendEntryResult appendEntries(1:AppendEntriesRequest request)
 
   AppendEntryResult appendCompressedEntries(1:AppendCompressedEntriesRequest request)
+
+  AppendEntryResult appendCompressedSingleEntries(1:AppendCompressedSingleEntriesRequest request)
 
   common.TSStatus sendSnapshot(1:SendSnapshotRequest request)
 

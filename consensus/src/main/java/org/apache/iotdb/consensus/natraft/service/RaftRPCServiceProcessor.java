@@ -35,6 +35,7 @@ import org.apache.iotdb.consensus.natraft.utils.IOUtils;
 import org.apache.iotdb.consensus.natraft.utils.LogUtils;
 import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
+import org.apache.iotdb.consensus.raft.thrift.AppendCompressedSingleEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryResult;
 import org.apache.iotdb.consensus.raft.thrift.ElectionRequest;
@@ -171,6 +172,36 @@ public class RaftRPCServiceProcessor implements RaftService.AsyncIface {
               request.entryBytes,
               IUnCompressor.getUnCompressor(CompressionType.values()[request.compressionType]),
               request.uncompressedSize);
+      decompressedRequest.setEntries(buffers);
+      Statistic.RAFT_RECEIVER_DECOMPRESS_ENTRY.calOperationCostTimeFromStart(compressionStartTime);
+
+      RaftMember member = getMemberOrCreate(request.groupId, decompressedRequest);
+      resultHandler.onComplete(member.appendEntries(decompressedRequest));
+    } catch (UnknownLogTypeException | IOException e) {
+      throw new TException(e);
+    }
+    Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.calOperationCostTimeFromStart(startTime);
+  }
+
+  @Override
+  public void appendCompressedSingleEntries(
+      AppendCompressedSingleEntriesRequest request,
+      AsyncMethodCallback<AppendEntryResult> resultHandler)
+      throws TException {
+    long startTime = Statistic.RAFT_RECEIVER_APPEND_ENTRY_FULL.getOperationStartTime();
+    AppendEntriesRequest decompressedRequest = new AppendEntriesRequest();
+    decompressedRequest
+        .setTerm(request.getTerm())
+        .setLeader(request.leader)
+        .setLeaderCommit(request.leaderCommit)
+        .setGroupId(request.groupId)
+        .setLeaderId(request.leaderId);
+
+    try {
+      long compressionStartTime = Statistic.RAFT_RECEIVER_DECOMPRESS_ENTRY.getOperationStartTime();
+      List<ByteBuffer> buffers =
+          LogUtils.decompressEntries(
+              request.entries, request.compressionTypes, request.uncompressedSizes);
       decompressedRequest.setEntries(buffers);
       Statistic.RAFT_RECEIVER_DECOMPRESS_ENTRY.calOperationCostTimeFromStart(compressionStartTime);
 

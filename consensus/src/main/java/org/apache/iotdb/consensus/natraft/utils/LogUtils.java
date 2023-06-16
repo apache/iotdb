@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
 import org.apache.iotdb.consensus.raft.thrift.AppendEntryRequest;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
@@ -146,6 +147,32 @@ public class LogUtils {
     }
 
     return buffers;
+  }
+
+  public static List<ByteBuffer> decompressEntries(
+      List<ByteBuffer> buffers, List<Byte> unCompressorTypes, List<Integer> uncompressedSizes)
+      throws IOException {
+    List<ByteBuffer> result = new ArrayList<>();
+    for (int i = 0; i < buffers.size(); i++) {
+      ByteBuffer buffer = buffers.get(i);
+      byte[] uncompressed = new byte[uncompressedSizes.get(i)];
+      IUnCompressor unCompressor =
+          IUnCompressor.getUnCompressor(CompressionType.deserialize(unCompressorTypes.get(i)));
+      try {
+        unCompressor.uncompress(
+            buffer.array(),
+            buffer.arrayOffset() + buffer.position(),
+            buffer.remaining(),
+            uncompressed,
+            0);
+      } catch (IOException e) {
+        logger.error("Cannot uncompress buffer {}/{}: {}", i, buffers.size(), buffer);
+        throw e;
+      }
+      ByteBuffer uncompressedBuffer = ByteBuffer.wrap(uncompressed);
+      result.add(uncompressedBuffer);
+    }
+    return result;
   }
 
   public static List<Entry> parseEntries(List<ByteBuffer> buffers, IStateMachine stateMachine)

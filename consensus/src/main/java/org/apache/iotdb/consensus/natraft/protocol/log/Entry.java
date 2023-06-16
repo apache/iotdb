@@ -19,6 +19,7 @@
 package org.apache.iotdb.consensus.natraft.protocol.log;
 
 import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 
 import java.nio.ByteBuffer;
 import java.util.Comparator;
@@ -56,7 +57,7 @@ public abstract class Entry implements Comparable<Entry> {
   public long applyTime;
   public long waitEndTime;
 
-  public EntrySerialization serialization;
+  public EntrySerialization serialization = new EntrySerialization();
 
   public int getDefaultSerializationBufferSize() {
     return DEFAULT_SERIALIZATION_BUFFER_SIZE;
@@ -78,6 +79,10 @@ public abstract class Entry implements Comparable<Entry> {
 
   public ByteBuffer serialize() {
     return serialization.serialize(this);
+  }
+
+  public synchronized ByteBuffer serialize(ICompressor compressor) {
+    return serialization.serialize(this, compressor);
   }
 
   public abstract void deserialize(ByteBuffer buffer);
@@ -213,5 +218,9 @@ public abstract class Entry implements Comparable<Entry> {
 
   public void setVotingEntry(VotingEntry votingEntry) {
     this.votingEntry = votingEntry;
+  }
+
+  public EntrySerialization getSerialization() {
+    return serialization;
   }
 }
