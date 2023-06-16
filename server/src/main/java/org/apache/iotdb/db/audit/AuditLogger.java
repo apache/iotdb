@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load.ILoader.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.pipe.connector.legacy.pipedata.load.ILoader.SCHEMA_FETCHER;
 
 public class AuditLogger {
   private static final Logger logger = LoggerFactory.getLogger(AuditLogger.class);

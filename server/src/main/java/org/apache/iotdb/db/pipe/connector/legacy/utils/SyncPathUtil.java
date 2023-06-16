@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.lagacy.utils;
+package org.apache.iotdb.db.pipe.connector.legacy.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.lagacy.transport.SyncIdentityInfo;
+import org.apache.iotdb.db.pipe.connector.legacy.transport.SyncIdentityInfo;
 
 import java.io.File;
 import java.io.IOException;

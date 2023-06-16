@@ -17,7 +17,7 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.pipe.connector.lagacy;
+package org.apache.iotdb.db.pipe.connector.legacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -29,12 +29,12 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.pipe.connector.lagacy.exception.SyncDataLoadException;
-import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.PipeData;
-import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.pipe.connector.lagacy.transport.SyncIdentityInfo;
-import org.apache.iotdb.db.pipe.connector.lagacy.utils.SyncConstant;
-import org.apache.iotdb.db.pipe.connector.lagacy.utils.SyncPathUtil;
+import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
+import org.apache.iotdb.db.pipe.connector.legacy.pipedata.PipeData;
+import org.apache.iotdb.db.pipe.connector.legacy.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.pipe.connector.legacy.transport.SyncIdentityInfo;
+import org.apache.iotdb.db.pipe.connector.legacy.utils.SyncConstant;
+import org.apache.iotdb.db.pipe.connector.legacy.utils.SyncPathUtil;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;

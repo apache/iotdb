@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load;
+package org.apache.iotdb.db.pipe.connector.legacy.pipedata.load;
 
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.pipe.connector.lagacy.exception.SyncDataLoadException;
+import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 
 /**
  * This interface is used to load files, including tsFile, syncTask, schema, modsFile and

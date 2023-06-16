@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.connector.lagacy.transport;
+package org.apache.iotdb.db.pipe.connector.legacy.transport;
 
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 

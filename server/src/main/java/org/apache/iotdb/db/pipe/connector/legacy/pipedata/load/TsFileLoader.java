@@ -16,43 +16,46 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load;
+package org.apache.iotdb.db.pipe.connector.legacy.pipedata.load;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.pipe.connector.lagacy.exception.SyncDataLoadException;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import java.io.File;
 
-/** This loader is used to load deletion plan. */
-public class DeletionLoader implements ILoader {
-  private static final Logger logger = LoggerFactory.getLogger(DeletionLoader.class);
+/** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
+public class TsFileLoader implements ILoader {
+  private static final Logger logger = LoggerFactory.getLogger(TsFileLoader.class);
 
-  private Deletion deletion;
+  private final File tsFile;
+  private final String database;
 
-  public DeletionLoader(Deletion deletion) {
-    this.deletion = deletion;
+  public TsFileLoader(File tsFile, String database) {
+    this.tsFile = tsFile;
+    this.database = database;
   }
 
   @Override
   public void load() throws SyncDataLoadException {
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new SyncDataLoadException("storage engine readonly");
-    }
     try {
-      Statement statement = generateStatement();
+
+      LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
+      statement.setDeleteAfterLoad(true);
+      statement.setSgLevel(parseSgLevel());
+      statement.setVerifySchema(true);
+      statement.setAutoCreateDatabase(false);
+
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
@@ -65,24 +68,17 @@ public class DeletionLoader implements ILoader {
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        logger.error("Delete {} error, statement: {}.", deletion, statement);
-        logger.error("Delete result status : {}.", result.status);
+        logger.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
+        logger.error("Load TsFile result status : {}.", result.status);
         throw new LoadFileException(
-            String.format("Can not execute delete statement: %s", statement));
+            String.format("Can not execute load TsFile statement: %s", statement));
       }
     } catch (Exception e) {
       throw new SyncDataLoadException(e.getMessage());
     }
   }
 
-  private Statement generateStatement() {
-    if (deletion.getStartTime() == Long.MIN_VALUE && deletion.getEndTime() == Long.MAX_VALUE) {
-      return new DeleteTimeSeriesStatement(Collections.singletonList(deletion.getPath()));
-    }
-    DeleteDataStatement statement = new DeleteDataStatement();
-    statement.setPathList(Collections.singletonList(deletion.getPath()));
-    statement.setDeleteStartTime(deletion.getStartTime());
-    statement.setDeleteEndTime(deletion.getEndTime());
-    return statement;
+  private int parseSgLevel() throws IllegalPathException {
+    return new PartialPath(database).getNodeLength() - 1;
   }
 }

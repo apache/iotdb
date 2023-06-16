@@ -63,7 +63,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.lagacy.IoTDBSyncReceiverV1_1;
+import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncReceiverV1_1;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;

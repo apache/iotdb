@@ -17,10 +17,10 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.pipe.connector.lagacy.pipedata;
+package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load.ILoader;
+import org.apache.iotdb.db.pipe.connector.legacy.pipedata.load.ILoader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
