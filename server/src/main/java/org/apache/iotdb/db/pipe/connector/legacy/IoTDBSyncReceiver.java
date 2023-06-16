@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.legacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,9 +31,6 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.pipe.connector.legacy.pipedata.PipeData;
 import org.apache.iotdb.db.pipe.connector.legacy.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.pipe.connector.legacy.transport.SyncIdentityInfo;
-import org.apache.iotdb.db.pipe.connector.legacy.utils.SyncConstant;
-import org.apache.iotdb.db.pipe.connector.legacy.utils.SyncPathUtil;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -53,10 +51,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** This class is responsible for implementing the RPC processing on the receiver-side. */
 public class IoTDBSyncReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncReceiver.class);
+
+  private static final String PATCH_SUFFIX = ".patch";
 
   // When the client abnormally exits, we can still know who to disconnect
   private final ThreadLocal<Long> currentConnectionId = new ThreadLocal<>();
@@ -74,7 +73,7 @@ public class IoTDBSyncReceiver {
   // The sync connectionId is unique in one IoTDB instance.
   private final AtomicLong connectionIdGenerator = new AtomicLong();
 
-  ////////////// Interfaces and Implementation of RPC Handler ////////////////////////
+  //////////////////////// methods for RPC handler ////////////////////////
 
   /**
    * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
@@ -102,8 +101,8 @@ public class IoTDBSyncReceiver {
     SyncIdentityInfo identityInfo = new SyncIdentityInfo(tIdentityInfo, remoteAddress);
     LOGGER.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
 
-    if (!new File(SyncPathUtil.getFileDataDirPath(identityInfo)).exists()) {
-      new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
+    if (!new File(getFileDataDir(identityInfo)).exists()) {
+      new File(getFileDataDir(identityInfo)).mkdirs();
     }
     createConnection(identityInfo);
     if (!StringUtils.isEmpty(identityInfo.getDatabase())) {
@@ -173,7 +172,7 @@ public class IoTDBSyncReceiver {
     }
     LOGGER.debug(
         "Invoke transportPipeData method from client ip = {}", identityInfo.getRemoteAddress());
-    String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
+    String fileDir = getFileDataDir(identityInfo);
 
     // step2. deserialize PipeData
     PipeData pipeData;
@@ -237,9 +236,7 @@ public class IoTDBSyncReceiver {
     String tsFileName = tsFilePipeData.getTsFileName();
     File dir = new File(fileDir);
     File[] targetFiles =
-        dir.listFiles(
-            (dir1, name) ->
-                name.startsWith(tsFileName) && name.endsWith(SyncConstant.PATCH_SUFFIX));
+        dir.listFiles((dir1, name) -> name.startsWith(tsFileName) && name.endsWith(PATCH_SUFFIX));
     if (targetFiles != null) {
       for (File targetFile : targetFiles) {
         File newFile =
@@ -247,8 +244,7 @@ public class IoTDBSyncReceiver {
                 dir,
                 targetFile
                     .getName()
-                    .substring(
-                        0, targetFile.getName().length() - SyncConstant.PATCH_SUFFIX.length()));
+                    .substring(0, targetFile.getName().length() - PATCH_SUFFIX.length()));
         targetFile.renameTo(newFile);
       }
     }
@@ -274,14 +270,14 @@ public class IoTDBSyncReceiver {
     LOGGER.debug(
         "Invoke transportData method from client ip = {}", identityInfo.getRemoteAddress());
 
-    String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
+    String fileDir = getFileDataDir(identityInfo);
     String fileName = metaInfo.fileName;
     long startIndex = metaInfo.startIndex;
-    File file = new File(fileDir, fileName + SyncConstant.PATCH_SUFFIX);
+    File file = new File(fileDir, fileName + PATCH_SUFFIX);
 
     // step2. check startIndex
     try {
-      CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
+      IndexCheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
       if (!result.isResult()) {
         return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REDIRECTION_ERROR, result.getIndex());
       }
@@ -314,7 +310,7 @@ public class IoTDBSyncReceiver {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
-  private CheckResult checkStartIndexValid(File file, long startIndex) throws IOException {
+  private IndexCheckResult checkStartIndexValid(File file, long startIndex) throws IOException {
     // get local index from memory map
     long localIndex = getCurrentFileStartIndex(file.getAbsolutePath());
     // get local index from file
@@ -328,16 +324,16 @@ public class IoTDBSyncReceiver {
           "The start index {} of data sync is not valid. "
               + "The file is not exist and start index should equal to 0).",
           startIndex);
-      return new CheckResult(false, "0");
+      return new IndexCheckResult(false, "0");
     } else if (localIndex >= 0 && localIndex != startIndex) {
       LOGGER.error(
           "The start index {} of data sync is not valid. "
               + "The start index of the file should equal to {}.",
           startIndex,
           localIndex);
-      return new CheckResult(false, String.valueOf(localIndex));
+      return new IndexCheckResult(false, String.valueOf(localIndex));
     }
-    return new CheckResult(true, "0");
+    return new IndexCheckResult(true, "0");
   }
 
   /**
@@ -365,12 +361,82 @@ public class IoTDBSyncReceiver {
     }
   }
 
-  private static class CheckResult {
+  ///////////////////////// sync data dir structure /////////////////////////
+
+  // data/sync
+  // |----receiver dir
+  // |      |-----receiver pipe dir
+  // |              |----file data dir
+
+  private static final String RECEIVER_DIR_NAME = "receiver";
+  private static final String FILE_DATA_DIR_NAME = "file-data";
+
+  private static String getFileDataDir(SyncIdentityInfo identityInfo) {
+    return getReceiverPipeDir(
+            identityInfo.getPipeName(),
+            identityInfo.getRemoteAddress(),
+            identityInfo.getCreateTime())
+        + File.separator
+        + FILE_DATA_DIR_NAME;
+  }
+
+  private static String getReceiverPipeDir(String pipeName, String remoteIp, long createTime) {
+    return getReceiverDir()
+        + File.separator
+        + String.format("%s-%d-%s", pipeName, createTime, remoteIp);
+  }
+
+  private static String getReceiverDir() {
+    return CommonDescriptor.getInstance().getConfig().getSyncDir()
+        + File.separator
+        + RECEIVER_DIR_NAME;
+  }
+
+  ///////////////////// helper classes //////////////////////
+
+  private static class SyncIdentityInfo {
+
+    private final String pipeName;
+    private final long createTime;
+    private final String version;
+    private final String database;
+    private final String remoteAddress;
+
+    public SyncIdentityInfo(TSyncIdentityInfo identityInfo, String remoteAddress) {
+      this.pipeName = identityInfo.getPipeName();
+      this.createTime = identityInfo.getCreateTime();
+      this.version = identityInfo.getVersion();
+      this.database = identityInfo.getDatabase();
+      this.remoteAddress = remoteAddress;
+    }
+
+    public String getPipeName() {
+      return pipeName;
+    }
+
+    public long getCreateTime() {
+      return createTime;
+    }
+
+    public String getVersion() {
+      return version;
+    }
+
+    public String getRemoteAddress() {
+      return remoteAddress;
+    }
+
+    public String getDatabase() {
+      return database;
+    }
+  }
+
+  private static class IndexCheckResult {
 
     private final boolean result;
     private final String index;
 
-    public CheckResult(boolean result, String index) {
+    public IndexCheckResult(boolean result, String index) {
       this.result = result;
       this.index = index;
     }
@@ -384,7 +450,7 @@ public class IoTDBSyncReceiver {
     }
   }
 
-  ///////////////////////// Singleton /////////////////////////
+  ///////////////////////// singleton /////////////////////////
 
   private IoTDBSyncReceiver() {}
 

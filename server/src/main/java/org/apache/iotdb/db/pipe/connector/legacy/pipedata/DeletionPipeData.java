@@ -25,32 +25,18 @@ import org.apache.iotdb.db.pipe.connector.legacy.loader.DeletionLoader;
 import org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 
 public class DeletionPipeData extends PipeData {
-  private static final Logger logger = LoggerFactory.getLogger(DeletionPipeData.class);
 
   private String database;
   private Deletion deletion;
 
   public DeletionPipeData() {
     super();
-  }
-
-  public DeletionPipeData(Deletion deletion, long serialNumber) {
-    this("", deletion, serialNumber);
-  }
-
-  public DeletionPipeData(String sgName, Deletion deletion, long serialNumber) {
-    super(serialNumber);
-    this.database = sgName;
-    this.deletion = deletion;
   }
 
   @Override

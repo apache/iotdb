@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,7 +48,7 @@ public class DeletionLoader implements ILoader {
   }
 
   @Override
-  public void load() throws SyncDataLoadException {
+  public void load() throws PipeException {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new PipeException("storage engine readonly");
     }

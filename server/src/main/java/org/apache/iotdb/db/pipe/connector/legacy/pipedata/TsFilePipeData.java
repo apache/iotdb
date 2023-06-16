@@ -20,27 +20,17 @@
 package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader;
 import org.apache.iotdb.db.pipe.connector.legacy.loader.TsFileLoader;
-import org.apache.iotdb.db.pipe.connector.legacy.utils.SyncConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 public class TsFilePipeData extends PipeData {
-  private static final Logger logger = LoggerFactory.getLogger(TsFilePipeData.class);
 
   private String parentDirPath;
   private String tsFileName;
@@ -48,22 +38,6 @@ public class TsFilePipeData extends PipeData {
 
   public TsFilePipeData() {
     super();
-  }
-
-  public TsFilePipeData(String tsFilePath, long serialNumber) {
-    super(serialNumber);
-    String sep = File.separator.equals("\\") ? "\\\\" : File.separator;
-    String[] paths = tsFilePath.split(sep);
-    tsFileName = paths[paths.length - 1];
-    if (paths.length > 1) {
-      parentDirPath =
-          tsFilePath.substring(
-              0, tsFilePath.length() - tsFileName.length() - File.separator.length());
-    } else {
-      parentDirPath = "";
-    }
-
-    initDatabaseName();
   }
 
   public TsFilePipeData(String parentDirPath, String tsFileName, long serialNumber) {
@@ -104,14 +78,6 @@ public class TsFilePipeData extends PipeData {
     return parentDirPath + File.separator + tsFileName;
   }
 
-  public String getResourceFilePath() {
-    return getTsFilePath() + TsFileResource.RESOURCE_SUFFIX;
-  }
-
-  public String getModsFilePath() {
-    return getTsFilePath() + ModificationFile.FILE_SUFFIX;
-  }
-
   public void setDatabase(String database) {
     this.database = database;
   }
@@ -146,55 +112,6 @@ public class TsFilePipeData extends PipeData {
   @Override
   public ILoader createLoader() {
     return new TsFileLoader(new File(getTsFilePath()), database);
-  }
-
-  public List<File> getTsFiles(boolean shouldWaitForTsFileClose) throws FileNotFoundException {
-    File tsFile = new File(getTsFilePath()).getAbsoluteFile();
-    File resource = new File(getResourceFilePath());
-    File mods = new File(getModsFilePath());
-
-    List<File> files = new ArrayList<>();
-    if (!tsFile.exists()) {
-      throw new FileNotFoundException(String.format("Can not find %s.", tsFile.getAbsolutePath()));
-    }
-    files.add(tsFile);
-    if (resource.exists()) {
-      files.add(resource);
-    } else {
-      if (shouldWaitForTsFileClose && !waitForTsFileClose()) {
-        throw new FileNotFoundException(
-            String.format(
-                "Can not find %s, maybe the tsfile is not closed yet", resource.getAbsolutePath()));
-      }
-    }
-    if (mods.exists()) {
-      files.add(mods);
-    }
-    return files;
-  }
-
-  private boolean waitForTsFileClose() {
-    for (int i = 0; i < SyncConstant.DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER; i++) {
-      if (isTsFileClosed()) {
-        return true;
-      }
-      try {
-        Thread.sleep(SyncConstant.DEFAULT_WAITING_FOR_TSFILE_CLOSE_MILLISECONDS);
-      } catch (InterruptedException e) {
-        logger.warn(String.format("Be Interrupted when waiting for tsfile %s closed", tsFileName));
-      }
-      logger.info(
-          String.format(
-              "Waiting for tsfile %s close, retry %d / %d.",
-              tsFileName, (i + 1), SyncConstant.DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER));
-    }
-    return false;
-  }
-
-  private boolean isTsFileClosed() {
-    File tsFile = new File(getTsFilePath()).getAbsoluteFile();
-    File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
-    return resource.exists();
   }
 
   @Override
