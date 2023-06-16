@@ -130,7 +130,7 @@ public class SchemaFileLogTest {
       sf.close();
     }
 
-    // modify log file to restore schema file
+    // modify log file to restore pb-tree file
     FileOutputStream outputStream = null;
     FileChannel channel;
     try {
@@ -152,7 +152,7 @@ public class SchemaFileLogTest {
       outputStream.close();
     }
 
-    // verify that schema file has been repaired
+    // verify that pb-tree file has been repaired
     sf = (SchemaFile) SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     res = sf.getChildren(lastNode);
     int cnt2 = 0;
