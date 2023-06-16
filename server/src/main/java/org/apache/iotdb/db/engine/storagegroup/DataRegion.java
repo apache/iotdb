@@ -3264,7 +3264,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public Long getLatestTimePartition() {
-    return partitionMaxFileVersions.keySet().stream().max(Long::compareTo).orElse(0L);
+    return getTimePartitions().stream().max(Long::compareTo).orElse(0L);
   }
 
   public String getInsertWriteLockHolder() {
