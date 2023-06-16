@@ -332,13 +332,6 @@ public class ConfigNodeDescriptor {
 
     conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()).trim());
 
-    conf.setTimePartitionInterval(
-        Long.parseLong(
-            properties
-                .getProperty(
-                    "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))
-                .trim()));
-
     conf.setHeartbeatIntervalInMs(
         Long.parseLong(
             properties

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -65,14 +67,14 @@ public class TsFileAndModSettleToolTest {
   protected final String SENSOR2 = "sensor_2";
   private final long VALUE_OFFSET = 1;
   private String path = null;
-  private IoTDBConfig config;
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private long originPartitionInterval;
 
   @Before
   public void setUp() {
-    config = IoTDBDescriptor.getInstance().getConfig();
-    originPartitionInterval = config.getTimePartitionInterval();
-    config.setTimePartitionInterval(newPartitionInterval);
+    originPartitionInterval = COMMON_CONFIG.getTimePartitionInterval();
+    COMMON_CONFIG.setTimePartitionInterval(newPartitionInterval);
     EnvironmentUtils.envSetUp();
 
     File f = new File(folder);
@@ -100,7 +102,7 @@ public class TsFileAndModSettleToolTest {
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     } finally {
-      config.setTimePartitionInterval(originPartitionInterval);
+      COMMON_CONFIG.setTimePartitionInterval(originPartitionInterval);
     }
   }
 

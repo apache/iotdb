@@ -300,9 +300,6 @@ public class IoTDBDescriptor {
                 .getProperty("mlnode_rpc_port", Integer.toString(conf.getMLNodePort()))
                 .trim()));
 
-    conf.setTimestampPrecision(
-        properties.getProperty("timestamp_precision", conf.getTimestampPrecision()).trim());
-
     conf.setBufferedArraysMemoryProportion(
         Double.parseDouble(
             properties
@@ -791,11 +788,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "default_fill_interval", String.valueOf(conf.getDefaultFillInterval()))));
 
-    conf.setTagAttributeTotalSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "tag_attribute_total_size", String.valueOf(conf.getTagAttributeTotalSize()))));
-
     conf.setTagAttributeFlushInterval(
         Integer.parseInt(
             properties.getProperty(
@@ -878,18 +870,6 @@ public class IoTDBDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
-
-    conf.setSchemaEngineMode(
-        properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
-
-    conf.setEnableLastCache(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
-
-    if (conf.getSchemaEngineMode().equals("Rocksdb_based")) {
-      conf.setEnableLastCache(false);
-    }
 
     conf.setCachedMNodeSizeInPBTreeMode(
         Integer.parseInt(
@@ -1955,7 +1935,7 @@ public class IoTDBDescriptor {
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
-            conf.getTimestampPrecision()));
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
   }
 
   public void loadClusterProps(Properties properties) {
@@ -2061,9 +2041,6 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionInterval(
-        DateTimeUtils.convertMilliTimeWithPrecision(
-            globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 

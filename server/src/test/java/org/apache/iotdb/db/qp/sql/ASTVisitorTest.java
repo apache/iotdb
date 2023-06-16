@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.sql;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.parser.ASTVisitor;
@@ -71,22 +71,22 @@ public class ASTVisitorTest {
 
   @Test
   public void testParseTimeFormatNowPrecision() {
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
+    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
     long now_ms = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
     String ms_str = String.valueOf(now_ms);
 
-    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("us");
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("us");
     long now_us = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
     String us_str = String.valueOf(now_us);
 
-    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
     long now_ns = visitor.parseDateFormat(SqlConstant.NOW_FUNC);
     String ns_str = String.valueOf(now_ns);
 
     assertEquals(ms_str.length() + 3, (us_str).length());
     assertEquals(us_str.length() + 3, (ns_str).length());
-    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision(timePrecision);
+    CommonDescriptor.getInstance().getConfig().setTimestampPrecision(timePrecision);
   }
 
   @Test(expected = SemanticException.class)

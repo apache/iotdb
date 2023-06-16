@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.metric;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -93,7 +94,7 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         Tag.NAME.toString(),
         REGION_NUMBER);
     metricService.gauge(
-        SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+        SchemaEngineMode.valueOf(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode())
             .getCode(),
         Metric.SCHEMA_ENGINE.toString(),
         MetricLevel.IMPORTANT,
