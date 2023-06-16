@@ -25,7 +25,7 @@ public class SchemaFileConfig {
 
   // region SchemaFile Configuration
 
-  // current version of schema file
+  // current version of pb-tree file
   public static final int SCHEMA_FILE_VERSION = 1;
 
   // folder to store .pst files
@@ -34,15 +34,13 @@ public class SchemaFileConfig {
   public static int FILE_HEADER_SIZE = 256; // size of file header in bytes
 
   public static final int PAGE_CACHE_SIZE =
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .getPageCacheSizeInSchemaFile(); // size of page cache
+      IoTDBDescriptor.getInstance().getConfig().getPageCacheSizeInPBTree(); // size of page cache
 
   // size of page within one redo log, restricting log around 1GB
   public static final int SCHEMA_FILE_LOG_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getSchemaFileLogSize();
+      IoTDBDescriptor.getInstance().getConfig().getPBTreeLogSize();
 
-  // marks to note the state of schema file log
+  // marks to note the state of pb-tree file log
   public static final byte SF_PREPARE_MARK = (byte) 0xfe;
   public static final byte SF_COMMIT_MARK = (byte) 0xff;
 
@@ -73,9 +71,9 @@ public class SchemaFileConfig {
       2; // length of short, which is the type of segment offset and index
   public static final short SEG_MAX_SIZ = (short) (PAGE_LENGTH - PAGE_HEADER_SIZE - SEG_OFF_DIG);
   public static final short SEG_MIN_SIZ =
-      IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile() > SEG_MAX_SIZ
+      IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInPBTree() > SEG_MAX_SIZ
           ? SEG_MAX_SIZ
-          : IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInSchemaFile();
+          : IoTDBDescriptor.getInstance().getConfig().getMinimumSegmentInPBTree();
 
   public static final int SEG_INDEX_DIGIT = 16; // for type short in bits
   public static final long SEG_INDEX_MASK = 0xffffL; // help to translate address

@@ -920,27 +920,26 @@ public class IoTDBDescriptor {
       conf.setEnableLastCache(false);
     }
 
-    conf.setCachedMNodeSizeInSchemaFileMode(
+    conf.setCachedMNodeSizeInPBTreeMode(
         Integer.parseInt(
             properties.getProperty(
-                "cached_mnode_size_in_schema_file_mode",
-                String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
+                "cached_mnode_size_in_pb_tree_mode",
+                String.valueOf(conf.getCachedMNodeSizeInPBTreeMode()))));
 
-    conf.setMinimumSegmentInSchemaFile(
+    conf.setMinimumSegmentInPBTree(
         Short.parseShort(
             properties.getProperty(
-                "minimum_schema_file_segment_in_bytes",
-                String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
+                "minimum_pb_tree_segment_in_bytes",
+                String.valueOf(conf.getMinimumSegmentInPBTree()))));
 
-    conf.setPageCacheSizeInSchemaFile(
+    conf.setPageCacheSizeInPBTree(
         Integer.parseInt(
             properties.getProperty(
-                "page_cache_in_schema_file", String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
+                "page_cache_in_pb_tree", String.valueOf(conf.getPageCacheSizeInPBTree()))));
 
-    conf.setSchemaFileLogSize(
+    conf.setPBTreeLogSize(
         Integer.parseInt(
-            properties.getProperty(
-                "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
+            properties.getProperty("pb_tree_log_size", String.valueOf(conf.getPBTreeLogSize()))));
 
     conf.setMaxMeasurementNumOfInternalRequest(
         Integer.parseInt(
