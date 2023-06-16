@@ -59,7 +59,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewSta
 import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
@@ -169,7 +169,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
-  SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement);
+  SettableFuture<ConfigTaskResult> showPipe(ShowPipesStatement showPipesStatement);
 
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);

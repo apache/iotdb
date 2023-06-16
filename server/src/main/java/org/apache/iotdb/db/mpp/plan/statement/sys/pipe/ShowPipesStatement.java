@@ -25,8 +25,8 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-public class ShowPipeStatement extends ShowStatement implements IConfigStatement {
-  public ShowPipeStatement() {
+public class ShowPipesStatement extends ShowStatement implements IConfigStatement {
+  public ShowPipesStatement() {
     super();
     statementType = StatementType.SHOW_PIPES;
   }

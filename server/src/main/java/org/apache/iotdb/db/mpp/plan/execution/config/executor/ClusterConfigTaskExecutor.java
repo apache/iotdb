@@ -186,7 +186,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewSta
 import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
@@ -1671,15 +1671,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement) {
+  public SettableFuture<ConfigTaskResult> showPipe(ShowPipesStatement showPipesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TShowPipeReq tShowPipeReq = new TShowPipeReq();
-      if (!StringUtils.isEmpty(showPipeStatement.getPipeName())) {
-        tShowPipeReq.setPipeName(showPipeStatement.getPipeName());
+      if (!StringUtils.isEmpty(showPipesStatement.getPipeName())) {
+        tShowPipeReq.setPipeName(showPipesStatement.getPipeName());
       }
-      if (showPipeStatement.getWhereClause()) {
+      if (showPipesStatement.getWhereClause()) {
         tShowPipeReq.setWhereClause(true);
       }
       List<TShowPipeInfo> tShowPipeInfoList =

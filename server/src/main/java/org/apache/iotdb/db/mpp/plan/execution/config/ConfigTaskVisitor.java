@@ -143,7 +143,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
@@ -395,8 +395,8 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitShowPipe(ShowPipeStatement showPipeStatement, TaskContext context) {
-    return new ShowPipeTask(showPipeStatement);
+  public IConfigTask visitShowPipe(ShowPipesStatement showPipesStatement, TaskContext context) {
+    return new ShowPipeTask(showPipesStatement);
   }
 
   @Override
