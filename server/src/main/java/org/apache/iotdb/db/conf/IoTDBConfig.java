@@ -75,6 +75,8 @@ public class IoTDBConfig {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
+  private static final String[] CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES =
+      new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
@@ -1579,14 +1581,18 @@ public class IoTDBConfig {
   }
 
   public void checkMultiDirStrategyClassName() {
-    if (isClusterMode
-        && !(multiDirStrategyClassName.equals(DEFAULT_MULTI_DIR_STRATEGY)
-            || multiDirStrategyClassName.equals(
-                MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY))) {
+    if (isClusterMode) {
+      for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
+        // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
+        if (multiDirStrategyClassName.equals(multiDirStrategy)
+            || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
+          return;
+        }
+      }
       String msg =
           String.format(
-              "Cannot set multi_dir_strategy to %s, because cluster mode only allows MaxDiskUsableSpaceFirstStrategy.",
-              multiDirStrategyClassName);
+              "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
+              multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
       logger.error(msg);
       throw new RuntimeException(msg);
     }
