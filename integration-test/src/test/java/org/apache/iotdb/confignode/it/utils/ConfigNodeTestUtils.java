@@ -213,6 +213,8 @@ public class ConfigNodeTestUtils {
     clusterParameters.setDiskSpaceWarningThreshold(0.05);
     clusterParameters.setReadConsistencyLevel("strong");
     clusterParameters.setTimestampPrecision("ms");
+    clusterParameters.setSchemaEngineMode("Memory");
+    clusterParameters.setTagAttributeTotalSize(700);
     return clusterParameters;
   }
 

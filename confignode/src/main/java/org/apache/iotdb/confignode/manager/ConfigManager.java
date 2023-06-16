@@ -475,7 +475,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
     clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
     clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
-    clusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
+    clusterParameters.setTimePartitionInterval(COMMON_CONF.getTimePartitionInterval());
     clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
     clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
     clusterParameters.setDataRegionPerDataNode(CONF.getDataRegionPerDataNode());
@@ -483,6 +483,8 @@ public class ConfigManager implements IManager {
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
     clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
     clusterParameters.setTimestampPrecision(COMMON_CONF.getTimestampPrecision());
+    clusterParameters.setSchemaEngineMode(COMMON_CONF.getSchemaEngineMode());
+    clusterParameters.setTagAttributeTotalSize(COMMON_CONF.getTagAttributeTotalSize());
     return clusterParameters;
   }
 
@@ -1072,7 +1074,7 @@ public class ConfigManager implements IManager {
         != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
-    if (clusterParameters.getTimePartitionInterval() != CONF.getTimePartitionInterval()) {
+    if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
 
@@ -1095,8 +1097,20 @@ public class ConfigManager implements IManager {
     }
 
     if (clusterParameters.getDiskSpaceWarningThreshold()
-        != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
+        != COMMON_CONF.getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
+    }
+
+    if (!clusterParameters.getTimestampPrecision().equals(COMMON_CONF.getTimestampPrecision())) {
+      return errorStatus.setMessage(errorPrefix + "timestamp_precision" + errorSuffix);
+    }
+
+    if (!clusterParameters.getSchemaEngineMode().equals(COMMON_CONF.getSchemaEngineMode())) {
+      return errorStatus.setMessage(errorPrefix + "schema_engine_mode" + errorSuffix);
+    }
+
+    if (clusterParameters.getTagAttributeTotalSize() != COMMON_CONF.getTagAttributeTotalSize()) {
+      return errorStatus.setMessage(errorPrefix + "tag_attribute_total_size" + errorSuffix);
     }
 
     return null;

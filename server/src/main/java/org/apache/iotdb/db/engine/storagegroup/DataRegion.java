@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -1154,7 +1155,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
       // disable updating last cache on follower
@@ -1208,7 +1209,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
       // disable updating last cache on follower
@@ -1644,7 +1645,7 @@ public class DataRegion implements IDataRegionForQuery {
           resource.getTsFilePath(),
           new Date(ttlLowerBound),
           dataTTL,
-          config.getTimestampPrecision());
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     } finally {
       resource.writeUnlock();
     }
@@ -2373,7 +2374,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void resetLastCacheWhenLoadingTsFile() throws IllegalPathException {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
     DataNodeSchemaCache.getInstance().takeWriteLock();
@@ -2811,8 +2812,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       dataTTL =
-          DateTimeUtils.convertMilliTimeWithPrecision(
-              dataTTL, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+          CommonDateTimeUtils.convertMilliTimeWithPrecision(
+              dataTTL, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
     this.dataTTL = dataTTL;
   }

@@ -176,9 +176,6 @@ public class IoTDBConfig {
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
 
-  /** this variable set timestamp precision as millisecond, microsecond or nanosecond */
-  private String timestampPrecision = "ms";
-
   // region Write Ahead Log Configuration
   /** Write mode of wal */
   private volatile WALMode walMode = WALMode.ASYNC;
@@ -567,9 +564,6 @@ public class IoTDBConfig {
    */
   private boolean enableQueryMemoryEstimation = true;
 
-  /** Whether to enable Last cache */
-  private boolean lastCacheEnable = true;
-
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
@@ -766,9 +760,6 @@ public class IoTDBConfig {
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 64;
 
-  /** Time partition interval in milliseconds */
-  private long timePartitionInterval = 604_800_000;
-
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
@@ -778,9 +769,6 @@ public class IoTDBConfig {
   // just for test
   // wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
-
-  // max size for tag and attribute of one time series
-  private int tagAttributeTotalSize = 700;
 
   // Interval num of tag and attribute records when force flushing to disk
   private int tagAttributeFlushInterval = 1000;
@@ -856,9 +844,6 @@ public class IoTDBConfig {
    * whether create mapping file of id table. This file can map device id in tsfile to device path
    */
   private boolean enableIDTableLogFile = false;
-
-  /** whether to use persistent schema mode */
-  private String schemaEngineMode = "Memory";
 
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInPBTreeMode = -1;
@@ -1208,14 +1193,6 @@ public class IoTDBConfig {
     this.defaultFillInterval = defaultFillInterval;
   }
 
-  public long getTimePartitionInterval() {
-    return timePartitionInterval;
-  }
-
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    this.timePartitionInterval = timePartitionInterval;
-  }
-
   public TimeIndexLevel getTimeIndexLevel() {
     return timeIndexLevel;
   }
@@ -1383,22 +1360,6 @@ public class IoTDBConfig {
 
   public void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
-  }
-
-  public String getTimestampPrecision() {
-    return timestampPrecision;
-  }
-
-  public void setTimestampPrecision(String timestampPrecision) {
-    if (!("ms".equals(timestampPrecision)
-        || "us".equals(timestampPrecision)
-        || "ns".equals(timestampPrecision))) {
-      logger.error(
-          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
-          timestampPrecision);
-      System.exit(-1);
-    }
-    this.timestampPrecision = timestampPrecision;
   }
 
   public boolean isEnableDiscardOutOfOrderData() {
@@ -2218,14 +2179,6 @@ public class IoTDBConfig {
     this.enableQueryMemoryEstimation = enableQueryMemoryEstimation;
   }
 
-  public boolean isLastCacheEnabled() {
-    return lastCacheEnable;
-  }
-
-  public void setEnableLastCache(boolean lastCacheEnable) {
-    this.lastCacheEnable = lastCacheEnable;
-  }
-
   public boolean isAutoCreateSchemaEnabled() {
     return enableAutoCreateSchema;
   }
@@ -2539,14 +2492,6 @@ public class IoTDBConfig {
 
   public void setMqttMaxMessageSize(int mqttMaxMessageSize) {
     this.mqttMaxMessageSize = mqttMaxMessageSize;
-  }
-
-  public int getTagAttributeTotalSize() {
-    return tagAttributeTotalSize;
-  }
-
-  public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
-    this.tagAttributeTotalSize = tagAttributeTotalSize;
   }
 
   public int getTagAttributeFlushInterval() {
@@ -2946,14 +2891,6 @@ public class IoTDBConfig {
 
   public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
     this.enableIDTableLogFile = enableIDTableLogFile;
-  }
-
-  public String getSchemaEngineMode() {
-    return schemaEngineMode;
-  }
-
-  public void setSchemaEngineMode(String schemaEngineMode) {
-    this.schemaEngineMode = schemaEngineMode;
   }
 
   public int getCachedMNodeSizeInPBTreeMode() {
