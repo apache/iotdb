@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
@@ -57,7 +58,7 @@ public class SchemaFileLogTest {
   public void setUp() {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
     EnvironmentUtils.envSetUp();
   }
 
@@ -135,7 +136,13 @@ public class SchemaFileLogTest {
     try {
       String[] logFilePath =
           new String[] {
-            "target", "tmp", "system", "schema", "root.test.vRoot1", "0", "schema_file_log.bin"
+            "target",
+            "tmp",
+            "system",
+            "schema",
+            "root.test.vRoot1",
+            "0",
+            MetadataConstant.PB_TREE_LOG_FILE_NAME
           };
       File logFile = new File(String.join(File.separator, logFilePath));
       outputStream = new FileOutputStream(logFile, true);

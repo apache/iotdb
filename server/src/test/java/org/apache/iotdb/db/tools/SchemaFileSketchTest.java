@@ -57,7 +57,7 @@ public class SchemaFileSketchTest {
   public void setUp() {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
     EnvironmentUtils.envSetUp();
   }
 
@@ -103,7 +103,7 @@ public class SchemaFileSketchTest {
                 + File.separator
                 + "0"
                 + File.separator
-                + MetadataConstant.SCHEMA_FILE_NAME);
+                + MetadataConstant.PB_TREE_FILE_NAME);
     File sketchFile = new File("sketch_schemafile.txt");
 
     SchemaFileSketchTool.sketchFile(file.getAbsolutePath(), sketchFile.getAbsolutePath());

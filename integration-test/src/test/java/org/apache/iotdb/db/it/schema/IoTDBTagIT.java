@@ -53,7 +53,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
   @Parameterized.BeforeParam
   public static void before() throws Exception {
     SchemaTestMode schemaTestMode = setUpEnvironment();
-    if (schemaTestMode.equals(SchemaTestMode.SchemaFile)) {
+    if (schemaTestMode.equals(SchemaTestMode.PBTree)) {
       allocateMemoryForSchemaRegion(10000);
     }
     EnvFactory.getEnv().initClusterEnvironment();

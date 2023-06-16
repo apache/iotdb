@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 public class SchemaEngineCachedMetric implements ISchemaEngineMetric {
 
+  // TODO: rename schema_file to pb_tree
   private static final String RELEASE_THRESHOLD = "schema_file_release_threshold";
   private static final String FLUSH_THRESHOLD = "schema_file_flush_threshold";
   private static final String PINNED_NODE_NUM = "schema_file_pinned_num";
