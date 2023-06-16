@@ -115,6 +115,10 @@ public class CreateLogicalViewStatement extends Statement {
     this.queryStatement = queryStatement;
   }
 
+  public void setQueryStatement(QueryStatement queryStatement) {
+    this.queryStatement = queryStatement;
+  }
+
   /**
    * This function must be called after analyzing query statement. Expressions that analyzed should
    * be set through here.

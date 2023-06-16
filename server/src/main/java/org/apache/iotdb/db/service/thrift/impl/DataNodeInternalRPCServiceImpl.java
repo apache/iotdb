@@ -39,9 +39,11 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -103,6 +105,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.ConstructLogicalViewBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.RollbackLogicalViewBlackListNode;
@@ -127,6 +130,7 @@ import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -194,6 +198,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import com.google.common.collect.ImmutableList;
@@ -889,6 +894,36 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .execute(
                   new SchemaRegionId(consensusGroupId.getId()),
                   new DeleteLogicalViewNode(new PlanNodeId(""), filteredPatternTree))
+              .getStatus();
+        });
+  }
+
+  @Override
+  public TSStatus alterView(TAlterViewReq req) throws TException {
+    List<TConsensusGroupId> consensusGroupIdList = req.getSchemaRegionIdList();
+    List<ByteBuffer> viewBinaryList = req.getViewBinaryList();
+    Map<TConsensusGroupId, Map<PartialPath, ViewExpression>> schemaRegionRequestMap =
+        new HashMap<>();
+    for (int i = 0; i < consensusGroupIdList.size(); i++) {
+      ByteBuffer byteBuffer = viewBinaryList.get(i);
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
+      Map<PartialPath, ViewExpression> viewMap = new HashMap<>();
+      for (int j = 0; j < size; j++) {
+        viewMap.put(
+            (PartialPath) PathDeserializeUtil.deserialize(byteBuffer),
+            ViewExpression.deserialize(byteBuffer));
+      }
+      schemaRegionRequestMap.put(consensusGroupIdList.get(i), viewMap);
+    }
+    return executeInternalSchemaTask(
+        consensusGroupIdList,
+        consensusGroupId -> {
+          RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new AlterLogicalViewNode(
+                      new PlanNodeId(""), schemaRegionRequestMap.get(consensusGroupId)))
               .getStatus();
         });
   }

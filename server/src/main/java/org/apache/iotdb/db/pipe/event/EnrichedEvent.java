@@ -57,7 +57,7 @@ public abstract class EnrichedEvent implements Event {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 0) {
-        isSuccessful = increaseResourceReferenceCount(holderMessage);
+        isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
       }
       referenceCount.incrementAndGet();
     }
@@ -71,7 +71,7 @@ public abstract class EnrichedEvent implements Event {
    * @return true if the reference count is increased successfully, false if the event is not
    *     controlled by the invoker, which means the data stored in the event is not safe to use
    */
-  public abstract boolean increaseResourceReferenceCount(String holderMessage);
+  public abstract boolean internallyIncreaseResourceReferenceCount(String holderMessage);
 
   /**
    * Decrease the reference count of this event. If the reference count is decreased to 0, the event
@@ -85,7 +85,7 @@ public abstract class EnrichedEvent implements Event {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() == 1) {
-        isSuccessful = decreaseResourceReferenceCount(holderMessage);
+        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
         reportProgress();
       }
       referenceCount.decrementAndGet();
@@ -100,7 +100,7 @@ public abstract class EnrichedEvent implements Event {
    * @param holderMessage the message of the invoker
    * @return true if the reference count is decreased successfully, false otherwise
    */
-  public abstract boolean decreaseResourceReferenceCount(String holderMessage);
+  public abstract boolean internallyDecreaseResourceReferenceCount(String holderMessage);
 
   private void reportProgress() {
     if (pipeTaskMeta != null) {

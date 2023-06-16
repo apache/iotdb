@@ -664,6 +664,11 @@ struct TDeleteLogicalViewReq{
   2: required binary pathPatternTree
 }
 
+struct TAlterLogicalViewReq{
+  1: required string queryId
+  2: required binary viewBinary
+}
+
 // ====================================================
 // CQ
 // ====================================================
@@ -1266,6 +1271,8 @@ service IConfigNodeRPCService {
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
   common.TSStatus deleteLogicalView(TDeleteLogicalViewReq req)
+
+  common.TSStatus alterLogicalView(TAlterLogicalViewReq req)
 
   // ======================================================
   // Sync

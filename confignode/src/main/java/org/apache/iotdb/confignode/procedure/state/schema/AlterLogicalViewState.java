@@ -16,6 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
 
-public interface InfluxDBRPCServiceMBean extends RPCServiceMBean {}
+package org.apache.iotdb.confignode.procedure.state.schema;
+
+public enum AlterLogicalViewState {
+  CLEAN_DATANODE_SCHEMA_CACHE,
+  ALTER_LOGICAL_VIEW
+}

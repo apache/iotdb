@@ -834,11 +834,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   @Override
   public PlanNode visitCreateLogicalView(
       CreateLogicalViewStatement createLogicalViewStatement, MPPQueryContext context) {
-    // Transform all Expressions into ViewExpressions.
-    TransformToViewExpressionVisitor transformToViewExpressionVisitor =
-        new TransformToViewExpressionVisitor();
     List<ViewExpression> viewExpressionList = new ArrayList<>();
     if (createLogicalViewStatement.getViewExpression() == null) {
+      // Transform all Expressions into ViewExpressions.
+      TransformToViewExpressionVisitor transformToViewExpressionVisitor =
+          new TransformToViewExpressionVisitor();
       List<Expression> expressionList = createLogicalViewStatement.getSourceExpressionList();
       for (Expression expression : expressionList) {
         viewExpressionList.add(transformToViewExpressionVisitor.process(expression, null));
