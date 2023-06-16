@@ -39,7 +39,6 @@
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
     <allow class="org.apache.iotdb.db.constant.TestConstant" />
-    <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
     <allow class="org.apache.iotdb.db.utils.MathUtils" />
     <allow class="org.apache.iotdb.db.wal.utils.WALMode" />
     <allow class="org.fusesource.mqtt.client.QoS" />
