@@ -25,7 +25,9 @@ public class IOMonitor2 {
     NONE,
     RawQueryDataSetWithoutValueFilter,
     UDTFAlignByTimeDataSet,
-    GroupByWithoutValueFilterDataSet
+    GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV,
+
+    GroupByWithoutValueFilterDataSet_LocalGroupByExecutor
   }
 
   public enum Operation {

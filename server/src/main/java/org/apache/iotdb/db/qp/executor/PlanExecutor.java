@@ -533,7 +533,6 @@ public class PlanExecutor implements IPlanExecutor {
         GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) queryPlan;
         queryDataSet = queryRouter.groupByFill(groupByFillPlan, context);
       } else if (queryPlan instanceof GroupByTimePlan) {
-        IOMonitor2.dataSetType = DataSetType.GroupByWithoutValueFilterDataSet;
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
         queryDataSet = queryRouter.groupBy(groupByTimePlan, context);
       } else if (queryPlan instanceof QueryIndexPlan) {

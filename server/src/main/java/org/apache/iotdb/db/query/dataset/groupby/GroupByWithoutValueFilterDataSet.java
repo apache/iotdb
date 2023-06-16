@@ -32,6 +32,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2.DataSetType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -199,10 +201,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throws StorageEngineException, QueryProcessException {
     if (CONFIG.isEnableCPV()) {
       //      System.out.println("====DEBUG====: use LocalGroupByExecutor4CPV for CPV");
+      IOMonitor2.dataSetType =
+          DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV;
       return new LocalGroupByExecutor4CPV(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else {
       //      System.out.println("====DEBUG====: use LocalGroupByExecutor for MOC");
+      IOMonitor2.dataSetType = DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor;
       return new LocalGroupByExecutor(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     }
