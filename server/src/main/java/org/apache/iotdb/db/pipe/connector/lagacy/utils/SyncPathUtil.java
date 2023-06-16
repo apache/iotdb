@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.sync.utils;
+package org.apache.iotdb.db.pipe.connector.lagacy.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.sync.transport.SyncIdentityInfo;
+import org.apache.iotdb.db.pipe.connector.lagacy.transport.SyncIdentityInfo;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,55 +45,6 @@ public class SyncPathUtil {
   // |              |----file data dir
   // |----sys dir
 
-  /** sender */
-  public static String getSenderDir() {
-    return CommonDescriptor.getInstance().getConfig().getSyncDir()
-        + File.separator
-        + SyncConstant.SENDER_DIR_NAME;
-  }
-
-  public static String getSenderPipeDir(String pipeName, long createTime) {
-    return getSenderDir() + File.separator + getSenderPipeDirName(pipeName, createTime);
-  }
-
-  public static String getSenderPipeDirName(String pipeName, long createTime) {
-    return String.format("%s-%d", pipeName, createTime);
-  }
-
-  public static String getSenderDataRegionHistoryPipeLogDir(
-      String pipeName, long createTime, String dataRegionId) {
-    return getSenderPipeDir(pipeName, createTime)
-        + File.separator
-        + SyncConstant.HISTORY_PIPE_LOG_DIR_NAME
-        + File.separator
-        + dataRegionId;
-  }
-
-  public static String getSenderDataRegionRealTimePipeLogDir(
-      String pipeName, long createTime, String dataRegionId) {
-    return getSenderPipeDir(pipeName, createTime)
-        + File.separator
-        + SyncConstant.PIPE_LOG_DIR_NAME
-        + File.separator
-        + dataRegionId;
-  }
-
-  public static String getSenderHistoryPipeLogDir(String pipeName, long createTime) {
-    return getSenderPipeDir(pipeName, createTime)
-        + File.separator
-        + SyncConstant.HISTORY_PIPE_LOG_DIR_NAME;
-  }
-
-  public static String getSenderRealTimePipeLogDir(String pipeName, long createTime) {
-    return getSenderPipeDir(pipeName, createTime) + File.separator + SyncConstant.PIPE_LOG_DIR_NAME;
-  }
-
-  public static String getSenderFileDataDir(String pipeName, long createTime) {
-    return getSenderPipeDir(pipeName, createTime)
-        + File.separator
-        + SyncConstant.FILE_DATA_DIR_NAME;
-  }
-
   /** receiver */
   public static String getReceiverDir() {
     return CommonDescriptor.getInstance().getConfig().getSyncDir()
@@ -111,12 +62,6 @@ public class SyncPathUtil {
     return String.format("%s-%d-%s", pipeName, createTime, remoteIp);
   }
 
-  public static String getReceiverPipeLogDir(String pipeName, String remoteIp, long createTime) {
-    return getReceiverPipeDir(pipeName, remoteIp, createTime)
-        + File.separator
-        + SyncConstant.PIPE_LOG_DIR_NAME;
-  }
-
   public static String getReceiverFileDataDir(String pipeName, String remoteIp, long createTime) {
     return getReceiverPipeDir(pipeName, remoteIp, createTime)
         + File.separator
@@ -129,12 +74,6 @@ public class SyncPathUtil {
   }
 
   /** common */
-  public static String getSysDir() {
-    return CommonDescriptor.getInstance().getConfig().getSyncDir()
-        + File.separator
-        + SyncConstant.SYNC_SYS_DIR;
-  }
-
   public static String getPipeLogName(long serialNumber) {
     return serialNumber + SyncConstant.PIPE_LOG_NAME_SUFFIX;
   }
@@ -148,9 +87,5 @@ public class SyncPathUtil {
       file.getParentFile().mkdirs();
     }
     return file.createNewFile();
-  }
-
-  public static String createMsg(String timeStr, String msg) {
-    return String.format("[%s] %s", timeStr, msg);
   }
 }

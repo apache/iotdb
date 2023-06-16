@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
+package org.apache.iotdb.commons.sync;
 
-import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -27,23 +26,13 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+@Deprecated
 public class TsFilePipeInfo extends PipeInfo {
   private boolean syncDelOp;
   private long dataStartTimestamp;
 
   // only used for serialization
   public TsFilePipeInfo() {}
-
-  public TsFilePipeInfo(
-      String pipeName,
-      String pipeSinkName,
-      long createTime,
-      long dataStartTimestamp,
-      boolean syncDelOp) {
-    super(pipeName, pipeSinkName, createTime);
-    this.dataStartTimestamp = dataStartTimestamp;
-    this.syncDelOp = syncDelOp;
-  }
 
   public TsFilePipeInfo(
       String pipeName,
@@ -57,30 +46,9 @@ public class TsFilePipeInfo extends PipeInfo {
     this.syncDelOp = syncDelOp;
   }
 
-  public boolean isSyncDelOp() {
-    return syncDelOp;
-  }
-
-  public void setSyncDelOp(boolean syncDelOp) {
-    this.syncDelOp = syncDelOp;
-  }
-
-  public long getDataStartTimestamp() {
-    return dataStartTimestamp;
-  }
-
-  public void setDataStartTimestamp(long dataStartTimestamp) {
-    this.dataStartTimestamp = dataStartTimestamp;
-  }
-
   @Override
   PipeType getType() {
     return PipeType.TsFilePipe;
-  }
-
-  @Override
-  public TShowPipeInfo getTShowPipeInfo() {
-    return new TShowPipeInfo();
   }
 
   @Override

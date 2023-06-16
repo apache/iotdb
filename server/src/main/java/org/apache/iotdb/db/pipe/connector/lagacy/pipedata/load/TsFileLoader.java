@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.pipe.connector.lagacy.exception.SyncDataLoadException;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -47,7 +47,7 @@ public class TsFileLoader implements ILoader {
   }
 
   @Override
-  public void load() throws PipeDataLoadException {
+  public void load() throws SyncDataLoadException {
     try {
 
       LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
@@ -74,7 +74,7 @@ public class TsFileLoader implements ILoader {
             String.format("Can not execute load TsFile statement: %s", statement));
       }
     } catch (Exception e) {
-      throw new PipeDataLoadException(e.getMessage());
+      throw new SyncDataLoadException(e.getMessage());
     }
   }
 

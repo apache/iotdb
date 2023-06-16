@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.exception.sync;
+package org.apache.iotdb.db.pipe.connector.lagacy.exception;
 
-import org.apache.iotdb.commons.sync.pipe.PipeStatus;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
-public class PipeAlreadyExistException extends PipeException {
-  public PipeAlreadyExistException(String pipeName) {
-    super(String.format("PIPE [%s] already exists in IoTDB.", pipeName));
-  }
+public class SyncDataLoadException extends PipeException {
 
-  public PipeAlreadyExistException(String pipeName, PipeStatus status) {
-    super(String.format("PIPE [%s] is %s, please retry after drop it.", pipeName, status.name()));
+  public SyncDataLoadException(String message) {
+    super(message);
   }
 }

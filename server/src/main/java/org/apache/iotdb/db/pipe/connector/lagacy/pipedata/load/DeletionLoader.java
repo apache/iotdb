@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.LoadFileException;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
+import org.apache.iotdb.db.pipe.connector.lagacy.exception.SyncDataLoadException;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -47,9 +47,9 @@ public class DeletionLoader implements ILoader {
   }
 
   @Override
-  public void load() throws PipeDataLoadException {
+  public void load() throws SyncDataLoadException {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new PipeDataLoadException("storage engine readonly");
+      throw new SyncDataLoadException("storage engine readonly");
     }
     try {
       Statement statement = generateStatement();
@@ -71,7 +71,7 @@ public class DeletionLoader implements ILoader {
             String.format("Can not execute delete statement: %s", statement));
       }
     } catch (Exception e) {
-      throw new PipeDataLoadException(e.getMessage());
+      throw new SyncDataLoadException(e.getMessage());
     }
   }
 

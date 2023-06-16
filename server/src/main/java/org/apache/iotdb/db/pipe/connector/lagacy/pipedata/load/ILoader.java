@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load;
 
-import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.db.pipe.connector.lagacy.exception.SyncDataLoadException;
 
 /**
  * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
@@ -34,5 +34,5 @@ public interface ILoader {
 
   ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
 
-  void load() throws PipeDataLoadException;
+  void load() throws SyncDataLoadException;
 }

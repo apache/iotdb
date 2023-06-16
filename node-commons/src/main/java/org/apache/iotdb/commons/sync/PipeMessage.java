@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.sync.pipe;
+package org.apache.iotdb.commons.sync;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -25,6 +25,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+@Deprecated
 public class PipeMessage {
   private final String message;
   private final PipeMessageType type;
@@ -70,7 +71,7 @@ public class PipeMessage {
     WARN((byte) 2),
     ERROR((byte) 3);
 
-    private byte type;
+    private final byte type;
 
     PipeMessageType(byte type) {
       this.type = type;
