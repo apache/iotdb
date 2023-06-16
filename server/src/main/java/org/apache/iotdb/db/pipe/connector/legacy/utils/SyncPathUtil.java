@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.connector.legacy.transport.SyncIdentityInfo;
 
 import java.io.File;
-import java.io.IOException;
 
 /** Util for path generation in sync module */
 public class SyncPathUtil {
@@ -71,21 +70,5 @@ public class SyncPathUtil {
   public static String getFileDataDirPath(SyncIdentityInfo identityInfo) {
     return SyncPathUtil.getReceiverFileDataDir(
         identityInfo.getPipeName(), identityInfo.getRemoteAddress(), identityInfo.getCreateTime());
-  }
-
-  /** common */
-  public static String getPipeLogName(long serialNumber) {
-    return serialNumber + SyncConstant.PIPE_LOG_NAME_SUFFIX;
-  }
-
-  public static Long getSerialNumberFromPipeLogName(String pipeLogName) {
-    return Long.parseLong(pipeLogName.split(SyncConstant.PIPE_LOG_NAME_SEPARATOR)[0]);
-  }
-
-  public static boolean createFile(File file) throws IOException {
-    if (!file.getParentFile().exists()) {
-      file.getParentFile().mkdirs();
-    }
-    return file.createNewFile();
   }
 }

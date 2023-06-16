@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.connector.legacy.pipedata.load;
+package org.apache.iotdb.db.pipe.connector.legacy.loader;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -38,9 +39,10 @@ import java.util.Collections;
 
 /** This loader is used to load deletion plan. */
 public class DeletionLoader implements ILoader {
-  private static final Logger logger = LoggerFactory.getLogger(DeletionLoader.class);
 
-  private Deletion deletion;
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeletionLoader.class);
+
+  private final Deletion deletion;
 
   public DeletionLoader(Deletion deletion) {
     this.deletion = deletion;
@@ -49,7 +51,7 @@ public class DeletionLoader implements ILoader {
   @Override
   public void load() throws SyncDataLoadException {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new SyncDataLoadException("storage engine readonly");
+      throw new PipeException("storage engine readonly");
     }
     try {
       Statement statement = generateStatement();
@@ -65,13 +67,13 @@ public class DeletionLoader implements ILoader {
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        logger.error("Delete {} error, statement: {}.", deletion, statement);
-        logger.error("Delete result status : {}.", result.status);
+        LOGGER.error("Delete {} error, statement: {}.", deletion, statement);
+        LOGGER.error("Delete result status : {}.", result.status);
         throw new LoadFileException(
             String.format("Can not execute delete statement: %s", statement));
       }
     } catch (Exception e) {
-      throw new SyncDataLoadException(e.getMessage());
+      throw new PipeException(e.getMessage());
     }
   }
 

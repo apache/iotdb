@@ -16,13 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.connector.legacy.exception;
+package org.apache.iotdb.db.pipe.connector.legacy.loader;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 
-public class SyncDataLoadException extends PipeException {
+/**
+ * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
+ * deletePlan.
+ */
+public interface ILoader {
 
-  public SyncDataLoadException(String message) {
-    super(message);
-  }
+  IPartitionFetcher PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
+
+  ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+
+  void load() throws SyncDataLoadException;
 }

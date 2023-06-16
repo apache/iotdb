@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.connector.legacy.pipedata.load;
+package org.apache.iotdb.db.pipe.connector.legacy.loader;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -36,7 +37,8 @@ import java.io.File;
 
 /** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
 public class TsFileLoader implements ILoader {
-  private static final Logger logger = LoggerFactory.getLogger(TsFileLoader.class);
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileLoader.class);
 
   private final File tsFile;
   private final String database;
@@ -49,7 +51,6 @@ public class TsFileLoader implements ILoader {
   @Override
   public void load() throws SyncDataLoadException {
     try {
-
       LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);
       statement.setSgLevel(parseSgLevel());
@@ -68,13 +69,13 @@ public class TsFileLoader implements ILoader {
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        logger.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
-        logger.error("Load TsFile result status : {}.", result.status);
+        LOGGER.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
+        LOGGER.error("Load TsFile result status : {}.", result.status);
         throw new LoadFileException(
             String.format("Can not execute load TsFile statement: %s", statement));
       }
     } catch (Exception e) {
-      throw new SyncDataLoadException(e.getMessage());
+      throw new PipeException(e.getMessage());
     }
   }
 

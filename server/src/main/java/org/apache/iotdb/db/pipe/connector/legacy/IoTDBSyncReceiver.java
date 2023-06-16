@@ -22,20 +22,19 @@ package org.apache.iotdb.db.pipe.connector.legacy;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
-import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 import org.apache.iotdb.db.pipe.connector.legacy.pipedata.PipeData;
 import org.apache.iotdb.db.pipe.connector.legacy.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.pipe.connector.legacy.transport.SyncIdentityInfo;
 import org.apache.iotdb.db.pipe.connector.legacy.utils.SyncConstant;
 import org.apache.iotdb.db.pipe.connector.legacy.utils.SyncPathUtil;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
@@ -50,9 +49,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -60,95 +56,37 @@ import java.util.concurrent.atomic.AtomicLong;
 /** This class is responsible for implementing the RPC processing on the receiver-side. */
 public class IoTDBSyncReceiver {
 
-  public static IoTDBSyncReceiver getInstance() {
-    return IoTDBSyncReceiverHolder.INSTANCE;
-  }
-
-  private static class IoTDBSyncReceiverHolder {
-    private static final IoTDBSyncReceiver INSTANCE = new IoTDBSyncReceiver();
-  }
-
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBSyncReceiver.class);
-
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncReceiver.class);
 
   // When the client abnormally exits, we can still know who to disconnect
-  private final ThreadLocal<Long> currentConnectionId;
+  private final ThreadLocal<Long> currentConnectionId = new ThreadLocal<>();
+
   // Record the remote message for every rpc connection
-  private final Map<Long, SyncIdentityInfo> connectionIdToIdentityInfoMap;
+  private final Map<Long, SyncIdentityInfo> connectionIdToIdentityInfoMap =
+      new ConcurrentHashMap<>();
+
   // Record the remote message for every rpc connection
-  private final Map<Long, Map<String, Long>> connectionIdToStartIndexRecord;
-  private final Map<String, String> registeredDatabase;
+  private final Map<Long, Map<String, Long>> connectionIdToStartIndexRecord =
+      new ConcurrentHashMap<>();
+
+  private final Map<String, String> registeredDatabase = new ConcurrentHashMap<>();
 
   // The sync connectionId is unique in one IoTDB instance.
-  private final AtomicLong connectionIdGenerator;
+  private final AtomicLong connectionIdGenerator = new AtomicLong();
 
-  private IoTDBSyncReceiver() {
-    currentConnectionId = new ThreadLocal<>();
-    connectionIdToIdentityInfoMap = new ConcurrentHashMap<>();
-    connectionIdToStartIndexRecord = new ConcurrentHashMap<>();
-    registeredDatabase = new ConcurrentHashMap<>();
-    connectionIdGenerator = new AtomicLong();
-  }
+  ////////////// Interfaces and Implementation of RPC Handler ////////////////////////
 
-  // region Interfaces and Implementation of Index Checker
-
-  private class CheckResult {
-    boolean result;
-    String index;
-
-    public CheckResult(boolean result, String index) {
-      this.result = result;
-      this.index = index;
-    }
-
-    public boolean isResult() {
-      return result;
-    }
-
-    public String getIndex() {
-      return index;
+  /**
+   * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
+   */
+  public void handleClientExit() {
+    if (currentConnectionId.get() != null) {
+      long id = currentConnectionId.get();
+      connectionIdToIdentityInfoMap.remove(id);
+      connectionIdToStartIndexRecord.remove(id);
+      currentConnectionId.remove();
     }
   }
-
-  private CheckResult checkStartIndexValid(File file, long startIndex) throws IOException {
-    // get local index from memory map
-    long localIndex = getCurrentFileStartIndex(file.getAbsolutePath());
-    // get local index from file
-    if (localIndex < 0 && file.exists()) {
-      localIndex = file.length();
-      recordStartIndex(file, localIndex);
-    }
-    // compare and check
-    if (localIndex < 0 && startIndex != 0) {
-      logger.error(
-          "The start index {} of data sync is not valid. "
-              + "The file is not exist and start index should equal to 0).",
-          startIndex);
-      return new CheckResult(false, "0");
-    } else if (localIndex >= 0 && localIndex != startIndex) {
-      logger.error(
-          "The start index {} of data sync is not valid. "
-              + "The start index of the file should equal to {}.",
-          startIndex,
-          localIndex);
-      return new CheckResult(false, String.valueOf(localIndex));
-    }
-    return new CheckResult(true, "0");
-  }
-
-  private void recordStartIndex(File file, long position) {
-    Long id = currentConnectionId.get();
-    if (id != null) {
-      Map<String, Long> map =
-          connectionIdToStartIndexRecord.computeIfAbsent(id, i -> new ConcurrentHashMap<>());
-      map.put(file.getAbsolutePath(), position);
-    }
-  }
-
-  // endregion
-
-  // region Interfaces and Implementation of RPC Handler
 
   /**
    * Create connection from sender
@@ -162,15 +100,7 @@ public class IoTDBSyncReceiver {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     SyncIdentityInfo identityInfo = new SyncIdentityInfo(tIdentityInfo, remoteAddress);
-    logger.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
-    // Version check
-    if (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
-      return RpcUtils.getStatus(
-          TSStatusCode.PIPESERVER_ERROR,
-          String.format(
-              "version mismatch: the sender <%s>, the receiver <%s>",
-              identityInfo.version, config.getIoTDBVersion()));
-    }
+    LOGGER.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
 
     if (!new File(SyncPathUtil.getFileDataDirPath(identityInfo)).exists()) {
       new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
@@ -186,44 +116,45 @@ public class IoTDBSyncReceiver {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
-  /**
-   * Verify IP address with IP white list which contains more than one IP segment. It's used by sync
-   * sender.
-   */
-  private boolean verifyIPSegment(String ipWhiteList, String ipAddress) {
-    String[] ipSegments = ipWhiteList.split(",");
-    for (String IPsegment : ipSegments) {
-      int subnetMask = Integer.parseInt(IPsegment.substring(IPsegment.indexOf('/') + 1));
-      IPsegment = IPsegment.substring(0, IPsegment.indexOf('/'));
-      if (verifyIP(IPsegment, ipAddress, subnetMask)) {
-        return true;
-      }
-    }
-    return false;
+  private void createConnection(SyncIdentityInfo identityInfo) {
+    long connectionId = connectionIdGenerator.incrementAndGet();
+    currentConnectionId.set(connectionId);
+    connectionIdToIdentityInfoMap.put(connectionId, identityInfo);
   }
 
-  /** Verify IP address with IP segment. */
-  private boolean verifyIP(String ipSegment, String ipAddress, int subnetMark) {
-    String ipSegmentBinary;
-    String ipAddressBinary;
-    String[] ipSplits = ipSegment.split(SyncConstant.IP_SEPARATOR);
-    DecimalFormat df = new DecimalFormat("00000000");
-    StringBuilder ipSegmentBuilder = new StringBuilder();
-    for (String IPsplit : ipSplits) {
-      ipSegmentBuilder.append(
-          df.format(Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
+  private boolean registerDatabase(
+      String database, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    if (registeredDatabase.containsKey(database)) {
+      return true;
     }
-    ipSegmentBinary = ipSegmentBuilder.toString();
-    ipSegmentBinary = ipSegmentBinary.substring(0, subnetMark);
-    ipSplits = ipAddress.split(SyncConstant.IP_SEPARATOR);
-    StringBuilder ipAddressBuilder = new StringBuilder();
-    for (String IPsplit : ipSplits) {
-      ipAddressBuilder.append(
-          df.format(Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
+    try {
+      DatabaseSchemaStatement statement =
+          new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+      statement.setDatabasePath(new PartialPath(database));
+      long queryId = SessionManager.getInstance().requestQueryId();
+      ExecutionResult result =
+          Coordinator.getInstance()
+              .execute(
+                  statement,
+                  queryId,
+                  null,
+                  "",
+                  partitionFetcher,
+                  schemaFetcher,
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        LOGGER.error("Create Database error, statement: {}.", statement);
+        LOGGER.error("Create database result status : {}.", result.status);
+        return false;
+      }
+    } catch (IllegalPathException e) {
+      LOGGER.error(String.format("Parse database PartialPath %s error", database), e);
+      return false;
     }
-    ipAddressBinary = ipAddressBuilder.toString();
-    ipAddressBinary = ipAddressBinary.substring(0, subnetMark);
-    return ipAddressBinary.equals(ipSegmentBinary);
+
+    registeredDatabase.put(database, "");
+    return true;
   }
 
   /**
@@ -240,7 +171,7 @@ public class IoTDBSyncReceiver {
     if (identityInfo == null) {
       throw new TException("Thrift connection is not alive.");
     }
-    logger.debug(
+    LOGGER.debug(
         "Invoke transportPipeData method from client ip = {}", identityInfo.getRemoteAddress());
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
 
@@ -257,23 +188,23 @@ public class IoTDBSyncReceiver {
         handleTsFilePipeData(tsFilePipeData, fileDir);
       }
     } catch (IOException | IllegalPathException e) {
-      logger.error("Pipe data transport error, {}", e.getMessage());
+      LOGGER.error("Pipe data transport error, {}", e.getMessage());
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR, "Pipe data transport error, " + e.getMessage());
     }
 
     // step3. load PipeData
-    logger.info(
+    LOGGER.info(
         "Start load pipeData with serialize number {} and type {},value={}",
         pipeData.getSerialNumber(),
         pipeData.getPipeDataType(),
         pipeData);
     try {
       pipeData.createLoader().load();
-      logger.info(
+      LOGGER.info(
           "Load pipeData with serialize number {} successfully.", pipeData.getSerialNumber());
-    } catch (SyncDataLoadException e) {
-      logger.error("Fail to load pipeData because {}.", e.getMessage());
+    } catch (PipeException e) {
+      LOGGER.error("Fail to load pipeData because {}.", e.getMessage());
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR, "Fail to load pipeData because " + e.getMessage());
     }
@@ -282,62 +213,17 @@ public class IoTDBSyncReceiver {
   }
 
   /**
-   * Receive TsFile based on startIndex.
+   * Get current SyncIdentityInfo
    *
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if receive successfully; {@link
-   *     TSStatusCode#SYNC_FILE_REDIRECTION_ERROR} if startIndex needs to rollback because
-   *     mismatched; {@link TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
-   * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link IoTDBSyncReceiver#handshake}
+   * @return null if connection has been exited
    */
-  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
-      throws TException {
-    // step1. check connection
-    SyncIdentityInfo identityInfo = getCurrentSyncIdentityInfo();
-    if (identityInfo == null) {
-      throw new TException("Thrift connection is not alive.");
+  private SyncIdentityInfo getCurrentSyncIdentityInfo() {
+    Long id = currentConnectionId.get();
+    if (id != null) {
+      return connectionIdToIdentityInfoMap.get(id);
+    } else {
+      return null;
     }
-    logger.debug(
-        "Invoke transportData method from client ip = {}", identityInfo.getRemoteAddress());
-
-    String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
-    String fileName = metaInfo.fileName;
-    long startIndex = metaInfo.startIndex;
-    File file = new File(fileDir, fileName + SyncConstant.PATCH_SUFFIX);
-
-    // step2. check startIndex
-    try {
-      CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
-      if (!result.isResult()) {
-        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REDIRECTION_ERROR, result.getIndex());
-      }
-    } catch (IOException e) {
-      logger.error(e.getMessage());
-      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
-    }
-
-    // step3. append file
-    try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
-      int length = buff.capacity();
-      randomAccessFile.seek(startIndex);
-      byte[] byteArray = new byte[length];
-      buff.get(byteArray);
-      randomAccessFile.write(byteArray);
-      recordStartIndex(new File(fileDir, fileName), startIndex + length);
-      logger.debug(
-          "Sync "
-              + fileName
-              + " start at "
-              + startIndex
-              + " to "
-              + (startIndex + length)
-              + " is done.");
-    } catch (IOException e) {
-      logger.error(e.getMessage());
-      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
-    }
-
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
   /**
@@ -369,27 +255,89 @@ public class IoTDBSyncReceiver {
     tsFilePipeData.setParentDirPath(dir.getAbsolutePath());
   }
 
-  // endregion
+  /**
+   * Receive TsFile based on startIndex.
+   *
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if receive successfully; {@link
+   *     TSStatusCode#SYNC_FILE_REDIRECTION_ERROR} if startIndex needs to rollback because
+   *     mismatched; {@link TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
+   * @throws TException The connection between the sender and the receiver has not been established
+   *     by {@link IoTDBSyncReceiver#handshake}
+   */
+  public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
+      throws TException {
+    // step1. check connection
+    SyncIdentityInfo identityInfo = getCurrentSyncIdentityInfo();
+    if (identityInfo == null) {
+      throw new TException("Thrift connection is not alive.");
+    }
+    LOGGER.debug(
+        "Invoke transportData method from client ip = {}", identityInfo.getRemoteAddress());
 
-  // region Interfaces and Implementation of Connection Manager
+    String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
+    String fileName = metaInfo.fileName;
+    long startIndex = metaInfo.startIndex;
+    File file = new File(fileDir, fileName + SyncConstant.PATCH_SUFFIX);
 
-  /** Check if the connection is legally established by handshaking */
-  private boolean checkConnection() {
-    return currentConnectionId.get() != null;
+    // step2. check startIndex
+    try {
+      CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
+      if (!result.isResult()) {
+        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REDIRECTION_ERROR, result.getIndex());
+      }
+    } catch (IOException e) {
+      LOGGER.error(e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
+    }
+
+    // step3. append file
+    try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
+      int length = buff.capacity();
+      randomAccessFile.seek(startIndex);
+      byte[] byteArray = new byte[length];
+      buff.get(byteArray);
+      randomAccessFile.write(byteArray);
+      recordStartIndex(new File(fileDir, fileName), startIndex + length);
+      LOGGER.debug(
+          "Sync "
+              + fileName
+              + " start at "
+              + startIndex
+              + " to "
+              + (startIndex + length)
+              + " is done.");
+    } catch (IOException e) {
+      LOGGER.error(e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
+    }
+
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
-  /**
-   * Get current SyncIdentityInfo
-   *
-   * @return null if connection has been exited
-   */
-  private SyncIdentityInfo getCurrentSyncIdentityInfo() {
-    Long id = currentConnectionId.get();
-    if (id != null) {
-      return connectionIdToIdentityInfoMap.get(id);
-    } else {
-      return null;
+  private CheckResult checkStartIndexValid(File file, long startIndex) throws IOException {
+    // get local index from memory map
+    long localIndex = getCurrentFileStartIndex(file.getAbsolutePath());
+    // get local index from file
+    if (localIndex < 0 && file.exists()) {
+      localIndex = file.length();
+      recordStartIndex(file, localIndex);
     }
+    // compare and check
+    if (localIndex < 0 && startIndex != 0) {
+      LOGGER.error(
+          "The start index {} of data sync is not valid. "
+              + "The file is not exist and start index should equal to 0).",
+          startIndex);
+      return new CheckResult(false, "0");
+    } else if (localIndex >= 0 && localIndex != startIndex) {
+      LOGGER.error(
+          "The start index {} of data sync is not valid. "
+              + "The start index of the file should equal to {}.",
+          startIndex,
+          localIndex);
+      return new CheckResult(false, String.valueOf(localIndex));
+    }
+    return new CheckResult(true, "0");
   }
 
   /**
@@ -408,62 +356,43 @@ public class IoTDBSyncReceiver {
     return -1;
   }
 
-  private void createConnection(SyncIdentityInfo identityInfo) {
-    long connectionId = connectionIdGenerator.incrementAndGet();
-    currentConnectionId.set(connectionId);
-    connectionIdToIdentityInfoMap.put(connectionId, identityInfo);
-  }
-
-  private boolean registerDatabase(
-      String database, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    if (registeredDatabase.containsKey(database)) {
-      return true;
-    }
-    try {
-      DatabaseSchemaStatement statement =
-          new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-      statement.setDatabasePath(new PartialPath(database));
-      long queryId = SessionManager.getInstance().requestQueryId();
-      ExecutionResult result =
-          Coordinator.getInstance()
-              .execute(
-                  statement,
-                  queryId,
-                  null,
-                  "",
-                  partitionFetcher,
-                  schemaFetcher,
-                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-        logger.error("Create Database error, statement: {}.", statement);
-        logger.error("Create database result status : {}.", result.status);
-        return false;
-      }
-    } catch (IllegalPathException e) {
-      logger.error(String.format("Parse database PartialPath %s error", database), e);
-      return false;
-    }
-
-    registeredDatabase.put(database, "");
-    return true;
-  }
-
-  /**
-   * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
-   */
-  public void handleClientExit() {
-    if (checkConnection()) {
-      long id = currentConnectionId.get();
-      connectionIdToIdentityInfoMap.remove(id);
-      connectionIdToStartIndexRecord.remove(id);
-      currentConnectionId.remove();
+  private void recordStartIndex(File file, long position) {
+    Long id = currentConnectionId.get();
+    if (id != null) {
+      Map<String, Long> map =
+          connectionIdToStartIndexRecord.computeIfAbsent(id, i -> new ConcurrentHashMap<>());
+      map.put(file.getAbsolutePath(), position);
     }
   }
 
-  public List<SyncIdentityInfo> getAllTSyncIdentityInfos() {
-    return new ArrayList<>(connectionIdToIdentityInfoMap.values());
+  private static class CheckResult {
+
+    private final boolean result;
+    private final String index;
+
+    public CheckResult(boolean result, String index) {
+      this.result = result;
+      this.index = index;
+    }
+
+    public boolean isResult() {
+      return result;
+    }
+
+    public String getIndex() {
+      return index;
+    }
   }
 
-  // endregion
+  ///////////////////////// Singleton /////////////////////////
+
+  private IoTDBSyncReceiver() {}
+
+  public static IoTDBSyncReceiver getInstance() {
+    return IoTDBSyncReceiverHolder.INSTANCE;
+  }
+
+  private static class IoTDBSyncReceiverHolder {
+    private static final IoTDBSyncReceiver INSTANCE = new IoTDBSyncReceiver();
+  }
 }

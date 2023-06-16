@@ -20,31 +20,12 @@ package org.apache.iotdb.db.pipe.connector.legacy.utils;
 
 public class SyncConstant {
   /** common */
-  public static final String SYNC_SYS_DIR = "sys";
-
   public static final String FILE_DATA_DIR_NAME = "file-data";
 
-  // pipe log: serialNumber + SEPARATOR + SUFFIX
-  public static final String PIPE_LOG_DIR_NAME = "pipe-log";
   public static final String PIPE_LOG_NAME_SEPARATOR = "_";
   public static final String PIPE_LOG_NAME_SUFFIX = PIPE_LOG_NAME_SEPARATOR + "pipe.log";
-  public static final String COMMIT_LOG_NAME = "commit.log";
-  public static final Long DEFAULT_PIPE_LOG_SIZE_IN_BYTE = 10485760L;
-
-  // persistence
-
-  public static final String SYNC_LOG_NAME = "syncService.log";
-
-  /** sender */
-
-  // dir structure
-  public static final String SENDER_DIR_NAME = "sender";
-
-  public static final String HISTORY_PIPE_LOG_DIR_NAME = "history-" + PIPE_LOG_DIR_NAME;
 
   // data config
-  public static final String DEFAULT_PIPE_SINK_IP = "127.0.0.1";
-  public static final int DEFAULT_PIPE_SINK_PORT = 6667;
 
   public static final Long DEFAULT_WAITING_FOR_TSFILE_CLOSE_MILLISECONDS = 500L;
   public static final Long DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER = 10L;
@@ -52,11 +33,6 @@ public class SyncConstant {
   /** transport */
   public static final String PATCH_SUFFIX = ".patch";
 
-  public static final String IPV4_PATTERN =
-      "^([1-9]|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}$";
-
   /** receiver */
   public static final String RECEIVER_DIR_NAME = "receiver";
-
-  public static final String IP_SEPARATOR = "\\.";
 }

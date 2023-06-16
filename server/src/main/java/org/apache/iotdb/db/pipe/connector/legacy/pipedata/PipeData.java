@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.pipe.connector.legacy.pipedata.load.ILoader;
+import org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 public abstract class PipeData {
-  private static final Logger logger = LoggerFactory.getLogger(PipeData.class);
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeData.class);
 
   protected long serialNumber;
 
@@ -44,10 +45,6 @@ public abstract class PipeData {
 
   public long getSerialNumber() {
     return serialNumber;
-  }
-
-  public void setSerialNumber(long serialNumber) {
-    this.serialNumber = serialNumber;
   }
 
   public abstract PipeDataType getPipeDataType();
@@ -83,7 +80,7 @@ public abstract class PipeData {
         pipeData = new DeletionPipeData();
         break;
       default:
-        logger.error("Deserialize PipeData error because Unknown type {}.", type);
+        LOGGER.error("Deserialize PipeData error because Unknown type {}.", type);
         throw new UnsupportedOperationException(
             "Deserialize PipeData error because Unknown type " + type);
     }

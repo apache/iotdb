@@ -22,8 +22,8 @@ package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.pipe.connector.legacy.pipedata.load.ILoader;
-import org.apache.iotdb.db.pipe.connector.legacy.pipedata.load.TsFileLoader;
+import org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader;
+import org.apache.iotdb.db.pipe.connector.legacy.loader.TsFileLoader;
 import org.apache.iotdb.db.pipe.connector.legacy.utils.SyncConstant;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
