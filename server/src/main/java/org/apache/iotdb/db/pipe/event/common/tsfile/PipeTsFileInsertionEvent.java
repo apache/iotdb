@@ -107,7 +107,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
-  public boolean increaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
       tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
       return true;
@@ -122,7 +122,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public boolean decreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.file().decreaseFileReference(tsFile);
       return true;

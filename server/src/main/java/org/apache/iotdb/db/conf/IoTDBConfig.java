@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -521,7 +522,7 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private boolean enableCompactionValidation = true;
+  private CompactionValidationLevel compactionValidationLevel = CompactionValidationLevel.NONE;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -3776,12 +3777,12 @@ public class IoTDBConfig {
     this.schemaRatisLogMax = schemaRatisLogMax;
   }
 
-  public boolean isEnableCompactionValidation() {
-    return enableCompactionValidation;
+  public CompactionValidationLevel getCompactionValidationLevel() {
+    return this.compactionValidationLevel;
   }
 
-  public void setEnableCompactionValidation(boolean enableCompactionValidation) {
-    this.enableCompactionValidation = enableCompactionValidation;
+  public void setCompactionValidationLevel(CompactionValidationLevel level) {
+    this.compactionValidationLevel = level;
   }
 
   public int getCandidateCompactionTaskQueueSize() {

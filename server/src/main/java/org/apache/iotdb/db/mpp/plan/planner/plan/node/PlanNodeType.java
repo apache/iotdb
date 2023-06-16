@@ -51,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.InvalidateS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.ConstructLogicalViewBlackListNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.view.DeleteLogicalViewNode;
@@ -177,7 +178,8 @@ public enum PlanNodeType {
   CONSTRUCT_LOGICAL_VIEW_BLACK_LIST((short) 74),
   ROLLBACK_LOGICAL_VIEW_BLACK_LIST((short) 75),
   DELETE_LOGICAL_VIEW((short) 76),
-  LOGICAL_VIEW_SCHEMA_SCAN((short) 77);
+  LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
+  ALTER_LOGICAL_VIEW((short) 78);
 
   public static final int BYTES = Short.BYTES;
 
@@ -380,6 +382,8 @@ public enum PlanNodeType {
         return DeleteLogicalViewNode.deserialize(buffer);
       case 77:
         return LogicalViewSchemaScanNode.deserialize(buffer);
+      case 78:
+        return AlterLogicalViewNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

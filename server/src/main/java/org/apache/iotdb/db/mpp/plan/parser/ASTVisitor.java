@@ -1072,10 +1072,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           ctx.viewTargetPaths(),
           alterLogicalViewStatement::setTargetFullPaths,
           alterLogicalViewStatement::setTargetPathsGroup,
-          alterLogicalViewStatement::setTargetIntoItem);
-      if (alterLogicalViewStatement.getIntoItem() != null) {
-        throw new SemanticException("Can not use char '$' or into item in alter view statement.");
-      }
+          intoItem -> {
+            if (intoItem != null) {
+              throw new SemanticException(
+                  "Can not use char '$' or into item in alter view statement.");
+            }
+          });
       // parse source
       parseViewSourcePaths(
           ctx.viewSourcePaths(),

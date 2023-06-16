@@ -71,6 +71,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.INodeSchemaInfo;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
@@ -888,6 +889,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @Override
   public void deleteLogicalView(PathPatternTree patternTree) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void alterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

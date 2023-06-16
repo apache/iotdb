@@ -24,8 +24,9 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,9 +40,14 @@ import java.sql.Statement;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAliasSeriesIT {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpCluster() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @AfterClass
+  public static void tearDownCluster() throws Exception {
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @After
@@ -54,7 +60,6 @@ public class IoTDBAliasSeriesIT {
         // If database is null, it will throw exception. Do nothing.
       }
     }
-    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

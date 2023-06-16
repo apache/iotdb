@@ -31,7 +31,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
@@ -62,7 +62,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private RandomAccessFile writingFileWriter;
 
   @Override
-  public synchronized TPipeTransferResp handleTransferReq(
+  public synchronized TPipeTransferResp receive(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     final short rawRequestType = req.getType();
     if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
@@ -302,7 +302,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   @Override
-  public IoTDBThriftConnectorVersion getVersion() {
-    return IoTDBThriftConnectorVersion.VERSION_ONE;
+  public IoTDBThriftConnectorRequestVersion getVersion() {
+    return IoTDBThriftConnectorRequestVersion.VERSION_1;
   }
 }
