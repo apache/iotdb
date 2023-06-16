@@ -48,7 +48,7 @@ public class WrappedSegmentTest {
   public void setUp() {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
     EnvironmentUtils.envSetUp();
   }
 

@@ -128,10 +128,10 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-@SchemaRegion(mode = "Schema_File")
-public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
+@SchemaRegion(mode = "PB_Tree")
+public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaRegionSchemaFileImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaRegionPBTreeImpl.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -158,8 +158,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private TagManager tagManager;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegionSchemaFileImpl(ISchemaRegionParams schemaRegionParams)
-      throws MetadataException {
+  public SchemaRegionPBTreeImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
 
     storageGroupFullPath = schemaRegionParams.getDatabase().getFullPath();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
@@ -567,8 +566,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         createTimeseries(plan, offset);
         done = true;
       } catch (SeriesOverflowException e) {
-        logger.warn(
-            "Too many timeseries during recovery from MLog, waiting for SchemaFile swapping.");
+        logger.warn("Too many timeseries during recovery from MLog, waiting for PBTree swapping.");
         try {
           Thread.sleep(3000L);
         } catch (InterruptedException e2) {
@@ -671,8 +669,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
         createAlignedTimeSeries(plan);
         done = true;
       } catch (SeriesOverflowException e) {
-        logger.warn(
-            "Too many timeseries during recovery from MLog, waiting for SchemaFile swapping.");
+        logger.warn("Too many timeseries during recovery from MLog, waiting for PBTree swapping.");
         try {
           Thread.sleep(3000L);
         } catch (InterruptedException e2) {
@@ -1336,20 +1333,20 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   private class RecoverPlanOperator
-      extends SchemaRegionPlanVisitor<RecoverOperationResult, SchemaRegionSchemaFileImpl> {
+      extends SchemaRegionPlanVisitor<RecoverOperationResult, SchemaRegionPBTreeImpl> {
 
     @Override
     public RecoverOperationResult visitSchemaRegionPlan(
-        ISchemaRegionPlan plan, SchemaRegionSchemaFileImpl context) {
+        ISchemaRegionPlan plan, SchemaRegionPBTreeImpl context) {
       throw new UnsupportedOperationException(
           String.format(
-              "SchemaRegionPlan of type %s doesn't support recover operation in SchemaRegionSchemaFileImpl.",
+              "SchemaRegionPlan of type %s doesn't support recover operation in SchemaRegionPBTreeImpl.",
               plan.getPlanType().name()));
     }
 
     @Override
     public RecoverOperationResult visitCreateTimeSeries(
-        ICreateTimeSeriesPlan createTimeSeriesPlan, SchemaRegionSchemaFileImpl context) {
+        ICreateTimeSeriesPlan createTimeSeriesPlan, SchemaRegionPBTreeImpl context) {
       try {
         recoverTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         return RecoverOperationResult.SUCCESS;
@@ -1360,8 +1357,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitCreateAlignedTimeSeries(
-        ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan,
-        SchemaRegionSchemaFileImpl context) {
+        ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan, SchemaRegionPBTreeImpl context) {
       try {
         recoverAlignedTimeSeries(createAlignedTimeSeriesPlan);
         return RecoverOperationResult.SUCCESS;
@@ -1372,7 +1368,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitDeleteTimeSeries(
-        IDeleteTimeSeriesPlan deleteTimeSeriesPlan, SchemaRegionSchemaFileImpl context) {
+        IDeleteTimeSeriesPlan deleteTimeSeriesPlan, SchemaRegionPBTreeImpl context) {
       try {
         // since we only has one path for one DeleteTimeSeriesPlan
         deleteOneTimeseriesUpdateStatistics(deleteTimeSeriesPlan.getDeletePathList().get(0));
@@ -1384,7 +1380,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitChangeAlias(
-        IChangeAliasPlan changeAliasPlan, SchemaRegionSchemaFileImpl context) {
+        IChangeAliasPlan changeAliasPlan, SchemaRegionPBTreeImpl context) {
       try {
         changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
         return RecoverOperationResult.SUCCESS;
@@ -1395,7 +1391,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitChangeTagOffset(
-        IChangeTagOffsetPlan changeTagOffsetPlan, SchemaRegionSchemaFileImpl context) {
+        IChangeTagOffsetPlan changeTagOffsetPlan, SchemaRegionPBTreeImpl context) {
       try {
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         return RecoverOperationResult.SUCCESS;
@@ -1406,7 +1402,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitAutoCreateDeviceMNode(
-        IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, SchemaRegionSchemaFileImpl context) {
+        IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, SchemaRegionPBTreeImpl context) {
       try {
         autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         return RecoverOperationResult.SUCCESS;
@@ -1418,7 +1414,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     @Override
     public RecoverOperationResult visitActivateTemplateInCluster(
         IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
-        SchemaRegionSchemaFileImpl context) {
+        SchemaRegionPBTreeImpl context) {
       try {
         recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
         return RecoverOperationResult.SUCCESS;
@@ -1429,7 +1425,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitPreDeleteTimeSeries(
-        IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, SchemaRegionSchemaFileImpl context) {
+        IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, SchemaRegionPBTreeImpl context) {
       try {
         recoverPreDeleteTimeseries(preDeleteTimeSeriesPlan.getPath());
         return RecoverOperationResult.SUCCESS;
@@ -1441,7 +1437,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     @Override
     public RecoverOperationResult visitRollbackPreDeleteTimeSeries(
         IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan,
-        SchemaRegionSchemaFileImpl context) {
+        SchemaRegionPBTreeImpl context) {
       try {
         recoverRollbackPreDeleteTimeseries(rollbackPreDeleteTimeSeriesPlan.getPath());
         return RecoverOperationResult.SUCCESS;
@@ -1452,7 +1448,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitPreDeactivateTemplate(
-        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, SchemaRegionSchemaFileImpl context) {
+        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, SchemaRegionPBTreeImpl context) {
       try {
         constructSchemaBlackListWithTemplate(preDeactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
@@ -1464,7 +1460,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     @Override
     public RecoverOperationResult visitRollbackPreDeactivateTemplate(
         IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
-        SchemaRegionSchemaFileImpl context) {
+        SchemaRegionPBTreeImpl context) {
       try {
         rollbackSchemaBlackListWithTemplate(rollbackPreDeactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
@@ -1475,7 +1471,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitDeactivateTemplate(
-        IDeactivateTemplatePlan deactivateTemplatePlan, SchemaRegionSchemaFileImpl context) {
+        IDeactivateTemplatePlan deactivateTemplatePlan, SchemaRegionPBTreeImpl context) {
       try {
         deactivateTemplateInBlackList(deactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
