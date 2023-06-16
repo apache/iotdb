@@ -136,8 +136,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
    * Get the target child node from parent. The parent must be pinned before invoking this method.
    * The method will try to get child node from cache. If there's no matched node in cache or the
    * node is not cached, which means it has been evicted, then this method will retrieve child node
-   * from schemaFile The returned child node will be pinned. If there's no matched child with the
-   * given name, this method will return null.
+   * from PBTree The returned child node will be pinned. If there's no matched child with the given
+   * name, this method will return null.
    *
    * @param parent parent node
    * @param name the name or alias of the target child
@@ -275,8 +275,8 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   /**
    * This method will delete a node from MTree, which means the corresponding subTree will be
    * deleted. Before deletion, the measurementMNode in this subtree should be collected for updating
-   * statistics in MManager. The deletion will delete subtree in schemaFile first and then delete
-   * the node from memory. The target node and its ancestors should be pinned before invoking this
+   * statistics in MManager. The deletion will delete subtree in PBTree first and then delete the
+   * node from memory. The target node and its ancestors should be pinned before invoking this
    * problem.
    *
    * @param parent the parent node of the target node
@@ -465,7 +465,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
           file.clear();
           file.close();
         } catch (MetadataException | IOException e) {
-          logger.error(String.format("Error occurred during SchemaFile clear, %s", e.getMessage()));
+          logger.error(String.format("Error occurred during PBTree clear, %s", e.getMessage()));
         }
       }
       file = null;
@@ -540,7 +540,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     }
   }
 
-  /** Sync all volatile nodes to schemaFile and execute memory release after flush. */
+  /** Sync all volatile nodes to PBTree and execute memory release after flush. */
   public void flushVolatileNodes() {
     try {
       IDatabaseMNode<ICachedMNode> updatedStorageGroupMNode =

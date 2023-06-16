@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
@@ -57,7 +58,7 @@ public class SchemaFileLogTest {
   public void setUp() {
     CommonDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
     EnvironmentUtils.envSetUp();
   }
 
@@ -129,13 +130,19 @@ public class SchemaFileLogTest {
       sf.close();
     }
 
-    // modify log file to restore schema file
+    // modify log file to restore pb-tree file
     FileOutputStream outputStream = null;
     FileChannel channel;
     try {
       String[] logFilePath =
           new String[] {
-            "target", "tmp", "system", "schema", "root.test.vRoot1", "0", "schema_file_log.bin"
+            "target",
+            "tmp",
+            "system",
+            "schema",
+            "root.test.vRoot1",
+            "0",
+            MetadataConstant.PB_TREE_LOG_FILE_NAME
           };
       File logFile = new File(String.join(File.separator, logFilePath));
       outputStream = new FileOutputStream(logFile, true);
@@ -145,7 +152,7 @@ public class SchemaFileLogTest {
       outputStream.close();
     }
 
-    // verify that schema file has been repaired
+    // verify that pb-tree file has been repaired
     sf = (SchemaFile) SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     res = sf.getChildren(lastNode);
     int cnt2 = 0;

@@ -212,7 +212,7 @@ public class SchemaEngine {
   public void clear() {
     schemaRegionLoader.clear();
 
-    // clearSchemaResource will shut down release and flush task in Schema_File mode, which must be
+    // clearSchemaResource will shut down release and flush task in PB_Tree mode, which must be
     // down before clear schema region
     SchemaResourceManager.clearSchemaResource();
     if (timedForceMLogThread != null) {
