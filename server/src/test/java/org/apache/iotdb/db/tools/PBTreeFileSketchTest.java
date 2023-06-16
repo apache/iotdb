@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
-import org.apache.iotdb.db.tools.schema.SchemaFileSketchTool;
+import org.apache.iotdb.db.tools.schema.PBTreeFileSketchTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -49,7 +49,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class SchemaFileSketchTest {
+public class PBTreeFileSketchTest {
 
   private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
@@ -106,7 +106,7 @@ public class SchemaFileSketchTest {
                 + MetadataConstant.PB_TREE_FILE_NAME);
     File sketchFile = new File("sketch_schemafile.txt");
 
-    SchemaFileSketchTool.sketchFile(file.getAbsolutePath(), sketchFile.getAbsolutePath());
+    PBTreeFileSketchTool.sketchFile(file.getAbsolutePath(), sketchFile.getAbsolutePath());
     ISchemaFile sf = SchemaFile.loadSchemaFile(file);
     try {
       StringWriter sw = new StringWriter();

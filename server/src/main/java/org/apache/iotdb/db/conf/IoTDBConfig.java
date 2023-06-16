@@ -884,10 +884,10 @@ public class IoTDBConfig {
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInPBTreeMode = -1;
 
-  /** the minimum size (in bytes) of segment inside a schema file page */
+  /** the minimum size (in bytes) of segment inside a pb-tree file page */
   private short minimumSegmentInPBTree = 0;
 
-  /** cache size for pages in one schema file */
+  /** cache size for pages in one pb-tree file */
   private int pageCacheSizeInPBTree = 1024;
 
   /** maximum number of logged pages before log erased */

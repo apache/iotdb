@@ -373,12 +373,12 @@ Different configuration parameters take effect in the following three ways:
 
 * schema\_engine\_mode
 
-|名字| schema\_engine\_mode |
-|:---:|:---|
-|Description| Schema engine mode, supporting Memory and Schema_File modes; Schema_File mode support evict the timeseries schema temporarily not used in memory at runtime, and load it into memory from disk when needed. This parameter must be the same on all DataNodes in one cluster.|
-|Type| string |
-|Default| Memory |
-|Effective| Only allowed to be modified in first start up |
+|名字| schema\_engine\_mode                                                                                                                                                                                                                                                     |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| Schema engine mode, supporting Memory and PB_Tree modes; PB_Tree mode support evict the timeseries schema temporarily not used in memory at runtime, and load it into memory from disk when needed. This parameter must be the same on all DataNodes in one cluster. |
+|Type| string                                                                                                                                                                                                                                                                   |
+|Default| Memory                                                                                                                                                                                                                                                                   |
+|Effective| Only allowed to be modified in first start up                                                                                                                                                                                                                            |
 
 * mlog\_buffer\_size
 

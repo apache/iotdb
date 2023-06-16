@@ -25,7 +25,7 @@ public class SchemaFileConfig {
 
   // region SchemaFile Configuration
 
-  // current version of schema file
+  // current version of pb-tree file
   public static final int SCHEMA_FILE_VERSION = 1;
 
   // folder to store .pst files
@@ -40,7 +40,7 @@ public class SchemaFileConfig {
   public static final int SCHEMA_FILE_LOG_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getPBTreeLogSize();
 
-  // marks to note the state of schema file log
+  // marks to note the state of pb-tree file log
   public static final byte SF_PREPARE_MARK = (byte) 0xfe;
   public static final byte SF_COMMIT_MARK = (byte) 0xff;
 
