@@ -19,14 +19,14 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
 
 public class TimePartitionUtils {
   @ServerConfigConsistent
   public static long timePartitionInterval =
-      IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+      CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
   public static TTimePartitionSlot getTimePartition(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();

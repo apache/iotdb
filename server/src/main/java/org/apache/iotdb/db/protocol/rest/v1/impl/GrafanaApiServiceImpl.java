@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.db.protocol.rest.v1.impl;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -72,7 +73,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
 
-    switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
+    switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
         timePrecision = 1000000;
         break;

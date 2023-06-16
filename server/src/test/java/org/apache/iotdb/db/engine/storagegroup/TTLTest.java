@@ -20,6 +20,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -82,8 +83,8 @@ public class TTLTest {
 
   @Before
   public void setUp() throws MetadataException, DataRegionException {
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(86400000);
+    prevPartitionInterval = CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(86400000);
     EnvironmentUtils.envSetUp();
     dataRegion =
         new DataRegion(
@@ -98,7 +99,7 @@ public class TTLTest {
   public void tearDown() throws IOException, StorageEngineException {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
   }
 
   @Test

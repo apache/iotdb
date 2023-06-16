@@ -130,6 +130,10 @@ public class CommonConfig {
   /** Ip and port of target ML node. */
   private TEndPoint targetMLNodeEndPoint = new TEndPoint("127.0.0.1", 10810);
 
+  /** Time partition interval in milliseconds */
+  private long timePartitionInterval = 604_800_000;
+
+  /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */
   private String timestampPrecision = "ms";
 
   /** Pipe related */
@@ -140,7 +144,7 @@ public class CommonConfig {
    */
   private String pipeHardlinkTsFileDirName = "pipe";
 
-  /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor */
+  /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum = 5;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
@@ -160,6 +164,15 @@ public class CommonConfig {
   private int pipeHeartbeatLoopCyclesForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
+
+  /** whether to use persistent schema mode. */
+  private String schemaEngineMode = "Memory";
+
+  /** Whether to enable Last cache. */
+  private boolean lastCacheEnable = true;
+
+  // max size for tag and attribute of one time series
+  private int tagAttributeTotalSize = 700;
 
   CommonConfig() {}
 
@@ -413,7 +426,23 @@ public class CommonConfig {
     isStopping = stopping;
   }
 
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
+  }
+
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
+  }
+
   public void setTimestampPrecision(String timestampPrecision) {
+    if (!("ms".equals(timestampPrecision)
+        || "us".equals(timestampPrecision)
+        || "ns".equals(timestampPrecision))) {
+      logger.error(
+          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
+          timestampPrecision);
+      System.exit(-1);
+    }
     this.timestampPrecision = timestampPrecision;
   }
 
@@ -549,5 +578,29 @@ public class CommonConfig {
       long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs) {
     this.pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs =
         pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs;
+  }
+
+  public String getSchemaEngineMode() {
+    return schemaEngineMode;
+  }
+
+  public void setSchemaEngineMode(String schemaEngineMode) {
+    this.schemaEngineMode = schemaEngineMode;
+  }
+
+  public boolean isLastCacheEnable() {
+    return lastCacheEnable;
+  }
+
+  public void setLastCacheEnable(boolean lastCacheEnable) {
+    this.lastCacheEnable = lastCacheEnable;
+  }
+
+  public int getTagAttributeTotalSize() {
+    return tagAttributeTotalSize;
+  }
+
+  public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    this.tagAttributeTotalSize = tagAttributeTotalSize;
   }
 }
