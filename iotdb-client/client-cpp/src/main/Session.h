@@ -229,9 +229,9 @@ namespace TSStatusCode {
         PAGE_OUT_OF_SPACE = 518,
         RECORD_DUPLICATED=519,
         SEGMENT_OUT_OF_SPACE = 520,
-        SCHEMA_FILE_NOT_EXISTS = 521,
+        PB_TREE_FILE_NOT_EXISTS = 521,
         OVERSIZE_RECORD = 522,
-        SCHEMA_FILE_REDO_LOG_BROKEN = 523,
+        PB_TREE_FILE_REDO_LOG_BROKEN = 523,
         TEMPLATE_NOT_ACTIVATED = 524,
 
         // Storage Engine

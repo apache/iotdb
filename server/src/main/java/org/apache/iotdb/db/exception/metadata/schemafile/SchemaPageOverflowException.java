@@ -28,7 +28,8 @@ public class SchemaPageOverflowException extends MetadataException {
   public SchemaPageOverflowException(int pageIndex) {
     super(
         String.format(
-            "Page [%s] in schema file runs out of space or contains too many segments.", pageIndex),
+            "Page [%s] in pb-tree file runs out of space or contains too many segments.",
+            pageIndex),
         TSStatusCode.PAGE_OUT_OF_SPACE.getStatusCode(),
         true);
   }
