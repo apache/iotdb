@@ -66,9 +66,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -155,12 +152,6 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterSchemaTemplate(
       String queryId, AlterSchemaTemplateStatement alterSchemaTemplateStatement);
 
-  SettableFuture<ConfigTaskResult> createPipeSink(CreatePipeSinkStatement createPipeSinkStatement);
-
-  SettableFuture<ConfigTaskResult> dropPipeSink(DropPipeSinkStatement dropPipeSinkStatement);
-
-  SettableFuture<ConfigTaskResult> showPipeSink(ShowPipeSinkStatement showPipeSinkStatement);
-
   SettableFuture<ConfigTaskResult> dropPipe(DropPipeStatement dropPipeStatement);
 
   SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement);
@@ -169,7 +160,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> stopPipe(StopPipeStatement stopPipeStatement);
 
-  SettableFuture<ConfigTaskResult> showPipe(ShowPipesStatement showPipesStatement);
+  SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement);
 
   SettableFuture<ConfigTaskResult> deleteTimeSeries(
       String queryId, DeleteTimeSeriesStatement deleteTimeSeriesStatement);

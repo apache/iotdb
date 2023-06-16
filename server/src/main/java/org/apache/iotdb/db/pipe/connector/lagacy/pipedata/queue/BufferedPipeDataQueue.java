@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.pipedata.queue;
+package org.apache.iotdb.db.pipe.connector.lagacy.pipedata.queue;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.commons.sync.utils.SyncPathUtil;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.PipeData;
+import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.TsFilePipeData;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.slf4j.Logger;

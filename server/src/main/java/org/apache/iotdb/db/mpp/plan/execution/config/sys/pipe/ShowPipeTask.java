@@ -51,7 +51,7 @@ public class ShowPipeTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showPipe(showPipesStatement);
+    return configTaskExecutor.showPipes(showPipesStatement);
   }
 
   public static void buildTSBlock(

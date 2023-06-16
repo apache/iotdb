@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.pipedata.load;
+package org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load;
 
 import org.apache.iotdb.commons.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;

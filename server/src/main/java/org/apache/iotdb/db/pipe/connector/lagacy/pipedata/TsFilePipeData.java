@@ -17,14 +17,14 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.sync.pipedata;
+package org.apache.iotdb.db.pipe.connector.lagacy.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.sync.utils.SyncConstant;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.sync.pipedata.load.ILoader;
-import org.apache.iotdb.db.sync.pipedata.load.TsFileLoader;
+import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load.ILoader;
+import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.load.TsFileLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;

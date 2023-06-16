@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.pipedata.queue;
+package org.apache.iotdb.db.pipe.connector.lagacy.pipedata.queue;
 
-import org.apache.iotdb.db.sync.pipedata.PipeData;
+import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.PipeData;
 
 import java.util.List;
 

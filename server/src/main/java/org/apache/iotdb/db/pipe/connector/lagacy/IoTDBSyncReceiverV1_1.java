@@ -17,7 +17,7 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.sync.transport.server;
+package org.apache.iotdb.db.pipe.connector.lagacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -33,9 +33,9 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DatabaseSchemaStatement;
+import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.PipeData;
+import org.apache.iotdb.db.pipe.connector.lagacy.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
@@ -57,12 +57,18 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * This class is responsible for implementing the RPC processing on the receiver-side. It should
- * only be accessed by the {@linkplain org.apache.iotdb.db.sync.SyncService}
- */
-public class ReceiverManager {
-  private static final Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
+/** This class is responsible for implementing the RPC processing on the receiver-side. */
+public class IoTDBSyncReceiverV1_1 {
+
+  public static IoTDBSyncReceiverV1_1 getInstance() {
+    return IoTDBSyncReceiverV1_1Holder.INSTANCE;
+  }
+
+  private static class IoTDBSyncReceiverV1_1Holder {
+    private static final IoTDBSyncReceiverV1_1 INSTANCE = new IoTDBSyncReceiverV1_1();
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSyncReceiverV1_1.class);
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -77,7 +83,7 @@ public class ReceiverManager {
   // The sync connectionId is unique in one IoTDB instance.
   private final AtomicLong connectionIdGenerator;
 
-  public ReceiverManager() {
+  private IoTDBSyncReceiverV1_1() {
     currentConnectionId = new ThreadLocal<>();
     connectionIdToIdentityInfoMap = new ConcurrentHashMap<>();
     connectionIdToStartIndexRecord = new ConcurrentHashMap<>();
@@ -234,7 +240,7 @@ public class ReceiverManager {
    * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to receive or load; {@link
    *     TSStatusCode#SUCCESS_STATUS} if load successfully.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link ReceiverManager#handshake}
+   *     by {@link IoTDBSyncReceiverV1_1#handshake}
    */
   public TSStatus transportPipeData(ByteBuffer buff) throws TException {
     // step1. check connection
@@ -290,7 +296,7 @@ public class ReceiverManager {
    *     TSStatusCode#SYNC_FILE_REDIRECTION_ERROR} if startIndex needs to rollback because
    *     mismatched; {@link TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link ReceiverManager#handshake}
+   *     by {@link IoTDBSyncReceiverV1_1#handshake}
    */
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {

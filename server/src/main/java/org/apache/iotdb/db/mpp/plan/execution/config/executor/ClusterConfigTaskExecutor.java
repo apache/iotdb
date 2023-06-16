@@ -66,11 +66,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -80,7 +77,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -147,7 +143,6 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchem
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
@@ -193,9 +188,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1518,75 +1510,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createPipeSink(
-      CreatePipeSinkStatement createPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TPipeSinkInfo pipeSinkInfo = new TPipeSinkInfo();
-      pipeSinkInfo.setPipeSinkName(createPipeSinkStatement.getPipeSinkName());
-      pipeSinkInfo.setPipeSinkType(createPipeSinkStatement.getPipeSinkType());
-      pipeSinkInfo.setAttributes(createPipeSinkStatement.getAttributes());
-      TSStatus tsStatus = configNodeClient.createPipeSink(pipeSinkInfo);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to create PIPESINK {} with type {} in config node, status is {}.",
-            createPipeSinkStatement.getPipeSinkName(),
-            createPipeSinkStatement.getPipeSinkType(),
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> dropPipeSink(
-      DropPipeSinkStatement dropPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TDropPipeSinkReq req = new TDropPipeSinkReq();
-      req.setPipeSinkName(dropPipeSinkStatement.getPipeSinkName());
-      TSStatus tsStatus = configNodeClient.dropPipeSink(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to drop PIPESINK {} in config node, status is {}.",
-            dropPipeSinkStatement.getPipeSinkName(),
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showPipeSink(
-      ShowPipeSinkStatement showPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetPipeSinkReq tGetPipeSinkReq = new TGetPipeSinkReq();
-      if (!StringUtils.isEmpty(showPipeSinkStatement.getPipeSinkName())) {
-        tGetPipeSinkReq.setPipeSinkName(showPipeSinkStatement.getPipeSinkName());
-      }
-      TGetPipeSinkResp resp = configNodeClient.getPipeSink(tGetPipeSinkReq);
-      ShowPipeSinkTask.buildTSBlockByTPipeSinkInfo(resp.getPipeSinkInfoList(), future);
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
   public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
@@ -1671,7 +1594,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showPipe(ShowPipesStatement showPipesStatement) {
+  public SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

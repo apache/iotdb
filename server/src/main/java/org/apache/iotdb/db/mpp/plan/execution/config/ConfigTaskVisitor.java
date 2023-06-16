@@ -82,9 +82,6 @@ import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.SetSpaceQuotaTask
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.SetThrottleQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.CreatePipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.DropPipeSinkTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -150,9 +147,6 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
@@ -389,31 +383,13 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitShowPipeSink(
-      ShowPipeSinkStatement showPipeSinkStatement, TaskContext context) {
-    return new ShowPipeSinkTask(showPipeSinkStatement);
-  }
-
-  @Override
-  public IConfigTask visitShowPipe(ShowPipesStatement showPipesStatement, TaskContext context) {
+  public IConfigTask visitShowPipes(ShowPipesStatement showPipesStatement, TaskContext context) {
     return new ShowPipeTask(showPipesStatement);
   }
 
   @Override
   public IConfigTask visitDropPipe(DropPipeStatement dropPipeStatement, TaskContext context) {
     return new DropPipeTask(dropPipeStatement);
-  }
-
-  @Override
-  public IConfigTask visitCreatePipeSink(
-      CreatePipeSinkStatement createPipeSinkStatement, TaskContext context) {
-    return new CreatePipeSinkTask(createPipeSinkStatement);
-  }
-
-  @Override
-  public IConfigTask visitDropPipeSink(
-      DropPipeSinkStatement dropPipeSinkStatement, TaskContext context) {
-    return new DropPipeSinkTask(dropPipeSinkStatement);
   }
 
   @Override

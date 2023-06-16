@@ -58,6 +58,6 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipe(this, context);
+    return visitor.visitShowPipes(this, context);
   }
 }
