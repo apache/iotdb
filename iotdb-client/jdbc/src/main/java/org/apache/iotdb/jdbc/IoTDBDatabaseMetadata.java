@@ -479,20 +479,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     sqlKeywordsThatArentSQL92 = keywordBuf.toString();
   }
 
-  private WatermarkEncoder getWatermarkEncoder() {
-    try {
-      groupedLSBWatermarkEncoder =
-          new GroupedLSBWatermarkEncoder(
-              client.getProperties().getWatermarkSecretKey(),
-              client.getProperties().getWatermarkBitString(),
-              client.getProperties().getWatermarkParamMarkRate(),
-              client.getProperties().getWatermarkParamMaxRightBit());
-    } catch (TException e) {
-      e.printStackTrace();
-    }
-    return groupedLSBWatermarkEncoder;
-  }
-
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
     throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
