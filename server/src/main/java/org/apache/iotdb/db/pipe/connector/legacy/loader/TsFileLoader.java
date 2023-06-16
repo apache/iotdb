@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,7 +48,7 @@ public class TsFileLoader implements ILoader {
   }
 
   @Override
-  public void load() throws SyncDataLoadException {
+  public void load() {
     try {
       LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
       statement.setDeleteAfterLoad(true);

@@ -22,7 +22,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.pipe.connector.legacy.exception.SyncDataLoadException;
 
 /**
  * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
@@ -34,5 +33,5 @@ public interface ILoader {
 
   ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
 
-  void load() throws SyncDataLoadException;
+  void load();
 }
