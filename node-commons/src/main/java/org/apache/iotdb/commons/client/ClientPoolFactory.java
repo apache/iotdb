@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -214,6 +215,29 @@ public class ClientPoolFactory {
                   .build(),
               ThreadName.ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeMPPDataExchangeServiceClient>()
+              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+              .build()
+              .getConfig());
+    }
+  }
+
+  public static class AsyncPipeDataTransferServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
+
+    @Override
+    public KeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> createClientPool(
+        ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> manager) {
+      return new GenericKeyedObjectPool<>(
+          new AsyncPipeDataTransferServiceClient.Factory(
+              manager,
+              new ThriftClientProperty.Builder()
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .build(),
+              ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
+          new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
               .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
               .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
               .build()
