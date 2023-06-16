@@ -163,14 +163,6 @@ public class IoTDBSyncReceiverV1_1 {
       ISchemaFetcher schemaFetcher) {
     SyncIdentityInfo identityInfo = new SyncIdentityInfo(tIdentityInfo, remoteAddress);
     logger.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
-    // check ip address
-    if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.getRemoteAddress())) {
-      return RpcUtils.getStatus(
-          TSStatusCode.PIPESERVER_ERROR,
-          String.format(
-              "permission is not allowed: the sender IP <%s>, the white list of receiver <%s>",
-              identityInfo.getRemoteAddress(), config.getIpWhiteList()));
-    }
     // Version check
     if (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
       return RpcUtils.getStatus(
