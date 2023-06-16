@@ -99,7 +99,7 @@ public class TsFileResourceManager {
         return;
       }
       long memoryReduce = tsFileResource.degradeTimeIndex();
-      logger.info("Degrade tsfile resource {}", tsFileResource.getTsFilePath());
+      logger.debug("Degrade tsfile resource {}", tsFileResource.getTsFilePath());
       releaseTimeIndexMemCost(memoryReduce);
       // add the polled tsFileResource to the priority queue
       sealedTsFileResources.add(tsFileResource);

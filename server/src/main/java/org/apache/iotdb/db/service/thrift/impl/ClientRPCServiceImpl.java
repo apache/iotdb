@@ -738,14 +738,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     properties.setMaxConcurrentClientNum(
         IoTDBDescriptor.getInstance().getConfig().getRpcMaxConcurrentClientNum());
-    properties.setWatermarkSecretKey(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkSecretKey());
-    properties.setWatermarkBitString(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkBitString());
-    properties.setWatermarkParamMarkRate(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
-    properties.setWatermarkParamMaxRightBit(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
     properties.setIsReadOnly(CommonDescriptor.getInstance().getConfig().isReadOnly());
     properties.setThriftMaxFrameSize(
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
