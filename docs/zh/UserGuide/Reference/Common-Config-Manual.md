@@ -641,11 +641,11 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 * slow\_query\_threshold
 
 |名字| slow\_query\_threshold |
-|:---:|:---|
-|描述| 慢查询的时间阈值。单位：毫秒。|
-|类型| Int32 |
-|默认值| 5000 |
-|改后生效方式|热加载|
+|:---:|:-----------------------|
+|描述| 慢查询的时间阈值。单位：毫秒。        |
+|类型| Int32                  |
+|默认值| 30000                  |
+|改后生效方式| 热加载                    |
 
 * query\_timeout\_threshold
 
@@ -846,15 +846,6 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |     类型     | Boolean                           |
 |    默认值    | false                             |
 | 改后生效方式 | 重启服务生效                            |
-
-* upgrade\_thread\_count
-
-|     名字     | upgrade\_thread\_count          |
-| :----------: |:--------------------------------|
-|     描述     | 当存在老版本TsFile(v2)，执行文件升级任务使用的线程数 |
-|     类型     | Int32                           |
-|    默认值    | 1                               |
-| 改后生效方式 | 重启服务生效                          |
 
 * device\_path\_cache\_size
 
@@ -1267,15 +1258,6 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 默认为 2 位。注意：32 位浮点数的十进制精度为 7 位，64 位浮点数的十进制精度为 15 位。如果设置超过机器精度将没有实际意义。 |
 |改后生效方式|热加载|
 
-* time\_encoder
-
-|     名字     | time\_encoder                         |
-| :----------: | :------------------------------------ |
-|     描述     | 时间列编码方式                        |
-|     类型     | 枚举 String: “TS_2DIFF”,“PLAIN”,“RLE” |
-|    默认值    | TS_2DIFF                              |
-| 改后生效方式 | 热加载                              |
-
 * value\_encoder
 
 |     名字     | value\_encoder                        |
@@ -1312,23 +1294,6 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 1 |
 |改后生效方式|热加载|
 
-* freq\_snr
-
-|     名字     | freq\_snr               |
-| :----------: | :--------------------- |
-|     描述     | 有损的FREQ编码的信噪比 |
-|     类型     | Double                 |
-|    默认值    | 40.0                   |
-| 改后生效方式 | 热加载               |
-
-* freq\_block\_size
-
-|名字| freq\_block\_size |
-|:---:|:---|
-|描述| FREQ编码的块大小，即一次时频域变换的数据点个数。为了加快编码速度，建议将其设置为2的幂次。 |
-|类型|int32|
-|默认值| 1024 |
-|改后生效方式|热加载|
 
 #### 授权配置
 
@@ -1350,24 +1315,6 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |     类型     | String（一个 http 地址）                                   |
 |    默认值    | 无                                                         |
 | 改后生效方式 | 重启服务生效                                               |
-
-* admin\_name
-
-|     名字     | admin\_name                  |
-| :----------: | :--------------------------- |
-|     描述     | 管理员用户名，默认为root     |
-|     类型     | String                       |
-|    默认值    | root                         |
-| 改后生效方式 | 仅允许在第一次启动服务前修改 |
-
-* admin\_password
-
-|     名字     | admin\_password              |
-| :----------: | :--------------------------- |
-|     描述     | 管理员密码，默认为root       |
-|     类型     | String                       |
-|    默认值    | root                         |
-| 改后生效方式 | 仅允许在第一次启动服务前修改 |
 
 * iotdb\_server\_encrypt\_decrypt\_provider
 
@@ -2122,23 +2069,3 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |类型| int32         |
 |默认值| 5000          |
 |改后生效方式| 重启生效          |
-
-#### InfluxDB 协议适配器配置
-
-* enable\_influxdb\_rpc\_service
-
-|     名字     | enable\_influxdb\_rpc\_service  |
-| :----------: | :--------------------------- |
-|     描述     | 是否开启InfluxDB RPC service |
-|     类型     | Boolean                      |
-|    默认值    | true                         |
-| 改后生效方式 | 重启服务生效                 |
-
-* influxdb\_rpc\_port
-
-|     名字     | influxdb\_rpc\_port            |
-| :----------: | :--------------------------- |
-|     描述     | influxdb rpc service占用端口 |
-|     类型     | int32                          |
-|    默认值    | 8086                         |
-| 改后生效方式 | 重启服务生效                 |
