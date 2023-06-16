@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.meta;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 
@@ -34,7 +35,7 @@ public class InfluxDBMetaManagerFactory {
         .getConfig()
         .getRpcImplClassName()
         .equals(ClientRPCServiceImpl.class.getName())) {
-      if ("Tag".equals(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())) {
+      if ("Tag".equals(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode())) {
         return TagInfluxDBMetaManager.getInstance();
       }
       return NewInfluxDBMetaManager.getInstance();

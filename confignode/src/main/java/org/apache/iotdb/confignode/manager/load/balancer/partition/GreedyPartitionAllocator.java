@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -45,7 +46,8 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final boolean ENABLE_DATA_PARTITION_INHERIT_POLICY =
       CONF.isEnableDataPartitionInheritPolicy();
-  private static final long TIME_PARTITION_INTERVAL = CONF.getTimePartitionInterval();
+  private static final long TIME_PARTITION_INTERVAL =
+      CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
   private final IManager configManager;
 

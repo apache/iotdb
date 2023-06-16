@@ -145,7 +145,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
             firstNodeUrl.getPort())) {
       final TPipeTransferResp resp =
           client.pipeTransfer(
-              PipeTransferHandshakeReq.toTPipeTransferReq(IOTDB_CONFIG.getTimestampPrecision()));
+              PipeTransferHandshakeReq.toTPipeTransferReq(
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
       }
