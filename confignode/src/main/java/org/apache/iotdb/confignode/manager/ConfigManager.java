@@ -1100,7 +1100,7 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
     }
 
-    if (clusterParameters.getTimestampPrecision().equals(COMMON_CONF.getTimestampPrecision())) {
+    if (!clusterParameters.getTimestampPrecision().equals(COMMON_CONF.getTimestampPrecision())) {
       return errorStatus.setMessage(errorPrefix + "timestamp_precision" + errorSuffix);
     }
 
