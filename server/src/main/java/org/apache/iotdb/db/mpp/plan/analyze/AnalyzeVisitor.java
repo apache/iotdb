@@ -50,6 +50,7 @@ import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -158,6 +159,7 @@ import org.apache.iotdb.tsfile.read.filter.PredicateRemoveNotRewriter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -1349,8 +1351,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
                 expression, device, schemaTree);
 
-        if (groupByExpressionsOfOneDevice.size() != 1) {
-          throw new SemanticException("Expression in group by should indicate one value");
+        if (groupByExpressionsOfOneDevice.size() == 0) {
+          throw new SemanticException(
+              String.format("%s in group by clause doesn't exist.", expression));
+        }
+        if (groupByExpressionsOfOneDevice.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "%s in group by clause shouldn't refer to more than one timeseries.",
+                  expression));
         }
         Expression groupByExpressionOfOneDevice = groupByExpressionsOfOneDevice.get(0);
 
@@ -1471,8 +1480,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // Expression in group by variation clause only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.bindSchemaForExpression(groupByExpression, schemaTree);
-      if (expressions.size() != 1) {
-        throw new SemanticException("Expression in group by should indicate one value");
+      if (expressions.size() == 0) {
+        throw new SemanticException(
+            String.format(
+                "%s in group by clause doesn't exist.", groupByExpression.getExpressionString()));
+      }
+      if (expressions.size() > 1) {
+        throw new SemanticException(
+            String.format(
+                "%s in group by clause shouldn't refer to more than one timeseries.",
+                groupByExpression.getExpressionString()));
       }
       // Aggregation expression shouldn't exist in group by clause.
       List<Expression> aggregationExpression =
@@ -1823,6 +1840,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // fetch schema of target paths
     long startTime = System.nanoTime();
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
+    updateSchemaTreeByViews(analysis, targetSchemaTree);
     QueryPlanCostMetricSet.getInstance()
         .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     intoPathDescriptor.bindType(targetSchemaTree);
@@ -2641,6 +2659,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+      updateSchemaTreeByViews(analysis, schemaTree);
       logger.debug("[EndFetchSchema]]");
 
       analyzeLastSource(
@@ -2869,23 +2888,48 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+    Set<String> deduplicatedDevicePaths = new HashSet<>();
+
+    if (schemaTree.hasLogicalViewMeasurement()) {
+      updateSchemaTreeByViews(analysis, schemaTree);
+
+      Set<PartialPath> deletePatternSet = new HashSet<>(deleteDataStatement.getPathList());
+      IMeasurementSchema measurementSchema;
+      LogicalViewSchema logicalViewSchema;
+      PartialPath sourcePathOfAliasSeries;
+      for (MeasurementPath measurementPath :
+          schemaTree.searchMeasurementPaths(MetadataConstant.ALL_MATCH_PATTERN).left) {
+        measurementSchema = measurementPath.getMeasurementSchema();
+        if (measurementSchema.isLogicalView()) {
+          logicalViewSchema = (LogicalViewSchema) measurementSchema;
+          if (logicalViewSchema.isWritable()) {
+            sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
+            deletePatternSet.add(sourcePathOfAliasSeries);
+            deduplicatedDevicePaths.add(sourcePathOfAliasSeries.getDevice());
+          } else {
+            deletePatternSet.remove(measurementPath);
+          }
+        } else {
+          deduplicatedDevicePaths.add(measurementPath.getDevice());
+        }
+      }
+      deleteDataStatement.setPathList(new ArrayList<>(deletePatternSet));
+    } else {
+      for (String devicePattern : patternTree.getAllDevicePatterns()) {
+        try {
+          schemaTree
+              .getMatchedDevices(new PartialPath(devicePattern))
+              .forEach(
+                  deviceSchemaInfo ->
+                      deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
+        } catch (IllegalPathException ignored) {
+          // won't happen
+        }
+      }
+    }
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-
-    Set<String> deduplicatedDevicePaths = new HashSet<>();
-
-    for (String devicePattern : patternTree.getAllDevicePatterns()) {
-      try {
-        schemaTree
-            .getMatchedDevices(new PartialPath(devicePattern))
-            .forEach(
-                deviceSchemaInfo ->
-                    deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
-      } catch (IllegalPathException ignored) {
-        // won't happen
-      }
-    }
 
     deduplicatedDevicePaths.forEach(
         devicePath -> {

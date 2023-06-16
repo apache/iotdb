@@ -494,13 +494,16 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in inner space compaction */
-  private int maxInnerCompactionCandidateFileNum = 30;
+  /** The max candidate file num in one inner space compaction task */
+  private int fileLimitPerInnerTask = 30;
+
+  /** The max candidate file num in one cross space compaction task */
+  private int fileLimitPerCrossTask = 500;
 
   /** The max candidate file num in cross space compaction */
-  private int maxCrossCompactionCandidateFileNum = 1000;
+  private int totalFileLimitForCrossTask = 5000;
 
-  /** The max total size of candidate files in cross space compaction */
+  /** The max total size of candidate files in one cross space compaction task */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /**
@@ -2962,20 +2965,24 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public int getMaxInnerCompactionCandidateFileNum() {
-    return maxInnerCompactionCandidateFileNum;
+  public int getFileLimitPerInnerTask() {
+    return fileLimitPerInnerTask;
   }
 
-  public void setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
-    this.maxInnerCompactionCandidateFileNum = maxInnerCompactionCandidateFileNum;
+  public void setFileLimitPerInnerTask(int fileLimitPerInnerTask) {
+    this.fileLimitPerInnerTask = fileLimitPerInnerTask;
   }
 
-  public int getMaxCrossCompactionCandidateFileNum() {
-    return maxCrossCompactionCandidateFileNum;
+  public int getFileLimitPerCrossTask() {
+    return fileLimitPerCrossTask;
   }
 
-  public void setMaxCrossCompactionCandidateFileNum(int maxCrossCompactionCandidateFileNum) {
-    this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
+  public int getTotalFileLimitForCrossTask() {
+    return totalFileLimitForCrossTask;
+  }
+
+  public void setFileLimitPerCrossTask(int fileLimitPerCrossTask) {
+    this.fileLimitPerCrossTask = fileLimitPerCrossTask;
   }
 
   public long getMaxCrossCompactionCandidateFileSize() {

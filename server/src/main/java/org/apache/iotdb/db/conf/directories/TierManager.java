@@ -220,13 +220,12 @@ public class TierManager {
     if (!file.exists()) {
       return getTiersNum() - 1;
     }
-
-    String filePath;
+    Path filePath;
     try {
-      filePath = file.getCanonicalPath();
+      filePath = file.getCanonicalFile().toPath();
     } catch (IOException e) {
       logger.error("Fail to get canonical path of data dir {}", file, e);
-      filePath = file.getPath();
+      filePath = file.toPath();
     }
 
     for (Map.Entry<String, Integer> entry : seqDir2TierLevel.entrySet()) {

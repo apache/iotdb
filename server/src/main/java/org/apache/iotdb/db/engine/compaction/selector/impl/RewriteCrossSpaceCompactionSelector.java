@@ -76,7 +76,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * config.getUsableCompactionMemoryProportion());
     this.maxCrossCompactionFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+        IoTDBDescriptor.getInstance().getConfig().getFileLimitPerCrossTask();
     this.maxCrossCompactionFileSize =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
 
@@ -107,8 +107,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return two lists of TsFileResource, the former is selected seqFiles and the latter is selected
    *     unseqFiles or an empty array if there are no proper candidates by the budget.
    */
-  private CrossCompactionTaskResource selectOneTaskResources(
-      CrossSpaceCompactionCandidate candidate) throws MergeException {
+  public CrossCompactionTaskResource selectOneTaskResources(CrossSpaceCompactionCandidate candidate)
+      throws MergeException {
     try {
       LOGGER.debug(
           "Selecting cross compaction task resources from {} seqFile, {} unseqFiles",
@@ -121,7 +121,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       throw new MergeException(e);
     } finally {
       try {
-        compactionEstimator.clear();
+        compactionEstimator.close();
       } catch (IOException e) {
         throw new MergeException(e);
       }
@@ -164,6 +164,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
         if (!latestSealedSeqFile.selected) {
           targetSeqFiles.add(latestSealedSeqFile.resource);
+          latestSealedSeqFile.markAsSelected();
         }
       }
 
@@ -212,6 +213,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> seqFiles,
       long memoryCost)
       throws IOException {
+    if (memoryCost == -1) {
+      // there is file been deleted during selection
+      return false;
+    }
     TsFileNameGenerator.TsFileName unseqFileName =
         TsFileNameGenerator.getTsFileName(unseqFile.getTsFile().getName());
     // we add a hard limit for cross compaction that selected unseqFile should reach a certain size
@@ -272,7 +277,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     long startTime = System.currentTimeMillis();
     long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
     // we record the variable `candidate` here is used for selecting more than one
-    // CrossCompactionTaskResources in this method
+    // CrossCompactionTaskResources in this method.
+    // Add read lock for candidate source files to avoid being deleted during the selection.
     CrossSpaceCompactionCandidate candidate =
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
     try {

@@ -17,8 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer.connector.reuse;
+package org.apache.iotdb.pipe.api.customizer.configuration;
 
-import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
-
-public interface ReuseStrategy extends PipeStrategy {}
+public interface PipeConnectorRuntimeConfiguration extends PipeRuntimeConfiguration {}

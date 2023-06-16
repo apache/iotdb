@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.wal.WALManager;
@@ -36,6 +37,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class WritingMetrics implements IMetricSet {
   private static final WritingMetrics INSTANCE = new WritingMetrics();
@@ -341,6 +343,22 @@ public class WritingMetrics implements IMetricSet {
       "oldest_mem_table_ram_when_cause_flush";
   public static final String FLUSH_TSFILE_SIZE = "flush_tsfile_size";
 
+  public void bindDataRegionMetrics() {
+    List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
+    List<DataRegionId> allDataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
+    allDataRegions.forEach(this::createDataRegionMemoryCostMetrics);
+    allDataRegionIds.forEach(this::createFlushingMemTableStatusMetrics);
+  }
+
+  public void unbindDataRegionMetrics() {
+    List<DataRegionId> allDataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
+    allDataRegionIds.forEach(
+        dataRegionId -> {
+          removeDataRegionMemoryCostMetrics(dataRegionId);
+          removeFlushingMemTableStatusMetrics(dataRegionId);
+        });
+  }
+
   public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {
     DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(dataRegion.getDataRegionId()));
     MetricService.getInstance()
@@ -641,6 +659,7 @@ public class WritingMetrics implements IMetricSet {
     bindFlushSubTaskMetrics(metricService);
     bindWALMetrics(metricService);
     bindWALCostMetrics(metricService);
+    bindDataRegionMetrics();
   }
 
   @Override
@@ -649,6 +668,7 @@ public class WritingMetrics implements IMetricSet {
     unbindFlushSubTaskMetrics(metricService);
     unbindWALMetrics(metricService);
     unbindWALCostMetrics(metricService);
+    unbindDataRegionMetrics();
   }
 
   public static WritingMetrics getInstance() {

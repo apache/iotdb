@@ -17,12 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.customizer;
+package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
-public interface PipeRuntimeConfiguration {
+public class PipeTaskCollectorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  /** @throws PipeException if invalid runtime configuration is set */
-  void check() throws PipeException;
+  private final int regionId;
+
+  private final PipeTaskMeta pipeTaskMeta;
+
+  public PipeTaskCollectorRuntimeEnvironment(
+      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
+    super(pipeName, creationTime);
+    this.regionId = regionId;
+    this.pipeTaskMeta = pipeTaskMeta;
+  }
+
+  public int getRegionId() {
+    return regionId;
+  }
+
+  public PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
+  }
 }

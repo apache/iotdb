@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -221,6 +220,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       statement.setTimes(this.times);
       statement.setDevicePath(entry.getKey());
       statement.setRowCount(this.rowCount);
+      statement.setAligned(this.isAligned);
       Object[] columns = new Object[pairList.size()];
       String[] measurements = new String[pairList.size()];
       BitMap[] bitMaps = new BitMap[pairList.size()];
@@ -323,14 +323,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public void validateDeviceSchema(boolean isAligned) {
-    if (this.isAligned != isAligned) {
-      throw new SemanticException(
-          new AlignedTimeseriesException(
-              String.format(
-                  "timeseries under this device are%s aligned, " + "please use %s interface",
-                  isAligned ? "" : " not", isAligned ? "aligned" : "non-aligned"),
-              devicePath.getFullPath()));
-    }
+    this.isAligned = isAligned;
   }
 
   @Override

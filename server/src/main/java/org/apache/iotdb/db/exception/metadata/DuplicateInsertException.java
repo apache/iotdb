@@ -16,9 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.metadata;
 
-package org.apache.iotdb.pipe.api.customizer.connector.parallel;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.iotdb.pipe.api.customizer.PipeStrategy;
+public class DuplicateInsertException extends MetadataException {
 
-public interface ParallelStrategy extends PipeStrategy {}
+  private static final String DUPLICATE_INSERTION_WRONG_MESSAGE =
+      "Insertion is illegal because measurement [%s] under device [%s] is duplicate.";
+
+  public DuplicateInsertException(String device, String measurement) {
+    super(
+        String.format(DUPLICATE_INSERTION_WRONG_MESSAGE, measurement, device),
+        TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
+        true);
+  }
+}
