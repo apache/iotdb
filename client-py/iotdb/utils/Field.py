@@ -47,7 +47,11 @@ class Field(object):
                 output.set_float_value(field.get_float_value())
             elif output.get_data_type() == TSDataType.DOUBLE:
                 output.set_double_value(field.get_double_value())
-            elif output.get_data_type() == TSDataType.TEXT:
+            elif output.get_data_type() == TSDataType.TEXT \
+                or output.get_data_type() == TSDataType.MIN_MAX_DOUBLE \
+                or output.get_data_type() == TSDataType.MIN_MAX_FLOAT \
+                or output.get_data_type() == TSDataType.MIN_MAX_INT32 \
+                or output.get_data_type() == TSDataType.MIN_MAX_INT64:
                 output.set_binary_value(field.get_binary_value())
             else:
                 raise Exception(
@@ -122,7 +126,11 @@ class Field(object):
             return str(self.__float_value)
         elif self.__data_type == TSDataType.DOUBLE:
             return str(self.__double_value)
-        elif self.__data_type == TSDataType.TEXT:
+        elif self.__data_type == TSDataType.TEXT \
+            or self.__data_type == TSDataType.MIN_MAX_DOUBLE \
+            or self.__data_type == TSDataType.MIN_MAX_FLOAT \
+            or self.__data_type == TSDataType.MIN_MAX_INT32 \
+            or self.__data_type == TSDataType.MIN_MAX_INT64:
             return self.__binary_value.decode("utf-8")
         else:
             raise Exception("unsupported data type {}".format(self.__data_type))
@@ -146,7 +154,11 @@ class Field(object):
             return self.get_float_value()
         elif data_type == TSDataType.DOUBLE:
             return self.get_double_value()
-        elif data_type == TSDataType.TEXT:
+        elif data_type == TSDataType.TEXT \
+            or data_type == TSDataType.MIN_MAX_DOUBLE \
+            or data_type == TSDataType.MIN_MAX_FLOAT \
+            or data_type == TSDataType.MIN_MAX_INT32 \
+            or data_type == TSDataType.MIN_MAX_INT64:
             return self.get_binary_value()
         else:
             raise Exception("unsupported data type {}".format(data_type))
@@ -170,7 +182,11 @@ class Field(object):
             field.set_float_value(value)
         elif data_type == TSDataType.DOUBLE:
             field.set_double_value(value)
-        elif data_type == TSDataType.TEXT:
+        elif data_type == TSDataType.TEXT \
+            or data_type == TSDataType.MIN_MAX_DOUBLE \
+            or data_type == TSDataType.MIN_MAX_FLOAT \
+            or data_type == TSDataType.MIN_MAX_INT32 \
+            or data_type == TSDataType.MIN_MAX_INT64:
             field.set_binary_value(value)
         else:
             raise Exception("unsupported data type {}".format(data_type))

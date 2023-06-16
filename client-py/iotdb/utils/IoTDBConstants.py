@@ -27,6 +27,10 @@ class TSDataType(Enum):
     FLOAT = 3
     DOUBLE = 4
     TEXT = 5
+    MIN_MAX_INT32 = 6
+    MIN_MAX_INT64 = 7
+    MIN_MAX_FLOAT = 8
+    MIN_MAX_DOUBLE = 9
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

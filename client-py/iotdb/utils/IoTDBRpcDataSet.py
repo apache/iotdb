@@ -173,7 +173,11 @@ class IoTDBRpcDataSet(object):
                 elif data_type == TSDataType.DOUBLE:
                     self.__value[i] = value_buffer[:8]
                     self.__query_data_set.valueList[i] = value_buffer[8:]
-                elif data_type == TSDataType.TEXT:
+                elif data_type == TSDataType.TEXT \
+                    or data_type == TSDataType.MIN_MAX_DOUBLE \
+                    or data_type == TSDataType.MIN_MAX_FLOAT \
+                    or data_type == TSDataType.MIN_MAX_INT32 \
+                    or data_type == TSDataType.MIN_MAX_INT64:
                     length = int.from_bytes(
                         value_buffer[:4], byteorder="big", signed=False
                     )

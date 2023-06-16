@@ -116,7 +116,11 @@ class SessionDataSet(object):
                 elif data_type == TSDataType.DOUBLE:
                     value = struct.unpack(">d", value_bytes)[0]
                     field.set_double_value(value)
-                elif data_type == TSDataType.TEXT:
+                elif data_type == TSDataType.TEXT \
+                    or data_type == TSDataType.MIN_MAX_DOUBLE \
+                    or data_type == TSDataType.MIN_MAX_FLOAT \
+                    or data_type == TSDataType.MIN_MAX_INT32 \
+                    or data_type == TSDataType.MIN_MAX_INT64:
                     field.set_binary_value(value_bytes)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
@@ -172,6 +176,10 @@ def get_typed_point(field: Field, none_value=None):
         TSDataType.INT32: lambda field: field.get_int_value(),
         TSDataType.DOUBLE: lambda field: field.get_double_value(),
         TSDataType.INT64: lambda field: field.get_long_value(),
+        TSDataType.MIN_MAX_DOUBLE: lambda field: field.get_string_value(),
+        TSDataType.MIN_MAX_FLOAT: lambda field: field.get_string_value(),
+        TSDataType.MIN_MAX_INT32: lambda field: field.get_string_value(),
+        TSDataType.MIN_MAX_INT64: lambda field: field.get_string_value(),
     }
 
     result_next_type: TSDataType = field.get_data_type()
