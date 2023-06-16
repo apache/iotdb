@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.pipe.connector;
 
-public enum IoTDBThriftConnectorVersion {
-  VERSION_ONE((byte) 1),
+public enum IoTDBThriftConnectorRequestVersion {
+  VERSION_1((byte) 1),
+  VERSION_2((byte) 1),
   ;
 
   private final byte version;
 
-  IoTDBThriftConnectorVersion(byte type) {
+  IoTDBThriftConnectorRequestVersion(byte type) {
     this.version = type;
   }
 

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
@@ -47,12 +47,12 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
   private Tablet tablet;
 
-  public static TPipeTransferReq toTPipeTransferReq(Tablet tablet) throws IOException {
+  public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet) throws IOException {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
 
     tabletReq.tablet = tablet;
 
-    tabletReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    tabletReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
     tabletReq.body = tablet.serialize();
     return tabletReq;
