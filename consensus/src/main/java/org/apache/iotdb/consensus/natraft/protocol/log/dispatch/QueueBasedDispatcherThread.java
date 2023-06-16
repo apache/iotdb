@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
+import org.apache.iotdb.consensus.natraft.utils.LogUtils;
 
 import java.util.Queue;
 
@@ -53,21 +54,15 @@ class QueueBasedDispatcherThread extends DispatcherThread {
   }
 
   private boolean fetchLogsSyncLoop() throws InterruptedException {
-    synchronized (logQueue) {
-      VotingEntry poll = logQueue.poll();
-      if (poll != null) {
-        currBatch.add(poll);
-        while (!logQueue.isEmpty() && currBatch.size() < logDispatcher.maxBatchSize) {
-          currBatch.add(logQueue.poll());
-        }
-      } else {
+    if (!LogUtils.drainTo(logQueue, currBatch, logDispatcher.maxBatchSize)) {
+      synchronized (logQueue) {
         if (group.getLogDispatcher().getMember().isLeader()) {
           logQueue.wait(1000);
         } else {
           logQueue.wait(5000);
         }
-        return false;
       }
+      return false;
     }
     return true;
   }

@@ -55,11 +55,12 @@ import org.apache.iotdb.consensus.natraft.protocol.log.appender.SlidingWindowLog
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.AsyncLogApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.applier.BaseApplier;
 import org.apache.iotdb.consensus.natraft.protocol.log.catchup.CatchUpManager;
-import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.LogDispatcher;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.ILogDispatcher;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.VotingLogList;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.VotingLogList.AcceptedType;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowBalancer;
 import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.flowcontrol.FlowMonitorManager;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.pipeline.PipelinedLogDispatcher;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.ConfigChangeEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.logtype.RequestEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.CommitLogCallback;
@@ -184,7 +185,7 @@ public class RaftMember {
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
    * which avoids the followers receiving out-of-order logs, forcing them to wait for previous logs.
    */
-  private volatile LogDispatcher logDispatcher;
+  private volatile ILogDispatcher logDispatcher;
 
   private VotingLogList votingLogList;
   private volatile boolean stopped;
@@ -249,7 +250,7 @@ public class RaftMember {
         config.isUseFollowerSlidingWindow() ? new Factory() : new BlockingLogAppender.Factory();
     this.logAppender = appenderFactory.create(this, config);
     this.logSequencer = SEQUENCER_FACTORY.create(this, config);
-    this.logDispatcher = new LogDispatcher(this, config);
+    this.logDispatcher = new PipelinedLogDispatcher(this, config);
     this.onRemove = onRemove;
 
     initPeerMap();
@@ -1161,7 +1162,7 @@ public class RaftMember {
     this.stopped = stopped;
   }
 
-  public LogDispatcher getLogDispatcher() {
+  public ILogDispatcher getLogDispatcher() {
     return logDispatcher;
   }
 

@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -97,7 +98,7 @@ public class DynamicThreadGroup {
   public void onThreadExit(DynamicThread dynamicThread) {
     threadCnt.decrementAndGet();
     threadFutureMap.remove(dynamicThread);
-    logger.debug(
+    logger.info(
         "A dynamic thread exits: {}, idle ratio： {}", dynamicThread, dynamicThread.idleRatio());
   }
 
@@ -108,9 +109,13 @@ public class DynamicThreadGroup {
   }
 
   public void join() throws ExecutionException, InterruptedException {
-    for (Future<?> future : threadFutureMap.values()) {
+    for (Entry<DynamicThread, Future<?>> entry : threadFutureMap.entrySet()) {
+      Future<?> future = entry.getValue();
+      DynamicThread dynamicThread = entry.getKey();
       try {
         future.get();
+        logger.info(
+            "A dynamic thread exits: {}, idle ratio： {}", dynamicThread, dynamicThread.idleRatio());
       } catch (CancellationException e) {
         // ignore
       }

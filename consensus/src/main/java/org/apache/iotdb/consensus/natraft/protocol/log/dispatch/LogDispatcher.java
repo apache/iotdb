@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
@@ -30,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +44,7 @@ import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
  * follower A, the actual reach order may be log3, log2, and log1. According to the protocol, log3
  * and log2 must halt until log1 reaches, as a result, the total delay may increase significantly.
  */
-public class LogDispatcher {
+public class LogDispatcher implements ILogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
   protected RaftMember member;
@@ -57,7 +57,7 @@ public class LogDispatcher {
   protected boolean enableCompressedDispatching;
   public int maxBindingThreadNum;
   public int minBindingThreadNum;
-  public int maxBatchSize = 10;
+  public int maxBatchSize;
 
   public LogDispatcher(RaftMember member, RaftConfig config) {
     this.member = member;
@@ -94,14 +94,6 @@ public class LogDispatcher {
       }
     }
     updateRateLimiter();
-  }
-
-  @TestOnly
-  public void close() throws InterruptedException {
-    for (Entry<Peer, DispatcherGroup> entry : dispatcherGroupMap.entrySet()) {
-      DispatcherGroup group = entry.getValue();
-      group.close();
-    }
   }
 
   public void offer(VotingEntry request) {
@@ -150,10 +142,6 @@ public class LogDispatcher {
     return nodesRate;
   }
 
-  public Map<Peer, DispatcherGroup> getDispatcherGroupMap() {
-    return dispatcherGroupMap;
-  }
-
   public void setNewNodes(List<Peer> newNodes) {
     this.newNodes = newNodes;
     for (Peer newNode : newNodes) {
@@ -188,5 +176,9 @@ public class LogDispatcher {
       stringBuilder.append(entry.getKey()).append("->").append(entry.getValue()).append(";");
     }
     return "LogDispatcher{" + stringBuilder + "}";
+  }
+
+  public void sortPeers(List<Peer> peers) {
+    peers.sort(Comparator.comparing(dispatcherGroupMap::get));
   }
 }

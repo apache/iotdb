@@ -25,14 +25,12 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.RaftRole;
-import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.DispatcherGroup;
-import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.LogDispatcher;
+import org.apache.iotdb.consensus.natraft.protocol.log.dispatch.ILogDispatcher;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -49,7 +47,7 @@ public class FlowBalancer {
   private double overestimateFactor;
   private int flowBalanceIntervalMS = 5000;
   private FlowMonitorManager flowMonitorManager = FlowMonitorManager.INSTANCE;
-  private LogDispatcher logDispatcher;
+  private ILogDispatcher logDispatcher;
   private RaftMember member;
   private ScheduledExecutorService scheduledExecutorService;
   private volatile boolean inBurst = false;
@@ -57,7 +55,7 @@ public class FlowBalancer {
   private long burstDuration;
   private RaftConfig config;
 
-  public FlowBalancer(LogDispatcher logDispatcher, RaftMember member, RaftConfig config) {
+  public FlowBalancer(ILogDispatcher logDispatcher, RaftMember member, RaftConfig config) {
     this.logDispatcher = logDispatcher;
     this.member = member;
     this.windowsToUse = config.getFollowerLoadBalanceWindowsToUse();
@@ -115,11 +113,10 @@ public class FlowBalancer {
             * (flowMonitorWindowInterval / 1000.0)
             * overestimateFactor;
 
-    Map<Peer, DispatcherGroup> dispatcherGroupMap = logDispatcher.getDispatcherGroupMap();
     Map<Peer, Double> nodesRate = logDispatcher.getNodesRate();
 
     // sort followers according to their queue length
-    followers.sort(Comparator.comparing(dispatcherGroupMap::get));
+    logDispatcher.sortPeers(followers);
 
     if (burstWindowNum > latestWindows.size() / 2 && !inBurst) {
       enterBurst(nodesRate, nodeNum, assumedFlow, followers);

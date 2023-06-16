@@ -42,6 +42,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class LogUtils {
@@ -123,6 +124,21 @@ public class LogUtils {
       logger.warn("Failed to compress entries", e);
     }
     return null;
+  }
+
+  public static <T> boolean drainTo(Queue<T> queue, List<T> currBatch, int maxBatchSize) {
+    synchronized (queue) {
+      T poll = queue.poll();
+      if (poll != null) {
+        currBatch.add(poll);
+        while (!queue.isEmpty() && currBatch.size() < maxBatchSize) {
+          currBatch.add(queue.poll());
+        }
+      } else {
+        return false;
+      }
+    }
+    return true;
   }
 
   public static List<ByteBuffer> decompressEntries(

@@ -45,7 +45,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-abstract class DispatcherThread extends DynamicThread {
+public abstract class DispatcherThread extends DynamicThread {
 
   private static final Logger logger = LoggerFactory.getLogger(DispatcherThread.class);
 
@@ -245,13 +245,12 @@ abstract class DispatcherThread extends DynamicThread {
         AppendEntriesRequest appendEntriesRequest = prepareRequest(logList);
         appendEntriesAsync(appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
       } else {
-        //        AppendCompressedEntriesRequest appendEntriesRequest =
-        // prepareCompressedRequest(logList);
-        //        appendEntriesAsync(appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
-
-        AppendCompressedSingleEntriesRequest appendEntriesRequest =
-            prepareCompressedSingleRequest(logList, compressionTypes, uncompressedSizes);
+        AppendCompressedEntriesRequest appendEntriesRequest = prepareCompressedRequest(logList);
         appendEntriesAsync(appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+
+        //        AppendCompressedSingleEntriesRequest appendEntriesRequest =
+        //            prepareCompressedSingleRequest(logList, compressionTypes, uncompressedSizes);
+        //        appendEntriesAsync(appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
       }
 
       if (logDispatcher.getConfig().isUseFollowerLoadBalance()) {
@@ -269,7 +268,7 @@ abstract class DispatcherThread extends DynamicThread {
     return handler;
   }
 
-  class AppendEntriesHandler implements AsyncMethodCallback<AppendEntryResult> {
+  public class AppendEntriesHandler implements AsyncMethodCallback<AppendEntryResult> {
 
     private final List<AsyncMethodCallback<AppendEntryResult>> singleEntryHandlers;
 
