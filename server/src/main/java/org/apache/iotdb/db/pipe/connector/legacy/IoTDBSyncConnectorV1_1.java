@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorClient;
+import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -64,9 +64,9 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 
-public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
+public class IoTDBSyncConnectorV1_1 implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorImplV1_1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnectorV1_1.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   public static final String IOTDB_SYNC_CONNECTOR_VERSION = "1.1";
@@ -163,7 +163,7 @@ public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
             "IoTDBSyncConnectorV1_1 only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
       }
     } catch (TException e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException(
@@ -193,7 +193,7 @@ public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
     try {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Network error when transfer tsFile insertion event: {}.", tsFileInsertionEvent, e);
       // The connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException("Network error when transfer tsFile insertion event.", e);
@@ -244,7 +244,7 @@ public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
         }
       }
     } catch (TException e) {
-      LOGGER.error(String.format("Cannot send pipe data to receiver %s:%s.", ipAddress, port), e);
+      LOGGER.warn(String.format("Cannot send pipe data to receiver %s:%s.", ipAddress, port), e);
       throw new PipeConnectionException(e.getMessage(), e);
     }
   }

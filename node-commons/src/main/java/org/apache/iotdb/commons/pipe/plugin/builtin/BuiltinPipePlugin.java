@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.collector.IoTDBCollector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBSyncConnectorV1_1;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnectorV1;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnectorV2;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 
 public enum BuiltinPipePlugin {
@@ -36,6 +38,8 @@ public enum BuiltinPipePlugin {
   // connectors
   DO_NOTHING_CONNECTOR("do_nothing_connector", DoNothingConnector.class),
   IOTDB_THRIFT_CONNECTOR("iotdb_thrift_connector", IoTDBThriftConnector.class),
+  IOTDB_THRIFT_CONNECTOR_V1("iotdb_thrift_connector_v1", IoTDBThriftConnectorV1.class),
+  IOTDB_THRIFT_CONNECTOR_V2("iotdb_thrift_connector_v2", IoTDBThriftConnectorV2.class),
   IOTDB_SYNC_CONNECTOR_V_1_1("iotdb_sync_connector_v1.1", IoTDBSyncConnectorV1_1.class),
   ;
 

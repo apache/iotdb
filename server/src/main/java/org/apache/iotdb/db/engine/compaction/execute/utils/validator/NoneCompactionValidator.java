@@ -17,19 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector;
+package org.apache.iotdb.db.engine.compaction.execute.utils.validator;
 
-public enum IoTDBThriftConnectorVersion {
-  VERSION_ONE((byte) 1),
-  ;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
-  private final byte version;
+import java.util.List;
 
-  IoTDBThriftConnectorVersion(byte type) {
-    this.version = type;
+public class NoneCompactionValidator implements CompactionValidator {
+
+  private NoneCompactionValidator() {}
+
+  public static NoneCompactionValidator getInstance() {
+    return NoneCompactionValidatorHolder.INSTANCE;
   }
 
-  public byte getVersion() {
-    return version;
+  @Override
+  public boolean validateCompaction(
+      TsFileManager manager,
+      List<TsFileResource> targetTsFileList,
+      String storageGroupName,
+      long timePartition) {
+    return true;
+  }
+
+  private static class NoneCompactionValidatorHolder {
+    private static final NoneCompactionValidator INSTANCE = new NoneCompactionValidator();
   }
 }

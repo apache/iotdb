@@ -94,8 +94,8 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean increaseResourceReferenceCount(String holderMessage) {
-    return event.increaseResourceReferenceCount(holderMessage);
+  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+    return event.internallyIncreaseResourceReferenceCount(holderMessage);
   }
 
   @Override
@@ -108,8 +108,8 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
-  public boolean decreaseResourceReferenceCount(String holderMessage) {
-    return event.decreaseResourceReferenceCount(holderMessage);
+  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+    return event.internallyDecreaseResourceReferenceCount(holderMessage);
   }
 
   @Override

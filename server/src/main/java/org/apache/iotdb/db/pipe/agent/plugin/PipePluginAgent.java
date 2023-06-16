@@ -29,8 +29,9 @@ import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
 import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
-import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncConnectorImplV1_1;
+import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncConnectorV1_1;
 import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.processor.PipeDoNothingProcessor;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -228,11 +229,15 @@ public class PipePluginAgent {
         connectorParameters.getStringOrDefault(
             PipeConnectorConstant.CONNECTOR_KEY,
             BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
-    if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())) {
+    if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
+        || connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR_V1.getPipePluginName())) {
       return new IoTDBThriftConnectorV1();
     } else if (connectorKey.equals(
+        BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR_V2.getPipePluginName())) {
+      return new IoTDBThriftConnectorV2();
+    } else if (connectorKey.equals(
         BuiltinPipePlugin.IOTDB_SYNC_CONNECTOR_V_1_1.getPipePluginName())) {
-      return new IoTDBSyncConnectorImplV1_1();
+      return new IoTDBSyncConnectorV1_1();
     }
     return (PipeConnector) reflect(connectorKey);
   }

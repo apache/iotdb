@@ -109,15 +109,6 @@ public class PipeConnectorSubtaskManager {
     attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).stop();
   }
 
-  public PipeConnectorSubtask getPipeConnectorSubtask(String attributeSortedString) {
-    if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      throw new PipeException(
-          "Failed to get PipeConnectorSubtask. No such subtask: " + attributeSortedString);
-    }
-
-    return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).getSubtask();
-  }
-
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
       String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
