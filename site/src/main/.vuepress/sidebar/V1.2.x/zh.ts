@@ -239,15 +239,6 @@ export const zhSidebar = {
       ],
     },
     {
-      text: '端云协同',
-      collapsible: true,
-      prefix: 'Edge-Cloud-Collaboration/',
-      // children: 'structure',
-      children: [
-        { text: 'TsFile 同步工具', link: 'Sync-Tool' },
-      ],
-    },
-    {
       text: '系统集成',
       collapsible: true,
       prefix: 'Ecosystem-Integration/',
