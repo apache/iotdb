@@ -19,15 +19,21 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
@@ -35,7 +41,9 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -49,6 +57,9 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import static org.apache.iotdb.commons.utils.NodeUrlUtils.endPointEquals;
+import static org.apache.iotdb.commons.utils.NodeUrlUtils.parseTEndPointUrl;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -84,6 +95,112 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getPipePluginInfo()
         .checkBeforeCreatePipe(createPipeRequest);
     pipeManager.getPipeTaskCoordinator().getPipeTaskInfo().checkBeforeCreatePipe(createPipeRequest);
+    checkBeforeCreatePipe(env);
+  }
+
+  private void checkBeforeCreatePipe(ConfigNodeProcedureEnv env) throws PipeException {
+    // Check the ip and port of pipe receiver
+    final NodeManager nodeManager = env.getConfigManager().getNodeManager();
+    final PipeParameters connectorParameters =
+        new PipeParameters(createPipeRequest.getConnectorAttributes());
+    final String exceptionMessage;
+
+    if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY)) {
+      exceptionMessage =
+          String.format(
+              "Failed to create pipe %s, the receiver's ip must be defined.",
+              createPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+    if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY)) {
+      exceptionMessage =
+          String.format(
+              "Failed to create pipe %s, the receiver's port must be defined.",
+              createPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+
+    final TEndPoint receiverEndPoint;
+    try {
+      receiverEndPoint =
+          parseTEndPointUrl(
+              connectorParameters.getString(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY)
+                  + ":"
+                  + connectorParameters.getString(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY));
+    } catch (BadNodeUrlException e) {
+      exceptionMessage =
+          String.format(
+              "Failed to create pipe %s, the receiver's address is illegal.",
+              createPipeRequest.getPipeName());
+      LOGGER.info(exceptionMessage);
+      throw new PipeException(exceptionMessage);
+    }
+
+    for (TDataNodeConfiguration configuration : nodeManager.getRegisteredDataNodes()) {
+      TDataNodeLocation location = configuration.getLocation();
+
+      if (endPointEquals(location.getClientRpcEndPoint(), receiverEndPoint)) {
+        exceptionMessage =
+            String.format(
+                "Failed to create pipe %s, the receiver's location equals the rpc location of DataNode %s",
+                createPipeRequest.getPipeName(), configuration);
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+      if (endPointEquals(location.getDataRegionConsensusEndPoint(), receiverEndPoint)) {
+        exceptionMessage =
+            String.format(
+                "Failed to create pipe %s, the receiver's location equals the data region consensus location of DataNode %s",
+                createPipeRequest.getPipeName(), configuration);
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+      if (endPointEquals(location.getInternalEndPoint(), receiverEndPoint)) {
+        exceptionMessage =
+            String.format(
+                "Failed to create pipe %s, the receiver's location equals the internal location of DataNode %s",
+                createPipeRequest.getPipeName(), configuration);
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+      if (endPointEquals(location.getMPPDataExchangeEndPoint(), receiverEndPoint)) {
+        exceptionMessage =
+            String.format(
+                "Failed to create pipe %s, the receiver's location equals the MPP data exchange location of DataNode %s",
+                createPipeRequest.getPipeName(), configuration);
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+      if (endPointEquals(location.getSchemaRegionConsensusEndPoint(), receiverEndPoint)) {
+        exceptionMessage =
+            String.format(
+                "Failed to create pipe %s, the receiver's location equals the schema region consensus location of DataNode %s",
+                createPipeRequest.getPipeName(), configuration);
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+    }
+
+    for (TConfigNodeLocation location : nodeManager.getRegisteredConfigNodes()) {
+      if (endPointEquals(location.getConsensusEndPoint(), receiverEndPoint)) {
+        exceptionMessage =
+            String.format(
+                "Failed to create pipe %s, the receiver's location equals the consensus location of ConfigNode %s",
+                createPipeRequest.getPipeName(), location);
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+      if (endPointEquals(location.getInternalEndPoint(), receiverEndPoint)) {
+        exceptionMessage =
+            String.format(
+                "Failed to create pipe %s, the receiver's location equals the internal location of ConfigNode %s",
+                createPipeRequest.getPipeName(), location);
+        LOGGER.info(exceptionMessage);
+        throw new PipeException(exceptionMessage);
+      }
+    }
   }
 
   @Override

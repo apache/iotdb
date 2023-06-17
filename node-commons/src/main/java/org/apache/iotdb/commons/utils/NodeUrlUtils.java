@@ -76,9 +76,15 @@ public class NodeUrlUtils {
       throw new BadNodeUrlException(String.format("Bad endpoint url: %s", endPointUrl));
     }
     String ip = split[0];
+    if (!isLegalIP(ip)) {
+      throw new BadNodeUrlException(String.format("Bad node url: %s", endPointUrl));
+    }
     TEndPoint result;
     try {
       int port = Integer.parseInt(split[1]);
+      if (!isLegalPort(port)) {
+        throw new BadNodeUrlException(String.format("Bad node url: %s", endPointUrl));
+      }
       result = new TEndPoint(ip, port);
     } catch (NumberFormatException e) {
       logger.warn("Illegal endpoint url format: {}", endPointUrl);
@@ -186,6 +192,26 @@ public class NodeUrlUtils {
   public static List<TConfigNodeLocation> parseTConfigNodeUrls(String configNodeUrls)
       throws BadNodeUrlException {
     return parseTConfigNodeUrls(Arrays.asList(configNodeUrls.split(";")));
+  }
+
+  public static boolean isLegalIP(String ip) {
+    String regex =
+        "^(1\\d{2}|2[0-4]\\d|25[0-5]|[1-9]\\d|[1-9])\\."
+            + "(1\\d{2}|2[0-4]\\d|25[0-5]|[1-9]\\d|\\d)\\."
+            + "(1\\d{2}|2[0-4]\\d|25[0-5]|[1-9]\\d|\\d)\\."
+            + "(1\\d{2}|2[0-4]\\d|25[0-5]|[1-9]\\d|\\d)$";
+    return ip.equals("localhost") || ip.matches(regex);
+  }
+
+  public static boolean isLegalPort(int port) {
+    return port >= 0 && port <= 65535;
+  }
+
+  public static boolean endPointEquals(TEndPoint t1, TEndPoint t2) {
+    return (isLocalAddress(t1.getIp())
+            && isLocalAddress(t2.getIp())
+            && t1.getPort() == t2.getPort())
+        || t1.equals(t2);
   }
 
   public static boolean isLocalAddress(String ip) {
