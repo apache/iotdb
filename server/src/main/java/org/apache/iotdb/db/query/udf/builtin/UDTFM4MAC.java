@@ -29,6 +29,8 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2.DataSetType;
 
 import java.io.IOException;
 
@@ -100,6 +102,7 @@ public class UDTFM4MAC implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
+    IOMonitor2.dataSetType = DataSetType.UDTFAlignByTimeDataSet_M4_POINT;
     validator
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(

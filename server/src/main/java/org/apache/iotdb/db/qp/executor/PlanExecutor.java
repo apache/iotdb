@@ -526,7 +526,6 @@ public class PlanExecutor implements IPlanExecutor {
         // no time series are selected, return EmptyDataSet
         return new EmptyDataSet();
       } else if (queryPlan instanceof UDTFPlan) {
-        IOMonitor2.dataSetType = DataSetType.UDTFAlignByTimeDataSet;
         UDTFPlan udtfPlan = (UDTFPlan) queryPlan;
         queryDataSet = queryRouter.udtfQuery(udtfPlan, context);
       } else if (queryPlan instanceof GroupByTimeFillPlan) {

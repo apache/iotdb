@@ -48,6 +48,7 @@ public enum BuiltinFunction {
   TOP_K("TOP_K", UDTFTopK.class),
   BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
   M4("M4", UDTFM4MAC.class),
+  M4_TW("M4_TW", UDTFM4.class);
   ;
 
   private final String functionName;
