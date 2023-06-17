@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
@@ -73,6 +75,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV2.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER =
