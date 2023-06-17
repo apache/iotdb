@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
-import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.PipeInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.Set;
 
 // Empty procedure for old sync, restored only for compatibility
+@Deprecated
 public class CreatePipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
 
   private PipeInfo pipeInfo;
