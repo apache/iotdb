@@ -208,6 +208,9 @@ public class NodeUrlUtils {
   }
 
   public static boolean endPointEquals(TEndPoint t1, TEndPoint t2) {
+    if (t1 == null || t2 == null) {
+      return false;
+    }
     return (isLocalAddress(t1.getIp())
             && isLocalAddress(t2.getIp())
             && t1.getPort() == t2.getPort())
