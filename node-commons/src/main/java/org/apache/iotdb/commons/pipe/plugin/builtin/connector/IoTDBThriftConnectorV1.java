@@ -17,20 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.receiver;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
 
-import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-
-public interface IoTDBThriftReceiver {
-
-  IoTDBThriftConnectorRequestVersion getVersion();
-
-  TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
-
-  void handleExit();
-}
+public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {}

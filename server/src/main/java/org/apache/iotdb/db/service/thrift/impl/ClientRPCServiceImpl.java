@@ -2103,7 +2103,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeTransferResp pipeTransfer(TPipeTransferReq req) {
-    return PipeAgent.receiver().transfer(req, partitionFetcher, schemaFetcher);
+    return PipeAgent.receiver().receive(req, partitionFetcher, schemaFetcher);
   }
 
   @Override
