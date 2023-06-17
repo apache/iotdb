@@ -23,14 +23,14 @@ import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 import java.util.Objects;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
-  private boolean isAligned;
+  private Boolean isAligned;
 
-  public ShowDevicesResult(String name, boolean isAligned) {
+  public ShowDevicesResult(String name, Boolean isAligned) {
     super(name);
     this.isAligned = isAligned;
   }
 
-  public boolean isAligned() {
+  public Boolean isAligned() {
     return isAligned;
   }
 
