@@ -123,7 +123,7 @@ public class UDTFM4MAC implements UDTF {
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(TSDataType.TEXT);
     init();
-    this.idx = 0;
+    this.idx = -1;
     result = new String[w];
     for (int i = 0; i < w; i++) {
       result[i] = "empty";
@@ -134,6 +134,9 @@ public class UDTFM4MAC implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector)
       throws QueryProcessException, IOException {
+    if (idx < 0) {
+      idx = 0; // means at least not all empty
+    }
     switch (dataType) {
       case INT32:
         transformInt(row.getTime(), row.getInt(0));
@@ -358,102 +361,104 @@ public class UDTFM4MAC implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws IOException, QueryProcessException {
-    // record the last interval (not necessarily idx=w-1) in the transform stage
-    switch (dataType) {
-      case INT32:
-        result[idx] =
-            "FirstPoint=("
-                + minTime
-                + ","
-                + intFirstV
-                + "), "
-                + "LastPoint=("
-                + maxTime
-                + ","
-                + intLastV
-                + "), "
-                + "BottomPoint=("
-                + bottomTime
-                + ","
-                + intMinV
-                + "), "
-                + "TopPoint=("
-                + topTime
-                + ","
-                + intMaxV
-                + ")";
-        break;
-      case INT64:
-        result[idx] =
-            "FirstPoint=("
-                + minTime
-                + ","
-                + longFirstV
-                + "), "
-                + "LastPoint=("
-                + maxTime
-                + ","
-                + longLastV
-                + "), "
-                + "BottomPoint=("
-                + bottomTime
-                + ","
-                + longMinV
-                + "), "
-                + "TopPoint=("
-                + topTime
-                + ","
-                + longMaxV
-                + ")";
-        break;
-      case FLOAT:
-        result[idx] =
-            "FirstPoint=("
-                + minTime
-                + ","
-                + floatFirstV
-                + "), "
-                + "LastPoint=("
-                + maxTime
-                + ","
-                + floatLastV
-                + "), "
-                + "BottomPoint=("
-                + bottomTime
-                + ","
-                + floatMinV
-                + "), "
-                + "TopPoint=("
-                + topTime
-                + ","
-                + floatMaxV
-                + ")";
-        break;
-      case DOUBLE:
-        result[idx] =
-            "FirstPoint=("
-                + minTime
-                + ","
-                + doubleFirstV
-                + "), "
-                + "LastPoint=("
-                + maxTime
-                + ","
-                + doubleLastV
-                + "), "
-                + "BottomPoint=("
-                + bottomTime
-                + ","
-                + doubleMinV
-                + "), "
-                + "TopPoint=("
-                + topTime
-                + ","
-                + doubleMaxV
-                + ")";
-        break;
-      default:
-        break;
+    if (idx >= 0) { // means at least not all empty
+      // record the last interval (not necessarily idx=w-1) in the transform stage
+      switch (dataType) {
+        case INT32:
+          result[idx] =
+              "FirstPoint=("
+                  + minTime
+                  + ","
+                  + intFirstV
+                  + "), "
+                  + "LastPoint=("
+                  + maxTime
+                  + ","
+                  + intLastV
+                  + "), "
+                  + "BottomPoint=("
+                  + bottomTime
+                  + ","
+                  + intMinV
+                  + "), "
+                  + "TopPoint=("
+                  + topTime
+                  + ","
+                  + intMaxV
+                  + ")";
+          break;
+        case INT64:
+          result[idx] =
+              "FirstPoint=("
+                  + minTime
+                  + ","
+                  + longFirstV
+                  + "), "
+                  + "LastPoint=("
+                  + maxTime
+                  + ","
+                  + longLastV
+                  + "), "
+                  + "BottomPoint=("
+                  + bottomTime
+                  + ","
+                  + longMinV
+                  + "), "
+                  + "TopPoint=("
+                  + topTime
+                  + ","
+                  + longMaxV
+                  + ")";
+          break;
+        case FLOAT:
+          result[idx] =
+              "FirstPoint=("
+                  + minTime
+                  + ","
+                  + floatFirstV
+                  + "), "
+                  + "LastPoint=("
+                  + maxTime
+                  + ","
+                  + floatLastV
+                  + "), "
+                  + "BottomPoint=("
+                  + bottomTime
+                  + ","
+                  + floatMinV
+                  + "), "
+                  + "TopPoint=("
+                  + topTime
+                  + ","
+                  + floatMaxV
+                  + ")";
+          break;
+        case DOUBLE:
+          result[idx] =
+              "FirstPoint=("
+                  + minTime
+                  + ","
+                  + doubleFirstV
+                  + "), "
+                  + "LastPoint=("
+                  + maxTime
+                  + ","
+                  + doubleLastV
+                  + "), "
+                  + "BottomPoint=("
+                  + bottomTime
+                  + ","
+                  + doubleMinV
+                  + "), "
+                  + "TopPoint=("
+                  + topTime
+                  + ","
+                  + doubleMaxV
+                  + ")";
+          break;
+        default:
+          break;
+      }
     }
     // collect result
     for (int i = 0; i < w; i++) {

@@ -72,7 +72,7 @@ public class MyTmpTest {
     config.setEnableCPV(true); // CPV
 
     originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseChunkIndex();
-    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(false);
+    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(true);
 
     originalUseMad = TSFileDescriptor.getInstance().getConfig().isUseMad();
     TSFileDescriptor.getInstance().getConfig().setUseMad(true);
@@ -107,14 +107,14 @@ public class MyTmpTest {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT M4(s0,'tqs'='0','tqe'='100','w'='4')"
+              "SELECT M4(s0,'tqs'='0','tqe'='100','w'='10')"
                   + " FROM root.vehicle.d0 where time>=0 and time<100");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;
         while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(1);
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
           System.out.println(ans);
           //          Assert.assertEquals(res[i++], ans);
         }
@@ -184,30 +184,30 @@ public class MyTmpTest {
         statement.execute(sql);
       }
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1, 5));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2, 15));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 1));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 25, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 54, 3));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 120, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 1000, 5));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 2000, 15));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20000, 1));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 25000, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 54000, 3));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 120000, 8));
       statement.execute("FLUSH");
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 5, 10));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 8, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10, 30));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20, 20));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 5000, 10));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 8000, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 10000, 30));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 20000, 20));
       statement.execute("FLUSH");
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 27, 20));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30, 40));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 35, 10));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40, 20));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 27000, 20));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 30000, 40));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 35000, 10));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 40000, 20));
       statement.execute("FLUSH");
 
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 33, 9));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 45, 30));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 52, 8));
-      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 54, 18));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 33000, 9));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 45000, 30));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 52000, 8));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 54000, 18));
       statement.execute("FLUSH");
 
     } catch (Exception e) {

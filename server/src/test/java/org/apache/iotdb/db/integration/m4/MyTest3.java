@@ -217,4 +217,62 @@ public class MyTest3 {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void test2() { // test UDF MAC extreme case: empty from the beginning
+    prepareData2();
+
+    String[] res = new String[] {"0,empty", "50,empty"};
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      long tqs = 0L;
+      long tqe = 100L;
+      int w = 2;
+      boolean hasResultSet =
+          statement.execute(
+              String.format(
+                  "select M4(s0,'tqs'='%1$d','tqe'='%2$d','w'='%3$d') from root.vehicle.d0 where "
+                      + "time>=%1$d and time<%2$d",
+                  tqs, tqe, w));
+
+      String columnName = "M4(root.vehicle.d0.s0, \"tqs\"=\"%d\", \"tqe\"=\"%d\", \"w\"=\"%d\")";
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int i = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(String.format(columnName, tqs, tqe, w));
+          System.out.println(ans);
+          Assert.assertEquals(res[i++], ans);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private static void prepareData2() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      for (String sql : creationSqls) {
+        statement.execute(sql);
+      }
+
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 200, 5));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 300, 15));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 400, 1));
+      statement.execute(String.format(Locale.ENGLISH, insertTemplate, 500, 8));
+      statement.execute("FLUSH");
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }
