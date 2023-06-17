@@ -49,7 +49,7 @@ public class MeasurementPath extends PartialPath {
 
   private Map<String, String> tagMap;
 
-  private boolean isUnderAlignedEntity = false;
+  private Boolean isUnderAlignedEntity = false;
 
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   private String measurementAlias = "";
@@ -76,7 +76,7 @@ public class MeasurementPath extends PartialPath {
   public MeasurementPath(
       PartialPath measurementPath,
       IMeasurementSchema measurementSchema,
-      boolean isUnderAlignedEntity) {
+      Boolean isUnderAlignedEntity) {
     super(measurementPath.getNodes());
     this.measurementSchema = measurementSchema;
     this.isUnderAlignedEntity = isUnderAlignedEntity;
@@ -149,10 +149,13 @@ public class MeasurementPath extends PartialPath {
   }
 
   public boolean isUnderAlignedEntity() {
+    if (isUnderAlignedEntity == null) {
+      return false;
+    }
     return isUnderAlignedEntity;
   }
 
-  public void setUnderAlignedEntity(boolean underAlignedEntity) {
+  public void setUnderAlignedEntity(Boolean underAlignedEntity) {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
@@ -264,7 +267,7 @@ public class MeasurementPath extends PartialPath {
     if (isNull == 1) {
       measurementPath.tagMap = ReadWriteIOUtils.readMap(byteBuffer);
     }
-    measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
+    measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
     measurementPath.nodes = partialPath.getNodes();
     measurementPath.device = partialPath.getDevice();

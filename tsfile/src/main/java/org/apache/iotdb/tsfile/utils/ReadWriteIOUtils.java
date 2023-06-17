@@ -95,6 +95,17 @@ public class ReadWriteIOUtils {
     return a == 1;
   }
 
+  /** read a Boolean from byteBuffer. */
+  public static Boolean readBoolObject(ByteBuffer buffer) {
+    byte a = buffer.get();
+    if (a == 1) {
+      return true;
+    } else if (a == 0) {
+      return false;
+    }
+    return null;
+  }
+
   /** read a byte from byteBuffer. */
   public static byte readByte(ByteBuffer buffer) {
     return buffer.get();
@@ -185,7 +196,9 @@ public class ReadWriteIOUtils {
    * write a int value to outputStream according to flag. If flag is true, write 1, else write 0.
    */
   public static int write(Boolean flag, OutputStream outputStream) throws IOException {
-    if (Boolean.TRUE.equals(flag)) {
+    if (flag == null) {
+      outputStream.write(2);
+    } else if (Boolean.TRUE.equals(flag)) {
       outputStream.write(1);
     } else {
       outputStream.write(0);
@@ -196,7 +209,9 @@ public class ReadWriteIOUtils {
   /** write a byte to byteBuffer according to flag. If flag is true, write 1, else write 0. */
   public static int write(Boolean flag, ByteBuffer buffer) {
     byte a;
-    if (Boolean.TRUE.equals(flag)) {
+    if (flag == null) {
+      a = 2;
+    } else if (Boolean.TRUE.equals(flag)) {
       a = 1;
     } else {
       a = 0;
