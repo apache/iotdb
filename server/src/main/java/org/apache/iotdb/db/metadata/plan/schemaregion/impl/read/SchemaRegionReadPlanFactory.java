@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.plan.schemaregion.impl.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowDevicesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowNodesPlan;
@@ -70,7 +70,12 @@ public class SchemaRegionReadPlanFactory {
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
       PartialPath path, boolean isContains, String key, String value) {
     return new ShowTimeSeriesPlanImpl(
-        path, Collections.emptyMap(), 0, 0, false, new TagFilter(key, value, isContains));
+        path,
+        Collections.emptyMap(),
+        0,
+        0,
+        false,
+        SchemaFilterFactory.createTagFilter(key, value, isContains));
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(

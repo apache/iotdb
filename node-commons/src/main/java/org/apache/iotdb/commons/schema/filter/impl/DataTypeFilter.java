@@ -44,7 +44,7 @@ public class DataTypeFilter extends SchemaFilter {
   }
 
   @Override
-  public <R, C> R accept(SchemaFilterVisitor<R, C> visitor, C node) {
+  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
     return visitor.visitDataTypeFilter(this, node);
   }
 
@@ -54,12 +54,12 @@ public class DataTypeFilter extends SchemaFilter {
   }
 
   @Override
-  protected void serialize(ByteBuffer byteBuffer) {
+  public void serialize(ByteBuffer byteBuffer) {
     dataType.serializeTo(byteBuffer);
   }
 
   @Override
-  protected void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     dataType.serializeTo(stream);
   }
 }
