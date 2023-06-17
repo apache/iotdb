@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -163,11 +164,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public TSStatus setPipeStatus(SetPipeStatusPlanV2 plan) {
-    pipeMetaKeeper
-        .getPipeMeta(plan.getPipeName())
-        .getRuntimeMeta()
-        .getStatus()
-        .set(plan.getPipeStatus());
+    PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(plan.getPipeName()).getRuntimeMeta();
+    PipeStatus newStatus = plan.getPipeStatus();
+    if (newStatus.equals(PipeStatus.RUNNING)) {
+      for (PipeTaskMeta pipeTaskMeta : runtimeMeta.getConsensusGroupIdToTaskMetaMap().values()) {
+        pipeTaskMeta.clearExceptionMessages();
+      }
+    }
+    runtimeMeta.getStatus().set(newStatus);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
