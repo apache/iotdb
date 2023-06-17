@@ -197,7 +197,7 @@ public class ReadWriteIOUtils {
    */
   public static int write(Boolean flag, OutputStream outputStream) throws IOException {
     if (flag == null) {
-      outputStream.write(2);
+      outputStream.write(-1);
     } else if (Boolean.TRUE.equals(flag)) {
       outputStream.write(1);
     } else {
@@ -210,7 +210,7 @@ public class ReadWriteIOUtils {
   public static int write(Boolean flag, ByteBuffer buffer) {
     byte a;
     if (flag == null) {
-      a = 2;
+      a = -1;
     } else if (Boolean.TRUE.equals(flag)) {
       a = 1;
     } else {
