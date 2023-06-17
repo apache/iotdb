@@ -35,6 +35,7 @@ public class PipeRowCollector implements RowCollector {
 
   private final List<TabletInsertionEvent> tabletInsertionEventList = new ArrayList<>();
   private Tablet tablet = null;
+  private boolean isAligned = false;
 
   @Override
   public void collectRow(Row row) {
@@ -50,6 +51,7 @@ public class PipeRowCollector implements RowCollector {
       final List<MeasurementSchema> measurementSchemaList =
           new ArrayList<>(Arrays.asList(measurementSchemaArray));
       tablet = new Tablet(deviceId, measurementSchemaList);
+      isAligned = pipeRow.isAligned();
       tablet.initBitMaps();
     }
 
@@ -78,7 +80,7 @@ public class PipeRowCollector implements RowCollector {
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
-      tabletInsertionEventList.add(new PipeRawTabletInsertionEvent(tablet));
+      tabletInsertionEventList.add(new PipeRawTabletInsertionEvent(tablet, isAligned));
     }
     this.tablet = null;
   }
