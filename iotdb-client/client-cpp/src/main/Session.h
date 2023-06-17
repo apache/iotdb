@@ -180,7 +180,6 @@ namespace TSEncoding {
         REGULAR = (char) 7,
         GORILLA = (char) 8,
         ZIGZAG = (char) 9,
-        FREQ = (char) 10,
 	    CHIMP = (char) 11,
 	    SPRINTZ = (char) 12,
 	    RLBE = (char) 13

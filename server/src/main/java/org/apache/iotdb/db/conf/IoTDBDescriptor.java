@@ -286,20 +286,6 @@ public class IoTDBDescriptor {
                 .getProperty(IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))
                 .trim()));
 
-    conf.setEnableInfluxDBRpcService(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_influxdb_rpc_service",
-                    Boolean.toString(conf.isEnableInfluxDBRpcService()))
-                .trim()));
-
-    conf.setInfluxDBRpcPort(
-        Integer.parseInt(
-            properties
-                .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
-                .trim()));
-
     conf.setEnableMLNodeService(
         Boolean.parseBoolean(
             properties
@@ -636,11 +622,6 @@ public class IoTDBDescriptor {
       conf.setChunkBufferPoolEnable(
           Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
-
-    conf.setUpgradeThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "upgrade_thread_count", Integer.toString(conf.getUpgradeThreadCount()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -1351,11 +1332,6 @@ public class IoTDBDescriptor {
                     "float_precision",
                     Integer.toString(
                         TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setTimeEncoder(
-            properties.getProperty(
-                "time_encoder", TSFileDescriptor.getInstance().getConfig().getTimeEncoder()));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setValueEncoder(
