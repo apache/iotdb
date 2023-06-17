@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -91,9 +92,11 @@ public class SchemaEngine {
   }
 
   public void init() {
-    logger.info("used schema engine mode: {}.", config.getSchemaEngineMode());
+    logger.info(
+        "used schema engine mode: {}.",
+        CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
 
-    schemaRegionLoader.init(config.getSchemaEngineMode());
+    schemaRegionLoader.init(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
 
     initSchemaEngineStatistics();
     SchemaResourceManager.initSchemaResource(schemaEngineStatistics);
@@ -190,7 +193,7 @@ public class SchemaEngine {
   }
 
   private void initSchemaEngineStatistics() {
-    if (IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
+    if (CommonDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
       schemaEngineStatistics = new MemSchemaEngineStatistics();
     } else {
       schemaEngineStatistics = new CachedSchemaEngineStatistics();
@@ -209,7 +212,7 @@ public class SchemaEngine {
   public void clear() {
     schemaRegionLoader.clear();
 
-    // clearSchemaResource will shut down release and flush task in Schema_File mode, which must be
+    // clearSchemaResource will shut down release and flush task in PB_Tree mode, which must be
     // down before clear schema region
     SchemaResourceManager.clearSchemaResource();
     if (timedForceMLogThread != null) {

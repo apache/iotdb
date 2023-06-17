@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionFileCountExceededException;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
@@ -29,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompacti
 import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.execute.utils.validator.CompactionValidator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -178,9 +178,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           }
         }
 
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
-            && !CompactionUtils.validateTsFileResources(
-                tsFileManager, storageGroupName, timePartition)) {
+        CompactionValidator validator = CompactionValidator.getInstance();
+        if (!validator.validateCompaction(
+            tsFileManager, targetTsfileResourceList, storageGroupName, timePartition)) {
           LOGGER.error(
               "Failed to pass compaction validation, source sequence files is: {}, unsequence files is {}, target files is {}",
               selectedSequenceFiles,

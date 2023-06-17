@@ -89,7 +89,7 @@ public class CacheMemoryManager {
     flushSemaphore = new FiniteSemaphore(2, 0);
     releaseSemaphore = new FiniteSemaphore(2, 0);
     this.engineStatistics = engineStatistics.getAsCachedSchemaEngineStatistics();
-    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInSchemaFileMode() >= 0) {
+    if (IoTDBDescriptor.getInstance().getConfig().getCachedMNodeSizeInPBTreeMode() >= 0) {
       releaseFlushStrategy = new ReleaseFlushStrategyNumBasedImpl(this.engineStatistics);
     } else {
       releaseFlushStrategy = new ReleaseFlushStrategySizeBasedImpl(this.engineStatistics);

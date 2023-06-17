@@ -180,17 +180,13 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDatabasesContext;
@@ -1072,10 +1068,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           ctx.viewTargetPaths(),
           alterLogicalViewStatement::setTargetFullPaths,
           alterLogicalViewStatement::setTargetPathsGroup,
-          alterLogicalViewStatement::setTargetIntoItem);
-      if (alterLogicalViewStatement.getIntoItem() != null) {
-        throw new SemanticException("Can not use char '$' or into item in alter view statement.");
-      }
+          intoItem -> {
+            if (intoItem != null) {
+              throw new SemanticException(
+                  "Can not use char '$' or into item in alter view statement.");
+            }
+          });
       // parse source
       parseViewSourcePaths(
           ctx.viewSourcePaths(),
@@ -3511,19 +3509,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // PIPE
 
   @Override
-  public Statement visitShowPipe(IoTDBSqlParser.ShowPipeContext ctx) {
-    ShowPipeStatement showPipeStatement = new ShowPipeStatement();
-    if (ctx.pipeName != null) {
-      showPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
-    }
-    showPipeStatement.setWhereClause(ctx.CONNECTOR() != null);
-    return showPipeStatement;
-  }
-
-  @Override
   public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) {
-
-    CreatePipeStatement createPipeStatement = new CreatePipeStatement(StatementType.CREATE_PIPE);
+    final CreatePipeStatement createPipeStatement =
+        new CreatePipeStatement(StatementType.CREATE_PIPE);
 
     if (ctx.pipeName != null) {
       createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
@@ -3550,7 +3538,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Map<String, String> parseCollectorAttributesClause(
       IoTDBSqlParser.CollectorAttributesClauseContext ctx) {
-    Map<String, String> collectorMap = new HashMap<>();
+    final Map<String, String> collectorMap = new HashMap<>();
     for (IoTDBSqlParser.CollectorAttributeClauseContext singleCtx :
         ctx.collectorAttributeClause()) {
       collectorMap.put(
@@ -3562,7 +3550,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Map<String, String> parseProcessorAttributesClause(
       IoTDBSqlParser.ProcessorAttributesClauseContext ctx) {
-    Map<String, String> processorMap = new HashMap<>();
+    final Map<String, String> processorMap = new HashMap<>();
     for (IoTDBSqlParser.ProcessorAttributeClauseContext singleCtx :
         ctx.processorAttributeClause()) {
       processorMap.put(
@@ -3574,7 +3562,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Map<String, String> parseConnectorAttributesClause(
       IoTDBSqlParser.ConnectorAttributesClauseContext ctx) {
-    Map<String, String> connectorMap = new HashMap<>();
+    final Map<String, String> connectorMap = new HashMap<>();
     for (IoTDBSqlParser.ConnectorAttributeClauseContext singleCtx :
         ctx.connectorAttributeClause()) {
       connectorMap.put(
@@ -3585,97 +3573,54 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitDropPipe(IoTDBSqlParser.DropPipeContext ctx) {
+    final DropPipeStatement dropPipeStatement = new DropPipeStatement(StatementType.DROP_PIPE);
+
+    if (ctx.pipeName != null) {
+      dropPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+    } else {
+      throw new SemanticException("Not support for this sql in DROP PIPE, please enter pipename.");
+    }
+
+    return dropPipeStatement;
+  }
+
+  @Override
   public Statement visitStartPipe(IoTDBSqlParser.StartPipeContext ctx) {
-    StartPipeStatement startPipeStatement = new StartPipeStatement(StatementType.START_PIPE);
+    final StartPipeStatement startPipeStatement = new StartPipeStatement(StatementType.START_PIPE);
 
     if (ctx.pipeName != null) {
       startPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
-      throw new SemanticException("Not support for this sql in STARTPIPE, please enter pipename.");
+      throw new SemanticException("Not support for this sql in START PIPE, please enter pipename.");
     }
+
     return startPipeStatement;
   }
 
   @Override
   public Statement visitStopPipe(IoTDBSqlParser.StopPipeContext ctx) {
-    StopPipeStatement stopPipeStatement = new StopPipeStatement(StatementType.STOP_PIPE);
+    final StopPipeStatement stopPipeStatement = new StopPipeStatement(StatementType.STOP_PIPE);
 
     if (ctx.pipeName != null) {
       stopPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
-      throw new SemanticException("Not support for this sql in STOPPIPE, please enter pipename.");
+      throw new SemanticException("Not support for this sql in STOP PIPE, please enter pipename.");
     }
+
     return stopPipeStatement;
   }
 
   @Override
-  public Statement visitDropPipe(IoTDBSqlParser.DropPipeContext ctx) {
-
-    DropPipeStatement dropPipeStatement = new DropPipeStatement(StatementType.DROP_PIPE);
+  public Statement visitShowPipes(IoTDBSqlParser.ShowPipesContext ctx) {
+    final ShowPipesStatement showPipesStatement = new ShowPipesStatement();
 
     if (ctx.pipeName != null) {
-      dropPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
-    } else {
-      throw new SemanticException("Not support for this sql in DROPPIPE, please enter pipename.");
+      showPipesStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     }
-    return dropPipeStatement;
-  }
+    showPipesStatement.setWhereClause(ctx.CONNECTOR() != null);
 
-  // pipeSink
-
-  @Override
-  public Statement visitShowPipeSink(IoTDBSqlParser.ShowPipeSinkContext ctx) {
-    ShowPipeSinkStatement showPipeSinkStatement = new ShowPipeSinkStatement();
-    if (ctx.pipeSinkName != null) {
-      showPipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
-    }
-    return showPipeSinkStatement;
-  }
-
-  @Override
-  public Statement visitShowPipeSinkType(IoTDBSqlParser.ShowPipeSinkTypeContext ctx) {
-    return new ShowPipeSinkTypeStatement();
-  }
-
-  @Override
-  public Statement visitCreatePipeSink(IoTDBSqlParser.CreatePipeSinkContext ctx) {
-
-    CreatePipeSinkStatement createPipeSinkStatement = new CreatePipeSinkStatement();
-
-    if (ctx.pipeSinkName != null) {
-      createPipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
-    } else {
-      throw new SemanticException(
-          "Not support for this sql in CREATEPIPESINK, please enter pipesinkname.");
-    }
-    if (ctx.pipeSinkType != null) {
-      createPipeSinkStatement.setPipeSinkType(parseIdentifier(ctx.pipeSinkType.getText()));
-    } else {
-      throw new SemanticException(
-          "Not support for this sql in CREATEPIPESINK, please enter pipesinktype.");
-    }
-    if (ctx.syncAttributeClauses() != null) {
-      createPipeSinkStatement.setAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
-    } else {
-      createPipeSinkStatement.setAttributes(new HashMap<>());
-    }
-
-    return createPipeSinkStatement;
-  }
-
-  @Override
-  public Statement visitDropPipeSink(IoTDBSqlParser.DropPipeSinkContext ctx) {
-
-    DropPipeSinkStatement dropPipeSinkStatement =
-        new DropPipeSinkStatement(StatementType.DROP_PIPESINK);
-
-    if (ctx.pipeSinkName != null) {
-      dropPipeSinkStatement.setPipeSinkName(parseIdentifier(ctx.pipeSinkName.getText()));
-    } else {
-      throw new SemanticException(
-          "Not support for this sql in DROPPIPESINK, please enter pipesinkname.");
-    }
-    return dropPipeSinkStatement;
+    return showPipesStatement;
   }
 
   @Override

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
@@ -66,16 +66,16 @@ public class SchemaFileTest {
 
   @Before
   public void setUp() {
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }

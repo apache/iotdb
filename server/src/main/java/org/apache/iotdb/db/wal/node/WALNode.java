@@ -234,14 +234,19 @@ public class WALNode implements IWALNode {
         }
       }
 
+      // delete outdated files
       logger.debug(
           "Start deleting outdated wal files for wal node-{}, the first valid version id is {}, and the safely deleted search index is {}.",
           identifier,
           firstValidVersionId,
           safelyDeletedSearchIndex);
-
-      // delete outdated files
-      deleteOutdatedFiles();
+      boolean pinnedByIoTConsensus = deleteOutdatedFiles();
+      if (pinnedByIoTConsensus) {
+        logger.debug(
+            "Cannot delete wal files for wal node-{} because of wal files are pinned by IoTConsensus.",
+            identifier);
+        return;
+      }
 
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
@@ -257,35 +262,35 @@ public class WALNode implements IWALNode {
           effectiveInfoRatio,
           costOfActiveMemTables,
           costOfFlushedMemTables);
-      // effective information ratio is too small
-      // update first valid version id by snapshotting or flushing memTable,
+
+      // try updating first valid version id by snapshotting or flushing memTable,
       // then delete old .wal files again
-      if (effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()) {
-        logger.debug(
-            "Effective information ratio {} (active memTables cost is {}, flushed memTables cost is {}) of wal node-{} is below wal min effective info ratio {}, some memTables will be snapshot or flushed.",
-            effectiveInfoRatio,
-            costOfActiveMemTables,
-            costOfFlushedMemTables,
-            identifier,
-            config.getWalMinEffectiveInfoRatio());
-        if (snapshotOrFlushMemTable() && recursionTime < MAX_RECURSION_TIME) {
-          // wal is used to search, cannot optimize files deletion
-          if (safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
-            return;
-          }
-          recursionTime++;
-          run();
-        }
+      if (!shouldSnapshotOrFlush()) {
+        return;
+      }
+      logger.debug(
+          "Effective information ratio {} (active memTables cost is {}, flushed memTables cost is {}) of wal node-{} is below wal min effective info ratio {}, some memTables will be snapshot or flushed.",
+          effectiveInfoRatio,
+          costOfActiveMemTables,
+          costOfFlushedMemTables,
+          identifier,
+          config.getWalMinEffectiveInfoRatio());
+      boolean isSuccess = snapshotOrFlushMemTable();
+      if (isSuccess && recursionTime < MAX_RECURSION_TIME) {
+        recursionTime++;
+        run();
       }
     }
 
-    private void deleteOutdatedFiles() {
+    /** Return true iff cannot delete all outdated files because of IoTConsensus */
+    private boolean deleteOutdatedFiles() {
       // find all files to delete
       // delete files whose version < firstValidVersionId
       File[] filesToDelete = logDirectory.listFiles(this::filterFilesToDelete);
-      if (filesToDelete == null) {
-        return;
+      if (filesToDelete == null || filesToDelete.length == 0) {
+        return false;
       }
+
       // delete files whose content's search index are all <= safelyDeletedSearchIndex
       WALFileUtils.ascSortByVersionId(filesToDelete);
       // judge DEFAULT_SAFELY_DELETED_SEARCH_INDEX for standalone, Long.MIN_VALUE for iot
@@ -296,7 +301,7 @@ public class WALNode implements IWALNode {
                   filesToDelete, safelyDeletedSearchIndex + 1);
       // delete files whose file status is CONTAINS_NONE_SEARCH_INDEX
       if (endFileIndex == -1) {
-        endFileIndex++;
+        endFileIndex = 0;
       }
       while (endFileIndex < filesToDelete.length) {
         if (WALFileUtils.parseStatusCode(filesToDelete[endFileIndex].getName())
@@ -305,6 +310,7 @@ public class WALNode implements IWALNode {
         }
         endFileIndex++;
       }
+
       // delete files
       int deletedFilesNum = 0;
       long deletedFilesSize = 0;
@@ -330,6 +336,7 @@ public class WALNode implements IWALNode {
           "Successfully delete {} outdated wal files for wal node-{}.",
           deletedFilesNum,
           identifier);
+      return endFileIndex < filesToDelete.length;
     }
 
     private boolean filterFilesToDelete(File dir, String name) {
@@ -341,6 +348,12 @@ public class WALNode implements IWALNode {
         toDelete = versionId < firstValidVersionId;
       }
       return toDelete;
+    }
+
+    /** Return true iff effective information ratio is too small or disk usage is too large */
+    private boolean shouldSnapshotOrFlush() {
+      return effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()
+          || WALManager.getInstance().shouldThrottle();
     }
 
     /**
@@ -355,12 +368,12 @@ public class WALNode implements IWALNode {
         return false;
       }
       if (oldestMemTableInfo.isPinned()) {
-        logger.info(
-            "MemTable-{} is pinned and effective information ratio {} of wal node-{} is below wal min effective info ratio {}.",
-            oldestMemTableInfo.getMemTableId(),
+        logger.warn(
+            "Pipe: Effective information ratio {} of wal node-{} is below wal min effective info ratio {}. But fail to delete memTable-{}'s wal files because they are pinned by the Pipe module.",
             effectiveInfoRatio,
             identifier,
-            config.getWalMinEffectiveInfoRatio());
+            config.getWalMinEffectiveInfoRatio(),
+            oldestMemTableInfo.getMemTableId());
         return false;
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();

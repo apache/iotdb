@@ -32,6 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 // Empty procedure for old sync, restored only for compatibility
+@Deprecated
 public class DropPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
 
   private String pipeName;

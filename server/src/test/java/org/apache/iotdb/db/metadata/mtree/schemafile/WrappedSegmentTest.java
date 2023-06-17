@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISegment;
@@ -46,16 +46,16 @@ public class WrappedSegmentTest {
 
   @Before
   public void setUp() {
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.Schema_File.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
+    CommonDescriptor.getInstance()
         .getConfig()
         .setSchemaEngineMode(SchemaEngineMode.Memory.toString());
   }

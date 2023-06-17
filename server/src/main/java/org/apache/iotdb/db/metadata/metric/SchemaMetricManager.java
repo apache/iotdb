@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.metric;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -35,7 +35,7 @@ public class SchemaMetricManager {
   private SchemaMetricManager() {}
 
   public void init(ISchemaEngineStatistics engineStatistics) {
-    if (IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
+    if (CommonDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
       engineMetric = new SchemaEngineMemMetric(engineStatistics.getAsMemSchemaEngineStatistics());
     } else {
       SchemaEngineCachedMetric schemaEngineCachedMetric =

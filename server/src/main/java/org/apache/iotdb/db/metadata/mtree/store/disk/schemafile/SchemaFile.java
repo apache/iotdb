@@ -59,7 +59,7 @@ public class SchemaFile implements ISchemaFile {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
 
-  // attributes for this schema file
+  // attributes for this pb-tree file
   private final String filePath;
   private final String logPath;
   private String storageGroupName;
@@ -85,8 +85,8 @@ public class SchemaFile implements ISchemaFile {
       throws IOException, MetadataException {
     String dirPath = getDirPath(sgName, schemaRegionId);
     this.storageGroupName = sgName;
-    this.filePath = dirPath + File.separator + MetadataConstant.SCHEMA_FILE_NAME;
-    this.logPath = dirPath + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
+    this.filePath = dirPath + File.separator + MetadataConstant.PB_TREE_FILE_NAME;
+    this.logPath = dirPath + File.separator + MetadataConstant.PB_TREE_LOG_FILE_NAME;
 
     pmtFile = SystemFileFactory.INSTANCE.getFile(filePath);
     if (!pmtFile.exists() && !override) {
@@ -94,7 +94,7 @@ public class SchemaFile implements ISchemaFile {
     }
 
     if (pmtFile.exists() && override) {
-      logger.warn("Schema File [{}] will be overwritten since already exists.", filePath);
+      logger.warn("PBTree File [{}] will be overwritten since already exists.", filePath);
       Files.delete(Paths.get(pmtFile.toURI()));
       pmtFile.createNewFile();
     }
@@ -115,11 +115,11 @@ public class SchemaFile implements ISchemaFile {
   }
 
   private SchemaFile(File file) throws IOException, MetadataException {
-    // only used to sketch a schema file so a file object is necessary while
+    // only used to sketch a pb-tree file so a file object is necessary while
     //  components of log manipulations are not.
     pmtFile = file;
     filePath = pmtFile.getPath();
-    logPath = file.getParent() + File.separator + MetadataConstant.SCHEMA_LOG_FILE_NAME;
+    logPath = file.getParent() + File.separator + MetadataConstant.PB_TREE_LOG_FILE_NAME;
     channel = new RandomAccessFile(file, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
@@ -138,7 +138,7 @@ public class SchemaFile implements ISchemaFile {
         SystemFileFactory.INSTANCE.getFile(
             getDirPath(sgName, schemaRegionId)
                 + File.separator
-                + MetadataConstant.SCHEMA_FILE_NAME);
+                + MetadataConstant.PB_TREE_FILE_NAME);
     return new SchemaFile(
         sgName,
         schemaRegionId,
@@ -153,7 +153,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   public static ISchemaFile loadSchemaFile(File file) throws IOException, MetadataException {
-    // only be called to sketch a Schema File
+    // only be called to sketch a PBTree File
     return new SchemaFile(file);
   }
 
@@ -249,7 +249,7 @@ public class SchemaFile implements ISchemaFile {
       throws MetadataException, IOException {
     if (parent.isMeasurement() || getNodeAddress(parent) < 0) {
       throw new MetadataException(
-          String.format("Node [%s] has no child in schema file.", parent.getFullPath()));
+          String.format("Node [%s] has no child in pb-tree file.", parent.getFullPath()));
     }
 
     return pageManager.getChildren(parent);
@@ -294,7 +294,7 @@ public class SchemaFile implements ISchemaFile {
     String header =
         String.format(
             "=============================\n"
-                + "== Schema File Sketch Tool ==\n"
+                + "== PBTree File Sketch Tool ==\n"
                 + "=============================\n"
                 + "== Notice: \n"
                 + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
@@ -329,7 +329,7 @@ public class SchemaFile implements ISchemaFile {
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
    *         <li>c. 1 int (4 bytes): hash code of template name {@link #sgNodeTemplateIdWithState}
    *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastSGAddr}
-   *         <li>e. 1 int (4 bytes): version of schema file {@linkplain
+   *         <li>e. 1 int (4 bytes): version of pb-tree file {@linkplain
    *             SchemaFileConfig#SCHEMA_FILE_VERSION}
    *       </ul>
    * </ul>
@@ -338,7 +338,7 @@ public class SchemaFile implements ISchemaFile {
    */
   private void initFileHeader() throws IOException, MetadataException {
     if (channel.size() == 0) {
-      // new schema file
+      // new pb-tree file
       lastPageIndex = 0;
       ReadWriteIOUtils.write(lastPageIndex, headerContent);
       ReadWriteIOUtils.write(dataTTL, headerContent);
@@ -444,12 +444,12 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public boolean createSnapshot(File snapshotDir) {
     File schemaFileSnapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.SCHEMA_FILE_SNAPSHOT);
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.PB_TREE_SNAPSHOT);
     try {
       sync();
       if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
         logger.error(
-            "Failed to delete old snapshot {} while creating schema file snapshot.",
+            "Failed to delete old snapshot {} while creating pb-tree file snapshot.",
             schemaFileSnapshot.getName());
         return false;
       }
@@ -465,16 +465,16 @@ public class SchemaFile implements ISchemaFile {
   public static ISchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     File snapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.SCHEMA_FILE_SNAPSHOT);
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.PB_TREE_SNAPSHOT);
     if (!snapshot.exists()) {
       throw new SchemaFileNotExists(snapshot.getPath());
     }
     File schemaFile =
         SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_FILE_NAME);
+            getDirPath(sgName, schemaRegionId), MetadataConstant.PB_TREE_FILE_NAME);
     File schemaLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId), MetadataConstant.SCHEMA_LOG_FILE_NAME);
+            getDirPath(sgName, schemaRegionId), MetadataConstant.PB_TREE_LOG_FILE_NAME);
     Files.deleteIfExists(schemaFile.toPath());
     Files.deleteIfExists(schemaLogFile.toPath());
     Files.copy(snapshot.toPath(), schemaFile.toPath());

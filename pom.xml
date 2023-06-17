@@ -113,7 +113,6 @@
         <module>metrics</module>
         <module>integration-test</module>
         <module>consensus</module>
-        <module>iotdb-api/external-pipe-api</module>
         <module>library-udf</module>
         <module>iotdb-api/udf-api</module>
         <module>iotdb-api/trigger-api</module>

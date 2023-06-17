@@ -95,6 +95,8 @@ public enum DataNodeRequestType {
   ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
   DELETE_VIEW,
 
+  ALTER_VIEW,
+
   /** @TODO Need to migrate to 'Node Maintenance' */
   KILL_QUERY_INSTANCE,
 

@@ -95,7 +95,6 @@ export const zhSidebar = {
         { text: 'REST API V1 (不推荐)', link: 'RestServiceV1' },
         { text: 'REST API V2', link: 'RestServiceV2' },
         { text: 'TsFile API', link: 'Programming-TsFile-API' },
-        { text: 'InfluxDB 协议适配器', link: 'InfluxDB-Protocol' },
         { text: '原生接口对比', link: 'Interface-Comparison' },
       ],
     },
@@ -237,15 +236,6 @@ export const zhSidebar = {
         { text: 'TsFile 拆分工具', link: 'TsFile-Split-Tool' },
         { text: 'TsFile 导入导出工具', link: 'TsFile-Load-Export-Tool' },
         { text: 'CSV 导入导出工具', link: 'CSV-Tool' },
-      ],
-    },
-    {
-      text: '端云协同',
-      collapsible: true,
-      prefix: 'Edge-Cloud-Collaboration/',
-      // children: 'structure',
-      children: [
-        { text: 'TsFile 同步工具', link: 'Sync-Tool' },
       ],
     },
     {

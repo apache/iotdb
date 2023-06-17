@@ -43,10 +43,10 @@ public class MetadataConstant {
   public static final String TAG_LOG = "tlog.txt";
   public static final String TEMPLATE_FILE = "template_log.bin";
   public static final String STORAGE_GROUP_LOG = "storage_group_log.bin";
-  public static final String SCHEMA_FILE_NAME = "schema_file.pst";
-  public static final String SCHEMA_LOG_FILE_NAME = "schema_file_log.bin";
+  public static final String PB_TREE_FILE_NAME = "pb_tree.pst";
+  public static final String PB_TREE_LOG_FILE_NAME = "pb_tree_log.bin";
 
-  public static final String SCHEMA_FILE_SNAPSHOT = "schema_file.pst.snapshot";
+  public static final String PB_TREE_SNAPSHOT = "pb_tree.pst.snapshot";
   public static final String TAG_LOG_SNAPSHOT = "tlog.txt.snapshot";
   public static final String TAG_LOG_SNAPSHOT_TMP = "tlog.txt.snapshot.tmp";
   public static final String MTREE_SNAPSHOT = "mtree.snapshot";
@@ -75,7 +75,7 @@ public class MetadataConstant {
   public static final String LOGICAL_VIEW_MNODE_TYPE_NAME = "LogicalViewMNode";
 
   public static final String SCHEMA_REGION_METRIC_NAME = "schema_region";
-  public static final String SCHEMA_ENGINE_METRIC_NAME = "schema_file";
+  public static final String SCHEMA_ENGINE_METRIC_NAME = "pb_tree";
 
   public static final String DEFAULT_SCHEMA_ENGINE_MODE = "Memory";
 

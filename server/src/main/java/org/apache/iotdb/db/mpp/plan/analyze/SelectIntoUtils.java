@@ -161,14 +161,7 @@ public class SelectIntoUtils {
                   "The data type of target path (%s[%s]) is not compatible with the data type of source column (%s[%s]).",
                   targetPath, actualTargetPath.getSeriesType(), sourceColumn, sourceColumnType));
         }
-        boolean actualTargetPathAlignment = actualTargetPath.isUnderAlignedEntity();
-        String targetDevice = targetPath.getDevice();
-        if (targetDeviceToAlignedMap.get(targetDevice) != actualTargetPathAlignment) {
-          throw new SemanticException(
-              String.format(
-                  "The specified alignment property of the target device (%s) conflicts with the actual (isAligned = %s).",
-                  targetDevice, actualTargetPathAlignment));
-        }
+        // no need to check alignment, because the interface is universal
         targetPathWithSchema = actualTargetPath;
       }
       sourceTypeBoundTargetPathPairList.add(new Pair<>(sourceColumn, targetPathWithSchema));

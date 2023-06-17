@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -454,7 +455,7 @@ public class DateTimeUtils {
         str,
         toZoneOffset(zoneId),
         0,
-        IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   public static long convertDatetimeStrToLong(
@@ -532,7 +533,7 @@ public class DateTimeUtils {
 
   public static long convertDurationStrToLong(long currentTime, String duration) {
     return convertDurationStrToLong(
-        currentTime, duration, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+        currentTime, duration, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   /**
@@ -653,7 +654,7 @@ public class DateTimeUtils {
 
   public static long currentTime() {
     long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
         return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
@@ -665,7 +666,7 @@ public class DateTimeUtils {
   }
 
   public static String convertLongToDate(long timestamp) {
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
       case "ns":
         timestamp /= 1000_000;
@@ -684,21 +685,6 @@ public class DateTimeUtils {
 
   public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {
     return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millisecond), ZoneId.systemDefault());
-  }
-
-  public static long convertMilliTimeWithPrecision(long milliTime, String timePrecision) {
-    long result = milliTime;
-    switch (timePrecision) {
-      case "ns":
-        result = milliTime * 1000_000L;
-        break;
-      case "us":
-        result = milliTime * 1000L;
-        break;
-      default:
-        break;
-    }
-    return result;
   }
 
   public enum DurationUnit {

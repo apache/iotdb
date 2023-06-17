@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.List;
@@ -40,7 +39,6 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
   // the paths of sources
   private ViewPaths sourcePaths;
   private QueryStatement queryStatement;
-  private IntoItem intoItem;
 
   public AlterLogicalViewStatement() {
     super();
@@ -102,15 +100,6 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
     this.targetPaths.setPrefixOfPathsGroup(prefixPath);
     this.targetPaths.setSuffixOfPathsGroup(suffixPaths);
     this.targetPaths.generateFullPathsFromPathsGroup();
-  }
-
-  public void setTargetIntoItem(IntoItem intoItem) {
-    this.targetPaths.setViewPathType(ViewPathType.BATCH_GENERATION);
-    this.intoItem = intoItem;
-  }
-
-  public IntoItem getIntoItem() {
-    return this.intoItem;
   }
   // endregion
 

@@ -135,9 +135,12 @@ public class NodeManager {
     globalConfig.setSeriesPartitionSlotNum(configNodeConfig.getSeriesSlotNum());
     globalConfig.setSeriesPartitionExecutorClass(
         configNodeConfig.getSeriesPartitionExecutorClass());
-    globalConfig.setTimePartitionInterval(configNodeConfig.getTimePartitionInterval());
+    globalConfig.setTimePartitionInterval(commonConfig.getTimePartitionInterval());
     globalConfig.setReadConsistencyLevel(configNodeConfig.getReadConsistencyLevel());
     globalConfig.setDiskSpaceWarningThreshold(commonConfig.getDiskSpaceWarningThreshold());
+    globalConfig.setTimestampPrecision(commonConfig.getTimestampPrecision());
+    globalConfig.setSchemaEngineMode(commonConfig.getSchemaEngineMode());
+    globalConfig.setTagAttributeTotalSize(commonConfig.getTagAttributeTotalSize());
     dataSet.setGlobalConfig(globalConfig);
   }
 

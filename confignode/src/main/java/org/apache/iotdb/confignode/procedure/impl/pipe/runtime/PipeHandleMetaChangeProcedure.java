@@ -106,7 +106,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
       final PipeMeta pipeMetaFromDataNode =
           pipeMetaMapFromDataNode.get(pipeMetaOnConfigNode.getStaticMeta());
       if (pipeMetaFromDataNode == null) {
-        LOGGER.warn(
+        LOGGER.info(
             "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
                 + "pipeMetaFromDataNode is null, pipeMetaOnConfigNode: {}",
             pipeMetaOnConfigNode);
