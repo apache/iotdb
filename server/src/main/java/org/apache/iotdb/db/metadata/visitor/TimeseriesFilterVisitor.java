@@ -22,16 +22,18 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
+import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 
-public class TimeseriesFilterVisitor extends SchemaFilterVisitor<Boolean, ITimeSeriesSchemaInfo> {
+public class TimeseriesFilterVisitor extends SchemaFilterVisitor<ITimeSeriesSchemaInfo> {
   @Override
-  public Boolean visitNode(SchemaFilter filter, ITimeSeriesSchemaInfo info) {
+  public boolean visitNode(SchemaFilter filter, ITimeSeriesSchemaInfo info) {
     return true;
   }
 
   @Override
-  public Boolean visitPathContainsFilter(
+  public boolean visitPathContainsFilter(
       PathContainsFilter pathContainsFilter, ITimeSeriesSchemaInfo info) {
     if (pathContainsFilter.getContainString() == null) {
       return true;
@@ -40,7 +42,12 @@ public class TimeseriesFilterVisitor extends SchemaFilterVisitor<Boolean, ITimeS
   }
 
   @Override
-  public Boolean visitDataTypeFilter(DataTypeFilter dataTypeFilter, ITimeSeriesSchemaInfo info) {
+  public boolean visitDataTypeFilter(DataTypeFilter dataTypeFilter, ITimeSeriesSchemaInfo info) {
     return info.getSchema().getType() == dataTypeFilter.getDataType();
+  }
+
+  @Override
+  public boolean visitViewTypeFilter(ViewTypeFilter viewTypeFilter, ITimeSeriesSchemaInfo info) {
+    return info.isLogicalView() == (viewTypeFilter.getViewType() == ViewType.VIEW);
   }
 }

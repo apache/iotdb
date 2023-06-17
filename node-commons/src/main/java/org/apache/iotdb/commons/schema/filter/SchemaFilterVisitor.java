@@ -11,26 +11,26 @@
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * "AS IS" BASIS, WITHOUT WARRANTIES Oboolean CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.commons.schema.filter;
 
+import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
+import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
 
 /**
  * This class provides a visitor of {@link SchemaFilter}, which can be extended to create a visitor
  * which only needs to handle a subset of the available methods.
- *
- * @param <R> The return type of the visit operation.
  */
-public abstract class SchemaFilterVisitor<R, C> {
+public abstract class SchemaFilterVisitor<C> {
 
-  public R process(SchemaFilter filter, C context) {
+  public boolean process(SchemaFilter filter, C context) {
     if (filter == null) {
       return visitNode(null, context);
     } else {
@@ -39,21 +39,29 @@ public abstract class SchemaFilterVisitor<R, C> {
   }
 
   /** Top Level Description */
-  protected abstract R visitNode(SchemaFilter filter, C context);
+  protected abstract boolean visitNode(SchemaFilter filter, C context);
 
-  public R visitFilter(SchemaFilter filter, C context) {
+  public boolean visitFilter(SchemaFilter filter, C context) {
     return visitNode(filter, context);
   }
 
-  public R visitTagFilter(TagFilter tagFilter, C context) {
+  public boolean visitTagFilter(TagFilter tagFilter, C context) {
     return visitFilter(tagFilter, context);
   }
 
-  public R visitPathContainsFilter(PathContainsFilter pathContainsFilter, C context) {
+  public boolean visitPathContainsFilter(PathContainsFilter pathContainsFilter, C context) {
     return visitFilter(pathContainsFilter, context);
   }
 
-  public R visitDataTypeFilter(DataTypeFilter dataTypeFilter, C context) {
+  public boolean visitDataTypeFilter(DataTypeFilter dataTypeFilter, C context) {
     return visitFilter(dataTypeFilter, context);
+  }
+
+  public boolean visitViewTypeFilter(ViewTypeFilter viewTypeFilter, C context) {
+    return visitFilter(viewTypeFilter, context);
+  }
+
+  public boolean visitAndFilter(AndFilter andFilter, C context) {
+    return andFilter.getLeft().accept(this, context) && andFilter.getRight().accept(this, context);
   }
 }
