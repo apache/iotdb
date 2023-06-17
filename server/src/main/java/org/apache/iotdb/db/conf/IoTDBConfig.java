@@ -567,12 +567,6 @@ public class IoTDBConfig {
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
-  /** White list for sync */
-  private String ipWhiteList = "127.0.0.1/32";
-
-  /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
-  private int maxNumberOfSyncFileRetry = 5;
-
   /**
    * Set the language version when loading file including error information, default value is "EN"
    */
@@ -1652,14 +1646,6 @@ public class IoTDBConfig {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
   }
 
-  public int getMaxNumberOfSyncFileRetry() {
-    return maxNumberOfSyncFileRetry;
-  }
-
-  public void setMaxNumberOfSyncFileRetry(int maxNumberOfSyncFileRetry) {
-    this.maxNumberOfSyncFileRetry = maxNumberOfSyncFileRetry;
-  }
-
   String getLanguageVersion() {
     return languageVersion;
   }
@@ -1680,14 +1666,6 @@ public class IoTDBConfig {
     return "UNKNOWN".equals(version)
         ? "UNKNOWN"
         : version.split("\\.")[0] + "." + version.split("\\.")[1];
-  }
-
-  public String getIpWhiteList() {
-    return ipWhiteList;
-  }
-
-  public void setIpWhiteList(String ipWhiteList) {
-    this.ipWhiteList = ipWhiteList;
   }
 
   public long getCacheFileReaderClearPeriod() {

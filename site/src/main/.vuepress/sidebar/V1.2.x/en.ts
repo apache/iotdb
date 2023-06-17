@@ -238,15 +238,6 @@ export const enSidebar = {
       ],
     },
     {
-      text: 'Collaboration of Edge and Cloud',
-      collapsible: true,
-      prefix: 'Edge-Cloud-Collaboration/',
-      // children: 'structure',
-      children: [
-        { text: 'TsFile Sync Tool', link: 'Sync-Tool' },
-      ],
-    },
-    {
       text: 'Ecosystem Integration',
       collapsible: true,
       prefix: 'Ecosystem-Integration/',
