@@ -46,6 +46,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.thrift.TException;
@@ -183,12 +184,22 @@ public class IoTDBSyncConnector implements PipeConnector {
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    sessionPool.insertTablet(pipeInsertNodeInsertionEvent.convertToTablet());
+    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
+    if (pipeInsertNodeInsertionEvent.isAligned()) {
+      sessionPool.insertAlignedTablet(tablet);
+    } else {
+      sessionPool.insertTablet(tablet);
+    }
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
       throws PipeException, TException, IoTDBConnectionException, StatementExecutionException {
-    sessionPool.insertTablet(pipeTabletInsertionEvent.convertToTablet());
+    final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
+    if (pipeTabletInsertionEvent.isAligned()) {
+      sessionPool.insertAlignedTablet(tablet);
+    } else {
+      sessionPool.insertTablet(tablet);
+    }
   }
 
   @Override

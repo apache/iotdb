@@ -31,16 +31,18 @@ import java.util.function.BiConsumer;
 public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
 
   private final Tablet tablet;
+  private final boolean isAligned;
   private final String pattern;
 
   private TabletInsertionDataContainer dataContainer;
 
-  public PipeRawTabletInsertionEvent(Tablet tablet) {
-    this(Objects.requireNonNull(tablet), null);
+  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
+    this(tablet, isAligned, null);
   }
 
-  public PipeRawTabletInsertionEvent(Tablet tablet, String pattern) {
+  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
     this.tablet = Objects.requireNonNull(tablet);
+    this.isAligned = isAligned;
     this.pattern = pattern;
   }
 
@@ -53,7 +55,7 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
+      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, getPattern());
     }
     return dataContainer.processRowByRow(consumer);
   }
@@ -61,9 +63,15 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
   @Override
   public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, getPattern());
+      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, getPattern());
     }
     return dataContainer.processTablet(consumer);
+  }
+
+  /////////////////////////// convertToTablet ///////////////////////////
+
+  public boolean isAligned() {
+    return isAligned;
   }
 
   public Tablet convertToTablet() {
@@ -76,7 +84,7 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
 
     // if pattern is not "root", we need to convert the tablet
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, pattern);
+      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, pattern);
     }
     return dataContainer.convertToTablet();
   }
