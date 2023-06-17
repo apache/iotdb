@@ -530,15 +530,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_session_timeout_threshold",
                 Integer.toString(conf.getSessionTimeoutThreshold()))));
-    conf.setMaxNumberOfSyncFileRetry(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_number_of_sync_file_retry",
-                    Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
-                .trim()));
-
-    conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
     conf.setFlushThreadCount(
         Integer.parseInt(
@@ -1552,16 +1543,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
-
-      // update sync config
-      conf.setMaxNumberOfSyncFileRetry(
-          Integer.parseInt(
-              properties
-                  .getProperty(
-                      "max_number_of_sync_file_retry",
-                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
-                  .trim()));
-      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       // update enable query memory estimation for memory control
       conf.setEnableQueryMemoryEstimation(

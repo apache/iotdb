@@ -21,12 +21,10 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,9 +37,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class TsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
@@ -338,10 +333,6 @@ public class TsFileManager {
     return storageGroupDir;
   }
 
-  public void setStorageGroupDir(String storageGroupDir) {
-    this.storageGroupDir = storageGroupDir;
-  }
-
   public Set<Long> getTimePartitions() {
     readLock();
     try {
@@ -367,71 +358,6 @@ public class TsFileManager {
 
   public void setDataRegionId(String dataRegionId) {
     this.dataRegionId = dataRegionId;
-  }
-
-  public List<TsFileResource> getSequenceRecoverTsFileResources() {
-    return sequenceRecoverTsFileResources;
-  }
-
-  public List<TsFileResource> getUnsequenceRecoverTsFileResources() {
-    return unsequenceRecoverTsFileResources;
-  }
-
-  public List<File> collectHistoryTsFileForSync(ISyncManager syncManager, long dataStartTime) {
-    readLock();
-    try {
-      List<File> historyTsFiles = new ArrayList<>();
-      collectTsFile(historyTsFiles, getTsFileList(true), syncManager, dataStartTime);
-      collectTsFile(historyTsFiles, getTsFileList(false), syncManager, dataStartTime);
-      return historyTsFiles;
-    } finally {
-      readUnlock();
-    }
-  }
-
-  private void collectTsFile(
-      List<File> historyTsFiles,
-      List<TsFileResource> tsFileResources,
-      ISyncManager syncManager,
-      long dataStartTime) {
-
-    for (TsFileResource tsFileResource : tsFileResources) {
-      if (tsFileResource.getFileEndTime() < dataStartTime) {
-        continue;
-      }
-      TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
-      boolean isRealTimeTsFile = false;
-      if (tsFileProcessor != null) {
-        isRealTimeTsFile = tsFileProcessor.isMemtableNotNull();
-      }
-      File tsFile = tsFileResource.getTsFile();
-      if (!isRealTimeTsFile) {
-        File mods = new File(tsFileResource.getModFile().getFilePath());
-        long modsOffset = mods.exists() ? mods.length() : 0L;
-        File hardlink = syncManager.createHardlink(tsFile, modsOffset);
-        if (hardlink != null) {
-          historyTsFiles.add(hardlink);
-        }
-      }
-    }
-  }
-
-  // ({systemTime}-{versionNum}-{innerCompactionNum}-{crossCompactionNum}.tsfile)
-  public static int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    long ver1 = Long.parseLong(items1[0]);
-    long ver2 = Long.parseLong(items2[0]);
-    int cmp = Long.compare(ver1, ver2);
-    if (cmp == 0) {
-      int cmpVersion = Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
-      if (cmpVersion == 0) {
-        return Long.compare(Long.parseLong(items1[2]), Long.parseLong(items2[2]));
-      }
-      return cmpVersion;
-    } else {
-      return cmp;
-    }
   }
 
   public long getNextCompactionTaskId() {
