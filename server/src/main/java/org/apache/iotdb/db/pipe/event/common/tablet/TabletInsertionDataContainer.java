@@ -81,10 +81,6 @@ public class TabletInsertionDataContainer {
     parse(tablet, isAligned, pattern);
   }
 
-  public boolean isAligned() {
-    return isAligned;
-  }
-
   //////////////////////////// parse ////////////////////////////
 
   private void parse(InsertRowNode insertRowNode, String pattern) throws IllegalPathException {
@@ -337,7 +333,11 @@ public class TabletInsertionDataContainer {
     return rowCollector.convertToTabletInsertionEvents();
   }
 
-  ////////////////////////////  convert  ////////////////////////////
+  ////////////////////////////  convertToTablet  ////////////////////////////
+
+  public boolean isAligned() {
+    return isAligned;
+  }
 
   public Tablet convertToTablet() {
     if (tablet != null) {

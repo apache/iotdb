@@ -176,8 +176,8 @@ public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
-    if (pipeInsertNodeInsertionEvent.isAligned()) { // Tablet is aligned
+    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
+    if (pipeInsertNodeInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
     } else {
       sessionPool.insertTablet(tablet);
@@ -186,8 +186,8 @@ public class IoTDBSyncConnectorImplV1_1 implements PipeConnector {
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
       throws PipeException, TException, IoTDBConnectionException, StatementExecutionException {
-    Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
-    if (pipeTabletInsertionEvent.isAligned()) { // Tablet is aligned
+    final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
+    if (pipeTabletInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
     } else {
       sessionPool.insertTablet(tablet);

@@ -36,14 +36,6 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
 
   private TabletInsertionDataContainer dataContainer;
 
-  public PipeRawTabletInsertionEvent(Tablet tablet) {
-    this(Objects.requireNonNull(tablet), false, null);
-  }
-
-  public PipeRawTabletInsertionEvent(Tablet tablet, String pattern) {
-    this(tablet, false, pattern);
-  }
-
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
     this(tablet, isAligned, null);
   }
@@ -56,10 +48,6 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
 
   public String getPattern() {
     return pattern == null ? PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
-  }
-
-  public boolean isAligned() {
-    return isAligned;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -78,6 +66,12 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
       dataContainer = new TabletInsertionDataContainer(tablet, isAligned, getPattern());
     }
     return dataContainer.processTablet(consumer);
+  }
+
+  /////////////////////////// convertToTablet ///////////////////////////
+
+  public boolean isAligned() {
+    return isAligned;
   }
 
   public Tablet convertToTablet() {

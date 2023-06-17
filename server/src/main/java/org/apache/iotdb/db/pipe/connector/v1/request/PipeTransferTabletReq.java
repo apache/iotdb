@@ -48,13 +48,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 public class PipeTransferTabletReq extends TPipeTransferReq {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
-  private Tablet tablet;
-  private boolean isAligned; // 0 for non-aligned, 1 for aligned
 
-  public static TPipeTransferReq toTPipeTransferReq(Tablet tablet) throws IOException {
-    return toTPipeTransferReq(tablet, false);
-  }
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
+
+  private Tablet tablet;
+  private boolean isAligned;
 
   public static TPipeTransferReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
       throws IOException {
@@ -64,13 +62,14 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
 
     tabletReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(isAligned, outputStream);
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
       tabletReq.body =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
+
     return tabletReq;
   }
 
@@ -83,7 +82,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     return true;
   }
 
-  public static void sortTablet(Tablet tablet) {
+  private static void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -196,6 +195,19 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     return sortedBitMap;
   }
 
+  public static PipeTransferTabletReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
+
+    tabletReq.tablet = Tablet.deserialize(transferReq.body);
+    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
+
+    tabletReq.version = transferReq.version;
+    tabletReq.type = transferReq.type;
+    tabletReq.body = transferReq.body;
+
+    return tabletReq;
+  }
+
   public InsertTabletStatement constructStatement() {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
@@ -222,18 +234,5 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
       return null;
     }
-  }
-
-  public static PipeTransferTabletReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
-
-    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
-    tabletReq.tablet = Tablet.deserialize(transferReq.body);
-
-    tabletReq.version = transferReq.version;
-    tabletReq.type = transferReq.type;
-    tabletReq.body = transferReq.body;
-
-    return tabletReq;
   }
 }

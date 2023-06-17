@@ -76,8 +76,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       tsFileReader = new TsFileReader(tsFileSequenceReader);
 
       deviceMeasurementsMapIterator = filterDeviceMeasurementsMapByPattern().entrySet().iterator();
-      deviceIsAlignedMap = new HashMap<>();
-      readDeviceIsAlignedMap();
+      deviceIsAlignedMap = readDeviceIsAlignedMap();
       measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
     } catch (Exception e) {
       LOGGER.error("failed to create TsFileInsertionDataContainer", e);
@@ -125,12 +124,15 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     return filteredDeviceMeasurementsMap;
   }
 
-  private void readDeviceIsAlignedMap() throws IOException {
-    TsFileDeviceIterator deviceIterator = tsFileSequenceReader.getAllDevicesIteratorWithIsAligned();
-    while (deviceIterator.hasNext()) {
-      Pair<String, Boolean> deviceIsAlignedPair = deviceIterator.next();
+  private Map<String, Boolean> readDeviceIsAlignedMap() throws IOException {
+    final Map<String, Boolean> deviceIsAlignedMap = new HashMap<>();
+    final TsFileDeviceIterator deviceIsAlignedIterator =
+        tsFileSequenceReader.getAllDevicesIteratorWithIsAligned();
+    while (deviceIsAlignedIterator.hasNext()) {
+      final Pair<String, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
       deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
     }
+    return deviceIsAlignedMap;
   }
 
   /** @return TabletInsertionEvent in a streaming way */
@@ -173,8 +175,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
               throw new NoSuchElementException();
             }
 
-            Tablet tablet = tabletIterator.next();
-            boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
+            final Tablet tablet = tabletIterator.next();
+            final boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
             final TabletInsertionEvent next = new PipeRawTabletInsertionEvent(tablet, isAligned);
 
             if (!hasNext()) {
