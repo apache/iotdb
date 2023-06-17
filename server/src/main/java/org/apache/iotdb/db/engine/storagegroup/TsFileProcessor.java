@@ -59,8 +59,6 @@ import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
-import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -724,11 +722,6 @@ public class TsFileProcessor {
       if (!flushingMemTables.isEmpty()) {
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
-      for (ISyncManager syncManager :
-          SyncService.getInstance()
-              .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
-        syncManager.syncRealTimeDeletion(deletion);
-      }
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
@@ -873,11 +866,6 @@ public class TsFileProcessor {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
-        for (ISyncManager syncManager :
-            SyncService.getInstance()
-                .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
-          syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
-        }
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource);
 
@@ -1325,11 +1313,6 @@ public class TsFileProcessor {
     long closeStartTime = System.currentTimeMillis();
     writer.endFile();
     tsFileResource.serialize();
-    for (ISyncManager syncManager :
-        SyncService.getInstance()
-            .getOrCreateSyncManager(dataRegionInfo.getDataRegion().getDataRegionId())) {
-      syncManager.syncRealTimeResource(tsFileResource.getTsFile());
-    }
     logger.info("Ended file {}", tsFileResource);
 
     // remove this processor from Closing list in StorageGroupProcessor,

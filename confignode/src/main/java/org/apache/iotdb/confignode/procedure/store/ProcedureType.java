@@ -44,7 +44,7 @@ public enum ProcedureType {
   CREATE_TRIGGER_PROCEDURE((short) 400),
   DROP_TRIGGER_PROCEDURE((short) 401),
 
-  /** Old sync */
+  /** Legacy enum for sync */
   CREATE_PIPE_PROCEDURE((short) 500),
   START_PIPE_PROCEDURE((short) 501),
   STOP_PIPE_PROCEDURE((short) 502),
