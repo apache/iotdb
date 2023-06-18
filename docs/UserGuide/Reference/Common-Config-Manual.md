@@ -637,6 +637,15 @@ Different configuration parameters take effect in the following three ways:
 
 ### Storage Engine Configuration
 
+* timestamp\_precision
+
+|     Name     | timestamp\_precision        |
+| :----------: | :-------------------------- |
+|     Description     | timestamp precision，support ms、us、ns |
+|     Type     | String                      |
+|    Default    | ms                          |
+| Effective | Only allowed to be modified in first start up                   |
+
 * default\_ttl\_in\_ms
 
 |    Name     | default\_ttl\_in\_ms                   |
