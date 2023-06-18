@@ -898,6 +898,14 @@ public class IoTDBDescriptor {
   private void loadTsFileProps(Properties properties) {
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setUseStatistics(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "use_Statistics",
+                    Boolean.toString(
+                        TSFileDescriptor.getInstance().getConfig().isUseStatistics()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setUseChunkIndex(
             Boolean.parseBoolean(
                 properties.getProperty(

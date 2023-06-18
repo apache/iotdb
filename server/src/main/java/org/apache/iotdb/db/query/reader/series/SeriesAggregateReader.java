@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -96,6 +97,9 @@ public class SeriesAggregateReader implements IAggregateReader {
 
   @Override
   public boolean canUseCurrentFileStatistics() throws IOException {
+    if (!TSFileDescriptor.getInstance().getConfig().isUseStatistics()) {
+      return false;
+    }
     Statistics fileStatistics = currentFileStatistics();
     return !seriesReader.isFileOverlapped()
         && containedByTimeFilter(fileStatistics)
@@ -119,6 +123,9 @@ public class SeriesAggregateReader implements IAggregateReader {
 
   @Override
   public boolean canUseCurrentChunkStatistics() throws IOException {
+    if (!TSFileDescriptor.getInstance().getConfig().isUseStatistics()) {
+      return false;
+    }
     Statistics chunkStatistics = currentChunkStatistics();
     return !seriesReader.isChunkOverlapped()
         && containedByTimeFilter(chunkStatistics)
@@ -142,6 +149,9 @@ public class SeriesAggregateReader implements IAggregateReader {
 
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
+    if (!TSFileDescriptor.getInstance().getConfig().isUseStatistics()) {
+      return false;
+    }
     Statistics currentPageStatistics = currentPageStatistics();
     if (currentPageStatistics == null) {
       return false;

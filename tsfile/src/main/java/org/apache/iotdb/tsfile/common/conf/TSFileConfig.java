@@ -27,6 +27,8 @@ import java.nio.charset.Charset;
 /** TSFileConfig is a configure class. Every variables is public and has default value. */
 public class TSFileConfig implements Serializable {
 
+  private boolean useStatistics = true;
+
   private boolean useChunkIndex = true;
 
   private boolean useMad = false;
@@ -150,6 +152,14 @@ public class TSFileConfig implements Serializable {
   private int batchSize = 1000;
 
   public TSFileConfig() {}
+
+  public boolean isUseStatistics() {
+    return useStatistics;
+  }
+
+  public void setUseStatistics(boolean useStatistics) {
+    this.useStatistics = useStatistics;
+  }
 
   public boolean isUseChunkIndex() {
     return useChunkIndex;

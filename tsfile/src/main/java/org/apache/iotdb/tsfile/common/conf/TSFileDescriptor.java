@@ -105,6 +105,9 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
+      conf.setUseStatistics(
+          Boolean.parseBoolean(
+              properties.getProperty("use_Statistics", Boolean.toString(conf.isUseStatistics()))));
       conf.setUseChunkIndex(
           Boolean.parseBoolean(
               properties.getProperty("use_ChunkIndex", Boolean.toString(conf.isUseChunkIndex()))));
