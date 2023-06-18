@@ -99,17 +99,15 @@ public enum ThreadName {
   GRPC_DEFAULT_EXECUTOR("grpc-default-executor"),
   GPRC_DEFAULT_WORKER_ELG("grpc-default-worker-ELG"),
   GROUP_MANAGEMENT("groupManagement"),
-
   // -------------------------- Compute --------------------------
   PIPE_ASSIGNER_EXECUTOR_POOL("Pipe-Assigner-Executor-Pool"),
   PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
   PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
-  EXT_PIPE_PLUGIN_WORKER("ExtPipePlugin-Worker"),
+  PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
+  PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
+  PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
-  // -------------------------- Sync --------------------------
-  SYNC_SENDER_PIPE("Sync-Pipe"),
-  SYNC_SENDER_HEARTBEAT("Sync-Heartbeat"),
   // -------------------------- JVM --------------------------
   // NOTICE: The thread name of jvm cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
@@ -144,8 +142,6 @@ public enum ThreadName {
   MLNODE_RPC_SERVICE("MLNodeRpc-Service"),
   IOTDB_SHUTDOWN_HOOK("IoTDB-Shutdown-Hook"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
-  PIPE_META_SYNC_SERVICE("Pipe-Meta-Sync-Service"),
-  PIPE_WAL_RESOURCE_TTL_CHECKER_SERVICE("Pipe-WAL-Resource-TTL-Checker-Service"),
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");
 
@@ -231,10 +227,11 @@ public enum ThreadName {
               PIPE_PROCESSOR_EXECUTOR_POOL,
               PIPE_CONNECTOR_EXECUTOR_POOL,
               PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL,
-              EXT_PIPE_PLUGIN_WORKER,
+              PIPE_RUNTIME_META_SYNCER,
+              PIPE_RUNTIME_PROCEDURE_SUBMITTER,
+              PIPE_WAL_RESOURCE_TTL_CHECKER,
               WINDOW_EVALUATION_SERVICE));
-  private static Set<ThreadName> syncThreadNames =
-      new HashSet<>(Arrays.asList(SYNC_SENDER_PIPE, SYNC_SENDER_HEARTBEAT));
+
   private static Set<ThreadName> jvmThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -292,7 +289,6 @@ public enum ThreadName {
           iotConsensusThrreadNames,
           ratisThreadNames,
           computeThreadNames,
-          syncThreadNames,
           jvmThreadNames,
           metricsThreadNames,
           otherThreadNames

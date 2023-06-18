@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -34,7 +33,6 @@ import org.junit.Test;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
@@ -78,10 +76,7 @@ public class PipeHandleMetaChangeProcedureTest {
               }
             });
 
-    PipeHandleMetaChangeProcedure proc =
-        new PipeHandleMetaChangeProcedure(
-            123,
-            Collections.singletonList(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta).serialize()));
+    PipeHandleMetaChangeProcedure proc = new PipeHandleMetaChangeProcedure(true, false);
 
     try {
       proc.serialize(outputStream);
