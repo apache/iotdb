@@ -42,7 +42,7 @@ import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBShowDevicesContainsViewIT {
+public class IoTDBShowDevicesContainedViewIT {
 
   private static final String showDevicesSQL = "show devices;";
   private static final String deleteAllTimeSeriesSQL = "delete timeseries root.**;";
