@@ -98,6 +98,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
@@ -900,8 +901,14 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else {
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
     }
+    if (Objects.equals(plan.getDatabase(), "")) {
+      // Return empty result if Database not specified
+      return new GetRegionIdResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
+    }
+
     if (req.isSetTimeStamp()) {
       plan.setTimeSlotId(
           new TTimePartitionSlot(
@@ -917,7 +924,12 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      if (Objects.equals(plan.getDatabase(), "")) {
+        // Return empty result if Database not specified
+        return new GetTimeSlotListResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
+      }
     } else {
       plan.setRegionId(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
@@ -932,7 +944,12 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      if (Objects.equals(plan.getDatabase(), "")) {
+        // Return empty result if Database not specified
+        return new CountTimeSlotListResp(RpcUtils.SUCCESS_STATUS, 0);
+      }
     } else {
       plan.setRegionId(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
