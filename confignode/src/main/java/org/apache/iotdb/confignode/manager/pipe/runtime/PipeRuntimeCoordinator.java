@@ -21,18 +21,14 @@ package org.apache.iotdb.confignode.manager.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -40,8 +36,6 @@ import java.util.List;
 import java.util.Map;
 
 public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeCoordinator.class);
 
   private final ConfigManager configManager;
 
@@ -90,23 +84,9 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
       return;
     }
 
-    final TSStatus result =
-        configManager
-            .getProcedureManager()
-            .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap);
-    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "PipeRuntimeCoordinator meets error in handling data region leader change, status: ({})",
-          result);
-    }
-  }
-
-  public void startPipeMetaSync() {
-    pipeMetaSyncer.start();
-  }
-
-  public void stopPipeMetaSync() {
-    pipeMetaSyncer.stop();
+    configManager
+        .getProcedureManager()
+        .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap);
   }
 
   /**
@@ -117,13 +97,16 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
    */
   public void parseHeartbeat(
       int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    final TSStatus result =
-        configManager
-            .getProcedureManager()
-            .pipeHandleMetaChange(dataNodeId, pipeMetaByteBufferListFromDataNode);
-    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "PipeTaskCoordinator meets error in handling pipe meta change, status: ({})", result);
-    }
+    configManager
+        .getProcedureManager()
+        .pipeHandleMetaChange(dataNodeId, pipeMetaByteBufferListFromDataNode);
+  }
+
+  public void startPipeMetaSync() {
+    pipeMetaSyncer.start();
+  }
+
+  public void stopPipeMetaSync() {
+    pipeMetaSyncer.stop();
   }
 }
