@@ -19,87 +19,49 @@
 
 package org.apache.iotdb.confignode.manager.pipe.runtime;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
-  private final ConfigManager configManager;
+  // shared thread pool in the runtime package
+  static final ExecutorService PROCEDURE_SUBMITTER =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.PIPE_RUNTIME_PROCEDURE_SUBMITTER.getName());
 
+  private final PipeLeaderChangeHandler pipeLeaderChangeHandler;
+  private final PipeHeartbeatParser pipeHeartbeatParser;
   private final PipeMetaSyncer pipeMetaSyncer;
 
   public PipeRuntimeCoordinator(ConfigManager configManager) {
-    this.configManager = configManager;
-    this.pipeMetaSyncer = new PipeMetaSyncer(configManager);
+    pipeLeaderChangeHandler = new PipeLeaderChangeHandler(configManager);
+    pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
+    pipeMetaSyncer = new PipeMetaSyncer(configManager);
   }
 
   @Override
   public void onClusterStatisticsChanged(StatisticsChangeEvent event) {
-    // do nothing, because pipe task is not related to statistics
+    pipeLeaderChangeHandler.onClusterStatisticsChanged(event);
   }
 
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
-    // if no pipe task, return
-    if (configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().isEmpty()) {
-      return;
-    }
-
-    // we only care about data region leader change
-    final Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap =
-        new HashMap<>();
-    event
-        .getLeaderMap()
-        .forEach(
-            (regionGroupId, pair) -> {
-              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
-                final String databaseName =
-                    configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
-                  // pipe only collect user's data, filter metric database here.
-                  dataRegionGroupToOldAndNewLeaderPairMap.put(
-                      regionGroupId,
-                      new Pair<>( // null or -1 means empty origin leader
-                          pair.left == null ? -1 : pair.left,
-                          pair.right == null ? -1 : pair.right));
-                }
-              }
-            });
-
-    // if no data region leader change, return
-    if (dataRegionGroupToOldAndNewLeaderPairMap.isEmpty()) {
-      return;
-    }
-
-    configManager
-        .getProcedureManager()
-        .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap);
+    pipeLeaderChangeHandler.onRegionGroupLeaderChanged(event);
   }
 
-  /**
-   * parse heartbeat from data node.
-   *
-   * @param dataNodeId data node id
-   * @param pipeMetaByteBufferListFromDataNode pipe meta byte buffer list collected from data node
-   */
   public void parseHeartbeat(
       int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    configManager
-        .getProcedureManager()
-        .pipeHandleMetaChange(dataNodeId, pipeMetaByteBufferListFromDataNode);
+    pipeHeartbeatParser.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
   }
 
   public void startPipeMetaSync() {

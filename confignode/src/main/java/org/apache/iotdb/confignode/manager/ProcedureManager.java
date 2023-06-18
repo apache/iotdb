@@ -94,7 +94,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -847,11 +846,12 @@ public class ProcedureManager {
   }
 
   public void pipeHandleMetaChange(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+      boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
     try {
       final long procedureId =
           executor.submitProcedure(
-              new PipeHandleMetaChangeProcedure(dataNodeId, pipeMetaByteBufferListFromDataNode));
+              new PipeHandleMetaChangeProcedure(
+                  needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
       LOGGER.info("PipeHandleMetaChangeProcedure was submitted, procedureId: {}.", procedureId);
     } catch (Exception e) {
       LOGGER.warn("PipeHandleMetaChangeProcedure was failed to submit.", e);
