@@ -834,51 +834,35 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus pipeHandleLeaderChange(
+  public void pipeHandleLeaderChange(
       Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap) {
     try {
-      long procedureId =
+      final long procedureId =
           executor.submitProcedure(
               new PipeHandleLeaderChangeProcedure(dataRegionGroupToOldAndNewLeaderPairMap));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
-      } else {
-        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
-      }
+      LOGGER.info("PipeHandleLeaderChangeProcedure was submitted, procedureId: {}.", procedureId);
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+      LOGGER.warn("PipeHandleLeaderChangeProcedure was failed to submit.", e);
+    }
+  }
+
+  public void pipeHandleMetaChange(
+      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+    try {
+      final long procedureId =
+          executor.submitProcedure(
+              new PipeHandleMetaChangeProcedure(dataNodeId, pipeMetaByteBufferListFromDataNode));
+      LOGGER.info("PipeHandleMetaChangeProcedure was submitted, procedureId: {}.", procedureId);
+    } catch (Exception e) {
+      LOGGER.warn("PipeHandleMetaChangeProcedure was failed to submit.", e);
     }
   }
 
   public TSStatus pipeMetaSync() {
     try {
-      long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
-      } else {
-        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
-      }
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
-    }
-  }
-
-  public TSStatus pipeHandleMetaChange(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    try {
-      long procedureId =
-          executor.submitProcedure(
-              new PipeHandleMetaChangeProcedure(dataNodeId, pipeMetaByteBufferListFromDataNode));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return RpcUtils.SUCCESS_STATUS;
