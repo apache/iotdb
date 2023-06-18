@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.DataSetType;
@@ -200,14 +201,23 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
     if (CONFIG.isEnableCPV()) {
-      //      System.out.println("====DEBUG====: use LocalGroupByExecutor4CPV for CPV");
-      IOMonitor2.dataSetType =
-          DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV;
+      if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
+        IOMonitor2.dataSetType =
+            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_UseIndex;
+      } else {
+        IOMonitor2.dataSetType =
+            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NotUseIndex;
+      }
       return new LocalGroupByExecutor4CPV(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
-    } else {
-      //      System.out.println("====DEBUG====: use LocalGroupByExecutor for MOC");
-      IOMonitor2.dataSetType = DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor;
+    } else { // enableCPV=false
+      if (TSFileDescriptor.getInstance().getConfig().isUseStatistics()) {
+        IOMonitor2.dataSetType =
+            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_UseStatistics;
+      } else {
+        IOMonitor2.dataSetType =
+            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_NotUseStatistics;
+      }
       return new LocalGroupByExecutor(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     }
