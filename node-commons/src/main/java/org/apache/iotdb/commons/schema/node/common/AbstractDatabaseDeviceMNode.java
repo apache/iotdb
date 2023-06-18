@@ -262,11 +262,20 @@ public abstract class AbstractDatabaseDeviceMNode<N extends IMNode<N>, BasicNode
 
   @Override
   public boolean isAligned() {
+    Boolean align = databaseDeviceInfo.isAligned();
+    if (align == null) {
+      return false;
+    }
+    return align;
+  }
+
+  @Override
+  public Boolean isAlignedNullable() {
     return databaseDeviceInfo.isAligned();
   }
 
   @Override
-  public void setAligned(boolean isAligned) {
+  public void setAligned(Boolean isAligned) {
     databaseDeviceInfo.setAligned(isAligned);
   }
 
