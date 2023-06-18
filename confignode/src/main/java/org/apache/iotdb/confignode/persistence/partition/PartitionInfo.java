@@ -862,37 +862,21 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return GetRegionIdResp with STATUS and List<TConsensusGroupId>.
    */
   public DataSet getRegionId(GetRegionIdPlan plan) {
-    if (!plan.getDatabase().equals("")) {
-      // get regionId of specific database.
-      if (!isDatabaseExisted(plan.getDatabase())) {
-        return new GetRegionIdResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
-      } else {
-        DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
-        return new GetRegionIdResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            sgPartitionTable
-                .getRegionId(plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())
-                .stream()
-                .distinct()
-                .sorted(Comparator.comparing(TConsensusGroupId::getId))
-                .collect(Collectors.toList()));
-      }
-    } else {
-      // get regionId of specific seriesSlotId(device).
-      List<TConsensusGroupId> regionIds = new ArrayList<>();
-      databasePartitionTables.forEach(
-          (database, databasePartitionTable) ->
-              regionIds.addAll(
-                  databasePartitionTable.getRegionId(
-                      plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())));
+    if (!isDatabaseExisted(plan.getDatabase())) {
+      // Return empty result if Database doesn't exist
       return new GetRegionIdResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-          regionIds.stream()
-              .distinct()
-              .sorted(Comparator.comparing(TConsensusGroupId::getId))
-              .collect(Collectors.toList()));
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
+
+    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(plan.getDatabase());
+    return new GetRegionIdResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        databasePartitionTable
+            .getRegionId(plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())
+            .stream()
+            .distinct()
+            .sorted(Comparator.comparing(TConsensusGroupId::getId))
+            .collect(Collectors.toList()));
   }
 
   /**

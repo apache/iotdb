@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -523,6 +524,21 @@ public class ClusterSchemaManager {
       throw new DatabaseNotExistsException(database);
     }
     return clusterSchemaInfo.getMatchedDatabaseSchemaByName(database);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @return The DatabaseName of the specified Device. Empty String if not exists.
+   */
+  public String getDatabaseNameByDevice(String devicePath) {
+    List<String> databases = getDatabaseNames();
+    for (String database : databases) {
+      if (PathUtils.isStartWith(devicePath, database)) {
+        return database;
+      }
+    }
+    return "";
   }
 
   /**
