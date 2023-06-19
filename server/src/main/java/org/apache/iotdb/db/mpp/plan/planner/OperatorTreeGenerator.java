@@ -1782,7 +1782,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       case BOOLEAN:
         return Byte.BYTES;
       case TEXT:
-        return StatisticsManager.getInstance().getMaxBinarySizeInBytes(new PartialPath());
+        return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
       default:
         throw new UnsupportedOperationException("Unknown data type " + tsDataType);
     }
@@ -2097,9 +2097,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // last_time, last_value
     List<Aggregator> aggregators = LastQueryUtil.createAggregators(seriesPath.getSeriesType());
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
-    long maxReturnSize =
-        calculateMaxAggregationResultSizeForLastQuery(
-            aggregators, seriesPath.transformToPartialPath());
+    long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(
@@ -2223,7 +2221,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           LastQueryUtil.createAggregators(unCachedPath.getSchemaList().get(i).getType(), i));
     }
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
-    long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators, unCachedPath);
+    long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
 
     Filter timeFilter = context.getLastQueryTimeFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();

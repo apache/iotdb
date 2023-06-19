@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
@@ -196,9 +195,7 @@ public class AggregationUtil {
               .map(typeProvider::getType)
               .collect(Collectors.toList());
       for (TSDataType tsDataType : outPutDataTypes) {
-        // TODO modify after statistics finish
-        PartialPath mockSeriesPath = new PartialPath();
-        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, mockSeriesPath);
+        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
       }
     }
 
@@ -210,21 +207,19 @@ public class AggregationUtil {
             * timeValueColumnsSizePerLine);
   }
 
-  public static long calculateMaxAggregationResultSizeForLastQuery(
-      List<Aggregator> aggregators, PartialPath inputSeriesPath) {
+  public static long calculateMaxAggregationResultSizeForLastQuery(List<Aggregator> aggregators) {
     long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     List<TSDataType> outPutDataTypes =
         aggregators.stream()
             .flatMap(aggregator -> Arrays.stream(aggregator.getOutputType()))
             .collect(Collectors.toList());
     for (TSDataType tsDataType : outPutDataTypes) {
-      timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
+      timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
     }
     return timeValueColumnsSizePerLine;
   }
 
-  private static long getOutputColumnSizePerLine(
-      TSDataType tsDataType, PartialPath inputSeriesPath) {
+  private static long getOutputColumnSizePerLine(TSDataType tsDataType) {
     switch (tsDataType) {
       case INT32:
         return IntColumn.SIZE_IN_BYTES_PER_POSITION;
@@ -237,7 +232,7 @@ public class AggregationUtil {
       case BOOLEAN:
         return BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
       case TEXT:
-        return StatisticsManager.getInstance().getMaxBinarySizeInBytes(inputSeriesPath);
+        return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
       default:
         throw new UnsupportedOperationException("Unknown data type " + tsDataType);
     }
