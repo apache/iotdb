@@ -22,7 +22,7 @@ public class PipeWALResourceManager implements AutoCloseable {
 
   private static final ScheduledExecutorService PIPE_WAL_RESOURCE_TTL_CHECKER =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_WAL_RESOURCE_TTL_CHECKER_SERVICE.getName());
+          ThreadName.PIPE_WAL_RESOURCE_TTL_CHECKER.getName());
   private final ScheduledFuture<?> ttlCheckerFuture;
 
   public PipeWALResourceManager() {
