@@ -79,10 +79,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       return sourceId;
     }
 
-    public PlanNodeId getPlanNodeId() {
-      return sourceId;
-    }
-
     public String getOperatorType() {
       return SeriesScanOperator.class.getSimpleName();
     }
@@ -152,27 +148,13 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       // here use do-while to promise doing this at least once
       do {
         /*
-         * consume page data firstly
+         * 1. consume page data firstly
+         * 2. consume chunk data secondly
+         * 3. consume next file finally
          */
-        if (readPageData()) {
-          continue;
+        if (!readPageData() && !readChunkData() && !readFileData()) {
+          break;
         }
-
-        /*
-         * consume chunk data secondly
-         */
-        if (readChunkData()) {
-          continue;
-        }
-
-        /*
-         * consume next file finally
-         */
-        if (readFileData()) {
-          continue;
-        }
-        break;
-
       } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
 
       finished = builder.isEmpty();
