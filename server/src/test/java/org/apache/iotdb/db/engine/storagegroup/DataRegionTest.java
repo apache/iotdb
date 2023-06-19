@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -75,6 +76,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataRegionTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(DataRegionTest.class);
 
   private String storageGroup = "root.vehicle.d0";
@@ -413,9 +415,9 @@ public class DataRegionTest {
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionInterval();
+    long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionInterval(100000);
+    COMMON_CONFIG.setTimePartitionInterval(100000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -494,16 +496,16 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionInterval(defaultTimePartition);
+    COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionInterval();
+    long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionInterval(1200000);
+    COMMON_CONFIG.setTimePartitionInterval(1200000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -582,16 +584,16 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionInterval(defaultTimePartition);
+    COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionInterval();
+    long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionInterval(1000000);
+    COMMON_CONFIG.setTimePartitionInterval(1000000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -670,7 +672,7 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionInterval(defaultTimePartition);
+    COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test

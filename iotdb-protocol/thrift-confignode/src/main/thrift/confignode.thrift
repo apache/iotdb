@@ -37,6 +37,9 @@ struct TGlobalConfig {
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
   7: required double diskSpaceWarningThreshold
+  8: optional string timestampPrecision
+  9: optional string schemaEngineMode
+  10: optional i32 tagAttributeTotalSize
 }
 
 struct TRatisConfig {
@@ -353,6 +356,8 @@ struct TClusterParameters {
   13: required string seriesPartitionExecutorClass
   14: required double diskSpaceWarningThreshold
   15: required string timestampPrecision
+  16: optional string schemaEngineMode
+  17: optional i32 tagAttributeTotalSize
 }
 
 struct TConfigNodeRegisterReq {

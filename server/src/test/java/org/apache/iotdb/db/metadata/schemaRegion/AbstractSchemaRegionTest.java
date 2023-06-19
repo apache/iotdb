@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -41,6 +43,7 @@ import java.util.List;
 public abstract class AbstractSchemaRegionTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private SchemaRegionTestParams rawConfig;
 
@@ -64,10 +67,10 @@ public abstract class AbstractSchemaRegionTest {
     rawConfig =
         new SchemaRegionTestParams(
             "Raw-Config",
-            config.getSchemaEngineMode(),
+            COMMON_CONFIG.getSchemaEngineMode(),
             config.getCachedMNodeSizeInPBTreeMode(),
             config.isClusterMode());
-    config.setSchemaEngineMode(testParams.schemaEngineMode);
+    COMMON_CONFIG.setSchemaEngineMode(testParams.schemaEngineMode);
     config.setCachedMNodeSizeInPBTreeMode(testParams.cachedMNodeSize);
     config.setClusterMode(testParams.isClusterMode);
     SchemaEngine.getInstance().init();
@@ -77,7 +80,7 @@ public abstract class AbstractSchemaRegionTest {
   public void tearDown() throws Exception {
     SchemaEngine.getInstance().clear();
     cleanEnv();
-    config.setSchemaEngineMode(rawConfig.schemaEngineMode);
+    COMMON_CONFIG.setSchemaEngineMode(rawConfig.schemaEngineMode);
     config.setCachedMNodeSizeInPBTreeMode(rawConfig.cachedMNodeSize);
     config.setClusterMode(rawConfig.isClusterMode);
   }
