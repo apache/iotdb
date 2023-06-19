@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control.clientsession;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
@@ -34,7 +35,6 @@ public abstract class IClientSession {
 
   private ZoneId zoneId;
 
-  // TODO: why some Statement Plans use timeZone while others use ZoneId?
   private TimeZone timeZone;
 
   private String username;
@@ -49,7 +49,7 @@ public abstract class IClientSession {
 
   abstract TSConnectionType getConnectionType();
 
-  /** ip:port for thrift-based service and client id for mqtt-based service */
+  /** ip:port for thrift-based service and client id for mqtt-based service. */
   abstract String getConnectionId();
 
   public void setClientVersion(ClientVersion clientVersion) {

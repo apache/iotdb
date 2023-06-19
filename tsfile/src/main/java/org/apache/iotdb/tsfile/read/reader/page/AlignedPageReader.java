@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -262,8 +263,8 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     return timePageReader.getStatistics();
   }
 
-  private List<Statistics> getValueStatisticsList() {
-    List<Statistics> valueStatisticsList = new ArrayList<>();
+  private List<Statistics<Serializable>> getValueStatisticsList() {
+    List<Statistics<Serializable>> valueStatisticsList = new ArrayList<>();
     for (ValuePageReader v : valuePageReaderList) {
       valueStatisticsList.add(v == null ? null : v.getStatistics());
     }

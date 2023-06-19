@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control.clientsession;
 
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
@@ -25,7 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-/** For Internal usage, like CQ and Select Into */
+/** For Internal usage, like CQ and Select Into. */
 public class InternalClientSession extends IClientSession {
 
   // For CQ, it will be cq_id
@@ -36,10 +37,6 @@ public class InternalClientSession extends IClientSession {
 
   public InternalClientSession(String clientID) {
     this.clientID = clientID;
-  }
-
-  public String getClientID() {
-    return clientID;
   }
 
   @Override

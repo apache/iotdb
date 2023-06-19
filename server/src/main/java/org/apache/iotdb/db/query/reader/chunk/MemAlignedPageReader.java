@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 
 import static org.apache.iotdb.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
@@ -65,35 +67,39 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
       // save the first not null value of each row
-      Object firstNotNullObject = null;
-      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-        if (!tsBlock.getColumn(column).isNull(row)) {
-          firstNotNullObject = tsBlock.getColumn(column).getObject(row);
-          break;
-        }
-      }
+      Object firstNotNullObject = getFirstNotNullObject(row);
       // if all the sub sensors' value are null in current time
       // or current row is not satisfied with the filter, just discard it
-      // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will only
-      // accept AlignedPath with only one sub sensor
-      if (firstNotNullObject != null
-          && (valueFilter == null
-              || valueFilter.satisfy(tsBlock.getTimeByIndex(row), firstNotNullObject))) {
-        TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
-        for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-          if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(row)) {
-            values[column] = tsBlock.getColumn(column).getTsPrimitiveType(row);
-          }
-        }
-        batchData.putVector(tsBlock.getTimeByIndex(row), values);
+      if (firstNotNullObject != null) {
+        doFilter(firstNotNullObject, row, batchData);
       }
     }
     return batchData.flip();
   }
 
+  private Object getFirstNotNullObject(int rowIndex) {
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+      if (!tsBlock.getColumn(column).isNull(rowIndex)) {
+        return tsBlock.getColumn(column).getObject(rowIndex);
+      }
+    }
+    return null;
+  }
+
+  private void doFilter(Object row, int rowIndex, BatchData batchData) {
+    if (valueFilter == null || valueFilter.satisfy(tsBlock.getTimeByIndex(rowIndex), row)) {
+      TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
+      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+        if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(rowIndex)) {
+          values[column] = tsBlock.getColumn(column).getTsPrimitiveType(rowIndex);
+        }
+      }
+      batchData.putVector(tsBlock.getTimeByIndex(rowIndex), values);
+    }
+  }
+
   private boolean pageSatisfy() {
     if (valueFilter != null) {
-      // TODO accept valueStatisticsList to filter
       return valueFilter.satisfy(getStatistics());
     } else {
       // For aligned series, When we only query some measurements under an aligned device, if the
@@ -102,7 +108,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       // NOTE: if we change the query semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
-      for (Statistics statistics : getValueStatisticsList()) {
+      for (Statistics<Serializable> statistics : getValueStatisticsList()) {
         if (statistics == null || statistics.hasNullValue(rowCount)) {
           return true;
         }
@@ -124,8 +130,21 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       return builder.build();
     }
 
-    boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
+    boolean[] satisfyInfo = buildSatisfyInfoArray();
 
+    boolean[] hasValue = buildHasValueArray();
+
+    // build time column
+    int readEndIndex = buildTimeColumn(satisfyInfo, hasValue);
+
+    // build value column
+    buildValueColumns(satisfyInfo, hasValue, readEndIndex);
+
+    return builder.build();
+  }
+
+  private boolean[] buildSatisfyInfoArray() {
+    boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
       long time = tsBlock.getTimeByIndex(row);
       // ValueFilter in MPP will only contain time filter now.
@@ -133,7 +152,10 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
         satisfyInfo[row] = true;
       }
     }
+    return satisfyInfo;
+  }
 
+  private boolean[] buildHasValueArray() {
     boolean[] hasValue = new boolean[tsBlock.getPositionCount()];
     // other value column
     for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
@@ -142,29 +164,41 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
         hasValue[row] = hasValue[row] || !valueColumn.isNull(row);
       }
     }
+    return hasValue;
+  }
 
-    // build time column
+  private int buildTimeColumn(boolean[] satisfyInfo, boolean[] hasValue) {
     int readEndIndex = tsBlock.getPositionCount();
-    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      if (!satisfyInfo[row] || !hasValue[row]) {
+    for (int row = 0; row < readEndIndex; row++) {
+
+      if (needSkipCurrentRow(satisfyInfo, hasValue, row)) {
         continue;
       }
-      if (paginationController.hasCurOffset()) {
-        paginationController.consumeOffset();
-        satisfyInfo[row] = false;
-        continue;
-      }
+
       if (paginationController.hasCurLimit()) {
         builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(row));
         builder.declarePosition();
         paginationController.consumeLimit();
       } else {
         readEndIndex = row;
-        break;
       }
     }
+    return readEndIndex;
+  }
 
-    // build value column
+  private boolean needSkipCurrentRow(boolean[] satisfyInfo, boolean[] hasValue, int rowIndex) {
+    if (!satisfyInfo[rowIndex] || !hasValue[rowIndex]) {
+      return true;
+    }
+    if (paginationController.hasCurOffset()) {
+      paginationController.consumeOffset();
+      satisfyInfo[rowIndex] = false;
+      return true;
+    }
+    return false;
+  }
+
+  private void buildValueColumns(boolean[] satisfyInfo, boolean[] hasValue, int readEndIndex) {
     for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
       Column valueColumn = tsBlock.getColumn(column);
       ColumnBuilder valueBuilder = builder.getColumnBuilder(column);
@@ -178,26 +212,24 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
         }
       }
     }
-
-    return builder.build();
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<Serializable> getStatistics() {
     return chunkMetadata.getStatistics();
   }
 
   @Override
-  public Statistics getStatistics(int index) {
+  public Statistics<Serializable> getStatistics(int index) {
     return chunkMetadata.getStatistics(index);
   }
 
   @Override
-  public Statistics getTimeStatistics() {
+  public Statistics<Serializable> getTimeStatistics() {
     return chunkMetadata.getTimeStatistics();
   }
 
-  private List<Statistics> getValueStatisticsList() {
+  private List<Statistics<Serializable>> getValueStatisticsList() {
     return chunkMetadata.getValueStatisticsList();
   }
 

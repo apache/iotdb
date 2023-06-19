@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.CONSTRUCT_CHUNK_READER_NONALIGNED_MEM;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_NONALIGNED_MEM;
 
-/** To read one chunk from memory, and only used in iotdb server module */
+/** To read one chunk from memory, and only used in iotdb server module. */
 public class MemChunkLoader implements IChunkLoader {
 
   private final ReadOnlyMemChunk chunk;

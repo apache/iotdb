@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control.clientsession;
 
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
@@ -29,10 +30,6 @@ public class MqttClientSession extends IClientSession {
 
   public MqttClientSession(String clientID) {
     this.clientID = clientID;
-  }
-
-  public String getClientID() {
-    return clientID;
   }
 
   @Override
