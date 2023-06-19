@@ -27,7 +27,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,16 +42,16 @@ import java.util.stream.Collectors;
 
 public class ShowPipeTask implements IConfigTask {
 
-  private final ShowPipeStatement showPipeStatement;
+  private final ShowPipesStatement showPipesStatement;
 
-  public ShowPipeTask(ShowPipeStatement showPipeStatement) {
-    this.showPipeStatement = showPipeStatement;
+  public ShowPipeTask(ShowPipesStatement showPipesStatement) {
+    this.showPipesStatement = showPipesStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showPipe(showPipeStatement);
+    return configTaskExecutor.showPipes(showPipesStatement);
   }
 
   public static void buildTSBlock(

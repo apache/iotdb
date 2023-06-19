@@ -244,34 +244,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableWatermark(boolean enableWatermark) {
-    cnConfig.setEnableWatermark(enableWatermark);
-    dnConfig.setEnableWatermark(enableWatermark);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkSecretKey(String watermarkSecretKey) {
-    cnConfig.setWatermarkSecretKey(watermarkSecretKey);
-    dnConfig.setWatermarkSecretKey(watermarkSecretKey);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkBitString(String watermarkBitString) {
-    cnConfig.setWatermarkBitString(watermarkBitString);
-    dnConfig.setWatermarkBitString(watermarkBitString);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkMethod(String watermarkMethod) {
-    cnConfig.setWatermarkMethod(watermarkMethod);
-    dnConfig.setWatermarkMethod(watermarkMethod);
-    return this;
-  }
-
-  @Override
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
     cnConfig.setEnableMQTTService(enableMQTTService);
     dnConfig.setEnableMQTTService(enableMQTTService);

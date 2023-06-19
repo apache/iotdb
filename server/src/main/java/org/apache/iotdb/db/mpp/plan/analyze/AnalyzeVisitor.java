@@ -140,7 +140,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewState
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
@@ -1351,8 +1350,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
                 expression, device, schemaTree);
 
-        if (groupByExpressionsOfOneDevice.size() != 1) {
-          throw new SemanticException("Expression in group by should indicate one value");
+        if (groupByExpressionsOfOneDevice.size() == 0) {
+          throw new SemanticException(
+              String.format("%s in group by clause doesn't exist.", expression));
+        }
+        if (groupByExpressionsOfOneDevice.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "%s in group by clause shouldn't refer to more than one timeseries.",
+                  expression));
         }
         Expression groupByExpressionOfOneDevice = groupByExpressionsOfOneDevice.get(0);
 
@@ -1473,8 +1479,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // Expression in group by variation clause only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.bindSchemaForExpression(groupByExpression, schemaTree);
-      if (expressions.size() != 1) {
-        throw new SemanticException("Expression in group by should indicate one value");
+      if (expressions.size() == 0) {
+        throw new SemanticException(
+            String.format(
+                "%s in group by clause doesn't exist.", groupByExpression.getExpressionString()));
+      }
+      if (expressions.size() > 1) {
+        throw new SemanticException(
+            String.format(
+                "%s in group by clause shouldn't refer to more than one timeseries.",
+                groupByExpression.getExpressionString()));
       }
       // Aggregation expression shouldn't exist in group by clause.
       List<Expression> aggregationExpression =
@@ -3141,16 +3155,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
 
-    return analysis;
-  }
-
-  @Override
-  public Analysis visitShowPipeSinkType(
-      ShowPipeSinkTypeStatement showPipeSinkTypeStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setStatement(showPipeSinkTypeStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPipeSinkTypeHeader());
-    analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
   }
 

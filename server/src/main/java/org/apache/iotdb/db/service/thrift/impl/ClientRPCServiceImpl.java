@@ -63,12 +63,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.DropSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncReceiver;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.quotas.OperationQuota;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -738,14 +738,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
     properties.setMaxConcurrentClientNum(
         IoTDBDescriptor.getInstance().getConfig().getRpcMaxConcurrentClientNum());
-    properties.setWatermarkSecretKey(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkSecretKey());
-    properties.setWatermarkBitString(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkBitString());
-    properties.setWatermarkParamMarkRate(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMarkRate());
-    properties.setWatermarkParamMaxRightBit(
-        IoTDBDescriptor.getInstance().getConfig().getWatermarkParamMaxRightBit());
     properties.setIsReadOnly(CommonDescriptor.getInstance().getConfig().isReadOnly());
     properties.setThriftMaxFrameSize(
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
@@ -2090,8 +2082,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    // TODO(sync): Check permissions here
-    return SyncService.getInstance()
+    return IoTDBSyncReceiver.getInstance()
         .handshake(
             info,
             SESSION_MANAGER.getCurrSession().getClientAddress(),
@@ -2101,17 +2092,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus sendPipeData(ByteBuffer buff) throws TException {
-    return SyncService.getInstance().transportPipeData(buff);
+    return IoTDBSyncReceiver.getInstance().transportPipeData(buff);
   }
 
   @Override
   public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
-    return SyncService.getInstance().transportFile(metaInfo, buff);
+    return IoTDBSyncReceiver.getInstance().transportFile(metaInfo, buff);
   }
 
   @Override
   public TPipeTransferResp pipeTransfer(TPipeTransferReq req) {
-    return PipeAgent.receiver().transfer(req, partitionFetcher, schemaFetcher);
+    return PipeAgent.receiver().receive(req, partitionFetcher, schemaFetcher);
   }
 
   @Override
@@ -2251,7 +2242,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq();
       closeSession(req);
     }
-    SyncService.getInstance().handleClientExit();
+    IoTDBSyncReceiver.getInstance().handleClientExit();
     PipeAgent.receiver().handleClientExit();
   }
 }

@@ -45,22 +45,25 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   private final WALEntryHandler walEntryHandler;
   private final ProgressIndex progressIndex;
+  private final boolean isAligned;
 
   private TabletInsertionDataContainer dataContainer;
 
   public PipeInsertNodeTabletInsertionEvent(
-      WALEntryHandler walEntryHandler, ProgressIndex progressIndex) {
-    this(walEntryHandler, progressIndex, null, null);
+      WALEntryHandler walEntryHandler, ProgressIndex progressIndex, boolean isAligned) {
+    this(walEntryHandler, progressIndex, isAligned, null, null);
   }
 
   private PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
       ProgressIndex progressIndex,
+      boolean isAligned,
       PipeTaskMeta pipeTaskMeta,
       String pattern) {
     super(pipeTaskMeta, pattern);
     this.walEntryHandler = walEntryHandler;
     this.progressIndex = progressIndex;
+    this.isAligned = isAligned;
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
@@ -70,7 +73,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
-  public boolean increaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
       return true;
@@ -85,7 +88,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public boolean decreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
       PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
       return true;
@@ -108,7 +111,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeInsertNodeTabletInsertionEvent(
-        walEntryHandler, progressIndex, pipeTaskMeta, pattern);
+        walEntryHandler, progressIndex, isAligned, pipeTaskMeta, pattern);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -139,6 +142,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
+  /////////////////////////// convertToTablet ///////////////////////////
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
   public Tablet convertToTablet() {
     try {
       if (dataContainer == null) {
@@ -155,11 +164,13 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public String toString() {
-    return "PipeRawTabletInsertionEvent{"
+    return "PipeInsertNodeTabletInsertionEvent{"
         + "walEntryHandler="
         + walEntryHandler
         + ", progressIndex="
         + progressIndex
+        + ", isAligned="
+        + isAligned
         + '}';
   }
 }

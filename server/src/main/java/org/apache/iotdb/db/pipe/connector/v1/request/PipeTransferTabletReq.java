@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -39,22 +41,35 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
 
 public class PipeTransferTabletReq extends TPipeTransferReq {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
-  private Tablet tablet;
 
-  public static TPipeTransferReq toTPipeTransferReq(Tablet tablet) throws IOException {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
+
+  private Tablet tablet;
+  private boolean isAligned;
+
+  public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
+      throws IOException {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
 
     tabletReq.tablet = tablet;
 
-    tabletReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    tabletReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
-    tabletReq.body = tablet.serialize();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      tabletReq.body =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
     return tabletReq;
   }
 
@@ -67,7 +82,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     return true;
   }
 
-  public static void sortTablet(Tablet tablet) {
+  private static void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -180,6 +195,19 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     return sortedBitMap;
   }
 
+  public static PipeTransferTabletReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
+
+    tabletReq.tablet = Tablet.deserialize(transferReq.body);
+    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
+
+    tabletReq.version = transferReq.version;
+    tabletReq.type = transferReq.type;
+    tabletReq.body = transferReq.body;
+
+    return tabletReq;
+  }
+
   public InsertTabletStatement constructStatement() {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
@@ -194,7 +222,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       }
 
       request.setPrefixPath(tablet.deviceId);
-      request.setIsAligned(false);
+      request.setIsAligned(isAligned);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);
@@ -206,17 +234,5 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
       return null;
     }
-  }
-
-  public static PipeTransferTabletReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
-
-    tabletReq.tablet = Tablet.deserialize(transferReq.body);
-
-    tabletReq.version = transferReq.version;
-    tabletReq.type = transferReq.type;
-    tabletReq.body = transferReq.body;
-
-    return tabletReq;
   }
 }

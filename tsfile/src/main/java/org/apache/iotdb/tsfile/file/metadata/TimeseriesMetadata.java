@@ -64,8 +64,6 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
   private IChunkMetadataLoader chunkMetadataLoader;
 
-  private long ramSize;
-
   // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
   private boolean isSeq = true;
 

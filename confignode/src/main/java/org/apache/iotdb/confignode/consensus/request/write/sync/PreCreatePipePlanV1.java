@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write.sync;
 
-import org.apache.iotdb.commons.sync.pipe.PipeInfo;
+import org.apache.iotdb.commons.sync.PipeInfo;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 

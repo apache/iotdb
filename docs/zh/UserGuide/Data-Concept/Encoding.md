@@ -53,12 +53,6 @@ GORILLA 编码是一种无损编码，它比较适合编码前后值比较接近
 
 字典编码是一种无损编码。它适合编码基数小的数据（即数据去重后唯一值数量小）。不推荐用于基数大的数据。
 
-* 频域编码 （FREQ）
-
-频域编码是一种有损编码，它基于变换编码的思想，将时序数据变换为频域，仅保留部分高能量的频域分量，以少许的精度损失为代价大幅提高空间效率。该编码适合于频域能量分布较为集中的数据（特别是具有明显周期性的数据），不适合能量分布均匀的数据（如白噪声）。
-
-> 频域编码在配置文件中包括两个参数：`freq_snr`指定了编码的信噪比（与标准均方根误差的关系为$NRMSE=10^{-SNR/20}$），该参数增大会同时降低压缩比和精度损失，请根据实际应用的需要进行设置；`freq_block_size`指定了编码进行时频域变换的分组大小，推荐不对默认值进行修改。参数影响的实验结果和分析详见设计文档。
-
 * ZIGZAG 编码
 
 ZigZag编码将有符号整型映射到无符号整型，适合比较小的整数。
@@ -84,14 +78,14 @@ RLBE编码是一种无损编码，将差分编码，位填充编码，游程长�
 
 前文介绍的五种编码适用于不同的数据类型，若对应关系错误，则无法正确创建时间序列。数据类型与支持其编码的编码方式对应关系总结如下表所示。
 
-| 数据类型 |                        支持的编码                        |
-|:---------:|:-----------------------------------------------------------------:|
-| BOOLEAN   |                            PLAIN, RLE                             |
-| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
-| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, ZIGZAG, CHIMP, SPRINTZ, RLBE |
-| FLOAT     |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
-| DOUBLE    |     PLAIN, RLE, TS_2DIFF, GORILLA, FREQ, CHIMP, SPRINTZ, RLBE     |
-| TEXT      |                         PLAIN, DICTIONARY                         |
+| 数据类型 |                            支持的编码                            |
+|:---------:|:-----------------------------------------------------------:|
+| BOOLEAN   |                         PLAIN, RLE                          |
+| INT32     | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| INT64     | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG, CHIMP, SPRINTZ, RLBE |
+| FLOAT     |     PLAIN, RLE, TS_2DIFF, GORILLA, CHIMP, SPRINTZ, RLBE     |
+| DOUBLE    |     PLAIN, RLE, TS_2DIFF, GORILLA, CHIMP, SPRINTZ, RLBE     |
+| TEXT      |                      PLAIN, DICTIONARY                      |
 
 当用户输入的数据类型与编码方式不对应时，系统会提示错误。如下所示，二阶差分编码不支持布尔类型：
 

@@ -60,7 +60,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
@@ -111,7 +110,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "127.0.0.1";
+  private String rpcAddress = "0.0.0.0";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -121,9 +120,6 @@ public class IoTDBConfig {
 
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
-
-  /** Port which the influxdb protocol server listens to. */
-  private int influxDBRpcPort = 8086;
 
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
@@ -576,12 +572,6 @@ public class IoTDBConfig {
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
 
-  /** White list for sync */
-  private String ipWhiteList = "127.0.0.1/32";
-
-  /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
-  private int maxNumberOfSyncFileRetry = 5;
-
   /**
    * Set the language version when loading file including error information, default value is "EN"
    */
@@ -619,18 +609,6 @@ public class IoTDBConfig {
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
-
-  /** Switch of watermark function */
-  private boolean enableWatermark = false;
-
-  /** Secret key for watermark */
-  private String watermarkSecretKey = "IoTDB*2019@Beijing";
-
-  /** Bit string of watermark */
-  private String watermarkBitString = "100101110100";
-
-  /** Watermark method and parameters */
-  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
 
   /** Switch of creating schema automatically */
   private boolean enableAutoCreateSchema = true;
@@ -840,7 +818,7 @@ public class IoTDBConfig {
   private int frequencyIntervalInMinute = 1;
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
-  private long slowQueryThreshold = 5000;
+  private long slowQueryThreshold = 30000;
 
   private int patternMatchingThreshold = 1000000;
 
@@ -849,12 +827,6 @@ public class IoTDBConfig {
    * iotdb-common.properties
    */
   private boolean enableRpcService = true;
-
-  /**
-   * whether enable the influxdb rpc service. This parameter has no a corresponding field in the
-   * iotdb-common.properties
-   */
-  private boolean enableInfluxDBRpcService = false;
 
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
@@ -882,16 +854,16 @@ public class IoTDBConfig {
   private String schemaEngineMode = "Memory";
 
   /** the memory used for metadata cache when using persistent schema */
-  private int cachedMNodeSizeInSchemaFileMode = -1;
+  private int cachedMNodeSizeInPBTreeMode = -1;
 
-  /** the minimum size (in bytes) of segment inside a schema file page */
-  private short minimumSegmentInSchemaFile = 0;
+  /** the minimum size (in bytes) of segment inside a pb-tree file page */
+  private short minimumSegmentInPBTree = 0;
 
-  /** cache size for pages in one schema file */
-  private int pageCacheSizeInSchemaFile = 1024;
+  /** cache size for pages in one pb-tree file */
+  private int pageCacheSizeInPBTree = 1024;
 
   /** maximum number of logged pages before log erased */
-  private int schemaFileLogSize = 16384;
+  private int pbTreeLogSize = 16384;
 
   /**
    * Maximum number of measurement in one create timeseries plan node. If the number of measurement
@@ -1406,14 +1378,6 @@ public class IoTDBConfig {
     this.rpcPort = rpcPort;
   }
 
-  public int getInfluxDBRpcPort() {
-    return influxDBRpcPort;
-  }
-
-  public void setInfluxDBRpcPort(int influxDBRpcPort) {
-    this.influxDBRpcPort = influxDBRpcPort;
-  }
-
   public String getTimestampPrecision() {
     return timestampPrecision;
   }
@@ -1720,14 +1684,6 @@ public class IoTDBConfig {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
   }
 
-  public int getMaxNumberOfSyncFileRetry() {
-    return maxNumberOfSyncFileRetry;
-  }
-
-  public void setMaxNumberOfSyncFileRetry(int maxNumberOfSyncFileRetry) {
-    this.maxNumberOfSyncFileRetry = maxNumberOfSyncFileRetry;
-  }
-
   String getLanguageVersion() {
     return languageVersion;
   }
@@ -1748,14 +1704,6 @@ public class IoTDBConfig {
     return "UNKNOWN".equals(version)
         ? "UNKNOWN"
         : version.split("\\.")[0] + "." + version.split("\\.")[1];
-  }
-
-  public String getIpWhiteList() {
-    return ipWhiteList;
-  }
-
-  public void setIpWhiteList(String ipWhiteList) {
-    this.ipWhiteList = ipWhiteList;
   }
 
   public long getCacheFileReaderClearPeriod() {
@@ -2255,68 +2203,6 @@ public class IoTDBConfig {
     this.lastCacheEnable = lastCacheEnable;
   }
 
-  public boolean isEnableWatermark() {
-    return enableWatermark;
-  }
-
-  public void setEnableWatermark(boolean enableWatermark) {
-    this.enableWatermark = enableWatermark;
-  }
-
-  public String getWatermarkSecretKey() {
-    return watermarkSecretKey;
-  }
-
-  public void setWatermarkSecretKey(String watermarkSecretKey) {
-    this.watermarkSecretKey = watermarkSecretKey;
-  }
-
-  public String getWatermarkBitString() {
-    return watermarkBitString;
-  }
-
-  public void setWatermarkBitString(String watermarkBitString) {
-    this.watermarkBitString = watermarkBitString;
-  }
-
-  public String getWatermarkMethod() {
-    return this.watermarkMethod;
-  }
-
-  public void setWatermarkMethod(String watermarkMethod) {
-    this.watermarkMethod = watermarkMethod;
-  }
-
-  public String getWatermarkMethodName() {
-    return watermarkMethod.split("\\(")[0];
-  }
-
-  public int getWatermarkParamMarkRate() {
-    return Integer.parseInt(getWatermarkParamValue("embed_row_cycle", "5"));
-  }
-
-  public int getWatermarkParamMaxRightBit() {
-    return Integer.parseInt(getWatermarkParamValue("embed_lsb_num", "5"));
-  }
-
-  private String getWatermarkParamValue(String key, String defaultValue) {
-    String res = getWatermarkParamValue(key);
-    if (res != null) {
-      return res;
-    }
-    return defaultValue;
-  }
-
-  private String getWatermarkParamValue(String key) {
-    String pattern = key + "=(\\w*)";
-    Pattern r = Pattern.compile(pattern);
-    Matcher m = r.matcher(watermarkMethod);
-    if (m.find() && m.groupCount() > 0) {
-      return m.group(1);
-    }
-    return null;
-  }
-
   public boolean isAutoCreateSchemaEnabled() {
     return enableAutoCreateSchema;
   }
@@ -2799,14 +2685,6 @@ public class IoTDBConfig {
     this.enableRpcService = enableRpcService;
   }
 
-  public boolean isEnableInfluxDBRpcService() {
-    return enableInfluxDBRpcService;
-  }
-
-  public void setEnableInfluxDBRpcService(boolean enableInfluxDBRpcService) {
-    this.enableInfluxDBRpcService = enableInfluxDBRpcService;
-  }
-
   public int getIoTaskQueueSizeForFlushing() {
     return ioTaskQueueSizeForFlushing;
   }
@@ -3055,37 +2933,37 @@ public class IoTDBConfig {
     this.schemaEngineMode = schemaEngineMode;
   }
 
-  public int getCachedMNodeSizeInSchemaFileMode() {
-    return cachedMNodeSizeInSchemaFileMode;
+  public int getCachedMNodeSizeInPBTreeMode() {
+    return cachedMNodeSizeInPBTreeMode;
   }
 
   @TestOnly
-  public void setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
-    this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
+  public void setCachedMNodeSizeInPBTreeMode(int cachedMNodeSizeInPBTreeMode) {
+    this.cachedMNodeSizeInPBTreeMode = cachedMNodeSizeInPBTreeMode;
   }
 
-  public short getMinimumSegmentInSchemaFile() {
-    return minimumSegmentInSchemaFile;
+  public short getMinimumSegmentInPBTree() {
+    return minimumSegmentInPBTree;
   }
 
-  public void setMinimumSegmentInSchemaFile(short minimumSegmentInSchemaFile) {
-    this.minimumSegmentInSchemaFile = minimumSegmentInSchemaFile;
+  public void setMinimumSegmentInPBTree(short minimumSegmentInPBTree) {
+    this.minimumSegmentInPBTree = minimumSegmentInPBTree;
   }
 
-  public int getPageCacheSizeInSchemaFile() {
-    return pageCacheSizeInSchemaFile;
+  public int getPageCacheSizeInPBTree() {
+    return pageCacheSizeInPBTree;
   }
 
-  public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
-    this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
+  public void setPageCacheSizeInPBTree(int pageCacheSizeInPBTree) {
+    this.pageCacheSizeInPBTree = pageCacheSizeInPBTree;
   }
 
-  public int getSchemaFileLogSize() {
-    return schemaFileLogSize;
+  public int getPBTreeLogSize() {
+    return pbTreeLogSize;
   }
 
-  public void setSchemaFileLogSize(int schemaFileLogSize) {
-    this.schemaFileLogSize = schemaFileLogSize;
+  public void setPBTreeLogSize(int pbTreeLogSize) {
+    this.pbTreeLogSize = pbTreeLogSize;
   }
 
   public int getMaxMeasurementNumOfInternalRequest() {

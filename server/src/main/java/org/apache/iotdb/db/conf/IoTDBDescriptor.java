@@ -286,20 +286,6 @@ public class IoTDBDescriptor {
                 .getProperty(IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))
                 .trim()));
 
-    conf.setEnableInfluxDBRpcService(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_influxdb_rpc_service",
-                    Boolean.toString(conf.isEnableInfluxDBRpcService()))
-                .trim()));
-
-    conf.setInfluxDBRpcPort(
-        Integer.parseInt(
-            properties
-                .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
-                .trim()));
-
     conf.setEnableMLNodeService(
         Boolean.parseBoolean(
             properties
@@ -544,15 +530,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_session_timeout_threshold",
                 Integer.toString(conf.getSessionTimeoutThreshold()))));
-    conf.setMaxNumberOfSyncFileRetry(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_number_of_sync_file_retry",
-                    Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
-                .trim()));
-
-    conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
     conf.setFlushThreadCount(
         Integer.parseInt(
@@ -636,11 +613,6 @@ public class IoTDBDescriptor {
       conf.setChunkBufferPoolEnable(
           Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
-
-    conf.setUpgradeThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "upgrade_thread_count", Integer.toString(conf.getUpgradeThreadCount()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -760,16 +732,6 @@ public class IoTDBDescriptor {
     }
 
     conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
-
-    conf.setEnableWatermark(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "watermark_module_opened", Boolean.toString(conf.isEnableWatermark()).trim())));
-    conf.setWatermarkSecretKey(
-        properties.getProperty("watermark_secret_key", conf.getWatermarkSecretKey()));
-    conf.setWatermarkBitString(
-        properties.getProperty("watermark_bit_string", conf.getWatermarkBitString()));
-    conf.setWatermarkMethod(properties.getProperty("watermark_method", conf.getWatermarkMethod()));
 
     loadAutoCreateSchemaProps(properties);
 
@@ -920,27 +882,26 @@ public class IoTDBDescriptor {
       conf.setEnableLastCache(false);
     }
 
-    conf.setCachedMNodeSizeInSchemaFileMode(
+    conf.setCachedMNodeSizeInPBTreeMode(
         Integer.parseInt(
             properties.getProperty(
-                "cached_mnode_size_in_schema_file_mode",
-                String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
+                "cached_mnode_size_in_pb_tree_mode",
+                String.valueOf(conf.getCachedMNodeSizeInPBTreeMode()))));
 
-    conf.setMinimumSegmentInSchemaFile(
+    conf.setMinimumSegmentInPBTree(
         Short.parseShort(
             properties.getProperty(
-                "minimum_schema_file_segment_in_bytes",
-                String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
+                "minimum_pb_tree_segment_in_bytes",
+                String.valueOf(conf.getMinimumSegmentInPBTree()))));
 
-    conf.setPageCacheSizeInSchemaFile(
+    conf.setPageCacheSizeInPBTree(
         Integer.parseInt(
             properties.getProperty(
-                "page_cache_in_schema_file", String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
+                "page_cache_in_pb_tree", String.valueOf(conf.getPageCacheSizeInPBTree()))));
 
-    conf.setSchemaFileLogSize(
+    conf.setPBTreeLogSize(
         Integer.parseInt(
-            properties.getProperty(
-                "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
+            properties.getProperty("pb_tree_log_size", String.valueOf(conf.getPBTreeLogSize()))));
 
     conf.setMaxMeasurementNumOfInternalRequest(
         Integer.parseInt(
@@ -1364,11 +1325,6 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setTimeEncoder(
-            properties.getProperty(
-                "time_encoder", TSFileDescriptor.getInstance().getConfig().getTimeEncoder()));
-    TSFileDescriptor.getInstance()
-        .getConfig()
         .setValueEncoder(
             properties.getProperty(
                 "value_encoder", TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
@@ -1587,16 +1543,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
-
-      // update sync config
-      conf.setMaxNumberOfSyncFileRetry(
-          Integer.parseInt(
-              properties
-                  .getProperty(
-                      "max_number_of_sync_file_retry",
-                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
-                  .trim()));
-      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
       // update enable query memory estimation for memory control
       conf.setEnableQueryMemoryEstimation(

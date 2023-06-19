@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.v1.request;
 
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -45,7 +45,7 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
 
     handshakeReq.timestampPrecision = timestampPrecision;
 
-    handshakeReq.version = IoTDBThriftConnectorVersion.VERSION_ONE.getVersion();
+    handshakeReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
     handshakeReq.type = PipeRequestType.HANDSHAKE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
