@@ -163,8 +163,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.mpp.plan.statement.AuthorType;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -281,7 +281,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
-    boolean isSystemDatabase = databaseSchema.getName().equals(IoTDBMetricsUtils.DATABASE);
+    boolean isSystemDatabase = databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE);
 
     // Set default configurations if necessary
     if (!databaseSchema.isSetTTL()) {
