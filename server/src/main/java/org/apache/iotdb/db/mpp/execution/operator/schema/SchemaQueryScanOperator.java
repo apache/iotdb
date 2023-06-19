@@ -61,7 +61,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   private final TsBlockBuilder tsBlockBuilder;
 
-  private ListenableFuture<Boolean> isBlocked;
+  private ListenableFuture<Boolean> blockedHasNext;
 
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
@@ -134,16 +134,16 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return isBlocked == null ? NOT_BLOCKED : isBlocked;
+    return blockedHasNext == null ? NOT_BLOCKED : blockedHasNext;
   }
 
   @Override
   public TsBlock next() throws Exception {
-    if (isBlocked != null && !isBlocked.isDone()) {
+    if (blockedHasNext != null && !blockedHasNext.isDone()) {
       // if blocked, return null
       return null;
     }
-    boolean hasNext = true;
+    boolean hasNext = blockedHasNext == null || blockedHasNext.get();
     while (hasNext) {
       T element = schemaReader.next();
       if (element != null) {
@@ -154,7 +154,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
       }
       ListenableFuture<Boolean> future = schemaReader.hasNextFuture();
       if (!future.isDone()) {
-        isBlocked = future;
+        blockedHasNext = future;
         return null;
       }
       hasNext = future.get();
@@ -178,7 +178,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
     } else {
       ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
       if (!hasNextFuture.isDone()) {
-        isBlocked = hasNextFuture;
+        blockedHasNext = hasNextFuture;
         // we do not know whether it has next or not now, so return true
         return true;
       } else {

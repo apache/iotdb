@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;

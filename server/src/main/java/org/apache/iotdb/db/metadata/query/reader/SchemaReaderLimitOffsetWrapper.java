@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.metadata.query.reader;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 
-import java.util.NoSuchElementException;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements ISchemaReader<T> {
 
@@ -40,13 +41,6 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
     this.limit = limit;
     this.offset = offset;
     this.hasLimit = limit > 0 || offset > 0;
-
-    if (hasLimit) {
-      while (curOffset < offset && schemaReader.hasNextFuture()) {
-        schemaReader.next();
-        curOffset++;
-      }
-    }
   }
 
   @Override
@@ -67,7 +61,23 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   @Override
   public ListenableFuture<Boolean> hasNextFuture() {
     if (hasLimit) {
-      return count < limit && schemaReader.hasNextFuture();
+      while (curOffset < offset) {
+        // first time
+        return Futures.submit(
+            () -> {
+              while (schemaReader.hasNextFuture().get()) {
+                schemaReader.next();
+                curOffset++;
+              }
+              return schemaReader.hasNextFuture().get();
+            },
+            FragmentInstanceManager.getInstance().getIntoOperationExecutor());
+      }
+      if (count >= limit) {
+        return NOT_BLOCKED_FALSE;
+      } else {
+        return schemaReader.hasNextFuture();
+      }
     } else {
       return schemaReader.hasNextFuture();
     }
@@ -75,9 +85,6 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
 
   @Override
   public T next() {
-    if (!hasNextFuture()) {
-      throw new NoSuchElementException();
-    }
     T result = schemaReader.next();
     if (hasLimit) {
       count++;

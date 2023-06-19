@@ -45,8 +45,8 @@ public interface ISchemaReader<T extends ISchemaInfo> extends AutoCloseable {
   Throwable getFailure();
 
   /**
-   * Returns a future that will be completed when the schemaReader becomes
-   * unblocked.
+   * Returns a future that will be completed when the schemaReader becomes unblocked.
+   *
    * @return value is true if the schemaReader has more data, false if it has no more data.
    */
   ListenableFuture<Boolean> hasNextFuture();
