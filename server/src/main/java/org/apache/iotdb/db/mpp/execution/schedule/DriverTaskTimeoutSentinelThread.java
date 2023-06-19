@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
@@ -24,7 +25,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** the thread for watching the timeout of {@link DriverTask} */
+/** the thread for watching the timeout of {@link DriverTask}. */
 public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
 
   private static final Logger LOGGER =

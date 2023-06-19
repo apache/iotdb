@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -27,7 +28,7 @@ import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 
 import java.util.List;
 
-/** the interface of fragment instance scheduling */
+/** The interface of fragment instance scheduling. */
 public interface IDriverScheduler {
 
   /**
@@ -36,6 +37,8 @@ public interface IDriverScheduler {
    * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.
    * @param timeOut the query timeout
+   * @throws CpuNotEnoughException throw exception if CPU resources are not enough.
+   * @throws MemoryNotEnoughException throw exception if Memory resources are not enough.
    */
   void submitDrivers(
       QueryId queryId, List<IDriver> instances, long timeOut, SessionInfo sessionInfo)

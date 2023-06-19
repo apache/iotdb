@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule.queue;
 
-/** A simple interface to indicate the id type */
+/** A simple interface to indicate the id type. */
 public interface ID {}
