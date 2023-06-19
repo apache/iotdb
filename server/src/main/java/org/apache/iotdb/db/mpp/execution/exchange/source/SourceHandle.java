@@ -110,7 +110,7 @@ public class SourceHandle implements ISourceHandle {
 
   /**
    * this is set to true after calling isBlocked() at least once which indicates that this
-   * SourceHandle needs to output data
+   * SourceHandle needs to output data.
    */
   private boolean canGetTsBlockFromRemote = false;
 
@@ -119,6 +119,7 @@ public class SourceHandle implements ISourceHandle {
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
       DataExchangeCountMetricSet.getInstance();
 
+  @SuppressWarnings("squid:S107")
   public SourceHandle(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -239,7 +240,7 @@ public class SourceHandle implements ISourceHandle {
       bufferRetainedSizeInBytes += bytesToReserve;
       endSequenceId += 1;
       reservedBytes += bytesToReserve;
-      if (!pair.right) {
+      if (!Boolean.TRUE.equals(pair.right)) {
         blockedSize = bytesToReserve;
         break;
       }
@@ -251,7 +252,7 @@ public class SourceHandle implements ISourceHandle {
     }
     nextSequenceId = endSequenceId;
 
-    if (!pair.right) {
+    if (!Boolean.TRUE.equals(pair.right)) {
       endSequenceId--;
       reservedBytes -= blockedSize;
       // The future being not completed indicates,
@@ -493,6 +494,7 @@ public class SourceHandle implements ISourceHandle {
     }
 
     @Override
+    @SuppressWarnings("squid:S3776")
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         LOGGER.debug(
@@ -572,7 +574,6 @@ public class SourceHandle implements ISourceHandle {
               Thread.currentThread().interrupt();
               // if interrupted during sleeping, fast fail and don't retry any more
               fail(e);
-              return;
             }
           } finally {
             DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
@@ -673,7 +674,6 @@ public class SourceHandle implements ISourceHandle {
             new TCloseSinkChannelEvent(remoteFragmentInstanceId, indexOfUpstreamSinkHandle);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
-          long startTime = System.nanoTime();
           try (SyncDataNodeMPPDataExchangeServiceClient client =
               mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
             client.onCloseSinkChannelEvent(closeSinkChannelEvent);

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.exchange.source;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -47,13 +48,16 @@ public interface ISourceHandle {
    * Get the serialized {@link TsBlock} as the form of bytebuffer. This method share the same
    * iterator with receive(). When one of these two methods is called, the cursor in iterator will
    * forward.
+   *
+   * @throws IoTDBException throw IoTDBException
    */
   ByteBuffer getSerializedTsBlock() throws IoTDBException;
 
-  /** If there are more tsblocks. */
+  /** If there are more TsBlocks. */
   boolean isFinished();
 
   /** Get a future that will be completed when the input buffer is not empty. */
+  @SuppressWarnings("squid:S1452")
   ListenableFuture<?> isBlocked();
 
   /** If this handle is aborted. */
@@ -83,6 +87,6 @@ public interface ISourceHandle {
    */
   void close();
 
-  /** Set max bytes this handle can reserve from memory pool */
+  /** Set max bytes this handle can reserve from memory pool. */
   void setMaxBytesCanReserve(long maxBytesCanReserve);
 }
