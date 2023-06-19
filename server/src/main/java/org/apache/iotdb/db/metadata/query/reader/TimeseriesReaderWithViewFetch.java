@@ -95,7 +95,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
    * </ol>
    */
   @Override
-  public ListenableFuture<Boolean> hasNext2() {
+  public ListenableFuture<Boolean> hasNextFuture() {
     if (hasNext != null) {
       return hasNext;
     }

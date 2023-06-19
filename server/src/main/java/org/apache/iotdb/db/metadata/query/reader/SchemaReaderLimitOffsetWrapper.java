@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.query.reader;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 
 import java.util.NoSuchElementException;
@@ -64,7 +65,7 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   }
 
   @Override
-  public boolean hasNextFuture() {
+  public ListenableFuture<Boolean> hasNextFuture() {
     if (hasLimit) {
       return count < limit && schemaReader.hasNextFuture();
     } else {
