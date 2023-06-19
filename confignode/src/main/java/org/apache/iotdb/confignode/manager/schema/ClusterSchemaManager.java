@@ -77,6 +77,7 @@ import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -401,14 +402,20 @@ public class ClusterSchemaManager {
     int databaseNum = databaseSchemaMap.size();
 
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
-      if (!isDatabaseExist(databaseSchema.getName())) {
-        // filter the pre deleted database
+      if (!isDatabaseExist(databaseSchema.getName())
+          || databaseSchema.getName().equals(IoTDBMetricsUtils.DATABASE)) {
+        // filter the pre deleted database and the system database
         databaseNum--;
       }
     }
 
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
+      if (databaseSchema.getName().equals(IoTDBMetricsUtils.DATABASE)) {
+        // filter the system database
+        continue;
+      }
+
       try {
         // Adjust maxSchemaRegionGroupNum for each Database.
         // All Databases share the DataNodes equally.
