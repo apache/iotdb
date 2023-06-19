@@ -85,7 +85,7 @@ public class DataNodeMetricsHelper {
             new CpuUsageMetrics(
                 threadModules,
                 pools,
-                x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
+                x -> ThreadName.getDataNodeModuleTheThreadBelongs(x).toString(),
                 x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 }

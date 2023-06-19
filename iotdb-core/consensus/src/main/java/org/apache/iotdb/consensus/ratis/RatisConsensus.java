@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -145,9 +146,10 @@ class RatisConsensus implements IConsensus {
     this.ratisMetricSet = new RatisMetricSet();
 
     this.triggerSnapshotThreshold = this.config.getImpl().getTriggerSnapshotFileSize();
-    addExecutor = IoTDBThreadPoolFactory.newCachedThreadPool("ratis-add");
+    addExecutor = IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.RATIS_ADD.getName());
     diskGuardian =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("ratis-bg-disk-guardian");
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.RATIS_BG_DISK_GUARDIAN.getName());
 
     clientManager =
         new IClientManager.Factory<RaftGroup, RatisClient>()

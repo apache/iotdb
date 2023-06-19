@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -148,7 +149,8 @@ public class SchemaEngine {
     // recover SchemaRegion concurrently
     ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(), "SchemaRegion-recover-task");
+            Runtime.getRuntime().availableProcessors(),
+            ThreadName.SCHEMA_REGION_RECOVER_TASK.getName());
     List<Future<ISchemaRegion>> futures = new ArrayList<>();
 
     for (File file : sgDirList) {

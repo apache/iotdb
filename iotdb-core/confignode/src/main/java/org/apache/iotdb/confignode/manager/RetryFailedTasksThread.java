@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -56,7 +57,8 @@ public class RetryFailedTasksThread {
   private final NodeManager nodeManager;
   private final LoadManager loadManager;
   private final ScheduledExecutorService retryFailTasksExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-RetryFailedTasks-Service");
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.CONFIG_NODE_HEART_BEAT_SERVICE.getName());
   private final Object scheduleMonitor = new Object();
   private Future<?> currentFailedTasksRetryThreadFuture;
 

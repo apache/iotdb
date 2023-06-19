@@ -55,6 +55,7 @@ public enum ThreadName {
   WAL_SYNC("WAL-Sync"),
   WAL_DELETE("WAL-Delete"),
   WAL_RECOVER("WAL-Recover"),
+  TSFILE_RECOVER("TsFile-Recover"),
   // -------------------------- Write --------------------------
   MPP_COORDINATOR_WRITE_EXECUTOR("MPP-Coordinator-Write-Executor"),
   // -------------------------- Flush --------------------------
@@ -65,6 +66,7 @@ public enum ThreadName {
   TIMED_FLUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
   // -------------------------- SchemaEngine --------------------------
   SCHEMA_REGION_RELEASE_PROCESSOR("SchemaRegion-Release-Task-Processor"),
+  SCHEMA_REGION_RECOVER_TASK("SchemaRegion-recover-task"),
   SCHEMA_RELEASE_MONITOR("Schema-Release-Task-Monitor"),
   SCHEMA_REGION_FLUSH_PROCESSOR("SchemaRegion-Flush-Task-Processor"),
   SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor"),
@@ -79,6 +81,17 @@ public enum ThreadName {
   ASYNC_CONFIGNODE_CLIENT_POOL("AsyncConfigNodeIServiceClientPool"),
   // -------------------------- ConfigNode-Query --------------------------
   CQ_MANAGER("CQ-Scheduler"),
+  TRIGGER_STATISTIC_UPDATER("Stateful-Trigger-Statistics-Updater"),
+  CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
+  // -------------------------- ConfigNode-Heartbeat --------------------------
+  CONFIG_NODE_HEART_BEAT_SERVICE("Cluster-Heartbeat-Service"),
+  // -------------------------- ConfigNode-Compute --------------------------
+  CONFIG_NODE_LOAD_STATISTIC("Cluster-LoadStatistics-Service"),
+  // -------------------------- ConfigNode-RegionManagement --------------------------
+  CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
+  // -------------------------- ConfigNode-Recover --------------------------
+  CONFIG_NODE_RECOVER("ConfigNode-Manager-Recovery"),
+
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
   IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
@@ -90,6 +103,7 @@ public enum ThreadName {
   RAFT_SERVER_PROXY_EXECUTOR("\\d+-impl-thread"),
   RAFT_SERVER_EXECUTOR("\\d+-server-thread"),
   RAFT_SERVER_CLIENT_EXECUTOR("\\d+-client-thread"),
+  RATIS_ADD("Ratis-Add"),
   SEGMENT_RAFT_WORKER("SegmentedRaftLogWorker"),
   STATE_MACHINE_UPDATER("StateMachineUpdater"),
   FOLLOWER_STATE("FollowerState"),
@@ -97,7 +111,7 @@ public enum ThreadName {
   LEADER_ELECTION("LeaderElection"),
   LOG_APPENDER("GrpcLogAppender"),
   EVENT_PROCESSOR("EventProcessor"),
-  RATIS_BG_DISK_GUARDIAN("ratis-bg-disk-guardian"),
+  RATIS_BG_DISK_GUARDIAN("RatisBgDiskGuardian"),
   GRPC_DEFAULT_BOSS_ELG("grpc-default-boss-ELG"),
   GRPC_DEFAULT_EXECUTOR("grpc-default-executor"),
   GPRC_DEFAULT_WORKER_ELG("grpc-default-worker-ELG"),
@@ -146,6 +160,8 @@ public enum ThreadName {
   STORAGE_ENGINE_CACHED_POOL("StorageEngine"),
   MLNODE_RPC_SERVICE("MLNodeRpc-Service"),
   IOTDB_SHUTDOWN_HOOK("IoTDB-Shutdown-Hook"),
+  UPGRADE_TASK("UpgradeThread"),
+  REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");
@@ -178,7 +194,9 @@ public enum ThreadName {
       new HashSet<>(Arrays.asList(COMPACTION_WORKER, COMPACTION_SUB_TASK, COMPACTION_SCHEDULE));
 
   private static Set<ThreadName> walThreadNames =
-      new HashSet<>(Arrays.asList(WAL_DELETE, WAL_SERIALIZE, WAL_SYNC, WAL_DELETE, WAL_RECOVER));
+      new HashSet<>(
+          Arrays.asList(
+              WAL_DELETE, WAL_SERIALIZE, WAL_SYNC, WAL_DELETE, WAL_RECOVER, TSFILE_RECOVER));
 
   private static Set<ThreadName> flushThreadNames =
       new HashSet<>(
@@ -195,7 +213,8 @@ public enum ThreadName {
               SCHEMA_REGION_FLUSH_PROCESSOR,
               SCHEMA_RELEASE_MONITOR,
               SCHEMA_REGION_RELEASE_PROCESSOR,
-              SCHEMA_FLUSH_MONITOR));
+              SCHEMA_FLUSH_MONITOR,
+              SCHEMA_REGION_RECOVER_TASK));
 
   private static Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -275,6 +294,41 @@ public enum ThreadName {
               STORAGE_ENGINE_CACHED_POOL,
               MLNODE_RPC_SERVICE));
 
+  private static Set<ThreadName>[] threadNameSetList =
+      new Set[] {
+        queryThreadNames,
+        mppThreadNames,
+        compactionThreadNames,
+        walThreadNames,
+        flushThreadNames,
+        schemaEngineThreadNames,
+        clientServiceThreadNames,
+        iotConsensusThrreadNames,
+        ratisThreadNames,
+        computeThreadNames,
+        jvmThreadNames,
+        metricsThreadNames,
+        otherThreadNames
+      };
+
+  private static DataNodeThreadModule[] modules =
+      new DataNodeThreadModule[] {
+        DataNodeThreadModule.QUERY,
+        DataNodeThreadModule.MPP,
+        DataNodeThreadModule.COMPACTION,
+        DataNodeThreadModule.WAL,
+        DataNodeThreadModule.FLUSH,
+        DataNodeThreadModule.SCHEMA_ENGINE,
+        DataNodeThreadModule.CLIENT_SERVICE,
+        DataNodeThreadModule.IOT_CONSENSUS,
+        DataNodeThreadModule.RATIS_CONSENSUS,
+        DataNodeThreadModule.COMPUTE,
+        DataNodeThreadModule.SYNC,
+        DataNodeThreadModule.JVM,
+        DataNodeThreadModule.METRICS,
+        DataNodeThreadModule.OTHER
+      };
+
   ThreadName(String name) {
     this.name = name;
   }
@@ -283,40 +337,7 @@ public enum ThreadName {
     return name;
   }
 
-  public static DataNodeThreadModule getModuleTheThreadBelongs(String givenThreadName) {
-    Set<ThreadName>[] threadNameSetList =
-        new Set[] {
-          queryThreadNames,
-          mppThreadNames,
-          compactionThreadNames,
-          walThreadNames,
-          flushThreadNames,
-          schemaEngineThreadNames,
-          clientServiceThreadNames,
-          iotConsensusThrreadNames,
-          ratisThreadNames,
-          computeThreadNames,
-          jvmThreadNames,
-          metricsThreadNames,
-          otherThreadNames
-        };
-    DataNodeThreadModule[] modules =
-        new DataNodeThreadModule[] {
-          DataNodeThreadModule.QUERY,
-          DataNodeThreadModule.MPP,
-          DataNodeThreadModule.COMPACTION,
-          DataNodeThreadModule.WAL,
-          DataNodeThreadModule.FLUSH,
-          DataNodeThreadModule.SCHEMA_ENGINE,
-          DataNodeThreadModule.CLIENT_SERVICE,
-          DataNodeThreadModule.IOT_CONSENSUS,
-          DataNodeThreadModule.RATIS_CONSENSUS,
-          DataNodeThreadModule.COMPUTE,
-          DataNodeThreadModule.JVM,
-          DataNodeThreadModule.METRICS,
-          DataNodeThreadModule.OTHER
-        };
-
+  public static DataNodeThreadModule getDataNodeModuleTheThreadBelongs(String givenThreadName) {
     for (int i = 0, length = modules.length; i < length; ++i) {
       if (matchModuleWithThreadNames(threadNameSetList[i], modules[i], givenThreadName) != null) {
         return modules[i];
