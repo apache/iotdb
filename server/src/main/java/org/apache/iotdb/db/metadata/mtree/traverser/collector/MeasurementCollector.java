@@ -59,7 +59,7 @@ public abstract class MeasurementCollector<R, N extends IMNode<N>>
     MeasurementPath retPath =
         new MeasurementPath(
             getPartialPathFromRootToNode(currentNode.getAsMNode()), currentNode.getSchema());
-    retPath.setUnderAlignedEntity(par.getAsDeviceMNode().isAligned());
+    retPath.setUnderAlignedEntity(par.getAsDeviceMNode().isAlignedNullable());
     return retPath;
   }
 }

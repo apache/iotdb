@@ -252,11 +252,20 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
 
   @Override
   public boolean isAligned() {
+    Boolean align = deviceInfo.isAligned();
+    if (align == null) {
+      return false;
+    }
+    return align;
+  }
+
+  @Override
+  public Boolean isAlignedNullable() {
     return deviceInfo.isAligned();
   }
 
   @Override
-  public void setAligned(boolean isAligned) {
+  public void setAligned(Boolean isAligned) {
     deviceInfo.setAligned(isAligned);
   }
 
