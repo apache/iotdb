@@ -46,6 +46,8 @@ import java.util.concurrent.TimeUnit;
 
 public class IoTDBSessionReporter extends IoTDBReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionReporter.class);
+  private static final MetricConfig metricConfig =
+      MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final MetricConfig.IoTDBReporterConfig ioTDBReporterConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig().getIotdbReporterConfig();
   private Future<?> currentServiceFuture;
@@ -66,12 +68,13 @@ public class IoTDBSessionReporter extends IoTDBReporter {
             ioTDBReporterConfig.getPassword(),
             ioTDBReporterConfig.getMaxConnectionNumber());
     try (SessionDataSetWrapper result =
-        this.sessionPool.executeQueryStatement("SHOW DATABASES " + IoTDBMetricsUtils.DATABASE)) {
+        this.sessionPool.executeQueryStatement(
+            "SHOW DATABASES " + metricConfig.getInternalDatabase())) {
       if (!result.hasNext()) {
         try (SessionDataSetWrapper result2 =
             this.sessionPool.executeQueryStatement(
                 "CREATE "
-                    + IoTDBMetricsUtils.DATABASE
+                    + metricConfig.getInternalDatabase()
                     + " WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_FACTOR=1, SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1")) {
           if (!result2.hasNext()) {
             LOGGER.error("IoTDBSessionReporter checkOrCreateDatabase failed.");
