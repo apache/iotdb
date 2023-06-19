@@ -22,7 +22,10 @@ public enum SchemaFilterType {
   NULL((short) -1),
   TAGS_FILTER((short) 1),
   PATH_CONTAINS((short) 2),
-  DATA_TYPE((short) 3);
+  DATA_TYPE((short) 3),
+  VIEW_TYPE((short) 4),
+  AND((short) 5),
+  ;
 
   private final short code;
 
@@ -44,6 +47,10 @@ public enum SchemaFilterType {
         return PATH_CONTAINS;
       case 3:
         return DATA_TYPE;
+      case 4:
+        return VIEW_TYPE;
+      case 5:
+        return AND;
       default:
         throw new IllegalArgumentException("Invalid input: " + code);
     }
