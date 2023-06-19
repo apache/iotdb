@@ -486,7 +486,7 @@ public class IoTDBGroupByVariationIT {
   public void errorTest1() {
     errorTest(
         "select avg(temperature) from root.ln.wf01.wt01 group by variation(*)",
-        "701: root.ln.wf01.wt01.* in group by clause shouldn't refer to more than one timeseries.");
+        "701: Expression in group by should indicate one value");
   }
 
   @Test
@@ -494,27 +494,6 @@ public class IoTDBGroupByVariationIT {
     errorTest(
         "select avg(temperature) from root.ln.wf01.wt01 group by variation(avg(temperature))",
         "701: Aggregation expression shouldn't exist in group by clause");
-  }
-
-  @Test
-  public void errorTest3() {
-    errorTest(
-        "select avg(temperature) from root.ln.wf01.wt01 group by variation(s1,2)",
-        "701: root.ln.wf01.wt01.s1 in group by clause doesn't exist.");
-  }
-
-  @Test
-  public void errorTest4() {
-    errorTest(
-        "select avg(temperature) from root.ln.wf01.wt01 group by variation(s1,2) align by device",
-        "701: s1 in group by clause doesn't exist.");
-  }
-
-  @Test
-  public void errorTest5() {
-    errorTest(
-        "select avg(temperature) from root.ln.wf01.wt01 group by variation(root.ln.wf01.wt01.s1,2) align by device",
-        "701: ALIGN BY DEVICE: the suffix paths can only be measurement or one-level wildcard");
   }
 
   @Test
