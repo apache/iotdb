@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -48,7 +49,7 @@ public class TagLogFile implements AutoCloseable {
           + "Please enlarge tag_attribute_total_size in iotdb-common.properties";
 
   private static final int MAX_LENGTH =
-      IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
+      CommonDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
 
   private static final int RECORD_FLUSH_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getTagAttributeFlushInterval();

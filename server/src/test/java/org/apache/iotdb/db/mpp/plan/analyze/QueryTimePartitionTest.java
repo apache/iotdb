@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
@@ -397,16 +397,17 @@ public class QueryTimePartitionTest {
             new AndFilter(
                 TimeFilter.gt(0),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3 + 1)));
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3
+                        + 1)));
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()),
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2),
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -420,14 +421,14 @@ public class QueryTimePartitionTest {
         getTimePartitionSlotList(
             new AndFilter(
                 TimeFilter.gtEq(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1),
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1),
                 TimeFilter.lt(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)));
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)));
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -440,13 +441,13 @@ public class QueryTimePartitionTest {
     res =
         getTimePartitionSlotList(
             TimeFilter.between(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1,
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1,
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()));
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -460,13 +461,13 @@ public class QueryTimePartitionTest {
         getTimePartitionSlotList(
             new AndFilter(
                 TimeFilter.gtEq(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()),
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)));
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)));
     expected =
         Collections.singletonList(
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -479,12 +480,12 @@ public class QueryTimePartitionTest {
     res =
         getTimePartitionSlotList(
             TimeFilter.between(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval(),
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval(),
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1));
     expected =
         Collections.singletonList(
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));
@@ -507,38 +508,39 @@ public class QueryTimePartitionTest {
             new AndFilter(
                 TimeFilter.gtEq(10),
                 TimeFilter.lt(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval())),
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval())),
             new AndFilter(
-                TimeFilter.gt(IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()),
+                TimeFilter.gt(
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()),
                 TimeFilter.lt(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2
                         - 100)));
     OrFilter orFilter2 =
         new OrFilter(
             orFilter1,
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2 - 50),
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2 - 50),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2
                         - 40)));
     OrFilter orFilter3 =
         new OrFilter(
             orFilter2,
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2 - 20),
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2 - 20),
                 TimeFilter.ltEq(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3
                         + 10)));
     OrFilter orFilter4 =
         new OrFilter(
             orFilter3,
             new AndFilter(
                 TimeFilter.gt(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5 + 1),
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5 + 1),
                 TimeFilter.lt(
-                    IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5
                         + 10)));
 
     res = getTimePartitionSlotList(orFilter4);
@@ -546,13 +548,13 @@ public class QueryTimePartitionTest {
         Arrays.asList(
             new TTimePartitionSlot(0),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval()),
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2),
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 2),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3),
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3),
             new TTimePartitionSlot(
-                IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
       assertEquals(expected.get(i), res.left.get(i));

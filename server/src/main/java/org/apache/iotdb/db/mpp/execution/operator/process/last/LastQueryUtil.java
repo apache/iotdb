@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.LastValueDescAccumulator;
 import org.apache.iotdb.db.mpp.aggregation.MaxTimeDescAccumulator;
@@ -43,7 +43,7 @@ import java.util.List;
 public class LastQueryUtil {
 
   private static final boolean CACHE_ENABLED =
-      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+      CommonDescriptor.getInstance().getConfig().isLastCacheEnable();
 
   public static TsBlockBuilder createTsBlockBuilder() {
     return new TsBlockBuilder(ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
