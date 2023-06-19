@@ -21,63 +21,54 @@ package org.apache.iotdb.commons.schema.filter.impl;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class TagFilter extends SchemaFilter {
+public class AndFilter extends SchemaFilter {
 
-  private final String key;
-  private final String value;
-  private final boolean isContains;
+  private final SchemaFilter left;
+  private final SchemaFilter right;
 
-  public TagFilter(String key, String value, boolean isContains) {
-    this.key = key;
-    this.value = value;
-    this.isContains = isContains;
+  public AndFilter(SchemaFilter left, SchemaFilter right) {
+    // left and right should not be null
+    this.left = left;
+    this.right = right;
   }
 
-  public TagFilter(ByteBuffer byteBuffer) {
-    this.key = ReadWriteIOUtils.readString(byteBuffer);
-    this.value = ReadWriteIOUtils.readString(byteBuffer);
-    this.isContains = ReadWriteIOUtils.readBool(byteBuffer);
+  public AndFilter(ByteBuffer byteBuffer) {
+    this.left = SchemaFilter.deserialize(byteBuffer);
+    this.right = SchemaFilter.deserialize(byteBuffer);
   }
 
-  public String getKey() {
-    return key;
+  public SchemaFilter getLeft() {
+    return left;
   }
 
-  public String getValue() {
-    return value;
-  }
-
-  public boolean isContains() {
-    return isContains;
+  public SchemaFilter getRight() {
+    return right;
   }
 
   @Override
   public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitTagFilter(this, node);
+    return visitor.visitAndFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.TAGS_FILTER;
+    return SchemaFilterType.AND;
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(key, byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
-    ReadWriteIOUtils.write(isContains, byteBuffer);
+    left.serialize(byteBuffer);
+    right.serialize(byteBuffer);
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(key, stream);
-    ReadWriteIOUtils.write(value, stream);
-    ReadWriteIOUtils.write(isContains, stream);
+    left.serialize(stream);
+    right.serialize(stream);
   }
 }
