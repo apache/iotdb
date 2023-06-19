@@ -540,8 +540,8 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
-    // recover and start timed compaction thread
-    initCompaction();
+    // start timed compaction thread
+    tsFileManager.initCompaction();
 
     if (StorageEngine.getInstance().isAllSgReady()) {
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
@@ -562,15 +562,6 @@ public class DataRegion implements IDataRegionForQuery {
       lastFlushTimeMap.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeMap.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
-  }
-
-  private void initCompaction() {
-    if (!config.isEnableSeqSpaceCompaction()
-        && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()) {
-      return;
-    }
-    CompactionTaskManager.getInstance().register(tsFileManager);
   }
 
   private void recoverCompaction() {
@@ -2619,7 +2610,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void abortCompaction() {
     tsFileManager.setAllowCompaction(false);
-    CompactionTaskManager.getInstance().unRegister(tsFileManager);
     List<AbstractCompactionTask> runningTasks =
         CompactionTaskManager.getInstance().abortCompaction(databaseName + "-" + dataRegionId);
     while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
@@ -2628,6 +2618,49 @@ public class DataRegion implements IDataRegionForQuery {
       } catch (InterruptedException e) {
         logger.error("Thread get interrupted when waiting compaction to finish", e);
         Thread.currentThread().interrupt();
+        break;
+      }
+    }
+  }
+
+  // may remove the processorEntrys
+  private void removePartitions(
+      TimePartitionFilter filter,
+      Set<Entry<Long, TsFileProcessor>> processorEntrys,
+      boolean sequence) {
+    for (Iterator<Entry<Long, TsFileProcessor>> iterator = processorEntrys.iterator();
+        iterator.hasNext(); ) {
+      Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
+      long partitionId = longTsFileProcessorEntry.getKey();
+      lastFlushTimeMap.removePartition(partitionId);
+      TimePartitionManager.getInstance()
+          .removePartition(new DataRegionId(Integer.valueOf(dataRegionId)), partitionId);
+      TsFileProcessor processor = longTsFileProcessorEntry.getValue();
+      if (filter.satisfy(databaseName, partitionId)) {
+        processor.syncClose();
+        iterator.remove();
+        processor.getTsFileResource().remove();
+        tsFileManager.remove(processor.getTsFileResource(), sequence);
+        logger.debug(
+            "{} is removed during deleting partitions",
+            processor.getTsFileResource().getTsFilePath());
+      }
+    }
+  }
+
+  // may remove the iterator's data
+  private void removePartitions(
+      TimePartitionFilter filter, Iterator<TsFileResource> iterator, boolean sequence) {
+    while (iterator.hasNext()) {
+      TsFileResource tsFileResource = iterator.next();
+      if (filter.satisfy(databaseName, tsFileResource.getTimePartition())) {
+        tsFileResource.remove();
+        tsFileManager.remove(tsFileResource, sequence);
+        lastFlushTimeMap.removePartition(tsFileResource.getTimePartition());
+        TimePartitionManager.getInstance()
+            .removePartition(
+                new DataRegionId(Integer.valueOf(dataRegionId)), tsFileResource.getTimePartition());
+        logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
     }
   }

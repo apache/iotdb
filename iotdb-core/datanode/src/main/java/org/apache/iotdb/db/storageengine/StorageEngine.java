@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
@@ -386,11 +388,10 @@ public class StorageEngine implements IService {
   public void stop() {
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
-        ThreadUtils.stopThreadPool(
-            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
-        // todo: stop compaction schedule threads
+        dataRegion.abortCompaction();
       }
     }
+    CompactionTaskManager.getInstance().stop();
     syncCloseAllProcessor();
     ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK);
     ThreadUtils.stopThreadPool(
@@ -407,9 +408,11 @@ public class StorageEngine implements IService {
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
-        ThreadUtils.stopThreadPool(
-            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        if (dataRegion != null) {
+          dataRegion.abortCompaction();
+        }
       }
+      CompactionTaskManager.getInstance().shutdown(60_000L);
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);

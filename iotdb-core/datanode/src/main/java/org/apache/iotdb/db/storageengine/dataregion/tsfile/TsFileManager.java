@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -319,12 +322,26 @@ public class TsFileManager {
     }
   }
 
+  public void initCompaction() {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (!config.isEnableSeqSpaceCompaction()
+        && !config.isEnableUnseqSpaceCompaction()
+        && !config.isEnableCrossSpaceCompaction()) {
+      return;
+    }
+    CompactionTaskManager.getInstance().register(this);
+  }
+
   public boolean isAllowCompaction() {
     return allowCompaction;
   }
 
   public void setAllowCompaction(boolean allowCompaction) {
     this.allowCompaction = allowCompaction;
+    if (!allowCompaction) {
+      // stop compaction schedule
+      CompactionTaskManager.getInstance().unRegister(this);
+    }
   }
 
   public String getDataRegionId() {
