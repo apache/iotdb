@@ -50,6 +50,10 @@ public class Consumer {
 
   private Consumer(List<KafkaConsumer<String, String>> consumerList) {
     this.consumerList = consumerList;
+    setPool();
+  }
+
+  private static void setPool() {
     pool =
         new SessionPool.Builder()
             .host(Constant.IOTDB_CONNECTION_HOST)
@@ -106,7 +110,7 @@ public class Consumer {
 
   private static void addStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    pool.setStorageGroup(storageGroup);
+    pool.createDatabase(storageGroup);
   }
 
   private static void createTimeseries(String[] sql)

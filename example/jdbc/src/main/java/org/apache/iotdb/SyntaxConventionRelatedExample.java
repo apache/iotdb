@@ -20,6 +20,9 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -30,6 +33,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SyntaxConventionRelatedExample {
+
+  private static Logger logger = LoggerFactory.getLogger(SyntaxConventionRelatedExample.class);
+
   /**
    * if you want to create a time series named root.sg1.select, a possible SQL statement would be
    * like: create timeseries root.sg1.select with datatype=FLOAT, encoding=RLE As described before,
@@ -72,27 +78,13 @@ public class SyntaxConventionRelatedExample {
       statement.setFetchSize(10000);
 
       // create time series
-      try {
-        statement.execute(String.format("CREATE DATABASE %s", DEVICE));
-        statement.execute(
-            String.format(
-                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
-                ROOT_SG1_DIGITS_EXAMPLE));
-        statement.execute(
-            String.format(
-                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
-                ROOT_SG1_KEYWORD_EXAMPLE));
-        statement.execute(
-            String.format(
-                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
-                ROOT_SG1_NORMAL_NODE_EXAMPLE));
-        statement.execute(
-            String.format(
-                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
-                ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE));
-      } catch (IoTDBSQLException e) {
-        System.out.println(e.getMessage());
-      }
+
+      statement.execute(String.format("CREATE DATABASE %s", DEVICE));
+      String create = "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY";
+      statement.execute(String.format(create, ROOT_SG1_DIGITS_EXAMPLE));
+      statement.execute(String.format(create, ROOT_SG1_KEYWORD_EXAMPLE));
+      statement.execute(String.format(create, ROOT_SG1_NORMAL_NODE_EXAMPLE));
+      statement.execute(String.format(create, ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE));
 
       // show timeseries
       ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.*");
@@ -120,39 +112,37 @@ public class SyntaxConventionRelatedExample {
         outputResult(resultSet);
       }
     } catch (IoTDBSQLException e) {
-      System.out.println(e.getMessage());
+      logger.info(e.getMessage());
     }
   }
 
   private static void outputResult(ResultSet resultSet) throws SQLException {
     if (resultSet != null) {
-      System.out.println("--------------------------");
+      logger.info("--------------------------");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int columnCount = metaData.getColumnCount();
       for (int i = 0; i < columnCount; i++) {
-        System.out.print(metaData.getColumnLabel(i + 1) + " ");
+        String columnLabel = metaData.getColumnLabel(i + 1);
+        logger.info(columnLabel);
       }
-      System.out.println();
+
       while (resultSet.next()) {
         for (int i = 1; ; i++) {
-          System.out.print(resultSet.getString(i));
-          if (i < columnCount) {
-            System.out.print(", ");
-          } else {
-            System.out.println();
+          logger.info(resultSet.getString(i));
+          if (i >= columnCount) {
+            logger.info("next----");
             break;
           }
         }
       }
-      System.out.println("--------------------------\n");
+      logger.info("--------------------------\n");
     }
   }
 
   private static String prepareInsertStatement(int time, String path) {
     // remove device root.sg1
     path = removeDevice(path);
-    return String.format(
-        "insert into root.sg1(timestamp, %s) values(" + time + "," + 1 + ")", path);
+    return String.format("insert into root.sg1(timestamp, %s) values( %d ,1)", path, time);
   }
 
   private static String removeDevice(String path) {

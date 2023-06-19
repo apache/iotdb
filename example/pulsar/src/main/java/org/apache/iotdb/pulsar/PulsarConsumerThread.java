@@ -41,8 +41,7 @@ public class PulsarConsumerThread implements Runnable {
 
   private SessionPool pool;
 
-  public PulsarConsumerThread(Consumer<?> consumer, SessionPool pool)
-      throws ClassNotFoundException {
+  public PulsarConsumerThread(Consumer<?> consumer) throws ClassNotFoundException {
     this.consumer = consumer;
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
   }
@@ -79,6 +78,7 @@ public class PulsarConsumerThread implements Runnable {
         case BOOLEAN:
           values.add(Boolean.parseBoolean(valuesStr[i]));
           break;
+        default:
       }
     }
 
@@ -126,6 +126,7 @@ public class PulsarConsumerThread implements Runnable {
           case BOOLEAN:
             values.add(Boolean.parseBoolean(valuesStr[i]));
             break;
+          default:
         }
       }
       deviceIds.add(device);
@@ -147,6 +148,7 @@ public class PulsarConsumerThread implements Runnable {
         List<String> datas = new ArrayList<>(messages.size());
         for (Message<?> message : messages) {
           datas.add(new String(message.getData()));
+          insert(new String(message.getData()));
         }
         insertDatas(datas);
         consumer.acknowledge(messages);

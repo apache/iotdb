@@ -80,7 +80,7 @@ public class FlinkIoTDBSink {
     @Override
     public void run(SourceContext context) throws Exception {
       while (running) {
-        Map<String, String> tuple = new HashMap();
+        Map<String, String> tuple = new HashMap<>();
         tuple.put("device", "root.sg.d1");
         tuple.put("timestamp", String.valueOf(System.currentTimeMillis()));
         tuple.put("measurements", "s1");
