@@ -39,6 +39,7 @@ import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -392,11 +393,10 @@ public class StorageEngine implements IService {
   public void stop() {
     for (DataRegion dataRegion : dataRegionMap.values()) {
       if (dataRegion != null) {
-        ThreadUtils.stopThreadPool(
-            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
-        // todo: stop compaction schedule threads
+        dataRegion.abortCompaction();
       }
     }
+    CompactionTaskManager.getInstance().stop();
     syncCloseAllProcessor();
     ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK);
     ThreadUtils.stopThreadPool(
@@ -413,9 +413,11 @@ public class StorageEngine implements IService {
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
       for (DataRegion dataRegion : dataRegionMap.values()) {
-        ThreadUtils.stopThreadPool(
-            dataRegion.getTimedCompactionScheduleTask(), ThreadName.COMPACTION_SCHEDULE);
+        if (dataRegion != null) {
+          dataRegion.abortCompaction();
+        }
       }
+      CompactionTaskManager.getInstance().shutdown(60_000L);
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);

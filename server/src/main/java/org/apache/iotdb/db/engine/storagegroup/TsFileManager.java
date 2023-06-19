@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
@@ -353,12 +356,26 @@ public class TsFileManager {
     }
   }
 
+  public void initCompaction() {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (!config.isEnableSeqSpaceCompaction()
+        && !config.isEnableUnseqSpaceCompaction()
+        && !config.isEnableCrossSpaceCompaction()) {
+      return;
+    }
+    CompactionTaskManager.getInstance().register(this);
+  }
+
   public boolean isAllowCompaction() {
     return allowCompaction;
   }
 
   public void setAllowCompaction(boolean allowCompaction) {
     this.allowCompaction = allowCompaction;
+    if (!allowCompaction) {
+      // stop compaction schedule
+      CompactionTaskManager.getInstance().unRegister(this);
+    }
   }
 
   public String getDataRegionId() {

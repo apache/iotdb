@@ -211,9 +211,10 @@ public class CompactionTaskManager implements IService {
     for (List<TsFileManager> tsFileManagerList : dataRegionMap.values()) {
       if (tsFileManagerList.contains(tsFileManager)) {
         tsFileManagerList.remove(tsFileManager);
-        dataRegionNum.getAndAdd(-1);
 
-        List<TsFileManager> tsFileManagers = dataRegionMap.get(dataRegionNum.get());
+        // balance the number of data regions of each thread
+        List<TsFileManager> tsFileManagers =
+            dataRegionMap.get(dataRegionNum.addAndGet(-1) % compactionScheduledThreadNum);
         if (tsFileManagers != null && !tsFileManagers.isEmpty()) {
           tsFileManagerList.add(tsFileManagers.remove(tsFileManagers.size() - 1));
         }

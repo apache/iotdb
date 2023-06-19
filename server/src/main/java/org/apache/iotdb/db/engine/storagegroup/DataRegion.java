@@ -130,7 +130,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -271,10 +270,6 @@ public class DataRegion implements IDataRegionForQuery {
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
-
-  private ScheduledExecutorService timedCompactionScheduleTask;
-
-  public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
 
@@ -577,8 +572,8 @@ public class DataRegion implements IDataRegionForQuery {
       throw new DataRegionException(e);
     }
 
-    // recover and start timed compaction thread
-    initCompaction();
+    // start timed compaction thread
+    tsFileManager.initCompaction();
 
     if (StorageEngine.getInstance().isAllSgReady()) {
       logger.info("The data region {}[{}] is created successfully", databaseName, dataRegionId);
@@ -599,15 +594,6 @@ public class DataRegion implements IDataRegionForQuery {
       lastFlushTimeMap.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
       lastFlushTimeMap.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
-  }
-
-  private void initCompaction() {
-    if (!config.isEnableSeqSpaceCompaction()
-        && !config.isEnableUnseqSpaceCompaction()
-        && !config.isEnableCrossSpaceCompaction()) {
-      return;
-    }
-    CompactionTaskManager.getInstance().register(tsFileManager);
   }
 
   private void recoverCompaction() {
@@ -2914,14 +2900,13 @@ public class DataRegion implements IDataRegionForQuery {
 
   public void abortCompaction() {
     tsFileManager.setAllowCompaction(false);
-    CompactionTaskManager.getInstance().unRegister(tsFileManager);
     List<AbstractCompactionTask> runningTasks =
         CompactionTaskManager.getInstance().abortCompaction(databaseName + "-" + dataRegionId);
     while (CompactionTaskManager.getInstance().isAnyTaskInListStillRunning(runningTasks)) {
       try {
         TimeUnit.MILLISECONDS.sleep(10);
       } catch (InterruptedException e) {
-        logger.error("Thread get interrupted when waiting compaction to finish", e);
+        logger.warn("Thread get interrupted when waiting compaction to finish", e);
         break;
       }
     }
@@ -3130,11 +3115,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  @TestOnly
-  public long getPartitionMaxFileVersions(long partitionId) {
-    return partitionMaxFileVersions.getOrDefault(partitionId, 0L);
-  }
-
   public void addSettleFilesToList(
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
@@ -3249,20 +3229,8 @@ public class DataRegion implements IDataRegionForQuery {
         throws WriteProcessException;
   }
 
-  public List<Long> getTimePartitions() {
-    return new ArrayList<>(partitionMaxFileVersions.keySet());
-  }
-
   public Long getLatestTimePartition() {
     return partitionMaxFileVersions.keySet().stream().max(Long::compareTo).orElse(0L);
-  }
-
-  public String getInsertWriteLockHolder() {
-    return insertWriteLockHolder;
-  }
-
-  public ScheduledExecutorService getTimedCompactionScheduleTask() {
-    return timedCompactionScheduleTask;
   }
 
   public IDTable getIdTable() {
