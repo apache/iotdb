@@ -692,7 +692,7 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |     描述     | 时间戳精度，支持 ms、us、ns |
 |     类型     | String                      |
 |    默认值    | ms                          |
-| 改后生效方式 | 热加载                    |
+| 改后生效方式 | 仅允许在第一次启动服务前修改                   |
 
 * default\_ttl\_in\_ms
 

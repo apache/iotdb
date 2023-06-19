@@ -24,6 +24,9 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import java.util.Map;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.BACK_QUOTE_STRING;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.DOUBLE_BACK_QUOTE_STRING;
+
 public class IoTDBMetricsUtils {
   private static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
@@ -41,9 +44,9 @@ public class IoTDBMetricsUtils {
       stringBuilder
           .append(".")
           .append("`")
-          .append(tags[i])
+          .append(tags[i].replace(BACK_QUOTE_STRING, DOUBLE_BACK_QUOTE_STRING))
           .append("=")
-          .append(tags[i + 1])
+          .append(tags[i + 1].replace(BACK_QUOTE_STRING, DOUBLE_BACK_QUOTE_STRING))
           .append("`");
     }
     return stringBuilder.toString();
@@ -56,9 +59,9 @@ public class IoTDBMetricsUtils {
       stringBuilder
           .append(".")
           .append("`")
-          .append(entry.getKey())
+          .append(entry.getKey().replace(BACK_QUOTE_STRING, DOUBLE_BACK_QUOTE_STRING))
           .append("=")
-          .append(entry.getValue())
+          .append(entry.getValue().replace(BACK_QUOTE_STRING, DOUBLE_BACK_QUOTE_STRING))
           .append("`");
     }
     return stringBuilder.toString();
@@ -80,7 +83,7 @@ public class IoTDBMetricsUtils {
         .append("`")
         .append(".")
         .append("`")
-        .append(name)
+        .append(name.replace(BACK_QUOTE_STRING, DOUBLE_BACK_QUOTE_STRING))
         .append("`");
     return stringBuilder;
   }
