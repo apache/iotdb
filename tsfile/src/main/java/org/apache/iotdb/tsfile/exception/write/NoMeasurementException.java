@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.exception.write;
 
 /** This exception means it can not find the measurement while writing a TSRecord. */
