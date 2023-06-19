@@ -39,7 +39,9 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
   private Map<String, String> attributes;
   private QueryStatement queryStatement;
 
-  public CreateModelStatement() {}
+  public CreateModelStatement() {
+    // do nothing
+  }
 
   public String getModelId() {
     return modelId;

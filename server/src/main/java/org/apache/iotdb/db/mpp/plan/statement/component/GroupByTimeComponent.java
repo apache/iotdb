@@ -41,7 +41,9 @@ public class GroupByTimeComponent extends StatementNode {
   // if it is left close and right open interval
   private boolean leftCRightO = true;
 
-  public GroupByTimeComponent() {}
+  public GroupByTimeComponent() {
+    // do nothing
+  }
 
   public boolean isLeftCRightO() {
     return leftCRightO;

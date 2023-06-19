@@ -62,6 +62,9 @@ public class OrderByComponent extends StatementNode {
         orderByDevice = true;
         deviceOrderPriority = sortItemList.size() - 1;
         break;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unknown sort key %s", sortItem.getSortKey()));
     }
   }
 

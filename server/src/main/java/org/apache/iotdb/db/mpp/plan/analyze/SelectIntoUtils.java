@@ -43,6 +43,10 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_
 
 public class SelectIntoUtils {
 
+  private SelectIntoUtils() {
+    // forbidding instantiation
+  }
+
   public static PartialPath constructTargetPath(
       PartialPath sourcePath, PartialPath deviceTemplate, String measurementTemplate) {
     PartialPath targetDevice = constructTargetDevice(sourcePath.getDevicePath(), deviceTemplate);

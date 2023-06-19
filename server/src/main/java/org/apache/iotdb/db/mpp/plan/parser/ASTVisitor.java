@@ -2391,7 +2391,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey = attribute.databaseAttributeKey();
       if (attributeKey.TTL() != null) {
         long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setTTL(ttl);
+        databaseSchemaStatement.setTtl(ttl);
       } else if (attributeKey.SCHEMA_REPLICATION_FACTOR() != null) {
         int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setSchemaReplicationFactor(schemaReplicationFactor);

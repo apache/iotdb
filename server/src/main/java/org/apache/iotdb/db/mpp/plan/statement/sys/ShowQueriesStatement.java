@@ -42,7 +42,9 @@ public class ShowQueriesStatement extends ShowStatement {
 
   private ZoneId zoneId;
 
-  public ShowQueriesStatement() {}
+  public ShowQueriesStatement() {
+    // do nothing
+  }
 
   @Override
   public boolean isQuery() {

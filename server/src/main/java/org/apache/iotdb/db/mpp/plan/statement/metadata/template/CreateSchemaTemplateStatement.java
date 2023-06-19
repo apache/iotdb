@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,9 +41,6 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
   List<TSEncoding> encodings;
   List<CompressionType> compressors;
   boolean isAligned;
-
-  // constant to help resolve serialized sequence
-  private static final int NEW_PLAN = -1;
 
   public CreateSchemaTemplateStatement() {
     super();
@@ -75,7 +73,7 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
 
   @Override
   public List<? extends PartialPath> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   public String getName() {

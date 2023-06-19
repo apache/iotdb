@@ -30,7 +30,9 @@ import java.util.List;
 
 public class ShowModelsStatement extends Statement implements IConfigStatement {
 
-  public ShowModelsStatement() {}
+  public ShowModelsStatement() {
+    // do nothing
+  }
 
   @Override
   public List<? extends PartialPath> getPaths() {
