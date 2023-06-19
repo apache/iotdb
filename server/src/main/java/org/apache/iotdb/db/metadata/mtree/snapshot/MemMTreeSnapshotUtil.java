@@ -312,7 +312,7 @@ public class MemMTreeSnapshotUtil {
         serializeBasicMNode(node.getBasicMNode(), outputStream);
         ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
         ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
-        ReadWriteIOUtils.write(node.isAligned(), outputStream);
+        ReadWriteIOUtils.write(node.isAlignedNullable(), outputStream);
         // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
@@ -329,7 +329,7 @@ public class MemMTreeSnapshotUtil {
         serializeBasicMNode(node.getBasicMNode(), outputStream);
         ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
         ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
-        ReadWriteIOUtils.write(node.isAligned(), outputStream);
+        ReadWriteIOUtils.write(node.isAlignedNullable(), outputStream);
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);

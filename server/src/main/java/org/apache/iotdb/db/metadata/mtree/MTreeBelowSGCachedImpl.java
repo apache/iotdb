@@ -1024,7 +1024,7 @@ public class MTreeBelowSGCachedImpl {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<ICachedMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
-            return new ShowDevicesResult(device.getFullPath(), node.isAligned());
+            return new ShowDevicesResult(device.getFullPath(), node.isAlignedNullable());
           }
         };
     if (showDevicesPlan.usingSchemaTemplate()) {
