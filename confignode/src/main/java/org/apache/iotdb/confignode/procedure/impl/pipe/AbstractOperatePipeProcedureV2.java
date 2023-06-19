@@ -51,7 +51,7 @@ public abstract class AbstractOperatePipeProcedureV2
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractOperatePipeProcedureV2.class);
 
-  private static final int RETRY_THRESHOLD = 3;
+  private static final int RETRY_THRESHOLD = 1;
 
   // only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
