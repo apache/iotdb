@@ -156,7 +156,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
 
       if (!split.hasOverlap) {
-        LOGGER.info("Unseq file {} does not overlap with any seq files.", unseqFile);
+        LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
         TsFileResourceCandidate latestSealedSeqFile =
             getLatestSealedSeqFile(candidate.getSeqFileCandidates());
         if (latestSealedSeqFile == null) {
@@ -193,8 +193,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         // We must select the latest sealed and valid seq file to compact with, in order to avoid
         // overlapping of the new compacted files with the subsequent seq files.
         if (seqResourceCandidate.isValidCandidate) {
-          LOGGER.info(
-              "Select one valid seq file {} for unseq file to compact with.",
+          LOGGER.debug(
+              "Select one valid seq file {} for nonOverlap unseq file to compact with.",
               seqResourceCandidate.resource);
           return seqResourceCandidate;
         }
