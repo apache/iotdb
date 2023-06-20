@@ -59,7 +59,7 @@ public class SchemaFile implements ISchemaFile {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
 
-  // attributes for this pb-tree file
+  // attributes for this pbtree file
   private final String filePath;
   private final String logPath;
   private String storageGroupName;
@@ -115,7 +115,7 @@ public class SchemaFile implements ISchemaFile {
   }
 
   private SchemaFile(File file) throws IOException, MetadataException {
-    // only used to sketch a pb-tree file so a file object is necessary while
+    // only used to sketch a pbtree file so a file object is necessary while
     //  components of log manipulations are not.
     pmtFile = file;
     filePath = pmtFile.getPath();
@@ -249,7 +249,7 @@ public class SchemaFile implements ISchemaFile {
       throws MetadataException, IOException {
     if (parent.isMeasurement() || getNodeAddress(parent) < 0) {
       throw new MetadataException(
-          String.format("Node [%s] has no child in pb-tree file.", parent.getFullPath()));
+          String.format("Node [%s] has no child in pbtree file.", parent.getFullPath()));
     }
 
     return pageManager.getChildren(parent);
@@ -329,7 +329,7 @@ public class SchemaFile implements ISchemaFile {
    *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
    *         <li>c. 1 int (4 bytes): hash code of template name {@link #sgNodeTemplateIdWithState}
    *         <li>d. 1 long (8 bytes): last segment address of database {@link #lastSGAddr}
-   *         <li>e. 1 int (4 bytes): version of pb-tree file {@linkplain
+   *         <li>e. 1 int (4 bytes): version of pbtree file {@linkplain
    *             SchemaFileConfig#SCHEMA_FILE_VERSION}
    *       </ul>
    * </ul>
@@ -338,7 +338,7 @@ public class SchemaFile implements ISchemaFile {
    */
   private void initFileHeader() throws IOException, MetadataException {
     if (channel.size() == 0) {
-      // new pb-tree file
+      // new pbtree file
       lastPageIndex = 0;
       ReadWriteIOUtils.write(lastPageIndex, headerContent);
       ReadWriteIOUtils.write(dataTTL, headerContent);
@@ -449,7 +449,7 @@ public class SchemaFile implements ISchemaFile {
       sync();
       if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
         logger.error(
-            "Failed to delete old snapshot {} while creating pb-tree file snapshot.",
+            "Failed to delete old snapshot {} while creating pbtree file snapshot.",
             schemaFileSnapshot.getName());
         return false;
       }

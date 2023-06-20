@@ -28,8 +28,8 @@
 ### 使用方式
 
 Linux/MacOS
-> ./print-pb-tree-file.sh -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
+> ./print-pbtree-file.sh -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
 
 Windows
 
-> ./print-pb-tree-file.bat -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
+> ./print-pbtree-file.bat -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
