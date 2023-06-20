@@ -86,7 +86,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
               slotList.add(
                   new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getEndTime(o))));
             });
-    needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
+
+    if (slotList.isEmpty()) {
+      throw new IllegalStateException(
+          String.format("Devices in TsFile %s is empty, this should not happen here.", tsFile));
+    } else if (slotList.stream()
+        .anyMatch(slotPair -> !slotPair.getRight().equals(slotList.get(0).right))) {
+      needDecodeTsFile = true;
+    } else {
+      needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
+    }
+
     if (!needDecodeTsFile && !resource.resourceFileExists()) {
       resource.serialize();
     }
