@@ -350,7 +350,6 @@ public class ChunkSuit4CPV {
         default:
           throw new IOException("Unsupported data type!");
       }
-      return estimatedPos;
     }
     IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_b_genFP, System.nanoTime() - start);
     return estimatedPos;
