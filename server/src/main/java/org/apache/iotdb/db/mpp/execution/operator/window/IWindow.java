@@ -26,14 +26,14 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 public interface IWindow {
 
   /**
-   * Get control column
+   * Get control column.
    *
    * @return the control column
    */
   Column getControlColumn(TsBlock tsBlock);
 
   /**
-   * Judge whether the point at index of column belongs to this window
+   * Judge whether the point at index of column belongs to this window.
    *
    * @param column the controlColumn of window
    * @param index the row index in column
@@ -43,12 +43,12 @@ public interface IWindow {
 
   /**
    * When we merge a point into window, at this time, we can use this method to change the status in
-   * this window
+   * this window.
    */
   void mergeOnePoint(Column[] timeAndValueColumn, int index);
 
   /**
-   * Used to judge whether the window has contains the column
+   * Used to judge whether the window has contains the column.
    *
    * @param column the controlColumn of window
    * @return if the whole column satisfy the window

@@ -35,10 +35,10 @@ public class SlidingTimeWindowEvaluationHandler extends SlidingWindowEvaluationH
 
   private final Queue<Integer> windowBeginIndexQueue;
 
-  /** window: [begin, end) */
+  /** window: [begin, end). */
   private long currentWindowEndTime;
 
-  /** window: [begin, end) */
+  /** window: [begin, end). */
   private long nextWindowBeginTime;
 
   public SlidingTimeWindowEvaluationHandler(

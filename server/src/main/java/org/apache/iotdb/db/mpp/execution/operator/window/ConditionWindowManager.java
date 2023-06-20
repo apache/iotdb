@@ -35,13 +35,6 @@ public class ConditionWindowManager implements IWindowManager {
   private final ConditionWindow conditionWindow;
   private boolean initialized;
   private boolean needSkip;
-
-  // skipPointsOutOfBound has two phrases in SeriesWindowManager.
-  // First phrase is to skip the row with the controlColumn of true in current window, which usually
-  // happens when LAST_VALUE or MAX_TIME leaves early in accumulator.
-  // Second phrase is to skip the row with the controlColumn of false/null which don't belong
-  // current window.
-  // isFirstSkip is used to identify the phrase.
   private boolean isFirstSkip;
   private final KeepEvaluator keepEvaluator;
 
@@ -83,51 +76,80 @@ public class ConditionWindowManager implements IWindowManager {
     return conditionWindow;
   }
 
-  @Override
-  public TsBlock skipPointsOutOfCurWindow(TsBlock inputTsBlock) {
-    if (!needSkip) {
-      return inputTsBlock;
+  /** skip the row remains in the current window(controlColumn is true) */
+  private boolean skipFirstPhrase(Column controlColumn, int index) {
+    if (!isFirstSkip) {
+      return false;
     }
 
-    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+    return controlColumn.isNull(index) || !controlColumn.getBoolean(index);
+  }
+
+  /** skip the row which don't belong to any window(controlColumn is false or null) */
+  private boolean skipSecondPhrase(Column controlColumn, int index) {
+    if (isFirstSkip) {
+      return false;
+    }
+
+    return !controlColumn.isNull(index) && controlColumn.getBoolean(index);
+  }
+
+  private boolean needBreak(Column controlColumn, int index) {
+    if (isIgnoringNull() && controlColumn.isNull(index)) {
+      return false;
+    }
+
+    return skipFirstPhrase(controlColumn, index) || skipSecondPhrase(controlColumn, index);
+  }
+
+  private void updateTime(long currentTime) {
+    if (conditionWindow.getStartTime() > currentTime) {
+      conditionWindow.setStartTime(currentTime);
+    }
+    if (conditionWindow.getEndTime() < currentTime) {
+      conditionWindow.setEndTime(currentTime);
+    }
+  }
+
+  /**
+   * skipPointsOutOfBound has two phrases in ConditionWindowManager. First phrase is to skip the row
+   * with the controlColumn of true in current window, which usually happens when FIRST_VALUE() or
+   * MAX_TIME() leaves early in aggregator. Second phrase is to skip the row with the controlColumn
+   * of false/null which don't belong to current window. isFirstSkip is used to identify the phrase.
+   */
+  @Override
+  public TsBlock skipPointsOutOfCurWindow(TsBlock inputTsBlock) {
+
+    if (!needSkip || inputTsBlock == null || inputTsBlock.isEmpty()) {
       return inputTsBlock;
     }
 
     Column controlColumn = conditionWindow.getControlColumn(inputTsBlock);
     TimeColumn timeColumn = inputTsBlock.getTimeColumn();
-    int i = 0, size = inputTsBlock.getPositionCount();
+    int i = 0;
     int k = 0;
-    for (; i < size; i++) {
+    int size = inputTsBlock.getPositionCount();
+    for (; i < size && !needBreak(controlColumn, i); i++) {
 
       // if ignoreNull is true, ignore the controlColumn of null
-      if (isIgnoringNull() && controlColumn.isNull(i)) continue;
-
-      // the first phrase of skip
-      if (isFirstSkip && (controlColumn.isNull(i) || !controlColumn.getBoolean(i))) {
-        break;
-        // the second phrase of skip
-      } else if (!isFirstSkip && !controlColumn.isNull(i) && controlColumn.getBoolean(i)) {
-        break;
+      if (isIgnoringNull() && controlColumn.isNull(i)) {
+        continue;
       }
 
       // update endTime and record the row processed, only the first phrase of skip in current
       // window need to record them.
       if (isFirstSkip) {
         k++;
-        long currentTime = timeColumn.getLong(i);
-        if (conditionWindow.getStartTime() > currentTime) {
-          conditionWindow.setStartTime(currentTime);
-        }
-        if (conditionWindow.getEndTime() < currentTime) {
-          conditionWindow.setEndTime(currentTime);
-        }
+        updateTime(timeColumn.getLong(i));
       }
     }
 
     // record the row processed in the first phrase of skip. If the tsBlock is null, the skip may
     // not finish.
     if (isFirstSkip) {
-      if (i != size) isFirstSkip = false;
+      if (i != size) {
+        isFirstSkip = false;
+      }
       conditionWindow.setKeep(conditionWindow.getKeep() + k);
       return inputTsBlock.subTsBlock(i);
     }
