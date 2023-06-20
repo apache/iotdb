@@ -48,6 +48,10 @@ public class ChunkGroupHeader {
     this.serializedSize = getSerializedSize(deviceID);
   }
 
+  public int getSerializedSize() {
+    return serializedSize;
+  }
+
   private int getSerializedSize(String deviceID) {
     int length = deviceID.getBytes(TSFileConfig.STRING_CHARSET).length;
     return Byte.BYTES + ReadWriteForEncodingUtils.varIntSize(length) + length;
@@ -57,6 +61,7 @@ public class ChunkGroupHeader {
    * deserialize from inputStream.
    *
    * @param markerRead Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
+   * @throws IOException exception in the process of reading file.
    */
   public static ChunkGroupHeader deserializeFrom(InputStream inputStream, boolean markerRead)
       throws IOException {
@@ -75,6 +80,7 @@ public class ChunkGroupHeader {
    * deserialize from TsFileInput.
    *
    * @param markerRead Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
+   * @throws IOException exception in the process of reading file.
    */
   public static ChunkGroupHeader deserializeFrom(TsFileInput input, long offset, boolean markerRead)
       throws IOException {
@@ -84,10 +90,6 @@ public class ChunkGroupHeader {
     }
     String deviceID = input.readVarIntString(offsetVar);
     return new ChunkGroupHeader(deviceID);
-  }
-
-  public int getSerializedSize() {
-    return serializedSize;
   }
 
   public String getDeviceID() {

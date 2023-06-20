@@ -2417,7 +2417,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
           boolean isAligned = false;
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-            TSDataType dataType = timeseriesMetadata.getTSDataType();
+            TSDataType dataType = timeseriesMetadata.getTsDataType();
             if (!dataType.equals(TSDataType.VECTOR)) {
               Pair<CompressionType, TSEncoding> pair =
                   reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);

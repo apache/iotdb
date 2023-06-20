@@ -190,7 +190,7 @@ public class ChunkMetadata implements IChunkMetadata {
     ChunkMetadata chunkMetaData = new ChunkMetadata();
 
     chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
-    chunkMetaData.tsDataType = timeseriesMetadata.getTSDataType();
+    chunkMetaData.tsDataType = timeseriesMetadata.getTsDataType();
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
     // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
     // and each chunk's metadata has its own statistics

@@ -414,7 +414,7 @@ public class TsFileIOWriter implements AutoCloseable {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
         }
-        if (timeseriesMetadata.getTSDataType() != TSDataType.VECTOR) {
+        if (timeseriesMetadata.getTsDataType() != TSDataType.VECTOR) {
           currentIndexNode.addEntry(
               new MetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
         } else {
