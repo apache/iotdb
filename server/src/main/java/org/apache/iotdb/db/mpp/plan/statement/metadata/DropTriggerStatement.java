@@ -71,7 +71,7 @@ public class DropTriggerStatement extends Statement implements IConfigStatement 
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return isAuthenticationRequired()
         ? Collections.singletonList(authPath)
         : Collections.emptyList();

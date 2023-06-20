@@ -93,7 +93,7 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

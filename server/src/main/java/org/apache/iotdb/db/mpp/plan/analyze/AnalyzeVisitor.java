@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -475,7 +476,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
       }
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      throw new SemanticException(e);
     }
     if (needToReFetch) {
       ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, null);
@@ -1303,7 +1304,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // Expression in a sortItem only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.bindSchemaForExpression(expressionForItem, schemaTree);
-      if (expressions.size() == 0) {
+      if (expressions.isEmpty()) {
         throw new SemanticException(
             String.format(
                 "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
@@ -1350,7 +1351,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
                 expression, device, schemaTree);
 
-        if (groupByExpressionsOfOneDevice.size() == 0) {
+        if (groupByExpressionsOfOneDevice.isEmpty()) {
           throw new SemanticException(
               String.format("%s in group by clause doesn't exist.", expression));
         }
@@ -1428,7 +1429,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         List<Expression> expressions =
             ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
                 expressionForItem, device, schemaTree);
-        if (expressions.size() == 0) {
+        if (expressions.isEmpty()) {
           throw new SemanticException(
               String.format(
                   "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
@@ -1479,7 +1480,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // Expression in group by variation clause only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.bindSchemaForExpression(groupByExpression, schemaTree);
-      if (expressions.size() == 0) {
+      if (expressions.isEmpty()) {
         throw new SemanticException(
             String.format(
                 "%s in group by clause doesn't exist.", groupByExpression.getExpressionString()));
@@ -3250,7 +3251,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     int numOfExistPaths = 0;
     for (PartialPath path : pathList) {
       Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path);
-      numOfExistPaths += pathPair.left.size() > 0 ? 1 : 0;
+      numOfExistPaths += !pathPair.left.isEmpty() ? 1 : 0;
     }
     return new Pair<>(schemaTree, numOfExistPaths);
   }
@@ -3267,7 +3268,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (PartialPath path : pathList) {
       Pair<List<MeasurementPath>, Integer> measurementPathList =
           schemaTree.searchMeasurementPaths(path);
-      if (measurementPathList.left.size() <= 0) {
+      if (measurementPathList.left.isEmpty()) {
         return new Pair<>(result, path);
       }
       for (MeasurementPath measurementPath : measurementPathList.left) {
@@ -3344,7 +3345,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                   + " does not exist! You can not create a view based on non-exist time series."));
       return;
     }
-    if (viewInSourceCheckResult.left.size() > 0) {
+    if (!viewInSourceCheckResult.left.isEmpty()) {
       // some source paths is logical view
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(

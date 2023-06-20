@@ -163,7 +163,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

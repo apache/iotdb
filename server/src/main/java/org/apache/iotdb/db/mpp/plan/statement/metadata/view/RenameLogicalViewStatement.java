@@ -57,7 +57,7 @@ public class RenameLogicalViewStatement extends Statement implements IConfigStat
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Arrays.asList(oldName, newName);
   }
 

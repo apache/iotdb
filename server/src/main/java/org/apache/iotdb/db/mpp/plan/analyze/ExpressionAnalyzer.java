@@ -76,6 +76,11 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBe
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBetweenTimeThird;
 
 public class ExpressionAnalyzer {
+
+  private ExpressionAnalyzer() {
+    // forbidden construction
+  }
+
   /**
    * Check if all suffix paths in expression are measurements or one-level wildcards, used in ALIGN
    * BY DEVICE query or GroupByLevel query. If not, throw a {@link SemanticException}.
@@ -126,7 +131,8 @@ public class ExpressionAnalyzer {
           identifyOutputColumnType(((TernaryExpression) expression).getSecondExpression(), false);
       ResultColumn.ColumnType thirdType =
           identifyOutputColumnType(((TernaryExpression) expression).getThirdExpression(), false);
-      boolean rawFlag = false, aggregationFlag = false;
+      boolean rawFlag = false;
+      boolean aggregationFlag = false;
       if (firstType == ResultColumn.ColumnType.RAW
           || secondType == ResultColumn.ColumnType.RAW
           || thirdType == ResultColumn.ColumnType.RAW) {

@@ -72,7 +72,7 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

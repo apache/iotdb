@@ -35,7 +35,7 @@ public class ShowModelsStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 
