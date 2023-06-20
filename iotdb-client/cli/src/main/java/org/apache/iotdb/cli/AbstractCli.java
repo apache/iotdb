@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
@@ -530,7 +531,7 @@ public abstract class AbstractCli {
           cmd.split(" ")[1],
           connection.getTimeZone());
     } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
+      IoTPrinter.printException(e);
       return CODE_ERROR;
     }
   }
@@ -575,7 +576,7 @@ public abstract class AbstractCli {
                 break;
               }
             } catch (IOException e) {
-              e.printStackTrace();
+              IoTPrinter.printException(e);
               executeStatus = CODE_ERROR;
             }
           }

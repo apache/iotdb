@@ -42,6 +42,8 @@ import java.util.stream.IntStream;
 
 public class JlineUtils {
 
+  private JlineUtils() {}
+
   public static final Pattern SQL_KEYWORD_PATTERN = Pattern.compile("([A-Z_]+)");
   public static final Set<String> SQL_KEYWORDS =
       IntStream.range(0, SqlLexer.VOCABULARY.getMaxTokenType())
@@ -82,10 +84,6 @@ public class JlineUtils {
             + "-"
             + username.hashCode();
     builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
-
-    // TODO: since the lexer doesn't produce tokens for quotation marks, disable the highlighter to
-    // avoid incorrect inputs.
-    //    builder.highlighter(new IoTDBSyntaxHighlighter());
 
     builder.completer(new StringsCompleter(SQL_KEYWORDS));
 

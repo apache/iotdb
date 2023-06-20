@@ -50,6 +50,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -294,7 +295,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     List<String> columnTypes = sessionDataSet.getColumnTypes();
     File f = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (f.exists()) {
-      f.delete();
+      Files.delete(f.toPath());
     }
     HashSet<String> deviceFilterSet = new HashSet<>();
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {

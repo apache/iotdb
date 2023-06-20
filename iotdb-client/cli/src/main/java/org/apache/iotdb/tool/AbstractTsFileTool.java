@@ -25,8 +25,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
-import java.io.IOException;
-
 public abstract class AbstractTsFileTool {
 
   protected static final String HOST_ARGS = "h";
@@ -55,7 +53,7 @@ public abstract class AbstractTsFileTool {
   protected static String password;
   protected static Session session;
 
-  public AbstractTsFileTool() {}
+  protected AbstractTsFileTool() {}
 
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
       throws ArgsErrorException {
@@ -69,8 +67,7 @@ public abstract class AbstractTsFileTool {
     return str;
   }
 
-  protected static void parseBasicParams(CommandLine commandLine)
-      throws ArgsErrorException, IOException {
+  protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
     host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
     port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
     username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);

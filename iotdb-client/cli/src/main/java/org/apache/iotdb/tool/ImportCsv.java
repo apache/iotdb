@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.constant.SqlConstant;
@@ -112,26 +113,38 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static String timestampPrecision = "ms";
 
+  private static final String DATATYPE_BOOLEAN = "boolean";
+  private static final String DATATYPE_INT = "int";
+  private static final String DATATYPE_LONG = "long";
+  private static final String DATATYPE_FLOAT = "float";
+  private static final String DATATYPE_DOUBLE = "double";
+  private static final String DATATYPE_NAN = "NaN";
+  private static final String DATATYPE_TEXT = "text";
+
+  private static final String DATATYPE_NULL = "null";
+
+  private static final String INSERT_CSV_MEET_ERROR_MSG = "Meet error when insert csv because ";
+
   private static final Map<String, TSDataType> TYPE_INFER_KEY_DICT = new HashMap<>();
 
   static {
-    TYPE_INFER_KEY_DICT.put("boolean", TSDataType.BOOLEAN);
-    TYPE_INFER_KEY_DICT.put("int", TSDataType.FLOAT);
-    TYPE_INFER_KEY_DICT.put("long", TSDataType.DOUBLE);
-    TYPE_INFER_KEY_DICT.put("float", TSDataType.FLOAT);
-    TYPE_INFER_KEY_DICT.put("double", TSDataType.DOUBLE);
-    TYPE_INFER_KEY_DICT.put("NaN", TSDataType.DOUBLE);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_BOOLEAN, TSDataType.BOOLEAN);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_INT, TSDataType.FLOAT);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_LONG, TSDataType.DOUBLE);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_NAN, TSDataType.DOUBLE);
   }
 
   private static final Map<String, TSDataType> TYPE_INFER_VALUE_DICT = new HashMap<>();
 
   static {
-    TYPE_INFER_VALUE_DICT.put("boolean", TSDataType.BOOLEAN);
-    TYPE_INFER_VALUE_DICT.put("int", TSDataType.INT32);
-    TYPE_INFER_VALUE_DICT.put("long", TSDataType.INT64);
-    TYPE_INFER_VALUE_DICT.put("float", TSDataType.FLOAT);
-    TYPE_INFER_VALUE_DICT.put("double", TSDataType.DOUBLE);
-    TYPE_INFER_VALUE_DICT.put("text", TSDataType.TEXT);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_BOOLEAN, TSDataType.BOOLEAN);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_INT, TSDataType.INT32);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_LONG, TSDataType.INT64);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_TEXT, TSDataType.TEXT);
   }
 
   /**
@@ -273,11 +286,14 @@ public class ImportCsv extends AbstractCsvTool {
     if (!TYPE_INFER_VALUE_DICT.containsKey(value)) {
       throw new ArgsErrorException("Unknown type infer value: " + value);
     }
-    if (key.equals("NaN")
-        && !(value.equals("float") || value.equals("double") || value.equals("text"))) {
+    if (key.equals(DATATYPE_NAN)
+        && !(value.equals(DATATYPE_FLOAT)
+            || value.equals(DATATYPE_DOUBLE)
+            || value.equals(DATATYPE_TEXT))) {
       throw new ArgsErrorException("NaN can not convert to " + value);
     }
-    if (key.equals("boolean") && !(value.equals("boolean") || value.equals("text"))) {
+    if (key.equals(DATATYPE_BOOLEAN)
+        && !(value.equals(DATATYPE_BOOLEAN) || value.equals(DATATYPE_TEXT))) {
       throw new ArgsErrorException("Boolean can not convert to " + value);
     }
     final TSDataType srcType = TYPE_INFER_VALUE_DICT.get(key);
@@ -443,7 +459,7 @@ public class ImportCsv extends AbstractCsvTool {
       try {
         queryType(devices, headerTypeMap, "Time");
       } catch (IoTDBConnectionException e) {
-        e.printStackTrace();
+        IoTPrinter.printException(e);
       }
     }
 
@@ -459,8 +475,8 @@ public class ImportCsv extends AbstractCsvTool {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
     records.forEach(
-        record -> {
-          if (!hasStarted.get()) {
+        recordObj -> {
+          if (Boolean.FALSE.equals(hasStarted.get())) {
             hasStarted.set(true);
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
@@ -477,7 +493,7 @@ public class ImportCsv extends AbstractCsvTool {
             List<String> measurementNames = deviceAndMeasurementNames.get(deviceId);
             for (String measurement : measurementNames) {
               String header = deviceId + "." + measurement;
-              String value = record.get(headerNameMap.get(header));
+              String value = recordObj.get(headerNameMap.get(header));
               if (!"".equals(value)) {
                 TSDataType type;
                 if (!headerTypeMap.containsKey(header)) {
@@ -487,7 +503,7 @@ public class ImportCsv extends AbstractCsvTool {
                   } else {
                     System.out.printf(
                         "Line '%s', column '%s': '%s' unknown type%n",
-                        record.getRecordNumber(), header, value);
+                        recordObj.getRecordNumber(), header, value);
                     isFail = true;
                   }
                 }
@@ -498,7 +514,7 @@ public class ImportCsv extends AbstractCsvTool {
                     isFail = true;
                     System.out.printf(
                         "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                        record.getRecordNumber(), header, value, type);
+                        recordObj.getRecordNumber(), header, value, type);
                   } else {
                     measurements.add(header.replace(deviceId + '.', ""));
                     types.add(type);
@@ -509,7 +525,7 @@ public class ImportCsv extends AbstractCsvTool {
               }
             }
             if (!measurements.isEmpty()) {
-              times.add(parseTimestamp(record.get(timeColumn)));
+              times.add(parseTimestamp(recordObj.get(timeColumn)));
               deviceIds.add(deviceId);
               typesList.add(types);
               valuesList.add(values);
@@ -517,7 +533,7 @@ public class ImportCsv extends AbstractCsvTool {
             }
           }
           if (isFail) {
-            failedRecords.add(record.stream().collect(Collectors.toList()));
+            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
           }
         });
     if (!deviceIds.isEmpty()) {
@@ -564,15 +580,15 @@ public class ImportCsv extends AbstractCsvTool {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
     records.forEach(
-        record -> {
+        recordObj -> {
           // only run in first record
           if (deviceName.get() == null) {
-            deviceName.set(record.get(1));
-          } else if (!Objects.equals(deviceName.get(), record.get(1))) {
+            deviceName.set(recordObj.get(1));
+          } else if (!Objects.equals(deviceName.get(), recordObj.get(1))) {
             // if device changed
             writeAndEmptyDataSet(
                 deviceName.get(), times, typesList, valuesList, measurementsList, 3);
-            deviceName.set(record.get(1));
+            deviceName.set(recordObj.get(1));
             pointSize.set(0);
           } else if (pointSize.get() >= batchPointSize) {
             // insert a batch
@@ -593,7 +609,7 @@ public class ImportCsv extends AbstractCsvTool {
             // headerNameWithoutType is equal to headerName if the CSV column do not have data type.
             String headerNameWithoutType = headerNameEntry.getKey();
             String headerName = headerNameEntry.getValue();
-            String value = record.get(headerName);
+            String value = recordObj.get(headerName);
             if (!"".equals(value)) {
               TSDataType type;
               // Get the data type directly if the CSV column have data type.
@@ -605,11 +621,11 @@ public class ImportCsv extends AbstractCsvTool {
                     if (headerTypeMap.isEmpty()) {
                       Set<String> devices = new HashSet<>();
                       devices.add(deviceName.get());
-                      hasResult = queryType(devices, headerTypeMap, "Device");
+                      hasResult = queryType(devices, headerTypeMap, deviceColumn);
                     }
                     typeQueriedDevice.add(deviceName.get());
                   } catch (IoTDBConnectionException e) {
-                    e.printStackTrace();
+                    IoTPrinter.printException(e);
                   }
                 }
                 if (!hasResult) {
@@ -619,7 +635,7 @@ public class ImportCsv extends AbstractCsvTool {
                   } else {
                     System.out.printf(
                         "Line '%s', column '%s': '%s' unknown type%n",
-                        record.getRecordNumber(), headerNameWithoutType, value);
+                        recordObj.getRecordNumber(), headerNameWithoutType, value);
                     isFail.set(true);
                   }
                 }
@@ -631,7 +647,7 @@ public class ImportCsv extends AbstractCsvTool {
                   isFail.set(true);
                   System.out.printf(
                       "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      record.getRecordNumber(), headerNameWithoutType, value, type);
+                      recordObj.getRecordNumber(), headerNameWithoutType, value, type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameWithoutType);
@@ -641,17 +657,17 @@ public class ImportCsv extends AbstractCsvTool {
               }
             }
           }
-          if (isFail.get()) {
-            failedRecords.add(record.stream().collect(Collectors.toList()));
+          if (Boolean.TRUE.equals(isFail.get())) {
+            failedRecords.add(recordObj.stream().collect(Collectors.toList()));
           }
           if (!measurements.isEmpty()) {
-            times.add(parseTimestamp(record.get(timeColumn)));
+            times.add(parseTimestamp(recordObj.get(timeColumn)));
             typesList.add(types);
             valuesList.add(values);
             measurementsList.add(measurements);
           }
         });
-    if (times.size() != 0) {
+    if (times.isEmpty()) {
       writeAndEmptyDataSet(deviceName.get(), times, typesList, valuesList, measurementsList, 3);
       pointSize.set(0);
     }
@@ -686,7 +702,7 @@ public class ImportCsv extends AbstractCsvTool {
       List<List<String>> measurementsList,
       int retryTime) {
     try {
-      if (!aligned) {
+      if (Boolean.FALSE.equals(aligned)) {
         session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
       } else {
         session.insertAlignedRecordsOfOneDevice(
@@ -697,12 +713,12 @@ public class ImportCsv extends AbstractCsvTool {
         try {
           session.open();
         } catch (IoTDBConnectionException ex) {
-          System.out.println("Meet error when insert csv because " + e.getMessage());
+          System.out.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
         }
         writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      System.out.println("Meet error when insert csv because " + e.getMessage());
+      System.out.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
     } finally {
       times.clear();
       typesList.clear();
@@ -719,7 +735,7 @@ public class ImportCsv extends AbstractCsvTool {
       List<List<String>> measurementsList,
       int retryTime) {
     try {
-      if (!aligned) {
+      if (Boolean.FALSE.equals(aligned)) {
         session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
       } else {
         session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
@@ -729,13 +745,13 @@ public class ImportCsv extends AbstractCsvTool {
         try {
           session.open();
         } catch (IoTDBConnectionException ex) {
-          System.out.println("Meet error when insert csv because " + e.getMessage());
+          System.out.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
         }
         writeAndEmptyDataSet(
             deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      System.out.println("Meet error when insert csv because " + e.getMessage());
+      System.out.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
     } finally {
       deviceIds.clear();
       times.clear();
@@ -783,7 +799,7 @@ public class ImportCsv extends AbstractCsvTool {
       if ("Time".equalsIgnoreCase(headerName)) {
         timeColumn = headerName;
         continue;
-      } else if ("Device".equalsIgnoreCase(headerName)) {
+      } else if (deviceColumn.equalsIgnoreCase(headerName)) {
         deviceColumn = headerName;
         continue;
       }
@@ -833,13 +849,13 @@ public class ImportCsv extends AbstractCsvTool {
         int dtIndex = sessionDataSet.getColumnNames().indexOf(ColumnHeaderConstant.DATATYPE);
         while (sessionDataSet.hasNext()) {
           hasResult = true;
-          RowRecord record = sessionDataSet.next();
-          List<Field> fields = record.getFields();
+          RowRecord rowRecord = sessionDataSet.next();
+          List<Field> fields = rowRecord.getFields();
           String timeseries = fields.get(tsIndex).getStringValue();
           String dataType = fields.get(dtIndex).getStringValue();
           if (Objects.equals(alignedType, "Time")) {
             headerTypeMap.put(timeseries, getType(dataType));
-          } else if (Objects.equals(alignedType, "Device")) {
+          } else if (Objects.equals(alignedType, deviceColumn)) {
             String[] split = PathUtils.splitPathToDetachedNodes(timeseries);
             String measurement = split[split.length - 1];
             headerTypeMap.put(measurement, getType(dataType));
@@ -891,28 +907,28 @@ public class ImportCsv extends AbstractCsvTool {
       return TEXT;
     }
     if (isBoolean(strValue)) {
-      return TYPE_INFER_KEY_DICT.get("boolean");
+      return TYPE_INFER_KEY_DICT.get(DATATYPE_BOOLEAN);
     } else if (isNumber(strValue)) {
       if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
         if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
-          return TYPE_INFER_KEY_DICT.get("long");
+          return TYPE_INFER_KEY_DICT.get(DATATYPE_LONG);
         }
-        return TYPE_INFER_KEY_DICT.get("int");
+        return TYPE_INFER_KEY_DICT.get(DATATYPE_INT);
       } else {
-        return TYPE_INFER_KEY_DICT.get("float");
+        return TYPE_INFER_KEY_DICT.get(DATATYPE_FLOAT);
       }
-    } else if ("null".equals(strValue) || "NULL".equals(strValue)) {
+    } else if (DATATYPE_NULL.equals(strValue) || DATATYPE_NULL.toUpperCase().equals(strValue)) {
       return null;
       // "NaN" is returned if the NaN Literal is given in Parser
-    } else if ("NaN".equals(strValue)) {
-      return TYPE_INFER_KEY_DICT.get("NaN");
+    } else if (DATATYPE_NAN.equals(strValue)) {
+      return TYPE_INFER_KEY_DICT.get(DATATYPE_NAN);
     } else {
       return TSDataType.TEXT;
     }
   }
 
   static boolean isNumber(String s) {
-    if (s == null || s.equals("NaN")) {
+    if (s == null || s.equals(DATATYPE_NAN)) {
       return false;
     }
     try {

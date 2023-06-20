@@ -89,8 +89,6 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static int linesPerFile = 10000;
 
-  private static final int EXPORT_PER_LINE_COUNT = 10000;
-
   private static long timeout = -1;
 
   /** main function of export csv tool. */
@@ -332,7 +330,7 @@ public class ExportCsv extends AbstractCsvTool {
       List<Object> headers = new ArrayList<>();
       List<String> names = sessionDataSet.getColumnNames();
       List<String> types = sessionDataSet.getColumnTypes();
-      if (needDataTypePrinted) {
+      if (Boolean.TRUE.equals(needDataTypePrinted)) {
         for (int i = 0; i < names.size(); i++) {
           if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
             headers.add(String.format("%s(%s)", names.get(i), types.get(i)));

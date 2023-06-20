@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -231,7 +232,7 @@ public abstract class AbstractCsvTool {
       csvPrinterWrapper.close();
       return true;
     } catch (IOException e) {
-      e.printStackTrace();
+      IoTPrinter.printException(e);
       return false;
     }
   }
@@ -264,14 +265,14 @@ public abstract class AbstractCsvTool {
         try {
           csvPrinter = csvFormat.print(new PrintWriter(filePath));
         } catch (IOException e) {
-          e.printStackTrace();
+          IoTPrinter.printException(e);
           return;
         }
       }
       try {
         csvPrinter.print(value);
       } catch (IOException e) {
-        e.printStackTrace();
+        IoTPrinter.printException(e);
       }
     }
 
