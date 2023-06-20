@@ -73,15 +73,16 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV2.class);
+  private static final String FAILED_TO_BORROW_CLIENT_FORMATTER =
+      "Failed to borrow client from client pool for receiver %s:%s.";
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
-      ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER =
-          new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
-              .createClientManager(
-                  new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory());
+  private static volatile IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
+      asyncPipeDataTransferClientManagerHolder;
+  private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
+      asyncPipeDataTransferClientManager;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
@@ -91,6 +92,21 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   private List<TEndPoint> nodeUrls;
+
+  public IoTDBThriftConnectorV2() {
+    if (asyncPipeDataTransferClientManagerHolder == null) {
+      synchronized (IoTDBThriftConnectorV2.class) {
+        if (asyncPipeDataTransferClientManagerHolder == null) {
+          asyncPipeDataTransferClientManagerHolder =
+              new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
+                  .createClientManager(
+                      new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory());
+        }
+      }
+    }
+
+    asyncPipeDataTransferClientManager = asyncPipeDataTransferClientManagerHolder;
+  }
 
   public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
     commitQueue.offer(
@@ -151,11 +167,11 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
         throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
       }
     } catch (TException e) {
-      LOGGER.warn(
+      throw new PipeConnectionException(
           String.format(
-              "Connect to receiver %s:%s error.", firstNodeUrl.getIp(), firstNodeUrl.getPort()),
+              "Connect to receiver %s:%s error: %s",
+              e.getMessage(), firstNodeUrl.getIp(), firstNodeUrl.getPort()),
           e);
-      throw new PipeConnectionException(e.getMessage(), e);
     }
   }
 
@@ -204,7 +220,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client =
-          ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER.borrowClient(targetNodeUrl);
+          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
 
       try {
         pipeTransferInsertNodeReqHandler.transfer(client);
@@ -219,8 +235,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       pipeTransferInsertNodeReqHandler.onError(ex);
       LOGGER.warn(
           String.format(
-              "Failed to borrow client from client pool for receiver %s:%s.",
-              targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
     }
   }
@@ -232,7 +247,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client =
-          ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER.borrowClient(targetNodeUrl);
+          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
 
       try {
         pipeTransferTabletReqHandler.transfer(client);
@@ -247,8 +262,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       pipeTransferTabletReqHandler.onError(ex);
       LOGGER.warn(
           String.format(
-              "Failed to borrow client from client pool for receiver %s:%s.",
-              targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
     }
   }
@@ -278,7 +292,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
     try {
       final AsyncPipeDataTransferServiceClient client =
-          ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER.borrowClient(targetNodeUrl);
+          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
 
       try {
         pipeTransferTsFileInsertionEventHandler.transfer(client);
@@ -293,8 +307,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       pipeTransferTsFileInsertionEventHandler.onError(ex);
       LOGGER.warn(
           String.format(
-              "Failed to borrow client from client pool for receiver %s:%s.",
-              targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           ex);
     }
   }
