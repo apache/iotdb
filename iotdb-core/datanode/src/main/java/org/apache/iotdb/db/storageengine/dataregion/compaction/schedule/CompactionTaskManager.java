@@ -69,12 +69,12 @@ public class CompactionTaskManager implements IService {
 
   private final int compactionScheduledThreadNum = config.getCompactionScheduledThreadCount();
 
+  public static long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
+
   private AtomicInteger dataRegionNum = new AtomicInteger(0);
 
   // scheduledCompactionThreadID -> tsFileManager list
   private final Map<Integer, List<TsFileManager>> dataRegionMap = new ConcurrentHashMap<>();
-
-  private final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private ScheduledExecutorService compactionScheduledPool;
 
@@ -128,7 +128,7 @@ public class CompactionTaskManager implements IService {
       ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
           compactionScheduledPool,
           new compactionScheduledWorker(i, dataRegionMap),
-          COMPACTION_TASK_SUBMIT_DELAY,
+              COMPACTION_TASK_SUBMIT_DELAY,
           IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
           TimeUnit.MILLISECONDS);
     }
@@ -243,6 +243,7 @@ public class CompactionTaskManager implements IService {
     }
     taskExecutionPool = null;
     subCompactionTaskExecutionPool = null;
+    compactionScheduledPool = null;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
@@ -509,4 +510,28 @@ public class CompactionTaskManager implements IService {
     }
     return storageGroupTasks.get(regionWithSG).get(task);
   }
+
+  @TestOnly
+  public Map<Integer, List<TsFileManager>> getDataRegionMap() {
+    return dataRegionMap;
+  }
+
+  @TestOnly
+  public boolean isAllThreadPoolTerminated(){
+    if(taskExecutionPool == null){
+      return subCompactionTaskExecutionPool==null && compactionScheduledPool==null;
+    }
+    return compactionScheduledPool.isTerminated() && taskExecutionPool.isTerminated() && subCompactionTaskExecutionPool.isTerminated();
+  }
+
+  @TestOnly
+  public boolean isDataRegionStillInScheduled(TsFileManager tsFileManager){
+    for(Map.Entry<Integer,List<TsFileManager>> entry:dataRegionMap.entrySet()){
+      if(entry.getValue().contains(tsFileManager)){
+        return true;
+      }
+    }
+    return false;
+  }
+
 }

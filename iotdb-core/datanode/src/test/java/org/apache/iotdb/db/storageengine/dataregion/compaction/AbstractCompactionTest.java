@@ -96,6 +96,8 @@ public class AbstractCompactionTest {
     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39
   };
 
+  private boolean isVersionInOrder=false;
+
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
@@ -120,6 +122,8 @@ public class AbstractCompactionTest {
 
   private int oldMinCrossCompactionUnseqLevel =
       IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+
+  private long oldCompactionScheduleIntervalInMs=IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -208,9 +212,16 @@ public class AbstractCompactionTest {
       boolean isSeq)
       throws IOException, WriteProcessException, MetadataException {
     for (int i = 0; i < fileNum; i++) {
-      fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
-      String fileName =
-          timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
+      String fileName;
+      if(!isVersionInOrder){
+        fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
+        fileName =
+                timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
+      }else{
+        fileVersion++;
+        fileName =
+                System.currentTimeMillis() + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
+      }
       String filePath;
       if (isSeq) {
         filePath = SEQ_DIRS.getPath() + File.separator + fileName;
@@ -406,6 +417,7 @@ public class AbstractCompactionTest {
 
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointMaxNumber);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(oldMaxDegreeOfIndexNode);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionScheduleIntervalInMs(oldCompactionScheduleIntervalInMs);
     EnvironmentUtils.cleanAllDir();
 
     if (SEQ_DIRS.exists()) {
@@ -621,5 +633,9 @@ public class AbstractCompactionTest {
     // rename mods file
     file = new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
     file.renameTo(new File(newFileName + ModificationFile.FILE_SUFFIX));
+  }
+
+  public void setVersionInOrder(boolean versionInOrder) {
+    isVersionInOrder = versionInOrder;
   }
 }
