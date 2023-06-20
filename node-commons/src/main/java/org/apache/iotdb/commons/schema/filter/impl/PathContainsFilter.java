@@ -43,8 +43,8 @@ public class PathContainsFilter extends SchemaFilter {
   }
 
   @Override
-  public <R, C> R accept(SchemaFilterVisitor<R, C> visitor, C context) {
-    return visitor.visitPathContainsFilter(this, context);
+  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
+    return visitor.visitPathContainsFilter(this, node);
   }
 
   @Override
@@ -53,12 +53,12 @@ public class PathContainsFilter extends SchemaFilter {
   }
 
   @Override
-  protected void serialize(ByteBuffer byteBuffer) {
+  public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(containString, byteBuffer);
   }
 
   @Override
-  protected void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(containString, stream);
   }
 }

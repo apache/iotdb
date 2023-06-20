@@ -44,7 +44,7 @@ Rocksdb_based. Restart the IoTDB, the system will use `RSchemaRegion` to manage 
 ####################
 ### Schema Engine Configuration
 ####################
-# Choose the mode of schema engine. The value could be Memory,PB_Tree and Rocksdb_based. If the provided value doesn't match any pre-defined value, Memory mode will be used as default.
+# Choose the mode of schema engine. The value could be Memory,PBTree and Rocksdb_based. If the provided value doesn't match any pre-defined value, Memory mode will be used as default.
 # Datatype: string
 schema_engine_mode=Rocksdb_based
 

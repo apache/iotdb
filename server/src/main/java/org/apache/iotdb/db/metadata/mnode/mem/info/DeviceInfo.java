@@ -49,7 +49,7 @@ public class DeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   @SuppressWarnings("squid:S3077")
   private transient volatile Map<String, IMeasurementMNode<N>> aliasChildren = null;
 
-  private volatile boolean isAligned = false;
+  private volatile Boolean isAligned = false;
 
   @Override
   public void moveDataToNewMNode(IDeviceMNode<N> newMNode) {
@@ -168,12 +168,12 @@ public class DeviceInfo<N extends IMNode<N>> implements IDeviceInfo<N> {
   }
 
   @Override
-  public boolean isAligned() {
+  public Boolean isAligned() {
     return isAligned;
   }
 
   @Override
-  public void setAligned(boolean isAligned) {
+  public void setAligned(Boolean isAligned) {
     this.isAligned = isAligned;
   }
 

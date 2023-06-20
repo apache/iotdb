@@ -31,22 +31,38 @@ import org.jetbrains.annotations.NotNull;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   // shared thread pool in the runtime package
-  static final ExecutorService PROCEDURE_SUBMITTER =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_RUNTIME_PROCEDURE_SUBMITTER.getName());
+  private static final AtomicReference<ExecutorService> procedureSubmitterHolder =
+      new AtomicReference<>();
+  private final ExecutorService procedureSubmitter;
 
   private final PipeLeaderChangeHandler pipeLeaderChangeHandler;
   private final PipeHeartbeatParser pipeHeartbeatParser;
   private final PipeMetaSyncer pipeMetaSyncer;
 
   public PipeRuntimeCoordinator(ConfigManager configManager) {
+    if (procedureSubmitterHolder.get() == null) {
+      synchronized (PipeRuntimeCoordinator.class) {
+        if (procedureSubmitterHolder.get() == null) {
+          procedureSubmitterHolder.set(
+              IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                  ThreadName.PIPE_RUNTIME_PROCEDURE_SUBMITTER.getName()));
+        }
+      }
+    }
+    procedureSubmitter = procedureSubmitterHolder.get();
+
     pipeLeaderChangeHandler = new PipeLeaderChangeHandler(configManager);
     pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
     pipeMetaSyncer = new PipeMetaSyncer(configManager);
+  }
+
+  public ExecutorService getProcedureSubmitter() {
+    return procedureSubmitter;
   }
 
   @Override
