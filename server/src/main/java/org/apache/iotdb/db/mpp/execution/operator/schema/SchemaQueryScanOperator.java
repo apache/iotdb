@@ -159,7 +159,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
               break;
             }
           }
-          next = tsBlockBuilder.build();
+          next = tsBlockBuilder.isEmpty()?null:tsBlockBuilder.build();
         },
         FragmentInstanceManager.getInstance().getIntoOperationExecutor());
   }
@@ -177,7 +177,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public boolean hasNext() throws Exception {
-    isBlocked.get(); // make sure the next is ready
+    isBlocked().get(); // make sure the next is ready
     if (!schemaReader.isSuccess()) {
       throw new RuntimeException(schemaReader.getFailure());
     }
@@ -223,7 +223,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   public void close() throws Exception {
     if (schemaReader != null) {
       schemaReader.close();
-      schemaReader = null;
+//      schemaReader = null;
     }
   }
 }

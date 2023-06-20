@@ -126,7 +126,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
 
   @Override
   public boolean hasNext() throws Exception {
-    isBlocked.get(); // make sure the next is ready
+    isBlocked().get(); // make sure the next is ready
     if (!schemaReader.isSuccess()) {
       throw new RuntimeException(schemaReader.getFailure());
     }
