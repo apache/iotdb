@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -86,12 +87,12 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     @Override
     public SourceOperator createOperator(DriverContext driverContext) {
       checkState(!closed, "Factory is already closed");
-      OperatorContext operatorContext =
-          driverContext.addOperatorContext(operatorId, sourceId, getOperatorType());
       SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
       scanOptionsBuilder.withAllSensors(allSensors);
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
       scanOptionsBuilder.withQueryFilter(valueFilter);
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(operatorId, sourceId, getOperatorType());
       return new SeriesScanOperator(
           operatorContext,
           sourceId,
@@ -134,6 +135,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     return checkTsBlockSizeAndGetResult();
   }
 
+  @SuppressWarnings("squid:S112")
   @Override
   public boolean hasNext() throws Exception {
     if (retainedTsBlock != null) {

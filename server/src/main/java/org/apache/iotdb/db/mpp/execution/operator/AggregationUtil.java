@@ -105,31 +105,7 @@ public class AggregationUtil {
         inputTsBlock = skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, ascending);
       }
 
-      // Get the row which need to be processed by aggregator
-      IWindow curWindow = new TimeWindow(curTimeRange);
-      TimeColumn timeColumn = inputTsBlock.getTimeColumn();
-      int lastIndexToProcess = 0;
-      for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
-        if (!curWindow.satisfy(timeColumn, i)) {
-          break;
-        }
-        lastIndexToProcess = i;
-      }
-
-      for (Aggregator aggregator : aggregators) {
-        // current agg method has been calculated
-        if (aggregator.hasFinalResult()) {
-          continue;
-        }
-
-        aggregator.processTsBlock(inputTsBlock, null, lastIndexToProcess);
-      }
-      int lastReadRowIndex = lastIndexToProcess + 1;
-      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
-        inputTsBlock = null;
-      } else {
-        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
-      }
+      inputTsBlock = process(inputTsBlock, curTimeRange, aggregators);
     }
 
     // judge whether the calculation finished
@@ -140,6 +116,34 @@ public class AggregationUtil {
                 : inputTsBlock.getEndTime() < curTimeRange.getMin());
     return new Pair<>(
         isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound, inputTsBlock);
+  }
+
+  private static TsBlock process(
+      TsBlock inputTsBlock, TimeRange curTimeRange, List<Aggregator> aggregators) {
+    // Get the row which need to be processed by aggregator
+    IWindow curWindow = new TimeWindow(curTimeRange);
+    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+    int lastIndexToProcess = 0;
+    for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
+      if (!curWindow.satisfy(timeColumn, i)) {
+        break;
+      }
+      lastIndexToProcess = i;
+    }
+
+    for (Aggregator aggregator : aggregators) {
+      // current agg method has been calculated
+      if (aggregator.hasFinalResult()) {
+        continue;
+      }
+      aggregator.processTsBlock(inputTsBlock, null, lastIndexToProcess);
+    }
+    int lastReadRowIndex = lastIndexToProcess + 1;
+    if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+      return null;
+    } else {
+      return inputTsBlock.subTsBlock(lastReadRowIndex);
+    }
   }
 
   /** Append a row of aggregation results to the result tsBlock. */
@@ -161,7 +165,7 @@ public class AggregationUtil {
     tsBlockBuilder.declarePosition();
   }
 
-  /** @return whether the tsBlock contains the data of the current time window */
+  /** return whether the tsBlock contains the data of the current time window. */
   public static boolean satisfiedTimeRange(
       TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
     if (tsBlock == null || tsBlock.isEmpty()) {
