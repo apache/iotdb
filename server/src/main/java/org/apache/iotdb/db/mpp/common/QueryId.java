@@ -33,12 +33,14 @@ import static java.util.Objects.requireNonNull;
 
 public class QueryId {
 
-  public static QueryId mockQueryId = QueryId.valueOf("mock_query_id");
+  public static final QueryId mockQueryId = QueryId.valueOf("mock_query_id");
 
   private final String id;
 
   private int nextPlanNodeIndex;
   private int nextPlanFragmentIndex;
+
+  private static final String INVALID_ID_ERROR_MSG = "Invalid id %s";
 
   public static QueryId valueOf(String queryId) {
     // ID is verified in the constructor
@@ -94,8 +96,8 @@ public class QueryId {
     checkArgument(ids.size() == expectedParts, "Invalid %s %s", name, id);
 
     for (String part : ids) {
-      checkArgument(!part.isEmpty(), "Invalid id %s", id);
-      checkArgument(isValidId(part), "Invalid id %s", id);
+      checkArgument(!part.isEmpty(), INVALID_ID_ERROR_MSG, id);
+      checkArgument(isValidId(part), INVALID_ID_ERROR_MSG, id);
     }
     return ids;
   }
@@ -128,7 +130,7 @@ public class QueryId {
   public static String validateId(String id) {
     requireNonNull(id, "id is null");
     checkArgument(!id.isEmpty(), "id is empty");
-    checkArgument(isValidId(id), "Invalid id %s", id);
+    checkArgument(isValidId(id), INVALID_ID_ERROR_MSG, id);
     return id;
   }
 

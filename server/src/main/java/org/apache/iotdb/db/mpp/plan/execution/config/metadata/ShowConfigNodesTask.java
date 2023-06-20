@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -42,12 +41,8 @@ import java.util.stream.Collectors;
 
 public class ShowConfigNodesTask implements IConfigTask {
 
-  private ShowConfigNodesStatement showConfigNodesStatement;
-
-  public ShowConfigNodesTask() {}
-
-  public ShowConfigNodesTask(ShowConfigNodesStatement showConfigNodesStatement) {
-    this.showConfigNodesStatement = showConfigNodesStatement;
+  public ShowConfigNodesTask() {
+    // do nothing
   }
 
   @Override

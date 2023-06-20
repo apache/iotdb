@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -376,18 +377,16 @@ public class IntermediateLayerVisitor
       LayerPointReader firstParentLayerPointReader,
       LayerPointReader secondParentLayerPointReader,
       LayerPointReader thirdParentLayerPointReader) {
-    switch (expression.getExpressionType()) {
-      case BETWEEN:
-        BetweenExpression betweenExpression = (BetweenExpression) expression;
-        return new BetweenTransformer(
-            firstParentLayerPointReader,
-            secondParentLayerPointReader,
-            thirdParentLayerPointReader,
-            betweenExpression.isNotBetween());
-      default:
-        throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+    if (expression.getExpressionType() == ExpressionType.BETWEEN) {
+      BetweenExpression betweenExpression = (BetweenExpression) expression;
+      return new BetweenTransformer(
+          firstParentLayerPointReader,
+          secondParentLayerPointReader,
+          thirdParentLayerPointReader,
+          betweenExpression.isNotBetween());
     }
+    throw new UnsupportedOperationException(
+        "Unsupported Expression Type: " + expression.getExpressionType());
   }
 
   private UDFQueryTransformer getUdfTransformer(

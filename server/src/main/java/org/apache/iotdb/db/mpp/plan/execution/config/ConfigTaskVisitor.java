@@ -379,7 +379,7 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitShowConfigNodes(
       ShowConfigNodesStatement showConfigNodesStatement, TaskContext context) {
-    return new ShowConfigNodesTask(showConfigNodesStatement);
+    return new ShowConfigNodesTask();
   }
 
   @Override
@@ -449,6 +449,7 @@ public class ConfigTaskVisitor
     return new GetTimeSlotListTask(getTimeSlotListStatement);
   }
 
+  @Override
   public IConfigTask visitCountTimeSlotList(
       CountTimeSlotListStatement countTimeSlotListStatement, TaskContext context) {
     return new CountTimeSlotListTask(countTimeSlotListStatement);

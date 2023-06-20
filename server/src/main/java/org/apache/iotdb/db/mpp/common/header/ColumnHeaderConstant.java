@@ -27,6 +27,10 @@ import java.util.List;
 
 public class ColumnHeaderConstant {
 
+  private ColumnHeaderConstant() {
+    // forbidding instantiation
+  }
+
   // column names for query statement
   public static final String TIME = "Time";
   public static final String ENDTIME = "__endTime";

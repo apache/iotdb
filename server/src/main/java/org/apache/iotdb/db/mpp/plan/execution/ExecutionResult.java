@@ -22,8 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.mpp.common.QueryId;
 
 public class ExecutionResult {
-  public QueryId queryId;
-  public TSStatus status;
+  public final QueryId queryId;
+  public final TSStatus status;
 
   public ExecutionResult(QueryId queryId, TSStatus status) {
     this.queryId = queryId;
