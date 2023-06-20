@@ -76,7 +76,7 @@ public class ConditionWindowManager implements IWindowManager {
     return conditionWindow;
   }
 
-  /** skip the row remains in the current window(controlColumn is true) */
+  /** skip the row remains in the current window(controlColumn is true). */
   private boolean skipFirstPhrase(Column controlColumn, int index) {
     if (!isFirstSkip) {
       return false;
@@ -85,7 +85,7 @@ public class ConditionWindowManager implements IWindowManager {
     return controlColumn.isNull(index) || !controlColumn.getBoolean(index);
   }
 
-  /** skip the row which don't belong to any window(controlColumn is false or null) */
+  /** skip the row which don't belong to any window(controlColumn is false or null). */
   private boolean skipSecondPhrase(Column controlColumn, int index) {
     if (isFirstSkip) {
       return false;
@@ -131,7 +131,7 @@ public class ConditionWindowManager implements IWindowManager {
     int size = inputTsBlock.getPositionCount();
     for (; i < size && !needBreak(controlColumn, i); i++) {
 
-      // if ignoreNull is true, ignore the controlColumn of null
+      // if ignoreNull is true, ignore the controlColumn of null.
       if (isIgnoringNull() && controlColumn.isNull(i)) {
         continue;
       }
@@ -155,7 +155,7 @@ public class ConditionWindowManager implements IWindowManager {
     }
 
     if (i < size) {
-      // we can create a new window beginning at index i of inputTsBlock
+      // we can create a new window beginning at index i of inputTsBlock.
       needSkip = false;
     }
     return inputTsBlock.subTsBlock(i);

@@ -144,7 +144,7 @@ public class EvictableBatchList {
   }
 
   /**
-   * set the upper bound of eviction
+   * set the upper bound of eviction.
    *
    * @param evictionUpperBound valid elements [evictionUpperBound, size)
    */

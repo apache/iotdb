@@ -72,7 +72,7 @@ public class DiskSpiller {
     writeData(tsBlocks, fileName);
   }
 
-  /** todo: directly serialize the sorted line instead of copy into a new tsBlock */
+  /** todo: directly serialize the sorted line instead of copy into a new tsBlock. */
   public void spillSortedData(List<SortKey> sortedData) throws IoTDBException {
     List<TsBlock> tsBlocks = new ArrayList<>();
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypeList);
