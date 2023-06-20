@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -54,6 +55,7 @@ import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
 import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.LOCAL_EXECUTION_PLANNER;
 
+@SuppressWarnings("squid:S6548")
 public class FragmentInstanceManager {
 
   private static final Logger logger = LoggerFactory.getLogger(FragmentInstanceManager.class);
@@ -115,6 +117,7 @@ public class FragmentInstanceManager {
     return instanceExecution.size();
   }
 
+  @SuppressWarnings("squid:S1181")
   public FragmentInstanceInfo execDataQueryFragmentInstance(
       FragmentInstance instance, IDataRegionForQuery dataRegion) {
     long startTime = System.nanoTime();
@@ -186,6 +189,7 @@ public class FragmentInstanceManager {
     }
   }
 
+  @SuppressWarnings("squid:S1181")
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
       FragmentInstance instance, ISchemaRegion schemaRegion) {
     FragmentInstanceId instanceId = instance.getId();

@@ -88,6 +88,9 @@ public class RegionWriteExecutor {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
+  private static final String METADATA_ERROR_MSG = "Metadata error: ";
+
+  @SuppressWarnings("squid:S1181")
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
     try {
       WritePlanNodeExecutionContext context =
@@ -164,7 +167,6 @@ public class RegionWriteExecutor {
 
       ConsensusWriteResponse writeResponse =
           executePlanNodeInConsensusLayer(context.getRegionId(), node);
-      // TODO need consider more status
       if (writeResponse.getStatus() != null) {
         response.setAccepted(
             TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
@@ -231,7 +233,6 @@ public class RegionWriteExecutor {
         ConsensusWriteResponse writeResponse =
             fireTriggerAndInsert(context.getRegionId(), insertNode);
 
-        // TODO need consider more status
         if (writeResponse.getStatus() != null) {
           response.setAccepted(
               TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
@@ -292,7 +293,7 @@ public class RegionWriteExecutor {
             return super.visitCreateTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.get(0);
-            LOGGER.error("Metadata error: ", metadataException);
+            LOGGER.error(METADATA_ERROR_MSG, metadataException);
             result = new RegionExecutionResult();
             result.setAccepted(false);
             result.setMessage(metadataException.getMessage());
@@ -330,7 +331,7 @@ public class RegionWriteExecutor {
             return super.visitCreateAlignedTimeSeries(node, context);
           } else {
             MetadataException metadataException = failingMeasurementMap.values().iterator().next();
-            LOGGER.error("Metadata error: ", metadataException);
+            LOGGER.error(METADATA_ERROR_MSG, metadataException);
             result = new RegionExecutionResult();
             result.setAccepted(false);
             result.setMessage(metadataException.getMessage());
@@ -368,52 +369,23 @@ public class RegionWriteExecutor {
           List<TSStatus> failingStatus = new ArrayList<>();
           Map<PartialPath, MeasurementGroup> measurementGroupMap = node.getMeasurementGroupMap();
           List<PartialPath> emptyDeviceList = new ArrayList<>();
-          for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
-            Map<Integer, MetadataException> failingMeasurementMap =
-                schemaRegion.checkMeasurementExistence(
-                    entry.getKey(),
-                    entry.getValue().getMeasurements(),
-                    entry.getValue().getAliasList());
-            if (failingMeasurementMap.isEmpty()) {
-              continue;
-            }
 
-            for (Map.Entry<Integer, MetadataException> failingMeasurement :
-                failingMeasurementMap.entrySet()) {
-              LOGGER.error("Metadata error: ", failingMeasurement.getValue());
-              failingStatus.add(
-                  RpcUtils.getStatus(
-                      failingMeasurement.getValue().getErrorCode(),
-                      failingMeasurement.getValue().getMessage()));
-            }
-            entry.getValue().removeMeasurements(failingMeasurementMap.keySet());
-
-            if (entry.getValue().isEmpty()) {
-              emptyDeviceList.add(entry.getKey());
-            }
-          }
+          checkMeasurementExistence(
+              measurementGroupMap, schemaRegion, failingStatus, emptyDeviceList);
 
           for (PartialPath emptyDevice : emptyDeviceList) {
             measurementGroupMap.remove(emptyDevice);
           }
 
-          if (!measurementGroupMap.isEmpty()) {
-            // try registering the rest timeseries
-            RegionExecutionResult executionResult = super.visitCreateMultiTimeSeries(node, context);
-            if (failingStatus.isEmpty()) {
-              return executionResult;
-            }
+          RegionExecutionResult failingResult =
+              registerTimeSeries(measurementGroupMap, node, context, failingStatus);
 
-            TSStatus executionStatus = executionResult.getStatus();
-            if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              failingStatus.addAll(executionStatus.getSubStatus());
-            } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              failingStatus.add(executionStatus);
-            }
+          if (failingResult != null) {
+            return failingResult;
           }
 
           TSStatus status = RpcUtils.getStatus(failingStatus);
-          RegionExecutionResult failingResult = new RegionExecutionResult();
+          failingResult = new RegionExecutionResult();
           failingResult.setAccepted(false);
           failingResult.setMessage(status.getMessage());
           failingResult.setStatus(status);
@@ -424,6 +396,59 @@ public class RegionWriteExecutor {
       } else {
         return super.visitCreateMultiTimeSeries(node, context);
       }
+    }
+
+    private void checkMeasurementExistence(
+        Map<PartialPath, MeasurementGroup> measurementGroupMap,
+        ISchemaRegion schemaRegion,
+        List<TSStatus> failingStatus,
+        List<PartialPath> emptyDeviceList) {
+      for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {
+        Map<Integer, MetadataException> failingMeasurementMap =
+            schemaRegion.checkMeasurementExistence(
+                entry.getKey(),
+                entry.getValue().getMeasurements(),
+                entry.getValue().getAliasList());
+        if (failingMeasurementMap.isEmpty()) {
+          continue;
+        }
+
+        for (Map.Entry<Integer, MetadataException> failingMeasurement :
+            failingMeasurementMap.entrySet()) {
+          LOGGER.error(METADATA_ERROR_MSG, failingMeasurement.getValue());
+          failingStatus.add(
+              RpcUtils.getStatus(
+                  failingMeasurement.getValue().getErrorCode(),
+                  failingMeasurement.getValue().getMessage()));
+        }
+        entry.getValue().removeMeasurements(failingMeasurementMap.keySet());
+
+        if (entry.getValue().isEmpty()) {
+          emptyDeviceList.add(entry.getKey());
+        }
+      }
+    }
+
+    private RegionExecutionResult registerTimeSeries(
+        Map<PartialPath, MeasurementGroup> measurementGroupMap,
+        CreateMultiTimeSeriesNode node,
+        WritePlanNodeExecutionContext context,
+        List<TSStatus> failingStatus) {
+      if (!measurementGroupMap.isEmpty()) {
+        // try registering the rest timeseries
+        RegionExecutionResult executionResult = super.visitCreateMultiTimeSeries(node, context);
+        if (failingStatus.isEmpty()) {
+          return executionResult;
+        }
+
+        TSStatus executionStatus = executionResult.getStatus();
+        if (executionStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          failingStatus.addAll(executionStatus.getSubStatus());
+        } else if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          failingStatus.add(executionStatus);
+        }
+      }
+      return null;
     }
 
     @Override
@@ -463,7 +488,7 @@ public class RegionWriteExecutor {
                           ((MeasurementAlreadyExistException) metadataException)
                               .getMeasurementPath())));
             } else {
-              LOGGER.warn("Metadata error: ", metadataException);
+              LOGGER.warn(METADATA_ERROR_MSG, metadataException);
               failingStatus.add(
                   RpcUtils.getStatus(
                       metadataException.getErrorCode(), metadataException.getMessage()));
@@ -529,7 +554,7 @@ public class RegionWriteExecutor {
                             ((MeasurementAlreadyExistException) metadataException)
                                 .getMeasurementPath())));
               } else {
-                LOGGER.warn("Metadata error: ", metadataException);
+                LOGGER.warn(METADATA_ERROR_MSG, metadataException);
                 failingStatus.add(
                     RpcUtils.getStatus(
                         metadataException.getErrorCode(), metadataException.getMessage()));
@@ -575,6 +600,31 @@ public class RegionWriteExecutor {
         List<TSStatus> alreadyExistingStatus) {
       TSStatus executionStatus = executionResult.getStatus();
 
+      separateMeasurementAlreadyExistException(
+          failingStatus, executionStatus, alreadyExistingStatus);
+
+      RegionExecutionResult result = new RegionExecutionResult();
+      TSStatus status;
+      if (failingStatus.isEmpty() && alreadyExistingStatus.isEmpty()) {
+        status = RpcUtils.SUCCESS_STATUS;
+        result.setAccepted(true);
+      } else if (failingStatus.isEmpty()) {
+        status = RpcUtils.getStatus(alreadyExistingStatus);
+        result.setAccepted(true);
+      } else {
+        status = RpcUtils.getStatus(failingStatus);
+        result.setAccepted(false);
+      }
+
+      result.setMessage(status.getMessage());
+      result.setStatus(status);
+      return result;
+    }
+
+    private void separateMeasurementAlreadyExistException(
+        List<TSStatus> failingStatus,
+        TSStatus executionStatus,
+        List<TSStatus> alreadyExistingStatus) {
       // separate the measurement_already_exist exception and other exceptions process,
       // measurement_already_exist exception is acceptable due to concurrent timeseries creation
       if (failingStatus.isEmpty()) {
@@ -599,23 +649,6 @@ public class RegionWriteExecutor {
           failingStatus.add(executionStatus);
         }
       }
-
-      RegionExecutionResult result = new RegionExecutionResult();
-      TSStatus status;
-      if (failingStatus.isEmpty() && alreadyExistingStatus.isEmpty()) {
-        status = RpcUtils.SUCCESS_STATUS;
-        result.setAccepted(true);
-      } else if (failingStatus.isEmpty()) {
-        status = RpcUtils.getStatus(alreadyExistingStatus);
-        result.setAccepted(true);
-      } else {
-        status = RpcUtils.getStatus(failingStatus);
-        result.setAccepted(false);
-      }
-
-      result.setMessage(status.getMessage());
-      result.setStatus(status);
-      return result;
     }
 
     @Override
@@ -781,7 +814,7 @@ public class RegionWriteExecutor {
           // if there is some exception, handle each exception and return first of them.
           if (!failingMetadataException.isEmpty()) {
             MetadataException metadataException = failingMetadataException.get(0);
-            LOGGER.error("Metadata error: ", metadataException);
+            LOGGER.error(METADATA_ERROR_MSG, metadataException);
             RegionExecutionResult result = new RegionExecutionResult();
             result.setAccepted(false);
             result.setMessage(metadataException.getMessage());
@@ -791,8 +824,6 @@ public class RegionWriteExecutor {
             return result;
           }
           // step 2. make sure all source paths are existed.
-          // TODO: CRTODO use a more efficient method
-          //                List<PartialPath> sourcePaths = node.getAllTimeSeriesPathInSource();
           return super.visitCreateLogicalView(node, context);
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -48,6 +49,7 @@ public class DataDriver extends Driver {
     this.estimatedMemorySize = estimatedMemorySize;
   }
 
+  @SuppressWarnings("squid:S1181")
   @Override
   protected boolean init(SettableFuture<?> blockedFuture) {
     if (!init) {
@@ -65,8 +67,12 @@ public class DataDriver extends Driver {
   }
 
   /**
-   * init seq file list and unseq file list in QueryDataSource and set it into each SourceNode TODO
-   * we should change all the blocked lock operation into tryLock
+   * init seq file list and unseq file list in QueryDataSource and set it into each SourceNode.
+   *
+   * @throws QueryProcessException while failed to init query resource, QueryProcessException will
+   *     be thrown
+   * @throws IllegalStateException if QueryDataSource is null after initialization,
+   *     IllegalStateException will be thrown
    */
   private void initialize() throws QueryProcessException {
     long startTime = System.nanoTime();
@@ -107,7 +113,10 @@ public class DataDriver extends Driver {
 
   /**
    * The method is called in mergeLock() when executing query. This method will get all the
-   * QueryDataSource needed for this query
+   * QueryDataSource needed for this query.
+   *
+   * @throws QueryProcessException while failed to init query resource, QueryProcessException will
+   *     be thrown
    */
   private QueryDataSource initQueryDataSource() throws QueryProcessException {
     return ((DataDriverContext) driverContext).getSharedQueryDataSource();
