@@ -29,6 +29,7 @@ import {
 import type { PropType } from 'vue';
 import type { DocsearchOptions } from '../../shared/index.js';
 import { useDocsearchShim } from '../composables/index.js';
+import { defaultBranch } from '../../../../utils';
 
 declare const __DOCSEARCH_INJECT_STYLES__: boolean;
 declare const __DOCSEARCH_OPTIONS__: DocsearchOptions;
@@ -87,7 +88,7 @@ export const Docsearch = defineComponent({
         0,
         facetFilters.length,
         `lang:${lang.value}`,
-        `version:${getDocVersion('master', pageData.value.path)}`,
+        `version:${getDocVersion(defaultBranch, pageData.value.path)}`,
         ...(isArray(rawFacetFilters) ? rawFacetFilters : [rawFacetFilters]),
       );
       // @ts-expect-error: https://github.com/microsoft/TypeScript/issues/50690
@@ -135,8 +136,8 @@ export const Docsearch = defineComponent({
       });
 
       watch(pageData, (cur, prev) => {
-        const newVersion = getDocVersion('master', cur.path);
-        const oldVersion = getDocVersion('master', prev.path);
+        const newVersion = getDocVersion(defaultBranch, cur.path);
+        const oldVersion = getDocVersion(defaultBranch, prev.path);
         if (newVersion !== oldVersion) {
           const prevIndex = facetFilters.findIndex(
             (item) => item === `version:${oldVersion}`,
