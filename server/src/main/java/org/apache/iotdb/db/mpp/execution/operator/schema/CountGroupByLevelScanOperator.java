@@ -54,17 +54,14 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
 
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
-
   private final int level;
-
   private final ISchemaSource<T> schemaSource;
+  private final Map<PartialPath, Long> countMap;
 
   private ISchemaReader<T> schemaReader;
-
   private ListenableFuture<?> isBlocked;
-  private Map<PartialPath, Long> countMap;
-  private boolean isFinished;
   private TsBlock next;
+  private boolean isFinished;
 
   public CountGroupByLevelScanOperator(
       PlanNodeId sourceId,
@@ -137,7 +134,12 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
             return NOT_BLOCKED;
           }
         } else {
-          next = countMap.isEmpty() ? null : constructTsBlockAndClearMap(countMap);
+          if (countMap.isEmpty()) {
+            next = null;
+            isFinished = true;
+          } else {
+            constructTsBlockAndClearMap(countMap);
+          }
           return NOT_BLOCKED;
         }
       } catch (Exception e) {
