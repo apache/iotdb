@@ -240,13 +240,7 @@ public class WALNode implements IWALNode {
           identifier,
           firstValidVersionId,
           safelyDeletedSearchIndex);
-      boolean pinnedByIoTConsensus = deleteOutdatedFiles();
-      if (pinnedByIoTConsensus) {
-        logger.debug(
-            "Cannot delete wal files for wal node-{} because of wal files are pinned by IoTConsensus.",
-            identifier);
-        return;
-      }
+      deleteOutdatedFiles();
 
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
@@ -277,6 +271,10 @@ public class WALNode implements IWALNode {
           config.getWalMinEffectiveInfoRatio());
       boolean isSuccess = snapshotOrFlushMemTable();
       if (isSuccess && recursionTime < MAX_RECURSION_TIME) {
+        // wal is used to search, cannot optimize files deletion
+        if (safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
+          return;
+        }
         recursionTime++;
         run();
       }
