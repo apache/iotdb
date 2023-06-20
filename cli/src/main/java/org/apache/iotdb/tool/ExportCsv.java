@@ -288,7 +288,7 @@ public class ExportCsv extends AbstractCsvTool {
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index + ".csv";
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 0);
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql, 10000);
       writeCsvFile(sessionDataSet, path);
       sessionDataSet.closeOperationHandle();
       System.out.println("Export completely!");
