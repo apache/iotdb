@@ -118,7 +118,7 @@ public class IndexController {
     try {
       if (oldFile.exists()) {
         FileUtils.moveFile(oldFile, newFile);
-        logger.info(
+        logger.debug(
             "version file updated, previous: {}, current: {}",
             oldFile.getAbsolutePath(),
             newFile.getAbsolutePath());
