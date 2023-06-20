@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.file.metadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
-import java.io.IOException;
 import java.util.List;
 
 public interface ITimeSeriesMetadata {
@@ -37,7 +36,7 @@ public interface ITimeSeriesMetadata {
   void setSeq(boolean seq);
 
   /** @return the result has already been filtered by modification files */
-  List<IChunkMetadata> loadChunkMetadataList() throws IOException;
+  List<IChunkMetadata> loadChunkMetadataList();
 
   void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader);
 }

@@ -230,12 +230,8 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.chunkMetadataLoader = chunkMetadataLoader;
   }
 
-  public IChunkMetadataLoader getChunkMetadataLoader() {
-    return chunkMetadataLoader;
-  }
-
   @Override
-  public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
+  public List<IChunkMetadata> loadChunkMetadataList() {
     return chunkMetadataLoader.loadChunkMetadataList(this);
   }
 

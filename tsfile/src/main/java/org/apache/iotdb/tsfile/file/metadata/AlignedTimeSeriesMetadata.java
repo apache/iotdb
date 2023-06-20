@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.file.metadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -107,7 +106,7 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
    * the subSensors to generate the VectorChunkMetadata
    */
   @Override
-  public List<IChunkMetadata> loadChunkMetadataList() throws IOException {
+  public List<IChunkMetadata> loadChunkMetadataList() {
     return chunkMetadataLoader.loadChunkMetadataList(this);
   }
 
