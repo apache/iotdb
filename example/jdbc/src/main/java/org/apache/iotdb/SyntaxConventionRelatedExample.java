@@ -20,9 +20,6 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -33,9 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SyntaxConventionRelatedExample {
-
-  private static Logger logger = LoggerFactory.getLogger(SyntaxConventionRelatedExample.class);
-
   /**
    * if you want to create a time series named root.sg1.select, a possible SQL statement would be
    * like: create timeseries root.sg1.select with datatype=FLOAT, encoding=RLE As described before,
@@ -112,30 +106,32 @@ public class SyntaxConventionRelatedExample {
         outputResult(resultSet);
       }
     } catch (IoTDBSQLException e) {
-      logger.info(e.getMessage());
+      e.printStackTrace();
     }
   }
 
+  @SuppressWarnings({"squid:S106"})
   private static void outputResult(ResultSet resultSet) throws SQLException {
     if (resultSet != null) {
-      logger.info("--------------------------");
+      System.out.println("--------------------------");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int columnCount = metaData.getColumnCount();
       for (int i = 0; i < columnCount; i++) {
-        String columnLabel = metaData.getColumnLabel(i + 1);
-        logger.info(columnLabel);
+        System.out.print(metaData.getColumnLabel(i + 1) + " ");
       }
-
+      System.out.println();
       while (resultSet.next()) {
         for (int i = 1; ; i++) {
-          logger.info(resultSet.getString(i));
-          if (i >= columnCount) {
-            logger.info("next----");
+          System.out.print(resultSet.getString(i));
+          if (i < columnCount) {
+            System.out.print(", ");
+          } else {
+            System.out.println();
             break;
           }
         }
       }
-      logger.info("--------------------------\n");
+      System.out.println("--------------------------\n");
     }
   }
 
