@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 import java.util.List;
 
-/** The input data set interface for a UDFPlan */
+/** The input data set interface for a UDFPlan. */
 public interface IUDFInputDataSet {
 
   /** returns the input data types, except the timestamp column(the last column). */
@@ -46,5 +46,5 @@ public interface IUDFInputDataSet {
    *
    * <p>The last element in the row is the timestamp.
    */
-  Object[] nextRowInObjects() throws IOException;
+  Object[] nextRowInObjects();
 }

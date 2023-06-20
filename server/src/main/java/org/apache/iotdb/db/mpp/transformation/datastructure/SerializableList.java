@@ -34,7 +34,37 @@ public interface SerializableList {
   int INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL =
       IoTDBDescriptor.getInstance().getConfig().getUdfInitialByteArrayLengthForMemoryControl();
 
+  default void serialize() throws IOException {
+    SerializationRecorder recorder = getSerializationRecorder();
+    if (recorder.isSerialized()) {
+      return;
+    }
+    PublicBAOS outputStream = new PublicBAOS();
+    serialize(outputStream);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(outputStream.size());
+    byteBuffer.put(outputStream.getBuf(), 0, outputStream.size());
+    byteBuffer.flip();
+    recorder.getFileChannel().write(byteBuffer);
+    recorder.closeFile();
+    release();
+    recorder.markAsSerialized();
+  }
+
   void serialize(PublicBAOS outputStream) throws IOException;
+
+  default void deserialize() throws IOException {
+    SerializationRecorder recorder = getSerializationRecorder();
+    if (!recorder.isSerialized()) {
+      return;
+    }
+    init();
+    ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
+    recorder.getFileChannel().read(byteBuffer);
+    byteBuffer.flip();
+    deserialize(byteBuffer);
+    recorder.closeFile();
+    recorder.markAsNotSerialized();
+  }
 
   void deserialize(ByteBuffer byteBuffer);
 
@@ -132,35 +162,5 @@ public interface SerializableList {
     public String getQueryId() {
       return queryId;
     }
-  }
-
-  default void serialize() throws IOException {
-    SerializationRecorder recorder = getSerializationRecorder();
-    if (recorder.isSerialized()) {
-      return;
-    }
-    PublicBAOS outputStream = new PublicBAOS();
-    serialize(outputStream);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(outputStream.size());
-    byteBuffer.put(outputStream.getBuf(), 0, outputStream.size());
-    byteBuffer.flip();
-    recorder.getFileChannel().write(byteBuffer);
-    recorder.closeFile();
-    release();
-    recorder.markAsSerialized();
-  }
-
-  default void deserialize() throws IOException {
-    SerializationRecorder recorder = getSerializationRecorder();
-    if (!recorder.isSerialized()) {
-      return;
-    }
-    init();
-    ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
-    recorder.getFileChannel().read(byteBuffer);
-    byteBuffer.flip();
-    deserialize(byteBuffer);
-    recorder.closeFile();
-    recorder.markAsNotSerialized();
   }
 }
