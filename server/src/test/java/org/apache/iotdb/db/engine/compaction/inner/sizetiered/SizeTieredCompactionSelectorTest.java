@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.selector.impl.SizeTieredCompactionSelector;
@@ -40,8 +41,8 @@ public class SizeTieredCompactionSelectorTest {
   @Test
   public void testSubmitWhenNextTimePartitionExists() {
     long originPartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(1000000);
+        CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(1000000);
     List<TsFileResource> resources = new ArrayList<>();
 
     for (int i = 0; i < 100; ++i) {
@@ -75,9 +76,8 @@ public class SizeTieredCompactionSelectorTest {
   public void testSubmitWhenSequenceFileIsEmpty() throws Exception {
     DataRegion region = new DataRegion("root.test", "1");
     TsFileManager manager = region.getTsFileManager();
-    int originCandidate =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(30);
+    int originCandidate = IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(30);
     boolean enableUnseqCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
@@ -96,9 +96,7 @@ public class SizeTieredCompactionSelectorTest {
       }
       Assert.assertEquals(3, region.compact());
     } finally {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setMaxInnerCompactionCandidateFileNum(originCandidate);
+      IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(originCandidate);
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setEnableUnseqSpaceCompaction(enableUnseqCompaction);

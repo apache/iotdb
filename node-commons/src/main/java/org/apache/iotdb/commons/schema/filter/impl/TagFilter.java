@@ -58,7 +58,7 @@ public class TagFilter extends SchemaFilter {
   }
 
   @Override
-  public <R, C> R accept(SchemaFilterVisitor<R, C> visitor, C node) {
+  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
     return visitor.visitTagFilter(this, node);
   }
 
@@ -68,14 +68,14 @@ public class TagFilter extends SchemaFilter {
   }
 
   @Override
-  protected void serialize(ByteBuffer byteBuffer) {
+  public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(key, byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
     ReadWriteIOUtils.write(isContains, byteBuffer);
   }
 
   @Override
-  protected void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(key, stream);
     ReadWriteIOUtils.write(value, stream);
     ReadWriteIOUtils.write(isContains, stream);

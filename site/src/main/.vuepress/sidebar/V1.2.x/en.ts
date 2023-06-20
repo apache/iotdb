@@ -95,7 +95,6 @@ export const enSidebar = {
         { text: 'REST API V1 (Not Recommend)', link: 'RestServiceV1' },
         { text: 'REST API V2', link: 'RestServiceV2' },
         { text: 'TsFile API', link: 'Programming-TsFile-API' },
-        { text: 'InfluxDB Protocol', link: 'InfluxDB-Protocol' },
         { text: 'Interface Comparison', link: 'Interface-Comparison' },
       ],
     },
@@ -148,7 +147,7 @@ export const enSidebar = {
         { text: 'Where Condition', link: 'Where-Condition' },
         { text: 'Group By', link: 'Group-By' },
         { text: 'Having Condition', link: 'Having-Condition' },
-        // { text:  'Order By', link: 'Order-By' },
+        { text: 'Order By', link: 'Order-By' },
         { text: 'Fill Null Value', link: 'Fill' },
         { text: 'Pagination', link: 'Pagination' },
         { text: 'Select Into', link: 'Select-Into' },
@@ -236,15 +235,6 @@ export const enSidebar = {
         { text: 'TsFile Split Tool', link: 'TsFile-Split-Tool' },
         { text: 'TsFile Load Export Tool', link: 'TsFile-Load-Export-Tool' },
         { text: 'CSV Load Export Tool', link: 'CSV-Tool' },
-      ],
-    },
-    {
-      text: 'Collaboration of Edge and Cloud',
-      collapsible: true,
-      prefix: 'Edge-Cloud-Collaboration/',
-      // children: 'structure',
-      children: [
-        { text: 'TsFile Sync Tool', link: 'Sync-Tool' },
       ],
     },
     {

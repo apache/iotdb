@@ -91,24 +91,26 @@ public class LogDispatcherThreadMetrics implements IMetricSet {
   }
 
   private void bindStageHistogram(AbstractMetricService metricService) {
-    metricService.getOrCreateHistogram(
-        Metric.STAGE.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        Metric.IOT_CONSENSUS.toString(),
-        Tag.TYPE.toString(),
-        "constructBatch",
-        Tag.REGION.toString(),
-        peerGroupId);
-    metricService.getOrCreateHistogram(
-        Metric.STAGE.toString(),
-        MetricLevel.IMPORTANT,
-        Tag.NAME.toString(),
-        Metric.IOT_CONSENSUS.toString(),
-        Tag.TYPE.toString(),
-        "syncLogTimePerRequest",
-        Tag.REGION.toString(),
-        peerGroupId);
+    constructBatchHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.STAGE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            Metric.IOT_CONSENSUS.toString(),
+            Tag.TYPE.toString(),
+            "constructBatch",
+            Tag.REGION.toString(),
+            peerGroupId);
+    syncLogTimePerRequestHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.STAGE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            Metric.IOT_CONSENSUS.toString(),
+            Tag.TYPE.toString(),
+            "syncLogTimePerRequest",
+            Tag.REGION.toString(),
+            peerGroupId);
   }
 
   private void unbindStageHistogram(AbstractMetricService metricService) {

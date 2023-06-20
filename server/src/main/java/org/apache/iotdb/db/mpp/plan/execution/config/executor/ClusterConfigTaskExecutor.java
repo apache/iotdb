@@ -45,6 +45,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
@@ -65,11 +66,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropPipeSinkReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
@@ -79,7 +77,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -146,8 +143,8 @@ import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchem
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.sys.sync.ShowPipeSinkTask;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -184,16 +181,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewSta
 import org.apache.iotdb.db.mpp.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.CreatePipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StartPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.quota.ShowThrottleQuotaStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.CreatePipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.DropPipeSinkStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkStatement;
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -201,6 +195,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.UDTF;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -1515,75 +1510,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createPipeSink(
-      CreatePipeSinkStatement createPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TPipeSinkInfo pipeSinkInfo = new TPipeSinkInfo();
-      pipeSinkInfo.setPipeSinkName(createPipeSinkStatement.getPipeSinkName());
-      pipeSinkInfo.setPipeSinkType(createPipeSinkStatement.getPipeSinkType());
-      pipeSinkInfo.setAttributes(createPipeSinkStatement.getAttributes());
-      TSStatus tsStatus = configNodeClient.createPipeSink(pipeSinkInfo);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to create PIPESINK {} with type {} in config node, status is {}.",
-            createPipeSinkStatement.getPipeSinkName(),
-            createPipeSinkStatement.getPipeSinkType(),
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> dropPipeSink(
-      DropPipeSinkStatement dropPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TDropPipeSinkReq req = new TDropPipeSinkReq();
-      req.setPipeSinkName(dropPipeSinkStatement.getPipeSinkName());
-      TSStatus tsStatus = configNodeClient.dropPipeSink(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to drop PIPESINK {} in config node, status is {}.",
-            dropPipeSinkStatement.getPipeSinkName(),
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showPipeSink(
-      ShowPipeSinkStatement showPipeSinkStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetPipeSinkReq tGetPipeSinkReq = new TGetPipeSinkReq();
-      if (!StringUtils.isEmpty(showPipeSinkStatement.getPipeSinkName())) {
-        tGetPipeSinkReq.setPipeSinkName(showPipeSinkStatement.getPipeSinkName());
-      }
-      TGetPipeSinkResp resp = configNodeClient.getPipeSink(tGetPipeSinkReq);
-      ShowPipeSinkTask.buildTSBlockByTPipeSinkInfo(resp.getPipeSinkInfoList(), future);
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
   public SettableFuture<ConfigTaskResult> createPipe(CreatePipeStatement createPipeStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
@@ -1668,15 +1594,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showPipe(ShowPipeStatement showPipeStatement) {
+  public SettableFuture<ConfigTaskResult> showPipes(ShowPipesStatement showPipesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TShowPipeReq tShowPipeReq = new TShowPipeReq();
-      if (!StringUtils.isEmpty(showPipeStatement.getPipeName())) {
-        tShowPipeReq.setPipeName(showPipeStatement.getPipeName());
+      if (!StringUtils.isEmpty(showPipesStatement.getPipeName())) {
+        tShowPipeReq.setPipeName(showPipesStatement.getPipeName());
       }
-      if (showPipeStatement.getWhereClause()) {
+      if (showPipesStatement.getWhereClause()) {
         tShowPipeReq.setWhereClause(true);
       }
       List<TShowPipeInfo> tShowPipeInfoList =
@@ -1857,17 +1783,43 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterLogicalView(
       String queryId, AlterLogicalViewStatement alterLogicalViewStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    // delete old view
-    TDeleteLogicalViewReq req =
-        new TDeleteLogicalViewReq(
-            queryId,
-            serializePatternListToByteBuffer(alterLogicalViewStatement.getTargetPathList()));
+    CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
+    createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
+    createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
+    createLogicalViewStatement.setQueryStatement(alterLogicalViewStatement.getQueryStatement());
+
+    Analyzer.validate(createLogicalViewStatement);
+
+    // Transform all Expressions into ViewExpressions.
+    TransformToViewExpressionVisitor transformToViewExpressionVisitor =
+        new TransformToViewExpressionVisitor();
+    List<Expression> expressionList = createLogicalViewStatement.getSourceExpressionList();
+    List<ViewExpression> viewExpressionList = new ArrayList<>();
+    for (Expression expression : expressionList) {
+      viewExpressionList.add(transformToViewExpressionVisitor.process(expression, null));
+    }
+
+    List<PartialPath> viewPathList = createLogicalViewStatement.getTargetPathList();
+
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(viewPathList.size(), stream);
+      for (int i = 0; i < viewPathList.size(); i++) {
+        viewPathList.get(i).serialize(stream);
+        ViewExpression.serialize(viewExpressionList.get(i), stream);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    TAlterLogicalViewReq req =
+        new TAlterLogicalViewReq(queryId, ByteBuffer.wrap(stream.toByteArray()));
     try (ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
-          tsStatus = client.deleteLogicalView(req);
+          tsStatus = client.alterLogicalView(req);
         } catch (TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
@@ -1882,43 +1834,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute delete view {}, status is {}.",
+            "Failed to execute alter view {}, status is {}.",
             alterLogicalViewStatement.getTargetPathList(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
-        return future;
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
+      return future;
     } catch (ClientManagerException | TException e) {
       future.setException(e);
       return future;
     }
-
-    // recreate the logical view
-    CreateLogicalViewStatement createLogicalViewStatement = new CreateLogicalViewStatement();
-    createLogicalViewStatement.setTargetPaths(alterLogicalViewStatement.getTargetPaths());
-    createLogicalViewStatement.setSourcePaths(alterLogicalViewStatement.getSourcePaths());
-    createLogicalViewStatement.setSourceQueryStatement(
-        alterLogicalViewStatement.getQueryStatement());
-
-    ExecutionResult executionResult =
-        Coordinator.getInstance()
-            .execute(
-                createLogicalViewStatement,
-                0,
-                null,
-                "",
-                ClusterPartitionFetcher.getInstance(),
-                ClusterSchemaFetcher.getInstance(),
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      future.setException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
-    } else {
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    }
-
-    return future;
   }
 
   @Override

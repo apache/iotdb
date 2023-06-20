@@ -71,10 +71,11 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -99,6 +100,9 @@ import java.util.stream.Collectors;
 public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
+
+  // Allocate 8MB buffer for load snapshot of PartitionInfo
+  private static final int PARTITION_TABLE_BUFFER_SIZE = 32 * 1024 * 1024;
 
   /** For Cluster Partition */
   // For allocating Regions
@@ -825,7 +829,9 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+    try (BufferedInputStream fileInputStream =
+            new BufferedInputStream(
+                Files.newInputStream(snapshotFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data
@@ -862,37 +868,21 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return GetRegionIdResp with STATUS and List<TConsensusGroupId>.
    */
   public DataSet getRegionId(GetRegionIdPlan plan) {
-    if (!plan.getDatabase().equals("")) {
-      // get regionId of specific database.
-      if (!isDatabaseExisted(plan.getDatabase())) {
-        return new GetRegionIdResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
-      } else {
-        DatabasePartitionTable sgPartitionTable = databasePartitionTables.get(plan.getDatabase());
-        return new GetRegionIdResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            sgPartitionTable
-                .getRegionId(plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())
-                .stream()
-                .distinct()
-                .sorted(Comparator.comparing(TConsensusGroupId::getId))
-                .collect(Collectors.toList()));
-      }
-    } else {
-      // get regionId of specific seriesSlotId(device).
-      List<TConsensusGroupId> regionIds = new ArrayList<>();
-      databasePartitionTables.forEach(
-          (database, databasePartitionTable) ->
-              regionIds.addAll(
-                  databasePartitionTable.getRegionId(
-                      plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())));
+    if (!isDatabaseExisted(plan.getDatabase())) {
+      // Return empty result if Database doesn't exist
       return new GetRegionIdResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-          regionIds.stream()
-              .distinct()
-              .sorted(Comparator.comparing(TConsensusGroupId::getId))
-              .collect(Collectors.toList()));
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), new ArrayList<>());
     }
+
+    DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(plan.getDatabase());
+    return new GetRegionIdResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        databasePartitionTable
+            .getRegionId(plan.getPartitionType(), plan.getSeriesSlotId(), plan.getTimeSlotId())
+            .stream()
+            .distinct()
+            .sorted(Comparator.comparing(TConsensusGroupId::getId))
+            .collect(Collectors.toList()));
   }
 
   /**

@@ -411,4 +411,48 @@ public class IoTDBGroupByCountIT {
     normalTestWithAlignByDevice(res, sql, false);
     normalTestWithAlignByDevice(res, sql2, true);
   }
+
+  private void errorTest(String sql, String error) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
+    } catch (Exception e) {
+      assertEquals(error, e.getMessage());
+    }
+  }
+
+  @Test
+  public void errorTest1() {
+    errorTest(
+        "select count(temperature) from root.** group by count(soc, 2)",
+        "701: root.**.soc in group by clause shouldn't refer to more than one timeseries.");
+  }
+
+  @Test
+  public void errorTest2() {
+    errorTest(
+        "select count(soc) from root.sg.beijing.car01 group by count(count(soc),2)",
+        "701: Aggregation expression shouldn't exist in group by clause");
+  }
+
+  @Test
+  public void errorTest3() {
+    errorTest(
+        "select count(soc) from root.sg.beijing.car01 group by count(s1,2)",
+        "701: root.sg.beijing.car01.s1 in group by clause doesn't exist.");
+  }
+
+  @Test
+  public void errorTest4() {
+    errorTest(
+        "select count(soc) from root.sg.beijing.car01 group by count(s1,2) align by device",
+        "701: s1 in group by clause doesn't exist.");
+  }
+
+  @Test
+  public void errorTest5() {
+    errorTest(
+        "select count(soc) from root.sg.beijing.car01 group by count(root.sg.beijing.car01.soc,2) align by device",
+        "701: ALIGN BY DEVICE: the suffix paths can only be measurement or one-level wildcard");
+  }
 }

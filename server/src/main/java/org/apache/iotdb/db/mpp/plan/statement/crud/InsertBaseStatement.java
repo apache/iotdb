@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
@@ -34,8 +35,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public abstract class InsertBaseStatement extends Statement {
@@ -317,7 +320,31 @@ public abstract class InsertBaseStatement extends Statement {
             }
           });
     }
+    // check this map, ensure that all time series (measurements in each device) only appear once
+    validateMapFromDeviceToMeasurement(mapFromDeviceToMeasurementAndIndex);
     return mapFromDeviceToMeasurementAndIndex;
+  }
+
+  protected static void validateMapFromDeviceToMeasurement(
+      Map<PartialPath, List<Pair<String, Integer>>> map) {
+    if (map == null) {
+      return;
+    }
+    for (Map.Entry<PartialPath, List<Pair<String, Integer>>> entry : map.entrySet()) {
+      List<Pair<String, Integer>> measurementList = entry.getValue();
+      if (measurementList.size() <= 1) {
+        continue;
+      }
+      Set<String> measurementSet = new HashSet<>();
+      for (Pair<String, Integer> thisPair : measurementList) {
+        boolean measurementNotExists = measurementSet.add(thisPair.left);
+        if (!measurementNotExists) {
+          PartialPath devicePath = entry.getKey();
+          throw new RuntimeException(
+              new DuplicateInsertException(devicePath.getFullPath(), thisPair.left));
+        }
+      }
+    }
   }
   // endregion
 }

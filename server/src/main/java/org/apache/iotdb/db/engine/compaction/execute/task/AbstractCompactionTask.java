@@ -140,7 +140,11 @@ public abstract class AbstractCompactionTask {
     return false;
   }
 
-  public abstract void resetCompactionCandidateStatusForAllSourceFiles();
+  public void resetCompactionCandidateStatusForAllSourceFiles() {
+    List<TsFileResource> resources = getAllSourceTsFiles();
+    // only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
+    resources.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
+  }
 
   public long getTimeCost() {
     return summary.getTimeCost();

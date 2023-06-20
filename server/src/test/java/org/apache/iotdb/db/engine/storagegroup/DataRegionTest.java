@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -75,6 +76,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataRegionTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(DataRegionTest.class);
 
   private String storageGroup = "root.vehicle.d0";
@@ -413,9 +415,9 @@ public class DataRegionTest {
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionInterval();
+    long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionInterval(100000);
+    COMMON_CONFIG.setTimePartitionInterval(100000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -494,16 +496,16 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionInterval(defaultTimePartition);
+    COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionInterval();
+    long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionInterval(1200000);
+    COMMON_CONFIG.setTimePartitionInterval(1200000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -582,16 +584,16 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionInterval(defaultTimePartition);
+    COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, WriteProcessException {
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
-    long defaultTimePartition = config.getTimePartitionInterval();
+    long defaultTimePartition = COMMON_CONFIG.getTimePartitionInterval();
     config.setEnableDiscardOutOfOrderData(true);
-    config.setTimePartitionInterval(1000000);
+    COMMON_CONFIG.setTimePartitionInterval(1000000);
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -670,7 +672,7 @@ public class DataRegionTest {
     }
 
     config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
-    config.setTimePartitionInterval(defaultTimePartition);
+    COMMON_CONFIG.setTimePartitionInterval(defaultTimePartition);
   }
 
   @Test
@@ -716,8 +718,8 @@ public class DataRegionTest {
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     int originCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxInnerCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(9);
+        IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(9);
     boolean originEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     boolean originEnableUnseqSpaceCompaction =
@@ -772,9 +774,7 @@ public class DataRegionTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxInnerCompactionCandidateFileNum(originCandidateFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(originCandidateFileNum);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
@@ -786,7 +786,7 @@ public class DataRegionTest {
   @Ignore
   @Test
   public void testDeleteStorageGroupWhenCompacting() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(10);
+    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(10);
     try {
       for (int j = 0; j < 10; j++) {
         TSRecord record = new TSRecord(j, deviceId);
@@ -1116,6 +1116,33 @@ public class DataRegionTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertTrue(tsFileResource.getModFile().exists());
     Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
+  }
+
+  @Test
+  public void testDeleteDataInSeqWorkingMemtable()
+      throws IllegalPathException, WriteProcessException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, "root.vehicle.d0");
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, "root.vehicle.d199");
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+
+    // delete data which is not in working memtable
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in working memtable
+    dataRegion.deleteByDevice(new PartialPath("root.vehicle.d199.*"), 50, 500, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(tsFileResource.getDevices().contains("root.vehicle.d199"));
   }
 
   @Test

@@ -202,10 +202,6 @@ public class HDFSFactory implements FSFactory {
     try {
       renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-      logger.error(
-          "Failed to rename file from {} to {}. Please check your dependency of Hadoop module.",
-          srcFile.getName(),
-          destFile.getName());
       throw new IOException(e);
     }
   }
@@ -225,10 +221,6 @@ public class HDFSFactory implements FSFactory {
             constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
       }
     } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
-      logger.error(
-          "Failed to copy file from {} to {}. Please check your dependency of object storage module.",
-          srcFile.getName(),
-          destFile.getName());
       throw new IOException(e);
     }
   }

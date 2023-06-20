@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
@@ -67,10 +68,6 @@ public class CommonDescriptor {
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
     config.setOpenIdProviderUrl(
         properties.getProperty("openID_url", config.getOpenIdProviderUrl()).trim());
-    config.setAdminName(properties.getProperty("admin_name", config.getAdminName()).trim());
-
-    config.setAdminPassword(
-        properties.getProperty("admin_password", config.getAdminPassword()).trim());
     config.setEncryptDecryptProvider(
         properties
             .getProperty(
@@ -216,6 +213,22 @@ public class CommonDescriptor {
           "Illegal target MLNode endpoint url format in config file: {}, use default configuration.",
           endPointUrl);
     }
+
+    config.setSchemaEngineMode(
+        properties.getProperty("schema_engine_mode", String.valueOf(config.getSchemaEngineMode())));
+
+    config.setLastCacheEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_last_cache", Boolean.toString(config.isLastCacheEnable()))));
+    if (config.getSchemaEngineMode().equals("Rocksdb_based")) {
+      config.setLastCacheEnable(false);
+    }
+
+    config.setTagAttributeTotalSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
   }
 
   private void loadPipeProps(Properties properties) {
@@ -285,10 +298,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
-    config.setPipeConnectorSessionId(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_connector_session_id", String.valueOf(config.getPipeConnectorSessionId()))));
 
     config.setPipeHeartbeatLoopCyclesForCollectingPipeMeta(
         Integer.parseInt(
@@ -308,6 +317,12 @@ public class CommonDescriptor {
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    config.setTimePartitionInterval(
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            globalConfig.timePartitionInterval, config.getTimestampPrecision()));
+    config.setTimestampPrecision(globalConfig.timestampPrecision);
+    config.setSchemaEngineMode(globalConfig.schemaEngineMode);
+    config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
   }
 }

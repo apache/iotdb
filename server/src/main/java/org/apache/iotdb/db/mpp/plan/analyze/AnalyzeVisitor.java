@@ -46,9 +46,11 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
+import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -138,7 +140,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewState
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
@@ -157,6 +158,7 @@ import org.apache.iotdb.tsfile.read.filter.PredicateRemoveNotRewriter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -208,6 +210,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static final Expression endTimeExpression =
       TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
+
+  private final List<String> lastQueryColumnNames =
+      new ArrayList<>(Arrays.asList("TIME", "TIMESERIES", "VALUE", "DATATYPE"));
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
@@ -1278,6 +1283,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setTimeseriesOrderingForLastQuery(
           queryStatement.getOrderByComponent().getTimeseriesOrder());
     }
+
+    for (SortItem sortItem : queryStatement.getSortItemList()) {
+      String sortKey = sortItem.getSortKey();
+      if (!lastQueryColumnNames.contains(sortKey.toUpperCase())) {
+        throw new SemanticException(
+            String.format(
+                "%s in order by clause doesn't exist in the result of last query.", sortKey));
+      }
+    }
   }
 
   private void analyzeOrderBy(
@@ -1289,14 +1303,22 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // Expression in a sortItem only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.bindSchemaForExpression(expressionForItem, schemaTree);
-      if (expressions.size() != 1) {
-        throw new SemanticException("One sort item in order by should only indicate one value");
+      if (expressions.size() == 0) {
+        throw new SemanticException(
+            String.format(
+                "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
+      }
+      if (expressions.size() > 1) {
+        throw new SemanticException(
+            String.format(
+                "%s in order by clause shouldn't refer to more than one timeseries.",
+                expressionForItem.getExpressionString()));
       }
       expressionForItem = ExpressionAnalyzer.removeAliasFromExpression(expressions.get(0));
       TSDataType dataType = analyzeExpression(analysis, expressionForItem);
       if (!dataType.isComparable()) {
         throw new SemanticException(
-            String.format("The data type of sort item %s is not comparable", dataType));
+            String.format("The data type of %s is not comparable", dataType));
       }
       orderByExpressions.add(expressionForItem);
     }
@@ -1328,8 +1350,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
                 expression, device, schemaTree);
 
-        if (groupByExpressionsOfOneDevice.size() != 1) {
-          throw new SemanticException("Expression in group by should indicate one value");
+        if (groupByExpressionsOfOneDevice.size() == 0) {
+          throw new SemanticException(
+              String.format("%s in group by clause doesn't exist.", expression));
+        }
+        if (groupByExpressionsOfOneDevice.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "%s in group by clause shouldn't refer to more than one timeseries.",
+                  expression));
         }
         Expression groupByExpressionOfOneDevice = groupByExpressionsOfOneDevice.get(0);
 
@@ -1399,17 +1428,22 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         List<Expression> expressions =
             ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression(
                 expressionForItem, device, schemaTree);
-        if (expressions.size() != 1) {
+        if (expressions.size() == 0) {
           throw new SemanticException(
               String.format(
-                  "One sort item in order by should only indicate one value, got %s value(s)",
-                  expressions.size()));
+                  "%s in order by clause doesn't exist.", expressionForItem.getExpressionString()));
+        }
+        if (expressions.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "%s in order by clause shouldn't refer to more than one timeseries.",
+                  expressionForItem.getExpressionString()));
         }
         expressionForItem = expressions.get(0);
         TSDataType dataType = analyzeExpression(analysis, expressionForItem);
         if (!dataType.isComparable()) {
           throw new SemanticException(
-              String.format("The data type of sort item %s is not comparable", dataType));
+              String.format("The data type of %s is not comparable", dataType));
         }
 
         Expression devicerViewExpression =
@@ -1445,8 +1479,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // Expression in group by variation clause only indicates one column
       List<Expression> expressions =
           ExpressionAnalyzer.bindSchemaForExpression(groupByExpression, schemaTree);
-      if (expressions.size() != 1) {
-        throw new SemanticException("Expression in group by should indicate one value");
+      if (expressions.size() == 0) {
+        throw new SemanticException(
+            String.format(
+                "%s in group by clause doesn't exist.", groupByExpression.getExpressionString()));
+      }
+      if (expressions.size() > 1) {
+        throw new SemanticException(
+            String.format(
+                "%s in group by clause shouldn't refer to more than one timeseries.",
+                groupByExpression.getExpressionString()));
       }
       // Aggregation expression shouldn't exist in group by clause.
       List<Expression> aggregationExpression =
@@ -1797,6 +1839,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // fetch schema of target paths
     long startTime = System.nanoTime();
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
+    updateSchemaTreeByViews(analysis, targetSchemaTree);
     QueryPlanCostMetricSet.getInstance()
         .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
     intoPathDescriptor.bindType(targetSchemaTree);
@@ -2615,6 +2658,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+      updateSchemaTreeByViews(analysis, schemaTree);
       logger.debug("[EndFetchSchema]]");
 
       analyzeLastSource(
@@ -2843,23 +2887,48 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+    Set<String> deduplicatedDevicePaths = new HashSet<>();
+
+    if (schemaTree.hasLogicalViewMeasurement()) {
+      updateSchemaTreeByViews(analysis, schemaTree);
+
+      Set<PartialPath> deletePatternSet = new HashSet<>(deleteDataStatement.getPathList());
+      IMeasurementSchema measurementSchema;
+      LogicalViewSchema logicalViewSchema;
+      PartialPath sourcePathOfAliasSeries;
+      for (MeasurementPath measurementPath :
+          schemaTree.searchMeasurementPaths(MetadataConstant.ALL_MATCH_PATTERN).left) {
+        measurementSchema = measurementPath.getMeasurementSchema();
+        if (measurementSchema.isLogicalView()) {
+          logicalViewSchema = (LogicalViewSchema) measurementSchema;
+          if (logicalViewSchema.isWritable()) {
+            sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
+            deletePatternSet.add(sourcePathOfAliasSeries);
+            deduplicatedDevicePaths.add(sourcePathOfAliasSeries.getDevice());
+          } else {
+            deletePatternSet.remove(measurementPath);
+          }
+        } else {
+          deduplicatedDevicePaths.add(measurementPath.getDevice());
+        }
+      }
+      deleteDataStatement.setPathList(new ArrayList<>(deletePatternSet));
+    } else {
+      for (String devicePattern : patternTree.getAllDevicePatterns()) {
+        try {
+          schemaTree
+              .getMatchedDevices(new PartialPath(devicePattern))
+              .forEach(
+                  deviceSchemaInfo ->
+                      deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
+        } catch (IllegalPathException ignored) {
+          // won't happen
+        }
+      }
+    }
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-
-    Set<String> deduplicatedDevicePaths = new HashSet<>();
-
-    for (String devicePattern : patternTree.getAllDevicePatterns()) {
-      try {
-        schemaTree
-            .getMatchedDevices(new PartialPath(devicePattern))
-            .forEach(
-                deviceSchemaInfo ->
-                    deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
-      } catch (IllegalPathException ignored) {
-        // won't happen
-      }
-    }
 
     deduplicatedDevicePaths.forEach(
         devicePath -> {
@@ -3090,16 +3159,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitShowPipeSinkType(
-      ShowPipeSinkTypeStatement showPipeSinkTypeStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setStatement(showPipeSinkTypeStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPipeSinkTypeHeader());
-    analysis.setFinishQueryAfterAnalyze(true);
-    return analysis;
-  }
-
-  @Override
   public Analysis visitShowQueries(
       ShowQueriesStatement showQueriesStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
@@ -3169,6 +3228,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analysis.setWhereExpression(whereExpression);
   }
+
+  // region view
 
   /**
    * Compute how many paths exist, get the schema tree and the number of existed paths.
@@ -3304,13 +3365,30 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               "The path " + checkResult.right + " is illegal."));
       return;
     }
-    if (createLogicalViewStatement.getSourceExpressionList().size()
-        != createLogicalViewStatement.getTargetPathList().size()) {
+    // make sure there are no redundant paths in targets. Please note that redundant paths in source
+    // are legal!
+    List<PartialPath> targetPathList = createLogicalViewStatement.getTargetPathList();
+    Set<String> targetStringSet = new HashSet<>();
+    for (PartialPath path : targetPathList) {
+      boolean repeatPathNotExist = targetStringSet.add(path.toString());
+      if (!repeatPathNotExist) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        analysis.setFailStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ILLEGAL_PATH.getStatusCode(),
+                String.format("Path [%s] is redundant in target paths.", path)));
+        return;
+      }
+    }
+    if (createLogicalViewStatement.getSourceExpressionList().size() != targetPathList.size()) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "The number of target and source paths are miss matched! Please check your SQL."));
+              String.format(
+                  "The number of target paths (%d) and sources (%d) are miss matched! Please check your SQL.",
+                  createLogicalViewStatement.getTargetPathList().size(),
+                  createLogicalViewStatement.getSourceExpressionList().size())));
       return;
     }
     // make sure all paths are NOt under any template
@@ -3344,22 +3422,31 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (queryAnalysisPair.right.isFinishQueryAfterAnalyze()) {
           return analysis;
         } else if (queryAnalysisPair.left != null) {
-          createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
+          try {
+            createLogicalViewStatement.setSourceExpressions(queryAnalysisPair.left);
+          } catch (UnsupportedViewException e) {
+            analysis.setFinishQueryAfterAnalyze(true);
+            analysis.setFailStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+            return analysis;
+          }
         }
       }
+    }
 
-      // check target paths; check source expressions.
-      checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
-      if (analysis.isFinishQueryAfterAnalyze()) {
-        return analysis;
-      }
+    // use source and into item to generate target views
+    createLogicalViewStatement.parseIntoItemIfNecessary();
 
-      // make sure there is no view in source
-      List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
-      checkViewsInSource(analysis, sourceExpressionList, context);
-      if (analysis.isFinishQueryAfterAnalyze()) {
-        return analysis;
-      }
+    // check target paths; check source expressions.
+    checkPathsInCreateLogicalView(analysis, createLogicalViewStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
+
+    // make sure there is no view in source
+    List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
+    checkViewsInSource(analysis, sourceExpressionList, context);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
     }
 
     // set schema partition info, this info will be used to split logical plan node.
@@ -3388,4 +3475,5 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowLogicalViewHeader());
     return analysis;
   }
+  // endregion view
 }

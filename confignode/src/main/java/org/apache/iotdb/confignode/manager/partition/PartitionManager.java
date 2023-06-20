@@ -28,6 +28,8 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -96,6 +98,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
@@ -103,6 +106,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
@@ -115,6 +119,8 @@ public class PartitionManager {
       CONF.getSchemaRegionGroupExtensionPolicy();
   private static final RegionGroupExtensionPolicy DATA_REGION_GROUP_EXTENSION_POLICY =
       CONF.getDataRegionGroupExtensionPolicy();
+
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
@@ -234,41 +240,59 @@ public class PartitionManager {
         return resp;
       }
 
+      Map<String, SchemaPartitionTable> assignedSchemaPartition;
+      try {
+        assignedSchemaPartition =
+            getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
+      } catch (NoAvailableRegionGroupException e) {
+        status = getConsensusManager().confirmLeader();
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          // The allocation might fail due to leadership change
+          resp.setStatus(status);
+          return resp;
+        }
+
+        LOGGER.error("Create SchemaPartition failed because: ", e);
+        resp.setStatus(
+            new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
+                .setMessage(e.getMessage()));
+        return resp;
+      }
+
+      // Cache allocating result only if the current ConfigNode still holds its leadership
+      CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
+      createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
       status = getConsensusManager().confirmLeader();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // Here we check the leadership second time
         // since the RegionGroup creating process might take some time
         resp.setStatus(status);
         return resp;
-      } else {
-        // Allocate SchemaPartitions only if
-        // the current ConfigNode still holds its leadership
-        Map<String, SchemaPartitionTable> assignedSchemaPartition;
-        try {
-          assignedSchemaPartition =
-              getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
-        } catch (NoAvailableRegionGroupException e) {
-          LOGGER.error("Create SchemaPartition failed because: ", e);
-          resp.setStatus(
-              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
-                  .setMessage(e.getMessage()));
-          return resp;
-        }
-
-        // Cache allocating result
-        CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
-        createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
-        getConsensusManager().write(createPlan);
       }
+      getConsensusManager().write(createPlan);
     }
 
     resp = (SchemaPartitionResp) getSchemaPartition(req);
     if (!resp.isAllPartitionsExist()) {
-      LOGGER.error(
-          "Lacked some SchemaPartition allocation result in the response of getOrCreateSchemaPartition method");
+      // Count the fail rate
+      AtomicInteger totalSlotNum = new AtomicInteger();
+      req.getPartitionSlotsMap()
+          .forEach((database, partitionSlots) -> totalSlotNum.addAndGet(partitionSlots.size()));
+
+      AtomicInteger unassignedSlotNum = new AtomicInteger();
+      Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap =
+          partitionInfo.filterUnassignedSchemaPartitionSlots(req.getPartitionSlotsMap());
+      unassignedSchemaPartitionSlotsMap.forEach(
+          (database, unassignedSchemaPartitionSlots) ->
+              unassignedSlotNum.addAndGet(unassignedSchemaPartitionSlots.size()));
+
+      String errMsg =
+          String.format(
+              "Lacked %d/%d SchemaPartition allocation result in the response of getOrCreateSchemaPartition method",
+              unassignedSlotNum.get(), totalSlotNum.get());
+      LOGGER.error(errMsg);
       resp.setStatus(
-          new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode())
-              .setMessage("Lacked some SchemaPartition allocation result in the response"));
+          new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
       return resp;
     }
     return resp;
@@ -340,41 +364,65 @@ public class PartitionManager {
         return resp;
       }
 
+      Map<String, DataPartitionTable> assignedDataPartition;
+      try {
+        assignedDataPartition =
+            getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
+      } catch (NoAvailableRegionGroupException e) {
+        status = getConsensusManager().confirmLeader();
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          // The allocation might fail due to leadership change
+          resp.setStatus(status);
+          return resp;
+        }
+
+        LOGGER.error("Create DataPartition failed because: ", e);
+        resp.setStatus(
+            new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
+                .setMessage(e.getMessage()));
+        return resp;
+      }
+
+      // Cache allocating result only if the current ConfigNode still holds its leadership
+      CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
+      createPlan.setAssignedDataPartition(assignedDataPartition);
       status = getConsensusManager().confirmLeader();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // Here we check the leadership second time
         // since the RegionGroup creating process might take some time
         resp.setStatus(status);
         return resp;
-      } else {
-        // Allocate DataPartitions only if
-        // the current ConfigNode still holds its leadership
-        Map<String, DataPartitionTable> assignedDataPartition;
-        try {
-          assignedDataPartition =
-              getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
-        } catch (NoAvailableRegionGroupException e) {
-          LOGGER.error("Create DataPartition failed because: ", e);
-          resp.setStatus(
-              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
-                  .setMessage(e.getMessage()));
-          return resp;
-        }
-
-        // Cache allocating result
-        CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
-        createPlan.setAssignedDataPartition(assignedDataPartition);
-        getConsensusManager().write(createPlan);
       }
+      getConsensusManager().write(createPlan);
     }
 
     resp = (DataPartitionResp) getDataPartition(req);
     if (!resp.isAllPartitionsExist()) {
-      LOGGER.error(
-          "Lacked some DataPartition allocation result in the response of getOrCreateDataPartition method");
+      // Count the fail rate
+      AtomicInteger totalSlotNum = new AtomicInteger();
+      req.getPartitionSlotsMap()
+          .forEach(
+              (database, partitionSlots) ->
+                  partitionSlots.forEach(
+                      (seriesPartitionSlot, timeSlotList) ->
+                          totalSlotNum.addAndGet(timeSlotList.getTimePartitionSlots().size())));
+
+      AtomicInteger unassignedSlotNum = new AtomicInteger();
+      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap =
+          partitionInfo.filterUnassignedDataPartitionSlots(req.getPartitionSlotsMap());
+      unassignedDataPartitionSlotsMap.forEach(
+          (database, unassignedDataPartitionSlots) ->
+              unassignedDataPartitionSlots.forEach(
+                  (seriesPartitionSlot, timeSlotList) ->
+                      unassignedSlotNum.addAndGet(timeSlotList.getTimePartitionSlots().size())));
+
+      String errMsg =
+          String.format(
+              "Lacked %d/%d DataPartition allocation result in the response of getOrCreateDataPartition method",
+              unassignedSlotNum.get(), totalSlotNum.get());
+      LOGGER.error(errMsg);
       resp.setStatus(
-          new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode())
-              .setMessage("Lacked some DataPartition allocation result in the response"));
+          new TSStatus(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode()).setMessage(errMsg));
       return resp;
     }
     return resp;
@@ -853,12 +901,18 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else {
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
     }
+    if (Objects.equals(plan.getDatabase(), "")) {
+      // Return empty result if Database not specified
+      return new GetRegionIdResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
+    }
+
     if (req.isSetTimeStamp()) {
       plan.setTimeSlotId(
           new TTimePartitionSlot(
-              req.getTimeStamp() - req.getTimeStamp() % CONF.getTimePartitionInterval()));
+              req.getTimeStamp() - req.getTimeStamp() % COMMON_CONFIG.getTimePartitionInterval()));
     }
     return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
   }
@@ -870,7 +924,12 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      if (Objects.equals(plan.getDatabase(), "")) {
+        // Return empty result if Database not specified
+        return new GetTimeSlotListResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
+      }
     } else {
       plan.setRegionId(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
@@ -885,7 +944,12 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      if (Objects.equals(plan.getDatabase(), "")) {
+        // Return empty result if Database not specified
+        return new CountTimeSlotListResp(RpcUtils.SUCCESS_STATUS, 0);
+      }
     } else {
       plan.setRegionId(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));

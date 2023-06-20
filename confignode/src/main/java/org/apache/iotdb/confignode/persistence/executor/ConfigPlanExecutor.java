@@ -129,6 +129,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -479,7 +480,16 @@ public class ConfigPlanExecutor {
         x -> {
           boolean takeSnapshotResult = true;
           try {
+            long startTime = System.currentTimeMillis();
+            LOGGER.info(
+                "[ConfigNodeSnapshot] Start to take snapshot for {} into {}",
+                x.getClass().getName(),
+                snapshotDir.getAbsolutePath());
             takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
+            LOGGER.info(
+                "[ConfigNodeSnapshot] Finish to take snapshot for {}, time consumption: {} ms",
+                x.getClass().getName(),
+                System.currentTimeMillis() - startTime);
           } catch (TException | IOException e) {
             LOGGER.error("Take snapshot error: {}", e.getMessage());
             takeSnapshotResult = false;
@@ -492,7 +502,7 @@ public class ConfigPlanExecutor {
           }
         });
     if (result.get()) {
-      LOGGER.info("Task snapshot success, snapshotDir: {}", snapshotDir);
+      LOGGER.info("[ConfigNodeSnapshot] Task snapshot success, snapshotDir: {}", snapshotDir);
     }
     return result.get();
   }
@@ -511,14 +521,25 @@ public class ConfigPlanExecutor {
         .forEach(
             x -> {
               try {
+                long startTime = System.currentTimeMillis();
+                LOGGER.info(
+                    "[ConfigNodeSnapshot] Start to load snapshot for {} from {}",
+                    x.getClass().getName(),
+                    latestSnapshotRootDir.getAbsolutePath());
                 x.processLoadSnapshot(latestSnapshotRootDir);
+                LOGGER.info(
+                    "[ConfigNodeSnapshot] Load snapshot for {} cost {} ms",
+                    x.getClass().getName(),
+                    System.currentTimeMillis() - startTime);
               } catch (TException | IOException e) {
                 result.set(false);
                 LOGGER.error("Load snapshot error: {}", e.getMessage());
               }
             });
     if (result.get()) {
-      LOGGER.info("Load snapshot success, latestSnapshotRootDir: {}", latestSnapshotRootDir);
+      LOGGER.info(
+          "[ConfigNodeSnapshot] Load snapshot success, latestSnapshotRootDir: {}",
+          latestSnapshotRootDir);
     }
   }
 
@@ -537,7 +558,19 @@ public class ConfigPlanExecutor {
       Pair<Set<TSchemaNode>, Set<PartialPath>> matchedChildInNextLevel =
           clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
       alreadyMatchedNode = matchedChildInNextLevel.left;
-      needMatchedNode = matchedChildInNextLevel.right;
+      if (!partialPath.hasMultiLevelMatchWildcard()) {
+        needMatchedNode = new HashSet<>();
+        for (PartialPath databasePath : matchedChildInNextLevel.right) {
+          if (databasePath.getNodeLength() == partialPath.getNodeLength() + 1) {
+            // this database node is already the target child node, no need to traverse its schema
+            // region
+            continue;
+          }
+          needMatchedNode.add(databasePath);
+        }
+      } else {
+        needMatchedNode = matchedChildInNextLevel.right;
+      }
     } else {
       // count nodes
       Pair<List<PartialPath>, Set<PartialPath>> matchedChildInNextLevel =

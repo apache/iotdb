@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -60,7 +61,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
@@ -74,6 +74,8 @@ public class IoTDBConfig {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
+  private static final String[] CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES =
+      new String[] {"SequenceStrategy", "MaxDiskUsableSpaceFirstStrategy"};
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "SequenceStrategy";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9`_.\\-\\u2E80-\\u9FFF]+)";
@@ -109,7 +111,7 @@ public class IoTDBConfig {
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
-  private String rpcAddress = "127.0.0.1";
+  private String rpcAddress = "0.0.0.0";
 
   /** whether to use thrift compression. */
   private boolean rpcThriftCompressionEnable = false;
@@ -119,9 +121,6 @@ public class IoTDBConfig {
 
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
-
-  /** Port which the influxdb protocol server listens to. */
-  private int influxDBRpcPort = 8086;
 
   /** Rpc Selector thread num */
   private int rpcSelectorThreadCount = 1;
@@ -154,7 +153,7 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** The proportion of write memory for memtable */
-  private double writeProportionForMemtable = 0.8;
+  private double writeProportionForMemtable = 0.76;
 
   /** The proportion of write memory for compaction */
   private double compactionProportion = 0.2;
@@ -176,9 +175,6 @@ public class IoTDBConfig {
 
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
-
-  /** this variable set timestamp precision as millisecond, microsecond or nanosecond */
-  private String timestampPrecision = "ms";
 
   // region Write Ahead Log Configuration
   /** Write mode of wal */
@@ -494,13 +490,16 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in inner space compaction */
-  private int maxInnerCompactionCandidateFileNum = 30;
+  /** The max candidate file num in one inner space compaction task */
+  private int fileLimitPerInnerTask = 30;
+
+  /** The max candidate file num in one cross space compaction task */
+  private int fileLimitPerCrossTask = 500;
 
   /** The max candidate file num in cross space compaction */
-  private int maxCrossCompactionCandidateFileNum = 1000;
+  private int totalFileLimitForCrossTask = 5000;
 
-  /** The max total size of candidate files in cross space compaction */
+  /** The max total size of candidate files in one cross space compaction task */
   private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /**
@@ -521,7 +520,7 @@ public class IoTDBConfig {
    */
   private int subCompactionTaskNum = 4;
 
-  private boolean enableCompactionValidation = true;
+  private CompactionValidationLevel compactionValidationLevel = CompactionValidationLevel.NONE;
 
   /** The size of candidate compaction task queue. */
   private int candidateCompactionTaskQueueSize = 50;
@@ -554,7 +553,7 @@ public class IoTDBConfig {
   private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
 
   /** Memory allocated proportion for time partition info */
-  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 50 / 1001;
+  private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
 
   /** Memory allocated proportion for wal pipe cache */
   private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
@@ -565,17 +564,8 @@ public class IoTDBConfig {
    */
   private boolean enableQueryMemoryEstimation = true;
 
-  /** Whether to enable Last cache */
-  private boolean lastCacheEnable = true;
-
   /** Cache size of {@code checkAndGetDataTypeCache}. */
   private int mRemoteSchemaCacheSize = 100000;
-
-  /** White list for sync */
-  private String ipWhiteList = "127.0.0.1/32";
-
-  /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
-  private int maxNumberOfSyncFileRetry = 5;
 
   /**
    * Set the language version when loading file including error information, default value is "EN"
@@ -614,18 +604,6 @@ public class IoTDBConfig {
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
-
-  /** Switch of watermark function */
-  private boolean enableWatermark = false;
-
-  /** Secret key for watermark */
-  private String watermarkSecretKey = "IoTDB*2019@Beijing";
-
-  /** Bit string of watermark */
-  private String watermarkBitString = "100101110100";
-
-  /** Watermark method and parameters */
-  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
 
   /** Switch of creating schema automatically */
   private boolean enableAutoCreateSchema = true;
@@ -776,9 +754,6 @@ public class IoTDBConfig {
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 64;
 
-  /** Time partition interval in milliseconds */
-  private long timePartitionInterval = 604_800_000;
-
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
@@ -788,9 +763,6 @@ public class IoTDBConfig {
   // just for test
   // wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
-
-  // max size for tag and attribute of one time series
-  private int tagAttributeTotalSize = 700;
 
   // Interval num of tag and attribute records when force flushing to disk
   private int tagAttributeFlushInterval = 1000;
@@ -835,7 +807,7 @@ public class IoTDBConfig {
   private int frequencyIntervalInMinute = 1;
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
-  private long slowQueryThreshold = 5000;
+  private long slowQueryThreshold = 30000;
 
   private int patternMatchingThreshold = 1000000;
 
@@ -844,12 +816,6 @@ public class IoTDBConfig {
    * iotdb-common.properties
    */
   private boolean enableRpcService = true;
-
-  /**
-   * whether enable the influxdb rpc service. This parameter has no a corresponding field in the
-   * iotdb-common.properties
-   */
-  private boolean enableInfluxDBRpcService = false;
 
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
@@ -873,20 +839,17 @@ public class IoTDBConfig {
    */
   private boolean enableIDTableLogFile = false;
 
-  /** whether to use persistent schema mode */
-  private String schemaEngineMode = "Memory";
-
   /** the memory used for metadata cache when using persistent schema */
-  private int cachedMNodeSizeInSchemaFileMode = -1;
+  private int cachedMNodeSizeInPBTreeMode = -1;
 
-  /** the minimum size (in bytes) of segment inside a schema file page */
-  private short minimumSegmentInSchemaFile = 0;
+  /** the minimum size (in bytes) of segment inside a pbtree file page */
+  private short minimumSegmentInPBTree = 0;
 
-  /** cache size for pages in one schema file */
-  private int pageCacheSizeInSchemaFile = 1024;
+  /** cache size for pages in one pbtree file */
+  private int pageCacheSizeInPBTree = 1024;
 
   /** maximum number of logged pages before log erased */
-  private int schemaFileLogSize = 16384;
+  private int pbTreeLogSize = 16384;
 
   /**
    * Maximum number of measurement in one create timeseries plan node. If the number of measurement
@@ -1019,17 +982,16 @@ public class IoTDBConfig {
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
 
+  private int[] schemaMemoryProportion = new int[] {5, 4, 1};
+
   /** Memory allocated for schemaRegion */
-  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
+  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
 
   /** Memory allocated for SchemaCache */
-  private long allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
+  private long allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
 
   /** Memory allocated for PartitionCache */
-  private long allocateMemoryForPartitionCache = 0;
-
-  /** Memory allocated for LastCache */
-  private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
+  private long allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
 
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
@@ -1225,14 +1187,6 @@ public class IoTDBConfig {
     this.defaultFillInterval = defaultFillInterval;
   }
 
-  public long getTimePartitionInterval() {
-    return timePartitionInterval;
-  }
-
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    this.timePartitionInterval = timePartitionInterval;
-  }
-
   public TimeIndexLevel getTimeIndexLevel() {
     return timeIndexLevel;
   }
@@ -1402,30 +1356,6 @@ public class IoTDBConfig {
     this.rpcPort = rpcPort;
   }
 
-  public int getInfluxDBRpcPort() {
-    return influxDBRpcPort;
-  }
-
-  public void setInfluxDBRpcPort(int influxDBRpcPort) {
-    this.influxDBRpcPort = influxDBRpcPort;
-  }
-
-  public String getTimestampPrecision() {
-    return timestampPrecision;
-  }
-
-  public void setTimestampPrecision(String timestampPrecision) {
-    if (!("ms".equals(timestampPrecision)
-        || "us".equals(timestampPrecision)
-        || "ns".equals(timestampPrecision))) {
-      logger.error(
-          "Wrong timestamp precision, please set as: ms, us or ns ! Current is: {}",
-          timestampPrecision);
-      System.exit(-1);
-    }
-    this.timestampPrecision = timestampPrecision;
-  }
-
   public boolean isEnableDiscardOutOfOrderData() {
     return enableDiscardOutOfOrderData;
   }
@@ -1576,14 +1506,18 @@ public class IoTDBConfig {
   }
 
   public void checkMultiDirStrategyClassName() {
-    if (isClusterMode
-        && !(multiDirStrategyClassName.equals(DEFAULT_MULTI_DIR_STRATEGY)
-            || multiDirStrategyClassName.equals(
-                MULTI_DIR_STRATEGY_PREFIX + DEFAULT_MULTI_DIR_STRATEGY))) {
+    if (isClusterMode) {
+      for (String multiDirStrategy : CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES) {
+        // If the multiDirStrategyClassName is one of cluster allowed strategy, the check is passed.
+        if (multiDirStrategyClassName.equals(multiDirStrategy)
+            || multiDirStrategyClassName.equals(MULTI_DIR_STRATEGY_PREFIX + multiDirStrategy)) {
+          return;
+        }
+      }
       String msg =
           String.format(
-              "Cannot set multi_dir_strategy to %s, because cluster mode only allows MaxDiskUsableSpaceFirstStrategy.",
-              multiDirStrategyClassName);
+              "Cannot set multi_dir_strategy to %s, because cluster mode only allows %s.",
+              multiDirStrategyClassName, Arrays.toString(CLUSTER_ALLOWED_MULTI_DIR_STRATEGIES));
       logger.error(msg);
       throw new RuntimeException(msg);
     }
@@ -1712,14 +1646,6 @@ public class IoTDBConfig {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
   }
 
-  public int getMaxNumberOfSyncFileRetry() {
-    return maxNumberOfSyncFileRetry;
-  }
-
-  public void setMaxNumberOfSyncFileRetry(int maxNumberOfSyncFileRetry) {
-    this.maxNumberOfSyncFileRetry = maxNumberOfSyncFileRetry;
-  }
-
   String getLanguageVersion() {
     return languageVersion;
   }
@@ -1740,14 +1666,6 @@ public class IoTDBConfig {
     return "UNKNOWN".equals(version)
         ? "UNKNOWN"
         : version.split("\\.")[0] + "." + version.split("\\.")[1];
-  }
-
-  public String getIpWhiteList() {
-    return ipWhiteList;
-  }
-
-  public void setIpWhiteList(String ipWhiteList) {
-    this.ipWhiteList = ipWhiteList;
   }
 
   public long getCacheFileReaderClearPeriod() {
@@ -1945,9 +1863,9 @@ public class IoTDBConfig {
   public void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
     this.allocateMemoryForSchema = allocateMemoryForSchema;
 
-    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
-    this.allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
-    this.allocateMemoryForLastCache = allocateMemoryForSchema / 10;
+    this.allocateMemoryForSchemaRegion = allocateMemoryForSchema * 5 / 10;
+    this.allocateMemoryForSchemaCache = allocateMemoryForSchema * 4 / 10;
+    this.allocateMemoryForPartitionCache = allocateMemoryForSchema / 10;
   }
 
   public long getAllocateMemoryForConsensus() {
@@ -2237,76 +2155,6 @@ public class IoTDBConfig {
 
   public void setEnableQueryMemoryEstimation(boolean enableQueryMemoryEstimation) {
     this.enableQueryMemoryEstimation = enableQueryMemoryEstimation;
-  }
-
-  public boolean isLastCacheEnabled() {
-    return lastCacheEnable;
-  }
-
-  public void setEnableLastCache(boolean lastCacheEnable) {
-    this.lastCacheEnable = lastCacheEnable;
-  }
-
-  public boolean isEnableWatermark() {
-    return enableWatermark;
-  }
-
-  public void setEnableWatermark(boolean enableWatermark) {
-    this.enableWatermark = enableWatermark;
-  }
-
-  public String getWatermarkSecretKey() {
-    return watermarkSecretKey;
-  }
-
-  public void setWatermarkSecretKey(String watermarkSecretKey) {
-    this.watermarkSecretKey = watermarkSecretKey;
-  }
-
-  public String getWatermarkBitString() {
-    return watermarkBitString;
-  }
-
-  public void setWatermarkBitString(String watermarkBitString) {
-    this.watermarkBitString = watermarkBitString;
-  }
-
-  public String getWatermarkMethod() {
-    return this.watermarkMethod;
-  }
-
-  public void setWatermarkMethod(String watermarkMethod) {
-    this.watermarkMethod = watermarkMethod;
-  }
-
-  public String getWatermarkMethodName() {
-    return watermarkMethod.split("\\(")[0];
-  }
-
-  public int getWatermarkParamMarkRate() {
-    return Integer.parseInt(getWatermarkParamValue("embed_row_cycle", "5"));
-  }
-
-  public int getWatermarkParamMaxRightBit() {
-    return Integer.parseInt(getWatermarkParamValue("embed_lsb_num", "5"));
-  }
-
-  private String getWatermarkParamValue(String key, String defaultValue) {
-    String res = getWatermarkParamValue(key);
-    if (res != null) {
-      return res;
-    }
-    return defaultValue;
-  }
-
-  private String getWatermarkParamValue(String key) {
-    String pattern = key + "=(\\w*)";
-    Pattern r = Pattern.compile(pattern);
-    Matcher m = r.matcher(watermarkMethod);
-    if (m.find() && m.groupCount() > 0) {
-      return m.group(1);
-    }
-    return null;
   }
 
   public boolean isAutoCreateSchemaEnabled() {
@@ -2624,14 +2472,6 @@ public class IoTDBConfig {
     this.mqttMaxMessageSize = mqttMaxMessageSize;
   }
 
-  public int getTagAttributeTotalSize() {
-    return tagAttributeTotalSize;
-  }
-
-  public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
-    this.tagAttributeTotalSize = tagAttributeTotalSize;
-  }
-
   public int getTagAttributeFlushInterval() {
     return tagAttributeFlushInterval;
   }
@@ -2789,14 +2629,6 @@ public class IoTDBConfig {
 
   public void setEnableRpcService(boolean enableRpcService) {
     this.enableRpcService = enableRpcService;
-  }
-
-  public boolean isEnableInfluxDBRpcService() {
-    return enableInfluxDBRpcService;
-  }
-
-  public void setEnableInfluxDBRpcService(boolean enableInfluxDBRpcService) {
-    this.enableInfluxDBRpcService = enableInfluxDBRpcService;
   }
 
   public int getIoTaskQueueSizeForFlushing() {
@@ -2963,20 +2795,24 @@ public class IoTDBConfig {
     this.compactionScheduleIntervalInMs = compactionScheduleIntervalInMs;
   }
 
-  public int getMaxInnerCompactionCandidateFileNum() {
-    return maxInnerCompactionCandidateFileNum;
+  public int getFileLimitPerInnerTask() {
+    return fileLimitPerInnerTask;
   }
 
-  public void setMaxInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
-    this.maxInnerCompactionCandidateFileNum = maxInnerCompactionCandidateFileNum;
+  public void setFileLimitPerInnerTask(int fileLimitPerInnerTask) {
+    this.fileLimitPerInnerTask = fileLimitPerInnerTask;
   }
 
-  public int getMaxCrossCompactionCandidateFileNum() {
-    return maxCrossCompactionCandidateFileNum;
+  public int getFileLimitPerCrossTask() {
+    return fileLimitPerCrossTask;
   }
 
-  public void setMaxCrossCompactionCandidateFileNum(int maxCrossCompactionCandidateFileNum) {
-    this.maxCrossCompactionCandidateFileNum = maxCrossCompactionCandidateFileNum;
+  public int getTotalFileLimitForCrossTask() {
+    return totalFileLimitForCrossTask;
+  }
+
+  public void setFileLimitPerCrossTask(int fileLimitPerCrossTask) {
+    this.fileLimitPerCrossTask = fileLimitPerCrossTask;
   }
 
   public long getMaxCrossCompactionCandidateFileSize() {
@@ -3035,45 +2871,37 @@ public class IoTDBConfig {
     this.enableIDTableLogFile = enableIDTableLogFile;
   }
 
-  public String getSchemaEngineMode() {
-    return schemaEngineMode;
-  }
-
-  public void setSchemaEngineMode(String schemaEngineMode) {
-    this.schemaEngineMode = schemaEngineMode;
-  }
-
-  public int getCachedMNodeSizeInSchemaFileMode() {
-    return cachedMNodeSizeInSchemaFileMode;
+  public int getCachedMNodeSizeInPBTreeMode() {
+    return cachedMNodeSizeInPBTreeMode;
   }
 
   @TestOnly
-  public void setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
-    this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
+  public void setCachedMNodeSizeInPBTreeMode(int cachedMNodeSizeInPBTreeMode) {
+    this.cachedMNodeSizeInPBTreeMode = cachedMNodeSizeInPBTreeMode;
   }
 
-  public short getMinimumSegmentInSchemaFile() {
-    return minimumSegmentInSchemaFile;
+  public short getMinimumSegmentInPBTree() {
+    return minimumSegmentInPBTree;
   }
 
-  public void setMinimumSegmentInSchemaFile(short minimumSegmentInSchemaFile) {
-    this.minimumSegmentInSchemaFile = minimumSegmentInSchemaFile;
+  public void setMinimumSegmentInPBTree(short minimumSegmentInPBTree) {
+    this.minimumSegmentInPBTree = minimumSegmentInPBTree;
   }
 
-  public int getPageCacheSizeInSchemaFile() {
-    return pageCacheSizeInSchemaFile;
+  public int getPageCacheSizeInPBTree() {
+    return pageCacheSizeInPBTree;
   }
 
-  public void setPageCacheSizeInSchemaFile(int pageCacheSizeInSchemaFile) {
-    this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
+  public void setPageCacheSizeInPBTree(int pageCacheSizeInPBTree) {
+    this.pageCacheSizeInPBTree = pageCacheSizeInPBTree;
   }
 
-  public int getSchemaFileLogSize() {
-    return schemaFileLogSize;
+  public int getPBTreeLogSize() {
+    return pbTreeLogSize;
   }
 
-  public void setSchemaFileLogSize(int schemaFileLogSize) {
-    this.schemaFileLogSize = schemaFileLogSize;
+  public void setPBTreeLogSize(int pbTreeLogSize) {
+    this.pbTreeLogSize = pbTreeLogSize;
   }
 
   public int getMaxMeasurementNumOfInternalRequest() {
@@ -3377,6 +3205,14 @@ public class IoTDBConfig {
     return new TEndPoint(rpcAddress, rpcPort);
   }
 
+  public int[] getSchemaMemoryProportion() {
+    return schemaMemoryProportion;
+  }
+
+  public void setSchemaMemoryProportion(int[] schemaMemoryProportion) {
+    this.schemaMemoryProportion = schemaMemoryProportion;
+  }
+
   public long getAllocateMemoryForSchemaRegion() {
     return allocateMemoryForSchemaRegion;
   }
@@ -3399,14 +3235,6 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForPartitionCache(long allocateMemoryForPartitionCache) {
     this.allocateMemoryForPartitionCache = allocateMemoryForPartitionCache;
-  }
-
-  public long getAllocateMemoryForLastCache() {
-    return allocateMemoryForLastCache;
-  }
-
-  public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
-    this.allocateMemoryForLastCache = allocateMemoryForLastCache;
   }
 
   public String getDataNodeSchemaCacheEvictionPolicy() {
@@ -3833,12 +3661,12 @@ public class IoTDBConfig {
     this.schemaRatisLogMax = schemaRatisLogMax;
   }
 
-  public boolean isEnableCompactionValidation() {
-    return enableCompactionValidation;
+  public CompactionValidationLevel getCompactionValidationLevel() {
+    return this.compactionValidationLevel;
   }
 
-  public void setEnableCompactionValidation(boolean enableCompactionValidation) {
-    this.enableCompactionValidation = enableCompactionValidation;
+  public void setCompactionValidationLevel(CompactionValidationLevel level) {
+    this.compactionValidationLevel = level;
   }
 
   public int getCandidateCompactionTaskQueueSize() {

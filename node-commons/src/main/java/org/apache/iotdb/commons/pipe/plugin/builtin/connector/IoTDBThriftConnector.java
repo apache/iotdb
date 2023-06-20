@@ -20,9 +20,9 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
 
 import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -36,43 +36,43 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 public class IoTDBThriftConnector implements PipeConnector {
 
   @Override
-  public void validate(PipeParameterValidator validator) {
+  public final void validate(PipeParameterValidator validator) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void customize(
+  public final void customize(
       PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void handshake() {
+  public final void handshake() {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void heartbeat() {
+  public final void heartbeat() {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) {
+  public final void transfer(TabletInsertionEvent tabletInsertionEvent) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
+  public final void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void transfer(Event event) {
+  public final void transfer(Event event) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void close() {
+  public final void close() {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 }

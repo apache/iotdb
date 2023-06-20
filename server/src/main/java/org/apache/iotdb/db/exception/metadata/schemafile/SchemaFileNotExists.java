@@ -27,8 +27,8 @@ public class SchemaFileNotExists extends MetadataException {
 
   public SchemaFileNotExists(String fileName) {
     super(
-        String.format("Schema file [%s] not exists.", fileName),
-        TSStatusCode.SCHEMA_FILE_NOT_EXISTS.getStatusCode(),
+        String.format("PBTree file [%s] not exists.", fileName),
+        TSStatusCode.PBTREE_FILE_NOT_EXISTS.getStatusCode(),
         true);
   }
 }

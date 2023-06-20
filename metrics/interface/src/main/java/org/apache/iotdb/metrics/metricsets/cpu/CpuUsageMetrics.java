@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.metricsets.cpu;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -32,8 +33,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 public class CpuUsageMetrics implements IMetricSet {
   private static final String MODULE_CPU_USAGE = "module_cpu_usage";
@@ -141,6 +144,11 @@ public class CpuUsageMetrics implements IMetricSet {
   }
 
   private synchronized void checkAndMayUpdate() {
+    if (!MetricLevel.higherOrEqual(
+        MetricLevel.IMPORTANT,
+        MetricConfigDescriptor.getInstance().getMetricConfig().getMetricLevel())) {
+      return;
+    }
     long currentTime = System.currentTimeMillis();
     if (currentTime - lastUpdateTime.get() > UPDATE_INTERVAL) {
       lastUpdateTime.set(currentTime);
@@ -165,10 +173,12 @@ public class CpuUsageMetrics implements IMetricSet {
     // update
     long[] taskIds = threadMxBean.getAllThreadIds();
     ThreadInfo[] threadInfos = threadMxBean.getThreadInfo(taskIds);
+    List<ThreadInfo> threadInfoList =
+        Arrays.stream(threadInfos).filter(Objects::nonNull).collect(Collectors.toList());
 
     Map<Long, Long> currentThreadCpuTime = new HashMap<>(taskIds.length + 1, 1.0f);
     Map<Long, Long> currentThreadUserTime = new HashMap<>(taskIds.length + 1, 1.0f);
-    collectThreadCpuInfo(currentThreadCpuTime, currentThreadUserTime, threadInfos);
+    collectThreadCpuInfo(currentThreadCpuTime, currentThreadUserTime, threadInfoList);
 
     Map<String, Long> moduleIncrementCpuTimeMap = new HashMap<>(modules.size() + 1, 1.0f);
     Map<String, Long> moduleIncrementUserTimeMap = new HashMap<>(modules.size() + 1, 1.0f);
@@ -185,7 +195,7 @@ public class CpuUsageMetrics implements IMetricSet {
             lastThreadUserTime,
             currentThreadCpuTime,
             currentThreadUserTime,
-            threadInfos);
+            threadInfoList);
 
     if (totalIncrementTime == 0L) {
       return;
@@ -214,14 +224,16 @@ public class CpuUsageMetrics implements IMetricSet {
   }
 
   private void collectThreadCpuInfo(
-      Map<Long, Long> cpuTimeMap, Map<Long, Long> userTimeMap, ThreadInfo[] threadInfos) {
-    Arrays.stream(threadInfos)
-        .forEach(
-            info -> {
-              cpuTimeMap.put(info.getThreadId(), threadMxBean.getThreadCpuTime(info.getThreadId()));
-              userTimeMap.put(
-                  info.getThreadId(), threadMxBean.getThreadUserTime(info.getThreadId()));
-            });
+      Map<Long, Long> cpuTimeMap, Map<Long, Long> userTimeMap, List<ThreadInfo> threadInfos) {
+    threadInfos.forEach(
+        info -> {
+          long cpuTime = threadMxBean.getThreadCpuTime(info.getThreadId());
+          long userTime = threadMxBean.getThreadUserTime(info.getThreadId());
+          if (cpuTime != -1L && userTime != -1L) {
+            cpuTimeMap.put(info.getThreadId(), cpuTime);
+            userTimeMap.put(info.getThreadId(), userTime);
+          }
+        });
   }
 
   @SuppressWarnings("java:S107")
@@ -234,14 +246,17 @@ public class CpuUsageMetrics implements IMetricSet {
       Map<Long, Long> beforeThreadUserTime,
       Map<Long, Long> afterThreadCpuTime,
       Map<Long, Long> afterThreadUserTime,
-      ThreadInfo[] threadInfos) {
+      List<ThreadInfo> threadInfos) {
     long totalIncrementTime = 0L;
     for (ThreadInfo threadInfo : threadInfos) {
       long id = threadInfo.getThreadId();
       long beforeCpuTime = beforeThreadCpuTime.getOrDefault(id, 0L);
-      long afterCpuTime = afterThreadCpuTime.get(id);
+      long afterCpuTime = afterThreadCpuTime.getOrDefault(id, 0L);
+      if (afterCpuTime < beforeCpuTime || afterCpuTime == 0L) {
+        continue;
+      }
       long beforeUserTime = beforeThreadUserTime.getOrDefault(id, 0L);
-      long afterUserTime = afterThreadUserTime.get(id);
+      long afterUserTime = afterThreadUserTime.getOrDefault(id, 0L);
       totalIncrementTime += afterCpuTime - beforeCpuTime;
       String module = getThreadModuleById(id, threadInfo);
       String pool = getThreadPoolById(id, threadInfo);

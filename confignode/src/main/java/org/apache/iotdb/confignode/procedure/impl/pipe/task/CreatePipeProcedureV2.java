@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -27,13 +29,15 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
-import org.apache.iotdb.confignode.persistence.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -70,8 +74,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromValidateTask(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+  protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromValidateTask({})", createPipeRequest.getPipeName());
 
@@ -84,8 +87,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -103,15 +105,26 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getLoadManager()
         .getRegionLeaderMap()
         .forEach(
-            (regionGroup, regionLeaderNodeId) ->
-                consensusGroupIdToTaskMetaMap.put(
-                    regionGroup, new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId)));
+            (regionGroupId, regionLeaderNodeId) -> {
+              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
+                final String databaseName =
+                    env.getConfigManager()
+                        .getPartitionManager()
+                        .getRegionStorageGroup(regionGroupId);
+                if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
+                  // pipe only collect user's data, filter metric database here.
+                  consensusGroupIdToTaskMetaMap.put(
+                      regionGroupId,
+                      new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId));
+                }
+              }
+            });
     pipeRuntimeMeta = new PipeRuntimeMeta(consensusGroupIdToTaskMetaMap);
   }
 
   @Override
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
-      throws PipeManagementException {
+      throws PipeException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromWriteConfigNodeConsensus({})",
         createPipeRequest.getPipeName());
@@ -121,18 +134,24 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .getConsensusManager()
             .write(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
     if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
+      throw new PipeException(response.getErrorMessage());
     }
   }
 
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
-      throws PipeManagementException, IOException {
+      throws PipeException, IOException {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    pushPipeMetaToDataNodes(env);
+    TSStatus result = pushPipeMetaToDataNodes(env);
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Failed to create pipe %s on data nodes. Failures: %s",
+              pipeStaticMeta.getPipeName(), result.getMessage()));
+    }
   }
 
   @Override
@@ -161,7 +180,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
             .getConsensusManager()
             .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
     if (!response.isSuccessful()) {
-      throw new PipeManagementException(response.getErrorMessage());
+      throw new PipeException(response.getErrorMessage());
     }
   }
 
@@ -171,7 +190,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
-    pushPipeMetaToDataNodes(env);
+    TSStatus result = pushPipeMetaToDataNodes(env);
+    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format(
+              "Failed to rollback create pipe %s on data nodes. Failures: %s",
+              pipeStaticMeta.getPipeName(), result.getMessage()));
+    }
   }
 
   @Override

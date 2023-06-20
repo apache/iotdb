@@ -21,11 +21,13 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -99,6 +101,12 @@ public class SelectIntoUtils {
       resNode = matcher.replaceFirst(sourceNodes[index]);
       matcher = LEVELED_PATH_TEMPLATE_PATTERN.matcher(resNode);
     }
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(resNode).matches()) {
+      throw new SemanticException(
+          String.format(
+              "Parsed node name %s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              resNode));
+    }
     return resNode;
   }
 
@@ -130,20 +138,30 @@ public class SelectIntoUtils {
       } else {
         checkState(actualTargetPaths.size() == 1);
         MeasurementPath actualTargetPath = actualTargetPaths.get(0);
+        if (actualTargetPath.getMeasurementSchema().isLogicalView()) {
+          LogicalViewSchema viewSchema =
+              (LogicalViewSchema) actualTargetPath.getMeasurementSchema();
+          if (viewSchema.isWritable()) {
+            MeasurementPath viewSourceSeriesPath =
+                targetSchemaTree
+                    .searchMeasurementPaths(viewSchema.getSourcePathIfWritable())
+                    .left
+                    .get(0);
+            actualTargetPath =
+                new MeasurementPath(targetPath, viewSourceSeriesPath.getSeriesType());
+            actualTargetPath.setUnderAlignedEntity(viewSourceSeriesPath.isUnderAlignedEntity());
+          } else {
+            throw new SemanticException(
+                String.format("View %s doesn't support data insertion.", targetPath));
+          }
+        }
         if (!TypeInferenceUtils.canAutoCast(sourceColumnType, actualTargetPath.getSeriesType())) {
           throw new SemanticException(
               String.format(
                   "The data type of target path (%s[%s]) is not compatible with the data type of source column (%s[%s]).",
                   targetPath, actualTargetPath.getSeriesType(), sourceColumn, sourceColumnType));
         }
-        boolean actualTargetPathAlignment = actualTargetPath.isUnderAlignedEntity();
-        String targetDevice = targetPath.getDevice();
-        if (targetDeviceToAlignedMap.get(targetDevice) != actualTargetPathAlignment) {
-          throw new SemanticException(
-              String.format(
-                  "The specified alignment property of the target device (%s) conflicts with the actual (isAligned = %s).",
-                  targetDevice, actualTargetPathAlignment));
-        }
+        // no need to check alignment, because the interface is universal
         targetPathWithSchema = actualTargetPath;
       }
       sourceTypeBoundTargetPathPairList.add(new Pair<>(sourceColumn, targetPathWithSchema));

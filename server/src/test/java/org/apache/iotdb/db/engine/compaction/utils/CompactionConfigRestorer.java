@@ -73,8 +73,8 @@ public class CompactionConfigRestorer {
     config.setTargetChunkPointNum(targetChunkPointNum);
     config.setChunkSizeLowerBoundInCompaction(chunkSizeLowerBoundInCompaction);
     config.setChunkPointNumLowerBoundInCompaction(chunkPointNumLowerBoundInCompaction);
-    config.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
-    config.setMaxCrossCompactionCandidateFileNum(maxCrossCompactionCandidateFileNum);
+    config.setFileLimitPerInnerTask(maxInnerCompactionCandidateFileNum);
+    config.setFileLimitPerCrossTask(maxCrossCompactionCandidateFileNum);
     config.setCompactionThreadCount(concurrentCompactionThread);
     config.setCompactionScheduleIntervalInMs(compactionScheduleIntervalInMs);
     config.setCompactionSubmissionIntervalInMs(compactionSubmissionIntervalInMs);

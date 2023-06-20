@@ -32,7 +32,7 @@ singleStatement
     ;
 
 statement
-    : ddlStatement | dmlStatement | dclStatement | utilityStatement | syncStatement
+    : ddlStatement | dmlStatement | dclStatement | utilityStatement
     ;
 
 ddlStatement
@@ -52,6 +52,8 @@ ddlStatement
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // Pipe Task
+    | createPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // CQ
@@ -82,11 +84,6 @@ utilityStatement
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile
-    ;
-
-syncStatement
-    : createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
-    | createPipe | showPipe | stopPipe | startPipe | dropPipe
     ;
 
 /**
@@ -510,25 +507,77 @@ getSeriesSlotList
     : SHOW (DATA|SCHEMA) SERIESSLOTID WHERE DATABASE operator_eq database=prefixPath
     ;
 
-
-
 // ---- Migrate Region
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
     ;
 
+// Pipe Task =========================================================================================
+createPipe
+    : CREATE PIPE pipeName=identifier
+        collectorAttributesClause?
+        processorAttributesClause?
+        connectorAttributesClause
+    ;
+
+collectorAttributesClause
+    : WITH COLLECTOR
+        LR_BRACKET
+        (collectorAttributeClause COMMA)* collectorAttributeClause?
+        RR_BRACKET
+    ;
+
+collectorAttributeClause
+    : collectorKey=STRING_LITERAL OPERATOR_SEQ collectorValue=STRING_LITERAL
+    ;
+
+processorAttributesClause
+    : WITH PROCESSOR
+        LR_BRACKET
+        (processorAttributeClause COMMA)* processorAttributeClause?
+        RR_BRACKET
+    ;
+
+processorAttributeClause
+    : processorKey=STRING_LITERAL OPERATOR_SEQ processorValue=STRING_LITERAL
+    ;
+
+connectorAttributesClause
+    : WITH CONNECTOR
+        LR_BRACKET
+        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        RR_BRACKET
+    ;
+
+connectorAttributeClause
+    : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
+    ;
+
+dropPipe
+    : DROP PIPE pipeName=identifier
+    ;
+
+startPipe
+    : START PIPE pipeName=identifier
+    ;
+
+stopPipe
+    : STOP PIPE pipeName=identifier
+    ;
+
+showPipes
+    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE CONNECTOR USED BY pipeName=identifier)?)
+    ;
+
 // Pipe Plugin =========================================================================================
-// Create Pipe Plugin
 createPipePlugin
     : CREATE PIPEPLUGIN pluginName=identifier AS className=STRING_LITERAL uriClause
     ;
 
-// Drop Pipe Plugin
 dropPipePlugin
     : DROP PIPEPLUGIN pluginName=identifier
     ;
 
-// Show Pipe Plugins
 showPipePlugins
     : SHOW PIPEPLUGINS
     ;
@@ -572,11 +621,12 @@ dropLogicalView
     ;
 
 renameLogicalView
-    : ALTER VIEW prefixPath RENAME TO prefixPath
+    : ALTER VIEW fullPath RENAME TO fullPath
     ;
 
 alterLogicalView
     : ALTER VIEW viewTargetPaths AS viewSourcePaths
+    | ALTER VIEW fullPath alterClause
     ;
 
 viewSuffixPaths
@@ -987,72 +1037,6 @@ unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
     ;
 
-/**
- * 6. syncStatement
- */
-
-// pipesink statement
-createPipeSink
-    : CREATE PIPESINK pipeSinkName=identifier AS pipeSinkType=identifier (LR_BRACKET syncAttributeClauses RR_BRACKET)?
-    ;
-
-showPipeSinkType
-    : SHOW PIPESINKTYPE
-    ;
-
-showPipeSink
-    : SHOW ((PIPESINK (pipeSinkName=identifier)?) | PIPESINKS)
-    ;
-
-dropPipeSink
-    : DROP PIPESINK pipeSinkName=identifier
-    ;
-
-// pipe statement
-createPipe
-    : CREATE PIPE pipeName=identifier collectorAttributesClause? processorAttributesClause? connectorAttributesClause
-    ;
-
-showPipe
-    : SHOW ((PIPE pipeName=identifier) | PIPES (WHERE CONNECTOR USED BY pipeName=identifier)?)
-    ;
-
-collectorAttributesClause
-    : WITH COLLECTOR LR_BRACKET (collectorAttributeClause COMMA)* collectorAttributeClause? RR_BRACKET
-    ;
-
-collectorAttributeClause
-    : collectorKey=STRING_LITERAL OPERATOR_SEQ collectorValue=STRING_LITERAL
-    ;
-
-processorAttributesClause
-    : WITH PROCESSOR LR_BRACKET (processorAttributeClause COMMA)* processorAttributeClause? RR_BRACKET
-    ;
-
-processorAttributeClause
-    : processorKey=STRING_LITERAL OPERATOR_SEQ processorValue=STRING_LITERAL
-    ;
-
-connectorAttributesClause
-    : WITH CONNECTOR LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
-    ;
-
-connectorAttributeClause
-    : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
-    ;
-
-stopPipe
-    : STOP PIPE pipeName=identifier
-    ;
-
-startPipe
-    : START PIPE pipeName=identifier
-    ;
-
-dropPipe
-    : DROP PIPE pipeName=identifier
-    ;
-
 // attribute clauses
 syncAttributeClauses
     : attributePair (COMMA? attributePair)*
@@ -1060,7 +1044,7 @@ syncAttributeClauses
 
 
 /**
- * 7. Common Clauses
+ * 6. Common Clauses
  */
 
 // IoTDB Objects

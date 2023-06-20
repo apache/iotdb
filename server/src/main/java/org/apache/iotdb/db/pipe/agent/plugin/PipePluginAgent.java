@@ -25,15 +25,15 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
-import org.apache.iotdb.db.pipe.config.PipeConnectorConstant;
-import org.apache.iotdb.db.pipe.config.PipeProcessorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.exception.PipeManagementException;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +82,7 @@ public class PipePluginAgent {
     }
   }
 
-  private void checkIfRegistered(PipePluginMeta pipePluginMeta) throws PipeManagementException {
+  private void checkIfRegistered(PipePluginMeta pipePluginMeta) throws PipeException {
     final String pluginName = pipePluginMeta.getPluginName();
     final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
     if (information == null) {
@@ -95,7 +95,7 @@ public class PipePluginAgent {
               "Failed to register PipePlugin %s, because the given PipePlugin name is the same as a built-in PipePlugin name.",
               pluginName);
       LOGGER.warn(errorMessage);
-      throw new PipeManagementException(errorMessage);
+      throw new PipeException(errorMessage);
     }
 
     if (PipePluginExecutableManager.getInstance()
@@ -107,7 +107,7 @@ public class PipePluginAgent {
                   + "because existed md5 of jar file for pipe plugin %s is different from the new jar file.",
               pluginName, pluginName);
       LOGGER.warn(errMsg);
-      throw new PipeManagementException(errMsg);
+      throw new PipeException(errMsg);
     }
 
     // if the pipe plugin is already registered and the jar file is the same, do nothing
@@ -125,10 +125,9 @@ public class PipePluginAgent {
    * the PipePluginClassLoader and its instance will be created to ensure that it can be loaded.
    *
    * @param pipePluginMeta the meta information of the PipePlugin
-   * @throws PipeManagementException if the PipePlugin can not be loaded or its instance can not be
-   *     created
+   * @throws PipeException if the PipePlugin can not be loaded or its instance can not be created
    */
-  public void doRegister(PipePluginMeta pipePluginMeta) throws PipeManagementException {
+  public void doRegister(PipePluginMeta pipePluginMeta) throws PipeException {
     final String pluginName = pipePluginMeta.getPluginName();
     final String className = pipePluginMeta.getClassName();
 
@@ -155,7 +154,7 @@ public class PipePluginAgent {
               "Failed to register PipePlugin %s(%s), because its instance can not be constructed successfully. Exception: %s",
               pluginName.toUpperCase(), className, e);
       LOGGER.warn(errorMessage, e);
-      throw new PipeManagementException(errorMessage);
+      throw new PipeException(errorMessage);
     }
   }
 
@@ -175,7 +174,7 @@ public class PipePluginAgent {
         String errorMessage =
             String.format("Failed to deregister builtin PipePlugin %s.", pluginName);
         LOGGER.warn(errorMessage);
-        throw new PipeManagementException(errorMessage);
+        throw new PipeException(errorMessage);
       }
 
       // remove anyway
@@ -211,7 +210,7 @@ public class PipePluginAgent {
 
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
     if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
-      throw new PipeManagementException(
+      throw new PipeException(
           "Failed to reflect PipeConnector instance because 'connector' is not specified in the parameters.");
     }
     return (PipeConnector)

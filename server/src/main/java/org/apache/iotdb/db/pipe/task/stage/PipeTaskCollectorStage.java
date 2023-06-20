@@ -23,84 +23,56 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.config.PipeCollectorConstant;
-import org.apache.iotdb.db.pipe.core.collector.IoTDBDataRegionCollector;
-import org.apache.iotdb.db.pipe.task.queue.EventSupplier;
-import org.apache.iotdb.db.pipe.task.queue.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
+import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.pipe.api.PipeCollector;
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.collector.PipeCollectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import java.util.HashMap;
-
 public class PipeTaskCollectorStage extends PipeTaskStage {
-
-  private final PipeParameters collectorParameters;
-
-  /**
-   * TODO: have a better way to control busy/idle status of PipeTaskCollectorStage.
-   *
-   * <p>Currently, this field is for IoTDBDataRegionCollector only. IoTDBDataRegionCollector uses
-   * collectorPendingQueue as an internal data structure to store realtime events.
-   *
-   * <p>PendingQueue can detect whether the queue is empty or not, and it can notify the
-   * PipeTaskProcessorStage to stop processing data when the queue is empty to avoid unnecessary
-   * processing, and it also can notify the PipeTaskProcessorStage to start processing data when the
-   * queue is not empty.
-   */
-  private UnboundedBlockingPendingQueue<Event> collectorPendingQueue;
 
   private final PipeCollector pipeCollector;
 
   public PipeTaskCollectorStage(
-      TConsensusGroupId dataRegionId,
-      PipeTaskMeta pipeTaskMeta,
+      String pipeName,
       long creationTime,
-      PipeParameters collectorParameters) {
+      PipeParameters collectorParameters,
+      TConsensusGroupId dataRegionId,
+      PipeTaskMeta pipeTaskMeta) {
     // TODO: avoid if-else, use reflection to create collector all the time
-    if (collectorParameters
-        .getStringOrDefault(
-            PipeCollectorConstant.COLLECTOR_KEY,
-            BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
-        .equals(BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())) {
-      // we want to pass data region id to collector, so we need to create a new collector
-      // parameters and put data region id into it. we can't put data region id into collector
-      // parameters directly, because the given collector parameters may be used by other pipe task.
-      this.collectorParameters =
-          new PipeParameters(new HashMap<>(collectorParameters.getAttribute()));
-      // set data region id to collector parameters, so that collector can get data region id inside
-      // collector
-      this.collectorParameters
-          .getAttribute()
-          .put(PipeCollectorConstant.DATA_REGION_KEY, String.valueOf(dataRegionId.getId()));
+    this.pipeCollector =
+        collectorParameters
+                .getStringOrDefault(
+                    PipeCollectorConstant.COLLECTOR_KEY,
+                    BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
+                .equals(BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
+            ? new IoTDBDataRegionCollector()
+            : PipeAgent.plugin().reflectCollector(collectorParameters);
 
-      collectorPendingQueue = new UnboundedBlockingPendingQueue<>();
-      this.pipeCollector =
-          new IoTDBDataRegionCollector(pipeTaskMeta, creationTime, collectorPendingQueue);
-    } else {
-      this.collectorParameters = collectorParameters;
-
-      this.pipeCollector = PipeAgent.plugin().reflectCollector(collectorParameters);
-    }
-  }
-
-  @Override
-  public void createSubtask() throws PipeException {
+    // validate and customize should be called before createSubtask. this allows collector exposing
+    // exceptions in advance.
     try {
       // 1. validate collector parameters
       pipeCollector.validate(new PipeParameterValidator(collectorParameters));
 
       // 2. customize collector
-      final PipeCollectorRuntimeConfiguration runtimeConfiguration =
-          new PipeCollectorRuntimeConfiguration();
+      final PipeTaskRuntimeConfiguration runtimeConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskCollectorRuntimeEnvironment(
+                  pipeName, creationTime, dataRegionId.getId(), pipeTaskMeta));
       pipeCollector.customize(collectorParameters, runtimeConfiguration);
-      // TODO: use runtimeConfiguration to configure collector
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
+  }
+
+  @Override
+  public void createSubtask() throws PipeException {
+    // do nothing
   }
 
   @Override
@@ -128,9 +100,5 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
 
   public EventSupplier getEventSupplier() {
     return pipeCollector::supply;
-  }
-
-  public UnboundedBlockingPendingQueue<Event> getCollectorPendingQueue() {
-    return collectorPendingQueue;
   }
 }

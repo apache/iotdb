@@ -166,7 +166,6 @@ public class TimeSeriesSchemaCache {
       ISchemaComputation schemaComputation) {
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
     List<String> missedPathStringList = new ArrayList<>();
-    final AtomicBoolean isFirstMeasurement = new AtomicBoolean(true);
     Pair<Integer, Integer> beginToEnd = schemaComputation.getRangeOfLogicalViewSchemaListRecorded();
     List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();
     List<Integer> indexListOfLogicalViewPaths = schemaComputation.getIndexListOfLogicalViewPaths();
@@ -198,10 +197,9 @@ public class TimeSeriesSchemaCache {
               if (value == null) {
                 indexOfMissingMeasurements.add(recordMissingIndex);
               } else {
-                if (isFirstMeasurement.get()) {
-                  schemaComputation.computeDevice(value.isAligned());
-                  isFirstMeasurement.getAndSet(false);
-                }
+                // Can not call function computeDevice here, because the value is source of one
+                // view, but schemaComputation is the device in this insert statement. The
+                // computation between them is miss matched.
                 if (value.isLogicalView()) {
                   // does not support views in views
                   throw new RuntimeException(

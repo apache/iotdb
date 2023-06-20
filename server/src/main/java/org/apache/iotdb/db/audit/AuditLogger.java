@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.sync.pipedata.load.ILoader.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader.SCHEMA_FETCHER;
 
 public class AuditLogger {
   private static final Logger logger = LoggerFactory.getLogger(AuditLogger.class);
@@ -192,6 +192,10 @@ public class AuditLogger {
       case DEACTIVATE_TEMPLATE:
       case CREATE_PIPEPLUGIN:
       case DROP_PIPEPLUGIN:
+      case CREATE_LOGICAL_VIEW:
+      case ALTER_LOGICAL_VIEW:
+      case DELETE_LOGICAL_VIEW:
+      case RENAME_LOGICAL_VIEW:
         return AuditLogOperation.DDL;
       case LOAD_DATA:
       case INSERT:

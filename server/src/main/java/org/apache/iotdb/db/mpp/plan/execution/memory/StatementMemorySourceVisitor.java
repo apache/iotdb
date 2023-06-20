@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
-import org.apache.iotdb.commons.sync.pipesink.PipeSink;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -43,7 +42,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -246,26 +244,6 @@ public class StatementMemorySourceVisitor
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    return new StatementMemorySource(
-        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
-  }
-
-  @Override
-  public StatementMemorySource visitShowPipeSinkType(
-      ShowPipeSinkTypeStatement showPipeSinkTypeStatement, StatementMemorySourceContext context) {
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showPipeSinkTypeColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    for (PipeSink.PipeSinkType pipeSinkType : PipeSink.PipeSinkType.values()) {
-      // TODO(sync): only support IoTDB PipeSinkType now.
-      if (pipeSinkType.equals(PipeSink.PipeSinkType.IoTDB)) {
-        tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-        tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(pipeSinkType.name()));
-        tsBlockBuilder.declarePosition();
-      }
-    }
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }

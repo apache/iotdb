@@ -101,6 +101,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -474,7 +475,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setSeriesPartitionSlotNum(CONF.getSeriesSlotNum());
     clusterParameters.setSeriesPartitionExecutorClass(CONF.getSeriesPartitionExecutorClass());
     clusterParameters.setDefaultTTL(COMMON_CONF.getDefaultTTLInMs());
-    clusterParameters.setTimePartitionInterval(CONF.getTimePartitionInterval());
+    clusterParameters.setTimePartitionInterval(COMMON_CONF.getTimePartitionInterval());
     clusterParameters.setDataReplicationFactor(CONF.getDataReplicationFactor());
     clusterParameters.setSchemaReplicationFactor(CONF.getSchemaReplicationFactor());
     clusterParameters.setDataRegionPerDataNode(CONF.getDataRegionPerDataNode());
@@ -482,6 +483,8 @@ public class ConfigManager implements IManager {
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
     clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
     clusterParameters.setTimestampPrecision(COMMON_CONF.getTimestampPrecision());
+    clusterParameters.setSchemaEngineMode(COMMON_CONF.getSchemaEngineMode());
+    clusterParameters.setTagAttributeTotalSize(COMMON_CONF.getTagAttributeTotalSize());
     return clusterParameters;
   }
 
@@ -1071,7 +1074,7 @@ public class ConfigManager implements IManager {
         != CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
       return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
-    if (clusterParameters.getTimePartitionInterval() != CONF.getTimePartitionInterval()) {
+    if (clusterParameters.getTimePartitionInterval() != COMMON_CONF.getTimePartitionInterval()) {
       return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
 
@@ -1094,8 +1097,20 @@ public class ConfigManager implements IManager {
     }
 
     if (clusterParameters.getDiskSpaceWarningThreshold()
-        != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
+        != COMMON_CONF.getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
+    }
+
+    if (!clusterParameters.getTimestampPrecision().equals(COMMON_CONF.getTimestampPrecision())) {
+      return errorStatus.setMessage(errorPrefix + "timestamp_precision" + errorSuffix);
+    }
+
+    if (!clusterParameters.getSchemaEngineMode().equals(COMMON_CONF.getSchemaEngineMode())) {
+      return errorStatus.setMessage(errorPrefix + "schema_engine_mode" + errorSuffix);
+    }
+
+    if (clusterParameters.getTagAttributeTotalSize() != COMMON_CONF.getTagAttributeTotalSize()) {
+      return errorStatus.setMessage(errorPrefix + "tag_attribute_total_size" + errorSuffix);
     }
 
     return null;
@@ -1588,6 +1603,16 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.deleteLogicalView(req);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.alterLogicalView(req);
     } else {
       return status;
     }

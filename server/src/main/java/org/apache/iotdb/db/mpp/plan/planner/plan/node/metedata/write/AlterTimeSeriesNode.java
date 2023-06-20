@@ -60,6 +60,8 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
 
+  private transient boolean isAlterView;
+
   private TRegionReplicaSet regionReplicaSet;
 
   public AlterTimeSeriesNode(
@@ -69,7 +71,8 @@ public class AlterTimeSeriesNode extends WritePlanNode {
       Map<String, String> alterMap,
       String alias,
       Map<String, String> tagsMap,
-      Map<String, String> attributesMap) {
+      Map<String, String> attributesMap,
+      boolean isAlterView) {
     super(id);
     this.path = path;
     this.alterType = alterType;
@@ -127,6 +130,14 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     this.attributesMap = attributesMap;
   }
 
+  public boolean isAlterView() {
+    return isAlterView;
+  }
+
+  public void setAlterView(boolean alterView) {
+    isAlterView = alterView;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return null;
@@ -167,7 +178,15 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Can not deserialize AlterTimeSeriesNode", e);
     }
-    alterType = AlterType.values()[byteBuffer.get()];
+
+    boolean isAlterView = false;
+    int alterTypeOrdinal = byteBuffer.get();
+    if (alterTypeOrdinal == -1) {
+      isAlterView = true;
+      alterTypeOrdinal = byteBuffer.get();
+    }
+
+    alterType = AlterType.values()[alterTypeOrdinal];
 
     // alias
     if (byteBuffer.get() == 1) {
@@ -200,7 +219,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
 
     id = ReadWriteIOUtils.readString(byteBuffer);
     return new AlterTimeSeriesNode(
-        new PlanNodeId(id), path, alterType, alterMap, alias, tagsMap, attributesMap);
+        new PlanNodeId(id), path, alterType, alterMap, alias, tagsMap, attributesMap, isAlterView);
   }
 
   @Override
@@ -214,6 +233,10 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     byte[] bytes = path.getFullPath().getBytes();
     ReadWriteIOUtils.write(bytes.length, byteBuffer);
     byteBuffer.put(bytes);
+
+    if (isAlterView) {
+      byteBuffer.put((byte) -1);
+    }
     byteBuffer.put((byte) alterType.ordinal());
 
     // alias
@@ -261,6 +284,10 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     byte[] bytes = path.getFullPath().getBytes();
     ReadWriteIOUtils.write(bytes.length, stream);
     stream.write(bytes);
+
+    if (isAlterView) {
+      stream.write((byte) -1);
+    }
     stream.write((byte) alterType.ordinal());
 
     // alias

@@ -19,20 +19,20 @@
 
 -->
 
-## SchemaFileSketch Tool
+## PBTreeFileSketch Tool
 
-Since version 0.14.0, IoTDB could store schema into a persistent slotted file.
+Since version 1.1, IoTDB could store schema into a persistent slotted file.
 
-If you want to parse schema file into a human-readable way, you can use this tool to parse the specified schema file.
+If you want to parse PBTree file into a human-readable way, you can use this tool to parse the specified PBTree file.
 
 The tool can sketch .pst file.
 
 ### How to use
 
 Linux/MacOS
-> ./print-schema-file.sh -f your/path/to/schema_file.pst -o /your/path/to/sketch.txt
+> ./print-pbtree-file.sh -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
 
 Windows
 
-> ./print-schema-file.bat -f your/path/to/schema_file.pst -o /your/path/to/sketch.txt
+> ./print-pbtree-file.bat -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
 

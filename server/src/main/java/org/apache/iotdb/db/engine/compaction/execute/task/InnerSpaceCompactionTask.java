@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.engine.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.execute.utils.validator.CompactionValidator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -189,9 +189,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           compactionLogger.logFile(targetTsFileResource, CompactionLogger.STR_DELETED_TARGET_FILES);
         }
 
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
-            && !CompactionUtils.validateTsFileResources(
-                tsFileManager, storageGroupName, timePartition)) {
+        CompactionValidator validator = CompactionValidator.getInstance();
+        if (!validator.validateCompaction(
+            tsFileManager, targetTsFileList, storageGroupName, timePartition)) {
           LOGGER.error(
               "Failed to pass compaction validation, source files is: {}, target files is {}",
               selectedTsFileResourceList,
@@ -313,7 +313,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       }
     } finally {
-      releaseFileLocksAndResetMergingStatus();
+      releaseAllLocksAndResetStatus();
       return isSuccess;
     }
   }
@@ -407,16 +407,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return equalsOtherTask((InnerSpaceCompactionTask) other);
   }
 
-  @Override
-  public void resetCompactionCandidateStatusForAllSourceFiles() {
-    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
-  }
-
   /**
    * release the read lock and write lock of files if it is held, and set the merging status of
    * selected files to false
    */
-  protected void releaseFileLocksAndResetMergingStatus() {
+  private void releaseAllLocksAndResetStatus() {
+    resetCompactionCandidateStatusForAllSourceFiles();
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       if (isHoldingReadLock[i]) {
@@ -425,19 +421,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       if (isHoldingWriteLock[i]) {
         resource.writeUnlock();
       }
-      try {
-        // try to set the file's status back to NORMAL. If the status is Deleted, its status won't
-        // be changed
-        selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.NORMAL);
-      } catch (Throwable e) {
-        LOGGER.error("Exception occurs when resetting resource status", e);
-      }
     }
   }
 
   @Override
   public boolean checkValidAndSetMerging() {
     if (!tsFileManager.isAllowCompaction()) {
+      resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
     try {
@@ -446,12 +436,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         resource.readLock();
         isHoldingReadLock[i] = true;
         if (!resource.setStatus(TsFileResourceStatus.COMPACTING)) {
-          releaseFileLocksAndResetMergingStatus();
+          releaseAllLocksAndResetStatus();
           return false;
         }
       }
     } catch (Throwable e) {
-      releaseFileLocksAndResetMergingStatus();
+      releaseAllLocksAndResetStatus();
       throw e;
     }
     return true;

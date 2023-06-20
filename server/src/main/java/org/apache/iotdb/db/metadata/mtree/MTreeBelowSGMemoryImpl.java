@@ -236,9 +236,11 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      if (device.isDevice() && device.getAsDeviceMNode().isAligned()) {
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && device.getAsDeviceMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+            "timeseries under this device is aligned, please use createAlignedTimeseries or change device.",
             device.getFullPath());
       }
 
@@ -250,6 +252,11 @@ public class MTreeBelowSGMemoryImpl {
         if (entityMNode.isDatabase()) {
           replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
         }
+      }
+
+      // create a non-aligned timeseries
+      if (entityMNode.isAlignedNullable() == null) {
+        entityMNode.setAligned(false);
       }
 
       IMeasurementMNode<IMemMNode> measurementMNode =
@@ -316,9 +323,11 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      if (device.isDevice() && !device.getAsDeviceMNode().isAligned()) {
+      if (device.isDevice()
+          && device.getAsDeviceMNode().isAlignedNullable() != null
+          && !device.getAsDeviceMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+            "Timeseries under this device is not aligned, please use createTimeseries or change device.",
             devicePath.getFullPath());
       }
 
@@ -331,6 +340,11 @@ public class MTreeBelowSGMemoryImpl {
         if (entityMNode.isDatabase()) {
           replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
         }
+      }
+
+      // create a non-aligned timeseries
+      if (entityMNode.isAlignedNullable() == null) {
+        entityMNode.setAligned(true);
       }
 
       for (int i = 0; i < measurements.size(); i++) {
@@ -486,13 +500,17 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
+      boolean hasNonViewMeasurement = false;
       IMemMNode child;
       IMNodeIterator<IMemMNode> iterator = store.getChildrenIterator(curNode);
       while (iterator.hasNext()) {
         child = iterator.next();
         if (child.isMeasurement()) {
           hasMeasurement = true;
-          break;
+          if (!child.getAsMeasurementMNode().isLogicalView()) {
+            hasNonViewMeasurement = true;
+            break;
+          }
         }
       }
 
@@ -503,6 +521,9 @@ public class MTreeBelowSGMemoryImpl {
             replaceStorageGroupMNode(curNode.getAsDatabaseMNode());
           }
         }
+      } else if (!hasNonViewMeasurement) {
+        // has some measurement but they are all logical view
+        entityMNode.setAligned(null);
       }
     }
 
@@ -863,7 +884,7 @@ public class MTreeBelowSGMemoryImpl {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<IMemMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
-            return new ShowDevicesResult(device.getFullPath(), node.isAligned());
+            return new ShowDevicesResult(device.getFullPath(), node.isAlignedNullable());
           }
         };
     if (showDevicesPlan.usingSchemaTemplate()) {
@@ -1062,6 +1083,9 @@ public class MTreeBelowSGMemoryImpl {
         if (entityMNode.isDatabase()) {
           replaceStorageGroupMNode(entityMNode.getAsDatabaseMNode());
         }
+        // this parent has no measurement before. The leafName is his first child who is a logical
+        // view.
+        entityMNode.setAligned(null);
       }
 
       IMeasurementMNode<IMemMNode> measurementMNode =

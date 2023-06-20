@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.db.conf.directories.TierManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
@@ -286,20 +287,6 @@ public class IoTDBDescriptor {
                 .getProperty(IoTDBConstant.DN_RPC_PORT, Integer.toString(conf.getRpcPort()))
                 .trim()));
 
-    conf.setEnableInfluxDBRpcService(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_influxdb_rpc_service",
-                    Boolean.toString(conf.isEnableInfluxDBRpcService()))
-                .trim()));
-
-    conf.setInfluxDBRpcPort(
-        Integer.parseInt(
-            properties
-                .getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))
-                .trim()));
-
     conf.setEnableMLNodeService(
         Boolean.parseBoolean(
             properties
@@ -312,9 +299,6 @@ public class IoTDBDescriptor {
             properties
                 .getProperty("mlnode_rpc_port", Integer.toString(conf.getMLNodePort()))
                 .trim()));
-
-    conf.setTimestampPrecision(
-        properties.getProperty("timestamp_precision", conf.getTimestampPrecision()).trim());
 
     conf.setBufferedArraysMemoryProportion(
         Double.parseDouble(
@@ -544,15 +528,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "dn_session_timeout_threshold",
                 Integer.toString(conf.getSessionTimeoutThreshold()))));
-    conf.setMaxNumberOfSyncFileRetry(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "max_number_of_sync_file_retry",
-                    Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
-                .trim()));
-
-    conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
     conf.setFlushThreadCount(
         Integer.parseInt(
@@ -636,11 +611,6 @@ public class IoTDBDescriptor {
       conf.setChunkBufferPoolEnable(
           Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
-
-    conf.setUpgradeThreadCount(
-        Integer.parseInt(
-            properties.getProperty(
-                "upgrade_thread_count", Integer.toString(conf.getUpgradeThreadCount()))));
     conf.setCrossCompactionFileSelectionTimeBudget(
         Long.parseLong(
             properties.getProperty(
@@ -680,16 +650,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "chunk_size_lower_bound_in_compaction",
                 Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
-    conf.setMaxInnerCompactionCandidateFileNum(
+    conf.setFileLimitPerInnerTask(
         Integer.parseInt(
             properties.getProperty(
                 "max_inner_compaction_candidate_file_num",
-                Integer.toString(conf.getMaxInnerCompactionCandidateFileNum()))));
-    conf.setMaxCrossCompactionCandidateFileNum(
+                Integer.toString(conf.getFileLimitPerInnerTask()))));
+    conf.setFileLimitPerCrossTask(
         Integer.parseInt(
             properties.getProperty(
                 "max_cross_compaction_candidate_file_num",
-                Integer.toString(conf.getMaxCrossCompactionCandidateFileNum()))));
+                Integer.toString(conf.getFileLimitPerCrossTask()))));
     conf.setMaxCrossCompactionCandidateFileSize(
         Long.parseLong(
             properties.getProperty(
@@ -707,11 +677,10 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
-    conf.setEnableCompactionValidation(
-        Boolean.parseBoolean(
+    conf.setCompactionValidationLevel(
+        CompactionValidationLevel.valueOf(
             properties.getProperty(
-                "enable_compaction_validation",
-                Boolean.toString(conf.isEnableCompactionValidation()))));
+                "compaction_validation_level", conf.getCompactionValidationLevel().toString())));
     conf.setCandidateCompactionTaskQueueSize(
         Integer.parseInt(
             properties.getProperty(
@@ -761,16 +730,6 @@ public class IoTDBDescriptor {
 
     conf.setRpcMaxConcurrentClientNum(maxConcurrentClientNum);
 
-    conf.setEnableWatermark(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "watermark_module_opened", Boolean.toString(conf.isEnableWatermark()).trim())));
-    conf.setWatermarkSecretKey(
-        properties.getProperty("watermark_secret_key", conf.getWatermarkSecretKey()));
-    conf.setWatermarkBitString(
-        properties.getProperty("watermark_bit_string", conf.getWatermarkBitString()));
-    conf.setWatermarkMethod(properties.getProperty("watermark_method", conf.getWatermarkMethod()));
-
     loadAutoCreateSchemaProps(properties);
 
     conf.setTsFileStorageFs(
@@ -819,11 +778,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "default_fill_interval", String.valueOf(conf.getDefaultFillInterval()))));
-
-    conf.setTagAttributeTotalSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "tag_attribute_total_size", String.valueOf(conf.getTagAttributeTotalSize()))));
 
     conf.setTagAttributeFlushInterval(
         Integer.parseInt(
@@ -908,39 +862,26 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
 
-    conf.setSchemaEngineMode(
-        properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
-
-    conf.setEnableLastCache(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
-
-    if (conf.getSchemaEngineMode().equals("Rocksdb_based")) {
-      conf.setEnableLastCache(false);
-    }
-
-    conf.setCachedMNodeSizeInSchemaFileMode(
+    conf.setCachedMNodeSizeInPBTreeMode(
         Integer.parseInt(
             properties.getProperty(
-                "cached_mnode_size_in_schema_file_mode",
-                String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
+                "cached_mnode_size_in_pbtree_mode",
+                String.valueOf(conf.getCachedMNodeSizeInPBTreeMode()))));
 
-    conf.setMinimumSegmentInSchemaFile(
+    conf.setMinimumSegmentInPBTree(
         Short.parseShort(
             properties.getProperty(
-                "minimum_schema_file_segment_in_bytes",
-                String.valueOf(conf.getMinimumSegmentInSchemaFile()))));
+                "minimum_pbtree_segment_in_bytes",
+                String.valueOf(conf.getMinimumSegmentInPBTree()))));
 
-    conf.setPageCacheSizeInSchemaFile(
+    conf.setPageCacheSizeInPBTree(
         Integer.parseInt(
             properties.getProperty(
-                "page_cache_in_schema_file", String.valueOf(conf.getPageCacheSizeInSchemaFile()))));
+                "page_cache_in_pbtree", String.valueOf(conf.getPageCacheSizeInPBTree()))));
 
-    conf.setSchemaFileLogSize(
+    conf.setPBTreeLogSize(
         Integer.parseInt(
-            properties.getProperty(
-                "schema_file_log_size", String.valueOf(conf.getSchemaFileLogSize()))));
+            properties.getProperty("pbtree_log_size", String.valueOf(conf.getPBTreeLogSize()))));
 
     conf.setMaxMeasurementNumOfInternalRequest(
         Integer.parseInt(
@@ -1364,11 +1305,6 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().getFloatPrecision()))));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setTimeEncoder(
-            properties.getProperty(
-                "time_encoder", TSFileDescriptor.getInstance().getConfig().getTimeEncoder()));
-    TSFileDescriptor.getInstance()
-        .getConfig()
         .setValueEncoder(
             properties.getProperty(
                 "value_encoder", TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
@@ -1588,16 +1524,6 @@ public class IoTDBDescriptor {
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
-      // update sync config
-      conf.setMaxNumberOfSyncFileRetry(
-          Integer.parseInt(
-              properties
-                  .getProperty(
-                      "max_number_of_sync_file_retry",
-                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
-                  .trim()));
-      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
-
       // update enable query memory estimation for memory control
       conf.setEnableQueryMemoryEstimation(
           Boolean.parseBoolean(
@@ -1767,50 +1693,19 @@ public class IoTDBDescriptor {
   }
 
   private void initStorageEngineAllocate(Properties properties) {
-    String allocationRatio = properties.getProperty("storage_engine_memory_proportion", "8:2");
-    String[] proportions = allocationRatio.split(":");
-    int proportionForWrite = Integer.parseInt(proportions[0].trim());
-    int proportionForCompaction = Integer.parseInt(proportions[1].trim());
-
-    double writeProportion =
-        ((double) (proportionForWrite) / (double) (proportionForCompaction + proportionForWrite));
-
-    String allocationRatioForWrite = properties.getProperty("write_memory_proportion", "19:1");
-    proportions = allocationRatioForWrite.split(":");
-    int proportionForMemTable = Integer.parseInt(proportions[0].trim());
-    int proportionForTimePartitionInfo = Integer.parseInt(proportions[1].trim());
-
-    double memtableProportionForWrite =
-        ((double) (proportionForMemTable)
-            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
-
-    double timePartitionInfoForWrite =
-        ((double) (proportionForTimePartitionInfo)
-            / (double) (proportionForMemTable + proportionForTimePartitionInfo));
-    conf.setWriteProportionForMemtable(writeProportion * memtableProportionForWrite);
-
-    conf.setAllocateMemoryForTimePartitionInfo(
-        (long)
-            ((writeProportion * timePartitionInfoForWrite)
-                * conf.getAllocateMemoryForStorageEngine()));
-
-    conf.setCompactionProportion(
-        ((double) (proportionForCompaction)
-            / (double) (proportionForCompaction + proportionForWrite)));
-  }
-
-  private void initSchemaMemoryAllocate(Properties properties) {
-    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
+    long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
 
     int proportionSum = 10;
-    int schemaRegionProportion = 5;
-    int schemaCacheProportion = 4;
-    int partitionCacheProportion = 1;
-    int lastCacheProportion = 0;
+    int writeProportion = 8;
+    int compactionProportion = 2;
+    int writeProportionSum = 20;
+    int memTableProportion = 19;
+    int timePartitionInfo = 1;
 
-    String schemaMemoryAllocatePortion = properties.getProperty("schema_memory_proportion");
-    if (schemaMemoryAllocatePortion != null) {
-      String[] proportions = schemaMemoryAllocatePortion.split(":");
+    String storageMemoryAllocatePortion =
+        properties.getProperty("storage_engine_memory_proportion");
+    if (storageMemoryAllocatePortion != null) {
+      String[] proportions = storageMemoryAllocatePortion.split(":");
       int loadedProportionSum = 0;
       for (String proportion : proportions) {
         loadedProportionSum += Integer.parseInt(proportion.trim());
@@ -1818,43 +1713,97 @@ public class IoTDBDescriptor {
 
       if (loadedProportionSum != 0) {
         proportionSum = loadedProportionSum;
-        schemaRegionProportion = Integer.parseInt(proportions[0].trim());
-        schemaCacheProportion = Integer.parseInt(proportions[1].trim());
-        partitionCacheProportion = Integer.parseInt(proportions[2].trim());
+        writeProportion = Integer.parseInt(proportions[0].trim());
+        compactionProportion = Integer.parseInt(proportions[1].trim());
+      }
+      conf.setCompactionProportion((double) compactionProportion / (double) proportionSum);
+    }
+
+    String allocationRatioForWrite = properties.getProperty("write_memory_proportion");
+    if (allocationRatioForWrite != null) {
+      String[] proportions = allocationRatioForWrite.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
+
+      if (loadedProportionSum != 0) {
+        writeProportionSum = loadedProportionSum;
+        memTableProportion = Integer.parseInt(proportions[0].trim());
+        timePartitionInfo = Integer.parseInt(proportions[1].trim());
+      }
+      // memtableProportionForWrite = 19/20 default
+      double memtableProportionForWrite =
+          ((double) memTableProportion / (double) writeProportionSum);
+
+      // timePartitionInfoForWrite = 1/20 default
+      double timePartitionInfoForWrite = ((double) timePartitionInfo / (double) writeProportionSum);
+      // proportionForWrite = 8/10 default
+      double proportionForWrite = ((double) (writeProportion) / (double) proportionSum);
+      // writeProportionForMemtable = 8/10 * 19/20 = 0.76 default
+      conf.setWriteProportionForMemtable(proportionForWrite * memtableProportionForWrite);
+      // allocateMemoryForTimePartitionInfo = storageMemoryTotal * 8/10 * 1/20 default
+      conf.setAllocateMemoryForTimePartitionInfo(
+          (long) ((proportionForWrite * timePartitionInfoForWrite) * storageMemoryTotal));
+    }
+  }
+
+  private void initSchemaMemoryAllocate(Properties properties) {
+    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
+
+    String schemaMemoryPortionInput = properties.getProperty("schema_memory_proportion");
+    if (schemaMemoryPortionInput != null) {
+      String[] proportions = schemaMemoryPortionInput.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
+
+      if (loadedProportionSum != 0) {
+        conf.setSchemaMemoryProportion(
+            new int[] {
+              Integer.parseInt(proportions[0].trim()),
+              Integer.parseInt(proportions[1].trim()),
+              Integer.parseInt(proportions[2].trim())
+            });
       }
 
     } else {
-      schemaMemoryAllocatePortion = properties.getProperty("schema_memory_allocate_proportion");
-      if (schemaMemoryAllocatePortion != null) {
-        String[] proportions = schemaMemoryAllocatePortion.split(":");
+      schemaMemoryPortionInput = properties.getProperty("schema_memory_allocate_proportion");
+      if (schemaMemoryPortionInput != null) {
+        String[] proportions = schemaMemoryPortionInput.split(":");
         int loadedProportionSum = 0;
         for (String proportion : proportions) {
           loadedProportionSum += Integer.parseInt(proportion.trim());
         }
 
         if (loadedProportionSum != 0) {
-          proportionSum = loadedProportionSum;
-          schemaRegionProportion = Integer.parseInt(proportions[0].trim());
-          schemaCacheProportion = Integer.parseInt(proportions[1].trim());
-          partitionCacheProportion = Integer.parseInt(proportions[2].trim());
-          lastCacheProportion = Integer.parseInt(proportions[3].trim());
+          conf.setSchemaMemoryProportion(
+              new int[] {
+                Integer.parseInt(proportions[0].trim()),
+                Integer.parseInt(proportions[1].trim()) + Integer.parseInt(proportions[3].trim()),
+                Integer.parseInt(proportions[2].trim())
+              });
         }
       }
     }
 
+    int proportionSum = 0;
+    for (int proportion : conf.getSchemaMemoryProportion()) {
+      proportionSum += proportion;
+    }
+
     conf.setAllocateMemoryForSchemaRegion(
-        schemaMemoryTotal * schemaRegionProportion / proportionSum);
+        schemaMemoryTotal * conf.getSchemaMemoryProportion()[0] / proportionSum);
     logger.info("allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
 
-    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
+    conf.setAllocateMemoryForSchemaCache(
+        schemaMemoryTotal * conf.getSchemaMemoryProportion()[1] / proportionSum);
     logger.info("allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
 
     conf.setAllocateMemoryForPartitionCache(
-        schemaMemoryTotal * partitionCacheProportion / proportionSum);
+        schemaMemoryTotal * conf.getSchemaMemoryProportion()[2] / proportionSum);
     logger.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
-
-    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
-    logger.info("allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -1967,7 +1916,7 @@ public class IoTDBDescriptor {
     conf.setContinuousQueryMinimumEveryInterval(
         DateTimeUtils.convertDurationStrToLong(
             properties.getProperty("continuous_query_minimum_every_interval", "1s"),
-            conf.getTimestampPrecision()));
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
   }
 
   public void loadClusterProps(Properties properties) {
@@ -2073,9 +2022,6 @@ public class IoTDBDescriptor {
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
-    conf.setTimePartitionInterval(
-        DateTimeUtils.convertMilliTimeWithPrecision(
-            globalConfig.timePartitionInterval, conf.getTimestampPrecision()));
     conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 

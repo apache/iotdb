@@ -29,8 +29,10 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -59,6 +61,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
@@ -76,6 +79,7 @@ import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -90,7 +94,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +101,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -234,7 +238,7 @@ public class ProcedureManager {
       DeleteLogicalViewProcedure deleteLogicalViewProcedure;
       for (Procedure<?> procedure : executor.getProcedures().values()) {
         type = ProcedureFactory.getProcedureType(procedure);
-        if (type == null || !type.equals(ProcedureType.DELETE_TIMESERIES_PROCEDURE)) {
+        if (type == null || !type.equals(ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE)) {
           continue;
         }
         deleteLogicalViewProcedure = ((DeleteLogicalViewProcedure) procedure);
@@ -256,6 +260,51 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(new DeleteLogicalViewProcedure(queryId, patternTree));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
+  public TSStatus alterLogicalView(TAlterLogicalViewReq req) {
+    String queryId = req.getQueryId();
+    ByteBuffer byteBuffer = ByteBuffer.wrap(req.getViewBinary());
+    Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
+    int size = byteBuffer.getInt();
+    PartialPath path;
+    ViewExpression viewExpression;
+    for (int i = 0; i < size; i++) {
+      path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
+      viewExpression = ViewExpression.deserialize(byteBuffer);
+      viewPathToSourceMap.put(path, viewExpression);
+    }
+
+    long procedureId = -1;
+    synchronized (this) {
+      ProcedureType type;
+      AlterLogicalViewProcedure alterLogicalViewProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null || !type.equals(ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE)) {
+          continue;
+        }
+        alterLogicalViewProcedure = ((AlterLogicalViewProcedure) procedure);
+        if (queryId.equals(alterLogicalViewProcedure.getQueryId())) {
+          procedureId = alterLogicalViewProcedure.getProcId();
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        procedureId =
+            this.executor.submitProcedure(
+                new AlterLogicalViewProcedure(queryId, viewPathToSourceMap));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();
@@ -784,51 +833,36 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus pipeHandleLeaderChange(
+  public void pipeHandleLeaderChange(
       Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap) {
     try {
-      long procedureId =
+      final long procedureId =
           executor.submitProcedure(
               new PipeHandleLeaderChangeProcedure(dataRegionGroupToOldAndNewLeaderPairMap));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
-      } else {
-        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
-      }
+      LOGGER.info("PipeHandleLeaderChangeProcedure was submitted, procedureId: {}.", procedureId);
     } catch (Exception e) {
-      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+      LOGGER.warn("PipeHandleLeaderChangeProcedure was failed to submit.", e);
+    }
+  }
+
+  public void pipeHandleMetaChange(
+      boolean needWriteConsensusOnConfigNodes, boolean needPushPipeMetaToDataNodes) {
+    try {
+      final long procedureId =
+          executor.submitProcedure(
+              new PipeHandleMetaChangeProcedure(
+                  needWriteConsensusOnConfigNodes, needPushPipeMetaToDataNodes));
+      LOGGER.info("PipeHandleMetaChangeProcedure was submitted, procedureId: {}.", procedureId);
+    } catch (Exception e) {
+      LOGGER.warn("PipeHandleMetaChangeProcedure was failed to submit.", e);
     }
   }
 
   public TSStatus pipeMetaSync() {
     try {
-      long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
-          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
-      if (isSucceed) {
-        return RpcUtils.SUCCESS_STATUS;
-      } else {
-        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
-            .setMessage(statusList.get(0).getMessage());
-      }
-    } catch (Exception e) {
-      return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
-    }
-  }
-
-  public TSStatus pipeHandleMetaChange(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    try {
-      long procedureId =
-          executor.submitProcedure(
-              new PipeHandleMetaChangeProcedure(dataNodeId, pipeMetaByteBufferListFromDataNode));
-      List<TSStatus> statusList = new ArrayList<>();
-      boolean isSucceed =
+      final long procedureId = executor.submitProcedure(new PipeMetaSyncProcedure());
+      final List<TSStatus> statusList = new ArrayList<>();
+      final boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return RpcUtils.SUCCESS_STATUS;
