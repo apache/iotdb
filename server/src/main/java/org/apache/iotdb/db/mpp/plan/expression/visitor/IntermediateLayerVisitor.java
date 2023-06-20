@@ -426,8 +426,7 @@ public class IntermediateLayerVisitor
   }
 
   private IntermediateLayer constructUdfInputIntermediateLayer(
-      FunctionExpression functionExpression, IntermediateLayerVisitorContext context)
-      throws QueryProcessException, IOException {
+      FunctionExpression functionExpression, IntermediateLayerVisitorContext context) {
     List<IntermediateLayer> intermediateLayers = new ArrayList<>();
     for (Expression expression : functionExpression.getExpressions()) {
       intermediateLayers.add(this.process(expression, context));

@@ -84,6 +84,8 @@ public class ColumnTransformerVisitor
     extends ExpressionVisitor<
         ColumnTransformer, ColumnTransformerVisitor.ColumnTransformerVisitorContext> {
 
+  private static final String UNSUPPORTED_EXPRESSION_TYPE = "Unsupported expression type: ";
+
   @Override
   public ColumnTransformer visitExpression(
       Expression expression, ColumnTransformerVisitorContext context) {
@@ -436,7 +438,7 @@ public class ColumnTransformerVisitor
             returnType, childColumnTransformer, regularExpression.getPattern());
       default:
         throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+            UNSUPPORTED_EXPRESSION_TYPE + expression.getExpressionType());
     }
   }
 
@@ -487,7 +489,7 @@ public class ColumnTransformerVisitor
             returnType, leftColumnTransformer, rightColumnTransformer);
       default:
         throw new UnsupportedOperationException(
-            "Unsupported Expression Type: " + expression.getExpressionType());
+            UNSUPPORTED_EXPRESSION_TYPE + expression.getExpressionType());
     }
   }
 
@@ -507,7 +509,7 @@ public class ColumnTransformerVisitor
           betweenExpression.isNotBetween());
     } else {
       throw new UnsupportedOperationException(
-          "Unsupported Expression Type: " + expression.getExpressionType());
+          UNSUPPORTED_EXPRESSION_TYPE + expression.getExpressionType());
     }
   }
 
@@ -537,6 +539,7 @@ public class ColumnTransformerVisitor
 
     int originSize;
 
+    @SuppressWarnings("squid:S107")
     public ColumnTransformerVisitorContext(
         UDTFContext udtfContext,
         Map<NodeRef<Expression>, TSDataType> expressionTypes,

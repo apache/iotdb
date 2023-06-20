@@ -65,6 +65,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 /** A skeleton class for expression */
@@ -402,7 +403,7 @@ public abstract class Expression extends StatementNode {
     @Override
     public Expression next() {
       if (!hasNext()) {
-        return null;
+        throw new NoSuchElementException();
       }
       Expression current = queue.pop();
       if (current != null) {

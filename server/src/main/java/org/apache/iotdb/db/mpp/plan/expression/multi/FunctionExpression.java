@@ -100,10 +100,10 @@ public class FunctionExpression extends Expression {
   }
 
   private void initializeFunctionType() {
-    final String functionName = this.functionName.toLowerCase();
-    if (BuiltinAggregationFunction.getNativeFunctionNames().contains(functionName)) {
+    final String lowerCaseFunctionName = this.functionName.toLowerCase();
+    if (BuiltinAggregationFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
       functionType = FunctionType.AGGREGATION_FUNCTION;
-    } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(functionName)) {
+    } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
       functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
     } else {
       functionType = FunctionType.UDF;
