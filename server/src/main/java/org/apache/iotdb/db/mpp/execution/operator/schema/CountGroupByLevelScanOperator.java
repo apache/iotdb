@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -58,6 +59,10 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
 
   private ISchemaReader<T> schemaReader;
 
+  private ListenableFuture<Boolean> blockedHasNext;
+  private Map<PartialPath, Long> countMap;
+  private boolean isFinished;
+
   public CountGroupByLevelScanOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
@@ -67,6 +72,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     this.operatorContext = operatorContext;
     this.level = level;
     this.schemaSource = schemaSource;
+    this.countMap = new HashMap<>();
   }
 
   @Override
@@ -80,38 +86,37 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    return blockedHasNext == null ? NOT_BLOCKED : blockedHasNext;
+  }
+
+  @Override
   public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    return generateResult();
-  }
-
-  @Override
-  public boolean hasNext() throws Exception {
     if (schemaReader == null) {
       schemaReader = createTimeSeriesReader();
     }
-    return schemaReader.hasNextFuture();
-  }
-
-  public ISchemaReader<T> createTimeSeriesReader() {
-    return schemaSource.getSchemaReader(
-        ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
-  }
-
-  private TsBlock generateResult() {
-    Map<PartialPath, Long> countMap = new HashMap<>();
-    T schemaInfo;
-    PartialPath path;
-    PartialPath levelPath;
-    while (schemaReader.hasNextFuture()) {
-      schemaInfo = schemaReader.next();
-      path = schemaInfo.getPartialPath();
+    while (true) {
+      ListenableFuture<Boolean> hasNext = schemaReader.hasNextFuture();
+      if (!hasNext.isDone()) {
+        blockedHasNext = hasNext;
+        return null;
+      } else if (hasNext.get()) {
+        if (!schemaReader.isSuccess()) {
+          throw new RuntimeException(schemaReader.getFailure());
+        }
+        isFinished = true;
+        blockedHasNext = null;
+        return constructTsBlockAndClearMap(countMap);
+      }
+      ISchemaInfo schemaInfo = schemaReader.next();
+      PartialPath path = schemaInfo.getPartialPath();
       if (path.getNodeLength() < level) {
         continue;
       }
-      levelPath = new PartialPath(Arrays.copyOf(path.getNodes(), level + 1));
+      PartialPath levelPath = new PartialPath(Arrays.copyOf(path.getNodes(), level + 1));
       countMap.compute(
           levelPath,
           (k, v) -> {
@@ -122,13 +127,23 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
             }
           });
       if (countMap.size() == DEFAULT_BATCH_SIZE) {
-        break;
+        blockedHasNext = null;
+        return constructTsBlockAndClearMap(countMap);
       }
     }
-    if (!schemaReader.isSuccess()) {
-      throw new RuntimeException(schemaReader.getFailure());
-    }
+  }
 
+  @Override
+  public boolean hasNext() throws Exception {
+    return !isFinished;
+  }
+
+  public ISchemaReader<T> createTimeSeriesReader() {
+    return schemaSource.getSchemaReader(
+        ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
+  }
+
+  private TsBlock constructTsBlockAndClearMap(Map<PartialPath, Long> countMap) {
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
     for (Map.Entry<PartialPath, Long> entry : countMap.entrySet()) {
       tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
@@ -136,6 +151,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
       tsBlockBuilder.getColumnBuilder(1).writeLong(entry.getValue());
       tsBlockBuilder.declarePosition();
     }
+    countMap.clear();
     return tsBlockBuilder.build();
   }
 

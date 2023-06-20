@@ -34,8 +34,6 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import com.google.common.util.concurrent.ListenableFuture;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

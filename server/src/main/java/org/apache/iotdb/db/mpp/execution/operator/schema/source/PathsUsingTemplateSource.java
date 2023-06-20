@@ -104,7 +104,7 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
           return NOT_BLOCKED_FALSE;
         }
         if (currentDeviceReader != null) {
-          if (currentDeviceReader.hasNextFuture()) {
+          if (currentDeviceReader.hasNextFuture().get()) {
             return NOT_BLOCKED_TRUE;
           } else {
             currentDeviceReader.close();
@@ -120,7 +120,7 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
               schemaRegion.getDeviceReader(
                   SchemaRegionReadPlanFactory.getShowDevicesPlan(
                       pathPatternIterator.next(), 0, 0, false, templateId));
-          if (currentDeviceReader.hasNextFuture()) {
+          if (currentDeviceReader.hasNextFuture().get()) {
             return NOT_BLOCKED_TRUE;
           } else {
             currentDeviceReader.close();

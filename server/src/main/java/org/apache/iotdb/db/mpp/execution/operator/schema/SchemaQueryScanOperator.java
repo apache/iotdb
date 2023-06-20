@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import com.google.common.util.concurrent.Futures;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -62,6 +64,10 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   private final TsBlockBuilder tsBlockBuilder;
 
   private ListenableFuture<Boolean> blockedHasNext;
+
+
+  private ListenableFuture<Void> isBlocked;
+  private TsBlock next;
 
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
@@ -134,7 +140,49 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return blockedHasNext == null ? NOT_BLOCKED : blockedHasNext;
+    if(isBlocked==null){
+      isBlocked = tryGetNext();
+    }
+    return isBlocked;
+  }
+
+  /**
+   * Try to get next TsBlock. If the next is not ready, return a future. After success, {@link SchemaQueryScanOperator#next} will be set.
+   */
+  private ListenableFuture<Void> tryGetNext(){
+    if (schemaReader == null) {
+      schemaReader = createSchemaReader();
+    }
+    return Futures.submit(
+        () -> {
+
+          ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
+
+          if (schemaReader.hasNext()) {
+            T element = schemaReader.next();
+            setColumns(element, tsBlockBuilder);
+            return null;
+          } else {
+            return null;
+          }
+        }, null);
+    if (!tsBlockBuilder.isEmpty()) {
+      return true;
+    } else {
+      ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
+      Futures.addCallback();
+      if (!hasNextFuture.isDone()) {
+        blockedHasNext = hasNextFuture;
+        // we do not know whether it has next or not now, so return true
+        return true;
+      } else {
+        // hasNextFuture is done but may not success
+        if (!schemaReader.isSuccess()) {
+          throw new RuntimeException(schemaReader.getFailure());
+        }
+        return hasNextFuture.get();
+      }
+    }
   }
 
   @Override
@@ -165,6 +213,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
     }
     TsBlock res = tsBlockBuilder.build();
     tsBlockBuilder.reset();
+    blockedHasNext = null;
     return res;
   }
 
@@ -190,6 +239,10 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
       }
     }
   }
+
+  //  private ListenableFuture<TsBlock> tryGetNext(){
+  //
+  //  }
 
   @Override
   public boolean isFinished() throws Exception {

@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -46,6 +48,8 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   private final ISchemaSource<T> schemaSource;
 
   private ISchemaReader<T> schemaReader;
+  private ListenableFuture<Boolean> blockedHasNext;
+  private int count;
   private boolean isFinished;
 
   public SchemaCountOperator(
@@ -55,7 +59,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
     this.schemaSource = schemaSource;
   }
 
-  private final ISchemaRegion getSchemaRegion() {
+  private ISchemaRegion getSchemaRegion() {
     return ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion();
   }
 
@@ -69,38 +73,53 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    return blockedHasNext == null ? NOT_BLOCKED : blockedHasNext;
+  }
+
+  @Override
   public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
-    long count = 0;
     ISchemaRegion schemaRegion = getSchemaRegion();
     if (schemaSource.hasSchemaStatistic(schemaRegion)) {
-      count = schemaSource.getSchemaStatistic(schemaRegion);
+      isFinished = true;
+      return constructTsBlock(schemaSource.getSchemaStatistic(schemaRegion));
     } else {
       if (schemaReader == null) {
         schemaReader = createSchemaReader();
       }
-      while (schemaReader.hasNextFuture()) {
+      while (true) {
+        ListenableFuture<Boolean> hasNext = schemaReader.hasNextFuture();
+        if (!hasNext.isDone()) {
+          blockedHasNext = hasNext;
+          return null;
+        } else if (!hasNext.get()) {
+          if (!schemaReader.isSuccess()) {
+            throw new RuntimeException(schemaReader.getFailure());
+          }
+          isFinished = true;
+          blockedHasNext = null;
+          return constructTsBlock(count);
+        }
         schemaReader.next();
         count++;
       }
-      if (!schemaReader.isSuccess()) {
-        throw new RuntimeException(schemaReader.getFailure());
-      }
     }
-
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeLong(count);
-    tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
   }
 
   @Override
   public boolean hasNext() throws Exception {
     return !isFinished;
+  }
+
+  private TsBlock constructTsBlock(long count) {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(count);
+    tsBlockBuilder.declarePosition();
+    return tsBlockBuilder.build();
   }
 
   @Override

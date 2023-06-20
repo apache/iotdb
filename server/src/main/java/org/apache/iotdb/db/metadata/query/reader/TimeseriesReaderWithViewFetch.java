@@ -120,6 +120,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
           res = NOT_BLOCKED_TRUE;
         }
       }
+      // todo
       if (next == null && !cachedViewList.isEmpty()) {
         // all schema info has been fetched, but there mau be still some view schema info in
         // cachedViewList

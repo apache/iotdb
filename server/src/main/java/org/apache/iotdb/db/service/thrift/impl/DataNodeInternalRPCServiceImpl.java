@@ -776,7 +776,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       SchemaSourceFactory.getTimeSeriesSchemaSource(pattern);
                   try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
-                    if (schemaReader.hasNextFuture()) {
+                    if (schemaReader.hasNextFuture().get()) {
                       return RpcUtils.getStatus(TSStatusCode.TIMESERIES_ALREADY_EXIST);
                     }
                   } catch (Exception e) {
