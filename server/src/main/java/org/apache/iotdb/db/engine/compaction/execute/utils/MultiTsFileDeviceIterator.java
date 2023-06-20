@@ -116,10 +116,16 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
-    CompactionType type =
-        !seqResources.isEmpty() && !unseqResources.isEmpty()
-            ? CompactionType.CROSS_COMPACTION
-            : CompactionType.INNER_UNSEQ_COMPACTION;
+
+    CompactionType type = null;
+    if (!seqResources.isEmpty() && !unseqResources.isEmpty()) {
+      type = CompactionType.CROSS_COMPACTION;
+    } else if (seqResources.isEmpty()) {
+      type = CompactionType.INNER_UNSEQ_COMPACTION;
+    } else {
+      type = CompactionType.INNER_SEQ_COMPACTION;
+    }
+
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
           new CompactionTsFileReader(tsFileResource.getTsFilePath(), type);

@@ -107,6 +107,16 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   }
 
   @Override
+  public int checkMetadataSizeAndMayFlush() throws IOException {
+    int size = super.checkMetadataSizeAndMayFlush();
+    if (size > 0) {
+      CompactionTaskManager.getInstance().getMergeWriteRateLimiter().acquire(size);
+    }
+    CompactionMetrics.getInstance().recordWriteInfo(type, CompactionIoDataType.METADATA, size);
+    return size;
+  }
+
+  @Override
   public void endFile() throws IOException {
     long beforeSize = this.getPos();
     super.endFile();

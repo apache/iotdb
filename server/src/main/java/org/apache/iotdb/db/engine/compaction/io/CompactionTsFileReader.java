@@ -24,13 +24,16 @@ import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -115,5 +118,26 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
     return chunkMetadataList;
+  }
+
+  @Override
+  public void getDevicesAndEntriesOfOneLeafNode(
+      Long startOffset, Long endOffset, Queue<Pair<String, long[]>> measurementNodeOffsetQueue)
+      throws IOException {
+    long before = readDataSize.get();
+    super.getDevicesAndEntriesOfOneLeafNode(startOffset, endOffset, measurementNodeOffsetQueue);
+    long dataSize = readDataSize.get() - before;
+    CompactionMetrics.getInstance()
+        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
+  }
+
+  @Override
+  public MetadataIndexNode readMetadataIndexNode(long start, long end) throws IOException {
+    long before = readDataSize.get();
+    MetadataIndexNode metadataIndexNode = super.readMetadataIndexNode(start, end);
+    long dataSize = readDataSize.get() - before;
+    CompactionMetrics.getInstance()
+        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
+    return metadataIndexNode;
   }
 }
