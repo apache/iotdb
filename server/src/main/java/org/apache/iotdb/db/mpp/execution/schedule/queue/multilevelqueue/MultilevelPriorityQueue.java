@@ -258,8 +258,8 @@ public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverT
       long timeAccruedToLevel =
           Math.min(
               SECONDS.toNanos(
-                  LEVEL_THRESHOLD_SECONDS[currentLevel + 1]
-                      - LEVEL_THRESHOLD_SECONDS[currentLevel]),
+                  (long) LEVEL_THRESHOLD_SECONDS[currentLevel + 1]
+                      - (long) LEVEL_THRESHOLD_SECONDS[currentLevel]),
               remainingLevelContribution);
       addLevelTime(currentLevel, timeAccruedToLevel);
       remainingLevelContribution -= timeAccruedToLevel;
