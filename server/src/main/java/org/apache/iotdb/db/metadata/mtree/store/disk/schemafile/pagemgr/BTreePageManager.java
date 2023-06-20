@@ -356,7 +356,7 @@ public class BTreePageManager extends PageManager {
     if (getNodeAddress(parent) < 0) {
       throw new MetadataException(
           String.format(
-              "Node [%s] has no valid segment address in pb-tree file.", parent.getFullPath()));
+              "Node [%s] has no valid segment address in pbtree file.", parent.getFullPath()));
     }
 
     long actualSegAddr = getTargetSegmentAddress(getNodeAddress(parent), childName);

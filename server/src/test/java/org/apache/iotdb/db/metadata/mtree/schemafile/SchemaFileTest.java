@@ -68,7 +68,7 @@ public class SchemaFileTest {
   public void setUp() {
     CommonDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PBTree.toString());
     EnvironmentUtils.envSetUp();
   }
 
