@@ -64,6 +64,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   private ListenableFuture<Void> isBlocked;
   private TsBlock next;
+  private boolean isFinished;
 
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
@@ -159,7 +160,12 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
               break;
             }
           }
-          next = tsBlockBuilder.isEmpty()?null:tsBlockBuilder.build();
+          if (!tsBlockBuilder.isEmpty()) {
+            isFinished = true;
+            next = null;
+          } else {
+            next = tsBlockBuilder.build();
+          }
         },
         FragmentInstanceManager.getInstance().getIntoOperationExecutor());
   }
@@ -186,7 +192,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public boolean isFinished() throws Exception {
-    return !hasNextWithTimer();
+    return isFinished;
   }
 
   @Override
@@ -223,7 +229,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   public void close() throws Exception {
     if (schemaReader != null) {
       schemaReader.close();
-//      schemaReader = null;
+      schemaReader = null;
     }
   }
 }
