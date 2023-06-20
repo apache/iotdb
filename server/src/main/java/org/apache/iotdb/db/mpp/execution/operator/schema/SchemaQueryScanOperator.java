@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
@@ -30,6 +31,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -57,6 +61,9 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   private final List<TSDataType> outputDataTypes;
 
   private ISchemaReader<T> schemaReader;
+
+  private ListenableFuture<Void> isBlocked;
+  private TsBlock next;
 
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
@@ -126,31 +133,55 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    if (isBlocked == null) {
+      isBlocked = tryGetNext();
+    }
+    return isBlocked;
+  }
+
+  /**
+   * Try to get next TsBlock. If the next is not ready, return a future. After success, {@link
+   * SchemaQueryScanOperator#next} will be set.
+   */
+  private ListenableFuture<Void> tryGetNext() {
+    if (schemaReader == null) {
+      schemaReader = createSchemaReader();
+    }
+    return Futures.submit(
+        () -> {
+          TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
+          T element;
+          while (schemaReader.hasNext()) {
+            element = schemaReader.next();
+            setColumns(element, tsBlockBuilder);
+            if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+              break;
+            }
+          }
+          next = tsBlockBuilder.build();
+        },
+        FragmentInstanceManager.getInstance().getIntoOperationExecutor());
+  }
+
+  @Override
   public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    T element;
-    while (schemaReader.hasNext()) {
-      element = schemaReader.next();
-      setColumns(element, tsBlockBuilder);
-      if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
-        break;
-      }
-    }
-    if (!schemaReader.isSuccess()) {
-      throw new RuntimeException(schemaReader.getFailure());
-    }
-    return tsBlockBuilder.build();
+    TsBlock ret = next;
+    next = null;
+    isBlocked = null;
+    return ret;
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    if (schemaReader == null) {
-      schemaReader = createSchemaReader();
+    isBlocked.get(); // make sure the next is ready
+    if (!schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
     }
-    return schemaReader.hasNext();
+    return next != null;
   }
 
   @Override

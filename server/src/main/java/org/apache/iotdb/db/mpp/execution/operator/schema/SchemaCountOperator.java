@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
@@ -30,6 +31,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.Collections;
 import java.util.List;
@@ -47,6 +51,9 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
 
   private ISchemaReader<T> schemaReader;
   private boolean isFinished;
+
+  private ListenableFuture<?> isBlocked;
+  private TsBlock next;
 
   public SchemaCountOperator(
       PlanNodeId sourceId, OperatorContext operatorContext, ISchemaSource<T> schemaSource) {
@@ -69,38 +76,69 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    if (isBlocked == null) {
+      isBlocked = tryGetNext();
+    }
+    return isBlocked;
+  }
+
+  /**
+   * Try to get next TsBlock. If the next is not ready, return a future. After success, {@link
+   * SchemaCountOperator#next} will be set.
+   */
+  private ListenableFuture<?> tryGetNext() {
+    if (isFinished) {
+      return NOT_BLOCKED;
+    }
+    ISchemaRegion schemaRegion = getSchemaRegion();
+    if (schemaSource.hasSchemaStatistic(schemaRegion)) {
+      next = constructTsBlock(schemaSource.getSchemaStatistic(schemaRegion));
+      return NOT_BLOCKED;
+    } else {
+      return Futures.submit(
+          () -> {
+            if (schemaReader == null) {
+              schemaReader = createSchemaReader();
+            }
+            long count = 0;
+            while (schemaReader.hasNext()) {
+              schemaReader.next();
+              count++;
+            }
+            next = constructTsBlock(count);
+          },
+          FragmentInstanceManager.getInstance().getIntoOperationExecutor());
+    }
+  }
+
+  @Override
   public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
+    TsBlock ret = next;
+    next = null;
+    isBlocked = null;
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
-    long count = 0;
-    ISchemaRegion schemaRegion = getSchemaRegion();
-    if (schemaSource.hasSchemaStatistic(schemaRegion)) {
-      count = schemaSource.getSchemaStatistic(schemaRegion);
-    } else {
-      if (schemaReader == null) {
-        schemaReader = createSchemaReader();
-      }
-      while (schemaReader.hasNext()) {
-        schemaReader.next();
-        count++;
-      }
-      if (!schemaReader.isSuccess()) {
-        throw new RuntimeException(schemaReader.getFailure());
-      }
-    }
-
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeLong(count);
-    tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
+    return ret;
   }
 
   @Override
   public boolean hasNext() throws Exception {
+    isBlocked.get(); // make sure the next is ready
+    if (!schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
+    }
     return !isFinished;
+  }
+
+  private TsBlock constructTsBlock(long count) {
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(count);
+    tsBlockBuilder.declarePosition();
+    return tsBlockBuilder.build();
   }
 
   @Override
