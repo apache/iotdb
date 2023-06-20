@@ -78,9 +78,9 @@ Here is a list of Status Code and related message:
 | 518         | PAGE_OUT_OF_SPACE                      | No enough space on schema page                                                            |
 | 519         | RECORD_DUPLICATED                      | Record is duplicated                                                                      |
 | 520         | SEGMENT_OUT_OF_SPACE                   | No enough space on schema segment                                                         |
-| 521         | PB_TREE_FILE_NOT_EXISTS                | PBTreeFile does not exist                                                                 |
+| 521         | PBTREE_FILE_NOT_EXISTS                | PBTreeFile does not exist                                                                 |
 | 522         | OVERSIZE_RECORD                        | Size of record exceeds the threshold of page of PBTreeFile                                |
-| 523         | PB_TREE_FILE_REDO_LOG_BROKEN           | PBTreeFile redo log has broken                                                            |
+| 523         | PBTREE_FILE_REDO_LOG_BROKEN           | PBTreeFile redo log has broken                                                            |
 | 524         | TEMPLATE_NOT_ACTIVATED                 | Schema template is not activated                                                          |
 | 526         | SCHEMA_QUOTA_EXCEEDED                  | Schema usage exceeds quota limit                                                          |
 | 527  | MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE | Measurement already exists in schema template                                    | 

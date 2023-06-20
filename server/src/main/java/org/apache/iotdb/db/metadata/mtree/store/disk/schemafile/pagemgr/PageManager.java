@@ -267,7 +267,7 @@ public abstract class PageManager implements IPageManager {
       if (curPage.getAsSegmentedPage().read(getSegIndex(actualAddress), entry.getKey()) == null) {
         throw new MetadataException(
             String.format(
-                "Node[%s] has no child[%s] in pb-tree file.", node.getName(), entry.getKey()));
+                "Node[%s] has no child[%s] in pbtree file.", node.getName(), entry.getKey()));
       }
 
       // prepare alias comparison
