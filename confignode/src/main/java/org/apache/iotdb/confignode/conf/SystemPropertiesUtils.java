@@ -215,6 +215,7 @@ public class SystemPropertiesUtils {
     Properties systemProperties = getSystemProperties();
 
     systemProperties.setProperty("iotdb_version", IoTDBConstant.VERSION);
+    systemProperties.setProperty("commit_id", IoTDBConstant.BUILD_INFO);
 
     // Cluster configuration
     systemProperties.setProperty("cluster_name", conf.getClusterName());
