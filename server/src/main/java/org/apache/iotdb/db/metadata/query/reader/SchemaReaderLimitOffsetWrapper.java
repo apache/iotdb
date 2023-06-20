@@ -65,7 +65,7 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
         // first time
         return Futures.submit(
             () -> {
-              while (schemaReader.hasNextFuture().get()) {
+              while (curOffset < offset && schemaReader.hasNextFuture().get()) {
                 schemaReader.next();
                 curOffset++;
               }
