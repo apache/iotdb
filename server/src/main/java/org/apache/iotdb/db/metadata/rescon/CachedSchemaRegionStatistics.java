@@ -23,8 +23,8 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * This class is used to record statistics within a SchemaRegion in PB_Tree mode, which is a
- * superset of the statistics in Memory mode
+ * This class is used to record statistics within a SchemaRegion in PBTree mode, which is a superset
+ * of the statistics in Memory mode
  */
 public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
 

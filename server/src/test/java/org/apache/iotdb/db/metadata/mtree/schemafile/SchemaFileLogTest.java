@@ -58,7 +58,7 @@ public class SchemaFileLogTest {
   public void setUp() {
     CommonDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PBTree.toString());
     EnvironmentUtils.envSetUp();
   }
 
@@ -142,7 +142,7 @@ public class SchemaFileLogTest {
             "schema",
             "root.test.vRoot1",
             "0",
-            MetadataConstant.PB_TREE_LOG_FILE_NAME
+            MetadataConstant.PBTREE_LOG_FILE_NAME
           };
       File logFile = new File(String.join(File.separator, logFilePath));
       outputStream = new FileOutputStream(logFile, true);
