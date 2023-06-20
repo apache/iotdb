@@ -57,7 +57,7 @@ public class PBTreeFileSketchTest {
   public void setUp() {
     CommonDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PBTree.toString());
     EnvironmentUtils.envSetUp();
   }
 
@@ -103,7 +103,7 @@ public class PBTreeFileSketchTest {
                 + File.separator
                 + "0"
                 + File.separator
-                + MetadataConstant.PB_TREE_FILE_NAME);
+                + MetadataConstant.PBTREE_FILE_NAME);
     File sketchFile = new File("sketch_schemafile.txt");
 
     PBTreeFileSketchTool.sketchFile(file.getAbsolutePath(), sketchFile.getAbsolutePath());

@@ -129,7 +129,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-@SchemaRegion(mode = "PB_Tree")
+@SchemaRegion(mode = "PBTree")
 public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionPBTreeImpl.class);
