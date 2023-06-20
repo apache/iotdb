@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
-import com.google.common.util.concurrent.Futures;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -34,10 +32,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
@@ -62,11 +63,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   private ISchemaReader<T> schemaReader;
 
   private final TsBlockBuilder tsBlockBuilder;
-
-  private ListenableFuture<Boolean> blockedHasNext;
-
-
-  private ListenableFuture<Void> isBlocked;
+  private ListenableFuture<?> isBlocked;
   private TsBlock next;
 
   protected SchemaQueryScanOperator(
@@ -140,109 +137,71 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if(isBlocked==null){
+    if (isBlocked == null) {
       isBlocked = tryGetNext();
     }
     return isBlocked;
   }
 
   /**
-   * Try to get next TsBlock. If the next is not ready, return a future. After success, {@link SchemaQueryScanOperator#next} will be set.
+   * Try to get next TsBlock. If the next is not ready, return a future. After success, {@link
+   * SchemaQueryScanOperator#next} will be set.
    */
-  private ListenableFuture<Void> tryGetNext(){
+  private ListenableFuture<?> tryGetNext() {
     if (schemaReader == null) {
       schemaReader = createSchemaReader();
     }
-    return Futures.submit(
-        () -> {
-
-          ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
-
-          if (schemaReader.hasNext()) {
-            T element = schemaReader.next();
-            setColumns(element, tsBlockBuilder);
-            return null;
-          } else {
-            return null;
+    while (true) {
+      try {
+        ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
+        if (!hasNextFuture.isDone()) {
+          SettableFuture<?> future = SettableFuture.create();
+          hasNextFuture.addListener(
+              () -> {
+                next = tsBlockBuilder.build();
+                tsBlockBuilder.reset();
+                future.set(null);
+              },
+              directExecutor());
+          return future;
+        } else if (hasNextFuture.get()) {
+          T element = schemaReader.next();
+          setColumns(element, tsBlockBuilder);
+          if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+            next = tsBlockBuilder.build();
+            tsBlockBuilder.reset();
+            return NOT_BLOCKED;
           }
-        }, null);
-    if (!tsBlockBuilder.isEmpty()) {
-      return true;
-    } else {
-      ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
-      Futures.addCallback();
-      if (!hasNextFuture.isDone()) {
-        blockedHasNext = hasNextFuture;
-        // we do not know whether it has next or not now, so return true
-        return true;
-      } else {
-        // hasNextFuture is done but may not success
-        if (!schemaReader.isSuccess()) {
-          throw new RuntimeException(schemaReader.getFailure());
+        } else {
+          next = tsBlockBuilder.isEmpty() ? null : tsBlockBuilder.build();
+          tsBlockBuilder.reset();
+          return NOT_BLOCKED;
         }
-        return hasNextFuture.get();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
     }
   }
 
   @Override
   public TsBlock next() throws Exception {
-    if (blockedHasNext != null && !blockedHasNext.isDone()) {
-      // if blocked, return null
-      return null;
+    if (!hasNext()) {
+      throw new NoSuchElementException();
     }
-    boolean hasNext = blockedHasNext == null || blockedHasNext.get();
-    while (hasNext) {
-      T element = schemaReader.next();
-      if (element != null) {
-        setColumns(element, tsBlockBuilder);
-        if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
-          break;
-        }
-      }
-      ListenableFuture<Boolean> future = schemaReader.hasNextFuture();
-      if (!future.isDone()) {
-        blockedHasNext = future;
-        return null;
-      }
-      hasNext = future.get();
-    }
-
-    if (!schemaReader.isSuccess()) {
-      throw new RuntimeException(schemaReader.getFailure());
-    }
-    TsBlock res = tsBlockBuilder.build();
-    tsBlockBuilder.reset();
-    blockedHasNext = null;
-    return res;
+    TsBlock ret = next;
+    next = null;
+    isBlocked = null;
+    return ret;
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    if (schemaReader == null) {
-      schemaReader = createSchemaReader();
+    isBlocked().get(); // wait for the next TsBlock
+    if (!schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
     }
-    if (!tsBlockBuilder.isEmpty()) {
-      return true;
-    } else {
-      ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
-      if (!hasNextFuture.isDone()) {
-        blockedHasNext = hasNextFuture;
-        // we do not know whether it has next or not now, so return true
-        return true;
-      } else {
-        // hasNextFuture is done but may not success
-        if (!schemaReader.isSuccess()) {
-          throw new RuntimeException(schemaReader.getFailure());
-        }
-        return hasNextFuture.get();
-      }
-    }
+    return next != null;
   }
-
-  //  private ListenableFuture<TsBlock> tryGetNext(){
-  //
-  //  }
 
   @Override
   public boolean isFinished() throws Exception {

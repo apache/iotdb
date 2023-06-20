@@ -32,10 +32,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
+
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperator {
 
@@ -48,9 +51,10 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   private final ISchemaSource<T> schemaSource;
 
   private ISchemaReader<T> schemaReader;
-  private ListenableFuture<Boolean> blockedHasNext;
   private int count;
   private boolean isFinished;
+  private ListenableFuture<?> isBlocked;
+  private TsBlock next; // next will be set only when done
 
   public SchemaCountOperator(
       PlanNodeId sourceId, OperatorContext operatorContext, ISchemaSource<T> schemaSource) {
@@ -74,7 +78,44 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return blockedHasNext == null ? NOT_BLOCKED : blockedHasNext;
+    if (isBlocked == null) {
+      isBlocked = tryGetNext();
+    }
+    return isBlocked;
+  }
+
+  /**
+   * Try to get next TsBlock. If the next is not ready, return a future. After success, {@link
+   * SchemaCountOperator#next} will be set.
+   */
+  private ListenableFuture<?> tryGetNext() {
+    ISchemaRegion schemaRegion = getSchemaRegion();
+    if (schemaSource.hasSchemaStatistic(schemaRegion)) {
+      next = constructTsBlock(schemaSource.getSchemaStatistic(schemaRegion));
+      return NOT_BLOCKED;
+    } else {
+      if (schemaReader == null) {
+        schemaReader = createSchemaReader();
+      }
+      while (true) {
+        try {
+          ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
+          if (!hasNextFuture.isDone()) {
+            SettableFuture<?> future = SettableFuture.create();
+            hasNextFuture.addListener(() -> future.set(null), directExecutor());
+            return future;
+          } else if (hasNextFuture.get()) {
+            schemaReader.next();
+            count++;
+          } else {
+            next = constructTsBlock(count);
+            return NOT_BLOCKED;
+          }
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
   }
 
   @Override
@@ -82,35 +123,19 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    ISchemaRegion schemaRegion = getSchemaRegion();
-    if (schemaSource.hasSchemaStatistic(schemaRegion)) {
+    if (next != null) {
       isFinished = true;
-      return constructTsBlock(schemaSource.getSchemaStatistic(schemaRegion));
-    } else {
-      if (schemaReader == null) {
-        schemaReader = createSchemaReader();
-      }
-      while (true) {
-        ListenableFuture<Boolean> hasNext = schemaReader.hasNextFuture();
-        if (!hasNext.isDone()) {
-          blockedHasNext = hasNext;
-          return null;
-        } else if (!hasNext.get()) {
-          if (!schemaReader.isSuccess()) {
-            throw new RuntimeException(schemaReader.getFailure());
-          }
-          isFinished = true;
-          blockedHasNext = null;
-          return constructTsBlock(count);
-        }
-        schemaReader.next();
-        count++;
-      }
     }
+    isBlocked = null;
+    return next;
   }
 
   @Override
   public boolean hasNext() throws Exception {
+    isBlocked().get(); // wait for the next TsBlock
+    if (schemaReader != null && !schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
+    }
     return !isFinished;
   }
 

@@ -118,14 +118,17 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
           // normal timeseries
           next = temp;
           res = NOT_BLOCKED_TRUE;
+          break;
         }
       }
-      // todo
-      if (next == null && !cachedViewList.isEmpty()) {
+      if (res == NOT_BLOCKED_FALSE && !cachedViewList.isEmpty()) {
         // all schema info has been fetched, but there mau be still some view schema info in
         // cachedViewList
         res = asyncGetNext();
       }
+    } else {
+      // next is not null
+      res = NOT_BLOCKED_TRUE;
     }
     hasNextFuture = res;
     return res;

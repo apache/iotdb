@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements SourceOperator {
@@ -59,9 +61,10 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
 
   private ISchemaReader<T> schemaReader;
 
-  private ListenableFuture<Boolean> blockedHasNext;
+  private ListenableFuture<?> isBlocked;
   private Map<PartialPath, Long> countMap;
   private boolean isFinished;
+  private TsBlock next;
 
   public CountGroupByLevelScanOperator(
       PlanNodeId sourceId,
@@ -87,7 +90,60 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return blockedHasNext == null ? NOT_BLOCKED : blockedHasNext;
+    if (isBlocked == null) {
+      isBlocked = tryGetNext();
+    }
+    return isBlocked;
+  }
+
+  /**
+   * Try to get next TsBlock. If the next is not ready, return a future. After success, {@link
+   * CountGroupByLevelScanOperator#next} will be set.
+   */
+  private ListenableFuture<?> tryGetNext() {
+    if (schemaReader == null) {
+      schemaReader = createTimeSeriesReader();
+    }
+    while (true) {
+      try {
+        ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
+        if (!hasNextFuture.isDone()) {
+          SettableFuture<?> future = SettableFuture.create();
+          hasNextFuture.addListener(
+              () -> {
+                next = constructTsBlockAndClearMap(countMap);
+                future.set(null);
+              },
+              directExecutor());
+          return future;
+        } else if (hasNextFuture.get()) {
+          ISchemaInfo schemaInfo = schemaReader.next();
+          PartialPath path = schemaInfo.getPartialPath();
+          if (path.getNodeLength() < level) {
+            continue;
+          }
+          PartialPath levelPath = new PartialPath(Arrays.copyOf(path.getNodes(), level + 1));
+          countMap.compute(
+              levelPath,
+              (k, v) -> {
+                if (v == null) {
+                  return 1L;
+                } else {
+                  return v + 1;
+                }
+              });
+          if (countMap.size() == DEFAULT_BATCH_SIZE) {
+            next = constructTsBlockAndClearMap(countMap);
+            return NOT_BLOCKED;
+          }
+        } else {
+          next = countMap.isEmpty() ? null : constructTsBlockAndClearMap(countMap);
+          return NOT_BLOCKED;
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   @Override
@@ -95,47 +151,19 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    if (schemaReader == null) {
-      schemaReader = createTimeSeriesReader();
-    }
-    while (true) {
-      ListenableFuture<Boolean> hasNext = schemaReader.hasNextFuture();
-      if (!hasNext.isDone()) {
-        blockedHasNext = hasNext;
-        return null;
-      } else if (hasNext.get()) {
-        if (!schemaReader.isSuccess()) {
-          throw new RuntimeException(schemaReader.getFailure());
-        }
-        isFinished = true;
-        blockedHasNext = null;
-        return constructTsBlockAndClearMap(countMap);
-      }
-      ISchemaInfo schemaInfo = schemaReader.next();
-      PartialPath path = schemaInfo.getPartialPath();
-      if (path.getNodeLength() < level) {
-        continue;
-      }
-      PartialPath levelPath = new PartialPath(Arrays.copyOf(path.getNodes(), level + 1));
-      countMap.compute(
-          levelPath,
-          (k, v) -> {
-            if (v == null) {
-              return 1L;
-            } else {
-              return v + 1;
-            }
-          });
-      if (countMap.size() == DEFAULT_BATCH_SIZE) {
-        blockedHasNext = null;
-        return constructTsBlockAndClearMap(countMap);
-      }
-    }
+    TsBlock ret = next;
+    next = null;
+    isBlocked = null;
+    return ret;
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    return !isFinished;
+    isBlocked().get(); // wait for the next TsBlock
+    if (!schemaReader.isSuccess()) {
+      throw new RuntimeException(schemaReader.getFailure());
+    }
+    return next != null;
   }
 
   public ISchemaReader<T> createTimeSeriesReader() {
