@@ -30,9 +30,9 @@ The tool can sketch .pst file.
 ### How to use
 
 Linux/MacOS
-> ./print-pb-tree-file.sh -f your/path/to/pb_tree.pst -o /your/path/to/sketch.txt
+> ./print-pb-tree-file.sh -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
 
 Windows
 
-> ./print-pb-tree-file.bat -f your/path/to/pb_tree.pst -o /your/path/to/sketch.txt
+> ./print-pb-tree-file.bat -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
 

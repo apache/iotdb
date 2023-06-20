@@ -85,8 +85,8 @@ public class SchemaFile implements ISchemaFile {
       throws IOException, MetadataException {
     String dirPath = getDirPath(sgName, schemaRegionId);
     this.storageGroupName = sgName;
-    this.filePath = dirPath + File.separator + MetadataConstant.PB_TREE_FILE_NAME;
-    this.logPath = dirPath + File.separator + MetadataConstant.PB_TREE_LOG_FILE_NAME;
+    this.filePath = dirPath + File.separator + MetadataConstant.PBTREE_FILE_NAME;
+    this.logPath = dirPath + File.separator + MetadataConstant.PBTREE_LOG_FILE_NAME;
 
     pmtFile = SystemFileFactory.INSTANCE.getFile(filePath);
     if (!pmtFile.exists() && !override) {
@@ -119,7 +119,7 @@ public class SchemaFile implements ISchemaFile {
     //  components of log manipulations are not.
     pmtFile = file;
     filePath = pmtFile.getPath();
-    logPath = file.getParent() + File.separator + MetadataConstant.PB_TREE_LOG_FILE_NAME;
+    logPath = file.getParent() + File.separator + MetadataConstant.PBTREE_LOG_FILE_NAME;
     channel = new RandomAccessFile(file, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFileConfig.FILE_HEADER_SIZE);
 
@@ -138,7 +138,7 @@ public class SchemaFile implements ISchemaFile {
         SystemFileFactory.INSTANCE.getFile(
             getDirPath(sgName, schemaRegionId)
                 + File.separator
-                + MetadataConstant.PB_TREE_FILE_NAME);
+                + MetadataConstant.PBTREE_FILE_NAME);
     return new SchemaFile(
         sgName,
         schemaRegionId,
@@ -444,7 +444,7 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public boolean createSnapshot(File snapshotDir) {
     File schemaFileSnapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.PB_TREE_SNAPSHOT);
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.PBTREE_SNAPSHOT);
     try {
       sync();
       if (schemaFileSnapshot.exists() && !schemaFileSnapshot.delete()) {
@@ -465,16 +465,16 @@ public class SchemaFile implements ISchemaFile {
   public static ISchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     File snapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.PB_TREE_SNAPSHOT);
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.PBTREE_SNAPSHOT);
     if (!snapshot.exists()) {
       throw new SchemaFileNotExists(snapshot.getPath());
     }
     File schemaFile =
         SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId), MetadataConstant.PB_TREE_FILE_NAME);
+            getDirPath(sgName, schemaRegionId), MetadataConstant.PBTREE_FILE_NAME);
     File schemaLogFile =
         SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId), MetadataConstant.PB_TREE_LOG_FILE_NAME);
+            getDirPath(sgName, schemaRegionId), MetadataConstant.PBTREE_LOG_FILE_NAME);
     Files.deleteIfExists(schemaFile.toPath());
     Files.deleteIfExists(schemaLogFile.toPath());
     Files.copy(snapshot.toPath(), schemaFile.toPath());
