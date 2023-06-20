@@ -81,6 +81,8 @@ public class RaftConfig {
   private double flowControlMinFlow = 10_000_000;
   private double flowControlMaxFlow = 100_000_000;
   private int entryAllocatorCapacity = 100000;
+  private int dispatcherMinBatchSize = 10;
+  private long dispatcherMaxCompressionIntervalMs = 100;
   private CompressionType dispatchingCompressionType = CompressionType.SNAPPY;
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
   private RPCConfig rpcConfig;
@@ -482,6 +484,22 @@ public class RaftConfig {
     this.entryAllocatorCapacity = entryAllocatorCapacity;
   }
 
+  public int getDispatcherMinBatchSize() {
+    return dispatcherMinBatchSize;
+  }
+
+  public void setDispatcherMinBatchSize(int dispatcherMinBatchSize) {
+    this.dispatcherMinBatchSize = dispatcherMinBatchSize;
+  }
+
+  public long getDispatcherMaxCompressionIntervalMs() {
+    return dispatcherMaxCompressionIntervalMs;
+  }
+
+  public void setDispatcherMaxCompressionIntervalMs(long dispatcherMaxCompressionIntervalMs) {
+    this.dispatcherMaxCompressionIntervalMs = dispatcherMaxCompressionIntervalMs;
+  }
+
   public void loadProperties(Properties properties) {
     logger.debug("Loading properties: {}", properties);
 
@@ -720,6 +738,17 @@ public class RaftConfig {
         Integer.parseInt(
             properties.getProperty(
                 "entry_allocator_capacity", String.valueOf(this.getEntryAllocatorCapacity()))));
+
+    this.setDispatcherMinBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "dispatcher_min_batch_size", String.valueOf(this.getDispatcherMinBatchSize()))));
+
+    this.setDispatcherMaxCompressionIntervalMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "dispatcher_max_compress_interval_ms",
+                String.valueOf(this.getDispatcherMaxCompressionIntervalMs()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

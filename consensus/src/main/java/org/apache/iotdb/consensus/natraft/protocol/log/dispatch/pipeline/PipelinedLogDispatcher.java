@@ -19,20 +19,6 @@
 
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch.pipeline;
 
-import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThread;
 import org.apache.iotdb.commons.concurrent.dynamic.DynamicThreadGroup;
@@ -47,8 +33,24 @@ import org.apache.iotdb.consensus.natraft.utils.Timer.Statistic;
 import org.apache.iotdb.consensus.raft.thrift.AppendCompressedEntriesRequest;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.consensus.natraft.utils.NodeUtils.unionNodes;
 
 /**
  * A LogDispatcher serves a raft leader by queuing logs that the leader wants to send to its
@@ -71,6 +73,9 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
   public int maxBindingThreadNum;
   public int minBindingThreadNum;
   public int maxBatchSize;
+  public int minBatchSize;
+  public long maxCompressionIntervalMS;
+  public long lastCompressionTimeMs;
   private DynamicThreadGroup compressionThreadGroup;
   private final Queue<VotingEntry> entriesToCompress;
   private ExecutorService compressionPool;
@@ -83,6 +88,8 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
     this.enableCompressedDispatching = config.isEnableCompressedDispatching();
     this.minBindingThreadNum = config.getMinDispatcherBindingThreadNum();
     this.maxBindingThreadNum = config.getMaxDispatcherBindingThreadNum();
+    this.minBatchSize = config.getDispatcherMinBatchSize();
+    this.maxCompressionIntervalMS = config.getDispatcherMaxCompressionIntervalMs();
     this.allNodes = member.getAllNodes();
     this.newNodes = member.getNewNodes();
     this.entriesToCompress = new ArrayDeque<>(config.getMaxNumOfLogsInMem());
@@ -91,9 +98,13 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             config.getMinDispatcherBindingThreadNum(), member.getName() + "-DispatcherCompressor");
     this.compressor = ICompressor.getCompressor(config.getDispatchingCompressionType());
-    this.compressionThreadGroup = new DynamicThreadGroup(member.getName() + "-DispatcherCompressor",
-        r -> compressionPool.submit(r), () -> new PipelineCompressor(compressionThreadGroup),
-        config.getMinDispatcherBindingThreadNum(), config.getMaxDispatcherBindingThreadNum());
+    this.compressionThreadGroup =
+        new DynamicThreadGroup(
+            member.getName() + "-DispatcherCompressor",
+            r -> compressionPool.submit(r),
+            () -> new PipelineCompressor(compressionThreadGroup),
+            config.getMinDispatcherBindingThreadNum(),
+            config.getMaxDispatcherBindingThreadNum());
     this.compressionThreadGroup.init();
     createDispatcherGroups(unionNodes(allNodes, newNodes));
     maxBatchSize = config.getLogNumInBatch();
@@ -263,8 +274,10 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
         dispatchTask.logSize = (int) logSize;
 
         offer(dispatchTask);
+        Statistic.LOG_DISPATCHER_BATCH_SIZE.add(logList.size());
         dispatchTask = new DispatchTask();
       }
+      lastCompressionTimeMs = System.currentTimeMillis();
     }
 
     protected AppendCompressedEntriesRequest prepareCompressedRequest(List<ByteBuffer> logList) {
@@ -285,6 +298,18 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
     }
 
     private boolean fetchLogsSyncLoop() throws InterruptedException {
+      if (entriesToCompress.size() < minBatchSize
+          && System.currentTimeMillis() - lastCompressionTimeMs < maxCompressionIntervalMS) {
+        // the follower is being delayed, if there is not enough requests, and it has
+        // dispatched recently, wait for a while to get a larger batch
+        if (maxCompressionIntervalMS > 1) {
+          synchronized (entriesToCompress) {
+            entriesToCompress.wait(maxCompressionIntervalMS / 2);
+          }
+        }
+        return false;
+      }
+
       if (!LogUtils.drainTo(entriesToCompress, currBatch, maxBatchSize)) {
         synchronized (entriesToCompress) {
           if (getMember().isLeader()) {
