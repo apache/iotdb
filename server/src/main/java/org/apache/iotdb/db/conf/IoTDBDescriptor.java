@@ -538,7 +538,7 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "compaction_schedule_thread_count",
-                Integer.toString(conf.getSubCompactionTaskNum())));
+                Integer.toString(conf.getCompactionScheduledThreadCount())));
     compactionScheduledThreadNum =
         compactionScheduledThreadNum <= 0 ? 1 : compactionScheduledThreadNum;
     conf.setCompactionScheduledThreadCount(compactionScheduledThreadNum);
