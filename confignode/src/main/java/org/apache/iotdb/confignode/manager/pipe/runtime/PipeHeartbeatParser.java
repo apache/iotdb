@@ -90,24 +90,29 @@ public class PipeHeartbeatParser {
       return;
     }
 
-    PipeRuntimeCoordinator.PROCEDURE_SUBMITTER.submit(
-        () -> {
-          if (!pipeMetaByteBufferListFromDataNode.isEmpty()) {
-            parseHeartbeatAndSaveMetaChangeLocally(dataNodeId, pipeMetaByteBufferListFromDataNode);
-          }
+    configManager
+        .getPipeManager()
+        .getPipeRuntimeCoordinator()
+        .getProcedureSubmitter()
+        .submit(
+            () -> {
+              if (!pipeMetaByteBufferListFromDataNode.isEmpty()) {
+                parseHeartbeatAndSaveMetaChangeLocally(
+                    dataNodeId, pipeMetaByteBufferListFromDataNode);
+              }
 
-          if (canSubmitHandleMetaChangeProcedure.get()
-              && (needWriteConsensusOnConfigNodes.get() || needPushPipeMetaToDataNodes.get())) {
-            configManager
-                .getProcedureManager()
-                .pipeHandleMetaChange(
-                    needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
+              if (canSubmitHandleMetaChangeProcedure.get()
+                  && (needWriteConsensusOnConfigNodes.get() || needPushPipeMetaToDataNodes.get())) {
+                configManager
+                    .getProcedureManager()
+                    .pipeHandleMetaChange(
+                        needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
 
-            // reset flags after procedure is submitted
-            needWriteConsensusOnConfigNodes.set(false);
-            needPushPipeMetaToDataNodes.set(false);
-          }
-        });
+                // reset flags after procedure is submitted
+                needWriteConsensusOnConfigNodes.set(false);
+                needPushPipeMetaToDataNodes.set(false);
+              }
+            });
   }
 
   private void parseHeartbeatAndSaveMetaChangeLocally(
@@ -197,9 +202,9 @@ public class PipeHeartbeatParser {
               needPushPipeMetaToDataNodes.set(true);
 
               LOGGER.warn(
-                  String.format(
-                      "Detect PipeRuntimeCriticalException %s from DataNode, stop pipe %s.",
-                      exception, pipeName));
+                  "Detect PipeRuntimeCriticalException {} from DataNode, stop pipe {}.",
+                  exception,
+                  pipeName);
             }
 
             if (exception instanceof PipeRuntimeConnectorCriticalException) {

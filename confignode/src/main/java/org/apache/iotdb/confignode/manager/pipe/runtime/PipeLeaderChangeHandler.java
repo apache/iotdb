@@ -78,10 +78,14 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
     }
 
     // submit procedure in an async way to avoid blocking the caller
-    PipeRuntimeCoordinator.PROCEDURE_SUBMITTER.submit(
-        () ->
-            configManager
-                .getProcedureManager()
-                .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap));
+    configManager
+        .getPipeManager()
+        .getPipeRuntimeCoordinator()
+        .getProcedureSubmitter()
+        .submit(
+            () ->
+                configManager
+                    .getProcedureManager()
+                    .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap));
   }
 }
