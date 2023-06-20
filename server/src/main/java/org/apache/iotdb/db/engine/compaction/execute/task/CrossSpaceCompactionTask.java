@@ -274,6 +274,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           true);
     } finally {
       SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      SystemInfo.getInstance()
+          .decreaseCompactionFileNumCost(
+              selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
       releaseAllLocksAndResetStatus();
       return isSuccess;
     }

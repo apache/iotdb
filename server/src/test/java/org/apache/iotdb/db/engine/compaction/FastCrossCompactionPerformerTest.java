@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.reader.IDataBlockReader;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.tools.validate.TsFileValidationTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -58,6 +60,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
@@ -4022,6 +4025,38 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
           assertEquals(600, count);
         }
       }
+    }
+  }
+
+  @Test
+  public void testReleaseFileNumAndMemoryAfterCrossTask()
+      throws IOException, MetadataException, WriteProcessException {
+    int oldMaxCrossCompactionCandidateFileNum =
+        SystemInfo.getInstance().getTotalFileLimitForCrossTask();
+    SystemInfo.getInstance().setTotalFileLimitForCrossTask(15);
+    try {
+      createFiles(6, 2, 3, 300, 0, 0, 50, 50, false, true);
+      createFiles(6, 2, 3, 300, 0, 0, 50, 50, false, false);
+      tsFileManager.addAll(seqResources, true);
+      tsFileManager.addAll(unseqResources, false);
+      CrossSpaceCompactionTask task =
+          new CrossSpaceCompactionTask(
+              0L,
+              tsFileManager,
+              seqResources,
+              unseqResources,
+              new FastCompactionPerformer(true),
+              new AtomicInteger(0),
+              1000,
+              0);
+      Assert.assertTrue(task.setSourceFilesToCompactionCandidate());
+      boolean success = task.checkValidAndSetMerging();
+      Assert.assertTrue(success);
+      Assert.assertTrue(task.start());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionFileNumCost().get());
+      Assert.assertEquals(0, SystemInfo.getInstance().getCompactionMemoryCost().get());
+    } finally {
+      SystemInfo.getInstance().setTotalFileLimitForCrossTask(oldMaxCrossCompactionCandidateFileNum);
     }
   }
 
