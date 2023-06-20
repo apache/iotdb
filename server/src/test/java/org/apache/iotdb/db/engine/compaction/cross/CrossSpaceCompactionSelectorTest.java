@@ -180,6 +180,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
       throws IOException, MetadataException, WriteProcessException {
     int oldMaxFileNumForCompaction = SystemInfo.getInstance().getTotalFileLimitForCrossTask();
     SystemInfo.getInstance().setTotalFileLimitForCrossTask(1);
+    SystemInfo.getInstance().getCompactionFileNumCost().set(0);
+    SystemInfo.getInstance().getCompactionMemoryCost().set(0);
     try {
       createFiles(19, 2, 3, 50, 0, 10000, 50, 50, false, true);
       createFiles(1, 2, 3, 3000, 0, 10000, 50, 50, false, false);
