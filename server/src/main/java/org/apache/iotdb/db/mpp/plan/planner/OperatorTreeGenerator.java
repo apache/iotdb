@@ -46,7 +46,6 @@ import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
@@ -158,7 +157,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
@@ -212,7 +210,6 @@ import org.apache.iotdb.db.mpp.statistics.StatisticsManager;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
-import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -776,39 +773,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     return new DeviceViewOperator(
         operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
-  }
-
-  @Deprecated
-  @Override
-  public Operator visitDeviceMerge(DeviceMergeNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                DeviceMergeOperator.class.getSimpleName());
-    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
-    TimeSelector selector = null;
-    TimeComparator timeComparator = null;
-    for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
-      if (Objects.equals(sortItem.getSortKey(), OrderByKey.TIME)) {
-        Ordering ordering = sortItem.getOrdering();
-        if (ordering == Ordering.ASC) {
-          selector = new TimeSelector(node.getChildren().size() << 1, true);
-          timeComparator = ASC_TIME_COMPARATOR;
-        } else {
-          selector = new TimeSelector(node.getChildren().size() << 1, false);
-          timeComparator = DESC_TIME_COMPARATOR;
-        }
-        break;
-      }
-    }
-
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new DeviceMergeOperator(
-        operatorContext, node.getDevices(), children, dataTypes, selector, timeComparator);
   }
 
   @Override

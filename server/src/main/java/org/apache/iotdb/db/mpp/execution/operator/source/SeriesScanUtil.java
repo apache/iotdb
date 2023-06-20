@@ -70,6 +70,9 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.BUILD_TSBLO
 
 public class SeriesScanUtil {
 
+  private static final String ONE_SENSOR_ERROR_MSG =
+      "Only one sensor in non-aligned SeriesScanUtil.";
+
   private final QueryContext context;
 
   // The path of the target series which will be scanned.
@@ -214,6 +217,7 @@ public class SeriesScanUtil {
     return firstTimeSeriesMetadata != null;
   }
 
+  @SuppressWarnings("squid:S3740")
   boolean isFileOverlapped() throws IOException {
     if (firstTimeSeriesMetadata == null) {
       throw new IOException("no first file");
@@ -227,16 +231,19 @@ public class SeriesScanUtil {
                 fileStatistics, unSeqTimeSeriesMetadata.peek().getStatistics());
   }
 
+  @SuppressWarnings("squid:S3740")
   Statistics currentFileStatistics() {
     return firstTimeSeriesMetadata.getStatistics();
   }
 
-  protected Statistics currentFileStatistics(int index) throws IOException {
-    checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
+  @SuppressWarnings("squid:S3740")
+  protected Statistics currentFileStatistics(int index) {
+    checkArgument(index == 0, ONE_SENSOR_ERROR_MSG);
     return currentFileStatistics();
   }
 
-  protected Statistics currentFileTimeStatistics() throws IOException {
+  @SuppressWarnings("squid:S3740")
+  protected Statistics currentFileTimeStatistics() {
     return currentFileStatistics();
   }
 
@@ -287,6 +294,7 @@ public class SeriesScanUtil {
     return firstChunkMetadata != null;
   }
 
+  @SuppressWarnings("squid:S3740")
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
       Filter queryFilter = scanOptions.getQueryFilter();
@@ -353,8 +361,7 @@ public class SeriesScanUtil {
     }
   }
 
-  protected void unpackOneTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata)
-      throws IOException {
+  protected void unpackOneTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata) {
     List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
@@ -362,6 +369,7 @@ public class SeriesScanUtil {
     cachedChunkMetadata.addAll(chunkMetadataList);
   }
 
+  @SuppressWarnings("squid:S3740")
   boolean isChunkOverlapped() throws IOException {
     if (firstChunkMetadata == null) {
       throw new IOException("no first chunk");
@@ -372,16 +380,19 @@ public class SeriesScanUtil {
         && orderUtils.isOverlapped(chunkStatistics, cachedChunkMetadata.peek().getStatistics());
   }
 
+  @SuppressWarnings("squid:S3740")
   Statistics currentChunkStatistics() {
     return firstChunkMetadata.getStatistics();
   }
 
-  protected Statistics currentChunkStatistics(int index) throws IOException {
-    checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
+  @SuppressWarnings("squid:S3740")
+  protected Statistics currentChunkStatistics(int index) {
+    checkArgument(index == 0, ONE_SENSOR_ERROR_MSG);
     return currentChunkStatistics();
   }
 
-  protected Statistics currentChunkTimeStatistics() throws IOException {
+  @SuppressWarnings("squid:S3740")
+  protected Statistics currentChunkTimeStatistics() {
     return currentChunkStatistics();
   }
 
@@ -567,6 +578,7 @@ public class SeriesScanUtil {
    * <p>hasNextPage may cache firstPageReader if it is not overlapped or cached a BatchData if the
    * first page is overlapped
    */
+  @SuppressWarnings("squid:S3740")
   boolean isPageOverlapped() throws IOException {
 
     /*
@@ -595,6 +607,7 @@ public class SeriesScanUtil {
         && orderUtils.isOverlapped(firstPageStatistics, unSeqPageReaders.peek().getStatistics());
   }
 
+  @SuppressWarnings("squid:S3740")
   Statistics currentPageStatistics() {
     if (firstPageReader == null) {
       return null;
@@ -602,11 +615,13 @@ public class SeriesScanUtil {
     return firstPageReader.getStatistics();
   }
 
+  @SuppressWarnings("squid:S3740")
   protected Statistics currentPageStatistics(int index) throws IOException {
-    checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
+    checkArgument(index == 0, ONE_SENSOR_ERROR_MSG);
     return currentPageStatistics();
   }
 
+  @SuppressWarnings("squid:S3740")
   protected Statistics currentPageTimeStatistics() throws IOException {
     return currentPageStatistics();
   }
@@ -671,7 +686,6 @@ public class SeriesScanUtil {
         // may has overlapped data
         if (mergeReader.hasNextTimeValuePair()) {
 
-          // TODO we still need to consider data type, ascending and descending here
           TsBlockBuilder builder = new TsBlockBuilder(getTsDataTypeList());
           TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
           long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
@@ -1033,6 +1047,7 @@ public class SeriesScanUtil {
     }
   }
 
+  @SuppressWarnings("squid:S3740")
   protected void filterFirstTimeSeriesMetadata() throws IOException {
     if (firstTimeSeriesMetadata != null
         && !isFileOverlapped()
@@ -1132,10 +1147,12 @@ public class SeriesScanUtil {
       this.isMem = data instanceof MemPageReader || data instanceof MemAlignedPageReader;
     }
 
+    @SuppressWarnings("squid:S3740")
     Statistics getStatistics() {
       return data.getStatistics();
     }
 
+    @SuppressWarnings("squid:S3740")
     Statistics getStatistics(int index) throws IOException {
       if (!(data instanceof IAlignedPageReader)) {
         throw new IOException("Can only get statistics by index from AlignedPageReader");
@@ -1143,6 +1160,7 @@ public class SeriesScanUtil {
       return ((IAlignedPageReader) data).getStatistics(index);
     }
 
+    @SuppressWarnings("squid:S3740")
     Statistics getTimeStatistics() throws IOException {
       if (!(data instanceof IAlignedPageReader)) {
         throw new IOException("Can only get statistics of time column from AlignedPageReader");
@@ -1230,26 +1248,31 @@ public class SeriesScanUtil {
 
   class DescTimeOrderUtils implements TimeOrderUtils {
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public long getOrderTime(Statistics statistics) {
       return statistics.getEndTime();
     }
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public long getOrderTime(TsFileResource fileResource) {
       return fileResource.getEndTime(seriesPath.getDevice());
     }
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public long getOverlapCheckTime(Statistics range) {
       return range.getStartTime();
     }
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public boolean isOverlapped(Statistics left, Statistics right) {
       return left.getStartTime() <= right.getEndTime();
     }
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public boolean isOverlapped(long time, Statistics right) {
       return time <= right.getEndTime();
@@ -1348,26 +1371,31 @@ public class SeriesScanUtil {
 
   class AscTimeOrderUtils implements TimeOrderUtils {
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public long getOrderTime(Statistics statistics) {
       return statistics.getStartTime();
     }
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public long getOrderTime(TsFileResource fileResource) {
       return fileResource.getStartTime(seriesPath.getDevice());
     }
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public long getOverlapCheckTime(Statistics range) {
       return range.getEndTime();
     }
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public boolean isOverlapped(Statistics left, Statistics right) {
       return left.getEndTime() >= right.getStartTime();
     }
 
+    @SuppressWarnings("squid:S3740")
     @Override
     public boolean isOverlapped(long time, Statistics right) {
       return time >= right.getStartTime();

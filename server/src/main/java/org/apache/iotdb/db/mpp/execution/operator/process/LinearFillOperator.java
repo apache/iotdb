@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -33,14 +34,13 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-/** Used for linear fill */
+/** Used for linear fill. */
 public class LinearFillOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final ILinearFill[] fillArray;
   private final Operator child;
   private final int outputColumnCount;
-  // TODO need to spill it to disk if it consumes too much memory
   private final List<TsBlock> cachedTsBlock;
 
   private final List<Long> cachedRowIndex;
@@ -49,8 +49,10 @@ public class LinearFillOperator implements ProcessOperator {
   // next TsBlock Index for each Column
   private final int[] nextTsBlockIndex;
 
-  // indicate whether we can call child.next()
-  // it's used to make sure that child.next() will only be called once in LinearFillOperator.next();
+  /**
+   * indicate whether we can call child.next(). it's used to make sure that child.next() will only
+   * be called once in LinearFillOperator.next().
+   */
   private boolean canCallNext;
   // indicate whether there is more TsBlock for child operator
   private boolean noMoreTsBlock;
@@ -81,6 +83,7 @@ public class LinearFillOperator implements ProcessOperator {
     return child.isBlocked();
   }
 
+  @SuppressWarnings("squid:S3776")
   @Override
   public TsBlock next() throws Exception {
 
@@ -181,7 +184,7 @@ public class LinearFillOperator implements ProcessOperator {
   }
 
   /**
-   * Judge whether we can use current cached TsBlock to fill Column
+   * Judge whether we can use current cached TsBlock to fill Column.
    *
    * @param columnIndex index for column which need to be filled
    * @param currentEndRowIndex row index for endTime of column which need to be filled
@@ -206,7 +209,10 @@ public class LinearFillOperator implements ProcessOperator {
   }
 
   /**
+   * Try to get next TsBlock
+   *
    * @return true if we succeed to get next TsBlock and add it into cachedTsBlock, otherwise false
+   * @throws Exception errors happened while getting next batch data
    */
   private boolean tryToGetNextTsBlock() throws Exception {
     if (canCallNext) { // if we can call child.next(), we call that and cache it in

@@ -61,26 +61,31 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     isAligned = true;
   }
 
+  @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentFileStatistics(int index) throws IOException {
+  protected Statistics currentFileStatistics(int index) {
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
   }
 
+  @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentFileTimeStatistics() throws IOException {
+  protected Statistics currentFileTimeStatistics() {
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
   }
 
+  @SuppressWarnings("squid:S3740")
   @Override
-  protected Statistics currentChunkStatistics(int index) throws IOException {
+  protected Statistics currentChunkStatistics(int index) {
     return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
   }
 
+  @SuppressWarnings("squid:S3740")
   @Override
   protected Statistics currentChunkTimeStatistics() {
     return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
   }
 
+  @SuppressWarnings("squid:S3740")
   @Override
   protected Statistics currentPageStatistics(int index) throws IOException {
     if (firstPageReader == null) {
@@ -89,6 +94,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     return firstPageReader.getStatistics(index);
   }
 
+  @SuppressWarnings("squid:S3740")
   @Override
   protected Statistics currentPageTimeStatistics() throws IOException {
     if (firstPageReader == null) {

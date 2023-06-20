@@ -44,10 +44,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,8 +52,6 @@ import java.util.List;
 import java.util.Map;
 
 public class TransformOperator implements ProcessOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(TransformOperator.class);
 
   protected final float udfReaderMemoryBudgetInMB =
       IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
@@ -79,6 +74,7 @@ public class TransformOperator implements ProcessOperator {
 
   private final String udtfQueryId;
 
+  @SuppressWarnings("squid:S107")
   public TransformOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
@@ -89,7 +85,7 @@ public class TransformOperator implements ProcessOperator {
       ZoneId zoneId,
       Map<NodeRef<Expression>, TSDataType> expressionTypes,
       boolean isAscending)
-      throws QueryProcessException, IOException {
+      throws QueryProcessException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.keepNull = keepNull;
@@ -158,6 +154,7 @@ public class TransformOperator implements ProcessOperator {
     return YieldableState.YIELDABLE;
   }
 
+  @SuppressWarnings("squid:S135")
   protected YieldableState iterateReaderToNextValid(LayerPointReader reader) throws Exception {
     // Since a constant operand is not allowed to be a result column, the reader will not be
     // a ConstantLayerPointReader.
@@ -174,6 +171,7 @@ public class TransformOperator implements ProcessOperator {
     return yieldableState;
   }
 
+  @SuppressWarnings("squid:S112")
   @Override
   public final boolean hasNext() throws Exception {
     if (!timeHeap.isEmpty()) {
@@ -184,12 +182,12 @@ public class TransformOperator implements ProcessOperator {
         return true;
       }
     } catch (Exception e) {
-      LOGGER.error("TransformOperator#hasNext()", e);
       throw new RuntimeException(e);
     }
     return !timeHeap.isEmpty();
   }
 
+  @SuppressWarnings("squid:S112")
   @Override
   public TsBlock next() throws Exception {
 
@@ -200,13 +198,7 @@ public class TransformOperator implements ProcessOperator {
       }
 
       final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
-      if (outputDataTypes == null) {
-        outputDataTypes = new ArrayList<>();
-        for (LayerPointReader reader : transformers) {
-          outputDataTypes.add(reader.getDataType());
-        }
-      }
-      tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
+      prepareTsBlockBuilder(tsBlockBuilder);
       final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
       final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
       final int columnCount = columnBuilders.length;
@@ -232,11 +224,7 @@ public class TransformOperator implements ProcessOperator {
           }
         }
 
-        for (int i = 0; i < columnCount; ++i) {
-          if (shouldIterateReadersToNextValid[i]) {
-            transformers[i].readyForNext();
-          }
-        }
+        prepareEachColumn(columnCount);
 
         ++rowCount;
 
@@ -252,8 +240,25 @@ public class TransformOperator implements ProcessOperator {
       tsBlockBuilder.declarePositions(rowCount);
       return tsBlockBuilder.build();
     } catch (Exception e) {
-      LOGGER.error("TransformOperator#next()", e);
       throw new RuntimeException(e);
+    }
+  }
+
+  protected void prepareTsBlockBuilder(TsBlockBuilder tsBlockBuilder) {
+    if (outputDataTypes == null) {
+      outputDataTypes = new ArrayList<>();
+      for (LayerPointReader reader : transformers) {
+        outputDataTypes.add(reader.getDataType());
+      }
+    }
+    tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
+  }
+
+  private void prepareEachColumn(int columnCount) {
+    for (int i = 0; i < columnCount; ++i) {
+      if (shouldIterateReadersToNextValid[i]) {
+        transformers[i].readyForNext();
+      }
     }
   }
 

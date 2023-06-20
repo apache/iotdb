@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -135,7 +136,9 @@ public class SortOperator implements ProcessOperator {
   }
 
   private void prepareSortReaders() throws IoTDBException {
-    if (sortReaders != null) return;
+    if (sortReaders != null) {
+      return;
+    }
 
     sortReaders = new ArrayList<>();
     if (cachedBytes != 0) {
@@ -208,21 +211,8 @@ public class SortOperator implements ProcessOperator {
 
   private TsBlock mergeSort() throws IoTDBException {
 
-    if (mergeSortHeap == null) {
-      mergeSortHeap = new MergeSortHeap(sortReaders.size(), comparator);
-      // 1. fill the input from each reader
-      for (int i = 0; i < sortReaders.size(); i++) {
-        SortReader sortReader = sortReaders.get(i);
-        if (sortReader.hasNext()) {
-          MergeSortKey mergeSortKey = sortReader.next();
-          mergeSortKey.inputChannelIndex = i;
-          mergeSortHeap.push(mergeSortKey);
-        } else {
-          noMoreData[i] = true;
-          sortBufferManager.releaseOneSortBranch();
-        }
-      }
-    }
+    // 1. fill the input from each reader
+    initMergeSortHeap();
 
     long startTime = System.nanoTime();
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
@@ -262,6 +252,23 @@ public class SortOperator implements ProcessOperator {
     return tsBlockBuilder.build();
   }
 
+  private void initMergeSortHeap() throws IoTDBException {
+    if (mergeSortHeap == null) {
+      mergeSortHeap = new MergeSortHeap(sortReaders.size(), comparator);
+      for (int i = 0; i < sortReaders.size(); i++) {
+        SortReader sortReader = sortReaders.get(i);
+        if (sortReader.hasNext()) {
+          MergeSortKey mergeSortKey = sortReader.next();
+          mergeSortKey.inputChannelIndex = i;
+          mergeSortHeap.push(mergeSortKey);
+        } else {
+          noMoreData[i] = true;
+          sortBufferManager.releaseOneSortBranch();
+        }
+      }
+    }
+  }
+
   private MergeSortKey readNextMergeSortKey(int readerIndex) throws IoTDBException {
     SortReader sortReader = sortReaders.get(readerIndex);
     if (sortReader.hasNext()) {
@@ -273,7 +280,9 @@ public class SortOperator implements ProcessOperator {
   }
 
   private boolean hasMoreData() {
-    if (noMoreData == null) return true;
+    if (noMoreData == null) {
+      return true;
+    }
     for (boolean noMore : noMoreData) {
       if (!noMore) {
         return true;
@@ -283,7 +292,9 @@ public class SortOperator implements ProcessOperator {
   }
 
   public void clear() {
-    if (!diskSpiller.hasSpilledData()) return;
+    if (!diskSpiller.hasSpilledData()) {
+      return;
+    }
     try {
       if (sortReaders != null) {
         for (SortReader sortReader : sortReaders) {
