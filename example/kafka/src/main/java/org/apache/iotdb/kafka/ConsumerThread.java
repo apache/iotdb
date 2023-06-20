@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /** The class is Thread class of Consumer. ConsumerThread. */
+@SuppressWarnings({"squid:S1144"})
 public class ConsumerThread implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(ConsumerThread.class);
@@ -152,7 +153,6 @@ public class ConsumerThread implements Runnable {
         List<String> datas = new ArrayList<>(records.count());
         for (ConsumerRecord<String, String> consumerRecord : records) {
           datas.add(consumerRecord.value());
-          insert(consumerRecord.value());
         }
         insertDatas(datas);
       } while (true);

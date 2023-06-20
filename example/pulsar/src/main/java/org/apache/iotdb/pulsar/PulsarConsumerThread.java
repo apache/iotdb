@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@SuppressWarnings({"squid:S1144"})
 public class PulsarConsumerThread implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(PulsarConsumerThread.class);
@@ -148,7 +149,6 @@ public class PulsarConsumerThread implements Runnable {
         List<String> datas = new ArrayList<>(messages.size());
         for (Message<?> message : messages) {
           datas.add(new String(message.getData()));
-          insert(new String(message.getData()));
         }
         insertDatas(datas);
         consumer.acknowledge(messages);

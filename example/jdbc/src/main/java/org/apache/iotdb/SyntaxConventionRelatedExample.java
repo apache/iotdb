@@ -59,6 +59,9 @@ public class SyntaxConventionRelatedExample {
    */
   private static final String ROOT_SG1_NORMAL_NODE_EXAMPLE = "root.sg1.a";
 
+  public static final String CREATE =
+      "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY";
+
   private static final String DEVICE = "root.sg1";
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
@@ -74,11 +77,10 @@ public class SyntaxConventionRelatedExample {
       // create time series
 
       statement.execute(String.format("CREATE DATABASE %s", DEVICE));
-      String create = "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY";
-      statement.execute(String.format(create, ROOT_SG1_DIGITS_EXAMPLE));
-      statement.execute(String.format(create, ROOT_SG1_KEYWORD_EXAMPLE));
-      statement.execute(String.format(create, ROOT_SG1_NORMAL_NODE_EXAMPLE));
-      statement.execute(String.format(create, ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE));
+      statement.execute(String.format(CREATE, ROOT_SG1_DIGITS_EXAMPLE));
+      statement.execute(String.format(CREATE, ROOT_SG1_KEYWORD_EXAMPLE));
+      statement.execute(String.format(CREATE, ROOT_SG1_NORMAL_NODE_EXAMPLE));
+      statement.execute(String.format(CREATE, ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE));
 
       // show timeseries
       ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.*");
