@@ -45,8 +45,8 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
 
   protected static class AndExpression extends BinaryExpression {
 
-    public final IExpression left;
-    public final IExpression right;
+    public IExpression left;
+    public IExpression right;
 
     public AndExpression(IExpression left, IExpression right) {
       this.left = left;
@@ -117,8 +117,8 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
 
   protected static class OrExpression extends BinaryExpression {
 
-    public final IExpression left;
-    public final IExpression right;
+    public IExpression left;
+    public IExpression right;
 
     public OrExpression(IExpression left, IExpression right) {
       this.left = left;
