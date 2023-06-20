@@ -52,6 +52,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
    * @param schema VectorMeasurementSchema
    * @param tvList VectorTvList
    * @param deletionList The timeRange of deletionList
+   * @throws QueryProcessException if there is unsupported data type.
    */
   public AlignedReadOnlyMemChunk(
       IMeasurementSchema schema, TVList tvList, List<List<TimeRange>> deletionList)
