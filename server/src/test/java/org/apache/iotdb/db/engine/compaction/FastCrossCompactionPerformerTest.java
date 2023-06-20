@@ -4034,6 +4034,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     int oldMaxCrossCompactionCandidateFileNum =
         SystemInfo.getInstance().getTotalFileLimitForCrossTask();
     SystemInfo.getInstance().setTotalFileLimitForCrossTask(15);
+    SystemInfo.getInstance().getCompactionFileNumCost().set(0);
+    SystemInfo.getInstance().getCompactionMemoryCost().set(0);
     try {
       createFiles(6, 2, 3, 300, 0, 0, 50, 50, false, true);
       createFiles(6, 2, 3, 300, 0, 0, 50, 50, false, false);
