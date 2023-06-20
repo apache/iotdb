@@ -118,7 +118,7 @@ public class FunctionExpression extends Expression {
     return functionType == FunctionType.AGGREGATION_FUNCTION;
   }
 
-  public Boolean isBuiltInScalarFunction() {
+  public boolean isBuiltInScalarFunction() {
     if (functionType == null) {
       initializeFunctionType();
     }

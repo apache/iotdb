@@ -124,6 +124,10 @@ public class StatementGenerator {
   private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
       DataNodeDevicePathCache.getInstance();
 
+  private StatementGenerator() {
+    // forbidding instantiation
+  }
+
   public static Statement createStatement(String sql, ZoneId zoneId) {
     return invokeParser(sql, zoneId);
   }
@@ -285,7 +289,7 @@ public class StatementGenerator {
   }
 
   public static InsertRowStatement createStatement(TSInsertStringRecordReq insertRecordReq)
-      throws IllegalPathException, QueryProcessException {
+      throws IllegalPathException {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowStatement insertStatement = new InsertRowStatement();
@@ -395,7 +399,7 @@ public class StatementGenerator {
   }
 
   public static InsertRowsStatement createStatement(TSInsertStringRecordsReq req)
-      throws IllegalPathException, QueryProcessException {
+      throws IllegalPathException {
     final long startTime = System.nanoTime();
     // construct insert statement
     InsertRowsStatement insertStatement = new InsertRowsStatement();
@@ -507,16 +511,16 @@ public class StatementGenerator {
     CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
     statement.setDevicePath(new PartialPath(req.prefixPath));
     List<TSDataType> dataTypes = new ArrayList<>();
-    for (int dataType : req.dataTypes) {
-      dataTypes.add(TSDataType.deserialize((byte) dataType));
+    for (Integer dataType : req.dataTypes) {
+      dataTypes.add(TSDataType.deserialize(dataType.byteValue()));
     }
     List<TSEncoding> encodings = new ArrayList<>();
-    for (int encoding : req.encodings) {
-      encodings.add(TSEncoding.deserialize((byte) encoding));
+    for (Integer encoding : req.encodings) {
+      encodings.add(TSEncoding.deserialize(encoding.byteValue()));
     }
     List<CompressionType> compressors = new ArrayList<>();
-    for (int compressor : req.compressors) {
-      compressors.add(CompressionType.deserialize((byte) compressor));
+    for (Integer compressor : req.compressors) {
+      compressors.add(CompressionType.deserialize(compressor.byteValue()));
     }
     statement.setMeasurements(req.measurements);
     statement.setDataTypes(dataTypes);
@@ -538,16 +542,16 @@ public class StatementGenerator {
       paths.add(new PartialPath(path));
     }
     List<TSDataType> dataTypes = new ArrayList<>();
-    for (int dataType : req.dataTypes) {
-      dataTypes.add(TSDataType.deserialize((byte) dataType));
+    for (Integer dataType : req.dataTypes) {
+      dataTypes.add(TSDataType.deserialize(dataType.byteValue()));
     }
     List<TSEncoding> encodings = new ArrayList<>();
-    for (int encoding : req.encodings) {
-      encodings.add(TSEncoding.deserialize((byte) encoding));
+    for (Integer encoding : req.encodings) {
+      encodings.add(TSEncoding.deserialize(encoding.byteValue()));
     }
     List<CompressionType> compressors = new ArrayList<>();
-    for (int compressor : req.compressors) {
-      compressors.add(CompressionType.deserialize((byte) compressor));
+    for (Integer compressor : req.compressors) {
+      compressors.add(CompressionType.deserialize(compressor.byteValue()));
     }
     CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
     statement.setPaths(paths);
@@ -603,7 +607,7 @@ public class StatementGenerator {
     List<List<TSEncoding>> encodings = new ArrayList<>();
     List<List<CompressionType>> compressors = new ArrayList<>();
 
-    String templateName = ReadWriteIOUtils.readString(buffer);
+    ReadWriteIOUtils.readString(buffer); // skip template name
     boolean isAlign = ReadWriteIOUtils.readBool(buffer);
     if (isAlign) {
       alignedPrefix.put("", new ArrayList<>());
@@ -650,18 +654,20 @@ public class StatementGenerator {
       }
     }
 
-    for (String prefix : alignedPrefix.keySet()) {
+    for (Map.Entry<String, List<String>> alignedPrefixEntry : alignedPrefix.entrySet()) {
+      String prefix = alignedPrefixEntry.getKey();
+      List<String> alignedMeasurements = alignedPrefixEntry.getValue();
+
       List<String> thisMeasurements = new ArrayList<>();
       List<TSDataType> thisDataTypes = new ArrayList<>();
       List<TSEncoding> thisEncodings = new ArrayList<>();
       List<CompressionType> thisCompressors = new ArrayList<>();
 
-      for (int i = 0; i < alignedPrefix.get(prefix).size(); i++) {
+      for (int i = 0; i < alignedMeasurements.size(); i++) {
         if ("".equals(prefix)) {
-          thisMeasurements.add(alignedPrefix.get(prefix).get(i));
+          thisMeasurements.add(alignedMeasurements.get(i));
         } else {
-          thisMeasurements.add(
-              prefix + TsFileConstant.PATH_SEPARATOR + alignedPrefix.get(prefix).get(i));
+          thisMeasurements.add(prefix + TsFileConstant.PATH_SEPARATOR + alignedMeasurements.get(i));
         }
         thisDataTypes.add(alignedDataTypes.get(prefix).get(i));
         thisEncodings.add(alignedEncodings.get(prefix).get(i));
@@ -673,6 +679,7 @@ public class StatementGenerator {
       encodings.add(thisEncodings);
       compressors.add(thisCompressors);
     }
+
     CreateSchemaTemplateStatement statement =
         new CreateSchemaTemplateStatement(
             req.getName(), measurements, dataTypes, encodings, compressors, isAlign);
@@ -778,8 +785,8 @@ public class StatementGenerator {
       try {
         // STAGE 1: try with simpler/faster SLL(*)
         tree = parser1.singleStatement();
-        // if we get here, there was no syntax error and SLL(*) was enough;
-        // there is no need to try full LL(*)
+        // if we get here, there was no syntax error and SLL(*) was enough; there is no need to try
+        // full LL(*)
       } catch (Exception ex) {
         CharStream charStream2 = CharStreams.fromString(sql);
 
@@ -889,11 +896,14 @@ public class StatementGenerator {
                 new TimestampOperand(), new ConstantOperand(TSDataType.INT64, times[1]));
         predictNum += 2;
       }
-      whereCondition.setPredicate(
-          predictNum == 3
-              ? new LogicAndExpression(leftPredicate, rightPredicate)
-              : (predictNum == 1 ? leftPredicate : rightPredicate));
 
+      if (predictNum == 3) {
+        whereCondition.setPredicate(new LogicAndExpression(leftPredicate, rightPredicate));
+      } else if (predictNum == 1) {
+        whereCondition.setPredicate(leftPredicate);
+      } else {
+        whereCondition.setPredicate(rightPredicate);
+      }
       queryStatement.setWhereCondition(whereCondition);
     }
     return queryStatement;
