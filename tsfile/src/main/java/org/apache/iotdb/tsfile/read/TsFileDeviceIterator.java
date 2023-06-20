@@ -57,7 +57,7 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
   public boolean hasNext() {
     if (!queue.isEmpty()) {
       return true;
-    } else if (leafDeviceNodeOffsetList.size() == 0) {
+    } else if (leafDeviceNodeOffsetList.isEmpty()) {
       // device queue is empty and all device leaf node has been read
       return false;
     } else {

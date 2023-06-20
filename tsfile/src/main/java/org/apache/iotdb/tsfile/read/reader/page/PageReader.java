@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.reader.page;
 
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -350,7 +351,9 @@ public class PageReader implements IPageReader {
   }
 
   @Override
-  public void initTsBlockBuilder(List<TSDataType> dataTypes) {}
+  public void initTsBlockBuilder(List<TSDataType> dataTypes) {
+    // do nothing
+  }
 
   protected boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.expression.impl;
 
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -44,8 +45,8 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
 
   protected static class AndExpression extends BinaryExpression {
 
-    public IExpression left;
-    public IExpression right;
+    public final IExpression left;
+    public final IExpression right;
 
     public AndExpression(IExpression left, IExpression right) {
       this.left = left;
@@ -116,8 +117,8 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
 
   protected static class OrExpression extends BinaryExpression {
 
-    public IExpression left;
-    public IExpression right;
+    public final IExpression left;
+    public final IExpression right;
 
     public OrExpression(IExpression left, IExpression right) {
       this.left = left;

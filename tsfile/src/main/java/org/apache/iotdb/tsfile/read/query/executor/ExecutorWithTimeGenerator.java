@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.query.executor;
 
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -77,7 +78,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       Path selectedPath = selectedPathIterator.next();
 
       List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(selectedPath);
-      if (chunkMetadataList.size() != 0) {
+      if (!chunkMetadataList.isEmpty()) {
         dataTypes.add(chunkMetadataList.get(0).getDataType());
         if (cachedValue) {
           readersOfSelectedSeries.add(null);
@@ -100,7 +101,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       IExpression expression, List<Path> selectedPaths, boolean hasOrNode) {
     List<Boolean> cached = new ArrayList<>();
     if (hasOrNode) {
-      for (Path ignored : selectedPaths) {
+      for (int i = 0; i < selectedPaths.size(); i++) {
         cached.add(false);
       }
       return cached;

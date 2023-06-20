@@ -22,6 +22,11 @@ package org.apache.iotdb.tsfile.read.common.type;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TypeFactory {
+
+  private TypeFactory() {
+    // forbidding instantiation
+  }
+
   public static Type getType(TSDataType tsDataType) {
     switch (tsDataType) {
       case INT32:

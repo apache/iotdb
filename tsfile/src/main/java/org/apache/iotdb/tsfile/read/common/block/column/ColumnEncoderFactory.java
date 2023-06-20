@@ -24,6 +24,10 @@ import java.util.Map;
 
 public class ColumnEncoderFactory {
 
+  private ColumnEncoderFactory() {
+    // util class
+  }
+
   private static final Map<ColumnEncoding, ColumnEncoder> encodingToEncoder = new HashMap<>();
 
   static {

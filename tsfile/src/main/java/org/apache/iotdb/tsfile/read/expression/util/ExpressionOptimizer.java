@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.expression.util;
 
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -179,7 +180,7 @@ public class ExpressionOptimizer {
   private IExpression pushGlobalTimeFilterToAllSeries(
       GlobalTimeExpression timeFilter, List<Path> selectedSeries)
       throws QueryFilterOptimizationException {
-    if (selectedSeries.size() == 0) {
+    if (selectedSeries.isEmpty()) {
       throw new QueryFilterOptimizationException("size of selectSeries could not be 0");
     }
     IExpression expression =

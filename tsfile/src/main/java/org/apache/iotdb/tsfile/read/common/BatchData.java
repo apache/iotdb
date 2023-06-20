@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -60,7 +61,7 @@ public class BatchData {
 
   protected TSDataType dataType;
 
-  protected BatchDataType batchDataType = BatchDataType.Ordinary;
+  protected BatchDataType batchDataType = BatchDataType.ORDINARY;
 
   // outer list index for read
   protected int readCurListIndex;
@@ -731,11 +732,15 @@ public class BatchData {
                 case INT32:
                   outputStream.writeInt(value.getInt());
                   break;
+                default:
+                  throw new IllegalArgumentException("Unknown data type for BatchData:" + dataType);
               }
             }
           }
         }
         break;
+      default:
+        throw new IllegalArgumentException("Unknown data type for BatchData:" + dataType);
     }
   }
 
@@ -770,9 +775,9 @@ public class BatchData {
   }
 
   public enum BatchDataType {
-    Ordinary,
-    DescRead,
-    DescReadWrite;
+    ORDINARY,
+    DESC_READ,
+    DESC_READ_WRITE;
 
     BatchDataType() {}
 
@@ -851,7 +856,9 @@ public class BatchData {
     }
 
     @Override
-    public void close() {}
+    public void close() {
+      // do nothing
+    }
   }
 
   private class VectorBatchDataIterator extends BatchDataIterator {
@@ -873,7 +880,7 @@ public class BatchData {
     @Override
     public boolean hasNext(long minBound, long maxBound) {
       while (BatchData.this.hasCurrent() && currentValue() == null) {
-        if (currentTime() < minBound || currentTime() >= maxBound) {
+        if (super.currentTime() < minBound || super.currentTime() >= maxBound) {
           break;
         }
         super.next();
@@ -896,7 +903,7 @@ public class BatchData {
       int readCurListIndexSave = BatchData.this.readCurListIndex;
       while (hasNext()) {
         cnt++;
-        next();
+        super.next();
       }
       BatchData.this.readCurArrayIndex = readCurArrayIndexSave;
       BatchData.this.readCurListIndex = readCurListIndexSave;

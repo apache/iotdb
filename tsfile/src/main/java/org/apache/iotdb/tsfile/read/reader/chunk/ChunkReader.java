@@ -271,7 +271,9 @@ public class ChunkReader implements IChunkReader {
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    // do nothing
+  }
 
   public ChunkHeader getChunkHeader() {
     return chunkHeader;

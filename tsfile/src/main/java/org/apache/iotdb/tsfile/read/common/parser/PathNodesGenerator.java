@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common.parser;
 
 import org.apache.iotdb.db.qp.sql.PathParser;
@@ -31,7 +32,12 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 /** convert String path to String[] nodes * */
 public class PathNodesGenerator {
-  private static PathVisitor pathVisitor = new PathVisitor();
+
+  private PathNodesGenerator() {
+    // forbidding instantiation
+  }
+
+  private static final PathVisitor pathVisitor = new PathVisitor();
 
   public static String[] splitPathToNodes(String path) throws PathParseException {
     try {
@@ -69,8 +75,8 @@ public class PathNodesGenerator {
     try {
       // STAGE 1: try with simpler/faster SLL(*)
       tree = pathParser1.path();
-      // if we get here, there was no syntax error and SLL(*) was enough;
-      // there is no need to try full LL(*)
+      // if we get here, there was no syntax error and SLL(*) was enough; there is no need to try
+      // full LL(*)
     } catch (Exception ex) {
       CharStream charStream2 = CharStreams.fromString(path);
 

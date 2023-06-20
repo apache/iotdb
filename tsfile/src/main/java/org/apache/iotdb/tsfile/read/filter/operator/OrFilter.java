@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -89,10 +90,10 @@ public class OrFilter extends BinaryFilter implements Serializable {
     List<TimeRange> leftTimeRanges = left.getTimeRanges();
     List<TimeRange> rightTimeRanges = right.getTimeRanges();
 
-    int leftIndex = 0,
-        rightIndex = 0,
-        leftSize = leftTimeRanges.size(),
-        rightSize = rightTimeRanges.size();
+    int leftIndex = 0;
+    int rightIndex = 0;
+    int leftSize = leftTimeRanges.size();
+    int rightSize = rightTimeRanges.size();
     TimeRange range;
     if (leftTimeRanges.isEmpty() && rightTimeRanges.isEmpty()) {
       return Collections.emptyList();

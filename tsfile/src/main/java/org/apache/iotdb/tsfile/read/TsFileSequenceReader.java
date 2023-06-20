@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -80,6 +81,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
@@ -681,7 +683,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private void getDevicesOfLeafNode(
       MetadataIndexNode deviceLeafNode, Queue<Pair<String, long[]>> measurementNodeOffsetQueue) {
     if (!deviceLeafNode.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-      throw new RuntimeException("the first param should be device leaf node.");
+      throw new IllegalStateException("the first param should be device leaf node.");
     }
     List<MetadataIndexEntry> childrenEntries = deviceLeafNode.getChildren();
     for (int i = 0; i < childrenEntries.size(); i++) {
@@ -704,7 +706,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private void getAllDeviceLeafNodeOffset(
       MetadataIndexNode deviceInternalNode, List<long[]> leafDeviceNodeOffsets) throws IOException {
     if (!deviceInternalNode.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE)) {
-      throw new RuntimeException("the first param should be device internal node.");
+      throw new IllegalStateException("the first param should be device internal node.");
     }
     try {
       int metadataIndexListSize = deviceInternalNode.getChildren().size();
@@ -2251,7 +2253,19 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TsFileSequenceReader reader = (TsFileSequenceReader) o;
+    return file.equals(reader.file);
+  }
+
+  @Override
   public int hashCode() {
-    return file.hashCode();
+    return Objects.hash(file);
   }
 }
