@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -153,7 +152,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   }
 
   @Override
-  public boolean isEmpty() throws IOException {
+  public boolean isEmpty() {
     return tsBlock.isEmpty();
   }
 
