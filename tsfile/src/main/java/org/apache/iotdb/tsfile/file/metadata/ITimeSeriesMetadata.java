@@ -40,8 +40,8 @@ public interface ITimeSeriesMetadata {
   /**
    * Return the result has already been filtered by modification files.
    *
-   * @return List<IChunkMetadata> list of ChunkMetadata
-   * @throws IOException exception when reading files
+   * @return list of ChunkMetadata.
+   * @throws IOException - If an I/O error occurs.
    */
   List<IChunkMetadata> loadChunkMetadataList() throws IOException;
 

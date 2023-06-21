@@ -128,7 +128,7 @@ public enum TSDataType {
   }
 
   /**
-   * get type byte
+   * get type byte.
    *
    * @return byte number
    */
@@ -137,7 +137,7 @@ public enum TSDataType {
   }
 
   /**
-   * numeric datatype judgement
+   * numeric datatype judgement.
    *
    * @return whether it is a numeric datatype
    * @throws UnSupportedDataTypeException when meets unSupported DataType
@@ -160,7 +160,7 @@ public enum TSDataType {
   }
 
   /**
-   * comparable datatype judgement
+   * comparable datatype judgement.
    *
    * @return whether it is a comparable datatype
    * @throws UnSupportedDataTypeException when meets unSupported DataType

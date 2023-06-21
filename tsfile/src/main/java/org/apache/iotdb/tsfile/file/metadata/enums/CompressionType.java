@@ -78,7 +78,7 @@ public enum CompressionType {
   }
 
   /**
-   * get serialized size
+   * get serialized size.
    *
    * @return byte of index
    */

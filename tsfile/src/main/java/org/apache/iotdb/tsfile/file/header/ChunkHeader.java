@@ -209,8 +209,8 @@ public class ChunkHeader {
    * decode data size, {@link CompressionType} and {@link TSEncoding}.
    *
    * @param inputStream input stream
-   * @return Pair<CompressionType, TSEncoding> compression type and encoding
-   * @throws IOException exception when reading stream
+   * @return - Compression type and encoding.
+   * @throws IOException - If an I/O error occurs.
    */
   public static Pair<CompressionType, TSEncoding> deserializeCompressionTypeAndEncoding(
       InputStream inputStream) throws IOException {
