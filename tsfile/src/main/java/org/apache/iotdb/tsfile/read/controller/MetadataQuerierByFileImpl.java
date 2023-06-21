@@ -194,11 +194,11 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         for (IChunkMetadata chunkMetadata : seriesMetadata.getValue()) {
           LocateStatus location =
               checkLocateStatus(chunkMetadata, spacePartitionStartPos, spacePartitionEndPos);
-          if (location == LocateStatus.after) {
+          if (location == LocateStatus.AFTER) {
             break;
           }
 
-          if (location == LocateStatus.in) {
+          if (location == LocateStatus.IN) {
             timeRangesInCandidates.add(
                 new TimeRange(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
           } else {
@@ -242,11 +242,11 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       IChunkMetadata chunkMetaData, long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader();
     if (spacePartitionStartPos <= startOffsetOfChunk && startOffsetOfChunk < spacePartitionEndPos) {
-      return LocateStatus.in;
+      return LocateStatus.IN;
     } else if (startOffsetOfChunk < spacePartitionStartPos) {
-      return LocateStatus.before;
+      return LocateStatus.BEFORE;
     } else {
-      return LocateStatus.after;
+      return LocateStatus.AFTER;
     }
   }
 
