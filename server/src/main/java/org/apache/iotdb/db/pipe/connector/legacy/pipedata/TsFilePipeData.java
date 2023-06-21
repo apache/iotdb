@@ -19,7 +19,6 @@
  */
 package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader;
 import org.apache.iotdb.db.pipe.connector.legacy.loader.TsFileLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -99,7 +98,7 @@ public class TsFilePipeData extends PipeData {
   }
 
   @Override
-  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+  public void deserialize(DataInputStream stream) throws IOException {
     super.deserialize(stream);
     parentDirPath = ReadWriteIOUtils.readString(stream);
     if (parentDirPath == null) {

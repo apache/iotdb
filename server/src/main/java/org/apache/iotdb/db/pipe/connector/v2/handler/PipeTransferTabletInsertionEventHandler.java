@@ -42,7 +42,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
     implements AsyncMethodCallback<E> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeTransferInsertNodeTabletInsertionEventHandler.class);
+      LoggerFactory.getLogger(PipeTransferTabletInsertionEventHandler.class);
 
   private final long requestCommitId;
   private final EnrichedEvent event;
@@ -54,7 +54,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       (long) (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs() * Math.pow(2, 5));
   private int retryCount = 0;
 
-  public PipeTransferTabletInsertionEventHandler(
+  protected PipeTransferTabletInsertionEventHandler(
       long requestCommitId,
       @Nullable EnrichedEvent event,
       TPipeTransferReq req,
