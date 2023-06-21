@@ -55,6 +55,8 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
   /**
    * The main idea of this part comes from
    * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
+   *
+   * @throws PatternSyntaxException if the regex expression's syntax is invalid
    */
   public Like(String value, FilterType filterType, boolean not) {
     this.value = value;

@@ -233,9 +233,13 @@ public class CreateLogicalViewStatement extends Statement {
    */
   public Pair<Boolean, String> checkAllPaths() {
     Pair<Boolean, String> result = this.checkTargetPaths();
-    if (Boolean.FALSE.equals(result.left)) return result;
+    if (Boolean.FALSE.equals(result.left)) {
+      return result;
+    }
     result = this.checkSourcePathsIfNotUsingQueryStatement();
-    if (Boolean.FALSE.equals(result.left)) return result;
+    if (Boolean.FALSE.equals(result.left)) {
+      return result;
+    }
     return new Pair<>(true, null);
   }
 
