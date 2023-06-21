@@ -27,11 +27,12 @@ import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeWALResource implements AutoCloseable {
+public class PipeWALResource implements Closeable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALResource.class);
 
@@ -39,8 +40,7 @@ public class PipeWALResource implements AutoCloseable {
 
   private final AtomicInteger referenceCount;
 
-  // TODO: make this configurable
-  public static final long MIN_TIME_TO_LIVE_IN_MS = 1000 * 60;
+  public static final long MIN_TIME_TO_LIVE_IN_MS = 1000L * 60;
   private final AtomicLong lastLogicalPinTime;
   private final AtomicBoolean isPhysicallyPinned;
 
@@ -154,9 +154,5 @@ public class PipeWALResource implements AutoCloseable {
     }
 
     referenceCount.set(0);
-  }
-
-  public int getReferenceCount() {
-    return referenceCount.get();
   }
 }

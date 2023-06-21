@@ -40,7 +40,7 @@ public abstract class EnrichedEvent implements Event {
 
   private final String pattern;
 
-  public EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
+  protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;

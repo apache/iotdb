@@ -75,16 +75,16 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
   }
 
   public Tablet convertToTablet() {
-    final String pattern = getPattern();
+    final String notNullPattern = getPattern();
 
-    // if pattern is "root", we don't need to convert, just return the original tablet
-    if (pattern.equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+    // if notNullPattern is "root", we don't need to convert, just return the original tablet
+    if (notNullPattern.equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
       return tablet;
     }
 
-    // if pattern is not "root", we need to convert the tablet
+    // if notNullPattern is not "root", we need to convert the tablet
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, pattern);
+      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, notNullPattern);
     }
     return dataContainer.convertToTablet();
   }
