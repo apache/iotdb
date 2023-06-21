@@ -88,6 +88,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -100,6 +101,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -906,7 +908,14 @@ public class ProcedureManager {
       } else {
         if (finishedProcedure.getException().getCause() instanceof IoTDBException) {
           IoTDBException e = (IoTDBException) finishedProcedure.getException().getCause();
-          statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+          if (e instanceof BatchProcessException) {
+            statusList.add(
+                RpcUtils.getStatus(
+                    Arrays.stream(((BatchProcessException) e).getFailingStatus())
+                        .collect(Collectors.toList())));
+          } else {
+            statusList.add(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+          }
         } else {
           statusList.add(
               StatusUtils.EXECUTE_STATEMENT_ERROR.setMessage(
