@@ -342,6 +342,7 @@ public class CompactionUtils {
     return true;
   }
 
+  @SuppressWarnings("java:S6541") // do not warn about brain method
   public static boolean validateSingleTsFiles(TsFileResource resource) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
       reader.readHeadMagic();

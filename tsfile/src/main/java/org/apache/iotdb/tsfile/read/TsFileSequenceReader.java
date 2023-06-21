@@ -2251,7 +2251,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * Read MetadataIndexNode by start and end offset
+   * Read MetadataIndexNode by start and end offset.
    *
    * @param start the start offset of the MetadataIndexNode
    * @param end the end offset of the MetadataIndexNode

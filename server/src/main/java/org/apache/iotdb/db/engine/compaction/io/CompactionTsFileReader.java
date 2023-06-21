@@ -25,6 +25,7 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -33,7 +34,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -139,5 +142,37 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     CompactionMetrics.getInstance()
         .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
     return metadataIndexNode;
+  }
+
+  @Override
+  public Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>>
+      getTimeseriesMetadataOffsetByDevice(
+          MetadataIndexNode measurementNode,
+          Set<String> excludedMeasurementIds,
+          boolean needChunkMetadata)
+          throws IOException {
+    long before = readDataSize.get();
+    Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> result =
+        super.getTimeseriesMetadataOffsetByDevice(
+            measurementNode, excludedMeasurementIds, needChunkMetadata);
+    long dataSize = readDataSize.get() - before;
+    CompactionMetrics.getInstance()
+        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
+    return result;
+  }
+
+  @Override
+  public void getDeviceTimeseriesMetadata(
+      List<TimeseriesMetadata> timeseriesMetadataList,
+      MetadataIndexNode measurementNode,
+      Set<String> excludedMeasurementIds,
+      boolean needChunkMetadata)
+      throws IOException {
+    long before = readDataSize.get();
+    super.getDeviceTimeseriesMetadata(
+        timeseriesMetadataList, measurementNode, excludedMeasurementIds, needChunkMetadata);
+    long dataSize = readDataSize.get() - before;
+    CompactionMetrics.getInstance()
+        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
   }
 }
