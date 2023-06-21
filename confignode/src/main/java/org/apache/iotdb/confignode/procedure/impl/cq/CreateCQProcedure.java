@@ -86,7 +86,8 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     try {
       switch (state) {
         case INIT:
-          return addCQ(env);
+          addCQ(env);
+          return Flow.HAS_MORE_STATE;
         case INACTIVE:
           CQScheduleTask cqScheduleTask =
               new CQScheduleTask(req, firstExecutionTime, md5, executor, env.getConfigManager());
@@ -117,7 +118,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     return Flow.HAS_MORE_STATE;
   }
 
-  private Flow addCQ(ConfigNodeProcedureEnv env) {
+  private void addCQ(ConfigNodeProcedureEnv env) {
     ConsensusWriteResponse response =
         env.getConfigManager()
             .getConsensusManager()
@@ -130,11 +131,9 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       } else if (res.code == TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()) {
         LOGGER.info("Failed to init CQ {} because such cq already exists", req.cqId);
         setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
-        return Flow.HAS_MORE_STATE;
       } else {
         LOGGER.warn("Failed to init CQ {} because of unknown reasons {}", req.cqId, res);
         setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
-        return Flow.HAS_MORE_STATE;
       }
     } else {
       LOGGER.warn(
@@ -142,9 +141,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
           req.cqId,
           response.getException());
       setFailure(new ProcedureException(response.getException()));
-      return Flow.HAS_MORE_STATE;
     }
-    return Flow.NO_MORE_STATE;
   }
 
   private void activeCQ(ConfigNodeProcedureEnv env) {
