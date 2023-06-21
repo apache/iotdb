@@ -75,16 +75,12 @@ public class InfluxSpreadFunction extends InfluxAggregator {
   public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
     if (functionValues.length == 1) {
       double tmpValue = ((Number) functionValues[0].getValue()).doubleValue();
-      if (maxNum == null) {
-        maxNum = tmpValue;
-      } else if (tmpValue > maxNum) {
+      if (maxNum == null || tmpValue > maxNum) {
         maxNum = tmpValue;
       }
     } else if (functionValues.length == 2) {
       double tmpValue = ((Number) functionValues[1].getValue()).doubleValue();
-      if (minNum == null) {
-        minNum = tmpValue;
-      } else if (tmpValue < minNum) {
+      if (minNum == null || tmpValue < minNum) {
         minNum = tmpValue;
       }
     }

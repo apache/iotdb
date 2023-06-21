@@ -57,16 +57,16 @@ public class RestApiServiceImpl extends RestApiService {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private final IPartitionFetcher PARTITION_FETCHER;
+  private final IPartitionFetcher partitionFetcher;
 
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final ISchemaFetcher schemaFetcher;
   private final AuthorizationHandler authorizationHandler;
 
   private final Integer defaultQueryRowLimit;
 
   public RestApiServiceImpl() {
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
     defaultQueryRowLimit =
         IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
@@ -99,8 +99,8 @@ public class RestApiServiceImpl extends RestApiService {
               SESSION_MANAGER.requestQueryId(),
               null,
               sql.getSql(),
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
+              partitionFetcher,
+              schemaFetcher,
               config.getQueryTimeoutThreshold());
 
       return Response.ok()
@@ -149,8 +149,8 @@ public class RestApiServiceImpl extends RestApiService {
               queryId,
               null,
               sql.getSql(),
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
+              partitionFetcher,
+              schemaFetcher,
               config.getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -194,8 +194,8 @@ public class RestApiServiceImpl extends RestApiService {
               SESSION_MANAGER.requestQueryId(),
               null,
               "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
+              partitionFetcher,
+              schemaFetcher,
               config.getQueryTimeoutThreshold());
 
       return Response.ok()

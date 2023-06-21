@@ -58,6 +58,7 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
 
   /** recover the influxdb metadata */
   @Override
+  @SuppressWarnings("squid:S1141")
   public void recover() {
     long sessionID = 0;
     try {
@@ -154,6 +155,7 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
    * @return a map of field orders
    */
   @Override
+  @SuppressWarnings("squid:S3824")
   public Map<String, Integer> getFieldOrders(String database, String measurement, long sessionID) {
     Map<String, Integer> fieldOrders = new HashMap<>();
     String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";

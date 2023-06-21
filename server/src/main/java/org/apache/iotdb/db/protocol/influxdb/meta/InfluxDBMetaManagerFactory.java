@@ -25,6 +25,8 @@ import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 /** generate InfluxDBMetaManager object according to configuration */
 public class InfluxDBMetaManagerFactory {
 
+  private InfluxDBMetaManagerFactory() {}
+
   /**
    * generate InfluxDBMetaManager object according to configuration
    *

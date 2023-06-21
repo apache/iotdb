@@ -29,6 +29,8 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 
 public class InfluxReqAndRespUtils {
 
+  private InfluxReqAndRespUtils() {}
+
   public static TSOpenSessionReq convertOpenSessionReq(InfluxOpenSessionReq influxOpenSessionReq) {
     TSOpenSessionReq tsOpenSessionReq = new TSOpenSessionReq();
     tsOpenSessionReq.setZoneId(influxOpenSessionReq.getZoneId());

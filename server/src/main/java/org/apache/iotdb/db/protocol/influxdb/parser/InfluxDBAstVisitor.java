@@ -105,6 +105,7 @@ public class InfluxDBAstVisitor extends InfluxDBSqlParserBaseVisitor<Statement> 
     }
   }
 
+  @SuppressWarnings("squid:S3776")
   private Expression parseExpression(InfluxDBSqlParser.ExpressionContext context) {
     // LR_BRACKET unaryInBracket=expression RR_BRACKET
     if (context.unaryInBracket != null) {
@@ -174,6 +175,7 @@ public class InfluxDBAstVisitor extends InfluxDBSqlParserBaseVisitor<Statement> 
     return functionExpression;
   }
 
+  @SuppressWarnings("squid:S3776")
   private Expression parsePredicate(InfluxDBSqlParser.PredicateContext context) {
     if (context.predicateInBracket != null) {
       return parsePredicate(context.predicateInBracket);

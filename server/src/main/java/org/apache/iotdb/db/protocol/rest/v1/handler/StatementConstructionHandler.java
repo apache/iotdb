@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 
+@SuppressWarnings("squid:S3776")
 public class StatementConstructionHandler {
   private StatementConstructionHandler() {}
 

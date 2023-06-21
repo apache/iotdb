@@ -61,16 +61,16 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private final IPartitionFetcher PARTITION_FETCHER;
+  private final IPartitionFetcher partitionFetcher;
 
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final ISchemaFetcher schemaFetcher;
   private final AuthorizationHandler authorizationHandler;
 
   private final long timePrecision; // the default timestamp precision is ms
 
   public GrafanaApiServiceImpl() {
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
     authorizationHandler = new AuthorizationHandler();
 
     switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
@@ -114,8 +114,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               queryId,
               null,
               sql.getSql(),
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
+              partitionFetcher,
+              schemaFetcher,
               config.getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -176,8 +176,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               queryId,
               null,
               sql,
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
+              partitionFetcher,
+              schemaFetcher,
               config.getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -232,8 +232,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
                 queryId,
                 null,
                 sql,
-                PARTITION_FETCHER,
-                SCHEMA_FETCHER,
+                partitionFetcher,
+                schemaFetcher,
                 config.getQueryTimeoutThreshold());
         if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

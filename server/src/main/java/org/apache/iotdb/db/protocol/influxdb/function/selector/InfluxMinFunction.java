@@ -57,9 +57,7 @@ public class InfluxMinFunction extends InfluxSelector {
   public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
     if (functionValues[0].getValue() instanceof Number) {
       double tmpValue = ((Number) functionValues[0].getValue()).doubleValue();
-      if (minValue == null) {
-        minValue = tmpValue;
-      } else if (tmpValue < minValue) {
+      if (minValue == null || tmpValue < minValue) {
         minValue = tmpValue;
       }
     }

@@ -36,6 +36,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class InfluxLineParser {
+
+  private InfluxLineParser() {}
+
   private static final Pattern BACKSLASH_PATTERN = Pattern.compile("\\\\\"");
   private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("\\\\([,= ])");
 
@@ -53,8 +56,8 @@ public class InfluxLineParser {
     }
     ArrayList<Point> points = new ArrayList<>();
     String[] recordsSplit = records.split("\n");
-    for (String record : recordsSplit) {
-      points.add(parseToPoint(record, precision));
+    for (String rcd : recordsSplit) {
+      points.add(parseToPoint(rcd, precision));
     }
     return points;
   }
@@ -63,6 +66,7 @@ public class InfluxLineParser {
     return parseToPoint(input, null);
   }
 
+  @SuppressWarnings("squid:S1874")
   public static Point parseToPoint(String input, TimeUnit precision) {
     if (precision == null) {
       precision = TimeUnit.NANOSECONDS;
@@ -136,7 +140,7 @@ public class InfluxLineParser {
       return Long.valueOf(raw.substring(0, raw.length() - 1));
     }
 
-    return new Double(raw);
+    return Double.valueOf(raw);
   }
 
   private static Object parseBool(String raw) {

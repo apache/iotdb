@@ -25,6 +25,8 @@ import java.util.Map;
 
 public class StringUtils {
 
+  private StringUtils() {}
+
   /**
    * if the first and last of the current string are quotation marks, they are removed
    *

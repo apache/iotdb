@@ -58,8 +58,10 @@ import java.util.List;
 import java.util.Map;
 
 /** Used to process influxdb query requests, this abstract class defines some template methods */
+@SuppressWarnings({"squid:S3252", "squid:S1610"})
 public abstract class AbstractQueryHandler {
 
+  public static final String UNSUPPORTED_MESSAGE = "unsupported expression type: ";
   /**
    * If the function in the influxdb query request is also supported by IoTDB, use the IoTDB syntax
    * to get the result
@@ -119,7 +121,7 @@ public abstract class AbstractQueryHandler {
                 fieldOrders,
                 sessionId);
         // step2 : select filter
-        ProcessSelectComponent(queryResult, queryStatement.getSelectComponent());
+        processSelectComponent(queryResult, queryStatement.getSelectComponent());
       }
       // don't contain filter condition and only have function use iotdb function.
       else {
@@ -142,7 +144,8 @@ public abstract class AbstractQueryHandler {
    * @param queryResult query results to be processed
    * @param selectComponent select conditions to be filtered
    */
-  public void ProcessSelectComponent(
+  @SuppressWarnings({"squid:S3776"})
+  public void processSelectComponent(
       QueryResult queryResult, InfluxSelectComponent selectComponent) {
 
     // get the row order map of the current data result first
@@ -297,7 +300,7 @@ public abstract class AbstractQueryHandler {
     for (InfluxFunction function : functions) {
       InfluxFunctionValue functionValue =
           updateByIoTDBFunc(database, measurement, function, sessionid);
-      //      InfluxFunctionValue functionValue = function.calculateByIoTDBFunc();
+
       if (value.isEmpty()) {
         value.add(functionValue.getTimestamp());
       } else {
@@ -369,8 +372,7 @@ public abstract class AbstractQueryHandler {
                 sessionId));
       }
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
+      throw new IllegalArgumentException(UNSUPPORTED_MESSAGE + predicate.getExpressionType());
     }
   }
 
@@ -482,8 +484,7 @@ public abstract class AbstractQueryHandler {
           convertToIExpressions(((LogicBinaryExpression) predicate).getRightExpression()));
       return iExpressions;
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
+      throw new IllegalArgumentException(UNSUPPORTED_MESSAGE + predicate.getExpressionType());
     }
   }
 
@@ -503,8 +504,7 @@ public abstract class AbstractQueryHandler {
       return canMergePredicate(((LogicAndExpression) predicate).getLeftExpression())
           && canMergePredicate(((LogicAndExpression) predicate).getRightExpression());
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
+      throw new IllegalArgumentException(UNSUPPORTED_MESSAGE + predicate.getExpressionType());
     }
   }
 }

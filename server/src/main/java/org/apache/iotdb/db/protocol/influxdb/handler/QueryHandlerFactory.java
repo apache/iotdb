@@ -25,6 +25,8 @@ import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 /** Generate the corresponding QueryHandler object according to the configuration */
 public class QueryHandlerFactory {
 
+  private QueryHandlerFactory() {}
+
   /**
    * get QueryHandler object according to the configuration
    *

@@ -26,6 +26,8 @@ import java.io.IOException;
 public class JacksonUtils {
   private static final ObjectMapper mapper = new ObjectMapper();
 
+  private JacksonUtils() {}
+
   public static String bean2Json(Object obj) {
     try {
       return mapper.writeValueAsString(obj);

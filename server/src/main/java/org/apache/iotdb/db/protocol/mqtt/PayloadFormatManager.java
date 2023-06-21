@@ -43,6 +43,8 @@ public class PayloadFormatManager {
   // Map: formatterName => PayloadFormatter
   private static Map<String, PayloadFormatter> mqttPayloadPluginMap = new HashMap<>();
 
+  private PayloadFormatManager() {}
+
   static {
     init();
   }
@@ -73,6 +75,7 @@ public class PayloadFormatManager {
     FileUtils.forceMkdir(file);
   }
 
+  @SuppressWarnings("squid:S135")
   private static void buildMqttPluginMap() throws IOException {
     ServiceLoader<PayloadFormatter> payloadFormatters = ServiceLoader.load(PayloadFormatter.class);
     for (PayloadFormatter formatter : payloadFormatters) {

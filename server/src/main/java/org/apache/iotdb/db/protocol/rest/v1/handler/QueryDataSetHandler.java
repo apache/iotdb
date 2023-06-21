@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@SuppressWarnings("squid:S3776")
 public class QueryDataSetHandler {
 
   private QueryDataSetHandler() {}

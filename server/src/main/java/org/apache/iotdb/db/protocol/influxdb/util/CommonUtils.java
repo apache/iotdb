@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.protocol.influxdb.util;
 
 public class CommonUtils {
+
+  private CommonUtils() {}
+
   /**
    * judge whether two instances are equal, and allow null check
    *

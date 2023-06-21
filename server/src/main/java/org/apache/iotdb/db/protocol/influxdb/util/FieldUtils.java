@@ -21,6 +21,9 @@ package org.apache.iotdb.db.protocol.influxdb.util;
 import org.apache.iotdb.tsfile.read.common.Field;
 
 public class FieldUtils {
+
+  private FieldUtils() {}
+
   /**
    * convert the value of field in iotdb to object
    *

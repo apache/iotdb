@@ -45,7 +45,7 @@ public class RestService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RestService.class);
 
-  private static Server server;
+  private Server server;
 
   private void startSSL(
       int port,

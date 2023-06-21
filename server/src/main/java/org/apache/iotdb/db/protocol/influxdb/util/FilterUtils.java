@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class FilterUtils {
 
+  private FilterUtils() {}
+
   public static String getFilterStringValue(Filter filter) {
     String filterString = filter.toString();
     if (filter instanceof ValueFilter.ValueEq) {

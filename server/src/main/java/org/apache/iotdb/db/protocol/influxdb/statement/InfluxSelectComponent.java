@@ -42,6 +42,7 @@ public final class InfluxSelectComponent extends SelectComponent {
   }
 
   @Override
+  @SuppressWarnings("squid:S3776")
   public void addResultColumn(ResultColumn resultColumn) {
     Expression expression = resultColumn.getExpression();
     if (expression instanceof FunctionExpression) {

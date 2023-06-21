@@ -28,6 +28,8 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.QueryResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,7 +38,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("squid:S3776")
 public class QueryResultUtils {
+
+  private static Logger logger = LoggerFactory.getLogger(QueryResultUtils.class);
+
+  private QueryResultUtils() {}
+
   /**
    * update the new values to the query results of influxdb
    *
@@ -125,7 +133,7 @@ public class QueryResultUtils {
       return queryResult1;
     }
     if (!checkSameQueryResult(queryResult1, queryResult2)) {
-      System.out.println("QueryResult1 and QueryResult2 is not same attribute");
+      logger.debug("QueryResult1 and QueryResult2 is not same attribute");
       return queryResult1;
     }
     List<List<Object>> values1 = queryResult1.getResults().get(0).getSeries().get(0).getValues();
@@ -170,7 +178,7 @@ public class QueryResultUtils {
       return getNullQueryResult();
     }
     if (!checkSameQueryResult(queryResult1, queryResult2)) {
-      System.out.println("QueryResult1 and QueryResult2 is not same attribute");
+      logger.debug("QueryResult1 and QueryResult2 is not same attribute");
       return queryResult1;
     }
     List<List<Object>> values1 = queryResult1.getResults().get(0).getSeries().get(0).getValues();
@@ -314,6 +322,7 @@ public class QueryResultUtils {
    * @param tsExecuteStatementResp NewIoTDB execute statement resp to be converted
    * @return query results in influxdb format
    */
+  @SuppressWarnings("squid:S1172")
   public static QueryResult iotdbResultConvertInfluxResult(
       TSExecuteStatementResp tsExecuteStatementResp,
       String database,

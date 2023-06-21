@@ -20,6 +20,8 @@ package org.apache.iotdb.db.protocol.influxdb.constant;
 
 public class InfluxConstant {
 
+  private InfluxConstant() {}
+
   public static final String PLACE_HOLDER = "PH";
 
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;

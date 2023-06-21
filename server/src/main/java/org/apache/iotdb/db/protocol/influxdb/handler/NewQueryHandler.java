@@ -43,6 +43,7 @@ public class NewQueryHandler extends AbstractQueryHandler {
    * @param sessionid session id
    * @return influxdb function value
    */
+  @SuppressWarnings({"squid:S3252", "squid:S6541", "squid:S3776"})
   public final InfluxFunctionValue updateByIoTDBFunc(
       String path, InfluxFunction function, long sessionid) {
     switch (function.getFunctionName()) {

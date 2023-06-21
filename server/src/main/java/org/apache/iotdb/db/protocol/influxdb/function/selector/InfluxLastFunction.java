@@ -54,16 +54,17 @@ public class InfluxLastFunction extends InfluxSelector {
   @Override
   public void updateValueAndRelateValues(
       InfluxFunctionValue functionValue, List<Object> relatedValues) {
-    Object value = functionValue.getValue();
+    Object newValue = functionValue.getValue();
     Long timestamp = functionValue.getTimestamp();
     if (timestamp >= this.getTimestamp()) {
-      this.value = value;
+      this.value = newValue;
       this.setTimestamp(timestamp);
       this.setRelatedValues(relatedValues);
     }
   }
 
   @Override
+  @SuppressWarnings({"squid:S3252"})
   public String getFunctionName() {
     return InfluxSqlConstant.LAST;
   }

@@ -43,6 +43,7 @@ public class InfluxCountFunction extends InfluxAggregator {
   }
 
   @Override
+  @SuppressWarnings({"squid:S3252"})
   public String getFunctionName() {
     return InfluxSqlConstant.COUNT;
   }

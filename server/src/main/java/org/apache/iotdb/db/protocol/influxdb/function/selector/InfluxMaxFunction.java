@@ -57,9 +57,7 @@ public class InfluxMaxFunction extends InfluxSelector {
   public void updateValueIoTDBFunc(InfluxFunctionValue... functionValues) {
     if (functionValues[0].getValue() instanceof Number) {
       double tmpValue = ((Number) functionValues[0].getValue()).doubleValue();
-      if (maxValue == null) {
-        maxValue = tmpValue;
-      } else if (tmpValue > maxValue) {
+      if (maxValue == null || tmpValue > maxValue) {
         maxValue = tmpValue;
       }
     }

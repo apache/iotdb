@@ -58,6 +58,7 @@ public class IoTDBPoint {
     this.values = values;
   }
 
+  @SuppressWarnings({"squid:S3011", "squid:S3776", "squid:S1117"})
   public IoTDBPoint(
       String database, Point point, IInfluxDBMetaManager influxDBMetaManager, long sessionID) {
     String measurement = null;

@@ -36,6 +36,9 @@ import java.util.List;
 
 public class InfluxFunctionFactory {
 
+  private InfluxFunctionFactory() {}
+
+  @SuppressWarnings({"squid:S3252"})
   public static InfluxFunction generateFunction(
       String functionName, List<Expression> expressionList) {
     switch (functionName) {
