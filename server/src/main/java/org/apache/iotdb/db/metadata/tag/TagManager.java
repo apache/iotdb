@@ -237,10 +237,15 @@ public class TagManager {
       public void close() {}
 
       @Override
-      public ListenableFuture<Boolean> hasNextFuture() {
+      public ListenableFuture<?> isBlocked() {
+        return NOT_BLOCKED;
+      }
+
+      @Override
+      public boolean hasNext() {
         if (throwable == null) {
           if (hasLimit && count >= limit) {
-            return NOT_BLOCKED_FALSE;
+            return false;
           } else if (nextMatched == null) {
             try {
               getNext();
@@ -249,7 +254,7 @@ public class TagManager {
             }
           }
         }
-        return (throwable == null && nextMatched != null) ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
+        return throwable == null && nextMatched != null;
       }
 
       @Override

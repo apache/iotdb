@@ -34,7 +34,8 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   private final boolean hasLimit;
 
   private int count = 0;
-  int curOffset = 0;
+  private int curOffset = 0;
+  private ListenableFuture<?> hasNextFuture = null;
 
   public SchemaReaderLimitOffsetWrapper(ISchemaReader<T> schemaReader, long limit, long offset) {
     this.schemaReader = schemaReader;
@@ -59,27 +60,45 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   }
 
   @Override
-  public ListenableFuture<Boolean> hasNextFuture() {
+  public ListenableFuture<?> isBlocked() {
+    if (hasNextFuture != null) {
+      return hasNextFuture;
+    }
+    hasNextFuture = hasNextFuture();
+    return hasNextFuture;
+  }
+
+  private ListenableFuture<?> hasNextFuture() {
     if (hasLimit) {
       while (curOffset < offset) {
         // first time
         return Futures.submit(
             () -> {
-              while (curOffset < offset && schemaReader.hasNextFuture().get()) {
+              while (curOffset < offset && schemaReader.hasNext()) {
                 schemaReader.next();
                 curOffset++;
               }
-              return schemaReader.hasNextFuture().get();
+              return schemaReader.hasNext();
             },
             FragmentInstanceManager.getInstance().getIntoOperationExecutor());
       }
       if (count >= limit) {
         return NOT_BLOCKED_FALSE;
       } else {
-        return schemaReader.hasNextFuture();
+        return schemaReader.isBlocked();
       }
     } else {
-      return schemaReader.hasNextFuture();
+      return schemaReader.isBlocked();
+    }
+  }
+
+  @Override
+  public boolean hasNext() {
+    try {
+      isBlocked().get();
+      return schemaReader.hasNext();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

@@ -24,11 +24,13 @@ import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 public interface ISchemaReader<T extends ISchemaInfo> extends AutoCloseable {
 
   ListenableFuture<Boolean> NOT_BLOCKED_TRUE = immediateFuture(true);
   ListenableFuture<Boolean> NOT_BLOCKED_FALSE = immediateFuture(false);
+  ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
 
   /**
    * Determines if the iteration is successful when it completes.
@@ -48,9 +50,11 @@ public interface ISchemaReader<T extends ISchemaInfo> extends AutoCloseable {
    * Returns a future that will be completed when the schemaReader becomes unblocked. It may be
    * called several times before next and will return the same value.
    *
-   * @return value is true if the schemaReader has more data, false if it has no more data.
+   * @return isDone is false if is Blocked.
    */
-  ListenableFuture<Boolean> hasNextFuture();
+  ListenableFuture<?> isBlocked();
+
+  boolean hasNext();
 
   T next();
 }

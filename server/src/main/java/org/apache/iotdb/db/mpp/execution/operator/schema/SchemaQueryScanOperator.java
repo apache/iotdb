@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -154,18 +153,16 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
     }
     while (true) {
       try {
-        ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
-        if (!hasNextFuture.isDone()) {
-          SettableFuture<?> future = SettableFuture.create();
-          hasNextFuture.addListener(
+        ListenableFuture<?> readerBlocked = schemaReader.isBlocked();
+        if (!readerBlocked.isDone()) {
+          readerBlocked.addListener(
               () -> {
                 next = tsBlockBuilder.build();
                 tsBlockBuilder.reset();
-                future.set(null);
               },
               directExecutor());
-          return future;
-        } else if (hasNextFuture.get()) {
+          return readerBlocked;
+        } else if (schemaReader.hasNext()) {
           T element = schemaReader.next();
           setColumns(element, tsBlockBuilder);
           if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
@@ -174,7 +171,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
             return NOT_BLOCKED;
           }
         } else {
-          if (!tsBlockBuilder.isEmpty()) {
+          if (tsBlockBuilder.isEmpty()) {
             next = null;
             isFinished = true;
           } else {

@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -103,17 +102,12 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     }
     while (true) {
       try {
-        ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
-        if (!hasNextFuture.isDone()) {
-          SettableFuture<?> future = SettableFuture.create();
-          hasNextFuture.addListener(
-              () -> {
-                next = constructTsBlockAndClearMap(countMap);
-                future.set(null);
-              },
-              directExecutor());
-          return future;
-        } else if (hasNextFuture.get()) {
+        ListenableFuture<?> readerBlocked = schemaReader.isBlocked();
+        if (!readerBlocked.isDone()) {
+          readerBlocked.addListener(
+              () -> next = constructTsBlockAndClearMap(countMap), directExecutor());
+          return readerBlocked;
+        } else if (schemaReader.hasNext()) {
           ISchemaInfo schemaInfo = schemaReader.next();
           PartialPath path = schemaInfo.getPartialPath();
           if (path.getNodeLength() < level) {
@@ -138,7 +132,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
             next = null;
             isFinished = true;
           } else {
-            constructTsBlockAndClearMap(countMap);
+            next = constructTsBlockAndClearMap(countMap);
           }
           return NOT_BLOCKED;
         }

@@ -98,19 +98,24 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     }
 
     @Override
-    public ListenableFuture<Boolean> hasNextFuture() {
+    public ListenableFuture<?> isBlocked() {
+      return NOT_BLOCKED;
+    }
+
+    @Override
+    public boolean hasNext() {
       try {
         if (throwable != null) {
-          return NOT_BLOCKED_FALSE;
+          return false;
         }
         if (currentDeviceReader != null) {
-          if (currentDeviceReader.hasNextFuture().get()) {
-            return NOT_BLOCKED_TRUE;
+          if (currentDeviceReader.hasNext()) {
+            return true;
           } else {
             currentDeviceReader.close();
             if (!currentDeviceReader.isSuccess()) {
               throwable = currentDeviceReader.getFailure();
-              return NOT_BLOCKED_FALSE;
+              return false;
             }
           }
         }
@@ -120,13 +125,13 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
               schemaRegion.getDeviceReader(
                   SchemaRegionReadPlanFactory.getShowDevicesPlan(
                       pathPatternIterator.next(), 0, 0, false, templateId));
-          if (currentDeviceReader.hasNextFuture().get()) {
-            return NOT_BLOCKED_TRUE;
+          if (currentDeviceReader.hasNext()) {
+            return true;
           } else {
             currentDeviceReader.close();
           }
         }
-        return NOT_BLOCKED_FALSE;
+        return false;
       } catch (Exception e) {
         throw new RuntimeException(e.getMessage(), e);
       }

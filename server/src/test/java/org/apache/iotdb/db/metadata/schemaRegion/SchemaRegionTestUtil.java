@@ -164,7 +164,7 @@ public class SchemaRegionTestUtil {
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                 pathPattern, templateMap, 0, 0, isPrefixMatch, null)); ) {
       long count = 0;
-      while (timeSeriesReader.hasNextFuture().get()) {
+      while (timeSeriesReader.hasNext()) {
         timeSeriesReader.next();
         count++;
       }
@@ -180,7 +180,7 @@ public class SchemaRegionTestUtil {
         schemaRegion.getDeviceReader(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(pathPattern, isPrefixMatch))) {
       long count = 0;
-      while (deviceReader.hasNextFuture().get()) {
+      while (deviceReader.hasNext()) {
         deviceReader.next();
         count++;
       }
@@ -197,7 +197,7 @@ public class SchemaRegionTestUtil {
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
                 pathPattern, null, 0, 0, isPrefixMatch, null)); ) {
       Map<PartialPath, Long> countMap = new HashMap<>();
-      while (timeSeriesReader.hasNextFuture().get()) {
+      while (timeSeriesReader.hasNext()) {
         ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();
         PartialPath path = timeSeriesSchemaInfo.getPartialPath();
         if (path.getNodeLength() < level) {
@@ -225,7 +225,7 @@ public class SchemaRegionTestUtil {
         schemaRegion.getDeviceReader(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(
                 pathPattern, 0, 0, false, templateId)); ) {
-      while (deviceReader.hasNextFuture().get()) {
+      while (deviceReader.hasNext()) {
         result.add(deviceReader.next().getFullPath());
       }
     } catch (Exception e) {
@@ -240,7 +240,7 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<INodeSchemaInfo> nodeReader =
         schemaRegion.getNodeReader(
             SchemaRegionReadPlanFactory.getShowNodesPlan(pathPattern, nodeLevel, isPrefixMatch))) {
-      while (nodeReader.hasNextFuture().get()) {
+      while (nodeReader.hasNext()) {
         result.add(nodeReader.next().getPartialPath());
       }
     } catch (Exception e) {
@@ -256,7 +256,7 @@ public class SchemaRegionTestUtil {
         schemaRegion.getNodeReader(
             SchemaRegionReadPlanFactory.getShowNodesPlan(
                 pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)))) {
-      while (nodeReader.hasNextFuture().get()) {
+      while (nodeReader.hasNext()) {
         result.add(nodeReader.next());
       }
     } catch (Exception e) {
@@ -270,7 +270,7 @@ public class SchemaRegionTestUtil {
     List<ITimeSeriesSchemaInfo> result = new ArrayList<>();
     ITimeSeriesSchemaInfo timeSeriesSchemaInfo;
     try (ISchemaReader<ITimeSeriesSchemaInfo> reader = schemaRegion.getTimeSeriesReader(plan)) {
-      while (reader.hasNextFuture().get()) {
+      while (reader.hasNext()) {
         timeSeriesSchemaInfo = reader.next();
         result.add(
             new ShowTimeSeriesResult(
@@ -291,7 +291,7 @@ public class SchemaRegionTestUtil {
       ISchemaRegion schemaRegion, IShowDevicesPlan plan) {
     List<IDeviceSchemaInfo> result = new ArrayList<>();
     try (ISchemaReader<IDeviceSchemaInfo> reader = schemaRegion.getDeviceReader(plan)) {
-      while (reader.hasNextFuture().get()) {
+      while (reader.hasNext()) {
         result.add(reader.next());
       }
     } catch (Exception e) {

@@ -910,14 +910,18 @@ public class MTreeBelowSGMemoryImpl {
             collector.close();
           }
 
-          public ListenableFuture<Boolean> hasNextFuture() {
+          public ListenableFuture<?> isBlocked() {
+            return NOT_BLOCKED;
+          }
+
+          public boolean hasNext() {
             while (next == null && collector.hasNext()) {
               IDeviceSchemaInfo temp = collector.next();
               if (filterVisitor.process(showDevicesPlan.getSchemaFilter(), temp)) {
                 next = temp;
               }
             }
-            return next != null ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
+            return next != null;
           }
 
           public IDeviceSchemaInfo next() {
@@ -1033,8 +1037,12 @@ public class MTreeBelowSGMemoryImpl {
         collector.close();
       }
 
-      public ListenableFuture<Boolean> hasNextFuture() {
-        return collector.hasNext() ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
+      public ListenableFuture<?> isBlocked() {
+        return NOT_BLOCKED;
+      }
+
+      public boolean hasNext() {
+        return collector.hasNext();
       }
 
       public INodeSchemaInfo next() {

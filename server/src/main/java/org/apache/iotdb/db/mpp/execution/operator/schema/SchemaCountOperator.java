@@ -32,13 +32,10 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
-
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperator {
 
@@ -99,12 +96,10 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
       }
       while (true) {
         try {
-          ListenableFuture<Boolean> hasNextFuture = schemaReader.hasNextFuture();
-          if (!hasNextFuture.isDone()) {
-            SettableFuture<?> future = SettableFuture.create();
-            hasNextFuture.addListener(() -> future.set(null), directExecutor());
-            return future;
-          } else if (hasNextFuture.get()) {
+          ListenableFuture<?> readerBlocked = schemaReader.isBlocked();
+          if (!readerBlocked.isDone()) {
+            return readerBlocked;
+          } else if (schemaReader.hasNext()) {
             schemaReader.next();
             count++;
           } else {

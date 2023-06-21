@@ -51,12 +51,17 @@ public class SchemaOperatorTestUtil {
               }
 
               @Override
-              public void close() {}
+              public ListenableFuture<?> isBlocked() {
+                return NOT_BLOCKED;
+              }
 
               @Override
-              public ListenableFuture<Boolean> hasNextFuture() {
-                return iterator.hasNext() ? NOT_BLOCKED_TRUE : NOT_BLOCKED_FALSE;
+              public boolean hasNext() {
+                return iterator.hasNext();
               }
+
+              @Override
+              public void close() {}
 
               @Override
               public T next() {

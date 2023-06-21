@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 
 public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesSchemaInfo> {
@@ -94,7 +95,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
    * </ol>
    */
   @Override
-  public ListenableFuture<Boolean> hasNextFuture() {
+  public ListenableFuture<Boolean> isBlocked() {
     if (hasNextFuture != null) {
       return hasNextFuture;
     }
@@ -135,7 +136,19 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
   }
 
   @Override
+  public boolean hasNext() {
+    try {
+      return isBlocked().get();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
   public ITimeSeriesSchemaInfo next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
     ITimeSeriesSchemaInfo result;
     if (!consumeView) {
       result = next;
