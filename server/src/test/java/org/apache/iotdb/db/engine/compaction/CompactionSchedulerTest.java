@@ -2051,9 +2051,7 @@ public class CompactionSchedulerTest extends AbstractCompactionTest {
     Assert.assertTrue(CompactionTaskManager.getInstance().isAllThreadPoolTerminated());
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getCompactionCandidateTaskCount());
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getExecutingTaskCount());
-    Assert.assertEquals(2, CompactionTaskManager.getInstance().getDataRegionMap().size());
-    Assert.assertEquals(0, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
-    Assert.assertEquals(0, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
+    Assert.assertEquals(0, CompactionTaskManager.getInstance().getDataRegionMap().size());
   }
 
   public void stopCompactionTaskManager() {
