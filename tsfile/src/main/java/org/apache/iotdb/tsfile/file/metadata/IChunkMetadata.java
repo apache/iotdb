@@ -31,7 +31,7 @@ import java.util.List;
 
 public interface IChunkMetadata {
 
-  Statistics<Serializable> getStatistics();
+  Statistics<? extends Serializable> getStatistics();
 
   boolean isModified();
 

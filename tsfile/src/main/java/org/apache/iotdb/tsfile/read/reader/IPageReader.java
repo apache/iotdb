@@ -39,7 +39,7 @@ public interface IPageReader {
 
   TsBlock getAllSatisfiedData() throws IOException;
 
-  Statistics<Serializable> getStatistics();
+  Statistics<? extends Serializable> getStatistics();
 
   void setFilter(Filter filter);
 

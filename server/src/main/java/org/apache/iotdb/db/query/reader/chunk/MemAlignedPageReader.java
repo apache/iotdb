@@ -108,7 +108,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       // NOTE: if we change the query semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
-      for (Statistics<Serializable> statistics : getValueStatisticsList()) {
+      for (Statistics<? extends Serializable> statistics : getValueStatisticsList()) {
         if (statistics == null || statistics.hasNullValue(rowCount)) {
           return true;
         }
@@ -215,21 +215,21 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
-  public Statistics<Serializable> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return chunkMetadata.getStatistics();
   }
 
   @Override
-  public Statistics<Serializable> getStatistics(int index) {
+  public Statistics<? extends Serializable> getStatistics(int index) {
     return chunkMetadata.getStatistics(index);
   }
 
   @Override
-  public Statistics<Serializable> getTimeStatistics() {
+  public Statistics<? extends Serializable> getTimeStatistics() {
     return chunkMetadata.getTimeStatistics();
   }
 
-  private List<Statistics<Serializable>> getValueStatisticsList() {
+  private List<Statistics<? extends Serializable>> getValueStatisticsList() {
     return chunkMetadata.getValueStatisticsList();
   }
 

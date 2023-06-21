@@ -319,7 +319,7 @@ public class PageReader implements IPageReader {
   }
 
   @Override
-  public Statistics<Serializable> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return pageHeader.getStatistics();
   }
 

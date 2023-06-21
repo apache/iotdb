@@ -96,7 +96,7 @@ public class MemPageReader implements IPageReader {
   }
 
   private boolean pageSatisfy() {
-    Statistics<Serializable> statistics = getStatistics();
+    Statistics<? extends Serializable> statistics = getStatistics();
     if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
       long rowCount = statistics.getCount();
       if (paginationController.hasCurOffset(rowCount)) {
@@ -324,7 +324,7 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public Statistics<Serializable> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return chunkMetadata.getStatistics();
   }
 
