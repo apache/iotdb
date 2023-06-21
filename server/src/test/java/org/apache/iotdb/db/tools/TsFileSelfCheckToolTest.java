@@ -165,7 +165,7 @@ public class TsFileSelfCheckToolTest {
       ByteArrayOutputStream bo = new ByteArrayOutputStream();
       int serialLength = ReadWriteIOUtils.write(timeseriesMetadata.getTimeSeriesMetadataType(), bo);
       serialLength += ReadWriteIOUtils.writeVar(timeseriesMetadata.getMeasurementId(), bo);
-      serialLength += ReadWriteIOUtils.write(timeseriesMetadata.getTSDataType(), bo);
+      serialLength += ReadWriteIOUtils.write(timeseriesMetadata.getTsDataType(), bo);
       serialLength +=
           ReadWriteForEncodingUtils.writeUnsignedVarInt(
               timeseriesMetadata.getDataSizeOfChunkMetaDataList(), bo);

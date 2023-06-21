@@ -122,10 +122,10 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setMeasurementId("");
-    timeTimeSeriesMetadata.setTSDataType(TSDataType.VECTOR);
+    timeTimeSeriesMetadata.setTsDataType(TSDataType.VECTOR);
 
     Statistics<? extends Serializable> timeStatistics =
-        Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
+        Statistics.getStatsByType(timeTimeSeriesMetadata.getTsDataType());
 
     // init each value time series meta
     List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
@@ -134,7 +134,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       valueMetadata.setOffsetOfChunkMetaDataList(-1);
       valueMetadata.setDataSizeOfChunkMetaDataList(-1);
       valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
-      valueMetadata.setTSDataType(valueChunkMetadata.getType());
+      valueMetadata.setTsDataType(valueChunkMetadata.getType());
       valueMetadata.setStatistics(Statistics.getStatsByType(valueChunkMetadata.getType()));
       valueTimeSeriesMetadataList.add(valueMetadata);
     }
@@ -316,12 +316,12 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       throws IOException {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setMeasurementId(partialPath.getMeasurementSchema().getMeasurementId());
-    timeSeriesMetadata.setTSDataType(partialPath.getMeasurementSchema().getType());
+    timeSeriesMetadata.setTsDataType(partialPath.getMeasurementSchema().getType());
     timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
     Statistics<? extends Serializable> seriesStatistics =
-        Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
+        Statistics.getStatsByType(timeSeriesMetadata.getTsDataType());
     // flush chunkMetadataList one by one
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
