@@ -223,6 +223,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
     }
   }
 
+  @Test
   public void testSeqFileWithDeviceIndexBeenDeletedBeforeSelection()
       throws IOException, MetadataException, WriteProcessException, InterruptedException {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, false, true);

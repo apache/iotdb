@@ -1168,7 +1168,8 @@ public class DataRegionTest {
 
   public static class DummyDataRegion extends DataRegion {
 
-    public DummyDataRegion(String systemInfoDir, String storageGroupName) throws DataRegionException {
+    public DummyDataRegion(String systemInfoDir, String storageGroupName)
+        throws DataRegionException {
       super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
   }

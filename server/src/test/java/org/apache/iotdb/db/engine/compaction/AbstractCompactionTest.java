@@ -96,7 +96,7 @@ public class AbstractCompactionTest {
     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39
   };
 
-  private boolean isVersionInOrder=false;
+  private boolean isVersionInOrder = false;
 
   private static final long oldTargetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -123,7 +123,8 @@ public class AbstractCompactionTest {
   private int oldMinCrossCompactionUnseqLevel =
       IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
 
-  private long oldCompactionScheduleIntervalInMs=IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs();
+  private long oldCompactionScheduleIntervalInMs =
+      IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs();
 
   protected static File STORAGE_GROUP_DIR =
       new File(
@@ -213,14 +214,20 @@ public class AbstractCompactionTest {
       throws IOException, WriteProcessException, MetadataException {
     for (int i = 0; i < fileNum; i++) {
       String fileName;
-      if(!isVersionInOrder){
+      if (!isVersionInOrder) {
         fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
         fileName =
-                timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
-      }else{
+            timestamp[fileCount++]
+                + FilePathUtils.FILE_NAME_SEPARATOR
+                + fileVersion
+                + "-0-0.tsfile";
+      } else {
         fileVersion++;
         fileName =
-                System.currentTimeMillis() + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
+            System.currentTimeMillis()
+                + FilePathUtils.FILE_NAME_SEPARATOR
+                + fileVersion
+                + "-0-0.tsfile";
       }
       String filePath;
       if (isSeq) {
@@ -417,7 +424,9 @@ public class AbstractCompactionTest {
 
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointMaxNumber);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(oldMaxDegreeOfIndexNode);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionScheduleIntervalInMs(oldCompactionScheduleIntervalInMs);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionScheduleIntervalInMs(oldCompactionScheduleIntervalInMs);
     EnvironmentUtils.cleanAllDir();
 
     if (SEQ_DIRS.exists()) {

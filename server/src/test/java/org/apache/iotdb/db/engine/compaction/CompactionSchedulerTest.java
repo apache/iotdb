@@ -34,7 +34,6 @@ import org.apache.iotdb.db.engine.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.DataRegionTest;
@@ -44,9 +43,9 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -66,7 +65,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class CompactionSchedulerTest extends AbstractCompactionTest{
+public class CompactionSchedulerTest extends AbstractCompactionTest {
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest_";
   static final long MAX_WAITING_TIME = 60_000;
@@ -112,7 +111,7 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
         .setInnerUnseqCompactionPerformer(InnerUnseqCompactionPerformer.READ_POINT);
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setCompactionScheduleIntervalInMs(3000);
-    CompactionTaskManager.COMPACTION_TASK_SUBMIT_DELAY=2000;
+    CompactionTaskManager.COMPACTION_TASK_SUBMIT_DELAY = 2000;
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
@@ -1818,10 +1817,13 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
   }
 
   @Test
-  public void testDeletingDataRegionAfterCompaction() throws DataRegionException, IOException, MetadataException, WriteProcessException, InterruptedException {
+  public void testDeletingDataRegionAfterCompaction()
+      throws DataRegionException, IOException, MetadataException, WriteProcessException,
+          InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(5);
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
-    DataRegion dataRegion = new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), super.COMPACTION_TEST_SG);
+    DataRegion dataRegion =
+        new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), super.COMPACTION_TEST_SG);
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     createFiles(20, 5, 5, 100, 0, 0, 0, 0, false, true);
     createFiles(20, 5, 5, 100, 1000, 1000, 0, 0, false, false);
@@ -1845,12 +1847,20 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
   }
 
   @Test
-  public void testDeletingMultiDataRegionAfterCompaction() throws DataRegionException, IOException, MetadataException, WriteProcessException, InterruptedException {
+  public void testDeletingMultiDataRegionAfterCompaction()
+      throws DataRegionException, IOException, MetadataException, WriteProcessException,
+          InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(5);
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
-    DataRegion dataRegion1 = new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
-    DataRegion dataRegion2 = new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
-    DataRegion dataRegion3= new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion1 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion2 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion3 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(1), dataRegion1);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(2), dataRegion2);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(3), dataRegion3);
@@ -1868,12 +1878,12 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
     Assert.assertEquals(2, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
 
-    dataRegion1.getTsFileManager().addAll(seqResources.subList(0,20), true);
-    dataRegion1.getTsFileManager().addAll(unseqResources.subList(0,20), false);
-    dataRegion2.getTsFileManager().addAll(seqResources.subList(20,40), true);
-    dataRegion2.getTsFileManager().addAll(unseqResources.subList(20,40), false);
-    dataRegion3.getTsFileManager().addAll(seqResources.subList(40,60), true);
-    dataRegion3.getTsFileManager().addAll(unseqResources.subList(40,60), false);
+    dataRegion1.getTsFileManager().addAll(seqResources.subList(0, 20), true);
+    dataRegion1.getTsFileManager().addAll(unseqResources.subList(0, 20), false);
+    dataRegion2.getTsFileManager().addAll(seqResources.subList(20, 40), true);
+    dataRegion2.getTsFileManager().addAll(unseqResources.subList(20, 40), false);
+    dataRegion3.getTsFileManager().addAll(seqResources.subList(40, 60), true);
+    dataRegion3.getTsFileManager().addAll(unseqResources.subList(40, 60), false);
 
     while (dataRegion1.getTsFileManager().getTsFileList(true).size() > 4) {
       Thread.sleep(500);
@@ -1884,33 +1894,41 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
     while (dataRegion3.getTsFileManager().getTsFileList(true).size() > 4) {
       Thread.sleep(500);
     }
-    List<DataRegion> dataRegions=new ArrayList<>();
+    List<DataRegion> dataRegions = new ArrayList<>();
     dataRegions.add(dataRegion1);
     dataRegions.add(dataRegion2);
     dataRegions.add(dataRegion3);
-    for(DataRegion dataRegion:dataRegions) {
+    for (DataRegion dataRegion : dataRegions) {
       Assert.assertEquals(4, dataRegion.getTsFileManager().getTsFileList(true).size());
       Assert.assertEquals(0, dataRegion.getTsFileManager().getTsFileList(false).size());
-      Assert.assertTrue(CompactionTaskManager.getInstance().isDataRegionStillInScheduled(dataRegion.getTsFileManager()));
+      Assert.assertTrue(
+          CompactionTaskManager.getInstance()
+              .isDataRegionStillInScheduled(dataRegion.getTsFileManager()));
     }
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getCompactionCandidateTaskCount());
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getExecutingTaskCount());
 
     // delete data region2
     StorageEngine.getInstance().deleteDataRegion(new DataRegionId(2));
-    Assert.assertFalse(CompactionTaskManager.getInstance().isDataRegionStillInScheduled(dataRegion2.getTsFileManager()));
+    Assert.assertFalse(
+        CompactionTaskManager.getInstance()
+            .isDataRegionStillInScheduled(dataRegion2.getTsFileManager()));
     Assert.assertEquals(2, CompactionTaskManager.getInstance().getDataRegionMap().size());
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
     // delete data region1
     StorageEngine.getInstance().deleteDataRegion(new DataRegionId(1));
-    Assert.assertFalse(CompactionTaskManager.getInstance().isDataRegionStillInScheduled(dataRegion1.getTsFileManager()));
+    Assert.assertFalse(
+        CompactionTaskManager.getInstance()
+            .isDataRegionStillInScheduled(dataRegion1.getTsFileManager()));
     Assert.assertEquals(2, CompactionTaskManager.getInstance().getDataRegionMap().size());
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
     // delete data region3
     StorageEngine.getInstance().deleteDataRegion(new DataRegionId(3));
-    Assert.assertFalse(CompactionTaskManager.getInstance().isDataRegionStillInScheduled(dataRegion3.getTsFileManager()));
+    Assert.assertFalse(
+        CompactionTaskManager.getInstance()
+            .isDataRegionStillInScheduled(dataRegion3.getTsFileManager()));
     Assert.assertEquals(2, CompactionTaskManager.getInstance().getDataRegionMap().size());
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
@@ -1918,12 +1936,20 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
   }
 
   @Test
-  public void testDeletingMultiDataRegionDuringCompaction() throws DataRegionException, IOException, MetadataException, WriteProcessException, InterruptedException {
+  public void testDeletingMultiDataRegionDuringCompaction()
+      throws DataRegionException, IOException, MetadataException, WriteProcessException,
+          InterruptedException {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(5);
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
-    DataRegion dataRegion1 = new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
-    DataRegion dataRegion2 = new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
-    DataRegion dataRegion3= new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion1 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion2 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion3 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(1), dataRegion1);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(2), dataRegion2);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(3), dataRegion3);
@@ -1941,29 +1967,35 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
     Assert.assertEquals(2, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
 
-    dataRegion1.getTsFileManager().addAll(seqResources.subList(0,20), true);
-    dataRegion1.getTsFileManager().addAll(unseqResources.subList(0,20), false);
-    dataRegion2.getTsFileManager().addAll(seqResources.subList(20,40), true);
-    dataRegion2.getTsFileManager().addAll(unseqResources.subList(20,40), false);
-    dataRegion3.getTsFileManager().addAll(seqResources.subList(40,60), true);
-    dataRegion3.getTsFileManager().addAll(unseqResources.subList(40,60), false);
+    dataRegion1.getTsFileManager().addAll(seqResources.subList(0, 20), true);
+    dataRegion1.getTsFileManager().addAll(unseqResources.subList(0, 20), false);
+    dataRegion2.getTsFileManager().addAll(seqResources.subList(20, 40), true);
+    dataRegion2.getTsFileManager().addAll(unseqResources.subList(20, 40), false);
+    dataRegion3.getTsFileManager().addAll(seqResources.subList(40, 60), true);
+    dataRegion3.getTsFileManager().addAll(unseqResources.subList(40, 60), false);
 
     while (dataRegion1.getTsFileManager().getTsFileList(true).size() > 12) {
       Thread.sleep(500);
     }
     // delete data region1
     StorageEngine.getInstance().deleteDataRegion(new DataRegionId(1));
-    Assert.assertFalse(CompactionTaskManager.getInstance().isDataRegionStillInScheduled(dataRegion1.getTsFileManager()));
+    Assert.assertFalse(
+        CompactionTaskManager.getInstance()
+            .isDataRegionStillInScheduled(dataRegion1.getTsFileManager()));
     // there is no compaction schedule in this data region
     Assert.assertEquals(2, CompactionTaskManager.getInstance().getDataRegionMap().size());
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
     // delete data region2
     StorageEngine.getInstance().deleteDataRegion(new DataRegionId(2));
-    Assert.assertFalse(CompactionTaskManager.getInstance().isDataRegionStillInScheduled(dataRegion2.getTsFileManager()));
+    Assert.assertFalse(
+        CompactionTaskManager.getInstance()
+            .isDataRegionStillInScheduled(dataRegion2.getTsFileManager()));
     // delete data region3
     StorageEngine.getInstance().deleteDataRegion(new DataRegionId(3));
-    Assert.assertFalse(CompactionTaskManager.getInstance().isDataRegionStillInScheduled(dataRegion3.getTsFileManager()));
+    Assert.assertFalse(
+        CompactionTaskManager.getInstance()
+            .isDataRegionStillInScheduled(dataRegion3.getTsFileManager()));
 
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getCompactionCandidateTaskCount());
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getExecutingTaskCount());
@@ -1972,13 +2004,21 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
   }
 
   @Test
-  public void testStopStorageEngineDuringCompaction() throws DataRegionException, IOException, MetadataException, WriteProcessException, InterruptedException {
+  public void testStopStorageEngineDuringCompaction()
+      throws DataRegionException, IOException, MetadataException, WriteProcessException,
+          InterruptedException {
     StorageEngine.getInstance().start();
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(5);
     WALRecoverManager.getInstance().setAllDataRegionScannedLatch(new CountDownLatch(1));
-    DataRegion dataRegion1 = new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
-    DataRegion dataRegion2 = new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
-    DataRegion dataRegion3= new DataRegionTest.DummyDataRegion(STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion1 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion2 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
+    DataRegion dataRegion3 =
+        new DataRegionTest.DummyDataRegion(
+            STORAGE_GROUP_DIR.getPath(), AbstractCompactionTest.COMPACTION_TEST_SG);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(1), dataRegion1);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(2), dataRegion2);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(3), dataRegion3);
@@ -1996,12 +2036,12 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
     Assert.assertEquals(2, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     Assert.assertEquals(1, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
 
-    dataRegion1.getTsFileManager().addAll(seqResources.subList(0,20), true);
-    dataRegion1.getTsFileManager().addAll(unseqResources.subList(0,20), false);
-    dataRegion2.getTsFileManager().addAll(seqResources.subList(20,40), true);
-    dataRegion2.getTsFileManager().addAll(unseqResources.subList(20,40), false);
-    dataRegion3.getTsFileManager().addAll(seqResources.subList(40,60), true);
-    dataRegion3.getTsFileManager().addAll(unseqResources.subList(40,60), false);
+    dataRegion1.getTsFileManager().addAll(seqResources.subList(0, 20), true);
+    dataRegion1.getTsFileManager().addAll(unseqResources.subList(0, 20), false);
+    dataRegion2.getTsFileManager().addAll(seqResources.subList(20, 40), true);
+    dataRegion2.getTsFileManager().addAll(unseqResources.subList(20, 40), false);
+    dataRegion3.getTsFileManager().addAll(seqResources.subList(40, 60), true);
+    dataRegion3.getTsFileManager().addAll(unseqResources.subList(40, 60), false);
 
     while (dataRegion1.getTsFileManager().getTsFileList(true).size() > 12) {
       Thread.sleep(500);
@@ -2015,7 +2055,6 @@ public class CompactionSchedulerTest extends AbstractCompactionTest{
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getDataRegionMap().get(0).size());
     Assert.assertEquals(0, CompactionTaskManager.getInstance().getDataRegionMap().get(1).size());
   }
-
 
   public void stopCompactionTaskManager() {
     CompactionTaskManager.getInstance().clearCandidateQueue();
