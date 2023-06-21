@@ -132,7 +132,8 @@ public class CQManager {
 
       // 2. start a new schedule thread pool
       executor =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(CONF.getCqSubmitThread(), "CQ-Scheduler");
+          IoTDBThreadPoolFactory.newScheduledThreadPool(
+              CONF.getCqSubmitThread(), ThreadName.CQ_SCHEDULER.getName());
 
       // 3. get all CQs
       List<CQInfo.CQEntry> allCQs = null;

@@ -123,7 +123,7 @@ public class SchemaEngine {
         && config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              "SchemaEngine-TimedForceMLog-Thread");
+              ThreadName.SCHEMA_FORCE_MLOG.getName());
       ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
           timedForceMLogThread,
           this::forceMlog,

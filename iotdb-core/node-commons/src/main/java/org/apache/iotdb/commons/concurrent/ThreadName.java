@@ -70,6 +70,7 @@ public enum ThreadName {
   SCHEMA_RELEASE_MONITOR("Schema-Release-Task-Monitor"),
   SCHEMA_REGION_FLUSH_PROCESSOR("SchemaRegion-Flush-Task-Processor"),
   SCHEMA_FLUSH_MONITOR("Schema-Flush-Task-Monitor"),
+  SCHEMA_FORCE_MLOG("SchemaEngine-TimedForceMLog-Thread"),
   // -------------------------- ClientService --------------------------
   CLIENT_RPC_SERVICE("ClientRPC-Service"),
   CLIENT_RPC_PROCESSOR("ClientRPC-Processor"),
@@ -81,8 +82,11 @@ public enum ThreadName {
   ASYNC_CONFIGNODE_CLIENT_POOL("AsyncConfigNodeIServiceClientPool"),
   // -------------------------- ConfigNode-Query --------------------------
   CQ_MANAGER("CQ-Scheduler"),
+  CQ_SCHEDULER("CQ-Scheduler"),
   TRIGGER_STATISTIC_UPDATER("Stateful-Trigger-Statistics-Updater"),
   CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
+  // -------------------------- ConfigNode-Write --------------------------
+  CONFIG_NODE_SAMPLE_CONSENSUS_WAL_FLUSH("ConfigNode-Simple-Consensus-WAL-Flush-Thread"),
   // -------------------------- ConfigNode-Heartbeat --------------------------
   CONFIG_NODE_HEART_BEAT_SERVICE("Cluster-Heartbeat-Service"),
   // -------------------------- ConfigNode-Compute --------------------------
@@ -126,6 +130,7 @@ public enum ThreadName {
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
   PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
+  STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
   // -------------------------- JVM --------------------------
   // NOTICE: The thread name of jvm cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
