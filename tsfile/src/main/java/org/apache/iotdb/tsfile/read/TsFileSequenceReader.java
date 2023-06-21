@@ -2250,6 +2250,18 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
+  /**
+   * Read MetadataIndexNode by start and end offset.
+   *
+   * @param start the start offset of the MetadataIndexNode
+   * @param end the end offset of the MetadataIndexNode
+   * @return MetadataIndexNode
+   * @throws IOException IOException
+   */
+  public MetadataIndexNode readMetadataIndexNode(long start, long end) throws IOException {
+    return MetadataIndexNode.deserializeFrom(readData(start, end));
+  }
+
   @Override
   public int hashCode() {
     return file.hashCode();

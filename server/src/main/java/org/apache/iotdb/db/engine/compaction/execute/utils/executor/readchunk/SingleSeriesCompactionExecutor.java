@@ -22,11 +22,8 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.readchunk;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.task.CompactionTaskSummary;
-import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.schedule.constant.ProcessChunkType;
+import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -39,9 +36,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -52,15 +46,13 @@ public class SingleSeriesCompactionExecutor {
   private String device;
   private PartialPath series;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
-  private TsFileIOWriter fileWriter;
+  private CompactionTsFileWriter fileWriter;
   private TsFileResource targetResource;
 
   private IMeasurementSchema schema;
   private ChunkWriterImpl chunkWriter;
   private Chunk cachedChunk;
   private ChunkMetadata cachedChunkMetadata;
-  private RateLimiter compactionRateLimiter =
-      CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
   // record the min time and max time to update the target resource
   private long minStartTimestamp = Long.MAX_VALUE;
   private long maxEndTimestamp = Long.MIN_VALUE;
@@ -80,7 +72,7 @@ public class SingleSeriesCompactionExecutor {
       PartialPath series,
       IMeasurementSchema measurementSchema,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter fileWriter,
+      CompactionTsFileWriter fileWriter,
       TsFileResource targetResource) {
     this.device = series.getDevice();
     this.series = series;
@@ -97,7 +89,7 @@ public class SingleSeriesCompactionExecutor {
   public SingleSeriesCompactionExecutor(
       PartialPath series,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter fileWriter,
+      CompactionTsFileWriter fileWriter,
       TsFileResource targetResource,
       CompactionTaskSummary summary) {
     this.device = series.getDevice();
@@ -129,10 +121,6 @@ public class SingleSeriesCompactionExecutor {
         if (this.chunkWriter == null) {
           constructChunkWriterFromReadChunk(currentChunk);
         }
-        CompactionMetrics.getInstance()
-            .recordReadInfo(
-                (long) currentChunk.getHeader().getSerializedSize()
-                    + currentChunk.getHeader().getDataSize());
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
@@ -155,7 +143,7 @@ public class SingleSeriesCompactionExecutor {
 
     // after all the chunk of this sensor is read, flush the remaining data
     if (cachedChunk != null) {
-      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
+      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
       cachedChunk = null;
       cachedChunkMetadata = null;
     } else if (pointCountInChunkWriter != 0L) {
@@ -211,7 +199,7 @@ public class SingleSeriesCompactionExecutor {
       // there is no points remaining in ChunkWriter and no cached chunk
       // flush it to file directly
       summary.increaseDirectlyFlushChunkNum(1);
-      flushChunkToFileWriter(chunk, chunkMetadata, false);
+      flushChunkToFileWriter(chunk, chunkMetadata);
     }
   }
 
@@ -327,36 +315,20 @@ public class SingleSeriesCompactionExecutor {
     }
   }
 
-  private void flushChunkToFileWriter(
-      Chunk chunk, ChunkMetadata chunkMetadata, boolean isCachedChunk) throws IOException {
-    CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, getChunkSize(chunk));
+  private void flushChunkToFileWriter(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     if (chunkMetadata.getStartTime() < minStartTimestamp) {
       minStartTimestamp = chunkMetadata.getStartTime();
     }
     if (chunkMetadata.getEndTime() > maxEndTimestamp) {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
-    CompactionMetrics.getInstance()
-        .recordWriteInfo(
-            CompactionType.INNER_SEQ_COMPACTION,
-            isCachedChunk ? ProcessChunkType.MERGE_CHUNK : ProcessChunkType.FLUSH_CHUNK,
-            false,
-            getChunkSize(chunk));
     fileWriter.writeChunk(chunk, chunkMetadata);
   }
 
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (pointCountInChunkWriter >= targetChunkPointNum
         || chunkWriter.estimateMaxSeriesMemSize() >= targetChunkSize) {
-      CompactionTaskManager.mergeRateLimiterAcquire(
-          compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetrics.getInstance()
-          .recordWriteInfo(
-              CompactionType.INNER_SEQ_COMPACTION,
-              ProcessChunkType.DESERIALIZE_CHUNK,
-              false,
-              chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriter);
+      fileWriter.writeChunk(chunkWriter);
       pointCountInChunkWriter = 0L;
     }
   }
@@ -364,22 +336,14 @@ public class SingleSeriesCompactionExecutor {
   private void flushCachedChunkIfLargeEnough() throws IOException {
     if (cachedChunk.getChunkStatistic().getCount() >= targetChunkPointNum
         || getChunkSize(cachedChunk) >= targetChunkSize) {
-      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
+      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
       cachedChunk = null;
       cachedChunkMetadata = null;
     }
   }
 
   private void flushChunkWriter() throws IOException {
-    CompactionTaskManager.mergeRateLimiterAcquire(
-        compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-    CompactionMetrics.getInstance()
-        .recordWriteInfo(
-            CompactionType.INNER_SEQ_COMPACTION,
-            ProcessChunkType.DESERIALIZE_CHUNK,
-            false,
-            chunkWriter.estimateMaxSeriesMemSize());
-    chunkWriter.writeToFileWriter(fileWriter);
+    fileWriter.writeChunk(chunkWriter);
     pointCountInChunkWriter = 0L;
   }
 }
