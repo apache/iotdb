@@ -48,6 +48,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -259,6 +260,9 @@ public class TagManager {
 
       @Override
       public ITimeSeriesSchemaInfo next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
         ITimeSeriesSchemaInfo result = nextMatched;
         nextMatched = null;
         return result;

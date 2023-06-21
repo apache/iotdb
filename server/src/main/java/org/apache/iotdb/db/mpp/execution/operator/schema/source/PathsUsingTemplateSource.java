@@ -33,6 +33,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -139,6 +140,9 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
 
     @Override
     public IDeviceSchemaInfo next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
       return currentDeviceReader.next();
     }
 

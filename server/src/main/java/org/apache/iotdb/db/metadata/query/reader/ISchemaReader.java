@@ -26,6 +26,21 @@ import com.google.common.util.concurrent.ListenableFuture;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
+/**
+ * ISchemaReader is a non-blocking iterator.
+ *
+ * <ol>
+ *   <li>The isBlock interface is used to determine if it is blocking. If isDone() is false, it is
+ *       blocking.
+ *   <li>The hasNext interface is responsible for determining whether the next result is available,
+ *       and if the current iterator is still in the isBlock state, it will synchronously wait for
+ *       the isBlock state to be lifted.
+ *   <li>The next interface is responsible for consuming the next result, if the current iterator
+ *       hasNext returns false, throw NoSuchElementException.
+ * </ol>
+ *
+ * @param <T>
+ */
 public interface ISchemaReader<T extends ISchemaInfo> extends AutoCloseable {
 
   ListenableFuture<Boolean> NOT_BLOCKED_TRUE = immediateFuture(true);
@@ -56,5 +71,10 @@ public interface ISchemaReader<T extends ISchemaInfo> extends AutoCloseable {
 
   boolean hasNext();
 
+  /**
+   * The next interface is responsible for consuming the next result.
+   *
+   * @throws java.util.NoSuchElementException if the current iterator hasNext is false
+   */
   T next();
 }

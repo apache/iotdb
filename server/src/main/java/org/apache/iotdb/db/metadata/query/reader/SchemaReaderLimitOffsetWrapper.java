@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.NoSuchElementException;
+
 public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements ISchemaReader<T> {
 
   private final ISchemaReader<T> schemaReader;
@@ -35,7 +37,7 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
 
   private int count = 0;
   private int curOffset = 0;
-  private ListenableFuture<?> hasNextFuture = null;
+  private ListenableFuture<?> isBlocked = null;
 
   public SchemaReaderLimitOffsetWrapper(ISchemaReader<T> schemaReader, long limit, long offset) {
     this.schemaReader = schemaReader;
@@ -61,16 +63,16 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if (hasNextFuture != null) {
-      return hasNextFuture;
+    if (isBlocked != null) {
+      return isBlocked;
     }
-    hasNextFuture = hasNextFuture();
-    return hasNextFuture;
+    isBlocked = tryGetNext();
+    return isBlocked;
   }
 
-  private ListenableFuture<?> hasNextFuture() {
+  private ListenableFuture<?> tryGetNext() {
     if (hasLimit) {
-      while (curOffset < offset) {
+      if (curOffset < offset) {
         // first time
         return Futures.submit(
             () -> {
@@ -104,6 +106,9 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
 
   @Override
   public T next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
     T result = schemaReader.next();
     if (hasLimit) {
       count++;

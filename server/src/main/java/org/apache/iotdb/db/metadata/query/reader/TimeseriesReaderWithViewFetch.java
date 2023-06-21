@@ -57,7 +57,13 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
   private ITimeSeriesSchemaInfo next = null;
   private boolean consumeView = false;
   private final SchemaFilter schemaFilter;
-  private ListenableFuture<Boolean> hasNextFuture = null;
+
+  /**
+   * If isBlocked is null, it means the next is not fetched yet. If isBlocked.isDone() is false, it
+   * means the next is being fetched. If isBlocked.get() is true, it means hasNext, otherwise, it
+   * means no more info to be fetched.
+   */
+  private ListenableFuture<Boolean> isBlocked = null;
 
   private static final int BATCH_CACHED_SIZE = 1000;
   private static final TimeseriesFilterVisitor FILTER_VISITOR = new TimeseriesFilterVisitor();
@@ -96,8 +102,8 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
    */
   @Override
   public ListenableFuture<Boolean> isBlocked() {
-    if (hasNextFuture != null) {
-      return hasNextFuture;
+    if (isBlocked != null) {
+      return isBlocked;
     }
     ListenableFuture<Boolean> res = NOT_BLOCKED_FALSE;
     if (consumeView) {
@@ -131,7 +137,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
       // next is not null
       res = NOT_BLOCKED_TRUE;
     }
-    hasNextFuture = res;
+    isBlocked = res;
     return res;
   }
 
@@ -158,7 +164,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
       result = cachedViewList.poll();
       consumeView = !cachedViewList.isEmpty();
     }
-    hasNextFuture = null;
+    isBlocked = null;
     return result;
   }
 

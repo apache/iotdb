@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.mockito.Mockito;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 public class SchemaOperatorTestUtil {
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
@@ -65,6 +66,9 @@ public class SchemaOperatorTestUtil {
 
               @Override
               public T next() {
+                if (!hasNext()) {
+                  throw new NoSuchElementException();
+                }
                 return iterator.next();
               }
             });
