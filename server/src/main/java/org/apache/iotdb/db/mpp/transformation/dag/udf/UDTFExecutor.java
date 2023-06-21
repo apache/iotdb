@@ -122,16 +122,16 @@ public class UDTFExecutor {
     }
   }
 
-  public Object getCurrentValue() {
-    return currentValue;
-  }
-
   public void execute(RowWindow rowWindow) {
     try {
       udtf.transform(rowWindow, collector);
     } catch (Exception e) {
       onError("transform(RowWindow, PointCollector)", e);
     }
+  }
+
+  public Object getCurrentValue() {
+    return currentValue;
   }
 
   public void terminate() {
@@ -150,11 +150,11 @@ public class UDTFExecutor {
 
   private void onError(String methodName, Exception e) {
     LOGGER.warn(
-        "Error occurred during executing UDTF, perhaps need to check whether the implementation of UDF is correct according to the udf-api description.",
+        "Error occurred during executing UDTF, please check whether the implementation of UDF is correct according to the udf-api description.",
         e);
     throw new RuntimeException(
         String.format(
-                "Error occurred during executing UDTF#%s: %s, perhaps need to check whether the implementation of UDF is correct according to the udf-api description.",
+                "Error occurred during executing UDTF#%s: %s, please check whether the implementation of UDF is correct according to the udf-api description.",
                 methodName, System.lineSeparator())
             + e);
   }

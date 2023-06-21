@@ -21,5 +21,5 @@ package org.apache.iotdb.db.metadata.query.info;
 
 public interface IDeviceSchemaInfo extends ISchemaInfo {
 
-  boolean isAligned();
+  Boolean isAligned();
 }

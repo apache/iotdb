@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -68,7 +69,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.mpp.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 
-/** the manager of fragment instances scheduling */
+/** the manager of fragment instances scheduling. */
 public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
@@ -354,6 +355,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
             break;
           case FINISHED:
             break;
+          default:
+            task.setStatus(DriverTaskStatus.ABORTED);
+            break;
         }
       } finally {
         task.unlock();
@@ -460,7 +464,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     private static final DriverScheduler instance = new DriverScheduler();
   }
 
-  /** the default scheduler implementation */
+  /** the default scheduler implementation. */
   private class Scheduler implements ITaskScheduler {
     @Override
     public void blockedToReady(DriverTask task) {

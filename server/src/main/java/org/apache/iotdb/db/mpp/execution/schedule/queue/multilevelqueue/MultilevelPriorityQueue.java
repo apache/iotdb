@@ -31,14 +31,14 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
- * This class is inspired by Trino <a
+ * This class is inspired by Trino. <a
  * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/executor/MultilevelSplitQueue.java">...</a>
  */
 public class MultilevelPriorityQueue extends IndexedBlockingReserveQueue<DriverTask> {
-  /** Scheduled time threshold of TASK in each level */
+  /** Scheduled time threshold of TASK in each level. */
   static final int[] LEVEL_THRESHOLD_SECONDS = {0, 1, 10, 60, 300};
 
-  /** the upper limit one Task can contribute to its level in one scheduled time */
+  /** the upper limit one Task can contribute to its level in one scheduled time. */
   static final long LEVEL_CONTRIBUTION_CAP = SECONDS.toNanos(30);
 
   private final PriorityQueue<DriverTask>[] levelWaitingSplits;

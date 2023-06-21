@@ -25,7 +25,7 @@ public abstract class WindowParameter {
 
   private final boolean needOutputEndTime;
 
-  public WindowParameter(boolean needOutputEndTime) {
+  protected WindowParameter(boolean needOutputEndTime) {
     this.needOutputEndTime = needOutputEndTime;
   }
 

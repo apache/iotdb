@@ -21,63 +21,45 @@ package org.apache.iotdb.commons.schema.filter.impl;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.commons.schema.view.ViewType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class TagFilter extends SchemaFilter {
+public class ViewTypeFilter extends SchemaFilter {
 
-  private final String key;
-  private final String value;
-  private final boolean isContains;
+  private final ViewType viewType;
 
-  public TagFilter(String key, String value, boolean isContains) {
-    this.key = key;
-    this.value = value;
-    this.isContains = isContains;
+  public ViewTypeFilter(ViewType viewType) {
+    this.viewType = viewType;
   }
 
-  public TagFilter(ByteBuffer byteBuffer) {
-    this.key = ReadWriteIOUtils.readString(byteBuffer);
-    this.value = ReadWriteIOUtils.readString(byteBuffer);
-    this.isContains = ReadWriteIOUtils.readBool(byteBuffer);
+  public ViewTypeFilter(ByteBuffer byteBuffer) {
+    this.viewType = ViewType.deserializeFrom(byteBuffer);
   }
 
-  public String getKey() {
-    return key;
-  }
-
-  public String getValue() {
-    return value;
-  }
-
-  public boolean isContains() {
-    return isContains;
+  public ViewType getViewType() {
+    return viewType;
   }
 
   @Override
   public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
-    return visitor.visitTagFilter(this, node);
+    return visitor.visitViewTypeFilter(this, node);
   }
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.TAGS_FILTER;
+    return SchemaFilterType.VIEW_TYPE;
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(key, byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
-    ReadWriteIOUtils.write(isContains, byteBuffer);
+    viewType.serializeTo(byteBuffer);
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(key, stream);
-    ReadWriteIOUtils.write(value, stream);
-    ReadWriteIOUtils.write(isContains, stream);
+    viewType.serializeTo(stream);
   }
 }

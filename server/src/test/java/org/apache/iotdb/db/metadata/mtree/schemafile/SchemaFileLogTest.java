@@ -58,7 +58,7 @@ public class SchemaFileLogTest {
   public void setUp() {
     CommonDescriptor.getInstance()
         .getConfig()
-        .setSchemaEngineMode(SchemaEngineMode.PB_Tree.toString());
+        .setSchemaEngineMode(SchemaEngineMode.PBTree.toString());
     EnvironmentUtils.envSetUp();
   }
 
@@ -130,7 +130,7 @@ public class SchemaFileLogTest {
       sf.close();
     }
 
-    // modify log file to restore pb-tree file
+    // modify log file to restore pbtree file
     FileOutputStream outputStream = null;
     FileChannel channel;
     try {
@@ -142,7 +142,7 @@ public class SchemaFileLogTest {
             "schema",
             "root.test.vRoot1",
             "0",
-            MetadataConstant.PB_TREE_LOG_FILE_NAME
+            MetadataConstant.PBTREE_LOG_FILE_NAME
           };
       File logFile = new File(String.join(File.separator, logFilePath));
       outputStream = new FileOutputStream(logFile, true);
@@ -152,7 +152,7 @@ public class SchemaFileLogTest {
       outputStream.close();
     }
 
-    // verify that pb-tree file has been repaired
+    // verify that pbtree file has been repaired
     sf = (SchemaFile) SchemaFile.loadSchemaFile("root.test.vRoot1", TEST_SCHEMA_REGION_ID);
     res = sf.getChildren(lastNode);
     int cnt2 = 0;

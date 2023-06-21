@@ -151,4 +151,14 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
         (templateId, cnt) -> schemaEngineStatistics.deactivateTemplate(templateId, cnt));
     templateUsage.clear();
   }
+
+  @Override
+  public long getGlobalMemoryUsage() {
+    return schemaEngineStatistics.getMemoryUsage();
+  }
+
+  @Override
+  public long getGlobalSeriesNumber() {
+    return schemaEngineStatistics.getTotalSeriesNumber();
+  }
 }

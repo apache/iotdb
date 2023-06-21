@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 
-/** A common exception to pass to {@link IDriver#failed(Throwable)} */
+/** A common exception to pass to {@link IDriver#failed(Throwable)}. */
 public class DriverTaskAbortedException extends Exception {
 
   public static final String BY_TIMEOUT = "timeout";

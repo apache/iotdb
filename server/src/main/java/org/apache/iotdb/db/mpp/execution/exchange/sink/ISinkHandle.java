@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 public interface ISinkHandle extends ISink {
-  /** get channel at specified index */
+  /** get channel at specified index. */
   ISinkChannel getChannel(int index);
 
   /**

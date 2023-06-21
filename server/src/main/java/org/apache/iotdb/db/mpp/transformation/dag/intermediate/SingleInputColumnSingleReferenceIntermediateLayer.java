@@ -160,7 +160,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "SingleInputColumnSingleReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
               beginIndex,
               endIndex,
               windowSize);
@@ -205,7 +205,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "SingleInputColumnSingleReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
               beginIndex,
               endIndex,
               windowSize);
