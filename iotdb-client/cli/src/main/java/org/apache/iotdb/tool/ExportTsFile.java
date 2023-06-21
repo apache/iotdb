@@ -77,6 +77,7 @@ public class ExportTsFile extends AbstractTsFileTool {
 
   private static long timeout = -1;
 
+  @SuppressWarnings("squid:S3776")
   /** main function of export tsFile tool. */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -114,8 +115,8 @@ public class ExportTsFile extends AbstractTsFileTool {
       exitCode = CODE_ERROR;
     }
 
-    try {
-      session = new Session(host, Integer.parseInt(port), username, password);
+    try (Session sessionNew = new Session(host, Integer.parseInt(port), username, password)){
+      session = sessionNew;
       session.open(false);
 
       if (queryCommand == null) {
@@ -152,7 +153,8 @@ public class ExportTsFile extends AbstractTsFileTool {
           session.close();
         } catch (IoTDBConnectionException e) {
           exitCode = CODE_ERROR;
-          IoTPrinter.println("Encounter an error when closing session, error is: " + e.getMessage());
+          IoTPrinter.println(
+              "Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
     }
@@ -291,6 +293,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     }
   }
 
+  @SuppressWarnings({"squid:S6541","squid:S3776","squid:S127"})
   public static void writeTsFileFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException,
           WriteProcessException {

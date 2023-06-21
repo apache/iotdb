@@ -92,6 +92,7 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static long timeout = -1;
 
+  @SuppressWarnings("squid:S3776")
   /** main function of export csv tool. */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -129,8 +130,8 @@ public class ExportCsv extends AbstractCsvTool {
       exitCode = CODE_ERROR;
     }
 
-    try{
-       session = new Session(host, Integer.parseInt(port), username, password);
+    try ( Session sessionNew = new Session(host, Integer.parseInt(port), username, password)){
+      session = sessionNew;
       session.open(false);
       timestampPrecision = session.getTimestampPrecision();
       setTimeZone();
@@ -161,7 +162,8 @@ public class ExportCsv extends AbstractCsvTool {
       IoTPrinter.println("Connect failed because " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (TException e) {
-      IoTPrinter.println("Can not get the timestamp precision from server because " + e.getMessage());
+      IoTPrinter.println(
+          "Can not get the timestamp precision from server because " + e.getMessage());
       exitCode = CODE_ERROR;
     } finally {
       if (session != null) {
@@ -169,7 +171,8 @@ public class ExportCsv extends AbstractCsvTool {
           session.close();
         } catch (IoTDBConnectionException e) {
           exitCode = CODE_ERROR;
-          IoTPrinter.println("Encounter an error when closing session, error is: " + e.getMessage());
+          IoTPrinter.println(
+              "Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
     }
@@ -365,6 +368,7 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
+  @SuppressWarnings("squid:S3776")
   public static void writeCsvFile(
       SessionDataSet sessionDataSet, String filePath, List<Object> headers, int linesPerFile)
       throws IOException, IoTDBConnectionException, StatementExecutionException {

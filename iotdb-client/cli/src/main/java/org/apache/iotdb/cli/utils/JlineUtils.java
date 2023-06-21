@@ -45,6 +45,8 @@ public class JlineUtils {
   private JlineUtils() {}
 
   public static final Pattern SQL_KEYWORD_PATTERN = Pattern.compile("([A-Z_]+)");
+
+  @SuppressWarnings("squid:S2386")
   public static final Set<String> SQL_KEYWORDS =
       IntStream.range(0, SqlLexer.VOCABULARY.getMaxTokenType())
           .mapToObj(SqlLexer.VOCABULARY::getDisplayName)

@@ -366,8 +366,8 @@ public class ImportCsv extends AbstractCsvTool {
   public static int importFromTargetPath(
       String host, int port, String username, String password, String targetPath, String timeZone)
       throws IoTDBConnectionException {
-    try {
-      session = new Session(host, port, username, password, false);
+    try (Session sessionNew = new Session(host, port, username, password, false); ){
+      session = sessionNew;
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
@@ -446,6 +446,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @param records the records of CSV file
    * @param failedFilePath the directory to save the failed files
    */
+  @SuppressWarnings("squid:S3776")
   private static void writeDataAlignedByTime(
       List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
       throws IllegalPathException {
@@ -487,7 +488,7 @@ public class ImportCsv extends AbstractCsvTool {
 
           for (Map.Entry<String, List<String>> entry : deviceAndMeasurementNames.entrySet()) {
             String deviceId = entry.getKey();
-            List<String> measurementNames =  entry.getValue();
+            List<String> measurementNames = entry.getValue();
             ArrayList<TSDataType> types = new ArrayList<>();
             ArrayList<Object> values = new ArrayList<>();
             ArrayList<String> measurements = new ArrayList<>();
@@ -501,7 +502,9 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(header, type);
                   } else {
-                    IoTPrinter.printf("Line '%s', column '%s': '%s' unknown type%n", recordObj.getRecordNumber(), header, value);
+                    IoTPrinter.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        recordObj.getRecordNumber(), header, value);
                     isFail = true;
                   }
                 }
@@ -510,7 +513,9 @@ public class ImportCsv extends AbstractCsvTool {
                   Object valueTrans = typeTrans(value, type);
                   if (valueTrans == null) {
                     isFail = true;
-                    IoTPrinter.printf("Line '%s', column '%s': '%s' can't convert to '%s'%n", recordObj.getRecordNumber(), header, value, type);
+                    IoTPrinter.printf(
+                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
+                        recordObj.getRecordNumber(), header, value, type);
                   } else {
                     measurements.add(header.replace(deviceId + '.', ""));
                     types.add(type);
@@ -552,7 +557,9 @@ public class ImportCsv extends AbstractCsvTool {
    *
    * @param headerNames the header names of CSV file
    * @param records the records of CSV file
+   * @param failedFilePath the directory to save the failed files
    */
+  @SuppressWarnings("squid:S3776")
   private static void writeDataAlignedByDevice(
       List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
       throws IllegalPathException {
@@ -628,7 +635,9 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(headerNameWithoutType, type);
                   } else {
-                    IoTPrinter.printf("Line '%s', column '%s': '%s' unknown type%n", recordObj.getRecordNumber(), headerNameWithoutType, value);
+                    IoTPrinter.printf(
+                        "Line '%s', column '%s': '%s' unknown type%n",
+                        recordObj.getRecordNumber(), headerNameWithoutType, value);
                     isFail.set(true);
                   }
                 }
@@ -638,7 +647,9 @@ public class ImportCsv extends AbstractCsvTool {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
-                  IoTPrinter.printf("Line '%s', column '%s': '%s' can't convert to '%s'%n", recordObj.getRecordNumber(), headerNameWithoutType, value, type);
+                  IoTPrinter.printf(
+                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
+                      recordObj.getRecordNumber(), headerNameWithoutType, value, type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameWithoutType);
@@ -665,7 +676,7 @@ public class ImportCsv extends AbstractCsvTool {
     if (!failedRecords.isEmpty()) {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
-    System.out.println("Import completely!");
+    IoTPrinter.println("Import completely!");
   }
 
   private static void writeFailedLinesFile(
@@ -791,10 +802,10 @@ public class ImportCsv extends AbstractCsvTool {
       boolean ignoreTimeCase = "Time".equalsIgnoreCase(headerName);
       boolean ignoreDeviceCase = deviceColumn.equalsIgnoreCase(headerName);
       if (Boolean.TRUE.equals(ignoreTimeCase) || Boolean.TRUE.equals(ignoreDeviceCase)) {
-        if(Boolean.TRUE.equals(ignoreTimeCase)){
+        if (Boolean.TRUE.equals(ignoreTimeCase)) {
           timeColumn = headerName;
         }
-        if(Boolean.TRUE.equals(ignoreDeviceCase)){
+        if (Boolean.TRUE.equals(ignoreDeviceCase)) {
           deviceColumn = headerName;
         }
         continue;
@@ -815,7 +826,7 @@ public class ImportCsv extends AbstractCsvTool {
       String measurementName = split[split.length - 1];
       String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
       if (deviceAndMeasurementNames != null) {
-        deviceAndMeasurementNames.putIfAbsent(deviceName,new ArrayList<>());
+        deviceAndMeasurementNames.putIfAbsent(deviceName, new ArrayList<>());
         deviceAndMeasurementNames.get(deviceName).add(measurementName);
       }
     }
@@ -856,7 +867,8 @@ public class ImportCsv extends AbstractCsvTool {
           }
         }
       } catch (StatementExecutionException | IllegalPathException e) {
-        IoTPrinter.println("Meet error when query the type of timeseries because " + e.getMessage());
+        IoTPrinter.println(
+            "Meet error when query the type of timeseries because " + e.getMessage());
         return false;
       }
     }
