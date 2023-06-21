@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -28,7 +27,6 @@ import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,18 +60,13 @@ public class TabletInsertionDataContainer {
   private Tablet tablet;
 
   public TabletInsertionDataContainer(InsertNode insertNode, String pattern) {
-    try {
-      if (insertNode instanceof InsertRowNode) {
-        parse((InsertRowNode) insertNode, pattern);
-      } else if (insertNode instanceof InsertTabletNode) {
-        parse((InsertTabletNode) insertNode, pattern);
-      } else {
-        throw new UnSupportedDataTypeException(
-            String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
-      }
-    } catch (IllegalPathException e) {
-      throw new PipeException(
-          String.format("Failed to parse insertNode with pattern %s.", pattern), e);
+    if (insertNode instanceof InsertRowNode) {
+      parse((InsertRowNode) insertNode, pattern);
+    } else if (insertNode instanceof InsertTabletNode) {
+      parse((InsertTabletNode) insertNode, pattern);
+    } else {
+      throw new UnSupportedDataTypeException(
+          String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
     }
   }
 

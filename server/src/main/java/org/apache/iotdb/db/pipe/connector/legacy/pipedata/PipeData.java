@@ -68,8 +68,7 @@ public abstract class PipeData {
     serialNumber = stream.readLong();
   }
 
-  public static PipeData createPipeData(DataInputStream stream)
-      throws IOException, IllegalPathException {
+  public static PipeData createPipeData(DataInputStream stream) throws IOException {
     PipeData pipeData;
     PipeDataType type = PipeDataType.getPipeDataType(stream.readByte());
     switch (type) {

@@ -188,6 +188,8 @@ public class PipePluginAgent {
         PipePluginExecutableManager.getInstance()
             .removeFileUnderTemporaryRoot(pluginName.toUpperCase() + ".txt");
       }
+    } catch (IOException e) {
+      throw new PipeException(e.getMessage(), e);
     } finally {
       releaseLock();
     }

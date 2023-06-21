@@ -166,21 +166,13 @@ public class IoTDBSyncConnector implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    try {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
-      } else {
-        throw new NotImplementedException(
-            "IoTDBSyncConnector only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
-      }
-    } catch (TException e) {
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer tablet insertion event: %s, because %s.",
-              tabletInsertionEvent, e.getMessage()),
-          e);
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+    } else {
+      throw new NotImplementedException(
+          "IoTDBSyncConnector only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
     }
   }
 
