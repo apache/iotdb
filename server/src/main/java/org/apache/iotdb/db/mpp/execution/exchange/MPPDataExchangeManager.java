@@ -138,7 +138,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                   e.sourceFragmentInstanceId.fragmentId,
                   e.sourceFragmentInstanceId.instanceId))) {
         LOGGER.debug(
-            "Acknowledge data block event received, for data blocks whose sequence ID in [{}, {}) from {}.",
+            "Received AcknowledgeDataBlockEvent for TsBlocks whose sequence ID are in [{}, {}) from {}.",
             e.getStartSequenceId(),
             e.getEndSequenceId(),
             e.getSourceFragmentInstanceId());
@@ -447,10 +447,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
 
     private void decrementCnt() {
-      if (hasDecremented.compareAndSet(false, true)) {
-        if (cnt.decrementAndGet() == 0) {
-          closeShuffleSinkHandle();
-        }
+      if (hasDecremented.compareAndSet(false, true) && (cnt.decrementAndGet() == 0)) {
+        closeShuffleSinkHandle();
       }
     }
 
@@ -670,7 +668,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       FragmentInstanceContext instanceContext) {
     if (shuffleSinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException(
-          "ShuffleSinkHandle for " + localFragmentInstanceId + " exists.");
+          "ShuffleSinkHandle for " + localFragmentInstanceId + " is in the map.");
     }
 
     int channelNum = downStreamChannelLocationList.size();
@@ -693,7 +691,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             downStreamChannelList,
             downStreamChannelIndex,
             shuffleStrategyEnum,
-            localPlanNodeId,
             new ShuffleSinkListenerImpl(instanceContext, instanceContext::failed));
     shuffleSinkHandles.put(localFragmentInstanceId, shuffleSinkHandle);
     return shuffleSinkHandle;
@@ -856,7 +853,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     LOGGER.debug("[EndForceReleaseFIDataExchangeResource]");
   }
 
-  /** @param suffix should be like [PlanNodeId].SourceHandle/SinHandle */
+  /**
+   * Create FullId with suffix.
+   *
+   * @param suffix should be like [PlanNodeId].SourceHandle/SinHandle
+   */
   public static String createFullIdFrom(TFragmentInstanceId fragmentInstanceId, String suffix) {
     return createFullId(
             fragmentInstanceId.queryId,

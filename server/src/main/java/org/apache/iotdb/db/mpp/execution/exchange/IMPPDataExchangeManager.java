@@ -50,6 +50,7 @@ public interface IMPPDataExchangeManager {
       FragmentInstanceContext instanceContext);
 
   ISinkChannel createLocalSinkChannelForPipeline(DriverContext driverContext, String planNodeId);
+
   /**
    * Create a source handle who fetches data blocks from a remote upstream fragment instance for a
    * plan node of a local fragment instance in async manner.
@@ -78,7 +79,7 @@ public interface IMPPDataExchangeManager {
       int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback);
 
-  /** SharedTsBlockQueue must belong to corresponding LocalSinkChannel */
+  /** SharedTsBlockQueue must belong to corresponding LocalSinkChannel. */
   ISourceHandle createLocalSourceHandleForPipeline(SharedTsBlockQueue queue, DriverContext context);
 
   /**
