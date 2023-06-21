@@ -84,7 +84,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPrevi
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
@@ -224,7 +223,6 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1045,7 +1043,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getZoneId(),
           expressionTypes,
           node.getScanOrder() == Ordering.ASC);
-    } catch (QueryProcessException | IOException e) {
+    } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
   }
@@ -1087,7 +1085,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
-    // init UDTFContext;
+    // init UDTFContext
     UDTFContext filterContext = new UDTFContext(node.getZoneId());
     filterContext.constructUdfExecutors(new Expression[] {filterExpression});
 
@@ -1186,7 +1184,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getZoneId(),
           expressionTypes,
           node.getScanOrder() == Ordering.ASC);
-    } catch (QueryProcessException | IOException e) {
+    } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
   }
@@ -1762,7 +1760,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeJoinOperator.class.getSimpleName());
+                RowBasedTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
         node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);

@@ -16,16 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 public interface TimeComparator {
 
-  /** @return true if time is satisfied with endTime, otherwise false */
+  /** return true if time is satisfied with endTime, otherwise false. */
   boolean satisfyCurEndTime(long time, long endTime);
 
-  /** @return min(time1, time2) if order by time asc, max(time1, time2) if order by desc */
+  /** return min(time1, time2) if order by time asc, max(time1, time2) if order by desc. */
   long getCurrentEndTime(long time1, long time2);
 
-  /** @return time < endTime if order by time asc, time > endTime if order by desc */
+  /** return time < endTime if order by time asc, time > endTime if order by desc. */
   boolean canContinue(long time, long endTime);
 }

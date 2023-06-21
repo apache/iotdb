@@ -42,7 +42,11 @@ public class MergeSortComparator {
               (SortKey sortKey) -> sortKey.tsBlock.getTimeByIndex(sortKey.rowIndex))
           .reversed();
 
-  /** @param indexList -1 for time column */
+  private MergeSortComparator() {
+    // util class doesn't need constructor
+  }
+
+  /** -1 in index is for time column. */
   public static Comparator<SortKey> getComparator(
       List<SortItem> sortItemList, List<Integer> indexList, List<TSDataType> dataTypeList) {
 
@@ -50,7 +54,9 @@ public class MergeSortComparator {
     List<Comparator<SortKey>> list = new ArrayList<>(indexList.size());
     for (int i = 0; i < indexList.size(); i++) {
       int index = indexList.get(i);
-      if (index == -2) continue;
+      if (index == -2) {
+        continue;
+      }
       TSDataType dataType = dataTypeList.get(i);
       boolean asc = sortItemList.get(i).getOrdering() == Ordering.ASC;
       boolean nullFirst = sortItemList.get(i).getNullOrdering() == NullOrdering.FIRST;
