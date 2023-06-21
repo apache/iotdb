@@ -50,7 +50,7 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COL
 import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant.COLLECTOR_PATTERN_KEY;
 
-public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataRegionCollector {
+public class PipeHistoricalDataRegionTsFileCollector implements PipeHistoricalDataRegionCollector {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileCollector.class);
@@ -69,10 +69,10 @@ public class PipeHistoricalDataRegionTsFileCollector extends PipeHistoricalDataR
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
-  public PipeHistoricalDataRegionTsFileCollector() {}
-
   @Override
-  public void validate(PipeParameterValidator validator) {}
+  public void validate(PipeParameterValidator validator) {
+    // do nothing
+  }
 
   @Override
   public void customize(

@@ -84,8 +84,6 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     }
   }
 
-  // TODO: maximum the efficiency of matching when pattern is root
-  // TODO: memory control
   @Override
   public Set<PipeRealtimeDataRegionCollector> match(PipeRealtimeCollectEvent event) {
     final Set<PipeRealtimeDataRegionCollector> matchedCollectors = new HashSet<>();
@@ -105,7 +103,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
             deviceToCollectorsCache.get(device, this::filterCollectorsByDevice);
         // this would not happen
         if (collectorsFilteredByDevice == null) {
-          LOGGER.warn(String.format("Match result NPE when handle device %s", device));
+          LOGGER.warn("Match result NPE when handle device {}", device);
           continue;
         }
 
