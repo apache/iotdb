@@ -115,7 +115,7 @@ public class ExportTsFile extends AbstractTsFileTool {
       exitCode = CODE_ERROR;
     }
 
-    try (Session sessionNew = new Session(host, Integer.parseInt(port), username, password)){
+    try (Session sessionNew = new Session(host, Integer.parseInt(port), username, password)) {
       session = sessionNew;
       session.open(false);
 
@@ -293,7 +293,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     }
   }
 
-  @SuppressWarnings({"squid:S6541","squid:S3776","squid:S127"})
+  @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S127"})
   public static void writeTsFileFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException,
           WriteProcessException {

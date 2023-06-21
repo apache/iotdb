@@ -130,7 +130,7 @@ public class ExportCsv extends AbstractCsvTool {
       exitCode = CODE_ERROR;
     }
 
-    try ( Session sessionNew = new Session(host, Integer.parseInt(port), username, password)){
+    try (Session sessionNew = new Session(host, Integer.parseInt(port), username, password)) {
       session = sessionNew;
       session.open(false);
       timestampPrecision = session.getTimestampPrecision();

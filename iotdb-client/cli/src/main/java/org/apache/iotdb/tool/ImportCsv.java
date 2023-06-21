@@ -366,7 +366,7 @@ public class ImportCsv extends AbstractCsvTool {
   public static int importFromTargetPath(
       String host, int port, String username, String password, String targetPath, String timeZone)
       throws IoTDBConnectionException {
-    try (Session sessionNew = new Session(host, port, username, password, false); ){
+    try (Session sessionNew = new Session(host, port, username, password, false); ) {
       session = sessionNew;
       session.open(false);
       timeZoneID = timeZone;
