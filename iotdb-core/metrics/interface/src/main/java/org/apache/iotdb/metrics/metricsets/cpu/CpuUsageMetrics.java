@@ -25,6 +25,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
@@ -39,6 +41,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class CpuUsageMetrics implements IMetricSet {
+  private static final Logger log = LoggerFactory.getLogger(CpuUsageMetrics.class);
   private static final String MODULE_CPU_USAGE = "module_cpu_usage";
   private static final String POOL_CPU_USAGE = "pool_cpu_usage";
   private static final String POOL = "pool";
@@ -62,6 +65,7 @@ public class CpuUsageMetrics implements IMetricSet {
   AutoGauge processCpuLoadGauge = null;
   private final ThreadMXBean threadMxBean = ManagementFactory.getThreadMXBean();
   private AtomicLong lastUpdateTime = new AtomicLong(0L);
+  private AtomicLong updateCount = new AtomicLong(0);
 
   public CpuUsageMetrics(
       List<String> modules,
@@ -170,6 +174,7 @@ public class CpuUsageMetrics implements IMetricSet {
     if (!checkCpuMonitorEnable()) {
       return;
     }
+    long startTime = System.nanoTime();
     // update
     long[] taskIds = threadMxBean.getAllThreadIds();
     ThreadInfo[] threadInfos = threadMxBean.getThreadInfo(taskIds);
@@ -211,6 +216,11 @@ public class CpuUsageMetrics implements IMetricSet {
     lastThreadCpuTime.putAll(currentThreadCpuTime);
     lastThreadUserTime.clear();
     lastThreadUserTime.putAll(currentThreadUserTime);
+    long timeCost = System.nanoTime() - startTime;
+    updateCount.incrementAndGet();
+    if (updateCount.get() % 10 == 0) {
+      log.info("Time for update cpu usage is {} ns", timeCost);
+    }
   }
 
   private boolean checkCpuMonitorEnable() {
