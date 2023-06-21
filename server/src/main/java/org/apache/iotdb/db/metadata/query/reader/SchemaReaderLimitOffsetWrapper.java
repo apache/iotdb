@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.metadata.query.reader;
 
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.NoSuchElementException;
+
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements ISchemaReader<T> {
 
@@ -82,10 +83,10 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
               }
               return schemaReader.hasNext();
             },
-            FragmentInstanceManager.getInstance().getIntoOperationExecutor());
+            directExecutor());
       }
       if (count >= limit) {
-        return NOT_BLOCKED_FALSE;
+        return NOT_BLOCKED;
       } else {
         return schemaReader.isBlocked();
       }
@@ -98,7 +99,7 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   public boolean hasNext() {
     try {
       isBlocked().get();
-      return schemaReader.hasNext();
+      return schemaReader.hasNext() && count < limit;
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
