@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
@@ -25,7 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** This class is used to record statistics within the SchemaRegion in Memory mode */
+/** This class is used to record statistics within the SchemaRegion in Memory mode. */
 public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   protected MemSchemaEngineStatistics schemaEngineStatistics;
@@ -35,7 +36,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   private final AtomicLong devicesNumber = new AtomicLong(0);
   private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
 
-  private long mLogLength = 0;
+  private long mlogLength = 0;
 
   public MemSchemaRegionStatistics(int schemaRegionId, ISchemaEngineStatistics engineStatistics) {
     this.schemaEngineStatistics = engineStatistics.getAsMemSchemaEngineStatistics();
@@ -122,12 +123,12 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     return schemaRegionId;
   }
 
-  public void setMLogLength(long mLogLength) {
-    this.mLogLength = mLogLength;
+  public void setMlogLength(long mlogLength) {
+    this.mlogLength = mlogLength;
   }
 
-  public long getMLogLength() {
-    return mLogLength;
+  public long getMlogLength() {
+    return mlogLength;
   }
 
   @Override

@@ -246,7 +246,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     if (usingMLog && !isRecovering) {
       try {
         logDescriptionWriter.updateCheckPoint(logWriter.position());
-        regionStatistics.setMLogCheckPoint(logWriter.position());
+        regionStatistics.setMlogCheckPoint(logWriter.position());
       } catch (IOException e) {
         logger.warn(
             "Update {} failed because {}",
@@ -299,7 +299,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
     if (usingMLog && !isRecovering) {
       logWriter.write(schemaRegionPlan);
-      regionStatistics.setMLogLength(logWriter.position());
+      regionStatistics.setMlogLength(logWriter.position());
     }
   }
 

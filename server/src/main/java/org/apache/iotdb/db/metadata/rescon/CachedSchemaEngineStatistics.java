@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.rescon;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class is used to record global statistics for SchemaEngine in PB_Tree mode, which is a
- * superset of the statistics in Memory mode
+ * superset of the statistics in Memory mode.
  */
 public class CachedSchemaEngineStatistics extends MemSchemaEngineStatistics {
 
