@@ -357,7 +357,7 @@ public enum ThreadName {
         }
       }
     }
-    log.info("Unknown thread name: {}", givenThreadName);
+    log.debug("Unknown thread name: {}", givenThreadName);
     return ThreadName.UNKOWN;
   }
 }
