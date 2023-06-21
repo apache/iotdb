@@ -87,7 +87,7 @@ def test_non_time_query():
                 None,
                 None,
                 None,
-                "",
+                "BASE",
             ]
         ],
     )

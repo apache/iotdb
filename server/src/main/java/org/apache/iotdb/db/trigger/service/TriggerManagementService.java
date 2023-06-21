@@ -202,6 +202,8 @@ public class TriggerManagementService {
   }
 
   /**
+   * Get all the triggers that matched this Pattern.
+   *
    * @param devicePath PathPattern
    * @return all the triggers that matched this Pattern
    */
@@ -215,21 +217,25 @@ public class TriggerManagementService {
     String triggerName = triggerInformation.getTriggerName();
     String jarName = triggerInformation.getJarName();
     if (triggerTable.containsTrigger(triggerName)
-        && TriggerExecutableManager.getInstance().hasFileUnderLibRoot(jarName)) {
-      if (isLocalJarConflicted(triggerInformation)) {
-        // same jar name with different md5
-        String errorMessage =
-            String.format(
-                "Failed to registered trigger %s, "
-                    + "because existed md5 of jar file for trigger %s is different from the new jar file. ",
-                triggerName, triggerName);
-        LOGGER.warn(errorMessage);
-        throw new TriggerManagementException(errorMessage);
-      }
+        && TriggerExecutableManager.getInstance().hasFileUnderLibRoot(jarName)
+        && isLocalJarConflicted(triggerInformation)) {
+      // same jar name with different md5
+      String errorMessage =
+          String.format(
+              "Failed to registered trigger %s, because existed"
+                  + " md5 of jar file for trigger %s is different from the new jar file. ",
+              triggerName, triggerName);
+      LOGGER.warn(errorMessage);
+      throw new TriggerManagementException(errorMessage);
     }
   }
 
-  /** check whether local jar is correct according to md5 */
+  /**
+   * check whether local jar is correct according to md5.
+   *
+   * @throws TriggerManagementException if failed to compute md5 of the jar file.
+   */
+  @SuppressWarnings("squid:S4790")
   public boolean isLocalJarConflicted(TriggerInformation triggerInformation)
       throws TriggerManagementException {
     String triggerName = triggerInformation.getTriggerName();
@@ -263,8 +269,8 @@ public class TriggerManagementService {
       } catch (IOException e) {
         String errorMessage =
             String.format(
-                "Failed to registered trigger %s, "
-                    + "because error occurred when trying to compute md5 of jar file for trigger %s ",
+                "Failed to registered trigger %s, because error "
+                    + "occurred when trying to compute md5 of jar file for trigger %s ",
                 triggerName, triggerName);
         LOGGER.warn(errorMessage, e);
         throw new TriggerManagementException(errorMessage);
@@ -331,6 +337,8 @@ public class TriggerManagementService {
   }
 
   /**
+   * Get DataNodeLocation of the given StatefulTrigger.
+   *
    * @param triggerName given trigger
    * @return TDataNodeLocation of DataNode where instance of given stateful trigger is on. Null if
    *     trigger not found.

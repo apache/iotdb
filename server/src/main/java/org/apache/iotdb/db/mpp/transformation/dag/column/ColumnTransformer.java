@@ -77,7 +77,7 @@ public abstract class ColumnTransformer {
 
   /**
    * Return whether the types of two ColumnTransformer are equal. If one ColumnTransformer is {@link
-   * NullColumnTransformer} (Only the Type of NullColumnTransformer is null), return {@code true}
+   * NullColumnTransformer} (Only the Type of NullColumnTransformer is null), return {@code true}.
    */
   public static boolean typeEquals(ColumnTransformer a, ColumnTransformer b) {
     if (a.getType() == null || b.getType() == null) {
@@ -88,7 +88,7 @@ public abstract class ColumnTransformer {
 
   /**
    * Return whether the type of this ColumnTransformer is equal to certain type. If this
-   * ColumnTransformer is {@link NullColumnTransformer}, return {@code true}
+   * ColumnTransformer is {@link NullColumnTransformer}, return {@code true}.
    */
   public boolean typeEquals(TypeEnum typeEnum) {
     return returnType == null || returnType.getTypeEnum().equals(typeEnum);
@@ -96,13 +96,13 @@ public abstract class ColumnTransformer {
 
   /**
    * Return whether the type of this ColumnTransformer is not equal to certain type. If this
-   * ColumnTransformer is {@link NullColumnTransformer}, return {@code true}
+   * ColumnTransformer is {@link NullColumnTransformer}, return {@code true}.
    */
   public boolean typeNotEquals(TypeEnum typeEnum) {
     return returnType == null || !returnType.getTypeEnum().equals(typeEnum);
   }
 
-  /** Responsible for the calculation */
+  /** Responsible for the calculation. */
   protected abstract void evaluate();
 
   protected abstract void checkType();

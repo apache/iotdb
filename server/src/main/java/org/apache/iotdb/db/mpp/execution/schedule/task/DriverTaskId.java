@@ -28,7 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
-/** the class of id of the pipeline driver task */
+/** the class of id of the pipeline driver task. */
 public class DriverTaskId implements ID, Comparable<DriverTaskId> {
 
   private final FragmentInstanceId fragmentInstanceId;

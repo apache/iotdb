@@ -393,7 +393,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "MultiInputColumnIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
               beginIndex,
               endIndex,
               windowSize);
@@ -441,7 +441,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "MultiInputColumnIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
               beginIndex,
               endIndex,
               windowSize);

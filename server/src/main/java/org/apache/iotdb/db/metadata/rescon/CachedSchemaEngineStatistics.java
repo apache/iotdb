@@ -22,7 +22,7 @@ package org.apache.iotdb.db.metadata.rescon;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * This class is used to record global statistics for SchemaEngine in PB_Tree mode, which is a
+ * This class is used to record global statistics for SchemaEngine in PBTree mode, which is a
  * superset of the statistics in Memory mode.
  */
 public class CachedSchemaEngineStatistics extends MemSchemaEngineStatistics {

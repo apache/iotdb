@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule.task;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -49,9 +50,6 @@ public class DriverTask implements IDIndexedAccessible {
   private final long ddl;
   private final Lock lock;
 
-  // Running stats
-  private long cpuWallNano;
-
   private String abortCause;
 
   private final AtomicReference<Priority> priority;
@@ -62,7 +60,7 @@ public class DriverTask implements IDIndexedAccessible {
 
   private long estimatedMemorySize;
 
-  /** Initialize a dummy instance for queryHolder */
+  /** Initialize a dummy instance for queryHolder. */
   public DriverTask() {
     this(new StubFragmentInstance(), 0L, null, null, 0);
   }
@@ -260,10 +258,14 @@ public class DriverTask implements IDIndexedAccessible {
     }
 
     @Override
-    public void close() {}
+    public void close() {
+      // do nothing
+    }
 
     @Override
-    public void failed(Throwable t) {}
+    public void failed(Throwable t) {
+      // do nothing
+    }
 
     @Override
     public ISink getSink() {

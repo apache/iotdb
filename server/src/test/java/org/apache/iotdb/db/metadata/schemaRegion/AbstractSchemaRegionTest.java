@@ -53,9 +53,9 @@ public abstract class AbstractSchemaRegionTest {
   public static List<SchemaRegionTestParams> getTestModes() {
     return Arrays.asList(
         new SchemaRegionTestParams("MemoryMode", "Memory", -1, true),
-        new SchemaRegionTestParams("PBTree-FullMemory", "PB_Tree", 10000, true),
-        new SchemaRegionTestParams("PBTree-PartialMemory", "PB_Tree", 3, true),
-        new SchemaRegionTestParams("PBTree-NonMemory", "PB_Tree", 0, true));
+        new SchemaRegionTestParams("PBTree-FullMemory", "PBTree", 10000, true),
+        new SchemaRegionTestParams("PBTree-PartialMemory", "PBTree", 3, true),
+        new SchemaRegionTestParams("PBTree-NonMemory", "PBTree", 0, true));
   }
 
   public AbstractSchemaRegionTest(SchemaRegionTestParams testParams) {

@@ -44,7 +44,7 @@ public class ElasticSerializableRowRecordList {
 
   protected LRUCache cache;
   protected List<SerializableRowRecordList> rowRecordLists;
-  /** Mark bitMaps of correct index when one row has at least one null field */
+  /** Mark bitMaps of correct index when one row has at least one null field. */
   protected List<BitMap> bitMaps;
 
   protected int size;
@@ -63,6 +63,7 @@ public class ElasticSerializableRowRecordList {
    * @param queryId Query ID.
    * @param memoryLimitInMB Memory limit.
    * @param numCacheBlock Number of cache blocks.
+   * @throws QueryProcessException by SerializableRowRecordList.calculateCapacity
    */
   public ElasticSerializableRowRecordList(
       TSDataType[] dataTypes, String queryId, float memoryLimitInMB, int numCacheBlock)
@@ -149,7 +150,7 @@ public class ElasticSerializableRowRecordList {
         .getRowRecord(index % internalRowRecordListCapacity);
   }
 
-  /** true if any field except the timestamp in the current row is null */
+  /** true if any field except the timestamp in the current row is null. */
   public boolean fieldsHasAnyNull(int index) {
     return bitMaps
         .get(index / internalRowRecordListCapacity)
@@ -162,7 +163,10 @@ public class ElasticSerializableRowRecordList {
 
   /**
    * Put the row in the list with an any-field-null marker, this method is faster than calling put
-   * directly
+   * directly.
+   *
+   * @throws IOException by checkMemoryUsage()
+   * @throws QueryProcessException by checkMemoryUsage()
    */
   private void put(Object[] rowRecord, boolean hasNullField)
       throws IOException, QueryProcessException {
@@ -273,6 +277,8 @@ public class ElasticSerializableRowRecordList {
   }
 
   /**
+   * Set the upper bound.
+   *
    * @param evictionUpperBound the index of the first element that cannot be evicted. in other
    *     words, elements whose index are <b>less than</b> the evictionUpperBound can be evicted.
    */
@@ -288,7 +294,7 @@ public class ElasticSerializableRowRecordList {
 
     SerializableRowRecordList get(int targetIndex) throws IOException {
       if (!containsKey(targetIndex)) {
-        if (cacheCapacity <= size()) {
+        if (cacheCapacity <= super.size()) {
           int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalRowRecordListCapacity) {
             rowRecordLists.set(lastIndex, null);

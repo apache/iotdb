@@ -40,4 +40,8 @@ public interface ISchemaRegionStatistics {
   CachedSchemaRegionStatistics getAsCachedSchemaRegionStatistics();
 
   void clear();
+
+  long getGlobalMemoryUsage();
+
+  long getGlobalSeriesNumber();
 }

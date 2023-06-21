@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+@SuppressWarnings({"squid:S106"})
 public class TabletExample {
 
   private static final String TIME_STR = "time";
@@ -45,7 +46,7 @@ public class TabletExample {
    * @return key: measurement name, value: series in format of {@link ArrayList}
    * @throws IOException if the csv format is incorrect
    */
-  private static Map<String, ArrayList> loadCSVData(
+  private static Map<String, ArrayList<Object>> loadCSVData(
       Map<String, TSDataType> measureTSTypeInfos, String dataFileName) throws IOException {
     measureTSTypeInfos.put(TIME_STR, TSDataType.INT64);
     try (BufferedReader reader = new BufferedReader(new FileReader(dataFileName))) {
@@ -64,7 +65,7 @@ public class TabletExample {
         }
         columnToIdMap.put(columnName, col);
       }
-      Map<String, ArrayList> ret = new HashMap<>();
+      Map<String, ArrayList<Object>> ret = new HashMap<>();
       // make sure that all measurements can be found from the data file
       for (Entry<String, TSDataType> entry : measureTSTypeInfos.entrySet()) {
         String measurement = entry.getKey();
@@ -103,6 +104,8 @@ public class TabletExample {
               break;
             case VECTOR:
               throw new IOException(String.format("data type %s is not yet.", TSDataType.VECTOR));
+            default:
+              throw new IOException("no type");
           }
         }
       }
@@ -120,75 +123,75 @@ public class TabletExample {
    */
   public static void main(String[] args) throws Exception {
 
-    Session session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-    String dataFileName = "sample.csv";
-    int rowSize = 10000;
-    int colSize = 5000;
-    if (args.length > 1) {
-      dataFileName = args[0];
-    }
-    if (args.length > 2) {
-      rowSize = Integer.parseInt(args[1]);
-    }
-    if (args.length > 3) {
-      colSize = Integer.parseInt(args[2]);
-    }
-
-    // construct the tablet's measurements.
-    Map<String, TSDataType> measureTSTypeInfos = new HashMap<>();
-    measureTSTypeInfos.put("s0", TSDataType.BOOLEAN);
-    measureTSTypeInfos.put("s1", TSDataType.FLOAT);
-    measureTSTypeInfos.put("s2", TSDataType.INT32);
-    measureTSTypeInfos.put("s3", TSDataType.DOUBLE);
-    measureTSTypeInfos.put("s4", TSDataType.INT64);
-    measureTSTypeInfos.put("s5", TSDataType.TEXT);
-    List<MeasurementSchema> schemas = new ArrayList<>();
-    measureTSTypeInfos.forEach((mea, type) -> schemas.add(new MeasurementSchema(mea, type)));
-
-    System.out.println(
-        String.format(
-            "Test Java: csv file name: %s, row: %d, col: %d", dataFileName, rowSize, colSize));
-    System.out.println(String.format("Total points: %d", rowSize * colSize * schemas.size()));
-
-    // test start
-    long allStart = System.nanoTime();
-
-    Map<String, ArrayList> data = loadCSVData(measureTSTypeInfos, dataFileName);
-    long loadCost = System.nanoTime() - allStart;
-
-    long insertCost = 0;
-    for (int i = 0; i < colSize; i++) {
-      String deviceId = "root.sg" + i % 8 + "." + i;
-
-      Tablet ta = new Tablet(deviceId, schemas, rowSize);
-      ta.rowSize = rowSize;
-      for (int t = 0; t < ta.rowSize; t++) {
-        ta.addTimestamp(t, (Long) data.get(TIME_STR).get(t));
-        for (Entry<String, TSDataType> entry : measureTSTypeInfos.entrySet()) {
-          String mea = entry.getKey();
-          ta.addValue(mea, t, data.get(mea).get(t));
-        }
+    try (Session session = new Session("127.0.0.1", 6667, "root", "root")) {
+      session.open();
+      String dataFileName = "sample.csv";
+      int rowSize = 10000;
+      int colSize = 5000;
+      if (args.length > 1) {
+        dataFileName = args[0];
       }
-      long insertSt = System.nanoTime();
-      session.insertTablet(ta, false);
-      insertCost += (System.nanoTime() - insertSt);
+      if (args.length > 2) {
+        rowSize = Integer.parseInt(args[1]);
+      }
+      if (args.length > 3) {
+        colSize = Integer.parseInt(args[2]);
+      }
+
+      // construct the tablet's measurements.
+      Map<String, TSDataType> measureTSTypeInfos = new HashMap<>();
+      measureTSTypeInfos.put("s0", TSDataType.BOOLEAN);
+      measureTSTypeInfos.put("s1", TSDataType.FLOAT);
+      measureTSTypeInfos.put("s2", TSDataType.INT32);
+      measureTSTypeInfos.put("s3", TSDataType.DOUBLE);
+      measureTSTypeInfos.put("s4", TSDataType.INT64);
+      measureTSTypeInfos.put("s5", TSDataType.TEXT);
+      List<MeasurementSchema> schemas = new ArrayList<>();
+      measureTSTypeInfos.forEach((mea, type) -> schemas.add(new MeasurementSchema(mea, type)));
+
+      System.out.println(
+          String.format(
+              "Test Java: csv file name: %s, row: %d, col: %d", dataFileName, rowSize, colSize));
+      System.out.println(String.format("Total points: %d", rowSize * colSize * schemas.size()));
+
+      // test start
+      long allStart = System.nanoTime();
+
+      Map<String, ArrayList<Object>> data = loadCSVData(measureTSTypeInfos, dataFileName);
+      long loadCost = System.nanoTime() - allStart;
+
+      long insertCost = 0;
+      for (int i = 0; i < colSize; i++) {
+        String deviceId = "root.sg" + i % 8 + "." + i;
+
+        Tablet ta = new Tablet(deviceId, schemas, rowSize);
+        ta.rowSize = rowSize;
+        for (int t = 0; t < ta.rowSize; t++) {
+          ta.addTimestamp(t, (Long) data.get(TIME_STR).get(t));
+          for (Entry<String, TSDataType> entry : measureTSTypeInfos.entrySet()) {
+            String mea = entry.getKey();
+            ta.addValue(mea, t, data.get(mea).get(t));
+          }
+        }
+        long insertSt = System.nanoTime();
+        session.insertTablet(ta, false);
+        insertCost += (System.nanoTime() - insertSt);
+      }
+      // test end
+      long allEnd = System.nanoTime();
+
+      session.executeNonQueryStatement("delete timeseries root.*");
+
+      System.out.println(String.format("load cost: %.3f", ((float) loadCost / 1000_000_000)));
+      System.out.println(
+          String.format(
+              "construct tablet cost: %.3f",
+              ((float) (allEnd - allStart - insertCost - loadCost) / 1000_000_000)));
+      System.out.println(
+          String.format("insert tablet cost: %.3f", ((float) insertCost / 1000_000_000)));
+      System.out.println(
+          String.format("total cost: %.3f", ((float) (allEnd - allStart) / 1000_000_000)));
+      System.out.println(String.format("%.3f", ((float) loadCost / 1000_000_000)));
     }
-    // test end
-    long allEnd = System.nanoTime();
-
-    session.executeNonQueryStatement("delete timeseries root.*");
-    session.close();
-
-    System.out.println(String.format("load cost: %.3f", ((float) loadCost / 1000_000_000)));
-    System.out.println(
-        String.format(
-            "construct tablet cost: %.3f",
-            ((float) (allEnd - allStart - insertCost - loadCost) / 1000_000_000)));
-    System.out.println(
-        String.format("insert tablet cost: %.3f", ((float) insertCost / 1000_000_000)));
-    System.out.println(
-        String.format("total cost: %.3f", ((float) (allEnd - allStart) / 1000_000_000)));
-    System.out.println(String.format("%.3f", ((float) loadCost / 1000_000_000)));
   }
 }

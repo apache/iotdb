@@ -38,7 +38,7 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        boolean flag;
+        boolean flag = false;
         // compare binary type
         if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BINARY)) {
           flag =
@@ -55,9 +55,7 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
         } else {
           double left = leftTransformer.getType().getDouble(leftColumn, i);
           double right = rightTransformer.getType().getDouble(rightColumn, i);
-          if (Double.isNaN(left) || Double.isNaN(right)) {
-            flag = false;
-          } else {
+          if (!Double.isNaN(left) && !Double.isNaN(right)) {
             flag = transform(compare(left, right));
           }
         }
@@ -83,10 +81,10 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
   }
 
   /**
-   * transform int value of flag to corresponding boolean value
+   * Transform int value of flag to corresponding boolean value.
    *
-   * @param flag
-   * @return
+   * @param flag input int value
+   * @return result boolean value
    */
   protected abstract boolean transform(int flag);
 }

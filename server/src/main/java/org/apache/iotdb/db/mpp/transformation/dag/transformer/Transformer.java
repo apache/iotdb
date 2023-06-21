@@ -52,7 +52,7 @@ public abstract class Transformer implements LayerPointReader {
     return hasCachedValue;
   }
 
-  /** if this method returns true, at least one of the cached field should be set */
+  /** if this method returns true, at least one of the cached field should be set. */
   protected abstract boolean cacheValue() throws QueryProcessException, IOException;
 
   @Override
@@ -69,7 +69,8 @@ public abstract class Transformer implements LayerPointReader {
   }
 
   /**
-   * if this method returns YieldableState.YIELDABLE, at least one of the cached field should be set
+   * if this method returns YieldableState.YIELDABLE, at least one of the cached field should be
+   * set.
    */
   protected abstract YieldableState yieldValue() throws Exception;
 
