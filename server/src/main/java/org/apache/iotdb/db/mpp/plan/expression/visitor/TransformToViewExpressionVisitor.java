@@ -47,9 +47,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.NegationViewExp
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpression;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
@@ -57,7 +55,6 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
@@ -164,20 +161,6 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   // endregion
 
   // region Binary Expressions
-  @Override
-  public ViewExpression visitBinaryExpression(BinaryExpression binaryExpression, Void context) {
-    if (binaryExpression instanceof ArithmeticBinaryExpression) {
-      return this.visitArithmeticBinaryExpression(
-          (ArithmeticBinaryExpression) binaryExpression, context);
-    } else if (binaryExpression instanceof CompareBinaryExpression) {
-      return this.visitCompareBinaryExpression((CompareBinaryExpression) binaryExpression, context);
-    } else if (binaryExpression instanceof LogicBinaryExpression) {
-      return this.visitLogicBinaryExpression((LogicBinaryExpression) binaryExpression, context);
-    }
-    throw new UnsupportedOperationException(
-        "Unsupported expression type in TransformToViewExpressionVisitor: "
-            + binaryExpression.getExpressionType());
-  }
 
   private Pair<ViewExpression, ViewExpression> getExpressionsForBinaryExpression(
       BinaryExpression binaryExpression) {

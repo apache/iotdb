@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 
 import java.nio.ByteBuffer;
 
@@ -42,5 +43,10 @@ public class GreaterEqualExpression extends CompareBinaryExpression {
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.GREATER_EQUAL;
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitGreaterEqualExpression(this, context);
   }
 }
