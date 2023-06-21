@@ -138,26 +138,25 @@ It costs 0.002s
 
 ### 设置异构数据库（进阶操作）
 
-在熟悉 IoTDB 元数据建模的前提下，用户可以在单机/分布式 IoTDB 中设置异构的数据库，以便应对不同的生产需求。
+在熟悉 IoTDB 元数据建模的前提下，用户可以在 IoTDB 中设置异构的数据库，以便应对不同的生产需求。
 
 目前支持的数据库异构参数有：
 
 | 参数名                       | 参数类型    | 参数描述                      |
 |---------------------------|---------|---------------------------|
 | TTL                       | Long    | 数据库的 TTL                  |
-| TIME_PARTITION_INTERVAL   | Long    | 数据库的时间分区间隔                |
 | SCHEMA_REPLICATION_FACTOR | Integer | 数据库的元数据副本数                |
 | DATA_REPLICATION_FACTOR   | Integer | 数据库的数据副本数                 |
 | SCHEMA_REGION_GROUP_NUM   | Integer | 数据库的 SchemaRegionGroup 数量 |
 | DATA_REGION_GROUP_NUM     | Integer | 数据库的 DataRegionGroup 数量   |
 
 用户在配置异构参数时需要注意以下三点：
-+ TTL 和 TIME_PARTITION_INTERVAL 必须为正整数
-+ SCHEMA_REPLICATION_FACTOR 和 DATA_REPLICATION_FACTOR 仅在分布式 IoTDB 中生效。
++ TTL 和 TIME_PARTITION_INTERVAL 必须为正整数。
++ SCHEMA_REPLICATION_FACTOR 和 DATA_REPLICATION_FACTOR 必须小于等于已部署的 DataNode 数量。
 + SCHEMA_REGION_GROUP_NUM 和 DATA_REGION_GROUP_NUM 的功能与 iotdb-common.properties 配置文件中的 
-`schema_region_group_extension_policy` 和 `data_region_group_extension_policy` 参数相关，
-若设置 `region_group_extension_policy=CUSTOM`，则 REGION_GROUP_NUM 将作为 Database 拥有的 RegionGroup 的数量；
-若设置 `region_group_extension_policy=AUTO`，则 REGION_GROUP_NUM 将作为 Database 拥有的 RegionGroup 的配额下界，即当该 Database 开始写入数据时，将至少拥有此数量的 RegionGroup。
+`schema_region_group_extension_policy` 和 `data_region_group_extension_policy` 参数相关，以 DATA_REGION_GROUP_NUM 为例：
+若设置 `data_region_group_extension_policy=CUSTOM`，则 DATA_REGION_GROUP_NUM 将作为 Database 拥有的 DataRegionGroup 的数量；
+若设置 `data_region_group_extension_policy=AUTO`，则 DATA_REGION_GROUP_NUM 将作为 Database 拥有的 DataRegionGroup 的配额下界，即当该 Database 开始写入数据时，将至少拥有此数量的 DataRegionGroup。
 
 用户可以在创建 Database 时设置任意异构参数，或在单机/分布式 IoTDB 运行时调整部分异构参数。
 
@@ -171,7 +170,7 @@ CREATE DATABASE DatabaseName WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_
 
 #### 运行时调整异构参数
 
-用户可以在单机/分布式 IoTDB 运行时调整部分异构参数，SQL 语句如下所示：
+用户可以在 IoTDB 运行时调整部分异构参数，SQL 语句如下所示：
 
 ```
 ALTER DATABASE DatabaseName WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
@@ -197,7 +196,7 @@ IoTDB> SHOW DATABASES DETAILS
 |Database|     TTL|SchemaReplicationFactor|DataReplicationFactor|TimePartitionInterval|SchemaRegionGroupNum|MinSchemaRegionGroupNum|MaxSchemaRegionGroupNum|DataRegionGroupNum|MinDataRegionGroupNum|MaxDataRegionGroupNum|
 +--------+--------+-----------------------+---------------------+---------------------+--------------------+-----------------------+-----------------------+------------------+---------------------+---------------------+
 |root.db1|    null|                      1|                    3|            604800000|                   0|                      1|                      1|                 0|                    2|                    2|
-|root.db2|86400000|                      1|                    1|             86400000|                   0|                      1|                      1|                 0|                    2|                    2|
+|root.db2|86400000|                      1|                    1|            604800000|                   0|                      1|                      1|                 0|                    2|                    2|
 |root.db3|    null|                      1|                    1|            604800000|                   0|                      1|                      1|                 0|                    2|                    2|
 +--------+--------+-----------------------+---------------------+---------------------+--------------------+-----------------------+-----------------------+------------------+---------------------+---------------------+
 Total line number = 3

@@ -139,15 +139,13 @@ It costs 0.002s
 ### Setting up heterogeneous databases (Advanced operations)
 
 Under the premise of familiar with IoTDB metadata modeling, 
-users can set up heterogeneous databases in stand-alone/distributed IoTDB to 
-cope with different production needs.
+users can set up heterogeneous databases in IoTDB to cope with different production needs.
 
 Currently, the following database heterogeneous parameters are supported:
 
 | Parameter                 | Type    | Description                                   |
 |---------------------------|---------|-----------------------------------------------|
 | TTL                       | Long    | TTL of the Database                           |
-| TIME_PARTITION_INTERVAL   | Long    | Time partition interval of the Database       |
 | SCHEMA_REPLICATION_FACTOR | Integer | The schema replication number of the Database |
 | DATA_REPLICATION_FACTOR   | Integer | The data replication number of the Database   |
 | SCHEMA_REGION_GROUP_NUM   | Integer | The SchemaRegionGroup number of the Database  |
@@ -155,10 +153,10 @@ Currently, the following database heterogeneous parameters are supported:
 
 Note the following when configuring heterogeneous parameters:
 + TTL and TIME_PARTITION_INTERVAL must be positive integers.
-+ SCHEMA_REPLICATION_FACTOR and DATA_REPLICATION_FACTOR takes effect only in distributed IoTDB.
-+ The function of SCHEMA_REGION_GROUP_NUM and DATA_REGION_GROUP_NUM are related to the parameter `schema_region_group_extension_policy` and `data_region_group_extension_policy` in iotdb-common.properties configuration file.
-  If `region_group_extension_policy=CUSTOM` is set, REGION_GROUP_NUM serves as the number of RegionGroups owned by the Database.
-  If `region_group_extension_policy=AUTO`, REGION_GROUP_NUM is used as the lower bound of the RegionGroup quota owned by the Database. That is, when the Database starts writing data, it will have at least this number of RegionGroups.
++ SCHEMA_REPLICATION_FACTOR and DATA_REPLICATION_FACTOR must be smaller than or equal to the number of deployed DataNodes.
++ The function of SCHEMA_REGION_GROUP_NUM and DATA_REGION_GROUP_NUM are related to the parameter `schema_region_group_extension_policy` and `data_region_group_extension_policy` in iotdb-common.properties configuration file. Take DATA_REGION_GROUP_NUM as an example:
+If `data_region_group_extension_policy=CUSTOM` is set, DATA_REGION_GROUP_NUM serves as the number of DataRegionGroups owned by the Database.
+If `data_region_group_extension_policy=AUTO`, DATA_REGION_GROUP_NUM is used as the lower bound of the DataRegionGroup quota owned by the Database. That is, when the Database starts writing data, it will have at least this number of DataRegionGroups.
 
 Users can set any heterogeneous parameters when creating a Database, or adjust some heterogeneous parameters during a stand-alone/distributed IoTDB run.
 
@@ -170,9 +168,9 @@ The user can set any of the above heterogeneous parameters when creating a Datab
 CREATE DATABASE DatabaseName WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_FACTOR=3, SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
 ```
 
-#### 运行时调整异构参数
+#### Adjust heterogeneous parameters at run time
 
-Users can adjust some heterogeneous parameters during the stand-alone/distributed IoTDB run, as shown in the following SQL statement:
+Users can adjust some heterogeneous parameters during the IoTDB runtime, as shown in the following SQL statement:
 
 ```
 ALTER DATABASE DatabaseName WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
@@ -182,7 +180,7 @@ Note that only the following heterogeneous parameters can be adjusted at runtime
 + SCHEMA_REGION_GROUP_NUM
 + DATA_REGION_GROUP_NUM
 
-#### 查看异构数据库
+#### Show heterogeneous databases
 
 The user can query the specific heterogeneous configuration of each Database, and the SQL statement is as follows:
 
@@ -198,7 +196,7 @@ IoTDB> SHOW DATABASES DETAILS
 |Database|     TTL|SchemaReplicationFactor|DataReplicationFactor|TimePartitionInterval|SchemaRegionGroupNum|MinSchemaRegionGroupNum|MaxSchemaRegionGroupNum|DataRegionGroupNum|MinDataRegionGroupNum|MaxDataRegionGroupNum|
 +--------+--------+-----------------------+---------------------+---------------------+--------------------+-----------------------+-----------------------+------------------+---------------------+---------------------+
 |root.db1|    null|                      1|                    3|            604800000|                   0|                      1|                      1|                 0|                    2|                    2|
-|root.db2|86400000|                      1|                    1|             86400000|                   0|                      1|                      1|                 0|                    2|                    2|
+|root.db2|86400000|                      1|                    1|            604800000|                   0|                      1|                      1|                 0|                    2|                    2|
 |root.db3|    null|                      1|                    1|            604800000|                   0|                      1|                      1|                 0|                    2|                    2|
 +--------+--------+-----------------------+---------------------+---------------------+--------------------+-----------------------+-----------------------+------------------+---------------------+---------------------+
 Total line number = 3
