@@ -75,7 +75,6 @@ import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRegionManager;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -294,7 +293,6 @@ public class DataNode implements DataNodeMBean {
     try {
       IoTDBStartCheck.getInstance().checkSystemConfig();
       IoTDBStartCheck.getInstance().checkDirectory();
-      IoTDBStartCheck.getInstance().serializeGlobalConfig(configurationResp.globalConfig);
       if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
         // In current implementation, only IoTConsensus need separated memory from Consensus
         IoTDBDescriptor.getInstance().reclaimConsensusMemory();
@@ -536,7 +534,6 @@ public class DataNode implements DataNodeMBean {
     // must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
-    registerManager.register(SyncService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
 
     // start region migrate service
@@ -876,9 +873,6 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void initProtocols() throws StartupException {
-    if (config.isEnableInfluxDBRpcService()) {
-      registerManager.register(InfluxDBRPCService.getInstance());
-    }
     if (config.isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }

@@ -19,23 +19,34 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MemoryControlTest {
+  @Before
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
+    SystemInfo.getInstance().getCompactionFileNumCost().set(0);
+    SystemInfo.getInstance().getCompactionMemoryCost().set(0);
+  }
+
   @Test
   public void testFailedToAllocateMemoryInCrossTask() throws Exception {
     List<TsFileResource> sequenceFiles = new ArrayList<>();

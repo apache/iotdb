@@ -140,7 +140,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewState
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.mpp.plan.statement.sys.sync.ShowPipeSinkTypeStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
@@ -270,8 +269,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         // make sure paths in logical view is fetched
         updateSchemaTreeByViews(analysis, schemaTree);
-        if (analysis.useLogicalView() && queryStatement.isAlignByDevice()) {
-          throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
+        if (analysis.useLogicalView()) {
+          if (queryStatement.isAlignByDevice()) {
+            throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
+          }
+          if (queryStatement.isGroupByTag()) {
+            throw new SemanticException("Views cannot be used in GROUP BY TAGS query yet.");
+          }
         }
       } finally {
         logger.debug("[EndFetchSchema]");
@@ -2659,6 +2663,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       // request schema fetch API
       logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+      updateSchemaTreeByViews(analysis, schemaTree);
       logger.debug("[EndFetchSchema]]");
 
       analyzeLastSource(
@@ -3155,16 +3160,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
 
-    return analysis;
-  }
-
-  @Override
-  public Analysis visitShowPipeSinkType(
-      ShowPipeSinkTypeStatement showPipeSinkTypeStatement, MPPQueryContext context) {
-    Analysis analysis = new Analysis();
-    analysis.setStatement(showPipeSinkTypeStatement);
-    analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowPipeSinkTypeHeader());
-    analysis.setFinishQueryAfterAnalyze(true);
     return analysis;
   }
 

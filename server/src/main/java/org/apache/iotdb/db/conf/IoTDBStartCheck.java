@@ -24,12 +24,10 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryChecker;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -71,43 +69,8 @@ public class IoTDBStartCheck {
 
   // region params need checking, determined when first start
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
-  private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
-  private static final String PARTITION_INTERVAL_STRING = "time_partition_interval";
-  private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
-  private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
-  private static final String TAG_ATTRIBUTE_FLUSH_INTERVAL = "tag_attribute_flush_interval";
-  private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
   private static final String DATA_REGION_NUM = "data_region_num";
-  private static final String ENABLE_ID_TABLE = "enable_id_table";
-  private static final String ENABLE_ID_TABLE_LOG_FILE = "enable_id_table_log_file";
-  private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
-  private static final String TIME_ENCODER_KEY = "time_encoder";
 
-  // Immutable system parameters
-  private static final Map<String, Supplier<String>> constantParamValueTable = new HashMap<>();
-
-  static {
-    constantParamValueTable.put(TIMESTAMP_PRECISION_STRING, config::getTimestampPrecision);
-    constantParamValueTable.put(
-        PARTITION_INTERVAL_STRING, () -> String.valueOf(config.getTimePartitionInterval()));
-    constantParamValueTable.put(
-        TSFILE_FILE_SYSTEM_STRING, () -> config.getTsFileStorageFs().toString());
-    constantParamValueTable.put(
-        TAG_ATTRIBUTE_SIZE_STRING, () -> String.valueOf(config.getTagAttributeTotalSize()));
-    constantParamValueTable.put(
-        TAG_ATTRIBUTE_FLUSH_INTERVAL, () -> String.valueOf(config.getTagAttributeFlushInterval()));
-    constantParamValueTable.put(
-        MAX_DEGREE_OF_INDEX_STRING,
-        () -> String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()));
-    constantParamValueTable.put(DATA_REGION_NUM, () -> String.valueOf(config.getDataRegionNum()));
-    constantParamValueTable.put(ENABLE_ID_TABLE, () -> String.valueOf(config.isEnableIDTable()));
-    constantParamValueTable.put(
-        ENABLE_ID_TABLE_LOG_FILE, () -> String.valueOf(config.isEnableIDTableLogFile()));
-    constantParamValueTable.put(
-        SCHEMA_ENGINE_MODE, () -> String.valueOf(config.getSchemaEngineMode()));
-    constantParamValueTable.put(
-        TIME_ENCODER_KEY, TSFileDescriptor.getInstance().getConfig()::getTimeEncoder);
-  }
   // endregion
   // region params don't need checking and can be updated
   private static final String INTERNAL_ADDRESS = "dn_internal_address";
@@ -136,6 +99,7 @@ public class IoTDBStartCheck {
   // endregion
   // region params don't need checking, determined by the system
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
+  private static final String COMMIT_ID_STRING = "commit_id";
   private static final String DATA_NODE_ID = "data_node_id";
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
@@ -154,9 +118,7 @@ public class IoTDBStartCheck {
   }
 
   private String getVal(String paramName) {
-    if (constantParamValueTable.containsKey(paramName)) {
-      return constantParamValueTable.get(paramName).get();
-    } else if (variableParamValueTable.containsKey(paramName)) {
+    if (variableParamValueTable.containsKey(paramName)) {
       return variableParamValueTable.get(paramName).get();
     } else {
       return null;
@@ -184,28 +146,8 @@ public class IoTDBStartCheck {
         SystemFileFactory.INSTANCE.getFile(
             IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
 
-    // Check time stamp precision
-    String timestampPrecision = getVal(TIMESTAMP_PRECISION_STRING);
-    if (!("ms".equals(timestampPrecision)
-        || "us".equals(timestampPrecision)
-        || "ns".equals(timestampPrecision))) {
-      logger.error(
-          "Wrong {}, please set as: ms, us or ns ! Current is: {}",
-          TIMESTAMP_PRECISION_STRING,
-          timestampPrecision);
-      System.exit(-1);
-    }
-
-    // check partition interval
-    if (Long.parseLong(getVal(PARTITION_INTERVAL_STRING)) <= 0) {
-      logger.error("Time partition interval must larger than 0!");
-      System.exit(-1);
-    }
-
     systemProperties.put(IOTDB_VERSION_STRING, () -> IoTDBConstant.VERSION);
-    for (String param : constantParamValueTable.keySet()) {
-      systemProperties.put(param, () -> getVal(param));
-    }
+    systemProperties.put(COMMIT_ID_STRING, () -> IoTDBConstant.BUILD_INFO);
     for (String param : variableParamValueTable.keySet()) {
       systemProperties.put(param, () -> getVal(param));
     }
@@ -403,6 +345,7 @@ public class IoTDBStartCheck {
             }
           });
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
+      properties.setProperty(COMMIT_ID_STRING, IoTDBConstant.BUILD_INFO);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // upgrade finished, delete old system.properties file
       if (propertiesFile.exists()) {
@@ -414,17 +357,11 @@ public class IoTDBStartCheck {
   }
 
   /** Check all immutable properties */
-  private void checkImmutableSystemProperties() throws ConfigurationException, IOException {
+  private void checkImmutableSystemProperties() throws IOException {
     for (Entry<String, Supplier<String>> entry : systemProperties.entrySet()) {
       if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
         logger.info("repair system.properties, lack {}", entry.getKey());
-      }
-    }
-
-    for (String param : constantParamValueTable.keySet()) {
-      if (!(properties.getProperty(param).equals(getVal(param)))) {
-        throwException(param, getVal(param));
       }
     }
 
@@ -480,37 +417,6 @@ public class IoTDBStartCheck {
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
-      // serialize finished, delete old system.properties file
-      if (propertiesFile.exists()) {
-        Files.delete(propertiesFile.toPath());
-      }
-    }
-    // rename system.properties.tmp to system.properties
-    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
-  }
-
-  public void serializeGlobalConfig(TGlobalConfig globalConfig) throws IOException {
-    // create an empty tmpPropertiesFile
-    if (tmpPropertiesFile.createNewFile()) {
-      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
-    } else {
-      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
-      System.exit(-1);
-    }
-
-    reloadProperties();
-
-    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-
-      if (!checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
-        properties.setProperty(
-            DATA_REGION_CONSENSUS_PROTOCOL, globalConfig.getDataRegionConsensusProtocolClass());
-      }
-      if (!checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
-        properties.setProperty(
-            SCHEMA_REGION_CONSENSUS_PROTOCOL, globalConfig.getSchemaRegionConsensusProtocolClass());
-      }
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {

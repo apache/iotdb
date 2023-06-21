@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.metadata.cache.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
@@ -30,7 +30,7 @@ public class DataNodeLastCacheManager {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeLastCacheManager.class);
 
   private static final boolean CACHE_ENABLED =
-      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+      CommonDescriptor.getInstance().getConfig().isLastCacheEnable();
 
   /**
    * get the last cache value from time series

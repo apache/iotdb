@@ -48,6 +48,7 @@ import java.util.stream.IntStream;
 public class TabletInsertionDataContainer {
 
   private String deviceId;
+  private boolean isAligned;
   private MeasurementSchema[] measurementSchemaList;
   private String[] columnNameStringList;
 
@@ -76,8 +77,8 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  public TabletInsertionDataContainer(Tablet tablet, String pattern) {
-    parse(tablet, pattern);
+  public TabletInsertionDataContainer(Tablet tablet, boolean isAligned, String pattern) {
+    parse(tablet, isAligned, pattern);
   }
 
   //////////////////////////// parse ////////////////////////////
@@ -87,6 +88,7 @@ public class TabletInsertionDataContainer {
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     this.deviceId = insertRowNode.getDevicePath().getFullPath();
+    this.isAligned = insertRowNode.isAligned();
     this.timestampColumn = new long[] {insertRowNode.getTime()};
 
     generateColumnIndexMapper(
@@ -153,6 +155,7 @@ public class TabletInsertionDataContainer {
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     this.deviceId = insertTabletNode.getDevicePath().getFullPath();
+    this.isAligned = insertTabletNode.isAligned();
     this.timestampColumn = insertTabletNode.getTimes();
 
     generateColumnIndexMapper(
@@ -204,11 +207,12 @@ public class TabletInsertionDataContainer {
     rowCount = timestampColumn.length;
   }
 
-  private void parse(Tablet tablet, String pattern) {
+  private void parse(Tablet tablet, boolean isAligned, String pattern) {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     this.deviceId = tablet.deviceId;
+    this.isAligned = isAligned;
     this.timestampColumn = tablet.timestamps;
 
     final List<MeasurementSchema> originMeasurementSchemaList = tablet.getSchemas();
@@ -311,6 +315,7 @@ public class TabletInsertionDataContainer {
           new PipeRow(
               i,
               deviceId,
+              isAligned,
               measurementSchemaList,
               timestampColumn,
               valueColumnTypes,
@@ -328,7 +333,11 @@ public class TabletInsertionDataContainer {
     return rowCollector.convertToTabletInsertionEvents();
   }
 
-  ////////////////////////////  convert  ////////////////////////////
+  ////////////////////////////  convertToTablet  ////////////////////////////
+
+  public boolean isAligned() {
+    return isAligned;
+  }
 
   public Tablet convertToTablet() {
     if (tablet != null) {

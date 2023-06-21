@@ -36,7 +36,7 @@ public interface ISchemaFile {
   ICachedMNode init() throws MetadataException;
 
   /**
-   * Modify header of schema file corresponding to the database node synchronously
+   * Modify header of pbtree file corresponding to the database node synchronously
    *
    * @param sgNode node to be updated
    * @return true if success
@@ -44,7 +44,7 @@ public interface ISchemaFile {
   boolean updateDatabaseNode(IDatabaseMNode<ICachedMNode> sgNode) throws IOException;
 
   /**
-   * Only database node along with its descendents could be flushed into schema file.
+   * Only database node along with its descendents could be flushed into pbtree file.
    *
    * @param node
    */

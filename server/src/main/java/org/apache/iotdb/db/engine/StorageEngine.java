@@ -58,7 +58,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
@@ -153,7 +152,7 @@ public class StorageEngine implements IService {
   }
 
   private static void initTimePartition() {
-    timePartitionInterval = IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    timePartitionInterval = CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
   }
 
   public static long getTimePartitionInterval() {
@@ -692,7 +691,6 @@ public class StorageEngine implements IService {
             }
           }
         }
-        SyncService.getInstance().unregisterDataRegion(region.getDataRegionId());
       } catch (Exception e) {
         logger.error(
             "Error occurs when deleting data region {}-{}",

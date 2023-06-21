@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.v1;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
@@ -30,7 +31,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorVersion;
+import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
@@ -61,7 +62,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private RandomAccessFile writingFileWriter;
 
   @Override
-  public synchronized TPipeTransferResp handleTransferReq(
+  public synchronized TPipeTransferResp receive(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     final short rawRequestType = req.getType();
     if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
@@ -93,11 +94,15 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
-    if (!IOTDB_CONFIG.getTimestampPrecision().equals(req.getTimestampPrecision())) {
+    if (!CommonDescriptor.getInstance()
+        .getConfig()
+        .getTimestampPrecision()
+        .equals(req.getTimestampPrecision())) {
       String msg =
           String.format(
               "IoTDB receiver's timestamp precision %s, connector's timestamp precision %s. validation fails.",
-              IOTDB_CONFIG.getTimestampPrecision(), req.getTimestampPrecision());
+              CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+              req.getTimestampPrecision());
       LOGGER.warn(msg);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR, msg));
     }
@@ -297,7 +302,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   @Override
-  public IoTDBThriftConnectorVersion getVersion() {
-    return IoTDBThriftConnectorVersion.VERSION_ONE;
+  public IoTDBThriftConnectorRequestVersion getVersion() {
+    return IoTDBThriftConnectorRequestVersion.VERSION_1;
   }
 }

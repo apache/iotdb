@@ -232,7 +232,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testSchemaFileNodeStatistics() throws Exception {
-    if (testParams.getSchemaEngineMode().equals("Schema_File")) {
+    if (testParams.getSchemaEngineMode().equals("PBTree")) {
       ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
       ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
       CachedSchemaEngineStatistics engineStatistics =

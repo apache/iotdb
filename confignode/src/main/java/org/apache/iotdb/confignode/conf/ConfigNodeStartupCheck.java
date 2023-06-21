@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -44,6 +46,7 @@ public class ConfigNodeStartupCheck extends StartupChecks {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   private static final int CONFIGNODE_PORTS = 2;
 
@@ -164,6 +167,19 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     }
     if (CONF.getDefaultDataRegionGroupNumPerDatabase() <= 0) {
       throw new ConfigurationException("The default_data_region_group_num should be positive");
+    }
+
+    // Check time partition interval
+    if (COMMON_CONFIG.getTimePartitionInterval() <= 0) {
+      throw new ConfigurationException("The time_partition_interval should be positive");
+    }
+
+    // Check timestamp precision
+    String timestampPrecision = COMMON_CONFIG.getTimestampPrecision();
+    if (!("ms".equals(timestampPrecision)
+        || "us".equals(timestampPrecision)
+        || "ns".equals(timestampPrecision))) {
+      throw new ConfigurationException("The timestamp_precision should be ms, us or ns");
     }
   }
 

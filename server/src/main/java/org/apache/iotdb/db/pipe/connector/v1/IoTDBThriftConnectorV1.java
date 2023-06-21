@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
@@ -107,7 +106,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     try {
       final TPipeTransferResp resp =
           client.pipeTransfer(
-              PipeTransferHandshakeReq.toTPipeTransferReq(IOTDB_CONFIG.getTimestampPrecision()));
+              PipeTransferHandshakeReq.toTPipeTransferReq(
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
       }
@@ -133,7 +133,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
             "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
     } catch (TException e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException(
@@ -163,7 +163,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferTabletReq.toTPipeTransferReq(
-                pipeRawTabletInsertionEvent.convertToTablet()));
+                pipeRawTabletInsertionEvent.convertToTablet(),
+                pipeRawTabletInsertionEvent.isAligned()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
@@ -184,7 +185,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     try {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
-      LOGGER.error(
+      LOGGER.warn(
           "Network error when transfer tsfile insertion event: {}.", tsFileInsertionEvent, e);
       // the connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException(

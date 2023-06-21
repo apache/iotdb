@@ -21,13 +21,20 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IStateMachine;
+import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.RatisConfig;
 
+import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
+import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,9 +43,13 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class TestUtils {
   public static class TestDataSet implements DataSet {
@@ -69,6 +80,20 @@ public class TestUtils {
       ByteBuffer buffer = ByteBuffer.allocate(4).putInt(cmd);
       buffer.flip();
       return buffer;
+    }
+
+    static ByteBufferConsensusRequest incrRequest() {
+      ByteBuffer incr = ByteBuffer.allocate(4);
+      incr.putInt(1);
+      incr.flip();
+      return new ByteBufferConsensusRequest(incr);
+    }
+
+    static ByteBufferConsensusRequest getRequest() {
+      ByteBuffer get = ByteBuffer.allocate(4);
+      get.putInt(2);
+      get.flip();
+      return new ByteBufferConsensusRequest(get);
     }
   }
 
@@ -172,6 +197,141 @@ public class TestUtils {
 
     public List<Peer> getConfiguration() {
       return configuration;
+    }
+  }
+
+  /** A Mini Raft CLuster Wrapper for Test Env. */
+  static class MiniCluster {
+    private final ConsensusGroupId gid;
+    private final int replicas;
+    private final List<Peer> peers;
+    private final List<File> peerStorage;
+    private final List<IStateMachine> stateMachines;
+    private final RatisConfig config;
+    private final List<RatisConsensus> servers;
+    private final ConsensusGroup group;
+
+    private MiniCluster(
+        ConsensusGroupId gid,
+        int replicas,
+        Function<Integer, File> storageProvider,
+        Supplier<IStateMachine> smProvider,
+        RatisConfig config) {
+      this.gid = gid;
+      this.replicas = replicas;
+      this.config = config;
+      Preconditions.checkArgument(
+          replicas % 2 == 1, "Test Env Raft Group should consists singular peers");
+
+      this.peers = new ArrayList<>();
+      this.peerStorage = new ArrayList<>();
+      this.stateMachines = new ArrayList<>();
+      this.servers = new ArrayList<>();
+
+      for (int i = 0; i < replicas; i++) {
+        peers.add(new Peer(gid, i, new TEndPoint("127.0.0.1", 6001 + i)));
+
+        final File storage = storageProvider.apply(i);
+        FileUtils.deleteFileQuietly(storage);
+        storage.mkdirs();
+        peerStorage.add(storage);
+
+        stateMachines.add(smProvider.get());
+      }
+      group = new ConsensusGroup(gid, peers);
+      makeServers();
+    }
+
+    private void makeServers() {
+      for (int i = 0; i < replicas; i++) {
+        final int fi = i;
+        servers.add(
+            (RatisConsensus)
+                ConsensusFactory.getConsensusImpl(
+                        ConsensusFactory.RATIS_CONSENSUS,
+                        ConsensusConfig.newBuilder()
+                            .setThisNodeId(peers.get(i).getNodeId())
+                            .setThisNode(peers.get(i).getEndpoint())
+                            .setRatisConfig(config)
+                            .setStorageDir(this.peerStorage.get(i).getAbsolutePath())
+                            .build(),
+                        groupId -> stateMachines.get(fi))
+                    .orElseThrow(
+                        () ->
+                            new IllegalArgumentException(
+                                String.format(
+                                    ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                                    ConsensusFactory.RATIS_CONSENSUS))));
+      }
+    }
+
+    void start() throws IOException {
+      for (RatisConsensus server : servers) {
+        server.start();
+      }
+    }
+
+    void stop() throws IOException {
+      for (RatisConsensus server : servers) {
+        server.stop();
+      }
+    }
+
+    void cleanUp() throws IOException {
+      stop();
+      for (File storage : peerStorage) {
+        FileUtils.deleteFully(storage);
+      }
+    }
+
+    void restart() throws IOException {
+      stop();
+      servers.clear();
+      makeServers();
+      start();
+    }
+
+    List<RatisConsensus> getServers() {
+      return Collections.unmodifiableList(servers);
+    }
+
+    RatisConsensus getServer(int index) {
+      return servers.get(index);
+    }
+
+    List<IStateMachine> getStateMachines() {
+      return Collections.unmodifiableList(stateMachines);
+    }
+
+    ConsensusGroupId getGid() {
+      return gid;
+    }
+
+    List<Peer> getPeers() {
+      return peers;
+    }
+
+    ConsensusGroup getGroup() {
+      return group;
+    }
+  }
+
+  static class MiniClusterFactory {
+    private int replicas = 3;
+    private ConsensusGroupId gid = new DataRegionId(1);
+    private Function<Integer, File> peerStorageProvider =
+        peerId -> new File("target" + java.io.File.separator + peerId);
+
+    private Supplier<IStateMachine> smProvider = TestUtils.IntegerCounter::new;
+    private RatisConfig ratisConfig;
+
+    MiniClusterFactory setRatisConfig(RatisConfig ratisConfig) {
+      this.ratisConfig = ratisConfig;
+      return this;
+    }
+
+    MiniCluster create() {
+      return new MiniCluster(gid, replicas, peerStorageProvider, smProvider, ratisConfig);
     }
   }
 }

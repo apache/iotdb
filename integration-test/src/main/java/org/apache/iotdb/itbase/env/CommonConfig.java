@@ -81,14 +81,6 @@ public interface CommonConfig {
 
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);
 
-  CommonConfig setEnableWatermark(boolean enableWatermark);
-
-  CommonConfig setWatermarkSecretKey(String watermarkSecretKey);
-
-  CommonConfig setWatermarkBitString(String watermarkBitString);
-
-  CommonConfig setWatermarkMethod(String watermarkMethod);
-
   CommonConfig setEnableMQTTService(boolean enableMQTTService);
 
   CommonConfig setSchemaEngineMode(String schemaEngineMode);

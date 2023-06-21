@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -71,8 +72,8 @@ public class WritePlanNodeSplitTest {
   @Before
   public void setUp() {
     prevTimePartitionInterval =
-        IoTDBDescriptor.getInstance().getConfig().getTimePartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(100);
+        CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(100);
     TimePartitionUtils.setTimePartitionInterval(100);
 
     executorClassName = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
@@ -316,6 +317,6 @@ public class WritePlanNodeSplitTest {
   @After
   public void tearDown() {
     TimePartitionUtils.setTimePartitionInterval(prevTimePartitionInterval);
-    IoTDBDescriptor.getInstance().getConfig().setTimePartitionInterval(prevTimePartitionInterval);
+    CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevTimePartitionInterval);
   }
 }

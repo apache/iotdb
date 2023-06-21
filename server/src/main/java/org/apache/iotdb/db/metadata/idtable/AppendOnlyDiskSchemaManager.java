@@ -272,7 +272,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
       outputStream.close();
       randomAccessFile.close();
     } catch (IOException e) {
-      logger.error("close schema file failed");
+      logger.error("close pbtree file failed");
       throw e;
     }
   }

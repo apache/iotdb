@@ -16,11 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.transformation.dag.util;
 
 import org.apache.iotdb.db.mpp.transformation.dag.input.IUDFInputDataSet;
 
 public class InputRowUtils {
+
+  private InputRowUtils() {
+    throw new IllegalStateException("InputRowUtils should not be instantiated.");
+  }
 
   /**
    * this method checks whether the row returned by IUDFInputDataSet.nextRowInObjects() has all null

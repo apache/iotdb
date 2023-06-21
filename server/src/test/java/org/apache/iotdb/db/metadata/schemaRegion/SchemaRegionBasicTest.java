@@ -22,8 +22,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
@@ -62,8 +61,8 @@ import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.get
 
 /**
  * This class define test cases for {@link ISchemaRegion}. All test cases will be run in both Memory
- * and Schema_File modes. In Schema_File mode, there are three kinds of test environment: full
- * memory, partial memory and non memory.
+ * and PBTree modes. In PBTree mode, there are three kinds of test environment: full memory, partial
+ * memory and non memory.
  */
 public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 
@@ -722,7 +721,11 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                new PartialPath("root.**"), 0, 0, false, new PathContainsFilter("laptop")));
+                new PartialPath("root.**"),
+                0,
+                0,
+                false,
+                SchemaFilterFactory.createPathContainsFilter("laptop")));
     expectedHashset = new HashSet<>(expectedList);
     actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
@@ -735,7 +738,11 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         SchemaRegionTestUtil.getMatchedDevices(
             schemaRegion,
             SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                new PartialPath("root.**"), 2, 0, false, new PathContainsFilter("laptop.d")));
+                new PartialPath("root.**"),
+                2,
+                0,
+                false,
+                SchemaFilterFactory.createPathContainsFilter("laptop.d")));
     expectedHashset = new HashSet<>(expectedList);
     actualHashset = new HashSet<>(actualResult);
     Assert.assertEquals(expectedHashset, actualHashset);
@@ -807,7 +814,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                new PathContainsFilter("s")));
+                SchemaFilterFactory.createPathContainsFilter("s")));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -834,7 +841,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                new PathContainsFilter("1")));
+                SchemaFilterFactory.createPathContainsFilter("1")));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -860,7 +867,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                new PathContainsFilter("laptop.d")));
+                SchemaFilterFactory.createPathContainsFilter("laptop.d")));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -888,7 +895,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                new DataTypeFilter(TSDataType.INT64)));
+                SchemaFilterFactory.createDataTypeFilter(TSDataType.INT64)));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -916,7 +923,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                new DataTypeFilter(TSDataType.BOOLEAN)));
+                SchemaFilterFactory.createDataTypeFilter(TSDataType.BOOLEAN)));
     expectedPathList = new HashSet<>(Collections.emptyList());
     expectedSize = expectedPathList.size();
     Assert.assertEquals(expectedSize, result.size());

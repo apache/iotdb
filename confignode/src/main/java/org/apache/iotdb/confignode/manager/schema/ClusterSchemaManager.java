@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -71,6 +72,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
@@ -400,14 +402,20 @@ public class ClusterSchemaManager {
     int databaseNum = databaseSchemaMap.size();
 
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
-      if (!isDatabaseExist(databaseSchema.getName())) {
-        // filter the pre deleted database
+      if (!isDatabaseExist(databaseSchema.getName())
+          || databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
+        // filter the pre deleted database and the system database
         databaseNum--;
       }
     }
 
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
+      if (databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
+        // filter the system database
+        continue;
+      }
+
       try {
         // Adjust maxSchemaRegionGroupNum for each Database.
         // All Databases share the DataNodes equally.
@@ -523,6 +531,21 @@ public class ClusterSchemaManager {
       throw new DatabaseNotExistsException(database);
     }
     return clusterSchemaInfo.getMatchedDatabaseSchemaByName(database);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @return The DatabaseName of the specified Device. Empty String if not exists.
+   */
+  public String getDatabaseNameByDevice(String devicePath) {
+    List<String> databases = getDatabaseNames();
+    for (String database : databases) {
+      if (PathUtils.isStartWith(devicePath, database)) {
+        return database;
+      }
+    }
+    return "";
   }
 
   /**

@@ -19,86 +19,65 @@
 
 package org.apache.iotdb.confignode.manager.pipe.runtime;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeCoordinator.class);
+  // shared thread pool in the runtime package
+  private static final AtomicReference<ExecutorService> procedureSubmitterHolder =
+      new AtomicReference<>();
+  private final ExecutorService procedureSubmitter;
 
-  private final ConfigManager configManager;
-
+  private final PipeLeaderChangeHandler pipeLeaderChangeHandler;
+  private final PipeHeartbeatParser pipeHeartbeatParser;
   private final PipeMetaSyncer pipeMetaSyncer;
 
   public PipeRuntimeCoordinator(ConfigManager configManager) {
-    this.configManager = configManager;
-    this.pipeMetaSyncer = new PipeMetaSyncer(configManager);
+    if (procedureSubmitterHolder.get() == null) {
+      synchronized (PipeRuntimeCoordinator.class) {
+        if (procedureSubmitterHolder.get() == null) {
+          procedureSubmitterHolder.set(
+              IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+                  ThreadName.PIPE_RUNTIME_PROCEDURE_SUBMITTER.getName()));
+        }
+      }
+    }
+    procedureSubmitter = procedureSubmitterHolder.get();
+
+    pipeLeaderChangeHandler = new PipeLeaderChangeHandler(configManager);
+    pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
+    pipeMetaSyncer = new PipeMetaSyncer(configManager);
+  }
+
+  public ExecutorService getProcedureSubmitter() {
+    return procedureSubmitter;
   }
 
   @Override
   public void onClusterStatisticsChanged(StatisticsChangeEvent event) {
-    // do nothing, because pipe task is not related to statistics
+    pipeLeaderChangeHandler.onClusterStatisticsChanged(event);
   }
 
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
-    // if no pipe task, return
-    if (configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().isEmpty()) {
-      return;
-    }
+    pipeLeaderChangeHandler.onRegionGroupLeaderChanged(event);
+  }
 
-    // we only care about data region leader change
-    final Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap =
-        new HashMap<>();
-    event
-        .getLeaderMap()
-        .forEach(
-            (regionGroupId, pair) -> {
-              if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
-                final String databaseName =
-                    configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
-                  // pipe only collect user's data, filter metric database here.
-                  dataRegionGroupToOldAndNewLeaderPairMap.put(
-                      regionGroupId,
-                      new Pair<>( // null or -1 means empty origin leader
-                          pair.left == null ? -1 : pair.left,
-                          pair.right == null ? -1 : pair.right));
-                }
-              }
-            });
-
-    // if no data region leader change, return
-    if (dataRegionGroupToOldAndNewLeaderPairMap.isEmpty()) {
-      return;
-    }
-
-    final TSStatus result =
-        configManager
-            .getProcedureManager()
-            .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap);
-    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "PipeRuntimeCoordinator meets error in handling data region leader change, status: ({})",
-          result);
-    }
+  public void parseHeartbeat(
+      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+    pipeHeartbeatParser.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
   }
 
   public void startPipeMetaSync() {
@@ -107,23 +86,5 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   public void stopPipeMetaSync() {
     pipeMetaSyncer.stop();
-  }
-
-  /**
-   * parse heartbeat from data node.
-   *
-   * @param dataNodeId data node id
-   * @param pipeMetaByteBufferListFromDataNode pipe meta byte buffer list collected from data node
-   */
-  public void parseHeartbeat(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    final TSStatus result =
-        configManager
-            .getProcedureManager()
-            .pipeHandleMetaChange(dataNodeId, pipeMetaByteBufferListFromDataNode);
-    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "PipeTaskCoordinator meets error in handling pipe meta change, status: ({})", result);
-    }
   }
 }

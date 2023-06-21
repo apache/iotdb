@@ -47,7 +47,6 @@ import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -165,9 +164,6 @@ public class EnvironmentUtils {
 
     // clear id table manager
     IDTableManager.getInstance().clear();
-
-    // clear SyncLogger
-    LocalSyncInfoFetcher.getInstance().close();
 
     // sleep to wait other background threads to exit
     try {

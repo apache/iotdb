@@ -19,8 +19,10 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
 import org.slf4j.Logger;
@@ -49,6 +51,7 @@ public class SystemPropertiesUtils {
               + ConfigNodeConstant.SYSTEM_FILE_NAME);
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   /**
    * Check if the ConfigNode is restarted
@@ -64,31 +67,29 @@ public class SystemPropertiesUtils {
    * interface when restarted
    *
    * @throws IOException When read the confignode-system.properties file failed
-   * @throws ConfigurationException When some system parameters are inconsistent
    */
-  public static void checkSystemProperties() throws IOException, ConfigurationException {
+  public static void checkSystemProperties() throws IOException {
     Properties systemProperties = getSystemProperties();
     boolean needReWrite = false;
+    final String format =
+        "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
+            + " Your configuration: {} will be forced update to: {}";
 
-    // Startup configuration
+    // Cluster configuration
     String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
-    if (clusterName != null && !clusterName.equals(conf.getClusterName())) {
-      throw new ConfigurationException(
-          CLUSTER_NAME,
-          conf.getClusterName(),
-          clusterName,
-          "cluster_name can't be modified after first startup");
+    if (clusterName == null) {
+      needReWrite = true;
+    } else if (!clusterName.equals(conf.getClusterName())) {
+      LOGGER.warn(format, CLUSTER_NAME, conf.getClusterName(), clusterName);
+      conf.setClusterName(clusterName);
     }
 
     String internalAddress = systemProperties.getProperty("cn_internal_address", null);
     if (internalAddress == null) {
       needReWrite = true;
     } else if (!internalAddress.equals(conf.getInternalAddress())) {
-      throw new ConfigurationException(
-          "cn_internal_address",
-          conf.getInternalAddress(),
-          internalAddress,
-          "cn_internal_address can't be modified after first startup");
+      LOGGER.warn(format, "cn_internal_address", conf.getInternalAddress(), internalAddress);
+      conf.setInternalAddress(internalAddress);
     }
 
     if (systemProperties.getProperty("cn_internal_port", null) == null) {
@@ -96,11 +97,8 @@ public class SystemPropertiesUtils {
     } else {
       int internalPort = Integer.parseInt(systemProperties.getProperty("cn_internal_port"));
       if (internalPort != conf.getInternalPort()) {
-        throw new ConfigurationException(
-            "cn_internal_port",
-            String.valueOf(conf.getInternalPort()),
-            String.valueOf(internalPort),
-            "cn_internal_port can't be modified after first startup");
+        LOGGER.warn(format, "cn_internal_port", conf.getInternalPort(), internalPort);
+        conf.setInternalPort(internalPort);
       }
     }
 
@@ -109,17 +107,11 @@ public class SystemPropertiesUtils {
     } else {
       int consensusPort = Integer.parseInt(systemProperties.getProperty("cn_consensus_port"));
       if (consensusPort != conf.getConsensusPort()) {
-        throw new ConfigurationException(
-            "cn_consensus_port",
-            String.valueOf(conf.getConsensusPort()),
-            String.valueOf(consensusPort),
-            "cn_consensus_port can't be modified after first startup");
+        LOGGER.warn(format, "cn_consensus_port", conf.getConsensusPort(), consensusPort);
+        conf.setConsensusPort(consensusPort);
       }
     }
 
-    final String format =
-        "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
-            + " Your configuration: {} will be forced update to: {}";
     // Consensus protocol configuration
     String configNodeConsensusProtocolClass =
         systemProperties.getProperty("config_node_consensus_protocol_class", null);
@@ -222,6 +214,9 @@ public class SystemPropertiesUtils {
   public static void storeSystemParameters() throws IOException {
     Properties systemProperties = getSystemProperties();
 
+    systemProperties.setProperty("iotdb_version", IoTDBConstant.VERSION);
+    systemProperties.setProperty("commit_id", IoTDBConstant.BUILD_INFO);
+
     // Cluster configuration
     systemProperties.setProperty("cluster_name", conf.getClusterName());
     LOGGER.info("[SystemProperties] store cluster_name: {}", conf.getClusterName());
@@ -252,6 +247,14 @@ public class SystemPropertiesUtils {
         "series_partition_slot_num", String.valueOf(conf.getSeriesSlotNum()));
     systemProperties.setProperty(
         "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
+    systemProperties.setProperty(
+        "time_partition_interval", String.valueOf(COMMON_CONFIG.getTimePartitionInterval()));
+    systemProperties.setProperty("timestamp_precision", COMMON_CONFIG.getTimestampPrecision());
+
+    // DataNode Functions
+    systemProperties.setProperty("schema_engine_mode", COMMON_CONFIG.getSchemaEngineMode());
+    systemProperties.setProperty(
+        "tag_attribute_total_size", String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
 
     storeSystemProperties(systemProperties);
   }

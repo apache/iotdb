@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -82,8 +83,6 @@ import org.apache.iotdb.db.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
-import org.apache.iotdb.db.sync.SyncService;
-import org.apache.iotdb.db.sync.sender.manager.ISyncManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -764,10 +763,6 @@ public class DataRegion implements IDataRegionForQuery {
       boolean isSeq = recoverPerformer.isSequence();
       if (!recoverPerformer.canWrite()) {
         // cannot write, just close it
-        for (ISyncManager syncManager :
-            SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
-          syncManager.syncRealTimeTsFile(tsFileResource.getTsFile());
-        }
         try {
           tsFileResource.close();
         } catch (IOException e) {
@@ -1129,7 +1124,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
       // disable updating last cache on follower
@@ -1183,7 +1178,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowNode node, long latestFlushedTime) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
         || (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
             && node.isSyncFromLeaderWhenUsingIoTConsensus())) {
       // disable updating last cache on follower
@@ -1614,7 +1609,7 @@ public class DataRegion implements IDataRegionForQuery {
           resource.getTsFilePath(),
           new Date(ttlLowerBound),
           dataTTL,
-          config.getTimestampPrecision());
+          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     } finally {
       resource.writeUnlock();
     }
@@ -2109,11 +2104,6 @@ public class DataRegion implements IDataRegionForQuery {
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
 
-      for (ISyncManager syncManager :
-          SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
-        syncManager.syncRealTimeDeletion(deletion);
-      }
-
       // add a record in case of rollback
       updatedModFiles.add(tsFileResource.getModFile());
     }
@@ -2343,7 +2333,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void resetLastCacheWhenLoadingTsFile() throws IllegalPathException {
-    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+    if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
     DataNodeSchemaCache.getInstance().takeWriteLock();
@@ -2647,57 +2637,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * Delete tsfile if it exists.
-   *
-   * <p>Firstly, remove the TsFileResource from sequenceFileList/unSequenceFileList.
-   *
-   * <p>Secondly, delete the tsfile and .resource file.
-   *
-   * @param tsfieToBeDeleted tsfile to be deleted
-   * @return whether the file to be deleted exists. @UsedBy sync module, load external tsfile
-   *     module.
-   */
-  public boolean deleteTsfile(File tsfieToBeDeleted) {
-    writeLock("deleteTsfile");
-    TsFileResource tsFileResourceToBeDeleted = null;
-    try {
-      Iterator<TsFileResource> sequenceIterator = tsFileManager.getIterator(true);
-      while (sequenceIterator.hasNext()) {
-        TsFileResource sequenceResource = sequenceIterator.next();
-        if (sequenceResource.getTsFile().getName().equals(tsfieToBeDeleted.getName())) {
-          tsFileResourceToBeDeleted = sequenceResource;
-          tsFileManager.remove(tsFileResourceToBeDeleted, true);
-          break;
-        }
-      }
-      if (tsFileResourceToBeDeleted == null) {
-        Iterator<TsFileResource> unsequenceIterator = tsFileManager.getIterator(false);
-        while (unsequenceIterator.hasNext()) {
-          TsFileResource unsequenceResource = unsequenceIterator.next();
-          if (unsequenceResource.getTsFile().getName().equals(tsfieToBeDeleted.getName())) {
-            tsFileResourceToBeDeleted = unsequenceResource;
-            tsFileManager.remove(tsFileResourceToBeDeleted, false);
-            break;
-          }
-        }
-      }
-    } finally {
-      writeUnlock();
-    }
-    if (tsFileResourceToBeDeleted == null) {
-      return false;
-    }
-    tsFileResourceToBeDeleted.writeLock();
-    try {
-      tsFileResourceToBeDeleted.remove();
-      logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getTsFile());
-    } finally {
-      tsFileResourceToBeDeleted.writeUnlock();
-    }
-    return true;
-  }
-
-  /**
    * get all working sequence tsfile processors
    *
    * @return all working sequence tsfile processors
@@ -2781,8 +2720,8 @@ public class DataRegion implements IDataRegionForQuery {
   public void setDataTTLWithTimePrecisionCheck(long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       dataTTL =
-          DateTimeUtils.convertMilliTimeWithPrecision(
-              dataTTL, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+          CommonDateTimeUtils.convertMilliTimeWithPrecision(
+              dataTTL, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
     this.dataTTL = dataTTL;
   }
@@ -3164,23 +3103,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * Used to collect history TsFiles(i.e. the tsfile whose memtable == null).
-   *
-   * @param syncManager ISyncManager which invokes to collect history TsFile
-   * @param dataStartTime only collect history TsFiles which contains the data after the
-   *     dataStartTime
-   * @return A list, which contains TsFile path
-   */
-  public List<File> collectHistoryTsFileForSync(ISyncManager syncManager, long dataStartTime) {
-    writeLock("Collect data for sync");
-    try {
-      return tsFileManager.collectHistoryTsFileForSync(syncManager, dataStartTime);
-    } finally {
-      writeUnlock();
-    }
-  }
-
   public void setCustomCloseFileListeners(List<CloseFileListener> customCloseFileListeners) {
     this.customCloseFileListeners = customCloseFileListeners;
   }
@@ -3230,7 +3152,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public Long getLatestTimePartition() {
-    return partitionMaxFileVersions.keySet().stream().max(Long::compareTo).orElse(0L);
+    return getTimePartitions().stream().max(Long::compareTo).orElse(0L);
   }
 
   public IDTable getIdTable() {

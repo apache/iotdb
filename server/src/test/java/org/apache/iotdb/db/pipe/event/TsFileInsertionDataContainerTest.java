@@ -231,7 +231,7 @@ public class TsFileInsertionDataContainerTest {
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
                                               (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet)
+                                                new PipeRawTabletInsertionEvent(tablet, false)
                                                     .processRowByRow(
                                                         (row, collector) -> {
                                                           try {
@@ -256,7 +256,7 @@ public class TsFileInsertionDataContainerTest {
                   event
                       .processTablet(
                           (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet)
+                            new PipeRawTabletInsertionEvent(tablet, false)
                                 .processRowByRow(
                                     (row, collector) -> {
                                       try {
@@ -380,7 +380,7 @@ public class TsFileInsertionDataContainerTest {
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
                                               (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet)
+                                                new PipeRawTabletInsertionEvent(tablet, false)
                                                     .processRowByRow(
                                                         (row, collector) -> {
                                                           try {
@@ -405,7 +405,7 @@ public class TsFileInsertionDataContainerTest {
                   event
                       .processTablet(
                           (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet)
+                            new PipeRawTabletInsertionEvent(tablet, false)
                                 .processRowByRow(
                                     (row, collector) -> {
                                       try {
@@ -494,7 +494,7 @@ public class TsFileInsertionDataContainerTest {
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
                                               (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet)
+                                                new PipeRawTabletInsertionEvent(tablet, false)
                                                     .processRowByRow(
                                                         (row, collector) -> {
                                                           try {
@@ -518,7 +518,7 @@ public class TsFileInsertionDataContainerTest {
                   event
                       .processTablet(
                           (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet)
+                            new PipeRawTabletInsertionEvent(tablet, false)
                                 .processRowByRow(
                                     (row, collector) -> {
                                       try {
@@ -606,7 +606,7 @@ public class TsFileInsertionDataContainerTest {
                                       tabletInsertionEvent2 ->
                                           tabletInsertionEvent2.processTablet(
                                               (tablet, rowCollector) -> {
-                                                new PipeRawTabletInsertionEvent(tablet)
+                                                new PipeRawTabletInsertionEvent(tablet, false)
                                                     .processRowByRow(
                                                         (row, collector) -> {
                                                           try {
@@ -630,7 +630,7 @@ public class TsFileInsertionDataContainerTest {
                   event
                       .processTablet(
                           (tablet, rowCollector) -> {
-                            new PipeRawTabletInsertionEvent(tablet)
+                            new PipeRawTabletInsertionEvent(tablet, false)
                                 .processRowByRow(
                                     (row, collector) -> {
                                       try {

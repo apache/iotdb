@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -50,8 +51,6 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final SchemaFilter schemaFilter;
 
   private final Map<Integer, Template> templateMap;
-  private static final String viewTypeOfLogicalView = "logical";
-  private static final String viewTypeOfNonView = "";
 
   TimeSeriesSchemaSource(
       PartialPath pathPattern,
@@ -99,11 +98,11 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     if (series.isLogicalView()) {
       builder.writeNullableText(4, null);
       builder.writeNullableText(5, null);
-      builder.writeNullableText(10, viewTypeOfLogicalView);
+      builder.writeNullableText(10, ViewType.VIEW.name());
     } else {
       builder.writeNullableText(4, series.getSchema().getEncodingType().toString());
       builder.writeNullableText(5, series.getSchema().getCompressor().toString());
-      builder.writeNullableText(10, viewTypeOfNonView);
+      builder.writeNullableText(10, ViewType.BASE.name());
     }
     builder.writeNullableText(6, mapToString(series.getTags()));
     builder.writeNullableText(7, mapToString(series.getAttributes()));

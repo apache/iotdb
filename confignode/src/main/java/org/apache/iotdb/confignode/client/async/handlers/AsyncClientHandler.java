@@ -25,8 +25,8 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHan
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.DeleteSchemaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
@@ -165,7 +165,8 @@ public class AsyncClientHandler<Q, R> {
       case CONSTRUCT_VIEW_SCHEMA_BLACK_LIST:
       case ROLLBACK_VIEW_SCHEMA_BLACK_LIST:
       case DELETE_VIEW:
-        return new DeleteSchemaRPCHandler(
+      case ALTER_VIEW:
+        return new SchemaUpdateRPCHandler(
             requestType,
             requestId,
             targetDataNode,

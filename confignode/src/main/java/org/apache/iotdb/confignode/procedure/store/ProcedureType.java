@@ -44,7 +44,7 @@ public enum ProcedureType {
   CREATE_TRIGGER_PROCEDURE((short) 400),
   DROP_TRIGGER_PROCEDURE((short) 401),
 
-  /** Old sync */
+  /** Legacy enum for sync */
   CREATE_PIPE_PROCEDURE((short) 500),
   START_PIPE_PROCEDURE((short) 501),
   STOP_PIPE_PROCEDURE((short) 502),
@@ -78,7 +78,8 @@ public enum ProcedureType {
   PIPE_HANDLE_META_CHANGE_PROCEDURE((short) 1102),
 
   /** logical view */
-  DELETE_LOGICAL_VIEW_PROCEDURE((short) 1200);
+  DELETE_LOGICAL_VIEW_PROCEDURE((short) 1200),
+  ALTER_LOGICAL_VIEW_PROCEDURE((short) 12001);
 
   private final short typeCode;
 

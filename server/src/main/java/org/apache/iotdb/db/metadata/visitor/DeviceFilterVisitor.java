@@ -23,14 +23,14 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
 
-public class DeviceFilterVisitor extends SchemaFilterVisitor<Boolean, IDeviceSchemaInfo> {
+public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
   @Override
-  public Boolean visitNode(SchemaFilter filter, IDeviceSchemaInfo info) {
+  public boolean visitNode(SchemaFilter filter, IDeviceSchemaInfo info) {
     return true;
   }
 
   @Override
-  public Boolean visitPathContainsFilter(
+  public boolean visitPathContainsFilter(
       PathContainsFilter pathContainsFilter, IDeviceSchemaInfo info) {
     if (pathContainsFilter.getContainString() == null) {
       return true;

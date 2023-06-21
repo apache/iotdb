@@ -36,43 +36,43 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 public class IoTDBThriftConnector implements PipeConnector {
 
   @Override
-  public void validate(PipeParameterValidator validator) {
+  public final void validate(PipeParameterValidator validator) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void customize(
+  public final void customize(
       PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void handshake() {
+  public final void handshake() {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void heartbeat() {
+  public final void heartbeat() {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) {
+  public final void transfer(TabletInsertionEvent tabletInsertionEvent) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
+  public final void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void transfer(Event event) {
+  public final void transfer(Event event) {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void close() {
+  public final void close() {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 }

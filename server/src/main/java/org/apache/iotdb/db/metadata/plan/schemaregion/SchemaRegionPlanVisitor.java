@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeactivateTempla
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.IRollbackPreDeleteTimeSeriesPlan;
+import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.view.IRollbackPreDeleteLogicalViewPlan;
@@ -96,6 +97,10 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
 
   public R visitCreateLogicalView(ICreateLogicalViewPlan createLogicalViewPlan, C context) {
     return visitSchemaRegionPlan(createLogicalViewPlan, context);
+  }
+
+  public R visitAlterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan, C context) {
+    return visitSchemaRegionPlan(alterLogicalViewPlan, context);
   }
 
   public R visitPreDeleteLogicalView(

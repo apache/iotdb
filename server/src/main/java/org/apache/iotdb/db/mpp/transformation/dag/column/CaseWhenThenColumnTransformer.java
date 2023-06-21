@@ -36,8 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CaseWhenThenColumnTransformer extends ColumnTransformer {
-
-  //  List<WhenThenColumnTransformer> whenThenTransformers;
   List<Pair<ColumnTransformer, ColumnTransformer>> whenThenTransformers;
   ColumnTransformer elseTransformer;
 
@@ -128,5 +126,7 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  protected void checkType() {}
+  protected void checkType() {
+    // do nothing
+  }
 }
