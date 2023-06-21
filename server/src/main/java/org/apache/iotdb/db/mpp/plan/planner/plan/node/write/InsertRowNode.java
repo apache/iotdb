@@ -720,7 +720,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     isAligned = buffer.get() == 1;
   }
 
-  /**  */
   /**
    * Make sure the dataTypes and values have been created before calling this.
    *
