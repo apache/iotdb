@@ -434,7 +434,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     isAligned = buffer.get() == 1;
   }
 
-  /** Make sure the dataTypes and values have been created before calling this. */
+  /**
+   * Make sure the dataTypes and values have been created before calling this.
+   *
+   * @param buffer - ByteBuffer
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   private void fillDataTypesAndValues(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       // types are not determined, the situation mainly occurs when the node uses string values
@@ -603,7 +608,14 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /** Deserialize from wal. */
+  /**
+   * Deserialize from wal.
+   *
+   * @param stream - DataInputStream
+   * @return InsertRowNode
+   * @throws IOException - If an I/O error occurs.
+   * @throws IllegalArgumentException - If meets illegal argument.
+   */
   public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
@@ -633,7 +645,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     isAligned = stream.readByte() == 1;
   }
 
-  /** Make sure the dataTypes and values have been created before calling this. */
+  /**
+   * Make sure the dataTypes and values have been created before calling this.
+   *
+   * @param stream - DataInputStream
+   * @throws IOException - If an I/O error occurs.
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   public void fillDataTypesAndValuesFromWAL(DataInputStream stream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = stream.readByte();
@@ -666,7 +684,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /** Deserialize from wal. */
+  /**
+   * Deserialize from wal.
+   *
+   * @param buffer - ByteBuffer
+   * @return InsertRowNode
+   * @throws IllegalArgumentException - If meets illegal argument
+   */
   public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
@@ -696,7 +720,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     isAligned = buffer.get() == 1;
   }
 
-  /** Make sure the dataTypes and values have been created before calling this. */
+  /**  */
+  /**
+   * Make sure the dataTypes and values have been created before calling this.
+   *
+   * @param buffer - ByteBuffer
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   public void fillDataTypesAndValuesFromWAL(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = buffer.get();
