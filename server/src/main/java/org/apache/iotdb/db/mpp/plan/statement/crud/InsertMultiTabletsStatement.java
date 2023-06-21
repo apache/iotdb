@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -167,7 +168,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
       for (String measurement : insertTablet.measurements) {
         boolean notExist = measurementSet.add(measurement);
         if (!notExist) {
-          throw new RuntimeException(new DuplicateInsertException(device, measurement));
+          throw new SemanticException(new DuplicateInsertException(device, measurement));
         }
       }
       mapFromDeviceToMeasurements.put(device, measurementSet);
