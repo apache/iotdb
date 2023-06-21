@@ -29,7 +29,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 
-public class WriteCsvFileTestUT {
+public class WriteCsvFileTests {
   @Test
   public void writeCsvFileTest() {
     List<String> headerNames =

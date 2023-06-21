@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -86,7 +87,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
-      System.out.println("Too few params input, please check the following hint.");
+      IoTPrinter.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -94,7 +95,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      System.out.println(e.getMessage());
+      IoTPrinter.println(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -108,6 +109,12 @@ public class ExportTsFile extends AbstractTsFileTool {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
 
+    } catch (ArgsErrorException e) {
+      IoTPrinter.println("Invalid args: " + e.getMessage());
+      exitCode = CODE_ERROR;
+    }
+
+    try {
       session = new Session(host, Integer.parseInt(port), username, password);
       session.open(false);
 
@@ -118,7 +125,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         if (sqlFile == null) {
           LineReader lineReader = JlineUtils.getLineReader(username, host, port);
           sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
-          System.out.println(sql);
+          IoTPrinter.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
             legalCheck(values[i]);
@@ -134,13 +141,10 @@ public class ExportTsFile extends AbstractTsFileTool {
       }
 
     } catch (IOException e) {
-      System.out.println("Failed to operate on file, because " + e.getMessage());
-      exitCode = CODE_ERROR;
-    } catch (ArgsErrorException e) {
-      System.out.println("Invalid args: " + e.getMessage());
+      IoTPrinter.println("Failed to operate on file, because " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (IoTDBConnectionException e) {
-      System.out.println("Connect failed because " + e.getMessage());
+      IoTPrinter.println("Connect failed because " + e.getMessage());
       exitCode = CODE_ERROR;
     } finally {
       if (session != null) {
@@ -148,8 +152,7 @@ public class ExportTsFile extends AbstractTsFileTool {
           session.close();
         } catch (IoTDBConnectionException e) {
           exitCode = CODE_ERROR;
-          System.out.println(
-              "Encounter an error when closing session, error is: " + e.getMessage());
+          IoTPrinter.println("Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
     }
@@ -168,7 +171,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         || sqlLower.contains("last_value(")
         || sqlLower.contains("max_time(")
         || sqlLower.contains("min_time(")) {
-      System.out.println("The sql you entered is invalid, please don't use aggregate query.");
+      IoTPrinter.println("The sql you entered is invalid, please don't use aggregate query.");
       System.exit(CODE_ERROR);
     }
   }
@@ -279,12 +282,12 @@ public class ExportTsFile extends AbstractTsFileTool {
       writeTsFileFile(sessionDataSet, path);
       sessionDataSet.closeOperationHandle();
       long end = System.currentTimeMillis();
-      System.out.println("Export completely!cost: " + (end - start) + " ms.");
+      IoTPrinter.println("Export completely!cost: " + (end - start) + " ms.");
     } catch (StatementExecutionException
         | IoTDBConnectionException
         | IOException
         | WriteProcessException e) {
-      System.out.println("Cannot dump result because: " + e.getMessage());
+      IoTPrinter.println("Cannot dump result because: " + e.getMessage());
     }
   }
 
@@ -326,8 +329,9 @@ public class ExportTsFile extends AbstractTsFileTool {
         schemaMap.computeIfAbsent(deviceId, key -> new ArrayList<>()).add(measurementSchema);
       }
       List<Tablet> tabletList = new ArrayList<>();
-      for (String deviceId : schemaMap.keySet()) {
-        List<MeasurementSchema> schemaList = schemaMap.get(deviceId);
+      for (Map.Entry<String, List<MeasurementSchema>> stringListEntry : schemaMap.entrySet()) {
+        String deviceId = stringListEntry.getKey();
+        List<MeasurementSchema> schemaList = stringListEntry.getValue();
         Tablet tablet = new Tablet(deviceId, schemaList);
         tablet.initBitMaps();
         Path path = new Path(tablet.deviceId);
@@ -339,7 +343,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         tabletList.add(tablet);
       }
       if (tabletList.isEmpty()) {
-        System.out.println("!!!Warning:Tablet is empty,no data can be exported.");
+        IoTPrinter.println("!!!Warning:Tablet is empty,no data can be exported.");
         System.exit(CODE_ERROR);
       }
       while (sessionDataSet.hasNext()) {

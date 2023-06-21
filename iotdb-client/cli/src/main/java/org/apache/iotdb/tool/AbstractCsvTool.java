@@ -49,8 +49,8 @@ public abstract class AbstractCsvTool {
   protected static final String PORT_ARGS = "p";
   protected static final String PORT_NAME = "port";
 
-  protected static final String PASSWORD_ARGS = "pw";
-  protected static final String PASSWORD_NAME = "password";
+  protected static final String PW_ARGS = "pw";
+  protected static final String PW_NAME = "password";
 
   protected static final String USERNAME_ARGS = "u";
   protected static final String USERNAME_NAME = "username";
@@ -145,7 +145,7 @@ public abstract class AbstractCsvTool {
     port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
     username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
 
-    password = commandLine.getOptionValue(PASSWORD_ARGS);
+    password = commandLine.getOptionValue(PW_ARGS);
   }
 
   protected static boolean checkTimeFormat() {
@@ -200,10 +200,10 @@ public abstract class AbstractCsvTool {
     options.addOption(opUsername);
 
     Option opPassword =
-        Option.builder(PASSWORD_ARGS)
-            .longOpt(PASSWORD_NAME)
+        Option.builder(PW_ARGS)
+            .longOpt(PW_NAME)
             .optionalArg(true)
-            .argName(PASSWORD_NAME)
+            .argName(PW_NAME)
             .hasArg()
             .desc("Password (required)")
             .build();

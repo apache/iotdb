@@ -313,14 +313,14 @@ public class ImportCsv extends AbstractCsvTool {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      System.out.println("Too few params input, please check the following hint.");
+      IoTPrinter.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (org.apache.commons.cli.ParseException e) {
-      System.out.println("Parse error: " + e.getMessage());
+      IoTPrinter.println("Parse error: " + e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -338,10 +338,10 @@ public class ImportCsv extends AbstractCsvTool {
       }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
-      System.out.println("Args error: " + e.getMessage());
+      IoTPrinter.println("Args error: " + e.getMessage());
       System.exit(CODE_ERROR);
     } catch (Exception e) {
-      System.out.println("Encounter an error, because: " + e.getMessage());
+      IoTPrinter.println("Encounter an error, because: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
 
@@ -387,11 +387,11 @@ public class ImportCsv extends AbstractCsvTool {
           }
         }
       } else {
-        System.out.println("File not found!");
+        IoTPrinter.println("File not found!");
         return CODE_ERROR;
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
+      IoTPrinter.println("Encounter an error when connecting to server, because " + e.getMessage());
       return CODE_ERROR;
     } finally {
       if (session != null) {
@@ -413,11 +413,11 @@ public class ImportCsv extends AbstractCsvTool {
         List<String> headerNames = csvRecords.getHeaderNames();
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
-          System.out.println("Empty file!");
+          IoTPrinter.println("Empty file!");
           return;
         }
         if (!timeColumn.equalsIgnoreCase(headerNames.get(0))) {
-          System.out.println("No headers!");
+          IoTPrinter.println("No headers!");
           return;
         }
         String failedFilePath = null;
@@ -432,10 +432,10 @@ public class ImportCsv extends AbstractCsvTool {
           writeDataAlignedByDevice(headerNames, records, failedFilePath);
         }
       } catch (IOException | IllegalPathException e) {
-        System.out.println("CSV file read exception because: " + e.getMessage());
+        IoTPrinter.println("CSV file read exception because: " + e.getMessage());
       }
     } else {
-      System.out.println("The file name must end with \"csv\" or \"txt\"!");
+      IoTPrinter.println("The file name must end with \"csv\" or \"txt\"!");
     }
   }
 
@@ -485,12 +485,12 @@ public class ImportCsv extends AbstractCsvTool {
 
           boolean isFail = false;
 
-          for (String deviceId : deviceAndMeasurementNames.keySet()) {
+          for (Map.Entry<String, List<String>> entry : deviceAndMeasurementNames.entrySet()) {
+            String deviceId = entry.getKey();
+            List<String> measurementNames =  entry.getValue();
             ArrayList<TSDataType> types = new ArrayList<>();
             ArrayList<Object> values = new ArrayList<>();
             ArrayList<String> measurements = new ArrayList<>();
-
-            List<String> measurementNames = deviceAndMeasurementNames.get(deviceId);
             for (String measurement : measurementNames) {
               String header = deviceId + "." + measurement;
               String value = recordObj.get(headerNameMap.get(header));
@@ -501,9 +501,7 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(header, type);
                   } else {
-                    System.out.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        recordObj.getRecordNumber(), header, value);
+                    IoTPrinter.printf("Line '%s', column '%s': '%s' unknown type%n", recordObj.getRecordNumber(), header, value);
                     isFail = true;
                   }
                 }
@@ -512,9 +510,7 @@ public class ImportCsv extends AbstractCsvTool {
                   Object valueTrans = typeTrans(value, type);
                   if (valueTrans == null) {
                     isFail = true;
-                    System.out.printf(
-                        "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                        recordObj.getRecordNumber(), header, value, type);
+                    IoTPrinter.printf("Line '%s', column '%s': '%s' can't convert to '%s'%n", recordObj.getRecordNumber(), header, value, type);
                   } else {
                     measurements.add(header.replace(deviceId + '.', ""));
                     types.add(type);
@@ -544,10 +540,10 @@ public class ImportCsv extends AbstractCsvTool {
     if (!failedRecords.isEmpty()) {
       writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
     }
-    if (hasStarted.get()) {
-      System.out.println("Import completely!");
+    if (Boolean.TRUE.equals(hasStarted.get())) {
+      IoTPrinter.println("Import completely!");
     } else {
-      System.out.println("No records!");
+      IoTPrinter.println("No records!");
     }
   }
 
@@ -556,7 +552,6 @@ public class ImportCsv extends AbstractCsvTool {
    *
    * @param headerNames the header names of CSV file
    * @param records the records of CSV file
-   * @param failedFilePath the directory to save the failed files
    */
   private static void writeDataAlignedByDevice(
       List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
@@ -633,9 +628,7 @@ public class ImportCsv extends AbstractCsvTool {
                   if (type != null) {
                     headerTypeMap.put(headerNameWithoutType, type);
                   } else {
-                    System.out.printf(
-                        "Line '%s', column '%s': '%s' unknown type%n",
-                        recordObj.getRecordNumber(), headerNameWithoutType, value);
+                    IoTPrinter.printf("Line '%s', column '%s': '%s' unknown type%n", recordObj.getRecordNumber(), headerNameWithoutType, value);
                     isFail.set(true);
                   }
                 }
@@ -645,9 +638,7 @@ public class ImportCsv extends AbstractCsvTool {
                 Object valueTrans = typeTrans(value, type);
                 if (valueTrans == null) {
                   isFail.set(true);
-                  System.out.printf(
-                      "Line '%s', column '%s': '%s' can't convert to '%s'%n",
-                      recordObj.getRecordNumber(), headerNameWithoutType, value, type);
+                  IoTPrinter.printf("Line '%s', column '%s': '%s' can't convert to '%s'%n", recordObj.getRecordNumber(), headerNameWithoutType, value, type);
                 } else {
                   values.add(valueTrans);
                   measurements.add(headerNameWithoutType);
@@ -713,12 +704,12 @@ public class ImportCsv extends AbstractCsvTool {
         try {
           session.open();
         } catch (IoTDBConnectionException ex) {
-          System.out.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+          IoTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
         }
         writeAndEmptyDataSet(device, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      System.out.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      IoTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
     } finally {
       times.clear();
       typesList.clear();
@@ -745,13 +736,13 @@ public class ImportCsv extends AbstractCsvTool {
         try {
           session.open();
         } catch (IoTDBConnectionException ex) {
-          System.out.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+          IoTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
         }
         writeAndEmptyDataSet(
             deviceIds, times, typesList, valuesList, measurementsList, --retryTime);
       }
     } catch (StatementExecutionException e) {
-      System.out.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
+      IoTPrinter.println(INSERT_CSV_MEET_ERROR_MSG + e.getMessage());
     } finally {
       deviceIds.clear();
       times.clear();
@@ -796,11 +787,16 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      if ("Time".equalsIgnoreCase(headerName)) {
-        timeColumn = headerName;
-        continue;
-      } else if (deviceColumn.equalsIgnoreCase(headerName)) {
-        deviceColumn = headerName;
+
+      boolean ignoreTimeCase = "Time".equalsIgnoreCase(headerName);
+      boolean ignoreDeviceCase = deviceColumn.equalsIgnoreCase(headerName);
+      if (Boolean.TRUE.equals(ignoreTimeCase) || Boolean.TRUE.equals(ignoreDeviceCase)) {
+        if(Boolean.TRUE.equals(ignoreTimeCase)){
+          timeColumn = headerName;
+        }
+        if(Boolean.TRUE.equals(ignoreDeviceCase)){
+          deviceColumn = headerName;
+        }
         continue;
       }
       Matcher matcher = pattern.matcher(headerName);
@@ -819,9 +815,7 @@ public class ImportCsv extends AbstractCsvTool {
       String measurementName = split[split.length - 1];
       String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
       if (deviceAndMeasurementNames != null) {
-        if (!deviceAndMeasurementNames.containsKey(deviceName)) {
-          deviceAndMeasurementNames.put(deviceName, new ArrayList<>());
-        }
+        deviceAndMeasurementNames.putIfAbsent(deviceName,new ArrayList<>());
         deviceAndMeasurementNames.get(deviceName).add(measurementName);
       }
     }
@@ -862,8 +856,7 @@ public class ImportCsv extends AbstractCsvTool {
           }
         }
       } catch (StatementExecutionException | IllegalPathException e) {
-        System.out.println(
-            "Meet error when query the type of timeseries because " + e.getMessage());
+        IoTPrinter.println("Meet error when query the type of timeseries because " + e.getMessage());
         return false;
       }
     }
