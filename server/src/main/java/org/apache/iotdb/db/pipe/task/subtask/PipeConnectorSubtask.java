@@ -138,6 +138,11 @@ public class PipeConnectorSubtask extends PipeSubtask {
         // is dropped or the process is running normally.
         return;
       }
+    } else {
+      LOGGER.warn(
+          "A non-PipeConnectionException occurred, exception message: {}",
+          throwable.getMessage(),
+          throwable);
     }
 
     // handle other exceptions as usual
