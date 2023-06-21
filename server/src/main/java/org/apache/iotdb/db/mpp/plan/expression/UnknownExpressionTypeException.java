@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.sql;
+package org.apache.iotdb.db.mpp.plan.expression;
 
-public class MeasurementNotExistException extends RuntimeException {
+public class UnknownExpressionTypeException extends IllegalArgumentException {
 
-  public MeasurementNotExistException(String message) {
-    super(message);
+  public UnknownExpressionTypeException(ExpressionType expressionType) {
+    super("Unsupported expression type: " + expressionType);
   }
 }

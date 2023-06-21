@@ -299,11 +299,7 @@ class AutoCreateSchemaExecutor {
         template = templateInfo.left;
         indexOfMeasurementsNotInTemplate =
             checkMeasurementsInSchemaTemplate(
-                devicePath,
-                indexOfTargetMeasurements,
-                measurementsList.get(deviceIndex),
-                isAlignedList.get(deviceIndex),
-                template);
+                indexOfTargetMeasurements, measurementsList.get(deviceIndex), template);
         if (schemaTree.getMatchedDevices(devicePath).isEmpty()) {
           // not activated yet
           devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
@@ -389,11 +385,7 @@ class AutoCreateSchemaExecutor {
   }
 
   private List<Integer> checkMeasurementsInSchemaTemplate(
-      PartialPath devicePath,
-      List<Integer> indexOfTargetMeasurements,
-      String[] measurements,
-      boolean isAligned,
-      Template template) {
+      List<Integer> indexOfTargetMeasurements, String[] measurements, Template template) {
     // check whether there is template should be activated
     boolean shouldActivateTemplate = false;
     for (int index : indexOfTargetMeasurements) {

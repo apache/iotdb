@@ -91,8 +91,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final NormalSchemaFetcher normalSchemaFetcher =
       new NormalSchemaFetcher(schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
   private final TemplateSchemaFetcher templateSchemaFetcher =
-      new TemplateSchemaFetcher(
-          templateManager, schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
+      new TemplateSchemaFetcher(schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
 
   private static final class ClusterSchemaFetcherHolder {
     private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
