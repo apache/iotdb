@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.cq;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -123,7 +124,7 @@ public class CQManager {
         if (executor != null) {
           executor.shutdown();
         }
-      } catch (Throwable t) {
+      } catch (Exception t) {
         // just print the error log because we should make sure we can start a new cq schedule pool
         // successfully in the next steps
         LOGGER.error("Error happened while shutting down previous cq schedule thread pool.", t);
@@ -146,7 +147,7 @@ public class CQManager {
         }
       }
       // keep fetching until we get all CQEntries if this node is still leader
-      while (allCQs == null && configManager.getConsensusManager().isLeader()) {
+      while (needFetch(allCQs)) {
         ConsensusReadResponse response = configManager.getConsensusManager().read(new ShowCQPlan());
         if (response.getDataset() != null) {
           allCQs = ((ShowCQResp) response.getDataset()).getCqList();
@@ -170,6 +171,10 @@ public class CQManager {
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  private boolean needFetch(List<CQInfo.CQEntry> allCQs) {
+    return allCQs == null && configManager.getConsensusManager().isLeader();
   }
 
   public void stopCQScheduler() {

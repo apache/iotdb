@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.cq;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -81,38 +82,11 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, CreateCQState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    ConsensusWriteResponse response;
-    TSStatus res;
+
     try {
       switch (state) {
         case INIT:
-          response =
-              env.getConfigManager()
-                  .getConsensusManager()
-                  .write(new AddCQPlan(req, md5, firstExecutionTime));
-          res = response.getStatus();
-          if (res != null) {
-            if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              LOGGER.debug("Finish init CQ {} successfully", req.cqId);
-              setNextState(INACTIVE);
-            } else if (res.code == TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()) {
-              LOGGER.info("Failed to init CQ {} because such cq already exists", req.cqId);
-              setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
-              return Flow.HAS_MORE_STATE;
-            } else {
-              LOGGER.warn("Failed to init CQ {} because of unknown reasons {}", req.cqId, res);
-              setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
-              return Flow.HAS_MORE_STATE;
-            }
-          } else {
-            LOGGER.warn(
-                "Failed to init CQ {} because of unexpected exception: ",
-                req.cqId,
-                response.getException());
-            setFailure(new ProcedureException(response.getException()));
-            return Flow.HAS_MORE_STATE;
-          }
-          break;
+          return addCQ(env);
         case INACTIVE:
           CQScheduleTask cqScheduleTask =
               new CQScheduleTask(req, firstExecutionTime, md5, executor, env.getConfigManager());
@@ -120,38 +94,12 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
           setNextState(SCHEDULED);
           break;
         case SCHEDULED:
-          response =
-              env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, md5));
-          res = response.getStatus();
-          if (res != null) {
-            if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              LOGGER.debug("Finish Scheduling CQ {} successfully", req.cqId);
-            } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
-              LOGGER.warn(
-                  "Failed to active CQ {} because of no such cq, detailed error message is {}",
-                  req.cqId,
-                  res.message);
-            } else if (res.code == TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode()) {
-              LOGGER.warn(
-                  "Failed to active CQ {} because this cq has already been active", req.cqId);
-            } else {
-              LOGGER.warn(
-                  "Failed to active CQ {} successfully because of unknown reasons {}",
-                  req.cqId,
-                  res);
-            }
-          } else {
-            LOGGER.warn(
-                "Failed to active CQ {} successfully because of unexpected exception: ",
-                req.cqId,
-                response.getException());
-          }
-
+          activeCQ(env);
           return Flow.NO_MORE_STATE;
         default:
           throw new IllegalArgumentException("Unknown CreateCQState: " + state);
       }
-    } catch (Throwable t) {
+    } catch (Exception t) {
       if (isRollbackSupported(state)) {
         LOGGER.error("Fail in CreateCQProcedure", t);
         setFailure(new ProcedureException(t));
@@ -167,6 +115,59 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       }
     }
     return Flow.HAS_MORE_STATE;
+  }
+
+  private Flow addCQ(ConfigNodeProcedureEnv env) {
+    ConsensusWriteResponse response =
+        env.getConfigManager()
+            .getConsensusManager()
+            .write(new AddCQPlan(req, md5, firstExecutionTime));
+    TSStatus res = response.getStatus();
+    if (res != null) {
+      if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.debug("Finish init CQ {} successfully", req.cqId);
+        setNextState(INACTIVE);
+      } else if (res.code == TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()) {
+        LOGGER.info("Failed to init CQ {} because such cq already exists", req.cqId);
+        setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
+        return Flow.HAS_MORE_STATE;
+      } else {
+        LOGGER.warn("Failed to init CQ {} because of unknown reasons {}", req.cqId, res);
+        setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
+        return Flow.HAS_MORE_STATE;
+      }
+    } else {
+      LOGGER.warn(
+          "Failed to init CQ {} because of unexpected exception: ",
+          req.cqId,
+          response.getException());
+      setFailure(new ProcedureException(response.getException()));
+      return Flow.HAS_MORE_STATE;
+    }
+    return Flow.NO_MORE_STATE;
+  }
+
+  private void activeCQ(ConfigNodeProcedureEnv env) {
+    ConsensusWriteResponse response =
+        env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, md5));
+    TSStatus res = response.getStatus();
+    if (res != null) {
+      if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.debug("Finish Scheduling CQ {} successfully", req.cqId);
+      } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
+        LOGGER.warn("Failed to active CQ {} because of no such cq: {}", req.cqId, res.message);
+      } else if (res.code == TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode()) {
+        LOGGER.warn("Failed to active CQ {} because this cq has already been active", req.cqId);
+      } else {
+        LOGGER.warn(
+            "Failed to active CQ {} successfully because of unknown reasons {}", req.cqId, res);
+      }
+    } else {
+      LOGGER.warn(
+          "Failed to active CQ {} successfully because of unexpected exception: ",
+          req.cqId,
+          response.getException());
+    }
   }
 
   @Override
@@ -187,18 +188,18 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
             LOGGER.info("Finish [INACTIVE] rollback of CQ {} successfully", req.cqId);
           } else if (res.code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
             LOGGER.warn(
-                "Failed to do [INACTIVE] rollback of CQ {} because of no such cq, detailed error message is {}",
+                "Failed to do [INACTIVE] rollback of CQ {} because of no such cq: {}",
                 req.cqId,
                 res.message);
           } else {
             LOGGER.warn(
-                "Failed to do [INACTIVE] rollback of CQ {} successfully because of unknown reasons {}",
+                "Failed to do [INACTIVE] rollback of CQ {} because of unknown reasons {}",
                 req.cqId,
                 res);
           }
         } else {
           LOGGER.warn(
-              "Failed to do [INACTIVE] rollback of CQ {} successfully because of unexpected exception: ",
+              "Failed to do [INACTIVE] rollback of CQ {} because of unexpected exception: ",
               req.cqId,
               response.getException());
         }
@@ -248,8 +249,12 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CreateCQProcedure that = (CreateCQProcedure) o;
     return firstExecutionTime == that.firstExecutionTime
         && Objects.equals(req, that.req)
