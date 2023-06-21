@@ -128,7 +128,7 @@ public class CompactionTaskManager implements IService {
       ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
           compactionScheduledPool,
           new compactionScheduledWorker(i, dataRegionMap),
-              COMPACTION_TASK_SUBMIT_DELAY,
+          COMPACTION_TASK_SUBMIT_DELAY,
           IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
           TimeUnit.MILLISECONDS);
     }
@@ -245,6 +245,7 @@ public class CompactionTaskManager implements IService {
     subCompactionTaskExecutionPool = null;
     compactionScheduledPool = null;
     storageGroupTasks.clear();
+    dataRegionMap.clear();
     logger.info("CompactionManager stopped");
   }
 
@@ -517,21 +518,22 @@ public class CompactionTaskManager implements IService {
   }
 
   @TestOnly
-  public boolean isAllThreadPoolTerminated(){
-    if(taskExecutionPool == null){
-      return subCompactionTaskExecutionPool==null && compactionScheduledPool==null;
+  public boolean isAllThreadPoolTerminated() {
+    if (taskExecutionPool == null) {
+      return subCompactionTaskExecutionPool == null && compactionScheduledPool == null;
     }
-    return compactionScheduledPool.isTerminated() && taskExecutionPool.isTerminated() && subCompactionTaskExecutionPool.isTerminated();
+    return compactionScheduledPool.isTerminated()
+        && taskExecutionPool.isTerminated()
+        && subCompactionTaskExecutionPool.isTerminated();
   }
 
   @TestOnly
-  public boolean isDataRegionStillInScheduled(TsFileManager tsFileManager){
-    for(Map.Entry<Integer,List<TsFileManager>> entry:dataRegionMap.entrySet()){
-      if(entry.getValue().contains(tsFileManager)){
+  public boolean isDataRegionStillInScheduled(TsFileManager tsFileManager) {
+    for (Map.Entry<Integer, List<TsFileManager>> entry : dataRegionMap.entrySet()) {
+      if (entry.getValue().contains(tsFileManager)) {
         return true;
       }
     }
     return false;
   }
-
 }
