@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -58,7 +59,7 @@ public class ChunkMetadata implements IChunkMetadata {
 
   private boolean modified;
 
-  /** ChunkLoader of metadata, used to create ChunkReaderWrap */
+  /** ChunkLoader of metadata, used to create ChunkReaderWrap. */
   private IChunkLoader chunkLoader;
 
   private Statistics<? extends Serializable> statistics;
@@ -124,7 +125,8 @@ public class ChunkMetadata implements IChunkMetadata {
   @Override
   public String toString() {
     return String.format(
-        "measurementId: %s, datatype: %s, version: %d, Statistics: %s, deleteIntervalList: %s, filePath: %s",
+        "measurementId: %s, datatype: %s, version: %d, "
+            + "Statistics: %s, deleteIntervalList: %s, filePath: %s",
         measurementUid, tsDataType, version, statistics, deleteIntervalList, filePath);
   }
 
@@ -323,8 +325,8 @@ public class ChunkMetadata implements IChunkMetadata {
   }
 
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
-    Statistics<? extends Serializable> statistics = chunkMetadata.getStatistics();
-    this.statistics.mergeStatistics(statistics);
+    Statistics<? extends Serializable> chunkMetadataStatistics = chunkMetadata.getStatistics();
+    this.statistics.mergeStatistics(chunkMetadataStatistics);
     this.ramSize = calculateRamSize();
   }
 

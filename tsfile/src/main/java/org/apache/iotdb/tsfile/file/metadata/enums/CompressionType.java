@@ -16,24 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum CompressionType {
-  /** Do not comprocess */
+  /** Do not comprocess. */
   UNCOMPRESSED("", (byte) 0),
 
-  /** SNAPPY */
+  /** SNAPPY. */
   SNAPPY(".snappy", (byte) 1),
 
-  /** GZIP */
+  /** GZIP. */
   GZIP(".gzip", (byte) 2),
 
-  /** LZ4 */
+  /** LZ4. */
   // NOTICE: To ensure the compatibility of existing files, do not change the byte LZ4 binds to.
   LZ4(".lz4", (byte) 7),
-  /** ZSTD */
+
+  /** ZSTD. */
   ZSTD(".zstd", (byte) 8),
-  /** LZMA2 */
+
+  /** LZMA2. */
   LZMA2(".lzma2", (byte) 9);
 
   private final String extensionName;
@@ -49,6 +52,7 @@ public enum CompressionType {
    *
    * @param compressor byte number
    * @return CompressionType
+   * @throws IllegalArgumentException illegal argument
    */
   public static CompressionType deserialize(byte compressor) {
     switch (compressor) {
@@ -73,7 +77,11 @@ public enum CompressionType {
     return Byte.BYTES;
   }
 
-  /** @return byte number */
+  /**
+   * get serialized size
+   *
+   * @return byte of index
+   */
   public byte serialize() {
     return this.index;
   }
