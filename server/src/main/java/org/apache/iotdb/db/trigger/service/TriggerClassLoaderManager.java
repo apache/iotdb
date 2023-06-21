@@ -22,6 +22,7 @@ package org.apache.iotdb.db.trigger.service;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.ClassLoaderManagerInitializationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +42,7 @@ public class TriggerClassLoaderManager {
    * user executes CREATE TRIGGER or after the user executes DROP TRIGGER. Therefore, we need to
    * continuously maintain the activeClassLoader so that the classes it loads are always up-to-date.
    */
+  @SuppressWarnings("squid:S3077")
   private volatile TriggerClassLoader activeClassLoader;
 
   private TriggerClassLoaderManager(String libRoot) throws IOException {
@@ -57,10 +59,6 @@ public class TriggerClassLoaderManager {
     return activeClassLoader;
   }
 
-  public TriggerClassLoader getActiveClassLoader() {
-    return activeClassLoader;
-  }
-
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +71,7 @@ public class TriggerClassLoaderManager {
         SystemFileFactory.INSTANCE.makeDirIfNecessary(CONFIG.getTriggerDir());
         INSTANCE = new TriggerClassLoaderManager(CONFIG.getTriggerDir());
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new ClassLoaderManagerInitializationException(e.getMessage());
       }
     }
   }

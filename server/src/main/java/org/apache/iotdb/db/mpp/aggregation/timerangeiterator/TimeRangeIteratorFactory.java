@@ -30,6 +30,7 @@ public class TimeRangeIteratorFactory {
    *
    * <p>Note: interval and slidingStep is always stand for the milliseconds in this method.
    */
+  @SuppressWarnings("squid:S107")
   public static ITimeRangeIterator getTimeRangeIterator(
       long startTime,
       long endTime,

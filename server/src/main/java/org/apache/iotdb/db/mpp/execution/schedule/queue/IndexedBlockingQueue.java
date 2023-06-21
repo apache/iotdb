@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule.queue;
 
 import com.google.common.base.Preconditions;
@@ -37,7 +38,7 @@ import com.google.common.base.Preconditions;
  */
 public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
 
-  protected final int MAX_CAPACITY;
+  protected final int capacity;
   protected final E queryHolder;
   protected int size;
 
@@ -50,8 +51,8 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
    * @param queryHolder the query holder instance.
    * @throws IllegalArgumentException if maxCapacity <= 0.
    */
-  public IndexedBlockingQueue(int maxCapacity, E queryHolder) {
-    this.MAX_CAPACITY = maxCapacity;
+  protected IndexedBlockingQueue(int maxCapacity, E queryHolder) {
+    this.capacity = maxCapacity;
     this.queryHolder = queryHolder;
   }
 
@@ -60,6 +61,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
    * until an element has been pushed.
    *
    * @return the queue head element.
+   * @throws InterruptedException if interrupted while waiting.
    */
   public synchronized E poll() throws InterruptedException {
     while (isEmpty()) {
@@ -85,7 +87,7 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     if (element == null) {
       throw new NullPointerException("pushed element is null");
     }
-    Preconditions.checkState(size < MAX_CAPACITY, "The system can't allow more queries.");
+    Preconditions.checkState(size < capacity, "The system can't allow more queries.");
     pushToQueue(element);
     size++;
     this.notifyAll();
@@ -109,6 +111,16 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
   }
 
   /**
+   * Remove and return the element by its ID. It returns null if it doesn't exist.
+   *
+   * <p>This implementation needn't be thread-safe.
+   *
+   * @param element the element to be removed.
+   * @return the removed element.
+   */
+  protected abstract E remove(E element);
+
+  /**
    * Get the element by id. It returns null if it doesn't exist.
    *
    * @param id the id of the element.
@@ -118,6 +130,16 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
     queryHolder.setId(id);
     return get(queryHolder);
   }
+
+  /**
+   * Return the element with the same id of the input, null if it doesn't exist.
+   *
+   * <p>This implementation needn't be thread-safe.
+   *
+   * @param element the element to be queried.
+   * @return the element with the same id in the queue. Null if it doesn't exist.
+   */
+  protected abstract E get(E element);
 
   /** Clear all the elements in the queue. */
   public synchronized void clear() {
@@ -162,16 +184,6 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
   protected abstract void pushToQueue(E element);
 
   /**
-   * Remove and return the element by its ID. It returns null if it doesn't exist.
-   *
-   * <p>This implementation needn't be thread-safe.
-   *
-   * @param element the element to be removed.
-   * @return the removed element.
-   */
-  protected abstract E remove(E element);
-
-  /**
    * Check whether an element with the same ID exists.
    *
    * <p>This implementation needn't be thread-safe.
@@ -180,16 +192,6 @@ public abstract class IndexedBlockingQueue<E extends IDIndexedAccessible> {
    * @return true if an element with the same ID exists, otherwise false.
    */
   protected abstract boolean contains(E element);
-
-  /**
-   * Return the element with the same id of the input, null if it doesn't exist.
-   *
-   * <p>This implementation needn't be thread-safe.
-   *
-   * @param element the element to be queried.
-   * @return the element with the same id in the queue. Null if it doesn't exist.
-   */
-  protected abstract E get(E element);
 
   /**
    * Clear all elements in this queue.

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 public class DownStreamChannelIndex {
-  /** CurrentIndex of downstream ISourceHandle */
+  /** CurrentIndex of downstream ISourceHandle. */
   private int currentIndex;
 
   public DownStreamChannelIndex(int currentIndex) {

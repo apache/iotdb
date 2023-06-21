@@ -529,7 +529,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
-      throw new SeriesOverflowException();
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
     IMeasurementMNode<IMemMNode> leafMNode;
@@ -597,7 +598,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
     int seriesCount = plan.getMeasurements().size();
     if (!regionStatistics.isAllowToCreateNewSeries()) {
-      throw new SeriesOverflowException();
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
     try {
@@ -769,7 +771,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void createLogicalView(ICreateLogicalViewPlan plan) throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
-      throw new SeriesOverflowException();
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
     try {
@@ -1146,7 +1149,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
-      throw new SeriesOverflowException();
+      throw new SeriesOverflowException(
+          regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
     try {

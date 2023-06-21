@@ -94,7 +94,9 @@ public class SinkChannel implements ISinkChannel {
   private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
       mppDataExchangeServiceClientManager;
 
+  @SuppressWarnings("squid:S3077")
   private volatile ListenableFuture<Void> blocked;
+
   private int nextSequenceId = 0;
   /** The actual buffered memory in bytes, including the amount of memory being reserved. */
   private long bufferRetainedSizeInBytes;
@@ -116,6 +118,7 @@ public class SinkChannel implements ISinkChannel {
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
       DataExchangeCountMetricSet.getInstance();
 
+  @SuppressWarnings("squid:S107")
   public SinkChannel(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,

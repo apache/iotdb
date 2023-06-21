@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
@@ -30,16 +31,14 @@ public class TimeStatistics extends Statistics<Long> {
 
   static final int TIME_STATISTICS_FIXED_RAM_SIZE = 40;
   private static final String TIME = "Time";
+  private static final String UPDATE_STATS = "update stats";
 
   @Override
   public TSDataType getType() {
     return TSDataType.VECTOR;
   }
 
-  /**
-   * The output of this method should be identical to the method "serializeStats(OutputStream
-   * outputStream)"
-   */
+  /** The output of this method should be identical to the method "serializeStats(outputStream)". */
   @Override
   public int getStatsSize() {
     return 0;
@@ -99,17 +98,17 @@ public class TimeStatistics extends Statistics<Long> {
 
   @Override
   void updateStats(long value) {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "update stats"));
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, UPDATE_STATS));
   }
 
   @Override
   void updateStats(long[] values, int batchSize) {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "update stats"));
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, UPDATE_STATS));
   }
 
   @Override
   public void updateStats(long minValue, long maxValue) {
-    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "update stats"));
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, UPDATE_STATS));
   }
 
   @Override

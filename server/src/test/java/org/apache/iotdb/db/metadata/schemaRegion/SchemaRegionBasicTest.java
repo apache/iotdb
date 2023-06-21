@@ -61,8 +61,8 @@ import static org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTestUtil.get
 
 /**
  * This class define test cases for {@link ISchemaRegion}. All test cases will be run in both Memory
- * and PB_Tree modes. In PB_Tree mode, there are three kinds of test environment: full memory,
- * partial memory and non memory.
+ * and PBTree modes. In PBTree mode, there are three kinds of test environment: full memory, partial
+ * memory and non memory.
  */
 public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
 

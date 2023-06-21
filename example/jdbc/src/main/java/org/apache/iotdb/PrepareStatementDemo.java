@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -27,6 +30,8 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 
 public class PrepareStatementDemo {
+
+  private static Logger logger = LoggerFactory.getLogger(PrepareStatementDemo.class);
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -67,11 +72,13 @@ public class PrepareStatementDemo {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          System.out.println(builder);
+          String result = builder.toString();
+          logger.info(result);
         }
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          System.out.println(
-              resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i));
+          String data =
+              resultSetMetaData.getColumnType(i) + "-" + resultSetMetaData.getColumnName(i);
+          logger.info(data);
         }
       }
     }

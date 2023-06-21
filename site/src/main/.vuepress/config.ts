@@ -20,6 +20,7 @@
 import { getDirname, path } from '@vuepress/utils';
 import { defineUserConfig, viteBundler } from 'vuepress';
 import { googleAnalyticsPlugin } from '@vuepress/plugin-google-analytics';
+import { redirectPlugin } from 'vuepress-plugin-redirect';
 import { docsearchPlugin } from './components/docsearch/node/index.js';
 import theme from './theme.js';
 
@@ -108,6 +109,13 @@ export default defineUserConfig({
             },
           },
         },
+      },
+    }),
+    redirectPlugin({
+      // hostname: 'https://iotdb.apache.org/',
+      config: {
+        '/UserGuide/Master/QuickStart/QuickStart.html': '/UserGuide/V1.1.x/QuickStart/QuickStart.html',
+        '/zh/UserGuide/Master/QuickStart/QuickStart.html': '/zh/UserGuide/V1.1.x/QuickStart/QuickStart.html',
       },
     }),
     googleAnalyticsPlugin({

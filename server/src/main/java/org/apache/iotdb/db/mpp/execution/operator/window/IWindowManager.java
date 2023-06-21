@@ -32,32 +32,32 @@ import java.util.List;
 
 /**
  * Used to customize all the type of window managers, such as TimeWindowManager,
- * SessionWindowManager
+ * SessionWindowManager.
  */
 public interface IWindowManager {
 
   /**
-   * Judge whether the current window is initialized
+   * Judge whether the current window is initialized.
    *
    * @return whether the current window is initialized
    */
   boolean isCurWindowInit();
 
-  /** Used to initialize the status of window */
+  /** Used to initialize the status of window. */
   void initCurWindow();
 
   /**
-   * Used to determine whether there is a next window
+   * Used to determine whether there is a next window.
    *
    * @return whether there is a next window
    */
   boolean hasNext(boolean hasMoreData);
 
-  /** Used to mark the current window has got last point */
+  /** Used to mark the current window has got last point. */
   void next();
 
   /**
-   * Used to get current window
+   * Used to get current window.
    *
    * @return current window
    */
@@ -72,7 +72,7 @@ public interface IWindowManager {
   TsBlock skipPointsOutOfCurWindow(TsBlock inputTsBlock);
 
   /**
-   * Used to determine whether the current window overlaps with TsBlock
+   * Used to determine whether the current window overlaps with TsBlock.
    *
    * @param inputTsBlock a TsBlock
    * @return whether the current window overlaps with TsBlock
@@ -82,7 +82,7 @@ public interface IWindowManager {
   }
 
   /**
-   * Used to determine whether there are extra points for the next window
+   * Used to determine whether there are extra points for the next window.
    *
    * @param inputTsBlock a TsBlock
    * @return whether there are extra points for the next window
@@ -154,7 +154,7 @@ public interface IWindowManager {
   boolean isIgnoringNull();
 
   /**
-   * output the result in aggregators to columnBuilders
+   * output the result in aggregators to columnBuilders.
    *
    * @param endTime if the window doesn't need to output endTime, just assign -1 to endTime.
    */

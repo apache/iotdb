@@ -229,7 +229,7 @@ public class QueryResultUtils {
 
   /**
    * Convert align by device query result of NewIoTDB to the query result of influxdb,used for
-   * Memory and PB_Tree schema region
+   * Memory and PBTree schema region
    *
    * @param tsExecuteStatementResp NewIoTDB execute statement resp to be converted
    * @return query results in influxdb format

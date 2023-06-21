@@ -216,8 +216,9 @@ public class StatisticsService implements IClusterStatusSubscriber {
     for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> regionLeaderEntry :
         leaderMap.entrySet()) {
       LOGGER.info(
-          "[RegionLeader]\t {}={}",
+          "[RegionLeader]\t {}: {}->{}",
           regionLeaderEntry.getKey(),
+          regionLeaderEntry.getValue().getLeft(),
           regionLeaderEntry.getValue().getRight());
     }
   }

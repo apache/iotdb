@@ -85,11 +85,7 @@ public class TimeWindowManager implements IWindowManager {
   @Override
   public TsBlock skipPointsOutOfCurWindow(TsBlock inputTsBlock) {
     // If we do not need to skip, we return tsBlock directly
-    if (!this.needSkip) {
-      return inputTsBlock;
-    }
-
-    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+    if (!this.needSkip || inputTsBlock == null || inputTsBlock.isEmpty()) {
       return inputTsBlock;
     }
 
@@ -148,8 +144,11 @@ public class TimeWindowManager implements IWindowManager {
   @Override
   public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
-    long endTime = this.needOutputEndTime ? this.endTime : -1;
-    outputAggregators(aggregators, resultTsBlockBuilder, this.startTime, endTime);
+    outputAggregators(
+        aggregators,
+        resultTsBlockBuilder,
+        this.startTime,
+        this.needOutputEndTime ? this.endTime : -1);
   }
 
   @Override

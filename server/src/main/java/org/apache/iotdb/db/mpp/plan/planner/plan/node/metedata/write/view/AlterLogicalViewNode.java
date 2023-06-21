@@ -106,6 +106,11 @@ public class AlterLogicalViewNode extends WritePlanNode {
   }
 
   @Override
+  public int hashCode() {
+    return Objects.hash(this.getPlanNodeId(), this.viewPathToSourceMap);
+  }
+
+  @Override
   public int allowedChildCount() {
     // this node should never have any child
     return NO_CHILD_ALLOWED;

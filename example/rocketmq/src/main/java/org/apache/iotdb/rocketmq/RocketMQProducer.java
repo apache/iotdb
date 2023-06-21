@@ -23,12 +23,11 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
-import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 public class RocketMQProducer {
 
@@ -49,12 +48,10 @@ public class RocketMQProducer {
   }
 
   public void sendMessage()
-      throws UnsupportedEncodingException, InterruptedException, RemotingException,
-          MQClientException, MQBrokerException {
+      throws InterruptedException, RemotingException, MQClientException, MQBrokerException {
     for (String sql : Constant.ALL_DATA) {
       /** Create a message instance, specifying topic, tag and message body. */
-      Message msg =
-          new Message(Constant.TOPIC, null, null, (sql).getBytes(RemotingHelper.DEFAULT_CHARSET));
+      Message msg = new Message(Constant.TOPIC, null, null, (sql).getBytes(StandardCharsets.UTF_8));
       SendResult sendResult =
           producer.send(
               msg,
@@ -63,8 +60,9 @@ public class RocketMQProducer {
                 int index = id % mqs.size();
                 return mqs.get(index);
               },
-              Utils.ConvertStringToInteger(Utils.getTimeSeries(sql)));
-      logger.info(sendResult.toString());
+              Utils.convertStringToInteger(Utils.getTimeSeries(sql)));
+      String result = sendResult.toString();
+      logger.info(result);
     }
   }
 

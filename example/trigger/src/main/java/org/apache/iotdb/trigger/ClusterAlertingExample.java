@@ -49,13 +49,16 @@ public class ClusterAlertingExample implements Trigger {
 
   private final HashMap<String, String> annotations = new HashMap<>();
 
+  public static final String VALUE = "value";
+  public static final String SEVERITY = "severity";
+
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
     alertname = "alert_test";
 
     labels.put("series", "root.ln.wf01.wt01.temperature");
-    labels.put("value", "");
-    labels.put("severity", "");
+    labels.put(VALUE, "");
+    labels.put(SEVERITY, "");
 
     annotations.put("summary", "high temperature");
     annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
@@ -78,15 +81,15 @@ public class ClusterAlertingExample implements Trigger {
         for (double value : values) {
           if (value > 100.0) {
             LOGGER.info("trigger value > 100");
-            labels.put("value", String.valueOf(value));
-            labels.put("severity", "critical");
+            labels.put(VALUE, String.valueOf(value));
+            labels.put(SEVERITY, "critical");
             AlertManagerEvent alertManagerEvent =
                 new AlertManagerEvent(alertname, labels, annotations);
             alertManagerHandler.onEvent(alertManagerEvent);
           } else if (value > 50.0) {
             LOGGER.info("trigger value > 50");
-            labels.put("value", String.valueOf(value));
-            labels.put("severity", "warning");
+            labels.put(VALUE, String.valueOf(value));
+            labels.put(SEVERITY, "warning");
             AlertManagerEvent alertManagerEvent =
                 new AlertManagerEvent(alertname, labels, annotations);
             alertManagerHandler.onEvent(alertManagerEvent);

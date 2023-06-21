@@ -72,12 +72,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -403,7 +403,7 @@ public class ClusterSchemaManager {
 
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (!isDatabaseExist(databaseSchema.getName())
-          || databaseSchema.getName().equals(IoTDBMetricsUtils.DATABASE)) {
+          || databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
         // filter the pre deleted database and the system database
         databaseNum--;
       }
@@ -411,7 +411,7 @@ public class ClusterSchemaManager {
 
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
-      if (databaseSchema.getName().equals(IoTDBMetricsUtils.DATABASE)) {
+      if (databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
         // filter the system database
         continue;
       }
