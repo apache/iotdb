@@ -86,7 +86,7 @@ public class IoTDBSyncConnector implements PipeConnector {
 
   private IoTDBThriftConnectorClient client;
 
-  private static SessionPool sessionPool;
+  private SessionPool sessionPool;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -143,8 +143,10 @@ public class IoTDBSyncConnector implements PipeConnector {
         throw new PipeRuntimeCriticalException(errorMsg);
       }
     } catch (TException e) {
-      LOGGER.warn(String.format("Connect to receiver %s:%s error.", ipAddress, port), e);
-      throw new PipeConnectionException(e.getMessage(), e);
+      throw new PipeConnectionException(
+          String.format(
+              "Connect to receiver %s:%s error, because: %s", ipAddress, port, e.getMessage()),
+          e);
     }
 
     sessionPool =
@@ -158,7 +160,9 @@ public class IoTDBSyncConnector implements PipeConnector {
   }
 
   @Override
-  public void heartbeat() throws Exception {}
+  public void heartbeat() throws Exception {
+    // do nothing
+  }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
@@ -172,12 +176,10 @@ public class IoTDBSyncConnector implements PipeConnector {
             "IoTDBSyncConnector only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
       }
     } catch (TException e) {
-      LOGGER.warn(
-          "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
-      // the connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tablet insertion event, because %s.", e.getMessage()),
+              "Network error when transfer tablet insertion event: %s, because %s.",
+              tabletInsertionEvent, e.getMessage()),
           e);
     }
   }
@@ -193,7 +195,7 @@ public class IoTDBSyncConnector implements PipeConnector {
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
-      throws PipeException, TException, IoTDBConnectionException, StatementExecutionException {
+      throws PipeException, IoTDBConnectionException, StatementExecutionException {
     final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
     if (pipeTabletInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
@@ -212,10 +214,10 @@ public class IoTDBSyncConnector implements PipeConnector {
     try {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
-      LOGGER.warn(
-          "Network error when transfer tsFile insertion event: {}.", tsFileInsertionEvent, e);
-      // The connection may be broken, try to reconnect by catching PipeConnectionException
-      throw new PipeConnectionException("Network error when transfer tsFile insertion event.", e);
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
+          e);
     }
   }
 
@@ -253,8 +255,7 @@ public class IoTDBSyncConnector implements PipeConnector {
         } else if (status.code == TSStatusCode.SYNC_FILE_REDIRECTION_ERROR.getStatusCode()) {
           position = Long.parseLong(status.message);
           randomAccessFile.seek(position);
-          LOGGER.info(
-              String.format("Redirect to position %s in transferring tsFile %s.", position, file));
+          LOGGER.info("Redirect to position {} in transferring tsFile {}.", position, file);
         } else if (status.code == TSStatusCode.SYNC_FILE_ERROR.getStatusCode()) {
           String errorMsg =
               String.format("Network failed to receive tsFile %s, status: %s", file, status);
@@ -263,8 +264,11 @@ public class IoTDBSyncConnector implements PipeConnector {
         }
       }
     } catch (TException e) {
-      LOGGER.warn(String.format("Cannot send pipe data to receiver %s:%s.", ipAddress, port), e);
-      throw new PipeConnectionException(e.getMessage(), e);
+      throw new PipeConnectionException(
+          String.format(
+              "Cannot send pipe data to receiver %s:%s, because: %s.",
+              ipAddress, port, e.getMessage()),
+          e);
     }
   }
 

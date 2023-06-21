@@ -64,7 +64,7 @@ public abstract class PipeData {
     return byteStream.toByteArray();
   }
 
-  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+  public void deserialize(DataInputStream stream) throws IOException {
     serialNumber = stream.readLong();
   }
 

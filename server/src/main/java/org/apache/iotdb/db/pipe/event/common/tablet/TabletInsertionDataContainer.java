@@ -83,7 +83,7 @@ public class TabletInsertionDataContainer {
 
   //////////////////////////// parse ////////////////////////////
 
-  private void parse(InsertRowNode insertRowNode, String pattern) throws IllegalPathException {
+  private void parse(InsertRowNode insertRowNode, String pattern) {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -149,8 +149,7 @@ public class TabletInsertionDataContainer {
     rowCount = 1;
   }
 
-  private void parse(InsertTabletNode insertTabletNode, String pattern)
-      throws IllegalPathException {
+  private void parse(InsertTabletNode insertTabletNode, String pattern) {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -269,7 +268,6 @@ public class TabletInsertionDataContainer {
     rowCount = tablet.rowSize;
   }
 
-  // TODO: cache the result keyed by deviceId to improve performance
   private void generateColumnIndexMapper(
       String[] originMeasurementList,
       String pattern,

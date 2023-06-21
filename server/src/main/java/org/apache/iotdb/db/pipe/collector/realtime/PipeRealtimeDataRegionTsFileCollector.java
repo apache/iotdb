@@ -53,9 +53,10 @@ public class PipeRealtimeDataRegionTsFileCollector extends PipeRealtimeDataRegio
 
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
-          String.format(
-              "collect: pending queue of PipeRealtimeDataRegionTsFileCollector %s has reached capacity, discard TsFile event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this)));
+          "collect: pending queue of PipeRealtimeDataRegionTsFileCollector {} has reached capacity, discard TsFile event {}, current state {}",
+          this,
+          event,
+          event.getTsFileEpoch().getState(this));
       // this would not happen, but just in case.
       // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
     }

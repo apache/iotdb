@@ -137,7 +137,8 @@ public class PipePluginAgent {
       updateAllRegisteredClasses(currentActiveClassLoader);
 
       final Class<?> pluginClass = Class.forName(className, true, currentActiveClassLoader);
-      // ensure that it is a PipePlugin class
+
+      @SuppressWarnings("unused") // ensure that it is a PipePlugin class
       final PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
@@ -165,7 +166,7 @@ public class PipePluginAgent {
     }
   }
 
-  public void deregister(String pluginName, boolean needToDeleteJar) throws Exception {
+  public void deregister(String pluginName, boolean needToDeleteJar) throws PipeException {
     acquireLock();
     try {
       final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
@@ -225,7 +226,7 @@ public class PipePluginAgent {
               "Failed to reflect PipePlugin instance, because PipePlugin %s has not been registered.",
               pluginName.toUpperCase());
       LOGGER.warn(errorMessage);
-      throw new RuntimeException(errorMessage);
+      throw new PipeException(errorMessage);
     }
 
     try {
@@ -240,7 +241,7 @@ public class PipePluginAgent {
               "Failed to reflect PipePlugin %s(%s) instance, because %s",
               pluginName, information.getClassName(), e);
       LOGGER.warn(errorMessage, e);
-      throw new RuntimeException(errorMessage);
+      throw new PipeException(errorMessage);
     }
   }
 }

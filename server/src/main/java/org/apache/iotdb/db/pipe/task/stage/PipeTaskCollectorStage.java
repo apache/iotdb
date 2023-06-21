@@ -43,8 +43,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       PipeParameters collectorParameters,
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta) {
-    // TODO: avoid if-else, use reflection to create collector all the time
-    this.pipeCollector =
+    pipeCollector =
         collectorParameters
                 .getStringOrDefault(
                     PipeCollectorConstant.COLLECTOR_KEY,

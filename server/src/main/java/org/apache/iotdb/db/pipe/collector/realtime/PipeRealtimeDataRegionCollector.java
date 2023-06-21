@@ -35,7 +35,7 @@ public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
   protected String dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
 
-  public PipeRealtimeDataRegionCollector() {}
+  protected PipeRealtimeDataRegionCollector() {}
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {}

@@ -151,7 +151,7 @@ public class PipeTransferTsFileInsertionEventHandler
       if (code == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
         position = resp.getEndWritingOffset();
         reader.seek(position);
-        LOGGER.info(String.format("Redirect file position to %s.", position));
+        LOGGER.info("Redirect file position to {}.", position);
       } else if (code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new PipeException(
             String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()));
