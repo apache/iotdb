@@ -20,6 +20,8 @@ package org.apache.iotdb.rocketmq;
 
 public class Constant {
 
+  private Constant() {}
+
   public static final String TOPIC = "RocketMQ-Test";
   public static final String PRODUCER_GROUP = "IoTDBConsumer";
   public static final String CONSUMER_GROUP = "IoTDBProducer";

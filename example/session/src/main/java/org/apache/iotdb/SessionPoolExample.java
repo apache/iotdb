@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@SuppressWarnings({"squid:S106", "squid:S1144"})
 public class SessionPoolExample {
 
   private static SessionPool sessionPool;
