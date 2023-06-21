@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
 
-/** the scheduler interface of {@link DriverTask} */
+/** the scheduler interface of {@link DriverTask}. */
 public interface ITaskScheduler {
 
   /**

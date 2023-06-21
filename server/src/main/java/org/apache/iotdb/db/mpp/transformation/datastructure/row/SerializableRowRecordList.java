@@ -52,6 +52,9 @@ public class SerializableRowRecordList implements SerializableList {
    * @param memoryLimitInMB Memory limit.
    * @param byteArrayLengthForMemoryControl Max memory usage for a {@link TSDataType#TEXT}.
    * @return Number of rows that can be cached.
+   * @throws QueryProcessException if the result capacity <= 0
+   * @throws UnSupportedDataTypeException if the input datatype can not be handled by the given
+   *     branches.
    */
   protected static int calculateCapacity(
       TSDataType[] dataTypes, float memoryLimitInMB, int byteArrayLengthForMemoryControl)

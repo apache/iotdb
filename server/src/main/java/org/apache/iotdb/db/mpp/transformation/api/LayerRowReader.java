@@ -37,6 +37,6 @@ public interface LayerRowReader extends YieldableReader {
 
   Row currentRow();
 
-  /** whether current row fields are all null */
-  boolean isCurrentNull() throws IOException;
+  /** whether current row fields are all null. */
+  boolean isCurrentNull();
 }
