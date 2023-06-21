@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("squid:S106")
+@SuppressWarnings({"squid:S106", "squid:S1144", "squid:S125"})
 public class AlignedTimeseriesSessionExample {
 
   private static Session session;
@@ -52,6 +52,7 @@ public class AlignedTimeseriesSessionExample {
   private static final String ROOT_SG2_D1_VECTOR6 = "root.sg_2.d1.vector6";
   private static final String ROOT_SG2_D1_VECTOR7 = "root.sg_2.d1.vector7";
   private static final String ROOT_SG2_D1_VECTOR8 = "root.sg_2.d1.vector8";
+  public static final String FLUSH = "flush";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -75,7 +76,7 @@ public class AlignedTimeseriesSessionExample {
     //    insertTabletWithAlignedTimeseriesMethod2();
     //    insertNullableTabletWithAlignedTimeseries();
     //    insertTabletsWithAlignedTimeseries();
-    session.executeNonQueryStatement("flush");
+    session.executeNonQueryStatement(FLUSH);
     selectTest();
     selectWithValueFilterTest();
     selectWithLastTest();
@@ -324,7 +325,7 @@ public class AlignedTimeseriesSessionExample {
       tablet.reset();
     }
 
-    session.executeNonQueryStatement("flush");
+    session.executeNonQueryStatement(FLUSH);
   }
 
   /** Method 2 for insert tablet with aligned timeseries */
@@ -361,7 +362,7 @@ public class AlignedTimeseriesSessionExample {
       tablet.reset();
     }
 
-    session.executeNonQueryStatement("flush");
+    session.executeNonQueryStatement(FLUSH);
   }
 
   private static void insertNullableTabletWithAlignedTimeseries()
@@ -408,7 +409,7 @@ public class AlignedTimeseriesSessionExample {
       tablet.reset();
     }
 
-    session.executeNonQueryStatement("flush");
+    session.executeNonQueryStatement(FLUSH);
   }
 
   private static void insertAlignedRecord()
@@ -427,7 +428,7 @@ public class AlignedTimeseriesSessionExample {
       values.add((int) time);
       session.insertAlignedRecord(ROOT_SG1_D1, time, measurements, types, values);
     }
-    session.executeNonQueryStatement("flush");
+    session.executeNonQueryStatement(FLUSH);
     // second file we only have s1's data
     measurements.clear();
     types.clear();

@@ -72,7 +72,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       ConfigNodeClientManager.getInstance();
 
   /**
-   * How many times should we retry when error occurred during firing a trigger on another datanode
+   * How many times should we retry when error occurred during firing a trigger on another datanode.
    */
   private static final int FIRE_RETRY_NUM =
       IoTDBDescriptor.getInstance().getConfig().getRetryNumToFindStatefulTrigger();
@@ -395,7 +395,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     return result;
   }
 
-  /** Return true if the config node returns a new TDataNodeLocation */
+  /** Return true if the config node returns a new TDataNodeLocation. */
   private boolean updateLocationOfStatefulTrigger(String triggerName, int currentDataNodeId) {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -411,7 +411,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       return false;
     } catch (ClientManagerException | TException | IOException e) {
       LOGGER.error(
-          "Failed to update location of stateful trigger({}) through config node and the cause is {}.",
+          "Failed to update location of stateful trigger({}) through config node. The cause is {}.",
           triggerName,
           e);
       return false;

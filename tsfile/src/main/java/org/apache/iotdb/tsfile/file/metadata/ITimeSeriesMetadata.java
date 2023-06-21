@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -35,7 +36,11 @@ public interface ITimeSeriesMetadata {
 
   void setSeq(boolean seq);
 
-  /** @return the result has already been filtered by modification files */
+  /**
+   * Return the result has already been filtered by modification files.
+   *
+   * @return list of ChunkMetadata.
+   */
   List<IChunkMetadata> loadChunkMetadataList();
 
   void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader);

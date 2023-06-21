@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
@@ -211,7 +211,7 @@ public class SessionManager implements SessionManagerMBean {
             TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
       }
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
+      return onNpeOrUnexpectedException(
           e, OperationType.CLOSE_OPERATION, TSStatusCode.CLOSE_OPERATION_ERROR);
     }
   }

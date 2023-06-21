@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Each Trigger instantiate a ForwardQueue
+ * Each Trigger instantiate a ForwardQueue.
  *
  * @param <T> Subclass of Event
  */
@@ -99,10 +99,6 @@ public class BatchHandlerQueue<T extends Event> {
     }
   }
 
-  private void handle(ArrayList<T> events) throws Exception {
-    handler.onEvent(events);
-  }
-
   class ForwardQueueConsumer extends Thread {
 
     ArrayBlockingQueue<T> queue;
@@ -110,6 +106,10 @@ public class BatchHandlerQueue<T extends Event> {
     public ForwardQueueConsumer(String name, ArrayBlockingQueue<T> queue) {
       super(name);
       this.queue = queue;
+    }
+
+    private void handle(ArrayList<T> events) throws Exception {
+      handler.onEvent(events);
     }
 
     @Override
@@ -141,6 +141,7 @@ public class BatchHandlerQueue<T extends Event> {
           list.clear();
           startMillis = System.currentTimeMillis();
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           break;
         } catch (Throwable t) {
           LOGGER.error("ForwardTaskQueue consumer error", t);

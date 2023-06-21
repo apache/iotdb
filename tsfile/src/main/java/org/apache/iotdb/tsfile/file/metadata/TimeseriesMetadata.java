@@ -37,11 +37,12 @@ import java.util.stream.Collectors;
 
 public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
-  /** used for old version tsfile */
+  /** used for old version tsfile. */
   private long startOffsetOfChunkMetaDataList;
+
   /**
    * 0 means this time series has only one chunk, no need to save the statistic again in chunk
-   * metadata;
+   * metadata.
    *
    * <p>1 means this time series has more than one chunk, should save the statistic again in chunk
    * metadata;
@@ -103,7 +104,7 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(buffer));
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readVarIntString(buffer));
-    timeseriesMetaData.setTSDataType(ReadWriteIOUtils.readDataType(buffer));
+    timeseriesMetaData.setTsDataType(ReadWriteIOUtils.readDataType(buffer));
     int chunkMetaDataListDataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
     timeseriesMetaData.setStatistics(Statistics.deserialize(buffer, timeseriesMetaData.dataType));
@@ -137,7 +138,7 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(measurementID);
     timeseriesMetaData.setTimeSeriesMetadataType(timeseriesType);
-    timeseriesMetaData.setTSDataType(tsDataType);
+    timeseriesMetaData.setTsDataType(tsDataType);
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
     timeseriesMetaData.setStatistics(statistics);
 
@@ -209,11 +210,11 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
     this.chunkMetaDataListDataSize = size;
   }
 
-  public TSDataType getTSDataType() {
+  public TSDataType getTsDataType() {
     return dataType;
   }
 
-  public void setTSDataType(TSDataType tsDataType) {
+  public void setTsDataType(TSDataType tsDataType) {
     this.dataType = tsDataType;
   }
 
@@ -271,7 +272,7 @@ public class TimeseriesMetadata implements ITimeSeriesMetadata {
   }
 
   // For reading version-2 only
-  public void setChunkMetadataList(ArrayList<ChunkMetadata> chunkMetadataList) {
+  public void setChunkMetadataList(List<ChunkMetadata> chunkMetadataList) {
     this.chunkMetadataList = new ArrayList<>(chunkMetadataList);
   }
 

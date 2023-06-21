@@ -45,6 +45,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   private TimeRange curTimeRange;
   private boolean hasCachedTimeRange;
 
+  @SuppressWarnings("squid:S107")
   public AggrWindowIterator(
       long startTime,
       long endTime,
@@ -124,7 +125,8 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       return true;
     }
 
-    long retStartTime, retEndTime;
+    long retStartTime;
+    long retEndTime;
     long curStartTime = curTimeRange.getMin();
     if (isAscending) {
       if (isSlidingStepByMonth) {

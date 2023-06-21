@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@SuppressWarnings({"squid:S1144"})
 public class PulsarConsumerThread implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(PulsarConsumerThread.class);
@@ -41,8 +42,7 @@ public class PulsarConsumerThread implements Runnable {
 
   private SessionPool pool;
 
-  public PulsarConsumerThread(Consumer<?> consumer, SessionPool pool)
-      throws ClassNotFoundException {
+  public PulsarConsumerThread(Consumer<?> consumer) throws ClassNotFoundException {
     this.consumer = consumer;
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
   }
@@ -79,6 +79,7 @@ public class PulsarConsumerThread implements Runnable {
         case BOOLEAN:
           values.add(Boolean.parseBoolean(valuesStr[i]));
           break;
+        default:
       }
     }
 
@@ -126,6 +127,7 @@ public class PulsarConsumerThread implements Runnable {
           case BOOLEAN:
             values.add(Boolean.parseBoolean(valuesStr[i]));
             break;
+          default:
         }
       }
       deviceIds.add(device);

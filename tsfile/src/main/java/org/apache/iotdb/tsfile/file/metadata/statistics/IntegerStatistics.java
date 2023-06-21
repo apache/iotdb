@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
@@ -44,10 +45,7 @@ public class IntegerStatistics extends Statistics<Integer> {
     return TSDataType.INT32;
   }
 
-  /**
-   * The output of this method should be identical to the method "serializeStats(OutputStream
-   * outputStream)"
-   */
+  /** The output of this method should be identical to the method "serializeStats(outputStream)". */
   @Override
   public int getStatsSize() {
     return 24;
@@ -205,9 +203,15 @@ public class IntegerStatistics extends Statistics<Integer> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     IntegerStatistics that = (IntegerStatistics) o;
     return minValue == that.minValue
         && maxValue == that.maxValue

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -41,7 +42,7 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
 
   /**
    * If the vector contains only one sub sensor, just return the sub sensor's Statistics Otherwise,
-   * return the Statistics of the time column
+   * return the Statistics of the time column.
    */
   @Override
   public Statistics getStatistics() {

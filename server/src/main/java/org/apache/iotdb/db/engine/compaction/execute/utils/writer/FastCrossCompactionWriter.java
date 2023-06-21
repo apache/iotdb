@@ -150,7 +150,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
     // check chunk size and may open a new chunk
     checkChunkSizeAndMayOpenANewChunk(
-        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId, true);
+        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
 
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;
@@ -178,7 +178,7 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
 
     // check chunk size and may open a new chunk
     checkChunkSizeAndMayOpenANewChunk(
-        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId, true);
+        targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
 
     isDeviceExistedInTargetFiles[fileIndex] = true;
     isEmptyFile[fileIndex] = false;

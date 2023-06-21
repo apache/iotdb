@@ -92,6 +92,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     if (childType == null) {
       return;
     }
+    String errorMsg = "\"%s\" cannot be cast to [%s]";
     switch (childType) {
       case INT32:
         intSet = new HashSet<>();
@@ -99,8 +100,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           try {
             intSet.add(Integer.valueOf(value));
           } catch (IllegalArgumentException e) {
-            throw new SemanticException(
-                String.format("\"%s\" cannot be cast to [%s]", value, childType));
+            throw new SemanticException(String.format(errorMsg, value, childType));
           }
         }
         break;
@@ -110,8 +110,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           try {
             longSet.add(Long.valueOf(value));
           } catch (IllegalArgumentException e) {
-            throw new SemanticException(
-                String.format("\"%s\" cannot be cast to [%s]", value, childType));
+            throw new SemanticException(String.format(errorMsg, value, childType));
           }
         }
         break;
@@ -121,8 +120,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           try {
             floatSet.add(Float.valueOf(value));
           } catch (IllegalArgumentException e) {
-            throw new SemanticException(
-                String.format("\"%s\" cannot be cast to [%s]", value, childType));
+            throw new SemanticException(String.format(errorMsg, value, childType));
           }
         }
         break;
@@ -132,8 +130,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           try {
             doubleSet.add(Double.valueOf(value));
           } catch (IllegalArgumentException e) {
-            throw new SemanticException(
-                String.format("\"%s\" cannot be cast to [%s]", value, childType));
+            throw new SemanticException(String.format(errorMsg, value, childType));
           }
         }
         break;

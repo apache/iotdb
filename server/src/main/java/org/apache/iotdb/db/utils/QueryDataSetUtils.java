@@ -232,7 +232,7 @@ public class QueryDataSetUtils {
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
         dataOutputStream.writeLong(column.getLong(i));
-        valueOccupation[columnIndex] += 4;
+        valueOccupation[columnIndex] += 8;
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -284,7 +284,7 @@ public class QueryDataSetUtils {
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
         dataOutputStream.writeDouble(column.getDouble(i));
-        valueOccupation[columnIndex] += 4;
+        valueOccupation[columnIndex] += 8;
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);
@@ -310,7 +310,7 @@ public class QueryDataSetUtils {
       } else {
         bitmaps[columnIndex] = (bitmaps[columnIndex] << 1) | FLAG;
         dataOutputStream.writeBoolean(column.getBoolean(i));
-        valueOccupation[columnIndex] += 4;
+        valueOccupation[columnIndex] += 1;
       }
       if (rowCount != 0 && rowCount % 8 == 0) {
         dataBitmapOutputStream.writeByte(bitmaps[columnIndex]);

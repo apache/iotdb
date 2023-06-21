@@ -47,7 +47,7 @@ public class Deletion extends Modification implements Cloneable {
   }
 
   /**
-   * constructor of Deletion
+   * constructor of Deletion.
    *
    * @param startTime start time of delete interval
    * @param endTime end time of delete interval

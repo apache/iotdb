@@ -269,8 +269,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         // make sure paths in logical view is fetched
         updateSchemaTreeByViews(analysis, schemaTree);
-        if (analysis.useLogicalView() && queryStatement.isAlignByDevice()) {
-          throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
+        if (analysis.useLogicalView()) {
+          if (queryStatement.isAlignByDevice()) {
+            throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
+          }
+          if (queryStatement.isGroupByTag()) {
+            throw new SemanticException("Views cannot be used in GROUP BY TAGS query yet.");
+          }
         }
       } finally {
         logger.debug("[EndFetchSchema]");
@@ -2417,7 +2422,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
           boolean isAligned = false;
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-            TSDataType dataType = timeseriesMetadata.getTSDataType();
+            TSDataType dataType = timeseriesMetadata.getTsDataType();
             if (!dataType.equals(TSDataType.VECTOR)) {
               Pair<CompressionType, TSEncoding> pair =
                   reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);

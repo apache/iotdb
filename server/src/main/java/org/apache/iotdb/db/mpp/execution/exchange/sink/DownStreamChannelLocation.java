@@ -36,6 +36,8 @@ public class DownStreamChannelLocation {
   private final String remotePlanNodeId;
 
   /**
+   * This class contains the basic information we needed of the target ISourceHandle.
+   *
    * @param remoteEndpoint Hostname and Port of the remote fragment instance where the data blocks
    *     should be sent to.
    * @param remoteFragmentInstanceId The ID of the remote fragment instance.
