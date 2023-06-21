@@ -140,7 +140,7 @@ public enum TSDataType {
    * numeric datatype judgement
    *
    * @return whether it is a numeric datatype
-   * @throws UnSupportedDataTypeException meets unSupported DataType
+   * @throws UnSupportedDataTypeException when meets unSupported DataType
    */
   public boolean isNumeric() {
     switch (this) {
@@ -163,7 +163,7 @@ public enum TSDataType {
    * comparable datatype judgement
    *
    * @return whether it is a comparable datatype
-   * @throws UnSupportedDataTypeException meets unSupported DataType
+   * @throws UnSupportedDataTypeException when meets unSupported DataType
    */
   public boolean isComparable() {
     switch (this) {

@@ -134,7 +134,7 @@ public abstract class Statistics<T extends Serializable> {
   abstract int serializeStats(OutputStream outputStream) throws IOException;
 
   /**
-   * read data from the inputStream.
+   * deserialize data from the inputStream.
    *
    * @param inputStream input stream
    * @throws IOException exception when operating stream

@@ -64,7 +64,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     this.lastValue = lastValue;
   }
 
-  private void updateLastStats(Binary firstValue, Binary lastValue, long startTime, long endTime) {
+  private void updateStats(Binary firstValue, Binary lastValue, long startTime, long endTime) {
     // only if endTime greater or equals to the current endTime need we update the last value
     // only if startTime less or equals to the current startTime need we update the first value
     // otherwise, just ignore
@@ -117,7 +117,7 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(stringStats.getFirstValue(), stringStats.getLastValue());
       isEmpty = false;
     } else {
-      updateLastStats(
+      updateStats(
           stringStats.getFirstValue(),
           stringStats.getLastValue(),
           stats.getStartTime(),
