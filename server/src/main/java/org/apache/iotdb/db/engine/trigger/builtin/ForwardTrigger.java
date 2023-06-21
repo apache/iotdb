@@ -36,8 +36,6 @@ import org.apache.iotdb.db.engine.trigger.utils.BatchHandlerQueue;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.HashMap;
-
 public class ForwardTrigger implements Trigger {
 
   private static final String PROTOCOL_HTTP = "http";
@@ -46,7 +44,6 @@ public class ForwardTrigger implements Trigger {
   private Handler forwardHandler;
   private Configuration forwardConfig;
   private BatchHandlerQueue<Event> queue;
-  private final HashMap<String, String> labels = new HashMap<>();
   private String protocol;
 
   @Override
@@ -76,10 +73,10 @@ public class ForwardTrigger implements Trigger {
       throws SinkException {
     String endpoint = attributes.getString("endpoint");
     boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
-    HTTPForwardConfiguration forwardConfig =
+    HTTPForwardConfiguration forwardConfiguration =
         new HTTPForwardConfiguration(endpoint, stopIfException);
-    forwardConfig.checkConfig();
-    return forwardConfig;
+    forwardConfiguration.checkConfig();
+    return forwardConfiguration;
   }
 
   private MQTTForwardConfiguration createMQTTConfiguration(TriggerAttributes attributes)
