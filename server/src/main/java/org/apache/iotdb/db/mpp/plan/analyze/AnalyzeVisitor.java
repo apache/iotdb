@@ -2133,11 +2133,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertTabletStatement);
-    InsertBaseStatement realStatement = insertTabletStatement.removeLogicalView();
-    analysis.setStatement(realStatement);
+    InsertBaseStatement realStatement = removeLogicalView(analysis, insertTabletStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realStatement);
 
     if (realStatement instanceof InsertTabletStatement) {
       InsertTabletStatement realInsertTabletStatement = (InsertTabletStatement) realStatement;
@@ -2158,11 +2158,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowStatement);
-    InsertBaseStatement realInsertStatement = insertRowStatement.removeLogicalView();
-    analysis.setStatement(realInsertStatement);
+    InsertBaseStatement realInsertStatement = removeLogicalView(analysis, insertRowStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowStatement) {
       InsertRowStatement realInsertRowStatement = (InsertRowStatement) realInsertStatement;
@@ -2205,11 +2205,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowsStatement);
     InsertRowsStatement realInsertRowsStatement =
-        (InsertRowsStatement) insertRowsStatement.removeLogicalView();
-    analysis.setStatement(realInsertRowsStatement);
+        (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realInsertRowsStatement);
 
     return computeAnalysisForInsertRows(analysis, realInsertRowsStatement);
   }
@@ -2243,11 +2243,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertMultiTabletsStatement);
     InsertMultiTabletsStatement realStatement =
-        (InsertMultiTabletsStatement) insertMultiTabletsStatement.removeLogicalView();
-    analysis.setStatement(realStatement);
+        (InsertMultiTabletsStatement) removeLogicalView(analysis, insertMultiTabletsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realStatement);
 
     return computeAnalysisForMultiTablets(analysis, realStatement);
   }
@@ -2258,11 +2258,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowsOfOneDeviceStatement);
-    InsertBaseStatement realInsertStatement = insertRowsOfOneDeviceStatement.removeLogicalView();
-    analysis.setStatement(realInsertStatement);
+    InsertBaseStatement realInsertStatement =
+        removeLogicalView(analysis, insertRowsOfOneDeviceStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowsOfOneDeviceStatement) {
       InsertRowsOfOneDeviceStatement realStatement =
@@ -2304,6 +2305,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.warn(partialInsertMessage);
       analysis.setFailStatus(
           RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
+    }
+  }
+
+  private InsertBaseStatement removeLogicalView(
+      Analysis analysis, InsertBaseStatement insertBaseStatement) {
+    try {
+      return insertBaseStatement.removeLogicalView();
+    } catch (SemanticException e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      if (e.getCause() instanceof IoTDBException) {
+        IoTDBException exception = (IoTDBException) e.getCause();
+        analysis.setFailStatus(
+            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+      } else {
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+      }
+      return insertBaseStatement;
     }
   }
 

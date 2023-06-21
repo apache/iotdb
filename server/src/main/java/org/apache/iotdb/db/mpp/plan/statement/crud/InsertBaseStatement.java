@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -340,7 +341,7 @@ public abstract class InsertBaseStatement extends Statement {
         boolean measurementNotExists = measurementSet.add(thisPair.left);
         if (!measurementNotExists) {
           PartialPath devicePath = entry.getKey();
-          throw new RuntimeException(
+          throw new SemanticException(
               new DuplicateInsertException(devicePath.getFullPath(), thisPair.left));
         }
       }
