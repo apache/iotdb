@@ -46,11 +46,12 @@ public class TsFileEpochManager {
     final String filePath = resource.getTsFilePath();
 
     // this would not happen, but just in case
-    if (!filePath2Epoch.containsKey(filePath)) {
-      LOGGER.info(
-          String.format("Pipe: can not find TsFileEpoch for TsFile %s, creating it", filePath));
-      filePath2Epoch.put(filePath, new TsFileEpoch(filePath));
-    }
+    filePath2Epoch.computeIfAbsent(
+        filePath,
+        path -> {
+          LOGGER.info("TsFileEpoch not found for TsFile {}, creating a new one", path);
+          return new TsFileEpoch(path);
+        });
 
     return new PipeRealtimeCollectEvent(
         event,

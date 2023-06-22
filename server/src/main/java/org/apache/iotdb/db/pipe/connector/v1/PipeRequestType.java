@@ -45,7 +45,10 @@ public enum PipeRequestType {
 
   private static final Map<Short, PipeRequestType> TYPE_MAP =
       Arrays.stream(PipeRequestType.values())
-          .collect(HashMap::new, (map, type) -> map.put(type.getType(), type), HashMap::putAll);
+          .collect(
+              HashMap::new,
+              (typeMap, pipeRequestType) -> typeMap.put(pipeRequestType.getType(), pipeRequestType),
+              HashMap::putAll);
 
   public static boolean isValidatedRequestType(short type) {
     return TYPE_MAP.containsKey(type);

@@ -86,7 +86,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
     } catch (PipeConnectionException e) {
       throw e;
     } catch (Exception e) {
-      LOGGER.warn("Execute Connector subtask once error.", e);
       throw new PipeException(
           "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
           e);
@@ -99,19 +98,29 @@ public class PipeConnectorSubtask extends PipeSubtask {
   public void onFailure(@NotNull Throwable throwable) {
     // retry to connect to the target system if the connection is broken
     if (throwable instanceof PipeConnectionException) {
+      LOGGER.warn(
+          "PipeConnectionException occurred, retrying to connect to the target system...",
+          throwable);
+
       int retry = 0;
       while (retry < MAX_RETRY_TIMES) {
         try {
           outputPipeConnector.handshake();
+          LOGGER.info("Successfully reconnected to the target system.");
           break;
         } catch (Exception e) {
           retry++;
-          LOGGER.error("Failed to reconnect to the target system, retrying... ({} time(s))", retry);
+          LOGGER.warn(
+              "Failed to reconnect to the target system, retrying ... after [{}/{}] time(s) retries.",
+              retry,
+              MAX_RETRY_TIMES,
+              e);
           try {
             Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
           } catch (InterruptedException interruptedException) {
             LOGGER.info(
-                "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.");
+                "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.",
+                interruptedException);
             Thread.currentThread().interrupt();
           }
         }
@@ -120,22 +129,35 @@ public class PipeConnectorSubtask extends PipeSubtask {
       // stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
       // times
       if (retry == MAX_RETRY_TIMES) {
-        final String errorMessage =
-            String.format(
-                "Failed to reconnect to the target system after %d times, stopping current pipe task %s...",
-                MAX_RETRY_TIMES, taskID);
-        LOGGER.warn(errorMessage, throwable);
-        lastFailedCause = throwable;
-
         if (lastEvent instanceof EnrichedEvent) {
+          LOGGER.warn(
+              "Failed to reconnect to the target system after {} times, stopping current pipe task {}... "
+                  + "Status shown when query the pipe will be 'STOPPED'. "
+                  + "Please restart the task by executing 'START PIPE' manually if needed.",
+              MAX_RETRY_TIMES,
+              taskID,
+              throwable);
+
           ((EnrichedEvent) lastEvent)
               .reportException(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+        } else {
+          LOGGER.error(
+              "Failed to reconnect to the target system after {} times, stopping current pipe task {} locally... "
+                  + "Status shown when query the pipe will be 'RUNNING' instead of 'STOPPED', but the task is actually stopped. "
+                  + "Please restart the task by executing 'START PIPE' manually if needed.",
+              MAX_RETRY_TIMES,
+              taskID,
+              throwable);
+
+          // FIXME: non-EnrichedEvent should be reported to the ConfigNode instead of being logged
         }
 
         // although the pipe task will be stopped, we still don't release the last event here
         // because we need to keep it for the next retry. if user wants to restart the task,
         // the last event will be processed again. the last event will be released when the task
         // is dropped or the process is running normally.
+
+        // stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
         return;
       }
     }

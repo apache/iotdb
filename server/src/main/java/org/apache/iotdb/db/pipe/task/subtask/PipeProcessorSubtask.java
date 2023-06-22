@@ -69,7 +69,6 @@ public class PipeProcessorSubtask extends PipeSubtask {
 
       releaseLastEvent();
     } catch (Exception e) {
-      e.printStackTrace();
       throw new PipeException(
           "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
           e);

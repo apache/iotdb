@@ -80,15 +80,15 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
       return;
     }
 
-    if (!event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
-      if (!pendingQueue.offer(event)) {
-        LOGGER.warn(
-            String.format(
-                "collectTabletInsertion: pending queue of PipeRealtimeDataRegionHybridCollector %s has reached capacity, discard tablet event %s, current state %s",
-                this, event, event.getTsFileEpoch().getState(this)));
-        // this would not happen, but just in case.
-        // UnboundedBlockingPendingQueue is unbounded, so it should never reach capacity.
-      }
+    if (!event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)
+        && !pendingQueue.offer(event)) {
+      LOGGER.warn(
+          "collectTabletInsertion: pending queue of PipeRealtimeDataRegionHybridCollector {} has reached capacity, discard tablet event {}, current state {}",
+          this,
+          event,
+          event.getTsFileEpoch().getState(this));
+      // this would not happen, but just in case.
+      // UnboundedBlockingPendingQueue is unbounded, so it should never reach capacity.
     }
   }
 
@@ -102,9 +102,10 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
 
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
-          String.format(
-              "collectTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridCollector %s has reached capacity, discard TsFile event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this)));
+          "collectTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridCollector {} has reached capacity, discard TsFile event {}, current state {}",
+          this,
+          event,
+          event.getTsFileEpoch().getState(this));
       // this would not happen, but just in case.
       // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
     }
@@ -163,7 +164,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
         // this event is not reliable anymore. but the data represented by this event
         // has been carried by the following tsfile event, so we can just discard this event.
         event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
-        LOGGER.warn(String.format("Increase reference count for event %s error.", event));
+        LOGGER.warn("Increase reference count for event {} error.", event);
         return null;
       }
     }

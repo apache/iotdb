@@ -29,5 +29,6 @@ public interface EventSupplier {
    *     the moment, but the collector is still running for more events.
    * @throws Exception if the supplier fails to supply the event.
    */
+  @SuppressWarnings("squid:S00112") // Exception is thrown by the interface
   Event supply() throws Exception;
 }

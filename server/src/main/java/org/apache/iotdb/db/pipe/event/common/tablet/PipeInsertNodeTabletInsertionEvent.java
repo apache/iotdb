@@ -124,7 +124,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
       return dataContainer.processRowByRow(consumer);
     } catch (Exception e) {
-      LOGGER.error("Process row by row error.", e);
       throw new PipeException("Process row by row error.", e);
     }
   }
@@ -137,7 +136,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
       return dataContainer.processTablet(consumer);
     } catch (Exception e) {
-      LOGGER.error("Process tablet error.", e);
       throw new PipeException("Process tablet error.", e);
     }
   }
@@ -155,7 +153,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
       return dataContainer.convertToTablet();
     } catch (Exception e) {
-      LOGGER.error("Convert to tablet error.", e);
       throw new PipeException("Convert to tablet error.", e);
     }
   }
