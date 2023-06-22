@@ -170,7 +170,7 @@ CREATE DATABASE prefixPath (WITH databaseAttributeClause (COMMA? databaseAttribu
 
 For example:
 ```
-CREATE DATABASE DatabaseName WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_FACTOR=3, SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
+CREATE DATABASE root.db WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_FACTOR=3, SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
 ```
 
 #### Adjust heterogeneous parameters at run time
@@ -183,7 +183,7 @@ ALTER DATABASE prefixPath WITH databaseAttributeClause (COMMA? databaseAttribute
 
 For example:
 ```
-ALTER DATABASE DatabaseName WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
+ALTER DATABASE root.db WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
 ```
 
 Note that only the following heterogeneous parameters can be adjusted at runtime:
