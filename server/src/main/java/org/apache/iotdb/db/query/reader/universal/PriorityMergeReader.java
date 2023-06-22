@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.universal;
 
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
 
@@ -47,21 +46,6 @@ public class PriorityMergeReader implements IPointReader {
             });
   }
 
-  // only used in external sort, need to refactor later
-  public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
-      throws IOException {
-    heap =
-        new PriorityQueue<>(
-            (o1, o2) -> {
-              int timeCompare =
-                  Long.compare(o1.timeValuePair.getTimestamp(), o2.timeValuePair.getTimestamp());
-              return timeCompare != 0 ? timeCompare : o2.priority.compareTo(o1.priority);
-            });
-    for (IPointReader reader : prioritySeriesReaders) {
-      addReader(reader, startPriority++);
-    }
-  }
-
   public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(
@@ -71,8 +55,7 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  public void addReader(
-      IPointReader reader, MergeReaderPriority priority, long endTime, QueryContext context)
+  public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime)
       throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
@@ -116,7 +99,10 @@ public class PriorityMergeReader implements IPointReader {
   /**
    * remove all the TimeValuePair that shares the same timestamp if it's an aligned path we may need
    * to use those records that share the same timestamp to fill the null sub sensor value in current
-   * TimeValuePair
+   * TimeValuePair.
+   *
+   * @throws IOException while reading next value and close the Element while there is no value,
+   *     there may throw IOException
    */
   protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
     long topTime = ret.getTimestamp();
@@ -145,7 +131,7 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  /** this method only take effect for aligned time series, so the override version */
+  /** this method only take effect for aligned time series, so the override version. */
   protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
     // do nothing for non-aligned time series
   }

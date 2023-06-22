@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
@@ -318,7 +319,7 @@ public class PageReader implements IPageReader {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return pageHeader.getStatistics();
   }
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -44,6 +45,10 @@ public class LastQueryUtil {
 
   private static final boolean CACHE_ENABLED =
       CommonDescriptor.getInstance().getConfig().isLastCacheEnable();
+
+  private LastQueryUtil() {
+    // util class doesn't need constructor
+  }
 
   public static TsBlockBuilder createTsBlockBuilder() {
     return new TsBlockBuilder(ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));

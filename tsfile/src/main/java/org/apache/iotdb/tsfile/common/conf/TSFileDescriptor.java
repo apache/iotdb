@@ -28,8 +28,11 @@ import org.slf4j.LoggerFactory;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -41,7 +44,7 @@ public class TSFileDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(TSFileDescriptor.class);
   private final TSFileConfig conf = new TSFileConfig();
 
-  /** The constructor just visible for test */
+  /** The constructor just visible for test. */
   /* private */ TSFileDescriptor() {
     init();
   }
@@ -55,10 +58,7 @@ public class TSFileDescriptor {
   }
 
   private void init() {
-    Properties properties = loadProperties();
-    if (properties != null) {
-      overwriteConfigByCustomSettings(properties);
-    }
+    loadProperties().ifPresent(this::overwriteConfigByCustomSettings);
   }
 
   public void overwriteConfigByCustomSettings(Properties properties) {
@@ -82,7 +82,7 @@ public class TSFileDescriptor {
     writer.setInt(conf::setBatchSize, "batch_size");
   }
 
-  private class PropertiesOverWriter {
+  private static class PropertiesOverWriter {
 
     private final Properties properties;
 
@@ -120,28 +120,28 @@ public class TSFileDescriptor {
     }
   }
 
-  private Properties loadProperties() {
+  private Optional<Properties> loadProperties() {
     String file = detectPropertiesFile();
     if (file != null) {
       logger.info("try loading {} from {}", TSFileConfig.CONFIG_FILE_NAME, file);
       return loadPropertiesFromFile(file);
     } else {
       logger.warn("not found {}, use the default configs.", TSFileConfig.CONFIG_FILE_NAME);
-      return null;
+      return Optional.empty();
     }
   }
 
-  private Properties loadPropertiesFromFile(String filePath) {
+  private Optional<Properties> loadPropertiesFromFile(String filePath) {
     try (FileInputStream fileInputStream = new FileInputStream(filePath)) {
       Properties properties = new Properties();
       properties.load(fileInputStream);
-      return properties;
+      return Optional.of(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", filePath);
-      return null;
+      return Optional.empty();
     } catch (IOException e) {
       logger.warn("read file ({}) failure, please check the access permissions.", filePath);
-      return null;
+      return Optional.empty();
     }
   }
 
@@ -177,14 +177,14 @@ public class TSFileDescriptor {
 
   private void multiplicityWarning(String resource, ClassLoader classLoader) {
     try {
-      Set<URL> urlSet = Loader.getResources(resource, classLoader);
-      if (urlSet != null && urlSet.size() > 1) {
+      Set<URI> uriSet = Loader.getResources(resource, classLoader);
+      if (uriSet.size() > 1) {
         logger.warn("Resource [{}] occurs multiple times on the classpath", resource);
-        for (URL url : urlSet) {
-          logger.warn("Resource [{}] occurs at [{}]", resource, url);
+        for (URI uri : uriSet) {
+          logger.warn("Resource [{}] occurs at [{}]", resource, uri);
         }
       }
-    } catch (IOException e) {
+    } catch (IOException | URISyntaxException e) {
       logger.error("Failed to get url list for {}", resource);
     }
   }

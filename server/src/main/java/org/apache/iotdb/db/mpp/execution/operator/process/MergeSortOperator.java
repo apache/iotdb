@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -83,6 +84,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         : successfulAsList(listenableFutures);
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S135"})
   @Override
   public TsBlock next() throws Exception {
     // start stopwatch
@@ -204,7 +206,8 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long currentRetainedSize = 0, minChildReturnSize = Long.MAX_VALUE;
+    long currentRetainedSize = 0;
+    long minChildReturnSize = Long.MAX_VALUE;
     for (Operator child : children) {
       long maxReturnSize = child.calculateMaxReturnSize();
       minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
@@ -223,7 +226,7 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
   protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+      if (needCallNext(i)) {
         continue;
       }
       if (canCallNext[i]) {
@@ -244,5 +247,9 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
       }
     }
     return allReady;
+  }
+
+  private boolean needCallNext(int i) {
+    return noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null;
   }
 }

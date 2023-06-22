@@ -47,7 +47,6 @@ import org.apache.iotdb.db.mpp.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
@@ -86,7 +85,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPrevi
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
@@ -159,7 +157,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
@@ -213,7 +210,6 @@ import org.apache.iotdb.db.mpp.statistics.StatisticsManager;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
-import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -228,7 +224,6 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -778,39 +773,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
   }
 
-  @Deprecated
-  @Override
-  public Operator visitDeviceMerge(DeviceMergeNode node, LocalExecutionPlanContext context) {
-    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
-    TimeSelector selector = null;
-    TimeComparator timeComparator = null;
-    for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
-      if (Objects.equals(sortItem.getSortKey(), OrderByKey.TIME)) {
-        Ordering ordering = sortItem.getOrdering();
-        if (ordering == Ordering.ASC) {
-          selector = new TimeSelector(node.getChildren().size() << 1, true);
-          timeComparator = ASC_TIME_COMPARATOR;
-        } else {
-          selector = new TimeSelector(node.getChildren().size() << 1, false);
-          timeComparator = DESC_TIME_COMPARATOR;
-        }
-        break;
-      }
-    }
-
-    OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                DeviceMergeOperator.class.getSimpleName());
-    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
-    return new DeviceMergeOperator(
-        operatorContext, node.getDevices(), children, dataTypes, selector, timeComparator);
-  }
-
   @Override
   public Operator visitMergeSort(MergeSortNode node, LocalExecutionPlanContext context) {
     OperatorContext operatorContext =
@@ -1081,7 +1043,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getZoneId(),
           expressionTypes,
           node.getScanOrder() == Ordering.ASC);
-    } catch (QueryProcessException | IOException e) {
+    } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
   }
@@ -1123,7 +1085,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
-    // init UDTFContext;
+    // init UDTFContext
     UDTFContext filterContext = new UDTFContext(node.getZoneId());
     filterContext.constructUdfExecutors(new Expression[] {filterExpression});
 
@@ -1222,7 +1184,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getZoneId(),
           expressionTypes,
           node.getScanOrder() == Ordering.ASC);
-    } catch (QueryProcessException | IOException e) {
+    } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
   }
@@ -1785,7 +1747,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       case BOOLEAN:
         return Byte.BYTES;
       case TEXT:
-        return StatisticsManager.getInstance().getMaxBinarySizeInBytes(new PartialPath());
+        return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
       default:
         throw new UnsupportedOperationException("Unknown data type " + tsDataType);
     }
@@ -1801,7 +1763,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TimeJoinOperator.class.getSimpleName());
+                RowBasedTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
         node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
@@ -2138,9 +2100,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // last_time, last_value
     List<Aggregator> aggregators = LastQueryUtil.createAggregators(seriesPath.getSeriesType());
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
-    long maxReturnSize =
-        calculateMaxAggregationResultSizeForLastQuery(
-            aggregators, seriesPath.transformToPartialPath());
+    long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(
@@ -2174,7 +2134,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           LastQueryUtil.createAggregators(unCachedPath.getSchemaList().get(i).getType(), i));
     }
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
-    long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators, unCachedPath);
+    long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
 
     Filter timeFilter = context.getLastQueryTimeFilter();
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();

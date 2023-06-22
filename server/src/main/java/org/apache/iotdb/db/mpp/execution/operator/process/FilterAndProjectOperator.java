@@ -48,15 +48,15 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   private final Operator inputOperator;
 
-  private List<LeafColumnTransformer> filterLeafColumnTransformerList;
+  private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
 
-  private ColumnTransformer filterOutputTransformer;
+  private final ColumnTransformer filterOutputTransformer;
 
-  private List<ColumnTransformer> commonTransformerList;
+  private final List<ColumnTransformer> commonTransformerList;
 
-  private List<LeafColumnTransformer> projectLeafColumnTransformerList;
+  private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
 
-  private List<ColumnTransformer> projectOutputTransformerList;
+  private final List<ColumnTransformer> projectOutputTransformerList;
 
   private final TsBlockBuilder filterTsBlockBuilder;
 
@@ -67,6 +67,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
   // false when we only need to do projection
   private final boolean hasFilter;
 
+  @SuppressWarnings("squid:S107")
   public FilterAndProjectOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
@@ -117,10 +118,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   /**
    * Return the TsBlock that contains both initial input columns and columns of common
-   * subexpressions after filtering
-   *
-   * @param input
-   * @return
+   * subexpressions after filtering.
    */
   private TsBlock getFilterTsBlock(TsBlock input) {
     final TimeColumn originTimeColumn = input.getTimeColumn();
@@ -145,7 +143,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
       resultColumns.add(input.getColumn(i));
     }
 
-    // todo: remove this if, add calculated common sub expressions anyway
     if (!hasNonMappableUDF) {
       // get result of calculated common sub expressions
       for (ColumnTransformer columnTransformer : commonTransformerList) {
@@ -153,12 +150,32 @@ public class FilterAndProjectOperator implements ProcessOperator {
       }
     }
 
+    int rowCount =
+        constructFilteredTsBlock(
+            resultColumns,
+            timeBuilder,
+            filterColumn,
+            originTimeColumn,
+            columnBuilders,
+            positionCount);
+
+    filterTsBlockBuilder.declarePositions(rowCount);
+    return filterTsBlockBuilder.build();
+  }
+
+  private int constructFilteredTsBlock(
+      List<Column> resultColumns,
+      TimeColumnBuilder timeBuilder,
+      Column filterColumn,
+      TimeColumn originTimeColumn,
+      ColumnBuilder[] columnBuilders,
+      int positionCount) {
     // construct result TsBlock of filter
     int rowCount = 0;
     for (int i = 0, n = resultColumns.size(); i < n; i++) {
       Column curColumn = resultColumns.get(i);
       for (int j = 0; j < positionCount; j++) {
-        if (!filterColumn.isNull(j) && filterColumn.getBoolean(j)) {
+        if (satisfy(filterColumn, j)) {
           if (i == 0) {
             rowCount++;
             timeBuilder.writeLong(originTimeColumn.getLong(j));
@@ -171,9 +188,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
         }
       }
     }
+    return rowCount;
+  }
 
-    filterTsBlockBuilder.declarePositions(rowCount);
-    return filterTsBlockBuilder.build();
+  private boolean satisfy(Column filterColumn, int rowIndex) {
+    return !filterColumn.isNull(rowIndex) && filterColumn.getBoolean(rowIndex);
   }
 
   private TsBlock getTransformedTsBlock(TsBlock input) {

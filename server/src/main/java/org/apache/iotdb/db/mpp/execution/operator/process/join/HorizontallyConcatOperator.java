@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.join;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -42,7 +43,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
 
-  /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
+  /** start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
   private final int[] inputIndex;
 
   private final TsBlockBuilder tsBlockBuilder;
@@ -116,10 +117,11 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
     if (finished) {
       return true;
     }
-    return finished =
+    finished =
         isEmpty(readyChildIndex)
             && (children.get(readyChildIndex) == null
                 || !children.get(readyChildIndex).hasNextWithTimer());
+    return finished;
   }
 
   @Override
@@ -144,7 +146,8 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long currentRetainedSize = 0, minChildReturnSize = Long.MAX_VALUE;
+    long currentRetainedSize = 0;
+    long minChildReturnSize = Long.MAX_VALUE;
     for (Operator child : children) {
       long maxReturnSize = child.calculateMaxReturnSize();
       currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
@@ -156,7 +159,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
 
   /**
    * If the tsBlock of tsBlockIndex is null or has no more data in the tsBlock, return true; else
-   * return false;
+   * return false.
    */
   @Override
   protected boolean isEmpty(int tsBlockIndex) {
