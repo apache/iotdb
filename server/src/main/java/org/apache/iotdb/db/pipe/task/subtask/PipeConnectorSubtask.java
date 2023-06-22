@@ -160,6 +160,11 @@ public class PipeConnectorSubtask extends PipeSubtask {
         // stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
         return;
       }
+    } else {
+      LOGGER.warn(
+          "A non-PipeConnectionException occurred, exception message: {}",
+          throwable.getMessage(),
+          throwable);
     }
 
     // handle other exceptions as usual
