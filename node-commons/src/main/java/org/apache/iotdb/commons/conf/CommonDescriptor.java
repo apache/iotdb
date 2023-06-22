@@ -229,6 +229,11 @@ public class CommonDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "tag_attribute_total_size", String.valueOf(config.getTagAttributeTotalSize()))));
+
+    config.setTimePartitionInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
   }
 
   private void loadPipeProps(Properties properties) {
