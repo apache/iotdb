@@ -165,6 +165,11 @@ It costs 0.002s
 用户可以在创建 Database 时设置上述任意异构参数，SQL 语句如下所示：
 
 ```
+CREATE DATABASE prefixPath (WITH databaseAttributeClause (COMMA? databaseAttributeClause)*)?
+```
+
+例如：
+```
 CREATE DATABASE DatabaseName WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_FACTOR=3, SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
 ```
 
@@ -172,6 +177,11 @@ CREATE DATABASE DatabaseName WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_
 
 用户可以在 IoTDB 运行时调整部分异构参数，SQL 语句如下所示：
 
+```
+ALTER DATABASE prefixPath WITH databaseAttributeClause (COMMA? databaseAttributeClause)*
+```
+
+例如：
 ```
 ALTER DATABASE DatabaseName WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
 ```

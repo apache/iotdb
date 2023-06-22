@@ -165,6 +165,11 @@ Users can set any heterogeneous parameters when creating a Database, or adjust s
 The user can set any of the above heterogeneous parameters when creating a Database. The SQL statement is as follows:
 
 ```
+CREATE DATABASE prefixPath (WITH databaseAttributeClause (COMMA? databaseAttributeClause)*)?
+```
+
+For example:
+```
 CREATE DATABASE DatabaseName WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_FACTOR=3, SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
 ```
 
@@ -172,6 +177,11 @@ CREATE DATABASE DatabaseName WITH SCHEMA_REPLICATION_FACTOR=1, DATA_REPLICATION_
 
 Users can adjust some heterogeneous parameters during the IoTDB runtime, as shown in the following SQL statement:
 
+```
+ALTER DATABASE prefixPath WITH databaseAttributeClause (COMMA? databaseAttributeClause)*
+```
+
+For example:
 ```
 ALTER DATABASE DatabaseName WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=2;
 ```
