@@ -53,7 +53,7 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs();
   }
 
-  /////////////////////////////// Collector ///////////////////////////////
+  /////////////////////////////// Extractor ///////////////////////////////
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
     return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferSize();

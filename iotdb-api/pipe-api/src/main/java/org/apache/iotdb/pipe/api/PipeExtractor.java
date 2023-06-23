@@ -34,7 +34,7 @@ import org.apache.iotdb.pipe.api.event.Event;
  * <p>The lifecycle of a PipeExtractor is as follows:
  *
  * <ul>
- *   <li>When a collaboration task is created, the KV pairs of `WITH COLLECTOR` clause in SQL are
+ *   <li>When a collaboration task is created, the KV pairs of `WITH EXTRACTOR` clause in SQL are
  *       parsed and the validation method {@link PipeExtractor#validate(PipeParameterValidator)}
  *       will be called to validate the parameters.
  *   <li>Before the collaboration task starts, the method {@link
@@ -79,7 +79,7 @@ public interface PipeExtractor extends PipePlugin {
       throws Exception;
 
   /**
-   * Start the collector. After this method is called, events should be ready to be supplied by
+   * Start the extractor. After this method is called, events should be ready to be supplied by
    * {@link PipeExtractor#supply()}. This method is called after {@link
    * PipeExtractor#customize(PipeParameters, PipeExtractorRuntimeConfiguration)} is called.
    *
@@ -88,11 +88,11 @@ public interface PipeExtractor extends PipePlugin {
   void start() throws Exception;
 
   /**
-   * Supply single event from the collector and the caller will send the event to the processor.
+   * Supply single event from the extractor and the caller will send the event to the processor.
    * This method is called after {@link PipeExtractor#start()} is called.
    *
-   * @return the event to be supplied. the event may be null if the collector has no more events at
-   *     the moment, but the collector is still running for more events.
+   * @return the event to be supplied. the event may be null if the extractor has no more events at
+   *     the moment, but the extractor is still running for more events.
    * @throws Exception the user can throw errors if necessary
    */
   Event supply() throws Exception;

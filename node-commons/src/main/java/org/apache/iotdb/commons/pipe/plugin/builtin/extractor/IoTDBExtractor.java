@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.plugin.builtin.collector;
+package org.apache.iotdb.commons.pipe.plugin.builtin.extractor;
 
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -26,10 +26,10 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 /**
- * This class is a placeholder and should not be initialized. It represents the default collector
- * when no collector is specified. There is a real implementation in the server module but cannot be
+ * This class is a placeholder and should not be initialized. It represents the default extractor
+ * when no extractor is specified. There is a real implementation in the server module but cannot be
  * imported here. The pipe agent in the server module will replace this class with the real
- * implementation when initializing the collector.
+ * implementation when initializing the extractor.
  */
 public class IoTDBExtractor implements PipeExtractor {
   @Override
