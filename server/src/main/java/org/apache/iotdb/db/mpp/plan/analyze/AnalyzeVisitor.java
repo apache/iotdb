@@ -3250,7 +3250,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<PartialPath> pathList, MPPQueryContext context) {
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (PartialPath path : pathList) {
-      pathPatternTree.appendPathPattern(path);
+      // already parsed as precise path, not path pattern
+      pathPatternTree.appendFullPath(path);
     }
     ISchemaTree schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
 
@@ -3258,7 +3259,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     int numOfExistPaths = 0;
     for (PartialPath path : pathList) {
       Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path);
-      numOfExistPaths += pathPair.left.size() > 0 ? 1 : 0;
+      numOfExistPaths += !pathPair.left.isEmpty() ? 1 : 0;
     }
     return new Pair<>(schemaTree, numOfExistPaths);
   }
