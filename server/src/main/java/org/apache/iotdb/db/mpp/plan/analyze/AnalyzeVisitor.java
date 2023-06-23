@@ -282,6 +282,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         QueryPlanCostMetricSet.getInstance()
             .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
       }
+      analysis.setSchemaTree(schemaTree);
 
       // extract global time filter from query filter and determine if there is a value filter
       analyzeGlobalTimeFilter(analysis, queryStatement);
@@ -3243,18 +3244,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    * Compute how many paths exist, get the schema tree and the number of existed paths.
    *
    * @param pathList the path you want to check
-   * @param context the context of your analyzer
+   * @param schemaTree fetched when analyze query
    * @return a pair of ISchemaTree, and the number of exist paths.
    */
   private Pair<ISchemaTree, Integer> fetchSchemaOfPathsAndCount(
-      List<PartialPath> pathList, MPPQueryContext context) {
-    PathPatternTree pathPatternTree = new PathPatternTree();
-    for (PartialPath path : pathList) {
-      // already parsed as precise path, not path pattern
-      pathPatternTree.appendFullPath(path);
-    }
-    ISchemaTree schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
-
+      List<PartialPath> pathList, ISchemaTree schemaTree) {
     // search each path, make sure they all exist.
     int numOfExistPaths = 0;
     for (PartialPath path : pathList) {
@@ -3291,6 +3285,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Pair<List<Expression>, Analysis> analyzeQueryInLogicalViewStatement(
       Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
     Analysis queryAnalysis = this.visitQuery(queryStatement, context);
+    analysis.setSchemaTree(queryAnalysis.getSchemaTree());
     // get all expression from resultColumns
     List<Pair<Expression, String>> outputExpressions = queryAnalysis.getOutputExpressions();
     if (queryAnalysis.isFailed()) {
@@ -3321,8 +3316,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return new Pair<>(expressionList, analysis);
   }
 
-  private void checkViewsInSource(
-      Analysis analysis, List<Expression> sourceExpressionList, MPPQueryContext context) {
+  private void checkViewsInSource(Analysis analysis, List<Expression> sourceExpressionList) {
     List<PartialPath> pathsNeedCheck = new ArrayList<>();
     for (Expression expression : sourceExpressionList) {
       if (expression instanceof TimeSeriesOperand) {
@@ -3330,7 +3324,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     Pair<ISchemaTree, Integer> schemaOfNeedToCheck =
-        fetchSchemaOfPathsAndCount(pathsNeedCheck, context);
+        fetchSchemaOfPathsAndCount(pathsNeedCheck, analysis.getSchemaTree());
     if (schemaOfNeedToCheck.right != pathsNeedCheck.size()) {
       // some source paths is not exist, and could not fetch schema.
       analysis.setFinishQueryAfterAnalyze(true);
@@ -3453,7 +3447,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // make sure there is no view in source
     List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
-    checkViewsInSource(analysis, sourceExpressionList, context);
+    checkViewsInSource(analysis, sourceExpressionList);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
