@@ -29,10 +29,8 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -168,20 +166,15 @@ public class InsertRowsStatement extends InsertBaseStatement {
     if (insertRowList == null) {
       return;
     }
-    Map<String, Set<String>> mapFromDeviceToMeasurements = new HashMap<>();
     for (InsertRowStatement insertRow : insertRowList) {
       String device = insertRow.devicePath.getFullPath();
-      Set<String> measurementSet = mapFromDeviceToMeasurements.get(device);
-      if (measurementSet == null) {
-        measurementSet = new HashSet<>();
-      }
+      Set<String> measurementSet = new HashSet<>();
       for (String measurement : insertRow.measurements) {
         boolean notExist = measurementSet.add(measurement);
         if (!notExist) {
           throw new RuntimeException(new DuplicateInsertException(device, measurement));
         }
       }
-      mapFromDeviceToMeasurements.put(device, measurementSet);
     }
   }
 }
