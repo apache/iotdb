@@ -30,17 +30,17 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor
 public enum BuiltinPipePlugin {
 
   // extractors
-  IOTDB_EXTRACTOR("iotdb_extractor", IoTDBExtractor.class),
+  IOTDB_EXTRACTOR("iotdb-extractor", IoTDBExtractor.class),
 
   // processors
-  DO_NOTHING_PROCESSOR("do_nothing_processor", DoNothingProcessor.class),
+  DO_NOTHING_PROCESSOR("do-nothing-processor", DoNothingProcessor.class),
 
   // connectors
-  DO_NOTHING_CONNECTOR("do_nothing_connector", DoNothingConnector.class),
-  IOTDB_THRIFT_CONNECTOR("iotdb_thrift_connector", IoTDBThriftConnector.class),
-  IOTDB_THRIFT_CONNECTOR_V1("iotdb_thrift_connector_v1", IoTDBThriftConnectorV1.class),
-  IOTDB_THRIFT_CONNECTOR_V2("iotdb_thrift_connector_v2", IoTDBThriftConnectorV2.class),
-  IOTDB_SYNC_CONNECTOR("iotdb_sync_connector", IoTDBSyncConnector.class),
+  DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
+  IOTDB_THRIFT_CONNECTOR("iotdb-thrift-connector", IoTDBThriftConnector.class),
+  IOTDB_THRIFT_CONNECTOR_V1("iotdb-thrift-connector-v1", IoTDBThriftConnectorV1.class),
+  IOTDB_THRIFT_CONNECTOR_V2("iotdb-thrift-connector-v2", IoTDBThriftConnectorV2.class),
+  IOTDB_SYNC_CONNECTOR("iotdb-sync-connector", IoTDBSyncConnector.class),
   ;
 
   private final String pipePluginName;
