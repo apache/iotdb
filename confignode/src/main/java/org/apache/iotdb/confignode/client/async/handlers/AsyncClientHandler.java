@@ -26,10 +26,12 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHan
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -196,6 +198,14 @@ public class AsyncClientHandler<Q, R> {
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TCheckTimeSeriesExistenceResp>) responseMap,
+            countDownLatch);
+      case PIPE_HEARTBEAT:
+        return new PipeHeartbeatRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPipeHeartbeatResp>) responseMap,
             countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:

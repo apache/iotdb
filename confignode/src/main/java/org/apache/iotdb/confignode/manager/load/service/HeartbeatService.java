@@ -128,7 +128,7 @@ public class HeartbeatService {
     // We collect pipe meta in every 100 heartbeat loop
     heartbeatReq.setNeedPipeMetaList(
         heartbeatCounter.get()
-                % PipeConfig.getInstance().getHeartbeatLoopCyclesForCollectingPipeMeta()
+                % PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta()
             == 0);
     if (!configManager.getClusterQuotaManager().hasSpaceQuotaLimit()) {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());

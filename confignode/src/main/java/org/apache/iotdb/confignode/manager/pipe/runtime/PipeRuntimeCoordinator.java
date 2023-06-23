@@ -41,7 +41,6 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   private final ExecutorService procedureSubmitter;
 
   private final PipeLeaderChangeHandler pipeLeaderChangeHandler;
-  private final PipeHeartbeatParser pipeHeartbeatParser;
   private final PipeMetaSyncer pipeMetaSyncer;
 
   public PipeRuntimeCoordinator(ConfigManager configManager) {
@@ -57,7 +56,6 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     procedureSubmitter = procedureSubmitterHolder.get();
 
     pipeLeaderChangeHandler = new PipeLeaderChangeHandler(configManager);
-    pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
     pipeMetaSyncer = new PipeMetaSyncer(configManager);
   }
 

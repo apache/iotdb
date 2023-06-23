@@ -161,7 +161,7 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 1024;
 
-  private int pipeHeartbeatLoopCyclesForCollectingPipeMeta = 100;
+  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
 
@@ -500,14 +500,14 @@ public class CommonConfig {
     this.pipeConnectorReadFileBufferSize = pipeConnectorReadFileBufferSize;
   }
 
-  public int getPipeHeartbeatLoopCyclesForCollectingPipeMeta() {
-    return pipeHeartbeatLoopCyclesForCollectingPipeMeta;
+  public int getPipeHeartbeatIntervalSecondsForCollectingPipeMeta() {
+    return pipeHeartbeatIntervalSecondsForCollectingPipeMeta;
   }
 
-  public void setPipeHeartbeatLoopCyclesForCollectingPipeMeta(
-      int pipeHeartbeatLoopCyclesForCollectingPipeMeta) {
-    this.pipeHeartbeatLoopCyclesForCollectingPipeMeta =
-        pipeHeartbeatLoopCyclesForCollectingPipeMeta;
+  public void setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta) {
+    this.pipeHeartbeatIntervalSecondsForCollectingPipeMeta =
+        pipeHeartbeatIntervalSecondsForCollectingPipeMeta;
   }
 
   public long getPipeMetaSyncerInitialSyncDelayMinutes() {

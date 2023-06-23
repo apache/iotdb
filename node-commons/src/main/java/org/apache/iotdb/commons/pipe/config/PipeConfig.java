@@ -87,8 +87,8 @@ public class PipeConfig {
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
-  public int getHeartbeatLoopCyclesForCollectingPipeMeta() {
-    return COMMON_CONFIG.getPipeHeartbeatLoopCyclesForCollectingPipeMeta();
+  public int getPipeHeartbeatIntervalSecondsForCollectingPipeMeta() {
+    return COMMON_CONFIG.getPipeHeartbeatIntervalSecondsForCollectingPipeMeta();
   }
 
   public long getPipeMetaSyncerInitialSyncDelayMinutes() {
@@ -130,8 +130,8 @@ public class PipeConfig {
     LOGGER.info("PipeConnectorPendingQueueSize: {}", getPipeConnectorPendingQueueSize());
 
     LOGGER.info(
-        "HeartbeatLoopCyclesForCollectingPipeMeta: {}",
-        getHeartbeatLoopCyclesForCollectingPipeMeta());
+        "PipeHeartbeatIntervalSecondsForCollectingPipeMeta: {}",
+        getPipeHeartbeatIntervalSecondsForCollectingPipeMeta());
     LOGGER.info(
         "PipeMetaSyncerInitialSyncDelayMinutes: {}", getPipeMetaSyncerInitialSyncDelayMinutes());
     LOGGER.info("PipeMetaSyncerSyncIntervalMinutes: {}", getPipeMetaSyncerSyncIntervalMinutes());

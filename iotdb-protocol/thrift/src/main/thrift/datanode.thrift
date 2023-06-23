@@ -248,7 +248,6 @@ struct THeartbeatReq {
   5: optional list<i32> schemaRegionIds
   6: optional list<i32> dataRegionIds
   7: optional map<string, common.TSpaceQuota> spaceQuotaUsage
-  8: optional bool needPipeMetaList
 }
 
 struct THeartbeatResp {
@@ -262,7 +261,14 @@ struct THeartbeatResp {
   8: optional map<i32, i64> regionDisk
   // TODO: schemaLimitLevel can be removed if confignode support hot load configuration
   9: optional TSchemaLimitLevel schemaLimitLevel
-  10: optional list<binary> pipeMetaList
+}
+
+struct TPipeHeartbeatReq {
+  1: required i64 heartbeatId
+}
+
+struct TPipeHeartbeatResp {
+  1: required list<binary> pipeMetaList
 }
 
 enum TSchemaLimitLevel{
@@ -796,6 +802,11 @@ service IDataNodeRPCService {
   * Send pipeMetas to DataNodes, for synchronization
   */
   common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
+
+  /**
+  * ConfigNode will ask DataNode for pipe meta in every few seconds
+  **/
+  TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
 
  /**
   * Execute CQ on DataNode
