@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionHybridCollector;
+import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.collector.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
@@ -102,20 +102,20 @@ public class PipeRealtimeCollectTest {
   public void testRealtimeCollectProcess() {
     // set up realtime collector
 
-    try (PipeRealtimeDataRegionHybridCollector collector1 =
-            new PipeRealtimeDataRegionHybridCollector();
-        PipeRealtimeDataRegionHybridCollector collector2 =
-            new PipeRealtimeDataRegionHybridCollector();
-        PipeRealtimeDataRegionHybridCollector collector3 =
-            new PipeRealtimeDataRegionHybridCollector();
-        PipeRealtimeDataRegionHybridCollector collector4 =
-            new PipeRealtimeDataRegionHybridCollector()) {
+    try (PipeRealtimeDataRegionHybridExtractor collector1 =
+            new PipeRealtimeDataRegionHybridExtractor();
+        PipeRealtimeDataRegionHybridExtractor collector2 =
+            new PipeRealtimeDataRegionHybridExtractor();
+        PipeRealtimeDataRegionHybridExtractor collector3 =
+            new PipeRealtimeDataRegionHybridExtractor();
+        PipeRealtimeDataRegionHybridExtractor collector4 =
+            new PipeRealtimeDataRegionHybridExtractor()) {
 
       collector1.customize(
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
+                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
@@ -125,7 +125,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
+                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
@@ -135,7 +135,7 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern1);
+                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, pattern1);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
@@ -145,15 +145,15 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeCollectorConstant.COLLECTOR_PATTERN_KEY, pattern2);
+                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, pattern2);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
               new PipeTaskCollectorRuntimeEnvironment(
                   "1", 1, Integer.parseInt(dataRegion2), null)));
 
-      PipeRealtimeDataRegionCollector[] collectors =
-          new PipeRealtimeDataRegionCollector[] {collector1, collector2, collector3, collector4};
+      PipeRealtimeDataRegionExtractor[] collectors =
+          new PipeRealtimeDataRegionExtractor[] {collector1, collector2, collector3, collector4};
 
       // start collector 0, 1
       collectors[0].start();
@@ -291,7 +291,7 @@ public class PipeRealtimeCollectTest {
   }
 
   private Future<?> listen(
-      PipeRealtimeDataRegionCollector collector, Function<Event, Integer> weight, int expectNum) {
+      PipeRealtimeDataRegionExtractor collector, Function<Event, Integer> weight, int expectNum) {
     return listenerService.submit(
         () -> {
           int eventNum = 0;

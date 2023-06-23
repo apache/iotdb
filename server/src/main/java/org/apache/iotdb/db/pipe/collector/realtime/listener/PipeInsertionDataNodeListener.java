@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.collector.realtime.listener;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
+import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.collector.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEventFactory;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
@@ -53,7 +53,7 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
-      String dataRegionId, PipeRealtimeDataRegionCollector collector) {
+      String dataRegionId, PipeRealtimeDataRegionExtractor collector) {
     dataRegionId2Assigner
         .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner())
         .startAssignTo(collector);
@@ -67,7 +67,7 @@ public class PipeInsertionDataNodeListener {
   }
 
   public synchronized void stopListenAndAssign(
-      String dataRegionId, PipeRealtimeDataRegionCollector collector) {
+      String dataRegionId, PipeRealtimeDataRegionExtractor collector) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
     if (assigner == null) {
       return;

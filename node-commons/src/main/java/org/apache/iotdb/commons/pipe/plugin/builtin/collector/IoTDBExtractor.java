@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.collector;
 
-import org.apache.iotdb.pipe.api.PipeCollector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -31,14 +31,14 @@ import org.apache.iotdb.pipe.api.event.Event;
  * imported here. The pipe agent in the server module will replace this class with the real
  * implementation when initializing the collector.
  */
-public class IoTDBCollector implements PipeCollector {
+public class IoTDBExtractor implements PipeExtractor {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
   }

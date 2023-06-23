@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.pipe.api.customizer.configuration;
 
-public interface PipeCollectorRuntimeConfiguration extends PipeRuntimeConfiguration {}
+public interface PipeExtractorRuntimeConfiguration extends PipeRuntimeConfiguration {}

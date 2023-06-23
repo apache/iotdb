@@ -612,7 +612,7 @@ struct TShowPipeInfo {
   1: required string id
   2: required i64 creationTime
   3: required string state
-  4: required string pipeCollector
+  4: required string pipeExtractor
   5: required string pipeProcessor
   6: required string pipeConnector
   7: required string exceptionMessage

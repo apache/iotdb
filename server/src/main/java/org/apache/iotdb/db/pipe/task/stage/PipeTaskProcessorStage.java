@@ -51,7 +51,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param creationTime pipe creation time
    * @param pipeProcessorParameters used to create pipe processor
    * @param dataRegionId data region id
-   * @param pipeCollectorInputEventSupplier used to input events from pipe collector
+   * @param pipeExtractorInputEventSupplier used to input events from pipe extractor
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
    */
   public PipeTaskProcessorStage(
@@ -59,7 +59,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       long creationTime,
       PipeParameters pipeProcessorParameters,
       TConsensusGroupId dataRegionId,
-      EventSupplier pipeCollectorInputEventSupplier,
+      EventSupplier pipeExtractorInputEventSupplier,
       BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue) {
     final PipeProcessor pipeProcessor =
         pipeProcessorParameters
@@ -90,7 +90,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
     this.pipeProcessorSubtask =
         new PipeProcessorSubtask(
             taskId,
-            pipeCollectorInputEventSupplier,
+            pipeExtractorInputEventSupplier,
             pipeProcessor,
             pipeConnectorOutputEventCollector);
   }

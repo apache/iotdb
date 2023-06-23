@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.config.constant;
 
-public class PipeCollectorConstant {
+public class PipeExtractorConstant {
 
   public static final String COLLECTOR_KEY = "collector";
 
@@ -36,7 +36,7 @@ public class PipeCollectorConstant {
   public static final String COLLECTOR_REALTIME_MODE_FILE = "file";
   public static final String COLLECTOR_REALTIME_MODE_LOG = "log";
 
-  private PipeCollectorConstant() {
+  private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");
   }
 }

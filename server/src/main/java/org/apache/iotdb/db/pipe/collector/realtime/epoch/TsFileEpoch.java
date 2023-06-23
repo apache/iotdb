@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.collector.realtime.epoch;
 
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
+import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class TsFileEpoch {
 
   private final String filePath;
-  private final ConcurrentMap<PipeRealtimeDataRegionCollector, AtomicReference<State>>
+  private final ConcurrentMap<PipeRealtimeDataRegionExtractor, AtomicReference<State>>
       dataRegionCollector2State;
 
   public TsFileEpoch(String filePath) {
@@ -36,14 +36,14 @@ public class TsFileEpoch {
     this.dataRegionCollector2State = new ConcurrentHashMap<>();
   }
 
-  public TsFileEpoch.State getState(PipeRealtimeDataRegionCollector collector) {
+  public TsFileEpoch.State getState(PipeRealtimeDataRegionExtractor collector) {
     return dataRegionCollector2State
         .computeIfAbsent(collector, o -> new AtomicReference<>(State.EMPTY))
         .get();
   }
 
   public void migrateState(
-      PipeRealtimeDataRegionCollector collector, TsFileEpochStateMigrator visitor) {
+      PipeRealtimeDataRegionExtractor collector, TsFileEpochStateMigrator visitor) {
     dataRegionCollector2State
         .computeIfAbsent(collector, o -> new AtomicReference<>(State.EMPTY))
         .getAndUpdate(visitor::migrate);

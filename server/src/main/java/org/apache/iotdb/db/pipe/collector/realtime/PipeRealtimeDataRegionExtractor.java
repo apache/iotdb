@@ -21,32 +21,32 @@ package org.apache.iotdb.db.pipe.collector.realtime;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.collector.realtime.listener.PipeInsertionDataNodeListener;
-import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
-import org.apache.iotdb.pipe.api.PipeCollector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-public abstract class PipeRealtimeDataRegionCollector implements PipeCollector {
+public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected String pattern;
   protected String dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
 
-  protected PipeRealtimeDataRegionCollector() {}
+  protected PipeRealtimeDataRegionExtractor() {}
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {}
 
   @Override
-  public void customize(PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration)
+  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     pattern =
         parameters.getStringOrDefault(
-            PipeCollectorConstant.COLLECTOR_PATTERN_KEY,
-            PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE);
+            PipeExtractorConstant.COLLECTOR_PATTERN_KEY,
+            PipeExtractorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE);
 
     final PipeTaskCollectorRuntimeEnvironment environment =
         (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();

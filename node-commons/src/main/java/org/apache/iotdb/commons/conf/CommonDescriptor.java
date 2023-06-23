@@ -267,26 +267,26 @@ public class CommonDescriptor {
                 "pipe_subtask_executor_pending_queue_max_blocking_time_ms",
                 String.valueOf(config.getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs()))));
 
-    config.setPipeCollectorAssignerDisruptorRingBufferSize(
+    config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_collector_assigner_disruptor_ring_buffer_size",
-                String.valueOf(config.getPipeCollectorAssignerDisruptorRingBufferSize()))));
-    config.setPipeCollectorMatcherCacheSize(
+                "pipe_extractor_assigner_disruptor_ring_buffer_size",
+                String.valueOf(config.getPipeExtractorAssignerDisruptorRingBufferSize()))));
+    config.setPipeExtractorMatcherCacheSize(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_collector_matcher_cache_size",
-                String.valueOf(config.getPipeCollectorMatcherCacheSize()))));
-    config.setPipeCollectorPendingQueueCapacity(
+                "pipe_extractor_matcher_cache_size",
+                String.valueOf(config.getPipeExtractorMatcherCacheSize()))));
+    config.setPipeExtractorPendingQueueCapacity(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_collector_pending_queue_capacity",
-                String.valueOf(config.getPipeCollectorPendingQueueCapacity()))));
-    config.setPipeCollectorPendingQueueTabletLimit(
+                "pipe_extractor_pending_queue_capacity",
+                String.valueOf(config.getPipeExtractorPendingQueueCapacity()))));
+    config.setPipeExtractorPendingQueueTabletLimit(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_collector_pending_queue_tablet_limit",
-                String.valueOf(config.getPipeCollectorPendingQueueTabletLimit()))));
+                "pipe_extractor_pending_queue_tablet_limit",
+                String.valueOf(config.getPipeExtractorPendingQueueTabletLimit()))));
 
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
