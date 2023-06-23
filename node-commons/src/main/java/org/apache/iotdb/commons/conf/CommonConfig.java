@@ -154,7 +154,6 @@ public class CommonConfig {
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private int pipeExtractorMatcherCacheSize = 1024;
   private int pipeExtractorPendingQueueCapacity = 128;
-  // this should be less than or equals to realtimeCollectorPendingQueueCapacity
   private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
 
   private int pipeConnectorReadFileBufferSize = 8388608;
