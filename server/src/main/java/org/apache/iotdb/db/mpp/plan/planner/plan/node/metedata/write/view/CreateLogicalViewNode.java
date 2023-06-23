@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.metadata.view.viewExpression.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -225,13 +226,44 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
 
     // split this node into several nodes according to their regionReplicaSet
     List<WritePlanNode> result = new ArrayList<>();
+    int maxSingleRequestSize =
+        IoTDBDescriptor.getInstance().getConfig().getMaxMeasurementNumOfInternalRequest();
     for (Map.Entry<TRegionReplicaSet, Map<PartialPath, ViewExpression>> entry :
         splitMap.entrySet()) {
       // for each entry in splitMap, create a plan node.
-      result.add(new CreateLogicalViewNode(getPlanNodeId(), entry.getValue(), entry.getKey()));
+      if (entry.getValue().size() > maxSingleRequestSize) {
+        for (Map<PartialPath, ViewExpression> splitRequest :
+            splitRequest(entry.getValue(), maxSingleRequestSize)) {
+          result.add(new CreateLogicalViewNode(getPlanNodeId(), splitRequest, entry.getKey()));
+        }
+      } else {
+        result.add(new CreateLogicalViewNode(getPlanNodeId(), entry.getValue(), entry.getKey()));
+      }
     }
     return result;
   }
+
+  private List<Map<PartialPath, ViewExpression>> splitRequest(
+      Map<PartialPath, ViewExpression> rawRequest, int maxSize) {
+    int num = 0;
+    List<Map<PartialPath, ViewExpression>> result =
+        new ArrayList<>(rawRequest.size() / maxSize + 1);
+    Map<PartialPath, ViewExpression> map = new HashMap<>();
+    for (Map.Entry<PartialPath, ViewExpression> entry : rawRequest.entrySet()) {
+      if (num == maxSize) {
+        result.add(map);
+        num = 0;
+        map = new HashMap<>();
+      }
+      map.put(entry.getKey(), entry.getValue());
+      num++;
+    }
+    if (num > 0) {
+      result.add(map);
+    }
+    return result;
+  }
+
   // endregion
 
   public List<PartialPath> getAllTimeSeriesPathInSource() {
