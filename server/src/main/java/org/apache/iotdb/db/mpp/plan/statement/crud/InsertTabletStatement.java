@@ -258,7 +258,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       return this;
     }
     List<InsertTabletStatement> insertTabletStatementList = this.getSplitList();
-    InsertMultiTabletsStatement.validateInsertTabletList(insertTabletStatementList);
     if (insertTabletStatementList.size() == 1) {
       return insertTabletStatementList.get(0);
     }
