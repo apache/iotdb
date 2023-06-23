@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.transformation.datastructure;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public abstract class Cache extends LinkedHashMap<Integer, Integer> {
 
@@ -43,5 +44,25 @@ public abstract class Cache extends LinkedHashMap<Integer, Integer> {
 
   protected Integer putKey(Integer index) {
     return put(index, index);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    Cache cache = (Cache) o;
+    return cacheCapacity == cache.cacheCapacity;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), cacheCapacity);
   }
 }

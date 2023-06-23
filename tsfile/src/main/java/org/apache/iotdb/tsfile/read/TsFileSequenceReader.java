@@ -1808,7 +1808,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
       TimeseriesMetadata timeseriesMetadata = entry.getValue().right;
-      TSDataType dataType = timeseriesMetadata.getTSDataType();
+      TSDataType dataType = timeseriesMetadata.getTsDataType();
       Statistics<? extends Serializable> timeseriesMetadataSta = timeseriesMetadata.getStatistics();
       Statistics<? extends Serializable> chunkMetadatasSta = Statistics.getStatsByType(dataType);
       for (IChunkMetadata chunkMetadata : getChunkMetadataList(entry.getValue().left)) {
@@ -2043,7 +2043,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     for (String device : getAllDevices()) {
       Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap.values()) {
-        result.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getTSDataType());
+        result.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata.getTsDataType());
       }
     }
     return result;
@@ -2061,7 +2061,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap.values()) {
         result.put(
             device + TsFileConstant.PATH_SEPARATOR + timeseriesMetadata.getMeasurementId(),
-            timeseriesMetadata.getTSDataType());
+            timeseriesMetadata.getTsDataType());
       }
     }
     return result;
@@ -2248,6 +2248,18 @@ public class TsFileSequenceReader implements AutoCloseable {
           "Error occurred while collecting offset ranges of measurement nodes of file {}", file);
       throw e;
     }
+  }
+
+  /**
+   * Read MetadataIndexNode by start and end offset.
+   *
+   * @param start the start offset of the MetadataIndexNode
+   * @param end the end offset of the MetadataIndexNode
+   * @return MetadataIndexNode
+   * @throws IOException IOException
+   */
+  public MetadataIndexNode readMetadataIndexNode(long start, long end) throws IOException {
+    return MetadataIndexNode.deserializeFrom(readData(start, end));
   }
 
   @Override

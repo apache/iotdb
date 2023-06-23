@@ -44,10 +44,10 @@ import java.io.PrintWriter;
 public class PBTreeFileSketchTool {
 
   private static final Logger logger = LoggerFactory.getLogger(PBTreeFileSketchTool.class);
-  private static final String SFST_CLI_PREFIX = "print-pb-tree-file";
+  private static final String SFST_CLI_PREFIX = "print-pbtree-file";
 
   private static final String FILE_ARGS = "f";
-  private static final String FILE_NAME = "pb-tree file";
+  private static final String FILE_NAME = "pbtree file";
 
   private static final String OUT_ARGS = "o";
   private static final String OUT_NAME = "output txt file";
@@ -72,7 +72,7 @@ public class PBTreeFileSketchTool {
             .required()
             .argName(FILE_NAME)
             .hasArg()
-            .desc("Need to specify a pb-tree file to sketch (required)")
+            .desc("Need to specify a pbtree file to sketch (required)")
             .build();
     options.addOption(opFile);
 

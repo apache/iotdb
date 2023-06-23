@@ -33,6 +33,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+@SuppressWarnings("squid:S6548")
 public class WindowEvaluationTaskPoolManager extends AbstractPoolManager {
 
   private static final Logger LOGGER =

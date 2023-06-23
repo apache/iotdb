@@ -30,7 +30,7 @@ public class MQTTConfiguration implements Configuration {
   private final String username;
   private final String password;
 
-  /** First reconnection interval milliseconds */
+  /** First reconnection interval milliseconds. */
   private final long reconnectDelay;
 
   /**
@@ -42,6 +42,7 @@ public class MQTTConfiguration implements Configuration {
   private final PartialPath device;
   private final String[] measurements;
 
+  @SuppressWarnings("squid:S107")
   public MQTTConfiguration(
       String host,
       int port,

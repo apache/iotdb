@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryChecker;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -100,6 +99,7 @@ public class IoTDBStartCheck {
   // endregion
   // region params don't need checking, determined by the system
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
+  private static final String COMMIT_ID_STRING = "commit_id";
   private static final String DATA_NODE_ID = "data_node_id";
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
@@ -147,6 +147,7 @@ public class IoTDBStartCheck {
             IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
 
     systemProperties.put(IOTDB_VERSION_STRING, () -> IoTDBConstant.VERSION);
+    systemProperties.put(COMMIT_ID_STRING, () -> IoTDBConstant.BUILD_INFO);
     for (String param : variableParamValueTable.keySet()) {
       systemProperties.put(param, () -> getVal(param));
     }
@@ -344,6 +345,7 @@ public class IoTDBStartCheck {
             }
           });
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
+      properties.setProperty(COMMIT_ID_STRING, IoTDBConstant.BUILD_INFO);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // upgrade finished, delete old system.properties file
       if (propertiesFile.exists()) {
@@ -415,37 +417,6 @@ public class IoTDBStartCheck {
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
-      // serialize finished, delete old system.properties file
-      if (propertiesFile.exists()) {
-        Files.delete(propertiesFile.toPath());
-      }
-    }
-    // rename system.properties.tmp to system.properties
-    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
-  }
-
-  public void serializeGlobalConfig(TGlobalConfig globalConfig) throws IOException {
-    // create an empty tmpPropertiesFile
-    if (tmpPropertiesFile.createNewFile()) {
-      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
-    } else {
-      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
-      System.exit(-1);
-    }
-
-    reloadProperties();
-
-    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-
-      if (!checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
-        properties.setProperty(
-            DATA_REGION_CONSENSUS_PROTOCOL, globalConfig.getDataRegionConsensusProtocolClass());
-      }
-      if (!checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
-        properties.setProperty(
-            SCHEMA_REGION_CONSENSUS_PROTOCOL, globalConfig.getSchemaRegionConsensusProtocolClass());
-      }
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {

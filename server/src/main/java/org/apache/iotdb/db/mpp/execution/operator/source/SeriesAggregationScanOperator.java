@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -39,6 +40,7 @@ import java.util.List;
  */
 public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScanOperator {
 
+  @SuppressWarnings("squid:S107")
   public SeriesAggregationScanOperator(
       PlanNodeId sourceId,
       PartialPath seriesPath,

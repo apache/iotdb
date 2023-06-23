@@ -388,7 +388,7 @@ public class TsFileSketchTool {
                 + "|\t[TimeseriesIndex] of "
                 + entry.getValue().left
                 + ", tsDataType:"
-                + entry.getValue().right.getTSDataType()
+                + entry.getValue().right.getTsDataType()
                 + ", "
                 + entry.getValue().right.getStatistics());
         for (IChunkMetadata chunkMetadata : reader.getChunkMetadataList(entry.getValue().left)) {
@@ -415,7 +415,7 @@ public class TsFileSketchTool {
               + "|\t[TimeseriesIndex] of "
               + timeseriesMetadata.left
               + ", tsDataType:"
-              + timeseriesMetadata.right.getTSDataType()
+              + timeseriesMetadata.right.getTsDataType()
               + ", "
               + timeseriesMetadata.right.getStatistics());
       for (IChunkMetadata chunkMetadata : reader.getChunkMetadataList(timeseriesMetadata.left)) {

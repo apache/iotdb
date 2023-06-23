@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -40,5 +41,21 @@ public class FragmentInfo {
     this.state = state;
     this.plan = plan;
     this.childrenFragments = childrenFragments;
+  }
+
+  public PlanFragmentId getStageId() {
+    return stageId;
+  }
+
+  public FragmentState getState() {
+    return state;
+  }
+
+  public PlanFragment getPlan() {
+    return plan;
+  }
+
+  public List<FragmentInfo> getChildrenFragments() {
+    return childrenFragments;
   }
 }

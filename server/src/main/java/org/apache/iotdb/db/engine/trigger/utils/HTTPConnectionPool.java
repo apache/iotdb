@@ -25,6 +25,7 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 
 public class HTTPConnectionPool {
 
+  @SuppressWarnings("squid:S3077")
   private static volatile PoolingHttpClientConnectionManager clientConnectionManager;
 
   private HTTPConnectionPool() {}
@@ -33,7 +34,7 @@ public class HTTPConnectionPool {
     if (clientConnectionManager == null) {
       synchronized (HTTPConnectionPool.class) {
         if (clientConnectionManager == null) {
-          clientConnectionManager = new PoolingHttpClientConnectionManager();
+          PoolingHttpClientConnectionManager manager = new PoolingHttpClientConnectionManager();
           // Set the max number of connections
           clientConnectionManager.setMaxTotal(
               IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPoolSize());
@@ -41,6 +42,7 @@ public class HTTPConnectionPool {
           // per website, which will not affect the access of other websites
           clientConnectionManager.setDefaultMaxPerRoute(
               IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPOOLMaxPerRoute());
+          clientConnectionManager = manager;
         }
       }
     }

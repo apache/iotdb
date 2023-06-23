@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -36,7 +37,7 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   // accept PartialPath
   private final MeasurementPath fullPath;
 
-  // dataType for queried time series;
+  // type for queried time series
   protected final String dataType;
 
   public UpdateLastCacheOperator(

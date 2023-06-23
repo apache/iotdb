@@ -28,13 +28,17 @@ import java.io.IOException;
 public class MetaMarker {
 
   public static final byte CHUNK_GROUP_HEADER = 0;
+
   /** Chunk header marker and this chunk has more than one page. */
   public static final byte CHUNK_HEADER = 1;
 
   public static final byte SEPARATOR = 2;
+
   /**
-   * @deprecated (Since TsFile version 3, the marker VERSION is no longer used in TsFile. It should
-   *     be removed when TsFile upgrade to version 4)
+   * Since TsFile version 3, the marker VERSION is no longer used in TsFile. It should be removed
+   * when TsFile upgrade to version 4.
+   *
+   * @deprecated variable
    */
   @Deprecated public static final byte VERSION = 3;
 

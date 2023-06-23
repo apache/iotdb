@@ -90,14 +90,14 @@ public class IoTDBDataRegionCollector implements PipeCollector {
           COLLECTOR_REALTIME_MODE_LOG);
     }
 
-    constructHistoricalCollector(validator.getParameters());
+    constructHistoricalCollector();
     constructRealtimeCollector(validator.getParameters());
 
     historicalCollector.validate(validator);
     realtimeCollector.validate(validator);
   }
 
-  private void constructHistoricalCollector(PipeParameters parameters) {
+  private void constructHistoricalCollector() {
     // enable historical collector by default
     historicalCollector = new PipeHistoricalDataRegionTsFileCollector();
   }
@@ -128,9 +128,8 @@ public class IoTDBDataRegionCollector implements PipeCollector {
       default:
         realtimeCollector = new PipeRealtimeDataRegionHybridCollector();
         LOGGER.warn(
-            String.format(
-                "Unsupported collector realtime mode: %s, create a hybrid collector.",
-                parameters.getString(COLLECTOR_REALTIME_MODE)));
+            "Unsupported collector realtime mode: {}, create a hybrid collector.",
+            parameters.getString(COLLECTOR_REALTIME_MODE));
     }
   }
 
@@ -152,7 +151,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
     hasBeenStarted.set(true);
 
     final AtomicReference<Exception> exceptionHolder = new AtomicReference<>(null);
-    final DataRegionId dataRegionId = new DataRegionId(this.dataRegionId);
+    final DataRegionId dataRegionIdObject = new DataRegionId(this.dataRegionId);
     while (true) {
       // try to start collectors in the data region ...
       // first try to run if data region exists, then try to run if data region does not exist.
@@ -160,7 +159,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
       // runIfPresent and runIfAbsent operations. in this case, we need to retry.
       if (StorageEngine.getInstance()
               .runIfPresent(
-                  dataRegionId,
+                  dataRegionIdObject,
                   (dataRegion -> {
                     dataRegion.writeLock(
                         String.format(
@@ -173,7 +172,7 @@ public class IoTDBDataRegionCollector implements PipeCollector {
                   }))
           || StorageEngine.getInstance()
               .runIfAbsent(
-                  dataRegionId,
+                  dataRegionIdObject,
                   () -> startHistoricalCollectorAndRealtimeCollector(exceptionHolder))) {
         rethrowExceptionIfAny(exceptionHolder);
         return;

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -25,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
-/** has more than one input column, but these columns' time is not overlapped */
+/** has more than one input column, but these columns' time is not overlapped. */
 public class NonOverlappedMultiColumnMerger implements ColumnMerger {
 
   private final List<InputLocation> inputLocations;
@@ -36,7 +37,7 @@ public class NonOverlappedMultiColumnMerger implements ColumnMerger {
   private int index;
 
   /**
-   * these columns' time should never be overlapped
+   * these columns' time should never be overlapped.
    *
    * @param inputLocations The time order in TsBlock represented by inputLocations should be
    *     incremented by timestamp if it is order by time asc, otherwise decreased by timestamp if it

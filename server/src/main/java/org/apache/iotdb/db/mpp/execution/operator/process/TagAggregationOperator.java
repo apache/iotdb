@@ -57,7 +57,7 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
     this.groups = Validate.notNull(groups);
     this.groupedAggregators = Validate.notNull(groupedAggregators);
     List<TSDataType> actualOutputColumnTypes = new ArrayList<>();
-    for (String ignored : groups.get(0)) {
+    for (int i = 0; i < groups.get(0).size(); i++) {
       actualOutputColumnTypes.add(TSDataType.TEXT);
     }
     for (int outputColumnIdx = 0;
@@ -104,44 +104,50 @@ public class TagAggregationOperator extends AbstractConsumeAllOperator {
       rowBlocks[i] = inputTsBlocks[i].getRegion(consumedIndices[i], 1);
     }
     for (int groupIdx = 0; groupIdx < groups.size(); groupIdx++) {
-      List<String> group = groups.get(groupIdx);
       List<Aggregator> aggregators = groupedAggregators.get(groupIdx);
-
-      for (Aggregator aggregator : aggregators) {
-        if (aggregator == null) {
-          continue;
-        }
-        aggregator.reset();
-        aggregator.processTsBlocks(rowBlocks);
-      }
-
-      TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-      timeColumnBuilder.writeLong(rowBlocks[0].getStartTime());
-      ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-
-      for (int i = 0; i < group.size(); i++) {
-        if (group.get(i) == null) {
-          columnBuilders[i].writeBinary(new Binary("NULL"));
-        } else {
-          columnBuilders[i].writeBinary(new Binary(group.get(i)));
-        }
-      }
-      for (int i = 0; i < aggregators.size(); i++) {
-        Aggregator aggregator = aggregators.get(i);
-        ColumnBuilder columnBuilder = columnBuilders[i + group.size()];
-        if (aggregator == null) {
-          columnBuilder.appendNull();
-        } else {
-          aggregator.outputResult(new ColumnBuilder[] {columnBuilder});
-        }
-      }
-      tsBlockBuilder.declarePosition();
+      aggregate(aggregators, rowBlocks);
+      List<String> group = groups.get(groupIdx);
+      appendOneRow(rowBlocks, group, aggregators);
     }
 
     // Reset dataReady for next iteration
     for (int i = 0; i < children.size(); i++) {
       consumedIndices[i]++;
     }
+  }
+
+  private void aggregate(List<Aggregator> aggregators, TsBlock[] rowBlocks) {
+    for (Aggregator aggregator : aggregators) {
+      if (aggregator == null) {
+        continue;
+      }
+      aggregator.reset();
+      aggregator.processTsBlocks(rowBlocks);
+    }
+  }
+
+  private void appendOneRow(TsBlock[] rowBlocks, List<String> group, List<Aggregator> aggregators) {
+    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    timeColumnBuilder.writeLong(rowBlocks[0].getStartTime());
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+
+    for (int i = 0; i < group.size(); i++) {
+      if (group.get(i) == null) {
+        columnBuilders[i].writeBinary(new Binary("NULL"));
+      } else {
+        columnBuilders[i].writeBinary(new Binary(group.get(i)));
+      }
+    }
+    for (int i = 0; i < aggregators.size(); i++) {
+      Aggregator aggregator = aggregators.get(i);
+      ColumnBuilder columnBuilder = columnBuilders[i + group.size()];
+      if (aggregator == null) {
+        columnBuilder.appendNull();
+      } else {
+        aggregator.outputResult(new ColumnBuilder[] {columnBuilder});
+      }
+    }
+    tsBlockBuilder.declarePosition();
   }
 
   @Override

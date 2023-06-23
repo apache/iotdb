@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.rescon;
 
 public interface ISchemaRegionStatistics {
@@ -39,4 +40,8 @@ public interface ISchemaRegionStatistics {
   CachedSchemaRegionStatistics getAsCachedSchemaRegionStatistics();
 
   void clear();
+
+  long getGlobalMemoryUsage();
+
+  long getGlobalSeriesNumber();
 }

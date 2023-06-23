@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -27,7 +28,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
-/** has more than one input column, but these columns' time is overlapped */
+/** has more than one input column, but these columns' time is overlapped. */
 public class MultiColumnMerger implements ColumnMerger {
 
   private final List<InputLocation> inputLocations;
@@ -36,6 +37,7 @@ public class MultiColumnMerger implements ColumnMerger {
     this.inputLocations = inputLocations;
   }
 
+  @SuppressWarnings("squid:S3776")
   @Override
   public void mergeColumn(
       TsBlock[] inputTsBlocks,
@@ -128,7 +130,6 @@ public class MultiColumnMerger implements ColumnMerger {
           // value of current location's input column is not null
           // here we only append value if there is no value appended before and current value is
           // null
-          // TODO That means we choose first value as the final value if there exist timestamp
           // belonging to more than one DataRegion, we need to choose which one is latest
           if (!appendValue && !valueColumn.isNull(index)) {
             columnBuilder.write(valueColumn, index);
@@ -138,13 +139,6 @@ public class MultiColumnMerger implements ColumnMerger {
           index++;
           // update the index after merging
           updatedInputIndex[tsBlockIndex] = index;
-          // we can never safely set appendValue to true and then break the loop, because these
-          // input
-          // columns' time may be overlapped, we should increase each column's index whose time is
-          // equal to currentTime
-          // if (appendValue) {
-          //    break;
-          //  }
         }
       }
     }

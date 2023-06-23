@@ -47,6 +47,7 @@ import java.util.Map;
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
   private static boolean printDetail = false;
+  public static final String POINT_IN_PAGE = "\t\tpoints in the page: ";
 
   @SuppressWarnings({
     "squid:S3776",
@@ -118,19 +119,19 @@ public class TsFileSequenceRead {
                   "\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
               System.out.println(
                   "\t\tCompressed page data size: " + pageHeader.getCompressedSize());
-              if ((header.getChunkType() & (byte) TsFileConstant.TIME_COLUMN_MASK)
-                  == (byte) TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
+              if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+                  == TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
                 TimePageReader timePageReader =
                     new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
                 timeBatch.add(timePageReader.getNextTimeBatch());
-                System.out.println("\t\tpoints in the page: " + timeBatch.get(pageIndex).length);
+                System.out.println(POINT_IN_PAGE + timeBatch.get(pageIndex).length);
                 if (printDetail) {
                   for (int i = 0; i < timeBatch.get(pageIndex).length; i++) {
                     System.out.println("\t\t\ttime: " + timeBatch.get(pageIndex)[i]);
                   }
                 }
-              } else if ((header.getChunkType() & (byte) TsFileConstant.VALUE_COLUMN_MASK)
-                  == (byte) TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
+              } else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
+                  == TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
                 ValuePageReader valuePageReader =
                     new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
                 TsPrimitiveType[] valueBatch =
@@ -138,7 +139,7 @@ public class TsFileSequenceRead {
                 if (valueBatch.length == 0) {
                   System.out.println("\t\t-- Empty Page ");
                 } else {
-                  System.out.println("\t\tpoints in the page: " + valueBatch.length);
+                  System.out.println(POINT_IN_PAGE + valueBatch.length);
                 }
                 if (printDetail) {
                   for (TsPrimitiveType batch : valueBatch) {
@@ -151,9 +152,9 @@ public class TsFileSequenceRead {
                         pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
                 BatchData batchData = pageReader.getAllSatisfiedPageData();
                 if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
-                  System.out.println("\t\tpoints in the page: " + pageHeader.getNumOfValues());
+                  System.out.println(POINT_IN_PAGE + pageHeader.getNumOfValues());
                 } else {
-                  System.out.println("\t\tpoints in the page: " + batchData.length());
+                  System.out.println(POINT_IN_PAGE + batchData.length());
                 }
                 if (printDetail) {
                   while (batchData.hasCurrent()) {

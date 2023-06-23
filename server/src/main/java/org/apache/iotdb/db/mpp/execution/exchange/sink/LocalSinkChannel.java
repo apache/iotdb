@@ -44,7 +44,10 @@ public class LocalSinkChannel implements ISinkChannel {
   private final SinkListener sinkListener;
 
   private final SharedTsBlockQueue queue;
+
+  @SuppressWarnings("squid:S3077")
   private volatile ListenableFuture<Void> blocked;
+
   private boolean aborted = false;
   private boolean closed = false;
 
@@ -223,7 +226,9 @@ public class LocalSinkChannel implements ISinkChannel {
   // region ============ ISinkChannel related ============
 
   @Override
-  public void open() {}
+  public void open() {
+    // do nothing
+  }
 
   @Override
   public boolean isNoMoreTsBlocks() {

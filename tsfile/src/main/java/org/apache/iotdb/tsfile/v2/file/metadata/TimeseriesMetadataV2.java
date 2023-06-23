@@ -32,12 +32,12 @@ public class TimeseriesMetadataV2 {
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
-    timeseriesMetaData.setTSDataType(
+    timeseriesMetaData.setTsDataType(
         TSDataType.deserialize((byte) ReadWriteIOUtils.readShort(buffer)));
     timeseriesMetaData.setOffsetOfChunkMetaDataList(ReadWriteIOUtils.readLong(buffer));
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(ReadWriteIOUtils.readInt(buffer));
     timeseriesMetaData.setStatistics(
-        StatisticsV2.deserialize(buffer, timeseriesMetaData.getTSDataType()));
+        StatisticsV2.deserialize(buffer, timeseriesMetaData.getTsDataType()));
     return timeseriesMetaData;
   }
 }

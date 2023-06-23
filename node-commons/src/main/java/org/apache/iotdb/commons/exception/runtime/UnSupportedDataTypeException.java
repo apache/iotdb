@@ -17,8 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.statistics;
+package org.apache.iotdb.commons.exception.runtime;
 
-public class TimeseriesStats {
-  // TODO collect time series statistics
+public class UnSupportedDataTypeException extends RuntimeException {
+
+  public UnSupportedDataTypeException(String message) {
+    super(message);
+  }
+
+  public UnSupportedDataTypeException(String message, Throwable e) {
+    super(message + e.getMessage());
+  }
 }

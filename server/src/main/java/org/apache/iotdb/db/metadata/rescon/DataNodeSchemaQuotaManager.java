@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
@@ -24,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+@SuppressWarnings("java:S6548") // do not warn about singleton class
 public class DataNodeSchemaQuotaManager {
 
   private ClusterSchemaQuotaLevel level =

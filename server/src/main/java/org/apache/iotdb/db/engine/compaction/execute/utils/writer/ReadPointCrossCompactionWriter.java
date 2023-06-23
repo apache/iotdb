@@ -57,7 +57,7 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
     }
     chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
     checkChunkSizeAndMayOpenANewChunk(
-        targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriter, subTaskId, true);
+        targetFileWriters.get(seqFileIndexArray[subTaskId]), chunkWriter, subTaskId);
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
     lastTime[subTaskId] = timestamps.getEndTime();

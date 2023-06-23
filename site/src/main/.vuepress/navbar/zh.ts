@@ -23,8 +23,8 @@ export const zhNavbar = navbar([
   {
     text: '文档',
     children: [
-      { text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
-      { text: 'v1.2.x', link: '/zh/UserGuide/V1.2.x/QuickStart/QuickStart' },
+      // { text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
+      // { text: 'v1.2.x', link: '/zh/UserGuide/V1.2.x/QuickStart/QuickStart' },
       { text: 'v1.1.x', link: '/zh/UserGuide/V1.1.x/QuickStart/QuickStart' },
       { text: 'v1.0.x', link: '/zh/UserGuide/V1.0.x/QuickStart/QuickStart' },
       { text: 'v0.13.x', link: '/zh/UserGuide/V0.13.x/QuickStart/QuickStart' },

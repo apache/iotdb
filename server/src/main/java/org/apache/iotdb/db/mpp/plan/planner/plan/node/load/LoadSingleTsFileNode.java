@@ -86,7 +86,17 @@ public class LoadSingleTsFileNode extends WritePlanNode {
               slotList.add(
                   new Pair<>(o, TimePartitionUtils.getTimePartition(resource.getEndTime(o))));
             });
-    needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
+
+    if (slotList.isEmpty()) {
+      throw new IllegalStateException(
+          String.format("Devices in TsFile %s is empty, this should not happen here.", tsFile));
+    } else if (slotList.stream()
+        .anyMatch(slotPair -> !slotPair.getRight().equals(slotList.get(0).right))) {
+      needDecodeTsFile = true;
+    } else {
+      needDecodeTsFile = !isDispatchedToLocal(new HashSet<>(partitionFetcher.apply(slotList)));
+    }
+
     if (!needDecodeTsFile && !resource.resourceFileExists()) {
       resource.serialize();
     }
@@ -97,14 +107,18 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     if (replicaSets.size() > 1) {
       return false;
     }
+
     for (TRegionReplicaSet replicaSet : replicaSets) {
       List<TDataNodeLocation> dataNodeLocationList = replicaSet.getDataNodeLocations();
       if (dataNodeLocationList.size() > 1) {
         return false;
       }
       localRegionReplicaSet = replicaSet;
-      return isDispatchedToLocal(dataNodeLocationList.get(0).getInternalEndPoint());
+      if (dataNodeLocationList.size() == 1) {
+        return isDispatchedToLocal(dataNodeLocationList.get(0).getInternalEndPoint());
+      }
     }
+
     return true;
   }
 

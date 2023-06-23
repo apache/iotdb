@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
@@ -30,7 +31,7 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.CONSTRUCT_CHUNK_READER_ALIGNED_MEM;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_ALIGNED_MEM;
 
-/** To read one aligned chunk from memory, and only used in iotdb server module */
+/** To read one aligned chunk from memory, and only used in iotdb server module. */
 public class MemAlignedChunkLoader implements IChunkLoader {
 
   private final AlignedReadOnlyMemChunk chunk;

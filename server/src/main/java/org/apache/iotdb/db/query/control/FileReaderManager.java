@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -49,7 +50,7 @@ public class FileReaderManager {
 
   /**
    * When number of file streams reached MAX_CACHED_FILE_SIZE, then we will print a warning log each
-   * PRINT_INTERVAL
+   * PRINT_INTERVAL.
    */
   private static final int PRINT_INTERVAL = 10000;
 
@@ -174,10 +175,9 @@ public class FileReaderManager {
         if (unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0) {
           closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), false);
         }
-      } else if (closedReferenceMap.containsKey(tsFile.getTsFilePath())) {
-        if (closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0) {
-          closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), true);
-        }
+      } else if (closedReferenceMap.containsKey(tsFile.getTsFilePath())
+          && (closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0)) {
+        closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), true);
       }
     }
     tsFile.readUnlock();
@@ -212,6 +212,8 @@ public class FileReaderManager {
   /**
    * Only for <code>EnvironmentUtils.cleanEnv</code> method. To make sure that unit tests and
    * integration tests will not conflict with each other.
+   *
+   * @throws IOException if failed to close file handlers, IOException will be thrown
    */
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
     Iterator<Map.Entry<String, TsFileSequenceReader>> iterator =
@@ -241,17 +243,6 @@ public class FileReaderManager {
   public synchronized boolean contains(TsFileResource tsFile, boolean isClosed) {
     return (isClosed && closedFileReaderMap.containsKey(tsFile.getTsFilePath()))
         || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFilePath()));
-  }
-
-  public synchronized void writeFileReferenceInfo() {
-    DEBUG_LOGGER.info("[closedReferenceMap]\n");
-    for (Map.Entry<String, AtomicInteger> entry : closedReferenceMap.entrySet()) {
-      DEBUG_LOGGER.info(String.format("\t%s: %d%n", entry.getKey(), entry.getValue().get()));
-    }
-    DEBUG_LOGGER.info("[unclosedReferenceMap]\n");
-    for (Map.Entry<String, AtomicInteger> entry : unclosedReferenceMap.entrySet()) {
-      DEBUG_LOGGER.info(String.format("\t%s: %d", entry.getKey(), entry.getValue().get()));
-    }
   }
 
   @TestOnly

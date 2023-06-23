@@ -40,6 +40,8 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HTTPForwardHandler.class);
 
+  private static final String FORWARD_ERROR_MESSAGE = "HTTP Forward Exception";
+
   private static CloseableHttpClient client;
   private static int referenceCount;
 
@@ -87,9 +89,9 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
       }
     } catch (Exception e) {
       if (config.isStopIfException()) {
-        throw new SinkException("HTTP Forward Exception", e);
+        throw new SinkException(FORWARD_ERROR_MESSAGE, e);
       }
-      LOGGER.error("HTTP Forward Exception", e);
+      LOGGER.warn(FORWARD_ERROR_MESSAGE, e);
     } finally {
       try {
         if (null != response) {
@@ -117,9 +119,9 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
       }
     } catch (Exception e) {
       if (config.isStopIfException()) {
-        throw new SinkException("HTTP Forward Exception", e);
+        throw new SinkException(FORWARD_ERROR_MESSAGE, e);
       }
-      LOGGER.error("HTTP Forward Exception", e);
+      LOGGER.warn(FORWARD_ERROR_MESSAGE, e);
     } finally {
       try {
         if (null != response) {

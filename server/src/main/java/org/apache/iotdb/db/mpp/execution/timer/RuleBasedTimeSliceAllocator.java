@@ -32,7 +32,7 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class RuleBasedTimeSliceAllocator implements ITimeSliceAllocator {
 
-  private final long EXECUTION_TIME_SLICE_IN_MS =
+  private static final long EXECUTION_TIME_SLICE_IN_MS =
       DriverTaskThread.EXECUTION_TIME_SLICE.roundTo(TimeUnit.MILLISECONDS);
 
   private final Map<OperatorContext, Integer> operatorToWeightMap;

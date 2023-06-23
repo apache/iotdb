@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
@@ -84,7 +85,7 @@ public class SimpleConsensusProgressIndexAssigner {
       return;
     }
     try {
-      String content = FileUtils.readFileToString(file, "UTF-8");
+      String content = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
       rebootTimes = Integer.parseInt(content);
     } catch (IOException e) {
       LOGGER.error("Cannot parse reboot times from file {}", file.getAbsolutePath(), e);
@@ -94,7 +95,7 @@ public class SimpleConsensusProgressIndexAssigner {
 
   private void recordRebootTimes() throws IOException {
     File file = SystemFileFactory.INSTANCE.getFile(PIPE_SYSTEM_DIR + REBOOT_TIMES_FILE_NAME);
-    FileUtils.writeStringToFile(file, String.valueOf(rebootTimes + 1), "UTF-8");
+    FileUtils.writeStringToFile(file, String.valueOf(rebootTimes + 1), StandardCharsets.UTF_8);
   }
 
   public void assignIfNeeded(TsFileResource tsFileResource) {

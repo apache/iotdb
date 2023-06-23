@@ -170,7 +170,7 @@ public class TsFileIntegrityCheckingTool {
         List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
         boolean vectorMode = false;
         if (timeseriesMetadataList.size() > 0
-            && timeseriesMetadataList.get(0).getTSDataType() != TSDataType.VECTOR) {
+            && timeseriesMetadataList.get(0).getTsDataType() != TSDataType.VECTOR) {
           Assert.assertEquals(originData.get(deviceId).size(), timeseriesMetadataList.size());
         } else {
           vectorMode = true;

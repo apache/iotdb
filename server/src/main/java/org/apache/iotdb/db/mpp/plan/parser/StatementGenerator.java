@@ -319,7 +319,8 @@ public class StatementGenerator {
             insertTabletReq.size));
     insertStatement.setBitMaps(
         QueryDataSetUtils.readBitMapsFromBuffer(
-            insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size));
+                insertTabletReq.values, insertTabletReq.types.size(), insertTabletReq.size)
+            .orElse(null));
     insertStatement.setRowCount(insertTabletReq.size);
     TSDataType[] dataTypes = new TSDataType[insertTabletReq.types.size()];
     for (int i = 0; i < insertTabletReq.types.size(); i++) {
@@ -351,7 +352,8 @@ public class StatementGenerator {
               req.sizeList.get(i)));
       insertTabletStatement.setBitMaps(
           QueryDataSetUtils.readBitMapsFromBuffer(
-              req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i)));
+                  req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i))
+              .orElse(null));
       insertTabletStatement.setRowCount(req.sizeList.get(i));
       TSDataType[] dataTypes = new TSDataType[req.typesList.get(i).size()];
       for (int j = 0; j < dataTypes.length; j++) {

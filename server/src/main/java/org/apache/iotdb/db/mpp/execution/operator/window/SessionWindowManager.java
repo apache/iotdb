@@ -86,7 +86,8 @@ public class SessionWindowManager implements IWindowManager {
     }
 
     TimeColumn timeColumn = inputTsBlock.getTimeColumn();
-    int i = 0, size = inputTsBlock.getPositionCount();
+    int i = 0;
+    int size = inputTsBlock.getPositionCount();
     long previousTimeValue = sessionWindow.getTimeValue();
 
     for (; i < size; i++) {

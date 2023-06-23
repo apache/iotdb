@@ -26,15 +26,22 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionCollector {
+
   @Override
-  public void validate(PipeParameterValidator validator) {}
+  public void validate(PipeParameterValidator validator) {
+    // do nothing
+  }
 
   @Override
   public void customize(
-      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {}
+      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+    // do nothing
+  }
 
   @Override
-  public void start() {}
+  public void start() {
+    // do nothing
+  }
 
   @Override
   public Event supply() {
@@ -42,7 +49,9 @@ public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionC
   }
 
   @Override
-  public void collect(PipeRealtimeCollectEvent event) {}
+  public void collect(PipeRealtimeCollectEvent event) {
+    // do nothing
+  }
 
   @Override
   public boolean isNeedListenToTsFile() {
@@ -55,7 +64,9 @@ public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionC
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    // do nothing
+  }
 
   @Override
   public String toString() {

@@ -21,10 +21,9 @@ package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
-import java.io.Serializable;
 import java.util.Comparator;
 
-public class SortKeyComparator implements Comparator<SortKey>, Serializable {
+public class SortKeyComparator implements Comparator<SortKey> {
 
   private final boolean nullFirst;
   private final int index;
@@ -44,7 +43,11 @@ public class SortKeyComparator implements Comparator<SortKey>, Serializable {
     if (!o1IsNull && !o2IsNull) {
       return originalComparator.compare(o1, o2);
     } else if (o1IsNull) {
-      return o2IsNull ? 0 : (nullFirst ? -1 : 1);
+      if (o2IsNull) {
+        return 0;
+      } else {
+        return nullFirst ? -1 : 1;
+      }
     } else {
       return nullFirst ? 1 : -1;
     }
