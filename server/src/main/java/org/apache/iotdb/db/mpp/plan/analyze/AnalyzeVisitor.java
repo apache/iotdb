@@ -3235,12 +3235,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   /**
    * Compute how many paths exist, get the schema tree and the number of existed paths.
    *
-   * @param pathList the path you want to check
-   * @param schemaTree fetched when analyze query
    * @return a pair of ISchemaTree, and the number of exist paths.
    */
   private Pair<ISchemaTree, Integer> fetchSchemaOfPathsAndCount(
-      List<PartialPath> pathList, ISchemaTree schemaTree) {
+      List<PartialPath> pathList, Analysis analysis, MPPQueryContext context) {
+    ISchemaTree schemaTree = analysis.getSchemaTree();
+    if (schemaTree == null) {
+      // source is not represented by query, thus has not done fetch schema.
+      PathPatternTree pathPatternTree = new PathPatternTree();
+      for (PartialPath path : pathList) {
+        pathPatternTree.appendPathPattern(path);
+      }
+      schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
+    }
+
     // search each path, make sure they all exist.
     int numOfExistPaths = 0;
     for (PartialPath path : pathList) {
@@ -3308,7 +3316,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return new Pair<>(expressionList, analysis);
   }
 
-  private void checkViewsInSource(Analysis analysis, List<Expression> sourceExpressionList) {
+  private void checkViewsInSource(
+      Analysis analysis, List<Expression> sourceExpressionList, MPPQueryContext context) {
     List<PartialPath> pathsNeedCheck = new ArrayList<>();
     for (Expression expression : sourceExpressionList) {
       if (expression instanceof TimeSeriesOperand) {
@@ -3316,7 +3325,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     Pair<ISchemaTree, Integer> schemaOfNeedToCheck =
-        fetchSchemaOfPathsAndCount(pathsNeedCheck, analysis.getSchemaTree());
+        fetchSchemaOfPathsAndCount(pathsNeedCheck, analysis, context);
     if (schemaOfNeedToCheck.right != pathsNeedCheck.size()) {
       // some source paths is not exist, and could not fetch schema.
       analysis.setFinishQueryAfterAnalyze(true);
@@ -3439,7 +3448,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // make sure there is no view in source
     List<Expression> sourceExpressionList = createLogicalViewStatement.getSourceExpressionList();
-    checkViewsInSource(analysis, sourceExpressionList);
+    checkViewsInSource(analysis, sourceExpressionList, context);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
