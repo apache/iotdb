@@ -249,6 +249,12 @@ public class MemMTreeSnapshotUtil {
     if (!ancestors.isEmpty()) {
       node.setParent(ancestors.peek());
       ancestors.peek().addChild(node);
+      if (node.isMeasurement() && node.getAsMeasurementMNode().getAlias() != null) {
+        ancestors
+            .peek()
+            .getAsEntityMNode()
+            .addAlias(node.getAsMeasurementMNode().getAlias(), node.getAsMeasurementMNode());
+      }
     }
 
     // Storage type means current node is root node, so it must be returned.
