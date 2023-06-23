@@ -28,7 +28,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.Map;
 
 /**
- * PipeRealtimeCollectEvent is an event that decorates the EnrichedEvent with the information of
+ * PipeRealtimeEvent is an event that decorates the EnrichedEvent with the information of
  * TsFileEpoch and schema info. It only exists in the realtime event extractor.
  */
 public class PipeRealtimeEvent extends EnrichedEvent {
@@ -43,7 +43,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       TsFileEpoch tsFileEpoch,
       Map<String, String[]> device2Measurements,
       String pattern) {
-    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
+    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
     super(null, pattern);
@@ -59,7 +59,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       Map<String, String[]> device2Measurements,
       PipeTaskMeta pipeTaskMeta,
       String pattern) {
-    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
+    // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
     super(pipeTaskMeta, pattern);
@@ -87,10 +87,10 @@ public class PipeRealtimeEvent extends EnrichedEvent {
 
   @Override
   public boolean increaseReferenceCount(String holderMessage) {
-    // This method must be overridden, otherwise during the real-time data collection stage, the
-    // current PipeRealtimeCollectEvent rather than the member variable EnrichedEvent will increase
+    // This method must be overridden, otherwise during the real-time data extraction stage, the
+    // current PipeRealtimeEvent rather than the member variable EnrichedEvent will increase
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
-    // contained in this PipeRealtimeCollectEvent during the processor and connector stages.
+    // contained in this PipeRealtimeEvent during the processor and connector stages.
     return event.increaseReferenceCount(holderMessage);
   }
 
@@ -101,10 +101,10 @@ public class PipeRealtimeEvent extends EnrichedEvent {
 
   @Override
   public boolean decreaseReferenceCount(String holderMessage) {
-    // This method must be overridden, otherwise during the real-time data collection stage, the
-    // current PipeRealtimeCollectEvent rather than the member variable EnrichedEvent will increase
+    // This method must be overridden, otherwise during the real-time data extraction stage, the
+    // current PipeRealtimeEvent rather than the member variable EnrichedEvent will increase
     // the reference count, resulting in errors in the reference count of the EnrichedEvent
-    // contained in this PipeRealtimeCollectEvent during the processor and connector stages.
+    // contained in this PipeRealtimeEvent during the processor and connector stages.
     return event.decreaseReferenceCount(holderMessage);
   }
 
@@ -131,7 +131,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
 
   @Override
   public String toString() {
-    return "PipeRealtimeCollectEvent{"
+    return "PipeRealtimeEvent{"
         + "event="
         + event
         + ", tsFileEpoch="

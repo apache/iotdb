@@ -35,7 +35,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionTsFileExtractor.class);
 
-  // This queue is used to store pending events collected by the method extract(). The method
+  // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
@@ -74,14 +74,14 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
   @Override
   public Event supply() {
-    PipeRealtimeEvent collectEvent = (PipeRealtimeEvent) pendingQueue.poll();
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
 
-    while (collectEvent != null) {
+    while (realtimeEvent != null) {
       Event suppliedEvent = null;
 
-      if (collectEvent.increaseReferenceCount(
+      if (realtimeEvent.increaseReferenceCount(
           PipeRealtimeDataRegionTsFileExtractor.class.getName())) {
-        suppliedEvent = collectEvent.getEvent();
+        suppliedEvent = realtimeEvent.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by
         // this event is not reliable anymore. the data has been lost. we simply discard this event
@@ -90,17 +90,17 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
             String.format(
                 "TsFile Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
-                collectEvent.getEvent());
+                realtimeEvent.getEvent());
         LOGGER.warn(errorMessage);
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
-      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
 
-      collectEvent = (PipeRealtimeEvent) pendingQueue.poll();
+      realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
     }
 
     // means the pending queue is empty.

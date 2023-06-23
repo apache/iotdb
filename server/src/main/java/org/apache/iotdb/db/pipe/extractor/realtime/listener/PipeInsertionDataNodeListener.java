@@ -36,9 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>It is used to listen to events from storage engine and publish them to pipe engine.
  *
- * <p>2 kinds of events are collected: 1. level-0 tsfile sealed event 2. insertion operation event
+ * <p>2 kinds of events are extracted: 1. level-0 tsfile sealed event 2. insertion operation event
  *
- * <p>All events collected by this listener will be first published to different
+ * <p>All events extracted by this listener will be first published to different
  * PipeEventDataRegionAssigners (identified by data region id), and then PipeEventDataRegionAssigner
  * will filter events and assign them to different PipeRealtimeEventDataRegionExtractors.
  */
@@ -101,12 +101,12 @@ public class PipeInsertionDataNodeListener {
 
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be collected
+    // only events from registered data region will be extracted
     if (assigner == null) {
       return;
     }
 
-    assigner.publishToAssign(PipeRealtimeEventFactory.createCollectEvent(tsFileResource));
+    assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(tsFileResource));
   }
 
   public void listenToInsertNode(
@@ -120,13 +120,13 @@ public class PipeInsertionDataNodeListener {
 
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
-    // only events from registered data region will be collected
+    // only events from registered data region will be extracted
     if (assigner == null) {
       return;
     }
 
     assigner.publishToAssign(
-        PipeRealtimeEventFactory.createCollectEvent(walEntryHandler, insertNode, tsFileResource));
+        PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

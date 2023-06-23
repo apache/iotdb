@@ -85,7 +85,7 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
 
   @Override
   public void stopSubtask() throws PipeException {
-    // extractor continuously collects data, so do nothing in stop
+    // extractor continuously extracts data, so do nothing in stop
   }
 
   @Override
