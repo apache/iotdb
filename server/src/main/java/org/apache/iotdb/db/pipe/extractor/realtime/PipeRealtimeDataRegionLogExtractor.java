@@ -35,7 +35,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionLogExtractor.class);
 
-  // This queue is used to store pending events collected by the method extract(). The method
+  // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
@@ -74,13 +74,14 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   @Override
   public Event supply() {
-    PipeRealtimeEvent collectEvent = (PipeRealtimeEvent) pendingQueue.poll();
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
 
-    while (collectEvent != null) {
+    while (realtimeEvent != null) {
       Event suppliedEvent = null;
 
-      if (collectEvent.increaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName())) {
-        suppliedEvent = collectEvent.getEvent();
+      if (realtimeEvent.increaseReferenceCount(
+          PipeRealtimeDataRegionLogExtractor.class.getName())) {
+        suppliedEvent = realtimeEvent.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by
         // this event is not reliable anymore. the data has been lost. we simply discard this event
@@ -89,17 +90,17 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
             String.format(
                 "Tablet Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
-                collectEvent.getEvent());
+                realtimeEvent.getEvent());
         LOGGER.warn(errorMessage);
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
-      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
 
-      collectEvent = (PipeRealtimeEvent) pendingQueue.poll();
+      realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
     }
 
     // means the pending queue is empty.

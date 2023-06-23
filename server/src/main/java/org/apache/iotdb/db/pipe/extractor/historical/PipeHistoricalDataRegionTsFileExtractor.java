@@ -62,10 +62,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private String pattern;
 
-  private long historicalDataCollectionStartTime; // event time
-  private long historicalDataCollectionEndTime; // event time
+  private long historicalDataExtractionStartTime; // event time
+  private long historicalDataExtractionEndTime; // event time
 
-  private long historicalDataCollectionTimeLowerBound; // arrival time
+  private long historicalDataExtractionTimeLowerBound; // arrival time
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
@@ -88,50 +88,50 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
 
     // user may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
-    // enabling the historical data collection, which may affect the realtime data collection.
+    // enabling the historical data extraction, which may affect the realtime data extraction.
     final boolean isHistoricalExtractorEnabledByUser =
         parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true);
-    historicalDataCollectionStartTime =
+    historicalDataExtractionStartTime =
         isHistoricalExtractorEnabledByUser && parameters.hasAttribute(EXTRACTOR_HISTORY_START_TIME)
             ? DateTimeUtils.convertDatetimeStrToLong(
                 parameters.getString(EXTRACTOR_HISTORY_START_TIME), ZoneId.systemDefault())
             : Long.MIN_VALUE;
-    historicalDataCollectionEndTime =
+    historicalDataExtractionEndTime =
         isHistoricalExtractorEnabledByUser && parameters.hasAttribute(EXTRACTOR_HISTORY_END_TIME)
             ? DateTimeUtils.convertDatetimeStrToLong(
                 parameters.getString(EXTRACTOR_HISTORY_END_TIME), ZoneId.systemDefault())
             : Long.MAX_VALUE;
 
     // enable historical extractor by default
-    historicalDataCollectionTimeLowerBound =
+    historicalDataExtractionTimeLowerBound =
         parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true)
             ? Long.MIN_VALUE
             // We define the realtime data as the data generated after the creation time
             // of the pipe from user's perspective. But we still need to use
             // PipeHistoricalDataRegionExtractor to extract the realtime data generated between the
             // creation time of the pipe and the time when the pipe starts, because those data
-            // can not be listened by PipeRealtimeDataRegionExtractor, and should be collected by
+            // can not be listened by PipeRealtimeDataRegionExtractor, and should be extracted by
             // PipeHistoricalDataRegionExtractor from implementation perspective.
             : environment.getCreationTime();
 
     // Only invoke flushDataRegionAllTsFiles() when the pipe runs in the realtime only mode.
-    // realtime only mode -> (historicalDataCollectionTimeLowerBound != Long.MIN_VALUE)
+    // realtime only mode -> (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE)
     //
-    // Ensure that all data in the data region is flushed to disk before collecting data.
+    // Ensure that all data in the data region is flushed to disk before extracting data.
     // This ensures the generation time of all newly generated TsFiles (realtime data) after the
     // invocation of flushDataRegionAllTsFiles() is later than the creationTime of the pipe
-    // (historicalDataCollectionTimeLowerBound).
+    // (historicalDataExtractionTimeLowerBound).
     //
     // Note that: the generation time of the TsFile is the time when the TsFile is created, not
     // the time when the data is flushed to the TsFile.
     //
     // Then we can use the generation time of the TsFile to determine whether the data in the
-    // TsFile should be collected by comparing the generation time of the TsFile with the
-    // historicalDataCollectionTimeLowerBound when starting the pipe in realtime only mode.
+    // TsFile should be extracted by comparing the generation time of the TsFile with the
+    // historicalDataExtractionTimeLowerBound when starting the pipe in realtime only mode.
     //
     // If we don't invoke flushDataRegionAllTsFiles() in the realtime only mode, the data generated
     // between the creation time of the pipe the time when the pipe starts will be lost.
-    if (historicalDataCollectionTimeLowerBound != Long.MIN_VALUE) {
+    if (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE) {
       flushDataRegionAllTsFiles();
     }
   }
@@ -174,15 +174,15 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterCollectionTimeLowerBound(resource))
+                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .map(
                     resource ->
                         new PipeTsFileInsertionEvent(
                             resource,
                             pipeTaskMeta,
                             pattern,
-                            historicalDataCollectionStartTime,
-                            historicalDataCollectionEndTime))
+                            historicalDataExtractionStartTime,
+                            historicalDataExtractionEndTime))
                 .collect(Collectors.toList()));
         pendingQueue.addAll(
             tsFileManager.getTsFileList(false).stream()
@@ -190,15 +190,15 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterCollectionTimeLowerBound(resource))
+                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .map(
                     resource ->
                         new PipeTsFileInsertionEvent(
                             resource,
                             pipeTaskMeta,
                             pattern,
-                            historicalDataCollectionStartTime,
-                            historicalDataCollectionEndTime))
+                            historicalDataExtractionStartTime,
+                            historicalDataExtractionEndTime))
                 .collect(Collectors.toList()));
         pendingQueue.forEach(
             event ->
@@ -213,13 +213,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {
-    return !(resource.getFileEndTime() < historicalDataCollectionStartTime
-        || historicalDataCollectionEndTime < resource.getFileStartTime());
+    return !(resource.getFileEndTime() < historicalDataExtractionStartTime
+        || historicalDataExtractionEndTime < resource.getFileStartTime());
   }
 
-  private boolean isTsFileGeneratedAfterCollectionTimeLowerBound(TsFileResource resource) {
+  private boolean isTsFileGeneratedAfterExtractionTimeLowerBound(TsFileResource resource) {
     try {
-      return historicalDataCollectionTimeLowerBound
+      return historicalDataExtractionTimeLowerBound
           <= TsFileNameGenerator.getTsFileName(resource.getTsFile().getName()).getTime();
     } catch (IOException e) {
       LOGGER.warn(
