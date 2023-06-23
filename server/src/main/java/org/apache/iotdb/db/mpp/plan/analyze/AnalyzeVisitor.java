@@ -282,6 +282,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         QueryPlanCostMetricSet.getInstance()
             .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
       }
+      analysis.setSchemaTree(schemaTree);
 
       // extract global time filter from query filter and determine if there is a value filter
       analyzeGlobalTimeFilter(analysis, queryStatement);
@@ -3242,23 +3243,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   /**
    * Compute how many paths exist, get the schema tree and the number of existed paths.
    *
-   * @param pathList the path you want to check
-   * @param context the context of your analyzer
    * @return a pair of ISchemaTree, and the number of exist paths.
    */
   private Pair<ISchemaTree, Integer> fetchSchemaOfPathsAndCount(
-      List<PartialPath> pathList, MPPQueryContext context) {
-    PathPatternTree pathPatternTree = new PathPatternTree();
-    for (PartialPath path : pathList) {
-      pathPatternTree.appendPathPattern(path);
+      List<PartialPath> pathList, Analysis analysis, MPPQueryContext context) {
+    ISchemaTree schemaTree = analysis.getSchemaTree();
+    if (schemaTree == null) {
+      // source is not represented by query, thus has not done fetch schema.
+      PathPatternTree pathPatternTree = new PathPatternTree();
+      for (PartialPath path : pathList) {
+        pathPatternTree.appendPathPattern(path);
+      }
+      schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
     }
-    ISchemaTree schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
 
     // search each path, make sure they all exist.
     int numOfExistPaths = 0;
     for (PartialPath path : pathList) {
       Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path);
-      numOfExistPaths += pathPair.left.size() > 0 ? 1 : 0;
+      numOfExistPaths += !pathPair.left.isEmpty() ? 1 : 0;
     }
     return new Pair<>(schemaTree, numOfExistPaths);
   }
@@ -3290,6 +3293,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Pair<List<Expression>, Analysis> analyzeQueryInLogicalViewStatement(
       Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
     Analysis queryAnalysis = this.visitQuery(queryStatement, context);
+    analysis.setSchemaTree(queryAnalysis.getSchemaTree());
     // get all expression from resultColumns
     List<Pair<Expression, String>> outputExpressions = queryAnalysis.getOutputExpressions();
     if (queryAnalysis.isFailed()) {
@@ -3329,7 +3333,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     Pair<ISchemaTree, Integer> schemaOfNeedToCheck =
-        fetchSchemaOfPathsAndCount(pathsNeedCheck, context);
+        fetchSchemaOfPathsAndCount(pathsNeedCheck, analysis, context);
     if (schemaOfNeedToCheck.right != pathsNeedCheck.size()) {
       // some source paths is not exist, and could not fetch schema.
       analysis.setFinishQueryAfterAnalyze(true);
