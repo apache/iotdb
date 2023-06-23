@@ -23,19 +23,19 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionCollector;
-import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.collector.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
-import org.apache.iotdb.pipe.api.PipeCollector;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeTaskCollectorStage extends PipeTaskStage {
 
-  private final PipeCollector pipeCollector;
+  private final PipeExtractor pipeExtractor;
 
   public PipeTaskCollectorStage(
       String pipeName,
@@ -43,27 +43,27 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
       PipeParameters collectorParameters,
       TConsensusGroupId dataRegionId,
       PipeTaskMeta pipeTaskMeta) {
-    pipeCollector =
+    pipeExtractor =
         collectorParameters
                 .getStringOrDefault(
-                    PipeCollectorConstant.COLLECTOR_KEY,
-                    BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
-                .equals(BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName())
-            ? new IoTDBDataRegionCollector()
+                    PipeExtractorConstant.COLLECTOR_KEY,
+                    BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                .equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            ? new IoTDBDataRegionExtractor()
             : PipeAgent.plugin().reflectCollector(collectorParameters);
 
     // validate and customize should be called before createSubtask. this allows collector exposing
     // exceptions in advance.
     try {
       // 1. validate collector parameters
-      pipeCollector.validate(new PipeParameterValidator(collectorParameters));
+      pipeExtractor.validate(new PipeParameterValidator(collectorParameters));
 
       // 2. customize collector
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskCollectorRuntimeEnvironment(
                   pipeName, creationTime, dataRegionId.getId(), pipeTaskMeta));
-      pipeCollector.customize(collectorParameters, runtimeConfiguration);
+      pipeExtractor.customize(collectorParameters, runtimeConfiguration);
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
@@ -77,7 +77,7 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
   @Override
   public void startSubtask() throws PipeException {
     try {
-      pipeCollector.start();
+      pipeExtractor.start();
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
@@ -91,13 +91,13 @@ public class PipeTaskCollectorStage extends PipeTaskStage {
   @Override
   public void dropSubtask() throws PipeException {
     try {
-      pipeCollector.close();
+      pipeExtractor.close();
     } catch (Exception e) {
       throw new PipeException(e.getMessage(), e);
     }
   }
 
   public EventSupplier getEventSupplier() {
-    return pipeCollector::supply;
+    return pipeExtractor::supply;
   }
 }

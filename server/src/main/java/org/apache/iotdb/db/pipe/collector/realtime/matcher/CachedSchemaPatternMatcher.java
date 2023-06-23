@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.collector.realtime.matcher;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
+import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
@@ -40,20 +40,20 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
   private final ReentrantReadWriteLock lock;
 
-  private final Set<PipeRealtimeDataRegionCollector> collectors;
-  private final Cache<String, Set<PipeRealtimeDataRegionCollector>> deviceToCollectorsCache;
+  private final Set<PipeRealtimeDataRegionExtractor> collectors;
+  private final Cache<String, Set<PipeRealtimeDataRegionExtractor>> deviceToCollectorsCache;
 
   public CachedSchemaPatternMatcher() {
     this.lock = new ReentrantReadWriteLock();
     this.collectors = new HashSet<>();
     this.deviceToCollectorsCache =
         Caffeine.newBuilder()
-            .maximumSize(PipeConfig.getInstance().getPipeCollectorMatcherCacheSize())
+            .maximumSize(PipeConfig.getInstance().getPipeExtractorMatcherCacheSize())
             .build();
   }
 
   @Override
-  public void register(PipeRealtimeDataRegionCollector collector) {
+  public void register(PipeRealtimeDataRegionExtractor collector) {
     lock.writeLock().lock();
     try {
       collectors.add(collector);
@@ -64,7 +64,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   @Override
-  public void deregister(PipeRealtimeDataRegionCollector collector) {
+  public void deregister(PipeRealtimeDataRegionExtractor collector) {
     lock.writeLock().lock();
     try {
       collectors.remove(collector);
@@ -85,8 +85,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   @Override
-  public Set<PipeRealtimeDataRegionCollector> match(PipeRealtimeCollectEvent event) {
-    final Set<PipeRealtimeDataRegionCollector> matchedCollectors = new HashSet<>();
+  public Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeCollectEvent event) {
+    final Set<PipeRealtimeDataRegionExtractor> matchedCollectors = new HashSet<>();
 
     lock.readLock().lock();
     try {
@@ -99,7 +99,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
         final String[] measurements = entry.getValue();
 
         // 1. try to get matched collectors from cache, if not success, match them by device
-        final Set<PipeRealtimeDataRegionCollector> collectorsFilteredByDevice =
+        final Set<PipeRealtimeDataRegionExtractor> collectorsFilteredByDevice =
             deviceToCollectorsCache.get(device, this::filterCollectorsByDevice);
         // this would not happen
         if (collectorsFilteredByDevice == null) {
@@ -166,10 +166,10 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     return matchedCollectors;
   }
 
-  private Set<PipeRealtimeDataRegionCollector> filterCollectorsByDevice(String device) {
-    final Set<PipeRealtimeDataRegionCollector> filteredCollectors = new HashSet<>();
+  private Set<PipeRealtimeDataRegionExtractor> filterCollectorsByDevice(String device) {
+    final Set<PipeRealtimeDataRegionExtractor> filteredCollectors = new HashSet<>();
 
-    for (PipeRealtimeDataRegionCollector collector : collectors) {
+    for (PipeRealtimeDataRegionExtractor collector : collectors) {
       String pattern = collector.getPattern();
       if (
       // for example, pattern is root.a.b and device is root.a.b.c

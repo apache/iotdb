@@ -32,16 +32,16 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegionCollector {
+public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRealtimeDataRegionHybridCollector.class);
+      LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
 
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionHybridCollector() {
+  public PipeRealtimeDataRegionHybridExtractor() {
     this.pendingQueue = new UnboundedBlockingPendingQueue<>();
   }
 
@@ -113,7 +113,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
 
   private boolean isApproachingCapacity() {
     return pendingQueue.size()
-        >= PipeConfig.getInstance().getPipeCollectorPendingQueueTabletLimit();
+        >= PipeConfig.getInstance().getPipeExtractorPendingQueueTabletLimit();
   }
 
   @Override
@@ -136,7 +136,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                 eventToSupply.getClass(), this));
       }
 
-      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName());
+      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
@@ -157,7 +157,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
                 (state.equals(TsFileEpoch.State.EMPTY)) ? TsFileEpoch.State.USING_TABLET : state);
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TABLET)) {
-      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
         return event.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by
@@ -188,7 +188,7 @@ public class PipeRealtimeDataRegionHybridCollector extends PipeRealtimeDataRegio
             });
 
     if (event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)) {
-      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridCollector.class.getName())) {
+      if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
         return event.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by

@@ -49,7 +49,7 @@ public class DisruptorQueue<E> {
 
   public static class Builder<E> {
     private int ringBufferSize =
-        PipeConfig.getInstance().getPipeCollectorAssignerDisruptorRingBufferSize();
+        PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferSize();
     private ThreadFactory threadFactory = DaemonThreadFactory.INSTANCE;
     private ProducerType producerType = ProducerType.MULTI;
     private WaitStrategy waitStrategy = new BlockingWaitStrategy();

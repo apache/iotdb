@@ -55,20 +55,20 @@ public class PipeConfig {
 
   /////////////////////////////// Collector ///////////////////////////////
 
-  public int getPipeCollectorAssignerDisruptorRingBufferSize() {
-    return COMMON_CONFIG.getPipeCollectorAssignerDisruptorRingBufferSize();
+  public int getPipeExtractorAssignerDisruptorRingBufferSize() {
+    return COMMON_CONFIG.getPipeExtractorAssignerDisruptorRingBufferSize();
   }
 
-  public int getPipeCollectorMatcherCacheSize() {
-    return COMMON_CONFIG.getPipeCollectorMatcherCacheSize();
+  public int getPipeExtractorMatcherCacheSize() {
+    return COMMON_CONFIG.getPipeExtractorMatcherCacheSize();
   }
 
-  public int getPipeCollectorPendingQueueCapacity() {
-    return COMMON_CONFIG.getPipeCollectorPendingQueueCapacity();
+  public int getPipeExtractorPendingQueueCapacity() {
+    return COMMON_CONFIG.getPipeExtractorPendingQueueCapacity();
   }
 
-  public int getPipeCollectorPendingQueueTabletLimit() {
-    return COMMON_CONFIG.getPipeCollectorPendingQueueTabletLimit();
+  public int getPipeExtractorPendingQueueTabletLimit() {
+    return COMMON_CONFIG.getPipeExtractorPendingQueueTabletLimit();
   }
 
   /////////////////////////////// Connector ///////////////////////////////
@@ -118,12 +118,12 @@ public class PipeConfig {
         getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs());
 
     LOGGER.info(
-        "PipeCollectorAssignerDisruptorRingBufferSize: {}",
-        getPipeCollectorAssignerDisruptorRingBufferSize());
-    LOGGER.info("PipeCollectorMatcherCacheSize: {}", getPipeCollectorMatcherCacheSize());
-    LOGGER.info("PipeCollectorPendingQueueCapacity: {}", getPipeCollectorPendingQueueCapacity());
+        "PipeExtractorAssignerDisruptorRingBufferSize: {}",
+        getPipeExtractorAssignerDisruptorRingBufferSize());
+    LOGGER.info("PipeExtractorMatcherCacheSize: {}", getPipeExtractorMatcherCacheSize());
+    LOGGER.info("PipeExtractorPendingQueueCapacity: {}", getPipeExtractorPendingQueueCapacity());
     LOGGER.info(
-        "PipeCollectorPendingQueueTabletLimit: {}", getPipeCollectorPendingQueueTabletLimit());
+        "PipeExtractorPendingQueueTabletLimit: {}", getPipeExtractorPendingQueueTabletLimit());
 
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
     LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());

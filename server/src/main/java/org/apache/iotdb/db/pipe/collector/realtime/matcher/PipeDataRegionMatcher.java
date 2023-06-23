@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.collector.realtime.matcher;
 
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionCollector;
+import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
 
 import java.util.Set;
@@ -30,10 +30,10 @@ public interface PipeDataRegionMatcher {
    * Register a collector. If the collector's pattern matches the event's schema info, the event
    * will be assigned to the collector.
    */
-  void register(PipeRealtimeDataRegionCollector collector);
+  void register(PipeRealtimeDataRegionExtractor collector);
 
   /** Deregister a collector. */
-  void deregister(PipeRealtimeDataRegionCollector collector);
+  void deregister(PipeRealtimeDataRegionExtractor collector);
 
   /** Get the number of registered collectors in this matcher. */
   int getRegisterCount();
@@ -45,7 +45,7 @@ public interface PipeDataRegionMatcher {
    * @param event the event to be matched
    * @return the matched collectors
    */
-  Set<PipeRealtimeDataRegionCollector> match(PipeRealtimeCollectEvent event);
+  Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeCollectEvent event);
 
   /** Clear all the registered collectors and internal data structures. */
   void clear();

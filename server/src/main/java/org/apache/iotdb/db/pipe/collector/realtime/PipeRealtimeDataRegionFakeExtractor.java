@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.pipe.collector.realtime;
 
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
-public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionCollector {
+public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionExtractor {
 
   @Override
   public void validate(PipeParameterValidator validator) {
@@ -34,7 +34,7 @@ public class PipeRealtimeDataRegionFakeCollector extends PipeRealtimeDataRegionC
 
   @Override
   public void customize(
-      PipeParameters parameters, PipeCollectorRuntimeConfiguration configuration) {
+      PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration) {
     // do nothing
   }
 

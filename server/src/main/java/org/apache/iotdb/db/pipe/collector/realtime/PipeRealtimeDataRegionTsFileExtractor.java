@@ -25,35 +25,35 @@ import org.apache.iotdb.db.pipe.collector.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCollector {
+public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRealtimeDataRegionLogCollector.class);
+      LoggerFactory.getLogger(PipeRealtimeDataRegionTsFileExtractor.class);
 
   // This queue is used to store pending events collected by the method collect(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionLogCollector() {
+  public PipeRealtimeDataRegionTsFileExtractor() {
     this.pendingQueue = new UnboundedBlockingPendingQueue<>();
   }
 
   @Override
   public void collect(PipeRealtimeCollectEvent event) {
-    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
+    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
 
-    if (!(event.getEvent() instanceof TabletInsertionEvent)) {
+    if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
       return;
     }
 
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
-          "collect: pending queue of PipeRealtimeDataRegionLogCollector {} has reached capacity, discard tablet event {}, current state {}",
+          "collect: pending queue of PipeRealtimeDataRegionTsFileCollector {} has reached capacity, discard TsFile event {}, current state {}",
           this,
           event,
           event.getTsFileEpoch().getState(this));
@@ -64,12 +64,12 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
 
   @Override
   public boolean isNeedListenToTsFile() {
-    return false;
+    return true;
   }
 
   @Override
   public boolean isNeedListenToInsertNode() {
-    return true;
+    return false;
   }
 
   @Override
@@ -79,7 +79,8 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
     while (collectEvent != null) {
       Event suppliedEvent = null;
 
-      if (collectEvent.increaseReferenceCount(PipeRealtimeDataRegionLogCollector.class.getName())) {
+      if (collectEvent.increaseReferenceCount(
+          PipeRealtimeDataRegionTsFileExtractor.class.getName())) {
         suppliedEvent = collectEvent.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by
@@ -87,14 +88,14 @@ public class PipeRealtimeDataRegionLogCollector extends PipeRealtimeDataRegionCo
         // and report the exception to PipeRuntimeAgent.
         final String errorMessage =
             String.format(
-                "Tablet Event %s can not be supplied because the reference count can not be increased, "
+                "TsFile Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 collectEvent.getEvent());
         LOGGER.warn(errorMessage);
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
-      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogCollector.class.getName());
+      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
