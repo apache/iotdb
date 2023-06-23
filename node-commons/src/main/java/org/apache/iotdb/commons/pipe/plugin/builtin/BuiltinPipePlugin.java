@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.collector.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBSyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnectorV1;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnectorV2;
+import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 
 public enum BuiltinPipePlugin {
 
-  // collectors
+  // extractors
   IOTDB_EXTRACTOR("iotdb_extractor", IoTDBExtractor.class),
 
   // processors

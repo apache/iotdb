@@ -122,16 +122,16 @@ public class PipePluginInfo implements SnapshotProcessor {
   }
 
   public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) {
-    final PipeParameters collectorParameters =
-        new PipeParameters(createPipeRequest.getCollectorAttributes());
-    final String collectorPluginName =
-        collectorParameters.getStringOrDefault(
+    final PipeParameters extractorParameters =
+        new PipeParameters(createPipeRequest.getExtractorAttributes());
+    final String extractorPluginName =
+        extractorParameters.getStringOrDefault(
             PipeExtractorConstant.EXTRACTOR_KEY, IOTDB_EXTRACTOR.getPipePluginName());
-    if (!pipePluginMetaKeeper.containsPipePlugin(collectorPluginName)) {
+    if (!pipePluginMetaKeeper.containsPipePlugin(extractorPluginName)) {
       final String exceptionMessage =
           String.format(
               "Failed to create pipe, the pipe extractor plugin %s does not exist",
-              collectorPluginName);
+              extractorPluginName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }

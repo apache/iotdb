@@ -3517,11 +3517,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "Not support for this sql in CREATEPIPE, please enter pipename or pipesinkname.");
     }
-    if (ctx.collectorAttributesClause() != null) {
-      createPipeStatement.setCollectorAttributes(
-          parseCollectorAttributesClause(ctx.collectorAttributesClause()));
+    if (ctx.extractorAttributesClause() != null) {
+      createPipeStatement.setExtractorAttributes(
+          parseExtractorAttributesClause(ctx.extractorAttributesClause()));
     } else {
-      createPipeStatement.setCollectorAttributes(new HashMap<>());
+      createPipeStatement.setExtractorAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
@@ -3534,14 +3534,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return createPipeStatement;
   }
 
-  private Map<String, String> parseCollectorAttributesClause(
-      IoTDBSqlParser.CollectorAttributesClauseContext ctx) {
+  private Map<String, String> parseExtractorAttributesClause(
+      IoTDBSqlParser.ExtractorAttributesClauseContext ctx) {
     final Map<String, String> collectorMap = new HashMap<>();
-    for (IoTDBSqlParser.CollectorAttributeClauseContext singleCtx :
-        ctx.collectorAttributeClause()) {
+    for (IoTDBSqlParser.ExtractorAttributeClauseContext singleCtx :
+        ctx.extractorAttributeClause()) {
       collectorMap.put(
-          parseStringLiteral(singleCtx.collectorKey.getText()),
-          parseStringLiteral(singleCtx.collectorValue.getText()));
+          parseStringLiteral(singleCtx.extractorKey.getText()),
+          parseStringLiteral(singleCtx.extractorValue.getText()));
     }
     return collectorMap;
   }
