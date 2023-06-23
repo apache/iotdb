@@ -17,43 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.realtime;
+package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.collector.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegionExtractor {
+public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRealtimeDataRegionTsFileExtractor.class);
+      LoggerFactory.getLogger(PipeRealtimeDataRegionLogExtractor.class);
 
-  // This queue is used to store pending events collected by the method collect(). The method
+  // This queue is used to store pending events collected by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
-  public PipeRealtimeDataRegionTsFileExtractor() {
+  public PipeRealtimeDataRegionLogExtractor() {
     this.pendingQueue = new UnboundedBlockingPendingQueue<>();
   }
 
   @Override
-  public void collect(PipeRealtimeCollectEvent event) {
-    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+  public void extract(PipeRealtimeEvent event) {
+    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
 
-    if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
+    if (!(event.getEvent() instanceof TabletInsertionEvent)) {
       return;
     }
 
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
-          "collect: pending queue of PipeRealtimeDataRegionTsFileCollector {} has reached capacity, discard TsFile event {}, current state {}",
+          "extract: pending queue of PipeRealtimeDataRegionLogExtractor {} has reached capacity, discard tablet event {}, current state {}",
           this,
           event,
           event.getTsFileEpoch().getState(this));
@@ -64,23 +64,22 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
   @Override
   public boolean isNeedListenToTsFile() {
-    return true;
-  }
-
-  @Override
-  public boolean isNeedListenToInsertNode() {
     return false;
   }
 
   @Override
+  public boolean isNeedListenToInsertNode() {
+    return true;
+  }
+
+  @Override
   public Event supply() {
-    PipeRealtimeCollectEvent collectEvent = (PipeRealtimeCollectEvent) pendingQueue.poll();
+    PipeRealtimeEvent collectEvent = (PipeRealtimeEvent) pendingQueue.poll();
 
     while (collectEvent != null) {
       Event suppliedEvent = null;
 
-      if (collectEvent.increaseReferenceCount(
-          PipeRealtimeDataRegionTsFileExtractor.class.getName())) {
+      if (collectEvent.increaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName())) {
         suppliedEvent = collectEvent.getEvent();
       } else {
         // if the event's reference count can not be increased, it means the data represented by
@@ -88,19 +87,19 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
         // and report the exception to PipeRuntimeAgent.
         final String errorMessage =
             String.format(
-                "TsFile Event %s can not be supplied because the reference count can not be increased, "
+                "Tablet Event %s can not be supplied because the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 collectEvent.getEvent());
         LOGGER.warn(errorMessage);
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
-      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      collectEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
       if (suppliedEvent != null) {
         return suppliedEvent;
       }
 
-      collectEvent = (PipeRealtimeCollectEvent) pendingQueue.poll();
+      collectEvent = (PipeRealtimeEvent) pendingQueue.poll();
     }
 
     // means the pending queue is empty.

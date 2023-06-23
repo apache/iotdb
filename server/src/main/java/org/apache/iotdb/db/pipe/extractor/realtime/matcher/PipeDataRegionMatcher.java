@@ -17,36 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.realtime.matcher;
+package org.apache.iotdb.db.pipe.extractor.realtime.matcher;
 
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 
 import java.util.Set;
 
 public interface PipeDataRegionMatcher {
 
   /**
-   * Register a collector. If the collector's pattern matches the event's schema info, the event
-   * will be assigned to the collector.
+   * Register a extractor. If the extractor's pattern matches the event's schema info, the event
+   * will be assigned to the extractor.
    */
-  void register(PipeRealtimeDataRegionExtractor collector);
+  void register(PipeRealtimeDataRegionExtractor extractor);
 
-  /** Deregister a collector. */
-  void deregister(PipeRealtimeDataRegionExtractor collector);
+  /** Deregister a extractor. */
+  void deregister(PipeRealtimeDataRegionExtractor extractor);
 
-  /** Get the number of registered collectors in this matcher. */
+  /** Get the number of registered extractors in this matcher. */
   int getRegisterCount();
 
   /**
-   * Match the event's schema info with the registered collectors' patterns. If the event's schema
-   * info matches the pattern of a collector, the collector will be returned.
+   * Match the event's schema info with the registered extractors' patterns. If the event's schema
+   * info matches the pattern of a extractor, the extractor will be returned.
    *
    * @param event the event to be matched
-   * @return the matched collectors
+   * @return the matched extractors
    */
-  Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeCollectEvent event);
+  Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeEvent event);
 
-  /** Clear all the registered collectors and internal data structures. */
+  /** Clear all the registered extractors and internal data structures. */
   void clear();
 }

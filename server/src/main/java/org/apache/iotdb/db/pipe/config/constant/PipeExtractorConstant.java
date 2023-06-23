@@ -21,20 +21,20 @@ package org.apache.iotdb.db.pipe.config.constant;
 
 public class PipeExtractorConstant {
 
-  public static final String COLLECTOR_KEY = "collector";
+  public static final String EXTRACTOR_KEY = "extractor";
 
-  public static final String COLLECTOR_PATTERN_KEY = "collector.pattern";
-  public static final String COLLECTOR_PATTERN_DEFAULT_VALUE = "root";
+  public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
+  public static final String EXTRACTOR_PATTERN_DEFAULT_VALUE = "root";
 
-  public static final String COLLECTOR_HISTORY_ENABLE_KEY = "collector.history.enable";
-  public static final String COLLECTOR_HISTORY_START_TIME = "collector.history.start-time";
-  public static final String COLLECTOR_HISTORY_END_TIME = "collector.history.end-time";
+  public static final String EXTRACTOR_HISTORY_ENABLE_KEY = "extractor.history.enable";
+  public static final String EXTRACTOR_HISTORY_START_TIME = "extractor.history.start-time";
+  public static final String EXTRACTOR_HISTORY_END_TIME = "extractor.history.end-time";
 
-  public static final String COLLECTOR_REALTIME_ENABLE = "collector.realtime.enable";
-  public static final String COLLECTOR_REALTIME_MODE = "collector.realtime.mode";
-  public static final String COLLECTOR_REALTIME_MODE_HYBRID = "hybrid";
-  public static final String COLLECTOR_REALTIME_MODE_FILE = "file";
-  public static final String COLLECTOR_REALTIME_MODE_LOG = "log";
+  public static final String EXTRACTOR_REALTIME_ENABLE = "extractor.realtime.enable";
+  public static final String EXTRACTOR_REALTIME_MODE = "extractor.realtime.mode";
+  public static final String EXTRACTOR_REALTIME_MODE_HYBRID = "hybrid";
+  public static final String EXTRACTOR_REALTIME_MODE_FILE = "file";
+  public static final String EXTRACTOR_REALTIME_MODE_LOG = "log";
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");

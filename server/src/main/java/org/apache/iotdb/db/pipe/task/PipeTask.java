@@ -27,44 +27,44 @@ public class PipeTask {
   private final String pipeName;
   private final TConsensusGroupId dataRegionId;
 
-  private final PipeTaskStage collectorStage;
+  private final PipeTaskStage extractorStage;
   private final PipeTaskStage processorStage;
   private final PipeTaskStage connectorStage;
 
   PipeTask(
       String pipeName,
       TConsensusGroupId dataRegionId,
-      PipeTaskStage collectorStage,
+      PipeTaskStage extractorStage,
       PipeTaskStage processorStage,
       PipeTaskStage connectorStage) {
     this.pipeName = pipeName;
     this.dataRegionId = dataRegionId;
 
-    this.collectorStage = collectorStage;
+    this.extractorStage = extractorStage;
     this.processorStage = processorStage;
     this.connectorStage = connectorStage;
   }
 
   public void create() {
-    collectorStage.create();
+    extractorStage.create();
     processorStage.create();
     connectorStage.create();
   }
 
   public void drop() {
-    collectorStage.drop();
+    extractorStage.drop();
     processorStage.drop();
     connectorStage.drop();
   }
 
   public void start() {
-    collectorStage.start();
+    extractorStage.start();
     processorStage.start();
     connectorStage.start();
   }
 
   public void stop() {
-    collectorStage.stop();
+    extractorStage.stop();
     processorStage.stop();
     connectorStage.stop();
   }

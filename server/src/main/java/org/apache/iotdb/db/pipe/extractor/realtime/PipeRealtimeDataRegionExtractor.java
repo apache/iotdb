@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.realtime;
+package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
-import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -45,11 +45,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       throws Exception {
     pattern =
         parameters.getStringOrDefault(
-            PipeExtractorConstant.COLLECTOR_PATTERN_KEY,
-            PipeExtractorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE);
+            PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
+            PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
 
-    final PipeTaskCollectorRuntimeEnvironment environment =
-        (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeTaskExtractorRuntimeEnvironment environment =
+        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
     dataRegionId = String.valueOf(environment.getRegionId());
     pipeTaskMeta = environment.getPipeTaskMeta();
   }
@@ -65,7 +65,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   /** @param event the event from the storage engine */
-  public abstract void collect(PipeRealtimeCollectEvent event);
+  public abstract void extract(PipeRealtimeEvent event);
 
   public abstract boolean isNeedListenToTsFile();
 
@@ -81,7 +81,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public String toString() {
-    return "PipeRealtimeDataRegionCollector{"
+    return "PipeRealtimeDataRegionExtractor{"
         + "pattern='"
         + pattern
         + '\''

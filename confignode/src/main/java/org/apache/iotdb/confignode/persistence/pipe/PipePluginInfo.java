@@ -126,7 +126,7 @@ public class PipePluginInfo implements SnapshotProcessor {
         new PipeParameters(createPipeRequest.getCollectorAttributes());
     final String collectorPluginName =
         collectorParameters.getStringOrDefault(
-            PipeExtractorConstant.COLLECTOR_KEY, IOTDB_EXTRACTOR.getPipePluginName());
+            PipeExtractorConstant.EXTRACTOR_KEY, IOTDB_EXTRACTOR.getPipePluginName());
     if (!pipePluginMetaKeeper.containsPipePlugin(collectorPluginName)) {
       final String exceptionMessage =
           String.format(

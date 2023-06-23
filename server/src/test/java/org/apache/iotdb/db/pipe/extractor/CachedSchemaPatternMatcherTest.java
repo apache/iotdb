@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector;
+package org.apache.iotdb.db.pipe.extractor;
 
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.collector.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
-import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -70,10 +70,10 @@ public class CachedSchemaPatternMatcherTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, "root");
+                put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, "root");
               }
             }),
-        new PipeTaskRuntimeConfiguration(new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
+        new PipeTaskRuntimeConfiguration(new PipeTaskExtractorRuntimeEnvironment("1", 1, 1, null)));
     collectorList.add(databaseCollector);
 
     int deviceCollectorNum = 10;
@@ -85,11 +85,11 @@ public class CachedSchemaPatternMatcherTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, "root." + finalI1);
+                  put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, "root." + finalI1);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
+              new PipeTaskExtractorRuntimeEnvironment("1", 1, 1, null)));
       collectorList.add(deviceCollector);
       for (int j = 0; j < seriesCollectorNum; j++) {
         PipeRealtimeDataRegionExtractor seriesCollector = new PipeRealtimeDataRegionFakeExtractor();
@@ -100,12 +100,12 @@ public class CachedSchemaPatternMatcherTest {
                 new HashMap<String, String>() {
                   {
                     put(
-                        PipeExtractorConstant.COLLECTOR_PATTERN_KEY,
+                        PipeExtractorConstant.EXTRACTOR_PATTERN_KEY,
                         "root." + finalI + "." + finalJ);
                   }
                 }),
             new PipeTaskRuntimeConfiguration(
-                new PipeTaskCollectorRuntimeEnvironment("1", 1, 1, null)));
+                new PipeTaskExtractorRuntimeEnvironment("1", 1, 1, null)));
         collectorList.add(seriesCollector);
       }
     }
@@ -126,16 +126,16 @@ public class CachedSchemaPatternMatcherTest {
     long totalTime = 0;
     for (int i = 0; i < epochNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
-        PipeRealtimeCollectEvent event =
-            new PipeRealtimeCollectEvent(
+        PipeRealtimeEvent event =
+            new PipeRealtimeEvent(
                 null, null, Collections.singletonMap("root." + i, measurements), "root");
         long startTime = System.currentTimeMillis();
-        matcher.match(event).forEach(collector -> collector.collect(event));
+        matcher.match(event).forEach(collector -> collector.extract(event));
         totalTime += (System.currentTimeMillis() - startTime);
       }
-      PipeRealtimeCollectEvent event = new PipeRealtimeCollectEvent(null, null, deviceMap, "root");
+      PipeRealtimeEvent event = new PipeRealtimeEvent(null, null, deviceMap, "root");
       long startTime = System.currentTimeMillis();
-      matcher.match(event).forEach(collector -> collector.collect(event));
+      matcher.match(event).forEach(collector -> collector.extract(event));
       totalTime += (System.currentTimeMillis() - startTime);
     }
     System.out.println("matcher.getRegisterCount() = " + matcher.getRegisterCount());
@@ -157,7 +157,7 @@ public class CachedSchemaPatternMatcherTest {
     }
 
     @Override
-    public void collect(PipeRealtimeCollectEvent event) {
+    public void extract(PipeRealtimeEvent event) {
       final boolean[] match = {false};
       event
           .getSchemaInfo()

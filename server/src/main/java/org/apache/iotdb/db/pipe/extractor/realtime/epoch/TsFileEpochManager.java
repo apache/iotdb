@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.realtime.epoch;
+package org.apache.iotdb.db.pipe.extractor.realtime.epoch;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +41,7 @@ public class TsFileEpochManager {
 
   private final Map<String, TsFileEpoch> filePath2Epoch = new HashMap<>();
 
-  public PipeRealtimeCollectEvent bindPipeTsFileInsertionEvent(
+  public PipeRealtimeEvent bindPipeTsFileInsertionEvent(
       PipeTsFileInsertionEvent event, TsFileResource resource) {
     final String filePath = resource.getTsFilePath();
 
@@ -53,7 +53,7 @@ public class TsFileEpochManager {
           return new TsFileEpoch(path);
         });
 
-    return new PipeRealtimeCollectEvent(
+    return new PipeRealtimeEvent(
         event,
         filePath2Epoch.remove(filePath),
         resource.getDevices().stream()
@@ -61,9 +61,9 @@ public class TsFileEpochManager {
         event.getPattern());
   }
 
-  public PipeRealtimeCollectEvent bindPipeInsertNodeTabletInsertionEvent(
+  public PipeRealtimeEvent bindPipeInsertNodeTabletInsertionEvent(
       PipeInsertNodeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
-    return new PipeRealtimeCollectEvent(
+    return new PipeRealtimeEvent(
         event,
         filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new),
         Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),

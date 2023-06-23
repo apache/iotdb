@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.realtime;
+package org.apache.iotdb.db.pipe.extractor.realtime;
 
-import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -49,7 +49,7 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
   }
 
   @Override
-  public void collect(PipeRealtimeCollectEvent event) {
+  public void extract(PipeRealtimeEvent event) {
     // do nothing
   }
 
@@ -70,6 +70,6 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
 
   @Override
   public String toString() {
-    return "PipeRealtimeDataRegionFakeCollector{}";
+    return "PipeRealtimeDataRegionFakeExtractor{}";
   }
 }

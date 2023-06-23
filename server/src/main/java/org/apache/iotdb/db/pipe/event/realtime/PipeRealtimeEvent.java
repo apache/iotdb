@@ -21,30 +21,30 @@ package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.collector.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
 
 /**
  * PipeRealtimeCollectEvent is an event that decorates the EnrichedEvent with the information of
- * TsFileEpoch and schema info. It only exists in the realtime event collector.
+ * TsFileEpoch and schema info. It only exists in the realtime event extractor.
  */
-public class PipeRealtimeCollectEvent extends EnrichedEvent {
+public class PipeRealtimeEvent extends EnrichedEvent {
 
   private final EnrichedEvent event;
   private final TsFileEpoch tsFileEpoch;
 
   private Map<String, String[]> device2Measurements;
 
-  public PipeRealtimeCollectEvent(
+  public PipeRealtimeEvent(
       EnrichedEvent event,
       TsFileEpoch tsFileEpoch,
       Map<String, String[]> device2Measurements,
       String pattern) {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
-    // is only used in the realtime event collector, which does not need to report the progress
+    // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
     super(null, pattern);
 
@@ -53,14 +53,14 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
     this.device2Measurements = device2Measurements;
   }
 
-  public PipeRealtimeCollectEvent(
+  public PipeRealtimeEvent(
       EnrichedEvent event,
       TsFileEpoch tsFileEpoch,
       Map<String, String[]> device2Measurements,
       PipeTaskMeta pipeTaskMeta,
       String pattern) {
     // pipeTaskMeta is used to report the progress of the event, the PipeRealtimeCollectEvent
-    // is only used in the realtime event collector, which does not need to report the progress
+    // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
     super(pipeTaskMeta, pattern);
 
@@ -119,9 +119,9 @@ public class PipeRealtimeCollectEvent extends EnrichedEvent {
   }
 
   @Override
-  public PipeRealtimeCollectEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+  public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeRealtimeCollectEvent(
+    return new PipeRealtimeEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(pipeTaskMeta, pattern),
         this.tsFileEpoch,
         this.device2Measurements,

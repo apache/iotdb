@@ -125,7 +125,7 @@ public abstract class EnrichedEvent implements Event {
    * @return the pattern
    */
   public final String getPattern() {
-    return pattern == null ? PipeExtractorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
+    return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(

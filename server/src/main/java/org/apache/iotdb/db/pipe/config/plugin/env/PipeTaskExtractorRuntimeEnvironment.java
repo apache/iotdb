@@ -17,11 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.historical;
+package org.apache.iotdb.db.pipe.config.plugin.env;
 
-import org.apache.iotdb.pipe.api.PipeExtractor;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
-public interface PipeHistoricalDataRegionExtractor extends PipeExtractor {
+public class PipeTaskExtractorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 
-  boolean hasConsumedAll();
+  private final int regionId;
+
+  private final PipeTaskMeta pipeTaskMeta;
+
+  public PipeTaskExtractorRuntimeEnvironment(
+      String pipeName, long creationTime, int regionId, PipeTaskMeta pipeTaskMeta) {
+    super(pipeName, creationTime);
+    this.regionId = regionId;
+    this.pipeTaskMeta = pipeTaskMeta;
+  }
+
+  public int getRegionId() {
+    return regionId;
+  }
+
+  public PipeTaskMeta getPipeTaskMeta() {
+    return pipeTaskMeta;
+  }
 }

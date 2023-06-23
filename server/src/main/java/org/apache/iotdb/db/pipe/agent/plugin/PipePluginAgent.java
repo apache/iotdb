@@ -195,11 +195,11 @@ public class PipePluginAgent {
     }
   }
 
-  public PipeExtractor reflectCollector(PipeParameters collectorParameters) {
+  public PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
     return (PipeExtractor)
         reflect(
-            collectorParameters.getStringOrDefault(
-                PipeExtractorConstant.COLLECTOR_KEY,
+            extractorParameters.getStringOrDefault(
+                PipeExtractorConstant.EXTRACTOR_KEY,
                 BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
 
