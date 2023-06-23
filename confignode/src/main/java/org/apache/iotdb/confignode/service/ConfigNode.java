@@ -109,10 +109,6 @@ public class ConfigNode implements ConfigNodeMBean {
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
-        /* Always restore ClusterName and ConfigNodeId first */
-        CONF.setClusterName(SystemPropertiesUtils.loadClusterNameWhenRestarted());
-        CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
-
         if (!SystemPropertiesUtils.isSeedConfigNode()) {
           // The non-seed-ConfigNodes should send restart request
           sendRestartConfigNodeRequest();
