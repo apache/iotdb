@@ -29,10 +29,8 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -158,20 +156,15 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     if (insertTabletList == null) {
       return;
     }
-    Map<String, Set<String>> mapFromDeviceToMeasurements = new HashMap<>();
     for (InsertTabletStatement insertTablet : insertTabletList) {
       String device = insertTablet.devicePath.getFullPath();
-      Set<String> measurementSet = mapFromDeviceToMeasurements.get(device);
-      if (measurementSet == null) {
-        measurementSet = new HashSet<>();
-      }
+      Set<String> measurementSet = new HashSet<>();
       for (String measurement : insertTablet.measurements) {
         boolean notExist = measurementSet.add(measurement);
         if (!notExist) {
           throw new SemanticException(new DuplicateInsertException(device, measurement));
         }
       }
-      mapFromDeviceToMeasurements.put(device, measurementSet);
     }
   }
 }
