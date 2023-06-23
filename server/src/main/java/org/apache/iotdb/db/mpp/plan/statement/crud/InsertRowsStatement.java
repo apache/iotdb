@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.StatementType;
@@ -29,9 +28,7 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class InsertRowsStatement extends InsertBaseStatement {
@@ -145,36 +142,17 @@ public class InsertRowsStatement extends InsertBaseStatement {
     List<InsertRowStatement> mergedList = new ArrayList<>();
     boolean needSplit = false;
     for (InsertRowStatement child : this.insertRowStatementList) {
-      List<InsertRowStatement> childSplitResult = child.getSplitList();
-      needSplit = needSplit || child.isNeedSplit();
-      mergedList.addAll(childSplitResult);
+      if (child.isNeedSplit()) {
+        List<InsertRowStatement> childSplitResult = child.getSplitList();
+        needSplit = true;
+        mergedList.addAll(childSplitResult);
+      }
     }
     if (!needSplit) {
       return this;
     }
-    validateInsertRowList(mergedList);
     InsertRowsStatement splitResult = new InsertRowsStatement();
     splitResult.setInsertRowStatementList(mergedList);
     return splitResult;
-  }
-
-  /**
-   * Check given InsertRowStatement list, make sure no duplicate time series in those statements. If
-   * there are duplicate measurements, throw DuplicateInsertException.
-   */
-  public static void validateInsertRowList(List<InsertRowStatement> insertRowList) {
-    if (insertRowList == null) {
-      return;
-    }
-    for (InsertRowStatement insertRow : insertRowList) {
-      String device = insertRow.devicePath.getFullPath();
-      Set<String> measurementSet = new HashSet<>();
-      for (String measurement : insertRow.measurements) {
-        boolean notExist = measurementSet.add(measurement);
-        if (!notExist) {
-          throw new RuntimeException(new DuplicateInsertException(device, measurement));
-        }
-      }
-    }
   }
 }

@@ -308,7 +308,6 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       return this;
     }
     List<InsertRowStatement> insertRowStatementList = this.getSplitList();
-    InsertRowsStatement.validateInsertRowList(insertRowStatementList);
     if (insertRowStatementList.size() == 1) {
       return insertRowStatementList.get(0);
     }
