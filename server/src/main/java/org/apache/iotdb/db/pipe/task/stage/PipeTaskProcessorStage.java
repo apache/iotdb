@@ -70,7 +70,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
             ? new PipeDoNothingProcessor()
             : PipeAgent.plugin().reflectProcessor(pipeProcessorParameters);
 
-    // validate and customize should be called before createSubtask. this allows collector exposing
+    // validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
     try {
       // 1. validate processor parameters

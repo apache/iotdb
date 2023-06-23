@@ -47,7 +47,7 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
   }
 
   public String getPattern() {
-    return pattern == null ? PipeExtractorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
+    return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -78,7 +78,7 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
     final String notNullPattern = getPattern();
 
     // if notNullPattern is "root", we don't need to convert, just return the original tablet
-    if (notNullPattern.equals(PipeExtractorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+    if (notNullPattern.equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)) {
       return tablet;
     }
 

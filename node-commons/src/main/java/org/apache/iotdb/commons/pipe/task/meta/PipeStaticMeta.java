@@ -63,7 +63,7 @@ public class PipeStaticMeta {
     return creationTime;
   }
 
-  public PipeParameters getCollectorParameters() {
+  public PipeParameters getExtractorParameters() {
     return collectorParameters;
   }
 

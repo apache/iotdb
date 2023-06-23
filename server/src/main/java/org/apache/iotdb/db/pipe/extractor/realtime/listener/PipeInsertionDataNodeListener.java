@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.realtime.listener;
+package org.apache.iotdb.db.pipe.extractor.realtime.listener;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.collector.realtime.assigner.PipeDataRegionAssigner;
-import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEventFactory;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.assigner.PipeDataRegionAssigner;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,49 +40,49 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>All events collected by this listener will be first published to different
  * PipeEventDataRegionAssigners (identified by data region id), and then PipeEventDataRegionAssigner
- * will filter events and assign them to different PipeRealtimeEventDataRegionCollectors.
+ * will filter events and assign them to different PipeRealtimeEventDataRegionExtractors.
  */
 public class PipeInsertionDataNodeListener {
 
   private final ConcurrentMap<String, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
 
-  private final AtomicInteger listenToTsFileCollectorCount = new AtomicInteger(0);
-  private final AtomicInteger listenToInsertNodeCollectorCount = new AtomicInteger(0);
+  private final AtomicInteger listenToTsFileExtractorCount = new AtomicInteger(0);
+  private final AtomicInteger listenToInsertNodeExtractorCount = new AtomicInteger(0);
 
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
-      String dataRegionId, PipeRealtimeDataRegionExtractor collector) {
+      String dataRegionId, PipeRealtimeDataRegionExtractor extractor) {
     dataRegionId2Assigner
         .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner())
-        .startAssignTo(collector);
+        .startAssignTo(extractor);
 
-    if (collector.isNeedListenToTsFile()) {
-      listenToTsFileCollectorCount.incrementAndGet();
+    if (extractor.isNeedListenToTsFile()) {
+      listenToTsFileExtractorCount.incrementAndGet();
     }
-    if (collector.isNeedListenToInsertNode()) {
-      listenToInsertNodeCollectorCount.incrementAndGet();
+    if (extractor.isNeedListenToInsertNode()) {
+      listenToInsertNodeExtractorCount.incrementAndGet();
     }
   }
 
   public synchronized void stopListenAndAssign(
-      String dataRegionId, PipeRealtimeDataRegionExtractor collector) {
+      String dataRegionId, PipeRealtimeDataRegionExtractor extractor) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
     if (assigner == null) {
       return;
     }
 
-    assigner.stopAssignTo(collector);
+    assigner.stopAssignTo(extractor);
 
-    if (collector.isNeedListenToTsFile()) {
-      listenToTsFileCollectorCount.decrementAndGet();
+    if (extractor.isNeedListenToTsFile()) {
+      listenToTsFileExtractorCount.decrementAndGet();
     }
-    if (collector.isNeedListenToInsertNode()) {
-      listenToInsertNodeCollectorCount.decrementAndGet();
+    if (extractor.isNeedListenToInsertNode()) {
+      listenToInsertNodeExtractorCount.decrementAndGet();
     }
 
-    if (assigner.notMoreCollectorNeededToBeAssigned()) {
+    if (assigner.notMoreExtractorNeededToBeAssigned()) {
       // the removed assigner will is the same as the one referenced by the variable `assigner`
       dataRegionId2Assigner.remove(dataRegionId);
       // this will help to release the memory occupied by the assigner
@@ -93,9 +93,9 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// listen to events ////////////////////////////
 
   public void listenToTsFile(String dataRegionId, TsFileResource tsFileResource) {
-    // wo don't judge whether listenToTsFileCollectorCount.get() == 0 here, because
+    // wo don't judge whether listenToTsFileExtractorCount.get() == 0 here, because
     // when using SimpleProgressIndex, the tsfile event needs to be assigned to the
-    // collector even if listenToTsFileCollectorCount.get() == 0 to record the progress
+    // extractor even if listenToTsFileExtractorCount.get() == 0 to record the progress
 
     PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
 
@@ -106,7 +106,7 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    assigner.publishToAssign(PipeRealtimeCollectEventFactory.createCollectEvent(tsFileResource));
+    assigner.publishToAssign(PipeRealtimeEventFactory.createCollectEvent(tsFileResource));
   }
 
   public void listenToInsertNode(
@@ -114,7 +114,7 @@ public class PipeInsertionDataNodeListener {
       WALEntryHandler walEntryHandler,
       InsertNode insertNode,
       TsFileResource tsFileResource) {
-    if (listenToInsertNodeCollectorCount.get() == 0) {
+    if (listenToInsertNodeExtractorCount.get() == 0) {
       return;
     }
 
@@ -126,8 +126,7 @@ public class PipeInsertionDataNodeListener {
     }
 
     assigner.publishToAssign(
-        PipeRealtimeCollectEventFactory.createCollectEvent(
-            walEntryHandler, insertNode, tsFileResource));
+        PipeRealtimeEventFactory.createCollectEvent(walEntryHandler, insertNode, tsFileResource));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

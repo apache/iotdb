@@ -21,21 +21,21 @@ package org.apache.iotdb.db.pipe.event.realtime;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.pipe.collector.realtime.epoch.TsFileEpochManager;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpochManager;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 
-public class PipeRealtimeCollectEventFactory {
+public class PipeRealtimeEventFactory {
 
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
-  public static PipeRealtimeCollectEvent createCollectEvent(TsFileResource resource) {
+  public static PipeRealtimeEvent createCollectEvent(TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
         new PipeTsFileInsertionEvent(resource), resource);
   }
 
-  public static PipeRealtimeCollectEvent createCollectEvent(
+  public static PipeRealtimeEvent createCollectEvent(
       WALEntryHandler walEntryHandler, InsertNode insertNode, TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
@@ -44,7 +44,7 @@ public class PipeRealtimeCollectEventFactory {
         resource);
   }
 
-  private PipeRealtimeCollectEventFactory() {
+  private PipeRealtimeEventFactory() {
     // factory class, do not instantiate
   }
 }

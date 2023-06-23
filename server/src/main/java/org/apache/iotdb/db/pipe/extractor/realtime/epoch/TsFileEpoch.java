@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.realtime.epoch;
+package org.apache.iotdb.db.pipe.extractor.realtime.epoch;
 
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -29,23 +29,23 @@ public class TsFileEpoch {
 
   private final String filePath;
   private final ConcurrentMap<PipeRealtimeDataRegionExtractor, AtomicReference<State>>
-      dataRegionCollector2State;
+      dataRegionExtractor2State;
 
   public TsFileEpoch(String filePath) {
     this.filePath = filePath;
-    this.dataRegionCollector2State = new ConcurrentHashMap<>();
+    this.dataRegionExtractor2State = new ConcurrentHashMap<>();
   }
 
-  public TsFileEpoch.State getState(PipeRealtimeDataRegionExtractor collector) {
-    return dataRegionCollector2State
-        .computeIfAbsent(collector, o -> new AtomicReference<>(State.EMPTY))
+  public TsFileEpoch.State getState(PipeRealtimeDataRegionExtractor extractor) {
+    return dataRegionExtractor2State
+        .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
         .get();
   }
 
   public void migrateState(
-      PipeRealtimeDataRegionExtractor collector, TsFileEpochStateMigrator visitor) {
-    dataRegionCollector2State
-        .computeIfAbsent(collector, o -> new AtomicReference<>(State.EMPTY))
+      PipeRealtimeDataRegionExtractor extractor, TsFileEpochStateMigrator visitor) {
+    dataRegionExtractor2State
+        .computeIfAbsent(extractor, o -> new AtomicReference<>(State.EMPTY))
         .getAndUpdate(visitor::migrate);
   }
 
@@ -55,8 +55,8 @@ public class TsFileEpoch {
         + "filePath='"
         + filePath
         + '\''
-        + ", dataRegionCollector2State="
-        + dataRegionCollector2State
+        + ", dataRegionExtractor2State="
+        + dataRegionExtractor2State
         + '}';
   }
 

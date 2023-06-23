@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector;
+package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -25,12 +25,12 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionHybridExtractor;
-import org.apache.iotdb.db.pipe.collector.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.wal.utils.WALEntryHandler;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -115,41 +115,41 @@ public class PipeRealtimeCollectTest {
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, pattern1);
+                  put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern1);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
+              new PipeTaskExtractorRuntimeEnvironment(
                   "1", 1, Integer.parseInt(dataRegion1), null)));
       collector2.customize(
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, pattern2);
+                  put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern2);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
+              new PipeTaskExtractorRuntimeEnvironment(
                   "1", 1, Integer.parseInt(dataRegion1), null)));
       collector3.customize(
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, pattern1);
+                  put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern1);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
+              new PipeTaskExtractorRuntimeEnvironment(
                   "1", 1, Integer.parseInt(dataRegion2), null)));
       collector4.customize(
           new PipeParameters(
               new HashMap<String, String>() {
                 {
-                  put(PipeExtractorConstant.COLLECTOR_PATTERN_KEY, pattern2);
+                  put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern2);
                 }
               }),
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskCollectorRuntimeEnvironment(
+              new PipeTaskExtractorRuntimeEnvironment(
                   "1", 1, Integer.parseInt(dataRegion2), null)));
 
       PipeRealtimeDataRegionExtractor[] collectors =

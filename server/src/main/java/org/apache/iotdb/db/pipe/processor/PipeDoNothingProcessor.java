@@ -54,7 +54,7 @@ public class PipeDoNothingProcessor implements PipeProcessor {
       final EnrichedEvent enrichedEvent = (EnrichedEvent) tabletInsertionEvent;
       if (enrichedEvent
           .getPattern()
-          .equals(PipeExtractorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+          .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)) {
         eventCollector.collect(tabletInsertionEvent);
       } else {
         tabletInsertionEvent
@@ -86,7 +86,7 @@ public class PipeDoNothingProcessor implements PipeProcessor {
     if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
       final PipeTsFileInsertionEvent enrichedEvent =
           (PipeTsFileInsertionEvent) tsFileInsertionEvent;
-      if (enrichedEvent.getPattern().equals(PipeExtractorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)
+      if (enrichedEvent.getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
           && !enrichedEvent.hasTimeFilter()) {
         eventCollector.collect(tsFileInsertionEvent);
       } else {

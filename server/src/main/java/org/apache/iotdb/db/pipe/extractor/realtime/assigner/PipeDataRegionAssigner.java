@@ -17,61 +17,61 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.realtime.assigner;
+package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
-import org.apache.iotdb.db.pipe.collector.realtime.PipeRealtimeDataRegionExtractor;
-import org.apache.iotdb.db.pipe.collector.realtime.matcher.CachedSchemaPatternMatcher;
-import org.apache.iotdb.db.pipe.collector.realtime.matcher.PipeDataRegionMatcher;
-import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeCollectEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
+import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
 
 import com.lmax.disruptor.dsl.ProducerType;
 
 public class PipeDataRegionAssigner {
 
-  /** The matcher is used to match the event with the collector based on the pattern. */
+  /** The matcher is used to match the event with the extractor based on the pattern. */
   private final PipeDataRegionMatcher matcher;
 
-  /** The disruptor is used to assign the event to the collector. */
-  private final DisruptorQueue<PipeRealtimeCollectEvent> disruptor;
+  /** The disruptor is used to assign the event to the extractor. */
+  private final DisruptorQueue<PipeRealtimeEvent> disruptor;
 
   public PipeDataRegionAssigner() {
     this.matcher = new CachedSchemaPatternMatcher();
     this.disruptor =
-        new DisruptorQueue.Builder<PipeRealtimeCollectEvent>()
+        new DisruptorQueue.Builder<PipeRealtimeEvent>()
             .setProducerType(ProducerType.SINGLE)
-            .addEventHandler(this::assignToCollector)
+            .addEventHandler(this::assignToExtractor)
             .build();
   }
 
-  public void publishToAssign(PipeRealtimeCollectEvent event) {
+  public void publishToAssign(PipeRealtimeEvent event) {
     event.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
     disruptor.publish(event);
   }
 
-  public void assignToCollector(PipeRealtimeCollectEvent event, long sequence, boolean endOfBatch) {
+  public void assignToExtractor(PipeRealtimeEvent event, long sequence, boolean endOfBatch) {
     matcher
         .match(event)
         .forEach(
-            collector -> {
-              final PipeRealtimeCollectEvent copiedEvent =
+            extractor -> {
+              final PipeRealtimeEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                      collector.getPipeTaskMeta(), collector.getPattern());
+                      extractor.getPipeTaskMeta(), extractor.getPattern());
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
-              collector.collect(copiedEvent);
+              extractor.extract(copiedEvent);
             });
     event.gcSchemaInfo();
     event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName());
   }
 
-  public void startAssignTo(PipeRealtimeDataRegionExtractor collector) {
-    matcher.register(collector);
+  public void startAssignTo(PipeRealtimeDataRegionExtractor extractor) {
+    matcher.register(extractor);
   }
 
-  public void stopAssignTo(PipeRealtimeDataRegionExtractor collector) {
-    matcher.deregister(collector);
+  public void stopAssignTo(PipeRealtimeDataRegionExtractor extractor) {
+    matcher.deregister(extractor);
   }
 
-  public boolean notMoreCollectorNeededToBeAssigned() {
+  public boolean notMoreExtractorNeededToBeAssigned() {
     return matcher.getRegisterCount() == 0;
   }
 

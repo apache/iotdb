@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.collector.historical;
+package org.apache.iotdb.db.pipe.extractor.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskCollectorRuntimeEnvironment;
+import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -44,11 +44,11 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.COLLECTOR_HISTORY_ENABLE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.COLLECTOR_HISTORY_END_TIME;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.COLLECTOR_HISTORY_START_TIME;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.COLLECTOR_PATTERN_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_PATTERN_KEY;
 
 public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDataRegionExtractor {
 
@@ -77,41 +77,41 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   @Override
   public void customize(
       PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration) {
-    final PipeTaskCollectorRuntimeEnvironment environment =
-        (PipeTaskCollectorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeTaskExtractorRuntimeEnvironment environment =
+        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
     dataRegionId = environment.getRegionId();
 
-    pattern = parameters.getStringOrDefault(COLLECTOR_PATTERN_KEY, COLLECTOR_PATTERN_DEFAULT_VALUE);
+    pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
 
-    // user may set the COLLECTOR_HISTORY_START_TIME and COLLECTOR_HISTORY_END_TIME without
+    // user may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
     // enabling the historical data collection, which may affect the realtime data collection.
-    final boolean isHistoricalCollectorEnabledByUser =
-        parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true);
+    final boolean isHistoricalExtractorEnabledByUser =
+        parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true);
     historicalDataCollectionStartTime =
-        isHistoricalCollectorEnabledByUser && parameters.hasAttribute(COLLECTOR_HISTORY_START_TIME)
+        isHistoricalExtractorEnabledByUser && parameters.hasAttribute(EXTRACTOR_HISTORY_START_TIME)
             ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getString(COLLECTOR_HISTORY_START_TIME), ZoneId.systemDefault())
+                parameters.getString(EXTRACTOR_HISTORY_START_TIME), ZoneId.systemDefault())
             : Long.MIN_VALUE;
     historicalDataCollectionEndTime =
-        isHistoricalCollectorEnabledByUser && parameters.hasAttribute(COLLECTOR_HISTORY_END_TIME)
+        isHistoricalExtractorEnabledByUser && parameters.hasAttribute(EXTRACTOR_HISTORY_END_TIME)
             ? DateTimeUtils.convertDatetimeStrToLong(
-                parameters.getString(COLLECTOR_HISTORY_END_TIME), ZoneId.systemDefault())
+                parameters.getString(EXTRACTOR_HISTORY_END_TIME), ZoneId.systemDefault())
             : Long.MAX_VALUE;
 
-    // enable historical collector by default
+    // enable historical extractor by default
     historicalDataCollectionTimeLowerBound =
-        parameters.getBooleanOrDefault(COLLECTOR_HISTORY_ENABLE_KEY, true)
+        parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true)
             ? Long.MIN_VALUE
             // We define the realtime data as the data generated after the creation time
             // of the pipe from user's perspective. But we still need to use
-            // PipeHistoricalDataRegionCollector to collect the realtime data generated between the
+            // PipeHistoricalDataRegionExtractor to extract the realtime data generated between the
             // creation time of the pipe and the time when the pipe starts, because those data
-            // can not be listened by PipeRealtimeDataRegionCollector, and should be collected by
-            // PipeHistoricalDataRegionCollector from implementation perspective.
+            // can not be listened by PipeRealtimeDataRegionExtractor, and should be collected by
+            // PipeHistoricalDataRegionExtractor from implementation perspective.
             : environment.getCreationTime();
 
     // Only invoke flushDataRegionAllTsFiles() when the pipe runs in the realtime only mode.
@@ -143,7 +143,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return;
     }
 
-    dataRegion.writeLock("Pipe: create historical TsFile collector");
+    dataRegion.writeLock("Pipe: create historical TsFile extractor");
     try {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     } finally {
@@ -160,7 +160,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return;
     }
 
-    dataRegion.writeLock("Pipe: start to collect historical TsFile");
+    dataRegion.writeLock("Pipe: start to extract historical TsFile");
     try {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
 
@@ -224,10 +224,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     } catch (IOException e) {
       LOGGER.warn(
           String.format(
-              "failed to get the generation time of TsFile %s, collect it anyway",
+              "failed to get the generation time of TsFile %s, extract it anyway",
               resource.getTsFilePath()),
           e);
-      // If failed to get the generation time of the TsFile, we will collect the data in the TsFile
+      // If failed to get the generation time of the TsFile, we will extract the data in the TsFile
       // anyway.
       return true;
     }
