@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.frequency;
 
 import org.apache.iotdb.library.frequency.util.DWTUtil;

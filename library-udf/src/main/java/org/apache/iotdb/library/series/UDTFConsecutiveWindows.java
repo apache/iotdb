@@ -32,7 +32,7 @@ import org.apache.commons.lang3.tuple.Pair;
 /** This function searches for consecutive subsequences of given length of input sereis. */
 public class UDTFConsecutiveWindows implements UDTF {
   private ConsecutiveUtil consUtil;
-  private static final int maxLen = 128;
+  private static final int MAX_LEN = 128;
   private long len;
 
   @Override
@@ -62,7 +62,7 @@ public class UDTFConsecutiveWindows implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     if (consUtil.getGap() == 0) {
-      if (consUtil.getWindow().size() < maxLen) { // window is not full
+      if (consUtil.getWindow().size() < MAX_LEN) { // window is not full
         consUtil.getWindow().add(Pair.of(row.getTime(), consUtil.check(row)));
       } else {
         consUtil.calculateGap();

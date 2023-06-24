@@ -61,7 +61,7 @@ public class UDTFTimeliness implements UDTF {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     try {
-      if (rowWindow.windowSize() > TimeSeriesQuality.windowSize) {
+      if (rowWindow.windowSize() > TimeSeriesQuality.WINDOW_SIZE) {
         TimeSeriesQuality tsq = new TimeSeriesQuality(rowWindow.getRowIterator());
         tsq.timeDetect();
         collector.putDouble(rowWindow.getRow(0).getTime(), tsq.getTimeliness());

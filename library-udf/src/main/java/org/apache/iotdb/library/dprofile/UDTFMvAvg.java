@@ -68,11 +68,13 @@ public class UDTFMvAvg implements UDTF {
       v.push(value);
       windowSum += value;
       if (v.isFull()) {
-        collector.putDouble(t, windowSum / (double) windowSize);
+        collector.putDouble(t, windowSum / windowSize);
       }
     }
   }
 
   @Override
-  public void terminate(PointCollector collector) throws Exception {}
+  public void terminate(PointCollector collector)
+      throws Exception { // default implementation ignored
+  }
 }

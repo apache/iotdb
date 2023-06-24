@@ -35,6 +35,7 @@ import java.text.SimpleDateFormat;
 /** This function does upsample or downsample of input series. */
 public class UDTFResample implements UDTF {
 
+  private static final String START_PARAM = "start";
   private Resampler resampler;
 
   @Override
@@ -61,11 +62,11 @@ public class UDTFResample implements UDTF {
             "aggr should be min, max, mean, median, first, last.",
             validator.getParameters().getStringOrDefault("interp", "nan").toLowerCase());
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    if (validator.getParameters().hasAttribute("start")) {
+    if (validator.getParameters().hasAttribute(START_PARAM)) {
       validator.validate(
           x -> (long) x > 0,
           "start should conform to the format yyyy-MM-dd HH:mm:ss.",
-          format.parse(validator.getParameters().getString("start")).getTime());
+          format.parse(validator.getParameters().getString(START_PARAM)).getTime());
     }
     if (validator.getParameters().hasAttribute("end")) {
       validator.validate(
@@ -83,9 +84,10 @@ public class UDTFResample implements UDTF {
     String aggregator = parameters.getStringOrDefault("aggr", "mean").toLowerCase();
     String interpolator = parameters.getStringOrDefault("interp", "nan").toLowerCase();
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    long startTime = -1, endTime = -1;
-    if (parameters.hasAttribute("start")) {
-      startTime = format.parse(parameters.getString("start")).getTime();
+    long startTime = -1;
+    long endTime = -1;
+    if (parameters.hasAttribute(START_PARAM)) {
+      startTime = format.parse(parameters.getString(START_PARAM)).getTime();
     }
     if (parameters.hasAttribute("end")) {
       endTime = format.parse(parameters.getString("end")).getTime();
