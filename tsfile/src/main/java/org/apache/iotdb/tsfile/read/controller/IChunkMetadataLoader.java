@@ -16,17 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 
-import java.io.IOException;
 import java.util.List;
 
 public interface IChunkMetadataLoader {
 
   /** read all chunk metadata of one time series in one file. */
-  List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata)
-      throws IOException;
+  List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata);
 }

@@ -165,13 +165,11 @@ public class TimeSeriesMetadataCache {
             BloomFilter bloomFilter =
                 BloomFilterCache.getInstance()
                     .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
-            if (bloomFilter != null) {
-              if (!bloomFilter.contains(path.getFullPath())) {
-                if (debug) {
-                  DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
-                }
-                return null;
+            if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
+              if (debug) {
+                DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
+              return null;
             }
             TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
             List<TimeseriesMetadata> timeSeriesMetadataList =

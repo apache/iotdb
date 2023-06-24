@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -55,8 +56,7 @@ public class FragmentInstanceExecution {
 
   private final long timeoutInMs;
 
-  private long lastHeartbeat;
-
+  @SuppressWarnings("squid:S107")
   public static FragmentInstanceExecution createFragmentInstanceExecution(
       IDriverScheduler scheduler,
       FragmentInstanceId instanceId,
@@ -90,14 +90,6 @@ public class FragmentInstanceExecution {
     this.timeoutInMs = timeoutInMs;
   }
 
-  public void recordHeartbeat() {
-    lastHeartbeat = System.currentTimeMillis();
-  }
-
-  public void setLastHeartbeat(long lastHeartbeat) {
-    this.lastHeartbeat = lastHeartbeat;
-  }
-
   public FragmentInstanceState getInstanceState() {
     return stateMachine.getState();
   }
@@ -123,6 +115,7 @@ public class FragmentInstanceExecution {
   }
 
   // this is a separate method to ensure that the `this` reference is not leaked during construction
+  @SuppressWarnings("squid:S1181")
   private void initialize(CounterStat failedInstances, IDriverScheduler scheduler) {
     requireNonNull(failedInstances, "failedInstances is null");
     stateMachine.addStateChangeListener(
@@ -141,39 +134,28 @@ public class FragmentInstanceExecution {
               failedInstances.update(1);
             }
 
-            if (newState.isFailed()) {
-              sink.abort();
-            } else {
-              sink.close();
-            }
-            // help for gc
-            sink = null;
+            clearShuffleSinkHandle(newState);
 
             // delete tmp file if exists
-            if (context.mayHaveTmpFile()) {
-              String tmpFilePath =
-                  IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
-                      + File.separator
-                      + context.getId().getFullId()
-                      + File.separator;
-              File tmpFile = new File(tmpFilePath);
-              if (tmpFile.exists()) {
-                FileUtils.deleteDirectory(tmpFile);
-              }
-            }
+            deleteTmpFile();
 
             // close the driver after sink is aborted or closed because in driver.close() it
             // will try to call ISink.setNoMoreTsBlocks()
             for (IDriver driver : drivers) {
               driver.close();
             }
-            context.releaseResourceWhenAllDriversAreClosed();
             // help for gc
             drivers = null;
+
+            // release file handlers
+            context.releaseResourceWhenAllDriversAreClosed();
+
+            // release memory
             MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
                 .deRegisterFragmentInstanceFromMemoryPool(
                     instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
+
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
             }
@@ -184,5 +166,29 @@ public class FragmentInstanceExecution {
             }
           }
         });
+  }
+
+  private void clearShuffleSinkHandle(FragmentInstanceState newState) {
+    if (newState.isFailed()) {
+      sink.abort();
+    } else {
+      sink.close();
+    }
+    // help for gc
+    sink = null;
+  }
+
+  private void deleteTmpFile() {
+    if (context.mayHaveTmpFile()) {
+      String tmpFilePath =
+          IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+              + File.separator
+              + context.getId().getFullId()
+              + File.separator;
+      File tmpFile = new File(tmpFilePath);
+      if (tmpFile.exists()) {
+        FileUtils.deleteDirectory(tmpFile);
+      }
+    }
   }
 }

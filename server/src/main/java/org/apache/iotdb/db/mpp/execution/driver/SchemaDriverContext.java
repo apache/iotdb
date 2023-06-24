@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 
-/** TODO Add javadoc for context */
 public class SchemaDriverContext extends DriverContext {
 
   private final ISchemaRegion schemaRegion;

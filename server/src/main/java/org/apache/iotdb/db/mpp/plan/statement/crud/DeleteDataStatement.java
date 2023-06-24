@@ -39,8 +39,8 @@ public class DeleteDataStatement extends Statement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return pathList;
+  public List<PartialPath> getPaths() {
+    return getPathList();
   }
 
   public List<PartialPath> getPathList() {

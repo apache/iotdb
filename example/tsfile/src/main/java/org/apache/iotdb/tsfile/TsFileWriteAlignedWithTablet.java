@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,8 +48,12 @@ public class TsFileWriteAlignedWithTablet {
 
   public static void main(String[] args) throws IOException {
     File f = FSFactoryProducer.getFSFactory().getFile("alignedTablet.tsfile");
-    if (f.exists() && !f.delete()) {
-      throw new RuntimeException("can not delete " + f.getAbsolutePath());
+    if (f.exists()) {
+      try {
+        Files.delete(f.toPath());
+      } catch (IOException e) {
+        throw new IOException("can not delete " + f.getAbsolutePath());
+      }
     }
 
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {

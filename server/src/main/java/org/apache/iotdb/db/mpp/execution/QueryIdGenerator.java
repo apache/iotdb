@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -56,9 +57,9 @@ public class QueryIdGenerator {
   private int counter;
 
   public QueryIdGenerator() {
-    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-    checkArgument(dataNodeId != -1, "DataNodeId should be init first!");
-    this.dataNodeId = String.valueOf(dataNodeId);
+    int dataNode = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    checkArgument(dataNode != -1, "DataNodeId should be init first!");
+    this.dataNodeId = String.valueOf(dataNode);
   }
 
   public String getCoordinatorId() {

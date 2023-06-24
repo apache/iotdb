@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.identity;
 
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
@@ -37,7 +38,7 @@ public class IdentityLinearFill implements ILinearFill {
   @Override
   public boolean prepareForNext(
       long startRowIndex, long endRowIndex, TimeColumn nextTimeColumn, Column nextValueColumn) {
-    throw new IllegalArgumentException(
-        "We won't call prepareForNext in IdentityLinearFill, because needPrepareForNext() method will always return false.");
+    throw new UnsupportedOperationException(
+        "IdentityLinearFill's needPrepareForNext() method should always return false.");
   }
 }

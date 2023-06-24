@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -64,12 +65,12 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
-    long t1 = System.nanoTime();
+    final long t1 = System.nanoTime();
     try {
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
-      long t2 = System.nanoTime();
+      final long t2 = System.nanoTime();
       // get all sub sensors' modifications
       List<List<Modification>> pathModifications =
           context.getPathModifications(resource.getModFile(), seriesPath);
@@ -93,7 +94,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
           CHUNK_METADATA_MODIFICATION_ALIGNED_DISK, System.nanoTime() - t2);
 
       // remove not satisfied ChunkMetaData
-      long t3 = System.nanoTime();
+      final long t3 = System.nanoTime();
       alignedChunkMetadataList.removeIf(
           alignedChunkMetaData ->
               (filter != null

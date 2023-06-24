@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.exception.NullFieldException;
@@ -30,7 +31,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
  */
 public class Field {
 
-  private TSDataType dataType;
+  private final TSDataType dataType;
   private boolean boolV;
   private int intV;
   private long longV;

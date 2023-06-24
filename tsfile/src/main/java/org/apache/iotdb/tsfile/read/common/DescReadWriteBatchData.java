@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -37,7 +38,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
 
   public DescReadWriteBatchData(TSDataType dataType) {
     super();
-    this.batchDataType = BatchDataType.DescReadWrite;
+    this.batchDataType = BatchDataType.DESC_READ_WRITE;
     this.dataType = dataType;
     this.readCurListIndex = 0;
     this.readCurArrayIndex = 0;
@@ -484,11 +485,15 @@ public class DescReadWriteBatchData extends DescReadBatchData {
                 case INT32:
                   outputStream.writeInt(value.getInt());
                   break;
+                default:
+                  throw new UnSupportedDataTypeException(String.valueOf(dataType));
               }
             }
           }
         }
         break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
     }
   }
 

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
-import org.apache.iotdb.db.metadata.template.ITemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
@@ -42,18 +41,15 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
 class TemplateSchemaFetcher {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private final ITemplateManager templateManager;
   private final DataNodeSchemaCache templateSchemaCache;
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor;
   private final ClusterSchemaFetchExecutor clusterSchemaFetchExecutor;
 
   TemplateSchemaFetcher(
-      ITemplateManager templateManager,
       DataNodeSchemaCache templateSchemaCache,
       AutoCreateSchemaExecutor autoCreateSchemaExecutor,
       ClusterSchemaFetchExecutor clusterSchemaFetchExecutor) {
-    this.templateManager = templateManager;
     this.templateSchemaCache = templateSchemaCache;
     this.autoCreateSchemaExecutor = autoCreateSchemaExecutor;
     this.clusterSchemaFetchExecutor = clusterSchemaFetchExecutor;

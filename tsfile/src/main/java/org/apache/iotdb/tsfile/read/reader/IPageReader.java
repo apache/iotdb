@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -26,6 +27,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 
 public interface IPageReader {
@@ -38,7 +40,7 @@ public interface IPageReader {
 
   TsBlock getAllSatisfiedData() throws IOException;
 
-  Statistics getStatistics();
+  Statistics<? extends Serializable> getStatistics();
 
   void setFilter(Filter filter);
 

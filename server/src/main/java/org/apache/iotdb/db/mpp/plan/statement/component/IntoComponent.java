@@ -31,17 +31,17 @@ import static org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils.checkIsAllRaw
 /** This class maintains information of {@code INTO} clause. */
 public class IntoComponent extends StatementNode {
 
-  public static String PLACEHOLDER_MISMATCH_ERROR_MSG =
+  public static final String PLACEHOLDER_MISMATCH_ERROR_MSG =
       "select into: the correspondence between the placeholder and the raw time series could not be established.";
-  public static String FORBID_PLACEHOLDER_ERROR_MSG =
+  public static final String FORBID_PLACEHOLDER_ERROR_MSG =
       "select into: placeholders can only be used in raw time series data queries.";
-  public static String DEVICE_NUM_MISMATCH_ERROR_MSG =
+  public static final String DEVICE_NUM_MISMATCH_ERROR_MSG =
       "select into: the number of source devices and the number of target devices should be the same.";
-  public static String PATH_NUM_MISMATCH_ERROR_MSG =
+  public static final String PATH_NUM_MISMATCH_ERROR_MSG =
       "select into: the number of source columns and the number of target paths should be the same.";
-  public static String DUPLICATE_TARGET_PATH_ERROR_MSG =
+  public static final String DUPLICATE_TARGET_PATH_ERROR_MSG =
       "select into: target paths in into clause should be different.";
-  public static String DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG =
+  public static final String DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG =
       "select into: alignment property must be the same for the same device.";
 
   private final List<IntoItem> intoItems;

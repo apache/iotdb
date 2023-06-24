@@ -41,10 +41,11 @@ public class MetadataIndexConstructor {
   }
 
   /**
-   * Construct metadata index tree
+   * Construct metadata index tree.
    *
    * @param deviceTimeseriesMetadataMap device => TimeseriesMetadata list
    * @param out tsfile output
+   * @throws IOException exception when operating stream
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static MetadataIndexNode constructMetadataIndex(
@@ -127,6 +128,7 @@ public class MetadataIndexConstructor {
    * @param metadataIndexNodeQueue queue of metadataIndexNode
    * @param out tsfile output
    * @param type MetadataIndexNode type
+   * @throws IOException exception when operating stream
    */
   public static MetadataIndexNode generateRootNode(
       Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out, MetadataIndexNodeType type)

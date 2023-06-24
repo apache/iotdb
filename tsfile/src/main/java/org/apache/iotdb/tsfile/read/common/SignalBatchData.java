@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common;
 
 /** It is an empty signal to notify the caller that there is no more batch data after it. */

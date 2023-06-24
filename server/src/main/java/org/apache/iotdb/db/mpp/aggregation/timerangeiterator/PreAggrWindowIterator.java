@@ -101,7 +101,8 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
       return true;
     }
 
-    long retStartTime, retEndTime;
+    long retStartTime;
+    long retEndTime;
     long curStartTime = curTimeRange.getMin();
     if (isAscending) {
       retStartTime = curStartTime + curSlidingStep;
@@ -181,7 +182,8 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
       return (long) Math.ceil(queryRange / (double) slidingStep);
     }
 
-    long interval1 = interval % slidingStep, interval2 = slidingStep - interval % slidingStep;
+    long interval1 = interval % slidingStep;
+    long interval2 = slidingStep - interval % slidingStep;
     long intervalNum = Math.floorDiv(queryRange, interval1 + interval2);
     long tmpStartTime = startTime + intervalNum * (interval1 + interval2);
     if (tmpStartTime + interval1 > endTime) {

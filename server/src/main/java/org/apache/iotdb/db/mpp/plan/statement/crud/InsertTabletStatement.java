@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -199,10 +200,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   public boolean isNeedSplit() {
-    if (this.indexOfSourcePathsOfLogicalViews == null) {
-      return false;
-    }
-    return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
+    return hasLogicalViewNeedProcess();
   }
 
   public List<InsertTabletStatement> getSplitList() {
@@ -221,30 +219,30 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
       statement.setDevicePath(entry.getKey());
       statement.setRowCount(this.rowCount);
       statement.setAligned(this.isAligned);
-      Object[] columns = new Object[pairList.size()];
+      Object[] copiedColumns = new Object[pairList.size()];
       String[] measurements = new String[pairList.size()];
-      BitMap[] bitMaps = new BitMap[pairList.size()];
+      BitMap[] copiedBitMaps = new BitMap[pairList.size()];
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];
       TSDataType[] dataTypes = new TSDataType[pairList.size()];
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
-        columns[i] = this.columns[realIndex];
+        copiedColumns[i] = this.columns[realIndex];
         measurements[i] = pairList.get(i).left;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
         if (this.bitMaps != null) {
-          bitMaps[i] = this.bitMaps[realIndex];
+          copiedBitMaps[i] = this.bitMaps[realIndex];
         }
         if (this.measurementIsAligned != null) {
           statement.setAligned(this.measurementIsAligned[realIndex]);
         }
       }
-      statement.setColumns(columns);
+      statement.setColumns(copiedColumns);
       statement.setMeasurements(measurements);
       statement.setMeasurementSchemas(measurementSchemas);
       statement.setDataTypes(dataTypes);
       if (this.bitMaps != null) {
-        statement.setBitMaps(bitMaps);
+        statement.setBitMaps(copiedBitMaps);
       }
       statement.setFailedMeasurementIndex2Info(failedMeasurementIndex2Info);
       insertTabletStatementList.add(statement);

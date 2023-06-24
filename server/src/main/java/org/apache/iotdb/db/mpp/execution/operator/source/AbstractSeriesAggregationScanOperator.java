@@ -65,8 +65,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected boolean finished = false;
 
   private final long cachedRawDataSize;
-  private final long maxReturnSize;
 
+  @SuppressWarnings("squid:S107")
   protected AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
@@ -149,9 +149,13 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
 
   @Override
   public boolean isFinished() throws Exception {
-    return finished || (finished = !hasNextWithTimer());
+    if (!finished) {
+      finished = !hasNextWithTimer();
+    }
+    return finished;
   }
 
+  @SuppressWarnings("squid:S112")
   protected void calculateNextAggregationResult() {
     try {
       if (calcFromCachedData()) {
@@ -208,6 +212,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     }
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromFile() throws IOException {
     while (seriesScanUtil.hasNextFile()) {
       if (canUseCurrentFileStatistics()) {
@@ -246,6 +251,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     return false;
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromChunk() throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       if (canUseCurrentChunkStatistics()) {
@@ -284,6 +290,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     return false;
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromPage() throws IOException {
     while (seriesScanUtil.hasNextPage()) {
       if (canUseCurrentPageStatistics()) {
@@ -328,6 +335,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     return false;
   }
 
+  @SuppressWarnings({"squid:S3740"})
   protected boolean canUseCurrentFileStatistics() throws IOException {
     Statistics fileStatistics = seriesScanUtil.currentFileTimeStatistics();
     return !seriesScanUtil.isFileOverlapped()
@@ -335,6 +343,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         && !seriesScanUtil.currentFileModified();
   }
 
+  @SuppressWarnings({"squid:S3740"})
   protected boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = seriesScanUtil.currentChunkTimeStatistics();
     return !seriesScanUtil.isChunkOverlapped()
@@ -342,6 +351,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         && !seriesScanUtil.currentChunkModified();
   }
 
+  @SuppressWarnings({"squid:S3740"})
   protected boolean canUseCurrentPageStatistics() throws IOException {
     Statistics currentPageStatistics = seriesScanUtil.currentPageTimeStatistics();
     if (currentPageStatistics == null) {

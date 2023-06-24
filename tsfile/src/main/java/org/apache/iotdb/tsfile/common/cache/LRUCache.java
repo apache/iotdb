@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.common.cache;
 
 import java.io.IOException;
@@ -27,7 +28,7 @@ public abstract class LRUCache<K, T> implements Cache<K, T> {
 
   protected Map<K, T> cache;
 
-  public LRUCache(int cacheSize) {
+  protected LRUCache(int cacheSize) {
     this.cache =
         new LinkedHashMap<K, T>(cacheSize, 0.75f, true) {
           @Override

@@ -60,7 +60,7 @@ public class GetRegionIdTask implements IConfigTask {
     builder.declarePosition();
   }
 
-  public static void buildTSBlock(
+  public static void buildTsBlock(
       TGetRegionIdResp getRegionIdResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.getRegionIdColumnHeaders.stream()

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -54,6 +55,8 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
   /**
    * The main idea of this part comes from
    * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
+   *
+   * @throws PatternSyntaxException if the regex expression's syntax is invalid
    */
   public Like(String value, FilterType filterType, boolean not) {
     this.value = value;
@@ -85,7 +88,7 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
       patternStrBuild.append("$");
       this.pattern = Pattern.compile(patternStrBuild.toString());
     } catch (PatternSyntaxException e) {
-      throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
+      throw new PatternSyntaxException("Regular expression error", value, e.getIndex());
     }
   }
 
@@ -175,23 +178,24 @@ public class Like<T extends Comparable<T>> implements Filter, Serializable {
    * we need to use '\' to judege whether to replace this to regexp string
    */
   private String unescapeString(String value) {
-    String out = "";
-    for (int i = 0; i < value.length(); i++) {
-      String ch = String.valueOf(value.charAt(i));
+    StringBuilder out = new StringBuilder();
+    int curIndex = 0;
+    for (; curIndex < value.length(); curIndex++) {
+      String ch = String.valueOf(value.charAt(curIndex));
       if ("\\".equals(ch)) {
-        if (i < value.length() - 1) {
-          String nextChar = String.valueOf(value.charAt(i + 1));
+        if (curIndex < value.length() - 1) {
+          String nextChar = String.valueOf(value.charAt(curIndex + 1));
           if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
-            out = out + ch;
+            out.append(ch);
           }
           if ("\\".equals(nextChar)) {
-            i++;
+            curIndex++;
           }
         }
       } else {
-        out = out + ch;
+        out.append(ch);
       }
     }
-    return out;
+    return out.toString();
   }
 }

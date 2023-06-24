@@ -20,6 +20,8 @@ package org.apache.iotdb.db.engine.compaction.execute.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileReader;
+import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -70,7 +72,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     try {
       for (TsFileResource tsFileResource : this.tsFileResourcesSortedByDesc) {
-        TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
+        CompactionTsFileReader reader =
+            new CompactionTsFileReader(
+                tsFileResource.getTsFilePath(), CompactionType.INNER_SEQ_COMPACTION);
         readerMap.put(tsFileResource, reader);
         deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
       }
@@ -112,8 +116,19 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
+
+    CompactionType type = null;
+    if (!seqResources.isEmpty() && !unseqResources.isEmpty()) {
+      type = CompactionType.CROSS_COMPACTION;
+    } else if (seqResources.isEmpty()) {
+      type = CompactionType.INNER_UNSEQ_COMPACTION;
+    } else {
+      type = CompactionType.INNER_SEQ_COMPACTION;
+    }
+
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
-      TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
+      TsFileSequenceReader reader =
+          new CompactionTsFileReader(tsFileResource.getTsFilePath(), type);
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }

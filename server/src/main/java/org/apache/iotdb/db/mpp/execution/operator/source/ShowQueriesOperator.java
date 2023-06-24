@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.db.mpp.common.header.DatasetHeaderFactory;
@@ -30,8 +31,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
-
-import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -105,14 +104,6 @@ public class ShowQueriesOperator implements SourceOperator {
     return sourceId;
   }
 
-  @Override
-  public ListenableFuture<?> isBlocked() {
-    return NOT_BLOCKED;
-  }
-
-  @Override
-  public void close() throws Exception {}
-
   private TsBlock buildTsBlock() {
     List<TSDataType> outputDataTypes =
         DatasetHeaderFactory.getShowQueriesHeader().getRespDataTypes();
@@ -124,14 +115,14 @@ public class ShowQueriesOperator implements SourceOperator {
       ColumnBuilder[] columnBuilders = builder.getValueColumnBuilders();
       long currTime = System.currentTimeMillis();
       String[] splits = queryExecutions.get(0).getQueryId().split("_");
-      int DataNodeId = Integer.parseInt(splits[splits.length - 1]);
+      int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
       for (IQueryExecution queryExecution : queryExecutions) {
         timeColumnBuilder.writeLong(
             TimestampPrecisionUtils.convertToCurrPrecision(
                 queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
         columnBuilders[0].writeBinary(Binary.valueOf(queryExecution.getQueryId()));
-        columnBuilders[1].writeInt(DataNodeId);
+        columnBuilders[1].writeInt(dataNodeId);
         columnBuilders[2].writeFloat(
             (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
         columnBuilders[3].writeBinary(

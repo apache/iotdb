@@ -37,24 +37,25 @@ import java.util.stream.StreamSupport;
 public class TracedBufferedReader extends Reader {
   private Reader in;
 
-  private char cb[];
-  private int nChars, nextChar;
+  private char[] cb;
+  private int nChars;
+  private int nextChar;
 
   private static final int INVALIDATED = -2;
   private static final int UNMARKED = -1;
   private int markedChar = UNMARKED;
   private int readAheadLimit = 0; /* Valid only when markedChar > 0 */
 
-  /** If the next character is a line feed, skip it */
+  /** If the next character is a line feed, skip it. */
   private boolean skipLF = false;
 
-  /** The skipLF flag when the mark was set */
+  /** The skipLF flag when the mark was set. */
   private boolean markedSkipLF = false;
 
-  private static int defaultCharBufferSize = 8192;
-  private static int defaultExpectedLineLength = 80;
+  private static final int DEFAULT_CHAR_BUFFER_SIZE = 8192;
+  private static final int DEFAULT_EXPECTED_LINE_LENGTH = 80;
 
-  /** the total bytes number already filled into cb */
+  /** the total bytes number already filled into cb. */
   private long totalFilledBytesNum = 0;
 
   /**
@@ -80,10 +81,10 @@ public class TracedBufferedReader extends Reader {
    * @param in A Reader
    */
   public TracedBufferedReader(Reader in) {
-    this(in, defaultCharBufferSize);
+    this(in, DEFAULT_CHAR_BUFFER_SIZE);
   }
 
-  /** Checks to make sure that the stream has not been closed */
+  /** Checks to make sure that the stream has not been closed. */
   private void ensureOpen() throws IOException {
     if (in == null) {
       throw new IOException("Stream closed");
@@ -100,19 +101,19 @@ public class TracedBufferedReader extends Reader {
       /* Marked */
       int delta = nextChar - markedChar;
       if (delta >= readAheadLimit) {
-        /* Gone past read-ahead limit: Invalidate mark */
+        /* Gone past read-ahead limit: Invalidate mark. */
         markedChar = INVALIDATED;
         readAheadLimit = 0;
         dst = 0;
       } else {
         if (readAheadLimit <= cb.length) {
-          /* Shuffle in the current buffer */
+          /* Shuffle in the current buffer. */
           System.arraycopy(cb, markedChar, cb, 0, delta);
           markedChar = 0;
           dst = delta;
         } else {
-          /* Reallocate buffer to accommodate read-ahead limit */
-          char ncb[] = new char[readAheadLimit];
+          /* Reallocate buffer to accommodate read-ahead limit. */
+          char[] ncb = new char[readAheadLimit];
           System.arraycopy(cb, markedChar, ncb, 0, delta);
           cb = ncb;
           markedChar = 0;
@@ -193,7 +194,7 @@ public class TracedBufferedReader extends Reader {
 
   /** {@link BufferedReader#read(char[], int, int)} */
   @Override
-  public int read(char cbuf[], int off, int len) throws IOException {
+  public int read(char[] cbuf, int off, int len) throws IOException {
     synchronized (lock) {
       ensureOpen();
       if ((off < 0)
@@ -248,7 +249,7 @@ public class TracedBufferedReader extends Reader {
         char c = 0;
         int i;
 
-        /* Skip a leftover '\n', if necessary */
+        /* Skip a leftover '\n', if necessary. */
         if (omitLF && (cb[nextChar] == '\n')) {
           nextChar++;
         }
@@ -286,7 +287,7 @@ public class TracedBufferedReader extends Reader {
         }
 
         if (s == null) {
-          s = new StringBuilder(defaultExpectedLineLength);
+          s = new StringBuilder(DEFAULT_EXPECTED_LINE_LENGTH);
         }
         s.append(cb, startChar, i - startChar);
       }

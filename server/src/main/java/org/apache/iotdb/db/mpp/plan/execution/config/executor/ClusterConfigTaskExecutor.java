@@ -102,6 +102,7 @@ import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -1085,7 +1086,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (showClusterStatement.isDetails()) {
       ShowClusterDetailsTask.buildTSBlock(showClusterResp, future);
     } else {
-      ShowClusterTask.buildTSBlock(showClusterResp, future);
+      ShowClusterTask.buildTsBlock(showClusterResp, future);
     }
 
     return future;
@@ -1517,7 +1518,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TCreatePipeReq req =
           new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
-              .setCollectorAttributes(createPipeStatement.getCollectorAttributes())
+              .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
               .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
       TSStatus tsStatus = configNodeClient.createPipe(req);
@@ -1837,7 +1838,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Failed to execute alter view {}, status is {}.",
             alterLogicalViewStatement.getTargetPathList(),
             tsStatus);
-        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+          future.setException(
+              new BatchProcessException(tsStatus.subStatus.toArray(new TSStatus[0])));
+        } else {
+          future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        }
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
@@ -1872,7 +1878,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (Exception e) {
       future.setException(e);
     }
-    GetRegionIdTask.buildTSBlock(resp, future);
+    GetRegionIdTask.buildTsBlock(resp, future);
     return future;
   }
 
@@ -1895,7 +1901,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (Exception e) {
       future.setException(e);
     }
-    GetSeriesSlotListTask.buildTSBlock(resp, future);
+    GetSeriesSlotListTask.buildTsBlock(resp, future);
     return future;
   }
 
@@ -2153,7 +2159,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Send request to some API server
       TSpaceQuotaResp showSpaceQuotaResp = configNodeClient.showSpaceQuota(databases);
       // build TSBlock
-      ShowSpaceQuotaTask.buildTSBlock(showSpaceQuotaResp, future);
+      ShowSpaceQuotaTask.buildTsBlock(showSpaceQuotaResp, future);
     } catch (Exception e) {
       future.setException(e);
     }

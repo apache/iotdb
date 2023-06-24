@@ -657,7 +657,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
     if (hasBitMaps) {
-      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount);
+      bitMaps =
+          QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount).orElse(null);
     }
     columns =
         QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
@@ -888,7 +889,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     boolean hasBitMaps = BytesUtils.byteToBool(stream.readByte());
     if (hasBitMaps) {
-      bitMaps = QueryDataSetUtils.readBitMapsFromStream(stream, measurementSize, rowCount);
+      bitMaps =
+          QueryDataSetUtils.readBitMapsFromStream(stream, measurementSize, rowCount).orElse(null);
     }
     columns =
         QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, measurementSize, rowCount);
@@ -927,7 +929,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
     boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
     if (hasBitMaps) {
-      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount);
+      bitMaps =
+          QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount).orElse(null);
     }
     columns =
         QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);

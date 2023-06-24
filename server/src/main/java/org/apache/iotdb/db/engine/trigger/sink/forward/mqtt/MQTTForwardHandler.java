@@ -36,6 +36,8 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
   private MQTTConnectionPool connectionPool;
   private MQTTForwardConfiguration config;
 
+  private static final String FORWARD_ERROR_MESSAGE = "MQTT Forward Exception";
+
   @Override
   public void open(MQTTForwardConfiguration config) throws Exception {
     this.config = config;
@@ -71,9 +73,9 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
           config.isRetain());
     } catch (Exception e) {
       if (config.isStopIfException()) {
-        throw new SinkException("MQTT Forward Exception", e);
+        throw new SinkException(FORWARD_ERROR_MESSAGE, e);
       }
-      LOGGER.error("MQTT Forward Exception", e);
+      LOGGER.warn(FORWARD_ERROR_MESSAGE, e);
     }
   }
 
@@ -89,9 +91,9 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
           config.getTopic(), sb.toString().getBytes(), config.getQos(), config.isRetain());
     } catch (Exception e) {
       if (config.isStopIfException()) {
-        throw new SinkException("MQTT Forward Exception", e);
+        throw new SinkException(FORWARD_ERROR_MESSAGE, e);
       }
-      LOGGER.error("MQTT Forward Exception", e);
+      LOGGER.warn(FORWARD_ERROR_MESSAGE, e);
     }
   }
 }

@@ -33,15 +33,19 @@ public class Constant {
   public static final String STORAGE_GROUP = "root.vehicle";
   public static final String PLAIN = "PLAIN";
   public static final String SNAPPY = "SNAPPY";
+  public static final String INT32 = "INT32";
+  public static final String TEXT = "TEXT";
+  public static final String FLOAT = "FLOAT";
+  public static final String BOOLEAN = "BOOLEAN";
 
   public static final String[][] TIMESERIESLIST = {
-    {"root.vehicle.d0.s0", "INT32", PLAIN, SNAPPY},
-    {"root.vehicle.d0.s1", "TEXT", PLAIN, SNAPPY},
-    {"root.vehicle.d1.s2", "FLOAT", PLAIN, SNAPPY},
-    {"root.vehicle.d1.s3", "BOOLEAN", PLAIN, SNAPPY},
-    {"root.test.d0.s0", "INT32", PLAIN, SNAPPY},
-    {"root.test.d0.s1", "TEXT", PLAIN, SNAPPY},
-    {"root.test.d1.s0", "INT32", PLAIN, SNAPPY},
+    {"root.vehicle.d0.s0", INT32, PLAIN, SNAPPY},
+    {"root.vehicle.d0.s1", TEXT, PLAIN, SNAPPY},
+    {"root.vehicle.d1.s2", FLOAT, PLAIN, SNAPPY},
+    {"root.vehicle.d1.s3", BOOLEAN, PLAIN, SNAPPY},
+    {"root.test.d0.s0", INT32, PLAIN, SNAPPY},
+    {"root.test.d0.s1", TEXT, PLAIN, SNAPPY},
+    {"root.test.d1.s0", INT32, PLAIN, SNAPPY},
   };
   public static final String[] ALL_DATA = {
     "root.vehicle.d0,10,s0,INT32,100",

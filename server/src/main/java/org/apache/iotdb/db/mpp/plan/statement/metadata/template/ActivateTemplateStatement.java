@@ -43,7 +43,7 @@ public class ActivateTemplateStatement extends Statement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.singletonList(path);
   }
 

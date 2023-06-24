@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.query.dataset;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -36,7 +37,7 @@ import java.util.Set;
 /** multi-way merging data set, no need to use TimeGenerator. */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
-  private List<AbstractFileSeriesReader> readers;
+  private final List<AbstractFileSeriesReader> readers;
 
   private List<BatchData> batchDataList;
 
@@ -89,7 +90,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
   @Override
   public boolean hasNextWithoutConstraint() {
-    return timeHeap.size() > 0;
+    return !timeHeap.isEmpty();
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -97,11 +98,11 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
   public RowRecord nextWithoutConstraint() throws IOException {
     long minTime = timeHeapGet();
 
-    RowRecord record = new RowRecord(minTime);
+    RowRecord rowRecord = new RowRecord(minTime);
 
     for (int i = 0; i < paths.size(); i++) {
-      if (!hasDataRemaining.get(i)) {
-        record.addField(null);
+      if (Boolean.FALSE.equals(hasDataRemaining.get(i))) {
+        rowRecord.addField(null);
         continue;
       }
 
@@ -127,12 +128,12 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         } else {
           timeHeapPut(data.currentTime());
         }
-        record.addField(field);
+        rowRecord.addField(field);
       } else {
-        record.addField(null);
+        rowRecord.addField(null);
       }
     }
-    return record;
+    return rowRecord;
   }
 
   /** keep heap from storing duplicate time. */

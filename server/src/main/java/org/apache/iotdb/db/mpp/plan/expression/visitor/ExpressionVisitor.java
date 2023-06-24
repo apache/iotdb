@@ -20,10 +20,23 @@
 package org.apache.iotdb.db.mpp.plan.expression.visitor;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.WhenThenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
@@ -94,13 +107,66 @@ public abstract class ExpressionVisitor<R, C> {
     return visitBinaryExpression(arithmeticBinaryExpression, context);
   }
 
+  public R visitAdditionExpression(AdditionExpression additionExpression, C context) {
+    return visitArithmeticBinaryExpression(additionExpression, context);
+  }
+
+  public R visitSubtractionExpression(SubtractionExpression subtractionExpression, C context) {
+    return visitArithmeticBinaryExpression(subtractionExpression, context);
+  }
+
+  public R visitMultiplicationExpression(
+      MultiplicationExpression multiplicationExpression, C context) {
+    return visitArithmeticBinaryExpression(multiplicationExpression, context);
+  }
+
+  public R visitDivisionExpression(DivisionExpression divisionExpression, C context) {
+    return visitArithmeticBinaryExpression(divisionExpression, context);
+  }
+
+  public R visitModuloExpression(ModuloExpression moduloExpression, C context) {
+    return visitArithmeticBinaryExpression(moduloExpression, context);
+  }
+
   public R visitLogicBinaryExpression(LogicBinaryExpression logicBinaryExpression, C context) {
     return visitBinaryExpression(logicBinaryExpression, context);
+  }
+
+  public R visitLogicAndExpression(LogicAndExpression logicAndExpression, C context) {
+    return visitLogicBinaryExpression(logicAndExpression, context);
+  }
+
+  public R visitLogicOrExpression(LogicOrExpression logicOrExpression, C context) {
+    return visitLogicBinaryExpression(logicOrExpression, context);
   }
 
   public R visitCompareBinaryExpression(
       CompareBinaryExpression compareBinaryExpression, C context) {
     return visitBinaryExpression(compareBinaryExpression, context);
+  }
+
+  public R visitEqualToExpression(EqualToExpression equalToExpression, C context) {
+    return visitCompareBinaryExpression(equalToExpression, context);
+  }
+
+  public R visitNonEqualExpression(NonEqualExpression nonEqualExpression, C context) {
+    return visitCompareBinaryExpression(nonEqualExpression, context);
+  }
+
+  public R visitGreaterThanExpression(GreaterThanExpression greaterThanExpression, C context) {
+    return visitCompareBinaryExpression(greaterThanExpression, context);
+  }
+
+  public R visitGreaterEqualExpression(GreaterEqualExpression greaterEqualExpression, C context) {
+    return visitCompareBinaryExpression(greaterEqualExpression, context);
+  }
+
+  public R visitLessThanExpression(LessThanExpression lessThanExpression, C context) {
+    return visitCompareBinaryExpression(lessThanExpression, context);
+  }
+
+  public R visitLessEqualExpression(LessEqualExpression lessEqualExpression, C context) {
+    return visitCompareBinaryExpression(lessEqualExpression, context);
   }
 
   public R visitTernaryExpression(TernaryExpression ternaryExpression, C context) {

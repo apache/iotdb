@@ -48,6 +48,10 @@ public class ChunkGroupHeader {
     this.serializedSize = getSerializedSize(deviceID);
   }
 
+  public int getSerializedSize() {
+    return serializedSize;
+  }
+
   private int getSerializedSize(String deviceID) {
     int length = deviceID.getBytes(TSFileConfig.STRING_CHARSET).length;
     return Byte.BYTES + ReadWriteForEncodingUtils.varIntSize(length) + length;
@@ -56,7 +60,8 @@ public class ChunkGroupHeader {
   /**
    * deserialize from inputStream.
    *
-   * @param markerRead Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
+   * @param markerRead - Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
+   * @throws IOException – If an I/O error occurs.
    */
   public static ChunkGroupHeader deserializeFrom(InputStream inputStream, boolean markerRead)
       throws IOException {
@@ -74,7 +79,8 @@ public class ChunkGroupHeader {
   /**
    * deserialize from TsFileInput.
    *
-   * @param markerRead Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
+   * @param markerRead - Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
+   * @throws IOException - If an I/O error occurs.
    */
   public static ChunkGroupHeader deserializeFrom(TsFileInput input, long offset, boolean markerRead)
       throws IOException {
@@ -86,10 +92,6 @@ public class ChunkGroupHeader {
     return new ChunkGroupHeader(deviceID);
   }
 
-  public int getSerializedSize() {
-    return serializedSize;
-  }
-
   public String getDeviceID() {
     return deviceID;
   }
@@ -97,9 +99,9 @@ public class ChunkGroupHeader {
   /**
    * serialize to outputStream.
    *
-   * @param outputStream output stream
-   * @return length
-   * @throws IOException IOException
+   * @param outputStream - output stream
+   * @return - length
+   * @throws IOException – If an I/O error occurs
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int length = 0;

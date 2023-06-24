@@ -28,7 +28,9 @@ public class FillComponent extends StatementNode {
   private FillPolicy fillPolicy;
   private Literal fillValue;
 
-  public FillComponent() {}
+  public FillComponent() {
+    // do nothing
+  }
 
   public FillPolicy getFillPolicy() {
     return fillPolicy;

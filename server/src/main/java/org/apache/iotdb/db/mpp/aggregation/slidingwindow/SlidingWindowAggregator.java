@@ -74,10 +74,10 @@ public abstract class SlidingWindowAggregator extends Aggregator {
     evictingExpiredValue();
   }
 
-  /** evicting expired element in queue and reset expired aggregateResult */
+  /** evicting expired element in queue and reset expired aggregateResult. */
   protected abstract void evictingExpiredValue();
 
-  /** update queue and aggregateResult */
+  /** update queue and aggregateResult. */
   public abstract void processPartialResult(PartialAggregationResult partialResult);
 
   protected static class PartialAggregationResult {

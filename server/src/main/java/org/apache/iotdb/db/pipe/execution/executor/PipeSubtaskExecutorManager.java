@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.db.pipe.execution.executor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the
  * PipeTaskScheduler. It is a singleton class.
  */
+@SuppressWarnings("unused") // assignerSubtaskExecutor is for future use
 public class PipeSubtaskExecutorManager {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtaskExecutorManager.class);
 
   private final PipeAssignerSubtaskExecutor assignerSubtaskExecutor;
   private final PipeProcessorSubtaskExecutor processorSubtaskExecutor;

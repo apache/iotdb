@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -234,11 +235,9 @@ public class TimeRange implements Comparable<TimeRange> {
     } else if (!this.rightClose && !rhs.leftClose && rhs.min + 1 >= this.max) {
       // e.g., this:[1,5) does not overlap with rhs:(4,6]
       return false;
-    } else if (this.rightClose && rhs.leftClose && rhs.min > this.max) {
-      // e.g., this:[1,5] does not overlap with rhs:[6,8]
-      return false;
     } else {
-      return true;
+      // e.g., this:[1,5] does not overlap with rhs:[6,8]
+      return !this.rightClose || !rhs.leftClose || rhs.min <= this.max;
     }
   }
 

@@ -53,7 +53,6 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   protected static final int MAX_RETRY_TIMES = 5;
   private final AtomicInteger retryCount = new AtomicInteger(0);
-  protected Throwable lastFailedCause;
 
   protected Event lastEvent;
 
@@ -97,6 +96,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
    * @return true if the event is consumed successfully, false if no more event can be consumed
    * @throws Exception if any error occurs when consuming the event
    */
+  @SuppressWarnings("squid:S112") // allow to throw Exception
   protected abstract boolean executeOnce() throws Exception;
 
   @Override
@@ -107,20 +107,31 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   @Override
   public void onFailure(@NotNull Throwable throwable) {
+    if (retryCount.get() == 0) {
+      LOGGER.warn(
+          "Failed to execute subtask {}({}), because of {}. Will retry for {} times.",
+          taskID,
+          this.getClass().getSimpleName(),
+          throwable.getMessage(),
+          MAX_RETRY_TIMES,
+          throwable);
+    }
+
     if (retryCount.get() < MAX_RETRY_TIMES) {
       retryCount.incrementAndGet();
       LOGGER.warn(
-          String.format(
-              "Retry subtask %s, retry count [%s/%s]",
-              this.getClass().getSimpleName(), retryCount.get(), MAX_RETRY_TIMES));
+          "Retry executing subtask {}({}), retry count [{}/{}]",
+          taskID,
+          this.getClass().getSimpleName(),
+          retryCount.get(),
+          MAX_RETRY_TIMES);
       submitSelf();
     } else {
       final String errorMessage =
           String.format(
-              "Subtask %s failed, has been retried for %d times, last failed because of %s",
-              taskID, retryCount.get(), throwable);
+              "Failed to execute subtask %s(%s), retry count exceeds the max retry times %d, last exception: %s",
+              taskID, this.getClass().getSimpleName(), retryCount.get(), throwable.getMessage());
       LOGGER.warn(errorMessage, throwable);
-      lastFailedCause = throwable;
 
       if (lastEvent instanceof EnrichedEvent) {
         ((EnrichedEvent) lastEvent)
@@ -128,6 +139,23 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
                 throwable instanceof PipeRuntimeException
                     ? (PipeRuntimeException) throwable
                     : new PipeRuntimeCriticalException(errorMessage));
+        LOGGER.warn(
+            "The last event is an instance of EnrichedEvent, so the exception is reported. "
+                + "Stopping current pipe task {}({}) locally... "
+                + "Status shown when query the pipe will be 'STOPPED'. "
+                + "Please restart the task by executing 'START PIPE' manually if needed.",
+            taskID,
+            this.getClass().getSimpleName(),
+            throwable);
+      } else {
+        LOGGER.error(
+            "The last event is not an instance of EnrichedEvent, so the exception cannot be reported. "
+                + "Stopping current pipe task {}({}) locally... "
+                + "Status shown when query the pipe will be 'RUNNING' instead of 'STOPPED', but the task is actually stopped. "
+                + "Please restart the task by executing 'START PIPE' manually if needed.",
+            taskID,
+            this.getClass().getSimpleName(),
+            throwable);
       }
 
       // although the pipe task will be stopped, we still don't release the last event here
@@ -184,9 +212,5 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   public String getTaskID() {
     return taskID;
-  }
-
-  public Throwable getLastFailedCause() {
-    return lastFailedCause;
   }
 }

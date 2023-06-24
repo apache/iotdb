@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -55,7 +56,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
   /** TsBlock from child operator. Only one cache now. */
   private final TsBlock[] inputTsBlocks;
 
-  /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
+  /** start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
   private final int[] inputIndex;
 
   /**
@@ -117,51 +118,22 @@ public class LastQueryMergeOperator implements ProcessOperator {
     // among all the input TsBlock as the current output TsBlock's endTimeSeries.
     for (int i = 0; i < inputOperatorsCount; i++) {
       Operator currentChild = children.get(i);
-      if (!noMoreTsBlocks[i] && empty(i) && currentChild != null) {
-        if (currentChild.hasNextWithTimer()) {
-          inputIndex[i] = 0;
-          inputTsBlocks[i] = currentChild.nextWithTimer();
-          if (!empty(i)) {
-            int rowSize = inputTsBlocks[i].getPositionCount();
-            for (int row = 0; row < rowSize; row++) {
-              Binary key = getTimeSeries(inputTsBlocks[i], row);
-              Location location = timeSeriesSelector.get(key);
-              if (location == null
-                  || inputTsBlocks[i].getTimeByIndex(row)
-                      > inputTsBlocks[location.tsBlockIndex].getTimeByIndex(location.rowIndex)) {
-                timeSeriesSelector.put(key, new Location(i, row));
-              }
-            }
-          } else {
-            // child operator has next but return an empty TsBlock which means that it may not
-            // finish calculation in given time slice.
-            // In such case, LastQueryMergeOperator can't go on calculating, so we just return
-            // null.
-            // We can also use the while loop here to continuously call the hasNext() and next()
-            // methods of the child operator until its hasNext() returns false or the next() gets
-            // the data that is not empty, but this will cause the execution time of the while
-            // loop
-            // to be uncontrollable and may exceed all allocated time slice
-            return null;
-          }
-        } else { // no more tsBlock
-          noMoreTsBlocks[i] = true;
-          inputTsBlocks[i] = null;
-          currentChild.close();
-          children.set(i, null);
-        }
+      if (needCallNext(i, currentChild) && prepareNext(i, currentChild)) {
+        return null;
       }
       // update the currentEndTimeSeries if the TsBlock is not empty
       if (!empty(i)) {
         Binary endTimeSeries =
             getTimeSeries(inputTsBlocks[i], inputTsBlocks[i].getPositionCount() - 1);
-        currentEndTimeSeries =
-            init
-                ? (comparator.compare(currentEndTimeSeries, endTimeSeries) < 0
-                    ? currentEndTimeSeries
-                    : endTimeSeries)
-                : endTimeSeries;
-        init = true;
+        if (init) {
+          currentEndTimeSeries =
+              comparator.compare(currentEndTimeSeries, endTimeSeries) < 0
+                  ? currentEndTimeSeries
+                  : endTimeSeries;
+        } else {
+          currentEndTimeSeries = endTimeSeries;
+          init = true;
+        }
       }
     }
 
@@ -171,17 +143,71 @@ public class LastQueryMergeOperator implements ProcessOperator {
       return res;
     }
 
-    while (!timeSeriesSelector.isEmpty()
-        && (comparator.compare(timeSeriesSelector.firstKey(), currentEndTimeSeries) <= 0)) {
-      Location location = timeSeriesSelector.pollFirstEntry().getValue();
-      appendLastValue(tsBlockBuilder, inputTsBlocks[location.tsBlockIndex], location.rowIndex);
-    }
+    calcCurrentBatch(currentEndTimeSeries);
 
     clearTsBlockCache(currentEndTimeSeries);
 
     TsBlock res = tsBlockBuilder.build();
     tsBlockBuilder.reset();
     return res;
+  }
+
+  private boolean needCallNext(int i, Operator currentChild) {
+    return !noMoreTsBlocks[i] && empty(i) && currentChild != null;
+  }
+
+  /**
+   * prepare next batch
+   *
+   * @return true if need to break current loop, otherwise false
+   * @throws Exception errors happened while fetching next batch data
+   */
+  private boolean prepareNext(int i, Operator currentChild) throws Exception {
+    if (currentChild.hasNextWithTimer()) {
+      inputIndex[i] = 0;
+      inputTsBlocks[i] = currentChild.nextWithTimer();
+      if (!empty(i)) {
+        collectTimeSeries(i);
+      } else {
+        // child operator has next but return an empty TsBlock which means that it may not
+        // finish calculation in given time slice.
+        // In such case, LastQueryMergeOperator can't go on calculating, so we just return
+        // null.
+        // We can also use the while loop here to continuously call the hasNext() and next()
+        // methods of the child operator until its hasNext() returns false or the next() gets
+        // the data that is not empty, but this will cause the execution time of the while
+        // loop
+        // to be uncontrollable and may exceed all allocated time slice
+        return true;
+      }
+    } else { // no more tsBlock
+      noMoreTsBlocks[i] = true;
+      inputTsBlocks[i] = null;
+      currentChild.close();
+      children.set(i, null);
+    }
+    return false;
+  }
+
+  private void collectTimeSeries(int i) {
+    int rowSize = inputTsBlocks[i].getPositionCount();
+    for (int row = 0; row < rowSize; row++) {
+      Binary key = getTimeSeries(inputTsBlocks[i], row);
+      Location location = timeSeriesSelector.get(key);
+      if (location == null
+          || inputTsBlocks[i].getTimeByIndex(row)
+              > inputTsBlocks[location.tsBlockIndex].getTimeByIndex(location.rowIndex)) {
+        timeSeriesSelector.put(key, new Location(i, row));
+      }
+    }
+  }
+
+  private void calcCurrentBatch(Binary currentEndTimeSeries) {
+    while (!timeSeriesSelector.isEmpty()
+        && (comparator.compare(timeSeriesSelector.firstKey(), currentEndTimeSeries) <= 0)) {
+      Location location = timeSeriesSelector.pollFirstEntry().getValue();
+      appendLastValue(tsBlockBuilder, inputTsBlocks[location.tsBlockIndex], location.rowIndex);
+    }
   }
 
   @Override
@@ -265,7 +291,8 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long childrenSum = 0, minChildReturnSize = Long.MAX_VALUE;
+    long childrenSum = 0;
+    long minChildReturnSize = Long.MAX_VALUE;
     for (Operator child : children) {
       long maxReturnSize = child.calculateMaxReturnSize();
       childrenSum += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
@@ -279,7 +306,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   /**
    * If the tsBlock of columnIndex is null or has no more data in the tsBlock, return true; else
-   * return false;
+   * return false.
    */
   private boolean empty(int columnIndex) {
     return inputTsBlocks[columnIndex] == null

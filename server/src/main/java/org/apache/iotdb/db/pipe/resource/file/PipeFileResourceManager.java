@@ -79,12 +79,8 @@ public class PipeFileResourceManager {
   }
 
   private boolean increaseReferenceIfExists(String path) {
-    if (hardlinkOrCopiedFileToReferenceMap.containsKey(path)) {
-      hardlinkOrCopiedFileToReferenceMap.put(
-          path, hardlinkOrCopiedFileToReferenceMap.get(path) + 1);
-      return true;
-    }
-    return false;
+    hardlinkOrCopiedFileToReferenceMap.computeIfPresent(path, (key, value) -> value + 1);
+    return hardlinkOrCopiedFileToReferenceMap.containsKey(path);
   }
 
   private static File getHardlinkOrCopiedFileInPipeDir(File file) throws IOException {
@@ -125,8 +121,11 @@ public class PipeFileResourceManager {
   }
 
   private static File createHardLink(File sourceFile, File hardlink) throws IOException {
-    if (!hardlink.getParentFile().exists()) {
-      boolean ignored = hardlink.getParentFile().mkdirs();
+    if (!hardlink.getParentFile().exists() && !hardlink.getParentFile().mkdirs()) {
+      throw new IOException(
+          String.format(
+              "failed to create hardlink %s for file %s: failed to create parent dir %s",
+              hardlink.getPath(), sourceFile.getPath(), hardlink.getParentFile().getPath()));
     }
 
     final Path sourcePath = FileSystems.getDefault().getPath(sourceFile.getAbsolutePath());
@@ -136,8 +135,11 @@ public class PipeFileResourceManager {
   }
 
   private static File copyFile(File sourceFile, File targetFile) throws IOException {
-    if (!targetFile.getParentFile().exists()) {
-      boolean ignored = targetFile.getParentFile().mkdirs();
+    if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {
+      throw new IOException(
+          String.format(
+              "failed to copy file %s to %s: failed to create parent dir %s",
+              sourceFile.getPath(), targetFile.getPath(), targetFile.getParentFile().getPath()));
     }
 
     Files.copy(sourceFile.toPath(), targetFile.toPath());
