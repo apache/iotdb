@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -34,7 +35,9 @@ public abstract class BinaryFilter implements Filter, Serializable {
   protected Filter left;
   protected Filter right;
 
-  public BinaryFilter() {}
+  protected BinaryFilter() {
+    // do nothing
+  }
 
   protected BinaryFilter(Filter left, Filter right) {
     this.left = left;
@@ -56,9 +59,6 @@ public abstract class BinaryFilter implements Filter, Serializable {
   public Filter getRight() {
     return right;
   }
-
-  @Override
-  public abstract Filter copy();
 
   @Override
   public void serialize(DataOutputStream outputStream) {

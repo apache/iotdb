@@ -1086,7 +1086,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (showClusterStatement.isDetails()) {
       ShowClusterDetailsTask.buildTSBlock(showClusterResp, future);
     } else {
-      ShowClusterTask.buildTSBlock(showClusterResp, future);
+      ShowClusterTask.buildTsBlock(showClusterResp, future);
     }
 
     return future;
@@ -1878,7 +1878,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (Exception e) {
       future.setException(e);
     }
-    GetRegionIdTask.buildTSBlock(resp, future);
+    GetRegionIdTask.buildTsBlock(resp, future);
     return future;
   }
 
@@ -1901,7 +1901,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (Exception e) {
       future.setException(e);
     }
-    GetSeriesSlotListTask.buildTSBlock(resp, future);
+    GetSeriesSlotListTask.buildTsBlock(resp, future);
     return future;
   }
 
@@ -2159,7 +2159,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // Send request to some API server
       TSpaceQuotaResp showSpaceQuotaResp = configNodeClient.showSpaceQuota(databases);
       // build TSBlock
-      ShowSpaceQuotaTask.buildTSBlock(showSpaceQuotaResp, future);
+      ShowSpaceQuotaTask.buildTsBlock(showSpaceQuotaResp, future);
     } catch (Exception e) {
       future.setException(e);
     }

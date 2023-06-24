@@ -62,5 +62,5 @@ public abstract class Statement extends StatementNode {
     return true;
   }
 
-  public abstract List<? extends PartialPath> getPaths();
+  public abstract List<PartialPath> getPaths();
 }

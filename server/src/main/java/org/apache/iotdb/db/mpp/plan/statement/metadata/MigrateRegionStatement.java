@@ -38,29 +38,29 @@ import java.util.List;
 // TODO: Whether to support more complex migration, such as, migrate all region from 1, 2 to 5, 6
 public class MigrateRegionStatement extends Statement implements IConfigStatement {
 
-  private final int RegionId;
+  private final int regionId;
 
-  private final int FromId;
+  private final int fromId;
 
-  private final int ToId;
+  private final int toId;
 
-  public MigrateRegionStatement(int RegionId, int FromId, int ToId) {
+  public MigrateRegionStatement(int regionId, int fromId, int toId) {
     super();
-    this.RegionId = RegionId;
-    this.FromId = FromId;
-    this.ToId = ToId;
+    this.regionId = regionId;
+    this.fromId = fromId;
+    this.toId = toId;
   }
 
   public int getRegionId() {
-    return RegionId;
+    return regionId;
   }
 
   public int getFromId() {
-    return FromId;
+    return fromId;
   }
 
   public int getToId() {
-    return ToId;
+    return toId;
   }
 
   @Override

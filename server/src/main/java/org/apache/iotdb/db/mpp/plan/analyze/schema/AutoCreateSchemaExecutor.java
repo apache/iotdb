@@ -55,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -76,7 +77,7 @@ class AutoCreateSchemaExecutor {
       PartialPath devicePath,
       List<Integer> indexOfTargetMeasurements,
       String[] measurements,
-      Function<Integer, TSDataType> getDataType,
+      IntFunction<TSDataType> getDataType,
       boolean isAligned) {
     // auto create the rest missing timeseries
     List<String> missingMeasurements = new ArrayList<>(indexOfTargetMeasurements.size());
@@ -188,7 +189,7 @@ class AutoCreateSchemaExecutor {
     for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
       schemaTree.appendSingleMeasurement(
           devicePath.concatNode(entry.getKey()),
-          (MeasurementSchema) entry.getValue(),
+          entry.getValue(),
           null,
           null,
           template.isDirectAligned());
@@ -219,7 +220,7 @@ class AutoCreateSchemaExecutor {
           template.getSchemaMap().entrySet()) {
         schemaTree.appendSingleMeasurement(
             devicePath.concatNode(measurementEntry.getKey()),
-            (MeasurementSchema) measurementEntry.getValue(),
+            measurementEntry.getValue(),
             null,
             null,
             template.isDirectAligned());
@@ -228,6 +229,7 @@ class AutoCreateSchemaExecutor {
   }
 
   // used for load TsFile
+  @SuppressWarnings("squid:S107")
   void autoCreateMissingMeasurements(
       ClusterSchemaTree schemaTree,
       List<PartialPath> devicePathList,
@@ -297,11 +299,7 @@ class AutoCreateSchemaExecutor {
         template = templateInfo.left;
         indexOfMeasurementsNotInTemplate =
             checkMeasurementsInSchemaTemplate(
-                devicePath,
-                indexOfTargetMeasurements,
-                measurementsList.get(deviceIndex),
-                isAlignedList.get(deviceIndex),
-                template);
+                indexOfTargetMeasurements, measurementsList.get(deviceIndex), template);
         if (schemaTree.getMatchedDevices(devicePath).isEmpty()) {
           // not activated yet
           devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
@@ -373,7 +371,7 @@ class AutoCreateSchemaExecutor {
             template.getSchemaMap().entrySet()) {
           schemaTree.appendSingleMeasurement(
               devicePath.concatNode(measurementEntry.getKey()),
-              (MeasurementSchema) measurementEntry.getValue(),
+              measurementEntry.getValue(),
               null,
               null,
               template.isDirectAligned());
@@ -387,11 +385,7 @@ class AutoCreateSchemaExecutor {
   }
 
   private List<Integer> checkMeasurementsInSchemaTemplate(
-      PartialPath devicePath,
-      List<Integer> indexOfTargetMeasurements,
-      String[] measurements,
-      boolean isAligned,
-      Template template) {
+      List<Integer> indexOfTargetMeasurements, String[] measurements, Template template) {
     // check whether there is template should be activated
     boolean shouldActivateTemplate = false;
     for (int index : indexOfTargetMeasurements) {

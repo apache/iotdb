@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.reader.page;
 
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -57,6 +58,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   private static final int MASK = 0x80;
 
+  @SuppressWarnings("squid:S107")
   public AlignedPageReader(
       PageHeader timePageHeader,
       ByteBuffer timePageData,

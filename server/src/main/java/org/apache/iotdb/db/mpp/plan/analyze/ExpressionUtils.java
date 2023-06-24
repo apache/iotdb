@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
@@ -61,6 +62,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ExpressionUtils {
+
+  private ExpressionUtils() {
+    // util class
+  }
 
   public static List<Expression> reconstructTimeSeriesOperands(
       TimeSeriesOperand rawExpression, List<? extends PartialPath> actualPaths) {
@@ -111,7 +116,7 @@ public class ExpressionUtils {
         new CaseWhenThenExpression(
             childExpressions // transform to List<WhenThenExpression>
                 .subList(0, childExpressions.size() - 1).stream()
-                .map(expression -> (WhenThenExpression) expression)
+                .map(WhenThenExpression.class::cast)
                 .collect(Collectors.toList()),
             childExpressions.get(childExpressions.size() - 1));
     return cloneCommonFields(rawExpression, resultExpression);
@@ -153,8 +158,7 @@ public class ExpressionUtils {
                 ((RegularExpression) rawExpression).getPattern());
         break;
       default:
-        throw new IllegalArgumentException(
-            "unsupported expression type: " + rawExpression.getExpressionType());
+        throw new UnknownExpressionTypeException(rawExpression.getExpressionType());
     }
     return cloneCommonFields(rawExpression, resultExpression);
   }
@@ -254,8 +258,7 @@ public class ExpressionUtils {
               thirdExpression,
               ((BetweenExpression) rawExpression).isNotBetween());
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + rawExpression.getExpressionType());
+      throw new UnknownExpressionTypeException(rawExpression.getExpressionType());
     }
     return cloneCommonFields(rawExpression, resultExpression);
   }
@@ -322,7 +325,7 @@ public class ExpressionUtils {
         case NON_EQUAL:
           return TimeFilter.notEq(value);
         default:
-          throw new IllegalArgumentException("unsupported expression type: " + expressionType);
+          throw new UnknownExpressionTypeException(expressionType);
       }
     }
     return null;

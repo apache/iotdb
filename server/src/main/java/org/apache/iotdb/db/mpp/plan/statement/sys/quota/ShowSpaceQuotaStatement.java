@@ -52,7 +52,7 @@ public class ShowSpaceQuotaStatement extends Statement implements IConfigStateme
 
   @Override
   public List<PartialPath> getPaths() {
-    return databases;
+    return getDatabases();
   }
 
   @Override

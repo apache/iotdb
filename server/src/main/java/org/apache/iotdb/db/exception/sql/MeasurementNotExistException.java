@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.exception.sql;
 
-public class MeasurementNotExistException extends SemanticException {
+public class MeasurementNotExistException extends RuntimeException {
 
   public MeasurementNotExistException(String message) {
     super(message);

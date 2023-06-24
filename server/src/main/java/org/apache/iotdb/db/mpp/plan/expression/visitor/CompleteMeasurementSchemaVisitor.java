@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.expression.visitor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.view.BrokenViewException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
@@ -90,17 +91,13 @@ public class CompleteMeasurementSchemaVisitor extends ExpressionVisitor<Expressi
       TimeSeriesOperand timeSeriesOperand, ISchemaTree schemaTree) {
     PartialPath path = timeSeriesOperand.getPath();
     try {
-      try {
-        path.getMeasurementSchema();
-      } catch (Exception notAMeasurementPath) {
-        List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
-        if (actualPaths.size() != 1) {
-          throw new BrokenViewException(path.getFullPath(), actualPaths);
-        }
-        return new TimeSeriesOperand(actualPaths.get(0));
+      path.getMeasurementSchema();
+    } catch (Exception notAMeasurementPath) {
+      List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
+      if (actualPaths.size() != 1) {
+        throw new SemanticException(new BrokenViewException(path.getFullPath(), actualPaths));
       }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      return new TimeSeriesOperand(actualPaths.get(0));
     }
     return timeSeriesOperand;
   }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -179,7 +180,8 @@ public class TimeFilter {
 
     @Override
     public List<TimeRange> getTimeRanges() {
-      long left = value1, right = value2;
+      long left = value1;
+      long right = value2;
       if (not) {
         List<TimeRange> res = new ArrayList<>();
         if (left != Long.MIN_VALUE) {

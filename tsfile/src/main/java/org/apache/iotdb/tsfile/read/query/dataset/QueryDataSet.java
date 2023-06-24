@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.query.dataset;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -89,13 +90,13 @@ public abstract class QueryDataSet {
     }
   }
 
-  public QueryDataSet() {}
+  protected QueryDataSet() {}
 
-  public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
+  protected QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     initQueryDataSetFields(paths, dataTypes, true);
   }
 
-  public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes, boolean ascending) {
+  protected QueryDataSet(List<Path> paths, List<TSDataType> dataTypes, boolean ascending) {
     initQueryDataSetFields(paths, dataTypes, ascending);
   }
 
@@ -150,12 +151,11 @@ public abstract class QueryDataSet {
    * @return true satisfy false don't satisfy
    */
   public boolean withoutNullFilter(RowRecord rowRecord) {
-    boolean
-        anyNullFlag =
-            (withoutNullColumnsIndex == null)
-                ? rowRecord.hasNullField()
-                : (withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField()),
-        allNullFlag = (withoutNullColumnsIndex != null) || rowRecord.isAllNull();
+    boolean anyNullFlag =
+        (withoutNullColumnsIndex == null)
+            ? rowRecord.hasNullField()
+            : (withoutNullColumnsIndex.isEmpty() && rowRecord.hasNullField());
+    boolean allNullFlag = (withoutNullColumnsIndex != null) || rowRecord.isAllNull();
 
     if (withoutNullColumnsIndex != null) {
       for (int index : withoutNullColumnsIndex) {

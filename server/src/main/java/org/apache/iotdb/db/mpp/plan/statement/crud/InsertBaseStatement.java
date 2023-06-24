@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -294,22 +295,22 @@ public abstract class InsertBaseStatement extends Statement {
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
         new HashMap<>();
     for (int i = 0; i < this.measurements.length; i++) {
-      PartialPath devicePath;
+      PartialPath targetDevicePath;
       String measurementName;
       if (isLogicalView[i]) {
         int viewIndex = indexMapToLogicalViewList[i];
-        devicePath =
+        targetDevicePath =
             this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
         measurementName =
             this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
       } else {
-        devicePath = this.devicePath;
+        targetDevicePath = this.devicePath;
         measurementName = this.measurements[i];
       }
       int index = i;
       final String finalMeasurementName = measurementName;
       mapFromDeviceToMeasurementAndIndex.compute(
-          devicePath,
+          targetDevicePath,
           (k, v) -> {
             if (v == null) {
               List<Pair<String, Integer>> valueList = new ArrayList<>();

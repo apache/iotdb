@@ -469,6 +469,9 @@ public class QueryStatement extends Statement {
     return useWildcard;
   }
 
+  private static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
+      "Raw data and aggregation hybrid query is not supported.";
+
   public void semanticCheck() {
     if (isAggregationQuery()) {
       if (disableAlign()) {
@@ -486,7 +489,7 @@ public class QueryStatement extends Statement {
       Set<String> outputColumn = new HashSet<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
-          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+          throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
         }
         outputColumn.add(
             resultColumn.getAlias() != null
@@ -495,7 +498,7 @@ public class QueryStatement extends Statement {
       }
       for (Expression expression : getExpressionSortItemList()) {
         if (!hasAggregationFunction(expression)) {
-          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+          throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
         }
       }
       if (isGroupByTag()) {
@@ -527,7 +530,7 @@ public class QueryStatement extends Statement {
       }
       for (Expression expression : getExpressionSortItemList()) {
         if (hasAggregationFunction(expression)) {
-          throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+          throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
         }
       }
     }

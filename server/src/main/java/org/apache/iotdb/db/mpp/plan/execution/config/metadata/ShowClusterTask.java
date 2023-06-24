@@ -72,7 +72,7 @@ public class ShowClusterTask implements IConfigTask {
     builder.declarePosition();
   }
 
-  public static void buildTSBlock(
+  public static void buildTsBlock(
       TShowClusterResp clusterNodeInfos, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showClusterColumnHeaders.stream()

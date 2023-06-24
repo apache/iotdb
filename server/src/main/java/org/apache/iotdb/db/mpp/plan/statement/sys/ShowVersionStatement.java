@@ -24,7 +24,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
 public class ShowVersionStatement extends ShowStatement {
 
-  public ShowVersionStatement() {}
+  public ShowVersionStatement() {
+    // do nothing
+  }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

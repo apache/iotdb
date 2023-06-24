@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -120,7 +121,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       return schemaPartition;
     } catch (ClientManagerException | TException e) {
-      logger.warn("Get Schema Partition error", e);
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }

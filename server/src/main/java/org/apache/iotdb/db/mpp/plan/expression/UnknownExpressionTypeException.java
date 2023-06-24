@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.statement.component;
 
-public enum FilterNullPolicy {
-  NO_FILTER,
-  CONTAINS_NULL,
-  ALL_NULL
+package org.apache.iotdb.db.mpp.plan.expression;
+
+public class UnknownExpressionTypeException extends IllegalArgumentException {
+
+  public UnknownExpressionTypeException(ExpressionType expressionType) {
+    super("Unsupported expression type: " + expressionType);
+  }
 }

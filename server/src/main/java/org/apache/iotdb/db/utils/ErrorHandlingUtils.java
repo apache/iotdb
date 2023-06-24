@@ -129,6 +129,10 @@ public class ErrorHandlingUtils {
     } else if (t instanceof TsFileRuntimeException) {
       return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, rootCause.getMessage());
     } else if (t instanceof SemanticException) {
+      if (t.getCause() instanceof IoTDBException) {
+        return RpcUtils.getStatus(
+            ((IoTDBException) t.getCause()).getErrorCode(), rootCause.getMessage());
+      }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     }
 
