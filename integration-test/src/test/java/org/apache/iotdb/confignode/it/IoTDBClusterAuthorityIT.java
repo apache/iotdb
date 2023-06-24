@@ -68,8 +68,7 @@ public class IoTDBClusterAuthorityIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private void cleanUserAndRole(IConfigNodeRPCService.Iface client)
-      throws TException, IllegalPathException {
+  private void cleanUserAndRole(IConfigNodeRPCService.Iface client) throws TException {
     TSStatus status;
 
     // clean user
@@ -127,8 +126,7 @@ public class IoTDBClusterAuthorityIT {
     revokePrivilege.add(PrivilegeType.USER.ordinal());
 
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : CREATE_USER");
-    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : USER");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln.**"));

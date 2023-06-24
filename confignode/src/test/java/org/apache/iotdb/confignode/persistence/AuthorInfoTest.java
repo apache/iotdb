@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
-import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
@@ -44,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -86,7 +84,6 @@ public class AuthorInfoTest {
     roleList.add("role1");
 
     AuthorPlan authorPlan;
-    TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
     privilegeList.add(PrivilegeType.USER.ordinal());
@@ -95,7 +92,6 @@ public class AuthorInfoTest {
     revokePrivilege.add(PrivilegeType.USER.ordinal());
 
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : USER");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln"));
@@ -310,7 +306,6 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    privilege.remove(0);
     Assert.assertEquals(
         0, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
 
@@ -509,15 +504,14 @@ public class AuthorInfoTest {
     privilegeList.add(PrivilegeType.WRITE_DATA.ordinal());
     privilegeList.add(PrivilegeType.READ_DATA.ordinal());
 
-    Map<String, List<String>> permissionInfo;
     List<String> userPrivilege = new ArrayList<>();
-    userPrivilege.add("root.sg.** : INSERT_TIMESERIES READ_TIMESERIES");
-    userPrivilege.add("root.ln.** : INSERT_TIMESERIES READ_TIMESERIES");
+    userPrivilege.add("root.sg.** : READ_DATA WRITE_DATA");
+    userPrivilege.add("root.ln.** : READ_DATA WRITE_DATA");
     Collections.sort(userPrivilege);
 
     List<String> rolePrivilege = new ArrayList<>();
-    rolePrivilege.add("root.abc.** : INSERT_TIMESERIES READ_TIMESERIES");
-    rolePrivilege.add("root.role_1.** : INSERT_TIMESERIES READ_TIMESERIES");
+    rolePrivilege.add("root.abc.** : READ_DATA WRITE_DATA");
+    rolePrivilege.add("root.role_1.** : READ_DATA WRITE_DATA");
     Collections.sort(rolePrivilege);
 
     List<String> allPrivilege = new ArrayList<>();
