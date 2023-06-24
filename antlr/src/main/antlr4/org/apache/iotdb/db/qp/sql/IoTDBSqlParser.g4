@@ -515,20 +515,20 @@ migrateRegion
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE pipeName=identifier
-        collectorAttributesClause?
+        extractorAttributesClause?
         processorAttributesClause?
         connectorAttributesClause
     ;
 
-collectorAttributesClause
-    : WITH COLLECTOR
+extractorAttributesClause
+    : WITH EXTRACTOR
         LR_BRACKET
-        (collectorAttributeClause COMMA)* collectorAttributeClause?
+        (extractorAttributeClause COMMA)* extractorAttributeClause?
         RR_BRACKET
     ;
 
-collectorAttributeClause
-    : collectorKey=STRING_LITERAL OPERATOR_SEQ collectorValue=STRING_LITERAL
+extractorAttributeClause
+    : extractorKey=STRING_LITERAL OPERATOR_SEQ extractorValue=STRING_LITERAL
     ;
 
 processorAttributesClause
