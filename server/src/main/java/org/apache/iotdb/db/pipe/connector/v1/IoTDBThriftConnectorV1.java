@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
@@ -65,14 +63,11 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV1.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private String ipAddress;
   private int port;
 
   private IoTDBThriftConnectorClient client;
-
-  public IoTDBThriftConnectorV1() {}
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -112,13 +107,17 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
         throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
       }
     } catch (TException e) {
-      LOGGER.warn(String.format("Connect to receiver %s:%s error.", ipAddress, port), e);
-      throw new PipeConnectionException(e.getMessage(), e);
+      throw new PipeConnectionException(
+          String.format(
+              "Connect to receiver %s:%s error, because: %s", ipAddress, port, e.getMessage()),
+          e);
     }
   }
 
   @Override
-  public void heartbeat() throws Exception {}
+  public void heartbeat() throws Exception {
+    // do nothing
+  }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
@@ -133,12 +132,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
             "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
     } catch (TException e) {
-      LOGGER.warn(
-          "Network error when transfer tablet insertion event: {}.", tabletInsertionEvent, e);
-      // the connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tablet insertion event, because %s.", e.getMessage()),
+              "Network error when transfer tablet insertion event %s, because %s.",
+              tabletInsertionEvent, e.getMessage()),
           e);
     }
   }
@@ -185,12 +182,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     try {
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
-      LOGGER.warn(
-          "Network error when transfer tsfile insertion event: {}.", tsFileInsertionEvent, e);
-      // the connection may be broken, try to reconnect by catching PipeConnectionException
       throw new PipeConnectionException(
           String.format(
-              "Network error when transfer tsfile insertion event, because %s.", e.getMessage()),
+              "Network error when transfer tsfile insertion event %s, because %s.",
+              tsFileInsertionEvent, e.getMessage()),
           e);
     }
   }
@@ -229,7 +224,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
             == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
-          LOGGER.info(String.format("Redirect file position to %s.", position));
+          LOGGER.info("Redirect file position to {}.", position);
           continue;
         }
 

@@ -29,11 +29,7 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
@@ -144,34 +140,8 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     if (!needSplit) {
       return this;
     }
-    validateInsertTabletList(mergedList);
     InsertMultiTabletsStatement splitResult = new InsertMultiTabletsStatement();
     splitResult.setInsertTabletStatementList(mergedList);
     return splitResult;
-  }
-
-  /**
-   * Check given InsertRowStatement list, make sure no duplicate time series in those statements. If
-   * there are duplicate measurements, throw DuplicateInsertException.
-   */
-  public static void validateInsertTabletList(List<InsertTabletStatement> insertTabletList) {
-    if (insertTabletList == null) {
-      return;
-    }
-    Map<String, Set<String>> mapFromDeviceToMeasurements = new HashMap<>();
-    for (InsertTabletStatement insertTablet : insertTabletList) {
-      String device = insertTablet.devicePath.getFullPath();
-      Set<String> measurementSet = mapFromDeviceToMeasurements.get(device);
-      if (measurementSet == null) {
-        measurementSet = new HashSet<>();
-      }
-      for (String measurement : insertTablet.measurements) {
-        boolean notExist = measurementSet.add(measurement);
-        if (!notExist) {
-          throw new SemanticException(new DuplicateInsertException(device, measurement));
-        }
-      }
-      mapFromDeviceToMeasurements.put(device, measurementSet);
-    }
   }
 }

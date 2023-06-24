@@ -38,17 +38,21 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 /** One example for writing TsFile with MapReduce. */
 public class TSMRWriteExample {
 
+  private static Logger logger = LoggerFactory.getLogger(TSMRWriteExample.class);
+
   public static void main(String[] args)
       throws IOException, ClassNotFoundException, TSFHadoopException {
 
     if (args.length != 3) {
-      System.out.println("Please give hdfs url, input path, output path");
+      logger.info("Please give hdfs url, input path, output path");
       return;
     }
 
@@ -77,7 +81,6 @@ public class TSMRWriteExample {
 
     Configuration configuration = new Configuration();
     // set file system configuration
-    // configuration.set("fs.defaultFS", HDFSURL);
     Job job = Job.getInstance(configuration);
 
     FileSystem fs = FileSystem.get(configuration);
@@ -124,9 +127,9 @@ public class TSMRWriteExample {
       throw new IOException(e.getMessage());
     }
     if (isSuccess) {
-      System.out.println("Execute successfully");
+      logger.info("Execute successfully");
     } else {
-      System.out.println("Execute unsuccessfully");
+      logger.info("Execute unsuccessfully");
     }
   }
 
@@ -156,21 +159,21 @@ public class TSMRWriteExample {
         Iterable<MapWritable> values,
         Reducer<Text, MapWritable, NullWritable, HDFSTSRecord>.Context context)
         throws IOException, InterruptedException {
-      long sensor1_value_sum = 0;
-      long sensor2_value_sum = 0;
-      double sensor3_value_sum = 0;
+      long sensor1ValueSum = 0;
+      long sensor2ValueSum = 0;
+      double sensor3ValueSum = 0;
       long num = 0;
       for (MapWritable value : values) {
         num++;
-        sensor1_value_sum += ((LongWritable) value.get(new Text(Constant.SENSOR_1))).get();
-        sensor2_value_sum += ((LongWritable) value.get(new Text(Constant.SENSOR_2))).get();
-        sensor3_value_sum += ((DoubleWritable) value.get(new Text(Constant.SENSOR_3))).get();
+        sensor1ValueSum += ((LongWritable) value.get(new Text(Constant.SENSOR_1))).get();
+        sensor2ValueSum += ((LongWritable) value.get(new Text(Constant.SENSOR_2))).get();
+        sensor3ValueSum += ((DoubleWritable) value.get(new Text(Constant.SENSOR_3))).get();
       }
       HDFSTSRecord tsRecord = new HDFSTSRecord(1L, key.toString());
       if (num != 0) {
-        DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, sensor1_value_sum / num);
-        DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, sensor2_value_sum / num);
-        DataPoint dPoint3 = new DoubleDataPoint(Constant.SENSOR_3, sensor3_value_sum / num);
+        DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, sensor1ValueSum / num);
+        DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, sensor2ValueSum / num);
+        DataPoint dPoint3 = new DoubleDataPoint(Constant.SENSOR_3, sensor3ValueSum / num);
         tsRecord.addTuple(dPoint1);
         tsRecord.addTuple(dPoint2);
         tsRecord.addTuple(dPoint3);

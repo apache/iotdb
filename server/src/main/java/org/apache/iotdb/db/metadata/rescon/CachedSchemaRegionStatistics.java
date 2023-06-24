@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
@@ -23,8 +24,8 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * This class is used to record statistics within a SchemaRegion in PB_Tree mode, which is a
- * superset of the statistics in Memory mode
+ * This class is used to record statistics within a SchemaRegion in PBTree mode, which is a superset
+ * of the statistics in Memory mode.
  */
 public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
 
@@ -33,7 +34,7 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
   private final AtomicLong unpinnedMNodeNum = new AtomicLong(0);
   private final AtomicLong pinnedMNodeNum = new AtomicLong(0);
 
-  private long mLogCheckPoint = 0;
+  private long mlogCheckPoint = 0;
 
   private ICacheManager cacheManager;
 
@@ -65,8 +66,8 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     cachedEngineStatistics.updateUnpinnedMemorySize(delta);
   }
 
-  public void setMLogCheckPoint(long mLogCheckPoint) {
-    this.mLogCheckPoint = mLogCheckPoint;
+  public void setMlogCheckPoint(long mlogCheckPoint) {
+    this.mlogCheckPoint = mlogCheckPoint;
   }
 
   public void setCacheManager(ICacheManager cacheManager) {
@@ -89,8 +90,8 @@ public class CachedSchemaRegionStatistics extends MemSchemaRegionStatistics {
     return pinnedMNodeNum.get();
   }
 
-  public long getMLogCheckPoint() {
-    return mLogCheckPoint;
+  public long getMlogCheckPoint() {
+    return mlogCheckPoint;
   }
 
   public long getBufferNodeNum() {

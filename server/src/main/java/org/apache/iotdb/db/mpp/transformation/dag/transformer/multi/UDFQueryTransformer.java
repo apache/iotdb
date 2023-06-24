@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.multi;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,7 +40,7 @@ public abstract class UDFQueryTransformer extends Transformer {
     terminated = false;
   }
 
-  protected final boolean terminate() throws QueryProcessException {
+  protected final boolean terminate() {
     if (terminated) {
       return false;
     }

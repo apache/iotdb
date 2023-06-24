@@ -156,6 +156,7 @@ public class FileMetrics implements IMetricSet {
         FileMetrics::getModFileNum,
         Tag.NAME.toString(),
         "mods");
+    checkIfThereRemainingData();
   }
 
   private void bindWalFileMetrics(AbstractMetricService metricService) {

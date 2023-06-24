@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -96,7 +96,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         new PipeStaticMeta(
             createPipeRequest.getPipeName(),
             System.currentTimeMillis(),
-            createPipeRequest.getCollectorAttributes(),
+            createPipeRequest.getExtractorAttributes(),
             createPipeRequest.getProcessorAttributes(),
             createPipeRequest.getConnectorAttributes());
 
@@ -111,7 +111,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     env.getConfigManager()
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
+                if (databaseName != null && !databaseName.equals(IoTDBConfig.SYSTEM_DATABASE)) {
                   // pipe only collect user's data, filter metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId,
@@ -204,8 +204,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE_V2.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(createPipeRequest.getPipeName(), stream);
-    ReadWriteIOUtils.write(createPipeRequest.getCollectorAttributesSize(), stream);
-    for (Map.Entry<String, String> entry : createPipeRequest.getCollectorAttributes().entrySet()) {
+    ReadWriteIOUtils.write(createPipeRequest.getExtractorAttributesSize(), stream);
+    for (Map.Entry<String, String> entry : createPipeRequest.getExtractorAttributes().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
       ReadWriteIOUtils.write(entry.getValue(), stream);
     }
@@ -233,13 +233,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     createPipeRequest =
         new TCreatePipeReq()
             .setPipeName(ReadWriteIOUtils.readString(byteBuffer))
-            .setCollectorAttributes(new HashMap<>())
+            .setExtractorAttributes(new HashMap<>())
             .setProcessorAttributes(new HashMap<>())
             .setConnectorAttributes(new HashMap<>());
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       createPipeRequest
-          .getCollectorAttributes()
+          .getExtractorAttributes()
           .put(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
     }
     size = ReadWriteIOUtils.readInt(byteBuffer);

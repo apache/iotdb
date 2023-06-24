@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -79,10 +80,6 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       return sourceId;
     }
 
-    public PlanNodeId getPlanNodeId() {
-      return sourceId;
-    }
-
     public String getOperatorType() {
       return SeriesScanOperator.class.getSimpleName();
     }
@@ -90,12 +87,12 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     @Override
     public SourceOperator createOperator(DriverContext driverContext) {
       checkState(!closed, "Factory is already closed");
-      OperatorContext operatorContext =
-          driverContext.addOperatorContext(operatorId, sourceId, getOperatorType());
       SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
       scanOptionsBuilder.withAllSensors(allSensors);
       scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
       scanOptionsBuilder.withQueryFilter(valueFilter);
+      OperatorContext operatorContext =
+          driverContext.addOperatorContext(operatorId, sourceId, getOperatorType());
       return new SeriesScanOperator(
           operatorContext,
           sourceId,
@@ -138,6 +135,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
     return checkTsBlockSizeAndGetResult();
   }
 
+  @SuppressWarnings("squid:S112")
   @Override
   public boolean hasNext() throws Exception {
     if (retainedTsBlock != null) {
@@ -152,27 +150,13 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
       // here use do-while to promise doing this at least once
       do {
         /*
-         * consume page data firstly
+         * 1. consume page data firstly
+         * 2. consume chunk data secondly
+         * 3. consume next file finally
          */
-        if (readPageData()) {
-          continue;
+        if (!readPageData() && !readChunkData() && !readFileData()) {
+          break;
         }
-
-        /*
-         * consume chunk data secondly
-         */
-        if (readChunkData()) {
-          continue;
-        }
-
-        /*
-         * consume next file finally
-         */
-        if (readFileData()) {
-          continue;
-        }
-        break;
-
       } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
 
       finished = builder.isEmpty();

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.common.conf;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -25,12 +26,13 @@ import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 
 /** TSFileConfig is a configuration class. Every variable is public and has default value. */
 public class TSFileConfig implements Serializable {
 
-  /** encoding configuration */
+  /** encoding configuration. */
   public static final int RLE_MIN_REPEATED_NUM = 8;
 
   public static final int RLE_MAX_REPEATED_NUM = 0x7FFF;
@@ -56,15 +58,15 @@ public class TSFileConfig implements Serializable {
   public static final int BYTE_SIZE_PER_CHAR = 4;
 
   public static final String STRING_ENCODING = "UTF-8";
-  public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
+  public static final Charset STRING_CHARSET = StandardCharsets.UTF_8;
   public static final String CONFIG_FILE_NAME = "iotdb-common.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER_V2 = "000002";
   public static final String VERSION_NUMBER_V1 = "000001";
-  /** version number is changed to use 1 byte to represent since version 3 */
+  /** version number is changed to use 1 byte to represent since version 3. */
   public static final byte VERSION_NUMBER = 0x03;
 
-  /** Bloom filter constrain */
+  /** Bloom filter constrain. */
   public static final double MIN_BLOOM_FILTER_ERROR_RATE = 0.01;
 
   public static final double MAX_BLOOM_FILTER_ERROR_RATE = 0.1;
@@ -77,7 +79,7 @@ public class TSFileConfig implements Serializable {
   private int pageSizeInByte = 64 * 1024;
   /** The maximum number of data points in a page, default value is 10000. */
   private int maxNumberOfPointsInPage = 10_000;
-  /** The maximum degree of a metadataIndex node, default value is 256 */
+  /** The maximum degree of a metadataIndex node, default value is 256. */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */
   private TSDataType timeSeriesDataType = TSDataType.INT64;
@@ -99,7 +101,7 @@ public class TSFileConfig implements Serializable {
   private String valueEncoder = "PLAIN";
   /** Default bit width of RLE encoding is 8. */
   private int rleBitWidth = 8;
-  /** Default block size of two-diff. delta encoding is 128 */
+  /** Default block size of two-diff. delta encoding is 128. */
   private int deltaBlockSize = 128;
   /** Default frequency type is SINGLE_FREQ. */
   private String freqType = "SINGLE_FREQ";
@@ -115,21 +117,21 @@ public class TSFileConfig implements Serializable {
   private int pageCheckSizeThreshold = 100;
   /** Default endian value is BIG_ENDIAN. */
   private String endian = "BIG_ENDIAN";
-  /** Default storage is in local file system */
-  private FSType[] TSFileStorageFs = new FSType[] {FSType.LOCAL};
+  /** Default storage is in local file system. */
+  private FSType[] tSFileStorageFs = new FSType[] {FSType.LOCAL};
   /** Default core-site.xml file path is /etc/hadoop/conf/core-site.xml */
   private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
   /** Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml */
   private String hdfsSitePath = "/etc/hadoop/conf/hdfs-site.xml";
-  /** Default hdfs ip is localhost */
+  /** Default hdfs ip is localhost. */
   private String hdfsIp = "localhost";
-  /** Default hdfs port is 9000 */
+  /** Default hdfs port is 9000. */
   private String hdfsPort = "9000";
-  /** Default DFS NameServices is hdfsnamespace */
-  private String dfsNameServices = "hdfsnamespace";
-  /** Default DFS HA name nodes are nn1 and nn2 */
+  /** Default DFS NameServices is hdfsnamespace. */
+  private String dfsNameServices = "hdfsnamespace.";
+  /** Default DFS HA name nodes are nn1 and nn2. */
   private String dfsHaNamenodes = "nn1,nn2";
-  /** Default DFS HA automatic failover is enabled */
+  /** Default DFS HA automatic failover is enabled. */
   private boolean dfsHaAutomaticFailoverEnabled = true;
   /**
    * Default DFS client failover proxy provider is
@@ -137,21 +139,21 @@ public class TSFileConfig implements Serializable {
    */
   private String dfsClientFailoverProxyProvider =
       "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
-  /** whether use kerberos to authenticate hdfs */
+  /** whether use kerberos to authenticate hdfs. */
   private boolean useKerberos = false;
-  /** full path of kerberos keytab file */
+  /** full path of kerberos keytab file. */
   private String kerberosKeytabFilePath = "/path";
-  /** kerberos pricipal */
+  /** kerberos pricipal. */
   private String kerberosPrincipal = "principal";
-  /** The acceptable error rate of bloom filter */
+  /** The acceptable error rate of bloom filter. */
   private double bloomFilterErrorRate = 0.05;
-  /** The amount of data iterate each time */
+  /** The amount of data iterate each time. */
   private int batchSize = 1000;
 
   /** Maximum capacity of a TsBlock, allow up to two pages. */
   private int maxTsBlockSizeInBytes = 128 * 1024;
 
-  /** Maximum number of lines in a single TsBlock */
+  /** Maximum number of lines in a single TsBlock. */
   private int maxTsBlockLineNumber = 1000;
 
   private int patternMatchingThreshold = 1000000;
@@ -171,7 +173,9 @@ public class TSFileConfig implements Serializable {
   /** customizedProperties, this should be empty by default. */
   private Properties customizedProperties = new Properties();
 
-  public TSFileConfig() {}
+  public TSFileConfig() {
+    // do nothing because we already give default value to each field when they are being declared
+  }
 
   public int getGroupSizeInByte() {
     return groupSizeInByte;
@@ -358,11 +362,11 @@ public class TSFileConfig implements Serializable {
   }
 
   public FSType[] getTSFileStorageFs() {
-    return this.TSFileStorageFs;
+    return this.tSFileStorageFs;
   }
 
   public void setTSFileStorageFs(FSType[] fileStorageFs) {
-    this.TSFileStorageFs = fileStorageFs;
+    this.tSFileStorageFs = fileStorageFs;
     FSUtils.reload();
   }
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
@@ -25,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
-/** only has one input column */
+/** only has one input column. */
 public class SingleColumnMerger implements ColumnMerger {
 
   private final InputLocation location;
@@ -57,6 +58,18 @@ public class SingleColumnMerger implements ColumnMerger {
         comparator);
   }
 
+  @Override
+  public void mergeColumn(
+      TsBlock[] inputTsBlocks,
+      int[] inputIndex,
+      int[] updatedInputIndex,
+      long currentTime,
+      ColumnBuilder columnBuilder) {
+    mergeOneColumn(
+        inputTsBlocks, inputIndex, updatedInputIndex, currentTime, columnBuilder, location);
+  }
+
+  @SuppressWarnings({"squid:S107", "squid:S3776"})
   public static void mergeOneColumn(
       TsBlock[] inputTsBlocks,
       int[] inputIndex,
@@ -109,17 +122,6 @@ public class SingleColumnMerger implements ColumnMerger {
     }
     // update the index after merging
     updatedInputIndex[tsBlockIndex] = index;
-  }
-
-  @Override
-  public void mergeColumn(
-      TsBlock[] inputTsBlocks,
-      int[] inputIndex,
-      int[] updatedInputIndex,
-      long currentTime,
-      ColumnBuilder columnBuilder) {
-    mergeOneColumn(
-        inputTsBlocks, inputIndex, updatedInputIndex, currentTime, columnBuilder, location);
   }
 
   public static void mergeOneColumn(

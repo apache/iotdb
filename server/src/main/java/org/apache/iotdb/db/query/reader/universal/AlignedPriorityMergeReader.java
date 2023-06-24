@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.universal;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -38,13 +39,13 @@ public class AlignedPriorityMergeReader extends PriorityMergeReader {
     fillNullValueInAligned(v, c);
   }
 
-  static void fillNullValueInAligned(TimeValuePair v, TimeValuePair c) {
-    TsPrimitiveType[] vArray = v.getValue().getVector();
-    TsPrimitiveType[] cArray = c.getValue().getVector();
-    for (int i = 0; i < vArray.length; i++) {
-      if ((vArray[i] == null || vArray[i].getValue() == null)
-          && (cArray[i] != null && cArray[i].getValue() != null)) {
-        vArray[i] = cArray[i];
+  static void fillNullValueInAligned(TimeValuePair to, TimeValuePair from) {
+    TsPrimitiveType[] toArray = to.getValue().getVector();
+    TsPrimitiveType[] fromArray = from.getValue().getVector();
+    for (int i = 0, size = toArray.length; i < size; i++) {
+      if ((toArray[i] == null || toArray[i].getValue() == null)
+          && (fromArray[i] != null && fromArray[i].getValue() != null)) {
+        toArray[i] = fromArray[i];
       }
     }
   }

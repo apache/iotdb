@@ -28,9 +28,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
-import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
-import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -614,19 +612,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private SchemaFilter parseTimeseriesWhereClause(IoTDBSqlParser.TimeseriesWhereClauseContext ctx) {
     if (ctx.timeseriesContainsExpression() != null) {
       // path contains filter
-      return new PathContainsFilter(
+      return SchemaFilterFactory.createPathContainsFilter(
           parseStringLiteral(ctx.timeseriesContainsExpression().value.getText()));
     } else if (ctx.columnEqualsExpression() != null) {
       return parseColumnEqualsExpressionContext(ctx.columnEqualsExpression());
     } else {
       // tag filter
       if (ctx.tagContainsExpression() != null) {
-        return new TagFilter(
+        return SchemaFilterFactory.createTagFilter(
             parseAttributeKey(ctx.tagContainsExpression().attributeKey()),
             parseStringLiteral(ctx.tagContainsExpression().value.getText()),
             true);
       } else {
-        return new TagFilter(
+        return SchemaFilterFactory.createTagFilter(
             parseAttributeKey(ctx.tagEqualsExpression().attributeKey()),
             parseAttributeValue(ctx.tagEqualsExpression().attributeValue()),
             false);
@@ -641,7 +639,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (column.equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
       try {
         TSDataType dataType = TSDataType.valueOf(value.toUpperCase());
-        return new DataTypeFilter(dataType);
+        return SchemaFilterFactory.createDataTypeFilter(dataType);
       } catch (Exception e) {
         throw new SemanticException(String.format("unsupported datatype: %s", value));
       }
@@ -702,7 +700,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private SchemaFilter parseDevicesWhereClause(IoTDBSqlParser.DevicesWhereClauseContext ctx) {
     // path contains filter
-    return new PathContainsFilter(
+    return SchemaFilterFactory.createPathContainsFilter(
         parseStringLiteral(ctx.deviceContainsExpression().value.getText()));
   }
 
@@ -3507,11 +3505,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "Not support for this sql in CREATEPIPE, please enter pipename or pipesinkname.");
     }
-    if (ctx.collectorAttributesClause() != null) {
-      createPipeStatement.setCollectorAttributes(
-          parseCollectorAttributesClause(ctx.collectorAttributesClause()));
+    if (ctx.extractorAttributesClause() != null) {
+      createPipeStatement.setExtractorAttributes(
+          parseExtractorAttributesClause(ctx.extractorAttributesClause()));
     } else {
-      createPipeStatement.setCollectorAttributes(new HashMap<>());
+      createPipeStatement.setExtractorAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
@@ -3524,14 +3522,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return createPipeStatement;
   }
 
-  private Map<String, String> parseCollectorAttributesClause(
-      IoTDBSqlParser.CollectorAttributesClauseContext ctx) {
+  private Map<String, String> parseExtractorAttributesClause(
+      IoTDBSqlParser.ExtractorAttributesClauseContext ctx) {
     final Map<String, String> collectorMap = new HashMap<>();
-    for (IoTDBSqlParser.CollectorAttributeClauseContext singleCtx :
-        ctx.collectorAttributeClause()) {
+    for (IoTDBSqlParser.ExtractorAttributeClauseContext singleCtx :
+        ctx.extractorAttributeClause()) {
       collectorMap.put(
-          parseStringLiteral(singleCtx.collectorKey.getText()),
-          parseStringLiteral(singleCtx.collectorValue.getText()));
+          parseStringLiteral(singleCtx.extractorKey.getText()),
+          parseStringLiteral(singleCtx.extractorValue.getText()));
     }
     return collectorMap;
   }

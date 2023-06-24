@@ -70,6 +70,7 @@ public class MetricConfig {
   private int nodeId = 0;
 
   private long upTimeInNs = 0;
+  private String internalDatabase = "root.__system";
 
   public MetricConfig() {
     // try to get pid of iotdb instance
@@ -161,10 +162,15 @@ public class MetricConfig {
     return upTimeInNs;
   }
 
+  public String getInternalDatabase() {
+    return internalDatabase;
+  }
+
   /** Update rpc address and rpc port of monitored node. */
-  public void updateRpcInstance(String clusterName, NodeType nodeType) {
+  public void updateRpcInstance(String clusterName, NodeType nodeType, String internalDatabase) {
     this.clusterName = clusterName;
     this.nodeType = nodeType;
+    this.internalDatabase = internalDatabase;
   }
 
   public void setNodeId(int nodeId) {

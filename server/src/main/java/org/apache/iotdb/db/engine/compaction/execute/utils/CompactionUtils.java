@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
-import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -343,6 +342,7 @@ public class CompactionUtils {
     return true;
   }
 
+  @SuppressWarnings("java:S6541") // do not warn about brain method
   public static boolean validateSingleTsFiles(TsFileResource resource) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
       reader.readHeadMagic();
@@ -365,7 +365,6 @@ public class CompactionUtils {
               // empty value chunk
               break;
             }
-            CompactionMetrics.getInstance().recordReadInfo(header.getDataSize());
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),

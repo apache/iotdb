@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
 
+  private static final String ERROR_MSG = "Unsupported target dataType: %s";
+
   public CastFunctionColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
     super(returnType, childColumnTransformer);
   }
@@ -92,8 +94,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
         break;
       default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
+        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
     }
   }
 
@@ -118,8 +119,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
         break;
       default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
+        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
     }
   }
 
@@ -144,8 +144,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
         break;
       default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
+        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
     }
   }
 
@@ -170,8 +169,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
         break;
       default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
+        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
     }
   }
 
@@ -196,8 +194,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBinary(columnBuilder, Binary.valueOf(String.valueOf(value)));
         break;
       default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
+        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
     }
   }
 
@@ -223,8 +220,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         returnType.writeBinary(columnBuilder, value);
         break;
       default:
-        throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", returnType.getTypeEnum()));
+        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
     }
   }
 }

@@ -82,8 +82,7 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
     try {
       // get the first measurement node of this device, to know if the device is aligned
       this.measurementNode =
-          MetadataIndexNode.deserializeFrom(
-              reader.readData(startEndPair.right[0], startEndPair.right[1]));
+          reader.readMetadataIndexNode(startEndPair.right[0], startEndPair.right[1]);
       boolean isAligned = reader.isAlignedDevice(measurementNode);
       currentDevice = new Pair<>(startEndPair.left, isAligned);
       return currentDevice;

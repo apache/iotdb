@@ -586,6 +586,8 @@ public class Tablet {
               boolean isNotNull = BytesUtils.byteToBool(ReadWriteIOUtils.readByte(byteBuffer));
               if (isNotNull) {
                 binaryValues[index] = ReadWriteIOUtils.readBinary(byteBuffer);
+              } else {
+                binaryValues[index] = Binary.EMPTY_VALUE;
               }
             }
             values[i] = binaryValues;

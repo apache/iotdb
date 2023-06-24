@@ -42,6 +42,9 @@ import java.util.TreeMap;
 
 public class PipeConnectorSubtaskManager {
 
+  private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
+      "Failed to deregister PipeConnectorSubtask. No such subtask: ";
+
   private final Map<String, PipeConnectorSubtaskLifeCycle>
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
@@ -53,7 +56,6 @@ public class PipeConnectorSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      // TODO: construct all PipeConnector with the same reflection method, avoid using if-else
       // 1. construct, validate and customize PipeConnector, and then handshake (create connection)
       // with the target
       final String connectorKey =
@@ -103,8 +105,7 @@ public class PipeConnectorSubtaskManager {
 
   public synchronized void deregister(String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      throw new PipeException(
-          "Failed to deregister PipeConnectorSubtask. No such subtask: " + attributeSortedString);
+      throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
     if (attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).deregister()) {
@@ -114,8 +115,7 @@ public class PipeConnectorSubtaskManager {
 
   public synchronized void start(String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      throw new PipeException(
-          "Failed to deregister PipeConnectorSubtask. No such subtask: " + attributeSortedString);
+      throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
     attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).start();
@@ -123,8 +123,7 @@ public class PipeConnectorSubtaskManager {
 
   public synchronized void stop(String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      throw new PipeException(
-          "Failed to deregister PipeConnectorSubtask. No such subtask: " + attributeSortedString);
+      throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
     attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).stop();

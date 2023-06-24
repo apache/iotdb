@@ -193,7 +193,8 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(conf.getClusterName(), NodeType.DATANODE);
+            .updateRpcInstance(
+                conf.getClusterName(), NodeType.DATANODE, IoTDBConfig.SYSTEM_DATABASE);
       }
     } else {
       logger.warn(
@@ -865,23 +866,23 @@ public class IoTDBDescriptor {
     conf.setCachedMNodeSizeInPBTreeMode(
         Integer.parseInt(
             properties.getProperty(
-                "cached_mnode_size_in_pb_tree_mode",
+                "cached_mnode_size_in_pbtree_mode",
                 String.valueOf(conf.getCachedMNodeSizeInPBTreeMode()))));
 
     conf.setMinimumSegmentInPBTree(
         Short.parseShort(
             properties.getProperty(
-                "minimum_pb_tree_segment_in_bytes",
+                "minimum_pbtree_segment_in_bytes",
                 String.valueOf(conf.getMinimumSegmentInPBTree()))));
 
     conf.setPageCacheSizeInPBTree(
         Integer.parseInt(
             properties.getProperty(
-                "page_cache_in_pb_tree", String.valueOf(conf.getPageCacheSizeInPBTree()))));
+                "page_cache_in_pbtree", String.valueOf(conf.getPageCacheSizeInPBTree()))));
 
     conf.setPBTreeLogSize(
         Integer.parseInt(
-            properties.getProperty("pb_tree_log_size", String.valueOf(conf.getPBTreeLogSize()))));
+            properties.getProperty("pbtree_log_size", String.valueOf(conf.getPBTreeLogSize()))));
 
     conf.setMaxMeasurementNumOfInternalRequest(
         Integer.parseInt(

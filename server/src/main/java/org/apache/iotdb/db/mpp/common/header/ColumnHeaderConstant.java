@@ -150,7 +150,7 @@ public class ColumnHeaderConstant {
   // column names for show pipe
   public static final String ID = "ID";
   public static final String CREATION_TIME = "CreationTime";
-  public static final String PIPE_COLLECTOR = "PipeCollector";
+  public static final String PIPE_EXTRACTOR = "PipeExtractor";
   public static final String PIPE_PROCESSOR = "PipeProcessor";
   public static final String PIPE_CONNECTOR = "PipeConnector";
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
@@ -389,7 +389,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(ID, TSDataType.TEXT),
           new ColumnHeader(CREATION_TIME, TSDataType.TEXT),
           new ColumnHeader(STATE, TSDataType.TEXT),
-          new ColumnHeader(PIPE_COLLECTOR, TSDataType.TEXT),
+          new ColumnHeader(PIPE_EXTRACTOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_PROCESSOR, TSDataType.TEXT),
           new ColumnHeader(PIPE_CONNECTOR, TSDataType.TEXT),
           new ColumnHeader(EXCEPTION_MESSAGE, TSDataType.TEXT));

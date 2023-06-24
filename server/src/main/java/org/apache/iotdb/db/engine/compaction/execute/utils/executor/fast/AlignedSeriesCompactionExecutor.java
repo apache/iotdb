@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.engine.compaction.execute.utils.writer.AbstractCompactionWriter;
+import org.apache.iotdb.db.engine.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -88,6 +89,8 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   @Override
   protected void compactFiles()
       throws PageException, IOException, WriteProcessException, IllegalPathException {
+    markStartOfAlignedSeries();
+
     while (!fileList.isEmpty()) {
       List<FileElement> overlappedFiles = findOverlapFiles(fileList.get(0));
 
@@ -95,6 +98,24 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       deserializeFileIntoChunkMetadataQueue(overlappedFiles);
 
       compactChunks();
+    }
+
+    markEndOfAlignedSeries();
+  }
+
+  private void markStartOfAlignedSeries() {
+    for (TsFileSequenceReader reader : readerCacheMap.values()) {
+      if (reader instanceof CompactionTsFileReader) {
+        ((CompactionTsFileReader) reader).markStartOfAlignedSeries();
+      }
+    }
+  }
+
+  private void markEndOfAlignedSeries() {
+    for (TsFileSequenceReader reader : readerCacheMap.values()) {
+      if (reader instanceof CompactionTsFileReader) {
+        ((CompactionTsFileReader) reader).markEndOfAlignedSeries();
+      }
     }
   }
 

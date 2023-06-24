@@ -37,21 +37,24 @@ public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler 
   }
 
   @Override
-  public void preServe() {}
+  public void preServe() {
+    // empty override
+  }
 
   @Override
-  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+  public ServerContext createContext(TProtocol input, TProtocol output) {
     thriftConnectionNumber.incrementAndGet();
     return null;
   }
 
   @Override
-  public void deleteContext(
-      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
+  public void deleteContext(ServerContext serverContext, TProtocol input, TProtocol output) {
     thriftConnectionNumber.decrementAndGet();
   }
 
   @Override
   public void processContext(
-      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
+      ServerContext serverContext, TTransport inputTransport, TTransport outputTransport1) {
+    // empty override
+  }
 }

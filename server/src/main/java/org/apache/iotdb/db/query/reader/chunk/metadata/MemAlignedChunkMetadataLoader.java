@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;

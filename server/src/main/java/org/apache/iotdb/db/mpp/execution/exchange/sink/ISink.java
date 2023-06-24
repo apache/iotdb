@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.exchange.sink;
 
 import org.apache.iotdb.db.mpp.execution.driver.Driver;
@@ -37,6 +38,7 @@ public interface ISink {
   long getBufferRetainedSizeInBytes();
 
   /** Get a future that will be completed when the output buffer is not full. */
+  @SuppressWarnings("squid:S1452")
   ListenableFuture<?> isFull();
 
   /**
@@ -79,9 +81,9 @@ public interface ISink {
    */
   void close();
 
-  /** Return true if this ISink has been closed. Used in {@link Driver#isFinishedInternal()} */
+  /** Return true if this ISink has been closed. Used in {@link Driver#isFinishedInternal()}. */
   boolean isClosed();
 
-  /** Set max bytes this ISink can reserve from memory pool */
+  /** Set max bytes this ISink can reserve from memory pool. */
   void setMaxBytesCanReserve(long maxBytesCanReserve);
 }

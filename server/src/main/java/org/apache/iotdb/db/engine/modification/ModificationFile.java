@@ -34,10 +34,10 @@ import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Random;
 
 /**
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
@@ -54,7 +54,7 @@ public class ModificationFile implements AutoCloseable {
   private ModificationWriter writer;
   private ModificationReader reader;
   private String filePath;
-  private Random random = new Random();
+  private final SecureRandom random = new SecureRandom();
 
   /**
    * Construct a ModificationFile using a file as its storage.
@@ -136,7 +136,10 @@ public class ModificationFile implements AutoCloseable {
 
   public void remove() throws IOException {
     close();
-    FSFactoryProducer.getFSFactory().getFile(filePath).delete();
+    boolean deleted = FSFactoryProducer.getFSFactory().getFile(filePath).delete();
+    if (deleted) {
+      logger.warn("Delete ModificationFile {} failed.", filePath);
+    }
   }
 
   public boolean exists() {

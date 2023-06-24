@@ -201,8 +201,8 @@ public abstract class TernaryTransformer extends Transformer {
     long firstTime = isFirstConstant ? Long.MIN_VALUE : firstPointReader.currentTime();
     long secondTime = isSecondConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
     long thirdTime = isThirdConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
-    // Long.MIN_VALUE is used to determine whether  isFirstConstant && isSecondConstant &&
-    // isThirdConstant = true
+    // Long.MIN_VALUE is used to determine whether (isFirstConstant and isSecondConstant and
+    // isThirdConstant) is true
     while (firstTime != secondTime || firstTime != thirdTime) { // the logic is similar to MergeSort
       if (firstTime < secondTime) {
         if (isFirstConstant) {

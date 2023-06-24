@@ -79,7 +79,6 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       deviceIsAlignedMap = readDeviceIsAlignedMap();
       measurementDataTypeMap = tsFileSequenceReader.getFullPathDataTypeMap();
     } catch (Exception e) {
-      LOGGER.error("failed to create TsFileInsertionDataContainer", e);
       close();
       throw e;
     }
@@ -125,14 +124,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   }
 
   private Map<String, Boolean> readDeviceIsAlignedMap() throws IOException {
-    final Map<String, Boolean> deviceIsAlignedMap = new HashMap<>();
+    final Map<String, Boolean> deviceIsAlignedResultMap = new HashMap<>();
     final TsFileDeviceIterator deviceIsAlignedIterator =
         tsFileSequenceReader.getAllDevicesIteratorWithIsAligned();
     while (deviceIsAlignedIterator.hasNext()) {
       final Pair<String, Boolean> deviceIsAlignedPair = deviceIsAlignedIterator.next();
-      deviceIsAlignedMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
+      deviceIsAlignedResultMap.put(deviceIsAlignedPair.getLeft(), deviceIsAlignedPair.getRight());
     }
-    return deviceIsAlignedMap;
+    return deviceIsAlignedResultMap;
   }
 
   /** @return TabletInsertionEvent in a streaming way */

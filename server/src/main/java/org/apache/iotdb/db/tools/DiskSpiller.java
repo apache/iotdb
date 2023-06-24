@@ -40,10 +40,10 @@ import java.util.List;
 
 public class DiskSpiller {
 
+  private static final String FILE_SUFFIX = ".sortTemp";
   private final List<TSDataType> dataTypeList;
   private final String folderPath;
   private final String filePrefix;
-  private final String fileSuffix = ".sortTemp";
 
   private int fileIndex;
   private boolean folderCreated = false;
@@ -66,13 +66,13 @@ public class DiskSpiller {
     if (!folderCreated) {
       createFolder(folderPath);
     }
-    String fileName = filePrefix + String.format("%05d", fileIndex) + fileSuffix;
+    String fileName = filePrefix + String.format("%05d", fileIndex) + FILE_SUFFIX;
     fileIndex++;
 
     writeData(tsBlocks, fileName);
   }
 
-  // todo: directly serialize the sorted line instead of copy into a new tsBlock
+  /** todo: directly serialize the sorted line instead of copy into a new tsBlock. */
   public void spillSortedData(List<SortKey> sortedData) throws IoTDBException {
     List<TsBlock> tsBlocks = new ArrayList<>();
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypeList);
@@ -97,7 +97,7 @@ public class DiskSpiller {
       spill(tsBlocks);
     } catch (IOException e) {
       throw new IoTDBException(
-          "Create file error: " + filePrefix + (fileIndex - 1) + fileSuffix,
+          "Create file error: " + filePrefix + (fileIndex - 1) + FILE_SUFFIX,
           e,
           TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
@@ -143,7 +143,7 @@ public class DiskSpiller {
   private List<String> getFilePaths() {
     List<String> filePaths = new ArrayList<>();
     for (int i = 0; i < fileIndex; i++) {
-      filePaths.add(filePrefix + String.format("%05d", i) + fileSuffix);
+      filePaths.add(filePrefix + String.format("%05d", i) + FILE_SUFFIX);
     }
     return filePaths;
   }

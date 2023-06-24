@@ -36,7 +36,7 @@ import java.util.List;
 
 /**
  * This class define multiple modes for schema engine. All IT class extends AbstractSchemaIT will be
- * run in both Memory and PB_Tree modes. In PB_Tree mode, there are three kinds of test environment:
+ * run in both Memory and PBTree modes. In PBTree mode, there are three kinds of test environment:
  * full memory, partial memory and non memory.
  *
  * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link
@@ -76,7 +76,7 @@ public abstract class AbstractSchemaIT {
         EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Memory");
         break;
       case PBTree:
-        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("PB_Tree");
+        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("PBTree");
         allocateMemoryForSchemaRegion(4000);
         break;
     }

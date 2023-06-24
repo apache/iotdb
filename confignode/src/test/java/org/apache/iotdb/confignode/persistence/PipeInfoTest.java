@@ -67,10 +67,10 @@ public class PipeInfoTest {
 
   @Test
   public void testSnapshot() throws TException, IOException {
-    Map<String, String> collectorAttributes = new HashMap<>();
+    Map<String, String> extractorAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
-    collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
+    extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
@@ -78,7 +78,7 @@ public class PipeInfoTest {
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
-            "testPipe", 121, collectorAttributes, processorAttributes, connectorAttributes);
+            "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
     PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);

@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule.task;
 
-/** the status enum of {@link DriverTask} */
+/** The status enum of {@link DriverTask}. */
 public enum DriverTaskStatus {
   /* Ready to be executed */
   READY,

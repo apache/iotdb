@@ -31,7 +31,7 @@ public class SchemaResourceManager {
     if (CommonDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()
-        .equals(SchemaEngineMode.PB_Tree.toString())) {
+        .equals(SchemaEngineMode.PBTree.toString())) {
       initSchemaFileModeResource(engineStatistics);
     }
   }
@@ -40,7 +40,7 @@ public class SchemaResourceManager {
     if (CommonDescriptor.getInstance()
         .getConfig()
         .getSchemaEngineMode()
-        .equals(SchemaEngineMode.PB_Tree.toString())) {
+        .equals(SchemaEngineMode.PBTree.toString())) {
       clearSchemaFileModeResource();
     }
   }

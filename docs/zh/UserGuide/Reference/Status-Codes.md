@@ -79,9 +79,9 @@ try {
 | 518  | PAGE_OUT_OF_SPACE                      | PBTreeFile 中 Page 空间不够    |
 | 519  | RECORD_DUPLICATED                      | 记录重复                      |
 | 520  | SEGMENT_OUT_OF_SPACE                   | PBTreeFile 中 segment 空间不够 |
-| 521  | PB_TREE_FILE_NOT_EXISTS                | PBTreeFile 不存在            |
+| 521  | PBTREE_FILE_NOT_EXISTS                | PBTreeFile 不存在            |
 | 522  | OVERSIZE_RECORD                        | 记录大小超过元数据文件页面大小           |
-| 523  | PB_TREE_FILE_REDO_LOG_BROKEN           | PBTreeFile 的 redo 日志损坏    |
+| 523  | PBTREE_FILE_REDO_LOG_BROKEN           | PBTreeFile 的 redo 日志损坏    |
 | 524  | TEMPLATE_NOT_ACTIVATED                 | 元数据模板未激活                  |
 | 526  | SCHEMA_QUOTA_EXCEEDED                  | 集群元数据超过配额上限               |
 | 527  | MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE | 元数据模板中已存在物理量              |

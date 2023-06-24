@@ -101,10 +101,10 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.db.d1.s1,null,root.db,INT64,PLAIN,SNAPPY,null,null,null,null,,",
-                    "root.db.d1.s2,null,root.db,DOUBLE,RLE,SNAPPY,null,null,null,null,,",
-                    "root.db.d1.s3,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,,",
-                    "root.db.d1.s4,null,root.db,DOUBLE,GORILLA,SNAPPY,null,null,null,null,,"))
+                    "root.db.d1.s1,null,root.db,INT64,PLAIN,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d1.s2,null,root.db,DOUBLE,RLE,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d1.s3,null,root.db,INT64,RLE,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d1.s4,null,root.db,DOUBLE,GORILLA,SNAPPY,null,null,null,null,BASE,"))
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -154,18 +154,18 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.db.d1.s1,null,root.db,INT64,PLAIN,SNAPPY,null,null,null,null,,",
-                    "root.db.d1.s2,null,root.db,DOUBLE,RLE,SNAPPY,null,null,null,null,,",
-                    "root.db.d1.s3,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,,",
-                    "root.db.d1.s4,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,,",
-                    "root.db.d1.s5,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,,",
-                    "root.db.d2.s1,null,root.db,INT64,PLAIN,SNAPPY,null,null,null,null,,",
-                    "root.db.d2.s2,null,root.db,DOUBLE,RLE,SNAPPY,null,null,null,null,,",
-                    "root.db.d2.s3,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,,",
-                    "root.db.d2.s4,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,,",
-                    "root.db.d2.s5,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,,",
-                    "root.db1.d1.s2,null,root.db1,FLOAT,GORILLA,SNAPPY,null,null,null,null,,",
-                    "root.db1.d1.s3,null,root.db1,FLOAT,GORILLA,SNAPPY,null,null,null,null,,"))
+                    "root.db.d1.s1,null,root.db,INT64,PLAIN,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d1.s2,null,root.db,DOUBLE,RLE,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d1.s3,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d1.s4,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d1.s5,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d2.s1,null,root.db,INT64,PLAIN,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d2.s2,null,root.db,DOUBLE,RLE,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d2.s3,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d2.s4,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,BASE,",
+                    "root.db.d2.s5,null,root.db,FLOAT,GORILLA,SNAPPY,null,null,null,null,BASE,",
+                    "root.db1.d1.s2,null,root.db1,FLOAT,GORILLA,SNAPPY,null,null,null,null,BASE,",
+                    "root.db1.d1.s3,null,root.db1,FLOAT,GORILLA,SNAPPY,null,null,null,null,BASE,"))
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];

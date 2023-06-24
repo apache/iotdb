@@ -82,7 +82,7 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   @Override
   public MeasurementPath getMeasurementPath() {
     MeasurementPath result = new MeasurementPath(getPartialPath(), getSchema());
-    result.setUnderAlignedEntity(getParent().getAsDeviceMNode().isAligned());
+    result.setUnderAlignedEntity(getParent().getAsDeviceMNode().isAlignedNullable());
     return result;
   }
 

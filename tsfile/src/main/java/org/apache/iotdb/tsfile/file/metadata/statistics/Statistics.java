@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
@@ -49,11 +50,11 @@ public abstract class Statistics<T extends Serializable> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
   /**
-   * isEmpty being false means this statistic has been initialized and the max and min is not null;
+   * isEmpty being false means this statistic has been initialized and the max and min is not null.
    */
   protected boolean isEmpty = true;
 
-  /** number of time-value points */
+  /** number of time-value points. */
   private int count = 0;
 
   private long startTime = Long.MAX_VALUE;
@@ -66,6 +67,7 @@ public abstract class Statistics<T extends Serializable> {
    *
    * @param type - data type
    * @return Statistics
+   * @throws UnknownColumnTypeException if the type is unknown
    */
   public static Statistics<? extends Serializable> getStatsByType(TSDataType type) {
     switch (type) {
@@ -131,10 +133,37 @@ public abstract class Statistics<T extends Serializable> {
 
   abstract int serializeStats(OutputStream outputStream) throws IOException;
 
-  /** read data from the inputStream. */
+  /**
+   * deserialize data from the inputStream.
+   *
+   * @param inputStream input stream
+   * @throws IOException exception when operating stream
+   */
   public abstract void deserialize(InputStream inputStream) throws IOException;
 
   public abstract void deserialize(ByteBuffer byteBuffer);
+
+  public static Statistics<? extends Serializable> deserialize(
+      InputStream inputStream, TSDataType dataType) throws IOException {
+    Statistics<? extends Serializable> statistics = getStatsByType(dataType);
+    statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream));
+    statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
+    statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
+    statistics.deserialize(inputStream);
+    statistics.isEmpty = false;
+    return statistics;
+  }
+
+  public static Statistics<? extends Serializable> deserialize(
+      ByteBuffer buffer, TSDataType dataType) {
+    Statistics<? extends Serializable> statistics = getStatsByType(dataType);
+    statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
+    statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
+    statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
+    statistics.deserialize(buffer);
+    statistics.isEmpty = false;
+    return statistics;
+  }
 
   public abstract T getMinValue();
 
@@ -149,7 +178,7 @@ public abstract class Statistics<T extends Serializable> {
   public abstract long getSumLongValue();
 
   /**
-   * merge parameter to this statistic
+   * merge parameter to this statistic.
    *
    * @throws StatisticsClassException cannot merge statistics
    */
@@ -331,31 +360,10 @@ public abstract class Statistics<T extends Serializable> {
    *
    * @param min min timestamp
    * @param max max timestamp
+   * @throws UnsupportedOperationException throw exception when executing this method
    */
   public void updateStats(long min, long max) {
     throw new UnsupportedOperationException();
-  }
-
-  public static Statistics<? extends Serializable> deserialize(
-      InputStream inputStream, TSDataType dataType) throws IOException {
-    Statistics<? extends Serializable> statistics = getStatsByType(dataType);
-    statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream));
-    statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
-    statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
-    statistics.deserialize(inputStream);
-    statistics.isEmpty = false;
-    return statistics;
-  }
-
-  public static Statistics<? extends Serializable> deserialize(
-      ByteBuffer buffer, TSDataType dataType) {
-    Statistics<? extends Serializable> statistics = getStatsByType(dataType);
-    statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
-    statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
-    statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
-    statistics.deserialize(buffer);
-    statistics.isEmpty = false;
-    return statistics;
   }
 
   public long getStartTime() {

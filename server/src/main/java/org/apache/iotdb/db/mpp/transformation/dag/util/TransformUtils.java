@@ -43,6 +43,10 @@ import java.util.Optional;
 
 public class TransformUtils {
 
+  private TransformUtils() {
+    throw new IllegalStateException("TransformUtils should not be instantiated.");
+  }
+
   public static int compare(CharSequence cs1, CharSequence cs2) {
     if (Objects.requireNonNull(cs1) == Objects.requireNonNull(cs2)) {
       return 0;
@@ -109,77 +113,65 @@ public class TransformUtils {
     boolean res;
     switch (dataType) {
       case INT32:
-        {
-          if (!valueRecorder.hasRecorded()) {
-            valueRecorder.recordInt(tvList.getInt(tvList.size() - 2));
-            valueRecorder.setRecorded(true);
-          }
-          res = Math.abs(tvList.getInt(tvList.size() - 1) - valueRecorder.getInt()) > delta;
-          if (res) {
-            valueRecorder.recordInt(tvList.getInt(tvList.size() - 1));
-          }
-          break;
+        if (!valueRecorder.hasRecorded()) {
+          valueRecorder.recordInt(tvList.getInt(tvList.size() - 2));
+          valueRecorder.setRecorded(true);
         }
+        res = Math.abs(tvList.getInt(tvList.size() - 1) - valueRecorder.getInt()) > delta;
+        if (res) {
+          valueRecorder.recordInt(tvList.getInt(tvList.size() - 1));
+        }
+        break;
       case INT64:
-        {
-          if (!valueRecorder.hasRecorded()) {
-            valueRecorder.recordLong(tvList.getLong(tvList.size() - 2));
-            valueRecorder.setRecorded(true);
-          }
-          res = Math.abs(tvList.getLong(tvList.size() - 1) - valueRecorder.getLong()) > delta;
-          if (res) {
-            valueRecorder.recordLong(tvList.getLong(tvList.size() - 1));
-          }
-          break;
+        if (!valueRecorder.hasRecorded()) {
+          valueRecorder.recordLong(tvList.getLong(tvList.size() - 2));
+          valueRecorder.setRecorded(true);
         }
+        res = Math.abs(tvList.getLong(tvList.size() - 1) - valueRecorder.getLong()) > delta;
+        if (res) {
+          valueRecorder.recordLong(tvList.getLong(tvList.size() - 1));
+        }
+        break;
       case FLOAT:
-        {
-          if (!valueRecorder.hasRecorded()) {
-            valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 2));
-            valueRecorder.setRecorded(true);
-          }
-          res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueRecorder.getFloat()) > delta;
-          if (res) {
-            valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 1));
-          }
-          break;
+        if (!valueRecorder.hasRecorded()) {
+          valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 2));
+          valueRecorder.setRecorded(true);
         }
+        res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueRecorder.getFloat()) > delta;
+        if (res) {
+          valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 1));
+        }
+        break;
       case DOUBLE:
-        {
-          if (!valueRecorder.hasRecorded()) {
-            valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 2));
-            valueRecorder.setRecorded(true);
-          }
-          res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueRecorder.getDouble()) > delta;
-          if (res) {
-            valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 1));
-          }
-          break;
+        if (!valueRecorder.hasRecorded()) {
+          valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 2));
+          valueRecorder.setRecorded(true);
         }
+        res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueRecorder.getDouble()) > delta;
+        if (res) {
+          valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 1));
+        }
+        break;
       case BOOLEAN:
-        {
-          if (!valueRecorder.hasRecorded()) {
-            valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 2));
-            valueRecorder.setRecorded(true);
-          }
-          res = tvList.getBoolean(tvList.size() - 1) != valueRecorder.getBoolean();
-          if (res) {
-            valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 1));
-          }
-          break;
+        if (!valueRecorder.hasRecorded()) {
+          valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 2));
+          valueRecorder.setRecorded(true);
         }
+        res = tvList.getBoolean(tvList.size() - 1) != valueRecorder.getBoolean();
+        if (res) {
+          valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 1));
+        }
+        break;
       case TEXT:
-        {
-          if (!valueRecorder.hasRecorded()) {
-            valueRecorder.recordString(tvList.getString(tvList.size() - 2));
-            valueRecorder.setRecorded(true);
-          }
-          res = !tvList.getString(tvList.size() - 1).equals(valueRecorder.getString());
-          if (res) {
-            valueRecorder.recordString(tvList.getString(tvList.size() - 1));
-          }
-          break;
+        if (!valueRecorder.hasRecorded()) {
+          valueRecorder.recordString(tvList.getString(tvList.size() - 2));
+          valueRecorder.setRecorded(true);
         }
+        res = !tvList.getString(tvList.size() - 1).equals(valueRecorder.getString());
+        if (res) {
+          valueRecorder.recordString(tvList.getString(tvList.size() - 1));
+        }
+        break;
       default:
         throw new RuntimeException("The data type of the state window strategy is not valid.");
     }
