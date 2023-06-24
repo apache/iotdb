@@ -121,11 +121,10 @@ public class IoTDBClusterAuthorityIT {
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.DELETE_USER.ordinal());
-    privilegeList.add(PrivilegeType.CREATE_USER.ordinal());
+    privilegeList.add(PrivilegeType.USER.ordinal());
 
     Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.DELETE_USER.ordinal());
+    revokePrivilege.add(PrivilegeType.USER.ordinal());
 
     List<String> privilege = new ArrayList<>();
     privilege.add("root.** : CREATE_USER");
@@ -157,9 +156,7 @@ public class IoTDBClusterAuthorityIT {
       // check user privileges
       checkUserPrivilegesReq =
           new TCheckUserPrivilegesReq(
-              "tempuser0",
-              AuthUtils.serializePartialPathList(paths),
-              PrivilegeType.DELETE_USER.ordinal());
+              "tempuser0", AuthUtils.serializePartialPathList(paths), PrivilegeType.USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
@@ -268,9 +265,7 @@ public class IoTDBClusterAuthorityIT {
       // check user privileges
       checkUserPrivilegesReq =
           new TCheckUserPrivilegesReq(
-              "tempuser0",
-              AuthUtils.serializePartialPathList(paths),
-              PrivilegeType.DELETE_USER.ordinal());
+              "tempuser0", AuthUtils.serializePartialPathList(paths), PrivilegeType.USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

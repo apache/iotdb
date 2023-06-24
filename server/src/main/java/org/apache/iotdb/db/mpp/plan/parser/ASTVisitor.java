@@ -2256,7 +2256,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     for (String privilege : privileges) {
       if ("SET_STORAGE_GROUP".equalsIgnoreCase(privilege)
           || "DELETE_STORAGE_GROUP".equalsIgnoreCase(privilege)) {
-        privilege = PrivilegeType.CREATE_DATABASE.name();
+        privilege = PrivilegeType.WRITE_SCHEMA.name();
       }
       if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
         pathRelevant = false;

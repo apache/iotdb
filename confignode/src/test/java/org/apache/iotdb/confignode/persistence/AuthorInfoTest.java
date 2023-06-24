@@ -89,16 +89,13 @@ public class AuthorInfoTest {
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.DELETE_USER.ordinal());
-    privilegeList.add(PrivilegeType.CREATE_USER.ordinal());
+    privilegeList.add(PrivilegeType.USER.ordinal());
 
     Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.DELETE_USER.ordinal());
+    revokePrivilege.add(PrivilegeType.USER.ordinal());
 
-    Map<String, List<String>> permissionInfo;
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : CREATE_USER");
-    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : USER");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln"));
@@ -124,9 +121,7 @@ public class AuthorInfoTest {
 
     // check user privileges
     status =
-        authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
-            .getStatus();
+        authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.USER.ordinal()).getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
     // drop user
@@ -217,9 +212,7 @@ public class AuthorInfoTest {
 
     // check user privileges
     status =
-        authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
-            .getStatus();
+        authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.USER.ordinal()).getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role
@@ -513,8 +506,8 @@ public class AuthorInfoTest {
     AuthorPlan authorPlan;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.INSERT_TIMESERIES.ordinal());
-    privilegeList.add(PrivilegeType.READ_TIMESERIES.ordinal());
+    privilegeList.add(PrivilegeType.WRITE_DATA.ordinal());
+    privilegeList.add(PrivilegeType.READ_DATA.ordinal());
 
     Map<String, List<String>> permissionInfo;
     List<String> userPrivilege = new ArrayList<>();
@@ -579,7 +572,7 @@ public class AuthorInfoTest {
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", userPaths, PrivilegeType.INSERT_TIMESERIES.ordinal())
+            .checkUserPrivileges("user0", userPaths, PrivilegeType.WRITE_DATA.ordinal())
             .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
