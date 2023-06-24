@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
-import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -47,7 +47,7 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
   }
 
   public String getPattern() {
-    return pattern == null ? PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE : pattern;
+    return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -78,7 +78,7 @@ public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
     final String notNullPattern = getPattern();
 
     // if notNullPattern is "root", we don't need to convert, just return the original tablet
-    if (notNullPattern.equals(PipeCollectorConstant.COLLECTOR_PATTERN_DEFAULT_VALUE)) {
+    if (notNullPattern.equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)) {
       return tablet;
     }
 

@@ -25,11 +25,11 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
-import org.apache.iotdb.db.pipe.config.constant.PipeCollectorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.config.constant.PipeProcessorConstant;
-import org.apache.iotdb.pipe.api.PipeCollector;
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -195,12 +195,12 @@ public class PipePluginAgent {
     }
   }
 
-  public PipeCollector reflectCollector(PipeParameters collectorParameters) {
-    return (PipeCollector)
+  public PipeExtractor reflectExtractor(PipeParameters extractorParameters) {
+    return (PipeExtractor)
         reflect(
-            collectorParameters.getStringOrDefault(
-                PipeCollectorConstant.COLLECTOR_KEY,
-                BuiltinPipePlugin.IOTDB_COLLECTOR.getPipePluginName()));
+            extractorParameters.getStringOrDefault(
+                PipeExtractorConstant.EXTRACTOR_KEY,
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
 
   public PipeProcessor reflectProcessor(PipeParameters processorParameters) {

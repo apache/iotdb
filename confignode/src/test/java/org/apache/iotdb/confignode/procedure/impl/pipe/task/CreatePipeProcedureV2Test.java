@@ -39,10 +39,10 @@ public class CreatePipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    Map<String, String> collectorAttributes = new HashMap<>();
+    Map<String, String> extractorAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
-    collectorAttributes.put("collector", "org.apache.iotdb.pipe.collector.DefaultCollector");
+    extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
 
@@ -50,7 +50,7 @@ public class CreatePipeProcedureV2Test {
         new CreatePipeProcedureV2(
             new TCreatePipeReq()
                 .setPipeName("testPipe")
-                .setCollectorAttributes(collectorAttributes)
+                .setExtractorAttributes(extractorAttributes)
                 .setProcessorAttributes(processorAttributes)
                 .setConnectorAttributes(connectorAttributes));
 

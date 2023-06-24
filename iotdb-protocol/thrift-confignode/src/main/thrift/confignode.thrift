@@ -612,7 +612,7 @@ struct TShowPipeInfo {
   1: required string id
   2: required i64 creationTime
   3: required string state
-  4: required string pipeCollector
+  4: required string pipeExtractor
   5: required string pipeProcessor
   6: required string pipeConnector
   7: required string exceptionMessage
@@ -625,7 +625,7 @@ struct TGetAllPipeInfoResp{
 
 struct TCreatePipeReq {
     1: required string pipeName
-    2: optional map<string, string> collectorAttributes
+    2: optional map<string, string> extractorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
 }

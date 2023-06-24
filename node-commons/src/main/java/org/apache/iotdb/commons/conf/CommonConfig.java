@@ -151,11 +151,10 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
 
-  private int pipeCollectorAssignerDisruptorRingBufferSize = 65536;
-  private int pipeCollectorMatcherCacheSize = 1024;
-  private int pipeCollectorPendingQueueCapacity = 128;
-  // this should be less than or equals to realtimeCollectorPendingQueueCapacity
-  private int pipeCollectorPendingQueueTabletLimit = pipeCollectorPendingQueueCapacity / 2;
+  private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
+  private int pipeExtractorMatcherCacheSize = 1024;
+  private int pipeExtractorPendingQueueCapacity = 128;
+  private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
 
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
@@ -458,38 +457,38 @@ public class CommonConfig {
     this.pipeHardlinkTsFileDirName = pipeHardlinkTsFileDirName;
   }
 
-  public int getPipeCollectorAssignerDisruptorRingBufferSize() {
-    return pipeCollectorAssignerDisruptorRingBufferSize;
+  public int getPipeExtractorAssignerDisruptorRingBufferSize() {
+    return pipeExtractorAssignerDisruptorRingBufferSize;
   }
 
-  public void setPipeCollectorAssignerDisruptorRingBufferSize(
-      int pipeCollectorAssignerDisruptorRingBufferSize) {
-    this.pipeCollectorAssignerDisruptorRingBufferSize =
-        pipeCollectorAssignerDisruptorRingBufferSize;
+  public void setPipeExtractorAssignerDisruptorRingBufferSize(
+      int pipeExtractorAssignerDisruptorRingBufferSize) {
+    this.pipeExtractorAssignerDisruptorRingBufferSize =
+        pipeExtractorAssignerDisruptorRingBufferSize;
   }
 
-  public int getPipeCollectorMatcherCacheSize() {
-    return pipeCollectorMatcherCacheSize;
+  public int getPipeExtractorMatcherCacheSize() {
+    return pipeExtractorMatcherCacheSize;
   }
 
-  public void setPipeCollectorMatcherCacheSize(int pipeCollectorMatcherCacheSize) {
-    this.pipeCollectorMatcherCacheSize = pipeCollectorMatcherCacheSize;
+  public void setPipeExtractorMatcherCacheSize(int pipeExtractorMatcherCacheSize) {
+    this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
   }
 
-  public int getPipeCollectorPendingQueueCapacity() {
-    return pipeCollectorPendingQueueCapacity;
+  public int getPipeExtractorPendingQueueCapacity() {
+    return pipeExtractorPendingQueueCapacity;
   }
 
-  public void setPipeCollectorPendingQueueCapacity(int pipeCollectorPendingQueueCapacity) {
-    this.pipeCollectorPendingQueueCapacity = pipeCollectorPendingQueueCapacity;
+  public void setPipeExtractorPendingQueueCapacity(int pipeExtractorPendingQueueCapacity) {
+    this.pipeExtractorPendingQueueCapacity = pipeExtractorPendingQueueCapacity;
   }
 
-  public int getPipeCollectorPendingQueueTabletLimit() {
-    return pipeCollectorPendingQueueTabletLimit;
+  public int getPipeExtractorPendingQueueTabletLimit() {
+    return pipeExtractorPendingQueueTabletLimit;
   }
 
-  public void setPipeCollectorPendingQueueTabletLimit(int pipeCollectorPendingQueueTabletLimit) {
-    this.pipeCollectorPendingQueueTabletLimit = pipeCollectorPendingQueueTabletLimit;
+  public void setPipeExtractorPendingQueueTabletLimit(int pipeExtractorPendingQueueTabletLimit) {
+    this.pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueTabletLimit;
   }
 
   public int getPipeConnectorReadFileBufferSize() {
