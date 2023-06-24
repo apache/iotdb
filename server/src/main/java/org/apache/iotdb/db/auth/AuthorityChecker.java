@@ -170,9 +170,8 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case STORAGE_GROUP_SCHEMA:
       case TTL:
-        return PrivilegeType.CREATE_DATABASE.ordinal();
       case DELETE_STORAGE_GROUP:
-        return PrivilegeType.DELETE_DATABASE.ordinal();
+        return PrivilegeType.CREATE_DATABASE.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
       case CREATE_MULTI_TIMESERIES:

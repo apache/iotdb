@@ -53,6 +53,9 @@ public class AuthUtils {
   private static final int MIN_PASSWORD_LENGTH = 4;
   private static final int MIN_USERNAME_LENGTH = 4;
   private static final int MIN_ROLENAME_LENGTH = 4;
+  private static final int MIN_LENGTH = 4;
+  private static final int MAX_LENGTH = 32;
+  private static final String REX_PATTERN = "^[a-zA-Z][_0-9a-zA-Z]*$";
 
   static {
     try {
@@ -134,6 +137,23 @@ public class AuthUtils {
     }
   }
 
+  public static void validateNameOrPassword(String str) throws AuthException {
+    int length = str.length();
+    if (length < MIN_LENGTH) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          "The length of name or password must be greater than or equal to " + MIN_LENGTH);
+    } else if (length > MAX_LENGTH) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          "The length of name or password must be less than or equal to " + MAX_LENGTH);
+    } else if (str.matches(REX_PATTERN)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          "The name or password must start with a letter and can only contain letters, numbers, and underscores");
+    }
+  }
+
   /**
    * Validate privilege
    *
@@ -178,7 +198,6 @@ public class AuthUtils {
       switch (type) {
         case READ_TIMESERIES:
         case CREATE_DATABASE:
-        case DELETE_DATABASE:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
@@ -202,7 +221,6 @@ public class AuthUtils {
       switch (type) {
         case READ_TIMESERIES:
         case CREATE_DATABASE:
-        case DELETE_DATABASE:
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
@@ -399,11 +417,9 @@ public class AuthUtils {
     PrivilegeType[] types = PrivilegeType.values();
     for (String authorization : authorizationList) {
       boolean legal = false;
-      if ("SET_STORAGE_GROUP".equalsIgnoreCase(authorization)) {
+      if ("SET_STORAGE_GROUP".equalsIgnoreCase(authorization)
+          || "DELETE_STORAGE_GROUP".equalsIgnoreCase(authorization)) {
         authorization = PrivilegeType.CREATE_DATABASE.name();
-      }
-      if ("DELETE_STORAGE_GROUP".equalsIgnoreCase(authorization)) {
-        authorization = PrivilegeType.DELETE_DATABASE.name();
       }
       for (PrivilegeType privilegeType : types) {
         if (authorization.equalsIgnoreCase(privilegeType.name())) {
