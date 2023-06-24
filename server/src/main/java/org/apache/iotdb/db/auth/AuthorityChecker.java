@@ -212,9 +212,8 @@ public class AuthorityChecker {
       case LIST_USER_PRIVILEGE:
         return PrivilegeType.LIST_USER.ordinal();
       case CREATE_FUNCTION:
-        return PrivilegeType.CREATE_FUNCTION.ordinal();
       case DROP_FUNCTION:
-        return PrivilegeType.DROP_FUNCTION.ordinal();
+        return PrivilegeType.READ_DATA.ordinal();
       case CREATE_TRIGGER:
         return PrivilegeType.CREATE_TRIGGER.ordinal();
       case DROP_TRIGGER:

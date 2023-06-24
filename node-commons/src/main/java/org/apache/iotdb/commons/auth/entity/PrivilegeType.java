@@ -21,7 +21,10 @@ package org.apache.iotdb.commons.auth.entity;
 
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
+  // create or delete database
   CREATE_DATABASE(true),
+  // create or drop function TODO select data and show function
+  READ_DATA(true),
   INSERT_TIMESERIES(true),
   @Deprecated
   UPDATE_TIMESERIES(true),
@@ -41,8 +44,6 @@ public enum PrivilegeType {
   LIST_ROLE,
   GRANT_ROLE_PRIVILEGE,
   REVOKE_ROLE_PRIVILEGE,
-  CREATE_FUNCTION,
-  DROP_FUNCTION,
   CREATE_TRIGGER(true),
   DROP_TRIGGER(true),
   START_TRIGGER(true),
