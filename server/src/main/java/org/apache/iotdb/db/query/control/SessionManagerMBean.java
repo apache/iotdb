@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control;
 
 import java.util.Set;
@@ -23,6 +24,8 @@ import java.util.Set;
 public interface SessionManagerMBean {
 
   /**
+   * Get all currently connected clients
+   *
    * @return client's reqId-username:ip:port <br>
    *     reqId may be deprecated in 0.14
    */

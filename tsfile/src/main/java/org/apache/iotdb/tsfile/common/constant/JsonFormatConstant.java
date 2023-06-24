@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.common.constant;
 
 /** This class define several constant string variables used in tsfile schema's keys. */

@@ -68,7 +68,7 @@ public class UnsetSchemaTemplateStatement extends Statement implements IConfigSt
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.singletonList(path);
   }
 }

@@ -98,7 +98,9 @@ public class MemorySourceHandle implements ISourceHandle {
   }
 
   @Override
-  public void abort() {}
+  public void abort() {
+    // do nothing
+  }
 
   @Override
   public void abort(Throwable t) {
@@ -106,8 +108,12 @@ public class MemorySourceHandle implements ISourceHandle {
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    // do nothing
+  }
 
   @Override
-  public void setMaxBytesCanReserve(long maxBytesCanReserve) {}
+  public void setMaxBytesCanReserve(long maxBytesCanReserve) {
+    // do nothing
+  }
 }

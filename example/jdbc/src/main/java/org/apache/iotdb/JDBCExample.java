@@ -39,17 +39,13 @@ public class JDBCExample {
       // set JDBC fetchSize
       statement.setFetchSize(10000);
 
-      try {
-        statement.execute("CREATE DATABASE root.sg1");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      } catch (IoTDBSQLException e) {
-        System.out.println(e.getMessage());
-      }
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
 
       for (int i = 0; i <= 100; i++) {
         statement.addBatch(prepareInsertStatment(i));
@@ -66,10 +62,11 @@ public class JDBCExample {
               "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
       outputResult(resultSet);
     } catch (IoTDBSQLException e) {
-      System.out.println(e.getMessage());
+      e.printStackTrace();
     }
   }
 
+  @SuppressWarnings({"squid:S106"})
   private static void outputResult(ResultSet resultSet) throws SQLException {
     if (resultSet != null) {
       System.out.println("--------------------------");

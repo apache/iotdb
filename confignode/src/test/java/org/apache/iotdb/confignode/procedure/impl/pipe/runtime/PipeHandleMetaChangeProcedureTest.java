@@ -51,7 +51,7 @@ public class PipeHandleMetaChangeProcedureTest {
             123L,
             new HashMap() {
               {
-                put("collector-key", "collector-value");
+                put("extractor-key", "extractor-value");
               }
             },
             new HashMap() {

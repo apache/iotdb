@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.statement.metadata.view;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.view.ViewPathType;
 import org.apache.iotdb.db.metadata.view.ViewPaths;
 import org.apache.iotdb.db.mpp.plan.analyze.SelectIntoUtils;
@@ -130,7 +131,7 @@ public class CreateLogicalViewStatement extends Statement {
     // check expressions, make sure no aggregation function expression
     Pair<Boolean, UnsupportedViewException> checkResult =
         ViewPaths.checkExpressionList(expressionList);
-    if (checkResult.left) {
+    if (Boolean.TRUE.equals(checkResult.left)) {
       this.sourcePaths.setExpressionsList(expressionList);
     } else {
       throw checkResult.right;
@@ -180,7 +181,7 @@ public class CreateLogicalViewStatement extends Statement {
           targetPathsList.add(
               SelectIntoUtils.constructTargetPath(sourcePath, deviceTemplate, measurementTemplate));
         } else {
-          throw new RuntimeException(
+          throw new SemanticException(
               new UnsupportedViewException(
                   "Cannot create views using data sources with calculated expressions while using into item."));
         }
@@ -232,9 +233,13 @@ public class CreateLogicalViewStatement extends Statement {
    */
   public Pair<Boolean, String> checkAllPaths() {
     Pair<Boolean, String> result = this.checkTargetPaths();
-    if (result.left == false) return result;
+    if (Boolean.FALSE.equals(result.left)) {
+      return result;
+    }
     result = this.checkSourcePathsIfNotUsingQueryStatement();
-    if (result.left == false) return result;
+    if (Boolean.FALSE.equals(result.left)) {
+      return result;
+    }
     return new Pair<>(true, null);
   }
 

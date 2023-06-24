@@ -141,7 +141,7 @@ public class ShowThrottleQuotaTask implements IConfigTask {
       case REQUEST_SIZE:
         return "";
       default:
-        throw new RuntimeException("Wrong request type");
+        throw new IllegalArgumentException("Wrong request type");
     }
   }
 
@@ -170,7 +170,7 @@ public class ShowThrottleQuotaTask implements IConfigTask {
               + toTimeUnit(timedQuota.getTimeUnit());
         }
       default:
-        throw new RuntimeException("Wrong request type");
+        throw new IllegalArgumentException("Wrong request type");
     }
   }
 
@@ -185,7 +185,7 @@ public class ShowThrottleQuotaTask implements IConfigTask {
       case IoTDBConstant.DAY:
         return IoTDBConstant.DAY_UNIT;
       default:
-        throw new RuntimeException("Wrong unit type");
+        throw new IllegalArgumentException("Wrong unit type");
     }
   }
 }

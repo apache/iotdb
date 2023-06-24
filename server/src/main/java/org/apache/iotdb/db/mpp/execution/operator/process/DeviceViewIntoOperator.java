@@ -54,6 +54,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
   private final TsBlockBuilder resultTsBlockBuilder;
 
+  @SuppressWarnings("squid:S107")
   public DeviceViewIntoOperator(
       OperatorContext operatorContext,
       Operator child,
@@ -96,7 +97,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
 
     String device = String.valueOf(inputTsBlock.getValueColumns()[deviceColumnIndex].getBinary(0));
     if (!Objects.equals(device, currentDevice)) {
-      InsertMultiTabletsStatement insertMultiTabletsStatement =
+      final InsertMultiTabletsStatement insertMultiTabletsStatement =
           constructInsertMultiTabletsStatement(false);
       updateResultTsBlock();
 
@@ -113,7 +114,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     int readIndex = 0;
     while (readIndex < inputTsBlock.getPositionCount()) {
       int lastReadIndex = readIndex;
-      for (IntoOperator.InsertTabletStatementGenerator generator :
+      for (AbstractIntoOperator.InsertTabletStatementGenerator generator :
           insertTabletStatementGenerators) {
         lastReadIndex = Math.max(lastReadIndex, generator.processTsBlock(inputTsBlock, readIndex));
       }
@@ -142,7 +143,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
     return resultTsBlockBuilder.build();
   }
 
-  private List<IntoOperator.InsertTabletStatementGenerator>
+  private List<AbstractIntoOperator.InsertTabletStatementGenerator>
       constructInsertTabletStatementGeneratorsByDevice(String currentDevice) {
     Map<PartialPath, Map<String, InputLocation>> targetPathToSourceInputLocationMap =
         deviceToTargetPathSourceInputLocationMap.get(currentDevice);

@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,7 +53,7 @@ public class TsFileWriteWithTSRecord {
       String path = "Record.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists()) {
-        f.delete();
+        Files.delete(f.toPath());
       }
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
@@ -71,9 +72,8 @@ public class TsFileWriteWithTSRecord {
         writeMeasurementScheams.add(schemas.get(2));
         write(tsFileWriter, DEVICE_1, writeMeasurementScheams, 10000, 0, 0);
       }
-    } catch (Throwable e) {
+    } catch (Exception e) {
       e.printStackTrace();
-      System.out.println(e.getMessage());
     }
   }
 

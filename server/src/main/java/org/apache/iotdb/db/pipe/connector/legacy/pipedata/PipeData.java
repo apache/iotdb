@@ -64,12 +64,11 @@ public abstract class PipeData {
     return byteStream.toByteArray();
   }
 
-  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+  public void deserialize(DataInputStream stream) throws IOException {
     serialNumber = stream.readLong();
   }
 
-  public static PipeData createPipeData(DataInputStream stream)
-      throws IOException, IllegalPathException {
+  public static PipeData createPipeData(DataInputStream stream) throws IOException {
     PipeData pipeData;
     PipeDataType type = PipeDataType.getPipeDataType(stream.readByte());
     switch (type) {

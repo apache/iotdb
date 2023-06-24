@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
@@ -29,7 +30,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-/** To read aligned chunk data in memory */
+/** To read aligned chunk data in memory. */
 public class MemAlignedChunkReader implements IChunkReader {
 
   private List<IPageReader> pageReaderList;

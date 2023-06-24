@@ -66,9 +66,6 @@ public class Analysis {
   // Statement
   private Statement statement;
 
-  // indicate whether this statement is `WRITE` or `READ`
-  private QueryType queryType;
-
   private DataPartition dataPartition;
 
   private SchemaPartition schemaPartition;
@@ -111,15 +108,17 @@ public class Analysis {
   // tag keys specified in `GROUP BY TAG` clause
   private List<String> tagKeys;
 
-  // {tag values -> {grouped expression -> output expressions}}
-  // For different combination of tag keys, the grouped expression may be different. Let's say there
-  // are 3 timeseries root.sg.d1.temperature, root.sg.d1.status, root.sg.d2.temperature, and their
-  // tags are [k1=v1], [k1=v1] and [k1=v2] respectively. For query "SELECT last_value(**) FROM root
-  // GROUP BY k1", timeseries are grouped by their tags into 2 buckets. Bucket [v1] has
-  // [root.sg.d1.temperature, root.sg.d1.status], while bucket [v2] has [root.sg.d2.temperature].
-  // Thus, the aggregation results of bucket [v1] and [v2] are different. Bucket [v1] has 2
-  // aggregation results last_value(temperature) and last_value(status), whereas bucket [v2] only
-  // has [last_value(temperature)].
+  /*
+  tag values -> (grouped expression -> output expressions)
+  For different combination of tag keys, the grouped expression may be different. Let's say there
+   are 3 timeseries root.sg.d1.temperature, root.sg.d1.status, root.sg.d2.temperature, and their
+   tags are [k1=v1], [k1=v1] and [k1=v2] respectively. For query "SELECT last_value(**) FROM root
+   GROUP BY k1", timeseries are grouped by their tags into 2 buckets. Bucket [v1] has
+   [root.sg.d1.temperature, root.sg.d1.status], while bucket [v2] has [root.sg.d2.temperature].
+   Thus, the aggregation results of bucket [v1] and [v2] are different. Bucket [v1] has 2
+   aggregation results last_value(temperature) and last_value(status), whereas bucket [v2] only
+  has [last_value(temperature)].
+   */
   private Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
       tagValuesToGroupedTimeseriesOperands;
 
@@ -260,6 +259,7 @@ public class Analysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
+    // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
     return dataPartition.getDataRegionReplicaSet(deviceName, null);
   }
 

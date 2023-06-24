@@ -122,16 +122,15 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
   public static Expression transformViewPath(
       MeasurementPath measurementPath, ISchemaTree schemaTree) {
     IMeasurementSchema measurementSchema = measurementPath.getMeasurementSchema();
-    if (measurementSchema.isLogicalView()) {
-      ViewExpression viewExpression = ((LogicalViewSchema) measurementSchema).getExpression();
-      // complete measurementPaths in expressions.
-      Expression expression = new TransformToExpressionVisitor().process(viewExpression, null);
-      expression = new CompleteMeasurementSchemaVisitor().process(expression, schemaTree);
-      return expression;
-    } else {
-      throw new RuntimeException(
-          new UnsupportedOperationException(
-              "Can not construct expression using non view path in transformViewPath!"));
+    if (!measurementSchema.isLogicalView()) {
+      throw new IllegalArgumentException(
+          "Can not construct expression using non view path in transformViewPath!");
     }
+
+    ViewExpression viewExpression = ((LogicalViewSchema) measurementSchema).getExpression();
+    // complete measurementPaths in expressions.
+    Expression expression = new TransformToExpressionVisitor().process(viewExpression, null);
+    expression = new CompleteMeasurementSchemaVisitor().process(expression, schemaTree);
+    return expression;
   }
 }

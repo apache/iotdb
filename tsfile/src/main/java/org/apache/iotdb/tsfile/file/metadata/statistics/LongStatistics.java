@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
@@ -43,10 +44,7 @@ public class LongStatistics extends Statistics<Long> {
     return TSDataType.INT64;
   }
 
-  /**
-   * The output of this method should be identical to the method "serializeStats(OutputStream
-   * outputStream)"
-   */
+  /** The output of this method should be identical to the method "serializeStats(outputStream)". */
   @Override
   public int getStatsSize() {
     return 40;
@@ -58,43 +56,6 @@ public class LongStatistics extends Statistics<Long> {
     this.firstValue = firstValue;
     this.lastValue = last;
     this.sumValue += sum;
-  }
-
-  private void updateStats(long minValue, long maxValue, long lastValue, double sumValue) {
-    if (minValue < this.minValue) {
-      this.minValue = minValue;
-    }
-    if (maxValue > this.maxValue) {
-      this.maxValue = maxValue;
-    }
-    this.sumValue += sumValue;
-    this.lastValue = lastValue;
-  }
-
-  private void updateStats(
-      long minValue,
-      long maxValue,
-      long firstValue,
-      long lastValue,
-      double sumValue,
-      long startTime,
-      long endTime) {
-    if (minValue < this.minValue) {
-      this.minValue = minValue;
-    }
-    if (maxValue > this.maxValue) {
-      this.maxValue = maxValue;
-    }
-    this.sumValue += sumValue;
-    // only if endTime greater or equals to the current endTime need we update the last value
-    // only if startTime less or equals to the current startTime need we update the first value
-    // otherwise, just ignore
-    if (startTime <= this.getStartTime()) {
-      this.firstValue = firstValue;
-    }
-    if (endTime >= this.getEndTime()) {
-      this.lastValue = lastValue;
-    }
   }
 
   @Override
@@ -152,6 +113,43 @@ public class LongStatistics extends Statistics<Long> {
     }
     if (maxValue > this.maxValue) {
       this.maxValue = maxValue;
+    }
+  }
+
+  private void updateStats(long minValue, long maxValue, long lastValue, double sumValue) {
+    if (minValue < this.minValue) {
+      this.minValue = minValue;
+    }
+    if (maxValue > this.maxValue) {
+      this.maxValue = maxValue;
+    }
+    this.sumValue += sumValue;
+    this.lastValue = lastValue;
+  }
+
+  private void updateStats(
+      long minValue,
+      long maxValue,
+      long firstValue,
+      long lastValue,
+      double sumValue,
+      long startTime,
+      long endTime) {
+    if (minValue < this.minValue) {
+      this.minValue = minValue;
+    }
+    if (maxValue > this.maxValue) {
+      this.maxValue = maxValue;
+    }
+    this.sumValue += sumValue;
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = firstValue;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = lastValue;
     }
   }
 
@@ -214,9 +212,15 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     LongStatistics that = (LongStatistics) o;
     return minValue == that.minValue
         && maxValue == that.maxValue

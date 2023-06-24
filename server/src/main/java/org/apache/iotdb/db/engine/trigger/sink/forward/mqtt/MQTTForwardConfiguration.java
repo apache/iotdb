@@ -37,6 +37,7 @@ public class MQTTForwardConfiguration implements Configuration {
   private final int poolSize;
   private final boolean stopIfException;
 
+  @SuppressWarnings("squid:S107")
   public MQTTForwardConfiguration(
       String host,
       int port,

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -159,10 +160,7 @@ public class FragmentInstanceStateMachine {
       sourceInstanceFailureListeners.add(listener);
       failures = ImmutableMap.copyOf(sourceInstanceFailures);
     }
-    executor.execute(
-        () -> {
-          failures.forEach(listener::onTaskFailed);
-        });
+    executor.execute(() -> failures.forEach(listener::onTaskFailed));
   }
 
   public void sourceTaskFailed(FragmentInstanceId instanceId, Throwable failure) {

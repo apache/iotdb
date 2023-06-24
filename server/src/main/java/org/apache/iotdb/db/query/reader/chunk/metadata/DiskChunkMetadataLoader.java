@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -62,12 +63,12 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
   @Override
   public List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata) {
-    long t1 = System.nanoTime();
+    final long t1 = System.nanoTime();
     try {
       List<IChunkMetadata> chunkMetadataList =
           ((TimeseriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
-      long t2 = System.nanoTime();
+      final long t2 = System.nanoTime();
       List<Modification> pathModifications =
           context.getPathModifications(resource.getModFile(), seriesPath);
 
@@ -103,7 +104,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
           });
 
       // remove not satisfied ChunkMetaData
-      long t3 = System.nanoTime();
+      final long t3 = System.nanoTime();
       chunkMetadataList.removeIf(
           chunkMetaData ->
               (filter != null

@@ -82,6 +82,7 @@ public class TsFileMetadata {
    *
    * @param outputStream -output stream to determine byte length
    * @return -byte length
+   * @throws IOException error when operating outputStream
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
@@ -104,6 +105,7 @@ public class TsFileMetadata {
    *
    * @param outputStream -output stream to determine byte length
    * @return -byte length
+   * @throws IOException error when operating outputStream
    */
   public int buildAndSerializeBloomFilter(OutputStream outputStream, Set<Path> paths)
       throws IOException {
@@ -125,7 +127,7 @@ public class TsFileMetadata {
   }
 
   /**
-   * build bloom filter
+   * build bloom filter.
    *
    * @return bloom filter
    */

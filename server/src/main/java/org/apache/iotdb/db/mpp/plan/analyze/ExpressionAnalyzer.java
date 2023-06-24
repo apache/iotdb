@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
@@ -76,6 +77,15 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBe
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBetweenTimeThird;
 
 public class ExpressionAnalyzer {
+
+  private static final String RAW_AGGREGATION_HYBRID_ERROR_MSG =
+      "Raw data and aggregation result hybrid calculation is not supported.";
+  private static final String CONSTANT_COLUMN_ERROR_MSG = "Constant column is not supported.";
+
+  private ExpressionAnalyzer() {
+    // forbidden construction
+  }
+
   /**
    * Check if all suffix paths in expression are measurements or one-level wildcards, used in ALIGN
    * BY DEVICE query or GroupByLevel query. If not, throw a {@link SemanticException}.
@@ -112,8 +122,7 @@ public class ExpressionAnalyzer {
         || expression instanceof NullOperand) {
       // do nothing
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+      throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
   }
 
@@ -126,7 +135,8 @@ public class ExpressionAnalyzer {
           identifyOutputColumnType(((TernaryExpression) expression).getSecondExpression(), false);
       ResultColumn.ColumnType thirdType =
           identifyOutputColumnType(((TernaryExpression) expression).getThirdExpression(), false);
-      boolean rawFlag = false, aggregationFlag = false;
+      boolean rawFlag = false;
+      boolean aggregationFlag = false;
       if (firstType == ResultColumn.ColumnType.RAW
           || secondType == ResultColumn.ColumnType.RAW
           || thirdType == ResultColumn.ColumnType.RAW) {
@@ -138,13 +148,12 @@ public class ExpressionAnalyzer {
         aggregationFlag = true;
       }
       if (rawFlag && aggregationFlag) {
-        throw new SemanticException(
-            "Raw data and aggregation result hybrid calculation is not supported.");
+        throw new SemanticException(RAW_AGGREGATION_HYBRID_ERROR_MSG);
       }
       if (firstType == ResultColumn.ColumnType.CONSTANT
           && secondType == ResultColumn.ColumnType.CONSTANT
           && thirdType == ResultColumn.ColumnType.CONSTANT) {
-        throw new SemanticException("Constant column is not supported.");
+        throw new SemanticException(CONSTANT_COLUMN_ERROR_MSG);
       }
       if (firstType != ResultColumn.ColumnType.CONSTANT) {
         return firstType;
@@ -162,13 +171,12 @@ public class ExpressionAnalyzer {
               && rightType == ResultColumn.ColumnType.AGGREGATION)
           || (leftType == ResultColumn.ColumnType.AGGREGATION
               && rightType == ResultColumn.ColumnType.RAW)) {
-        throw new SemanticException(
-            "Raw data and aggregation result hybrid calculation is not supported.");
+        throw new SemanticException(RAW_AGGREGATION_HYBRID_ERROR_MSG);
       }
       if (isRoot
           && leftType == ResultColumn.ColumnType.CONSTANT
           && rightType == ResultColumn.ColumnType.CONSTANT) {
-        throw new SemanticException("Constant column is not supported.");
+        throw new SemanticException(CONSTANT_COLUMN_ERROR_MSG);
       }
       if (leftType != ResultColumn.ColumnType.CONSTANT) {
         return leftType;
@@ -233,14 +241,13 @@ public class ExpressionAnalyzer {
               .anyMatch(columnType -> columnType == ResultColumn.ColumnType.AGGREGATION);
       // not allow RAW && AGGREGATION
       if (rawFlag && aggregationFlag) {
-        throw new SemanticException(
-            "Raw data and aggregation result hybrid calculation is not supported.");
+        throw new SemanticException(RAW_AGGREGATION_HYBRID_ERROR_MSG);
       }
       // not allow all const
       boolean allConst =
           typeList.stream().allMatch(columnType -> columnType == ResultColumn.ColumnType.CONSTANT);
       if (allConst) {
-        throw new SemanticException("Constant column is not supported.");
+        throw new SemanticException(CONSTANT_COLUMN_ERROR_MSG);
       }
       for (ResultColumn.ColumnType type : typeList) {
         if (type != ResultColumn.ColumnType.CONSTANT) {
@@ -253,8 +260,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof ConstantOperand || expression instanceof NullOperand) {
       return ResultColumn.ColumnType.CONSTANT;
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+      throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
   }
 
@@ -342,8 +348,7 @@ public class ExpressionAnalyzer {
         || expression instanceof NullOperand) {
       return new ArrayList<>();
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+      throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
   }
 
@@ -397,8 +402,7 @@ public class ExpressionAnalyzer {
         || predicate instanceof NullOperand) {
       // do nothing
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
+      throw new UnknownExpressionTypeException(predicate.getExpressionType());
     }
   }
 
@@ -518,7 +522,7 @@ public class ExpressionAnalyzer {
               ((BinaryExpression) predicate).getRightExpression(), false, false);
 
       if (leftResultPair.left != null && rightResultPair.left != null) {
-        if (isFirstOr && !leftResultPair.right && !rightResultPair.right) {
+        if (Boolean.TRUE.equals(isFirstOr && !leftResultPair.right && !rightResultPair.right)) {
           ((BinaryExpression) predicate)
               .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
           ((BinaryExpression) predicate)
@@ -598,8 +602,7 @@ public class ExpressionAnalyzer {
     } else if (predicate.getExpressionType().equals(ExpressionType.CASE_WHEN_THEN)) {
       return new Pair<>(null, true);
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
+      throw new UnknownExpressionTypeException(predicate.getExpressionType());
     }
   }
 
@@ -633,8 +636,7 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof TimestampOperand) {
       return true;
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
+      throw new UnknownExpressionTypeException(predicate.getExpressionType());
     }
   }
 
@@ -687,8 +689,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof CaseWhenThenExpression) {
       return true;
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+      throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
   }
 
@@ -790,8 +791,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof LeafOperand) {
       return false;
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+      throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
   }
 
@@ -831,8 +831,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof LeafOperand) {
       return true;
     } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
+      throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
   }
 }

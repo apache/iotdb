@@ -122,7 +122,7 @@ public class ChunkHeader {
     this.serializedSize = headerSize;
   }
 
-  /** the exact serialized size of chunk header */
+  /** the exact serialized size of chunk header. */
   public static int getSerializedSize(String measurementID, int dataSize) {
     int measurementIdLength =
         measurementID == null ? 0 : measurementID.getBytes(TSFileConfig.STRING_CHARSET).length;
@@ -152,7 +152,16 @@ public class ChunkHeader {
         + TSEncoding.getSerializedSize(); // encodingType
   }
 
-  /** deserialize from inputStream, the marker has already been read. */
+  public int getSerializedSize() {
+    return serializedSize;
+  }
+
+  /**
+   * deserialize from inputStream, the marker has already been read.
+   *
+   * @return ChunkHeader the ChunkHeader read from inputStream
+   * @throws IOException exception when reading stream
+   */
   public static ChunkHeader deserializeFrom(InputStream inputStream, byte chunkType)
       throws IOException {
     // read measurementID
@@ -199,9 +208,9 @@ public class ChunkHeader {
    * TsFileSequenceReader#readTimeseriesCompressionTypeAndEncoding(TimeseriesMetadata)} to only
    * decode data size, {@link CompressionType} and {@link TSEncoding}.
    *
-   * @param inputStream
-   * @return
-   * @throws IOException
+   * @param inputStream input stream
+   * @return - Compression type and encoding.
+   * @throws IOException - If an I/O error occurs.
    */
   public static Pair<CompressionType, TSEncoding> deserializeCompressionTypeAndEncoding(
       InputStream inputStream) throws IOException {
@@ -210,10 +219,6 @@ public class ChunkHeader {
     CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
     return new Pair<>(type, encoding);
-  }
-
-  public int getSerializedSize() {
-    return serializedSize;
   }
 
   public String getMeasurementID() {

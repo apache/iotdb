@@ -75,6 +75,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
+  @SuppressWarnings("squid:S112")
   @Override
   protected boolean calculateNextAggregationResult() throws Exception {
     if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
@@ -110,15 +111,16 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
     return true;
   }
 
-  /** @return if already get the result */
+  /** return if already get the result. */
   private boolean isCalculationDone() {
-    if (curSubTimeRange == null && !subTimeRangeIterator.hasNextTimeRange()) {
-      return true;
+    if (curSubTimeRange == null) {
+      if (!subTimeRangeIterator.hasNextTimeRange()) {
+        return true;
+      } else {
+        curSubTimeRange = subTimeRangeIterator.nextTimeRange();
+      }
     }
 
-    if (curSubTimeRange == null && subTimeRangeIterator.hasNextTimeRange()) {
-      curSubTimeRange = subTimeRangeIterator.nextTimeRange();
-    }
     return ascending
         ? curSubTimeRange.getMin() > curTimeRange.getMax()
         : curSubTimeRange.getMax() < curTimeRange.getMin();

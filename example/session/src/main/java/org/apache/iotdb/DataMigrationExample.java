@@ -28,6 +28,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -44,6 +47,8 @@ import java.util.concurrent.Future;
  * with 6668 port
  */
 public class DataMigrationExample {
+
+  private static Logger logger = LoggerFactory.getLogger(DataMigrationExample.class);
 
   // used to read data from the source IoTDB
   private static SessionPool readerPool;
@@ -72,9 +77,9 @@ public class DataMigrationExample {
     int total;
     if (deviceIter.next()) {
       total = deviceIter.getInt(1);
-      System.out.println("Total devices: " + total);
+      logger.info("Total devices: {}", total);
     } else {
-      System.out.println("Can not get devices schema");
+      logger.error("Can not get devices schema");
       System.exit(1);
     }
     readerPool.closeResultSet(deviceDataSet);
@@ -161,7 +166,7 @@ public class DataMigrationExample {
                     schemaList.get(j).getMeasurementId(), row, dataIter.getString(j + 2));
                 break;
               default:
-                System.out.println("Migration of this type of data is not supported");
+                logger.info("Migration of this type of data is not supported");
             }
           }
           if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -175,8 +180,7 @@ public class DataMigrationExample {
         }
 
       } catch (Exception e) {
-        System.out.println(
-            "Loading the " + i + "-th device: " + device + " failed " + e.getMessage());
+        logger.error("Loading the {}-th device: {} failed {}", i, device, e.getMessage());
         return null;
       } finally {
         if (dataSet != null) {
@@ -184,10 +188,10 @@ public class DataMigrationExample {
         }
         long endTime = System.currentTimeMillis();
         long totalTime = endTime - startTime;
-        System.out.println("migrate device ：" + device + " using " + totalTime + " ms");
+        logger.info("migrate device ：{}  using {}  ms", device, totalTime);
       }
 
-      System.out.println("Loading the " + i + "-th device: " + device + " success");
+      logger.info("Loading the {}-th device: {}  success", i, device);
       return null;
     }
   }

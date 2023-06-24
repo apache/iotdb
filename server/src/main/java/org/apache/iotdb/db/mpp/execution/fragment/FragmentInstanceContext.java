@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.fragment;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -59,14 +60,12 @@ public class FragmentInstanceContext extends QueryContext {
   private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
-  /** closed tsfile used in this fragment instance */
+  /** closed tsfile used in this fragment instance. */
   private Set<TsFileResource> closedFilePaths;
-  /** unClosed tsfile used in this fragment instance */
+  /** unClosed tsfile used in this fragment instance. */
   private Set<TsFileResource> unClosedFilePaths;
-  /** check if there is tmp file to be deleted */
+  /** check if there is tmp file to be deleted. */
   private boolean mayHaveTmpFile = false;
-
-  private final long createNanos = System.nanoTime();
 
   private final AtomicLong startNanos = new AtomicLong();
   private final AtomicLong endNanos = new AtomicLong();
@@ -79,14 +78,6 @@ public class FragmentInstanceContext extends QueryContext {
 
   // session info
   private SessionInfo sessionInfo;
-
-  //    private final GcMonitor gcMonitor;
-  //    private final AtomicLong startNanos = new AtomicLong();
-  //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
-  //    private final AtomicLong startFullGcTimeNanos = new AtomicLong(-1);
-  //    private final AtomicLong endNanos = new AtomicLong();
-  //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
-  //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
@@ -114,6 +105,17 @@ public class FragmentInstanceContext extends QueryContext {
     return new FragmentInstanceContext(queryId);
   }
 
+  @TestOnly
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()));
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
   private FragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
@@ -134,17 +136,6 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
-  }
-
-  @TestOnly
-  public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
-    FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(
-            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()));
-    instanceContext.initialize();
-    instanceContext.start();
-    return instanceContext;
   }
 
   @TestOnly
@@ -201,7 +192,7 @@ public class FragmentInstanceContext extends QueryContext {
     stateMachine.failed(cause);
   }
 
-  /** @return Message string of all failures */
+  /** return Message string of all failures */
   public String getFailedCause() {
     return stateMachine.getFailureCauses().stream()
         .findFirst()
@@ -209,7 +200,7 @@ public class FragmentInstanceContext extends QueryContext {
         .orElse("");
   }
 
-  /** @return List of specific throwable and stack trace */
+  /** return List of specific throwable and stack trace */
   public List<FragmentInstanceFailureInfo> getFailureInfoList() {
     return stateMachine.getFailureCauses().stream()
         .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
@@ -364,6 +355,7 @@ public class FragmentInstanceContext extends QueryContext {
     allDriversClosed.countDown();
   }
 
+  @SuppressWarnings("squid:S2142")
   public void releaseResourceWhenAllDriversAreClosed() {
     while (true) {
       try {

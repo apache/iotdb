@@ -41,6 +41,8 @@ import java.util.stream.Stream;
 
 public class SubPlanTypeExtractor {
 
+  private SubPlanTypeExtractor() {}
+
   public static TypeProvider extractor(PlanNode root, TypeProvider allTypes) {
     TypeProvider typeProvider = new TypeProvider();
     root.accept(new Visitor(typeProvider, allTypes), null);

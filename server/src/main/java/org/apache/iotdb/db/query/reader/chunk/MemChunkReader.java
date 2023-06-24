@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -30,14 +31,15 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-/** To read chunk data in memory */
+/** To read chunk data in memory. */
 public class MemChunkReader implements IChunkReader, IPointReader {
 
-  private IPointReader timeValuePairIterator;
-  private Filter filter;
+  private final IPointReader timeValuePairIterator;
+  private final Filter filter;
+  private final List<IPageReader> pageReaderList;
+
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
-  private List<IPageReader> pageReaderList;
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
     timeValuePairIterator = readableChunk.getPointReader();

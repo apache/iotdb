@@ -43,6 +43,10 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_
 
 public class SelectIntoUtils {
 
+  private SelectIntoUtils() {
+    // forbidding instantiation
+  }
+
   public static PartialPath constructTargetPath(
       PartialPath sourcePath, PartialPath deviceTemplate, String measurementTemplate) {
     PartialPath targetDevice = constructTargetDevice(sourcePath.getDevicePath(), deviceTemplate);
@@ -56,15 +60,17 @@ public class SelectIntoUtils {
     String[] templateNodes = deviceTemplate.getNodes();
 
     List<String> targetNodes = new ArrayList<>();
-    for (int nodeIndex = 0; nodeIndex < templateNodes.length; nodeIndex++) {
+    int nodeIndex = 0;
+    for (; nodeIndex < templateNodes.length; nodeIndex++) {
       String curNode = templateNodes[nodeIndex];
       if (curNode.equals(DOUBLE_COLONS)) {
         if (nodeIndex != templateNodes.length - 1) {
           throw new SemanticException(
               "select into: placeholder `::` can only be used at the end of the path.");
         }
-        for (; nodeIndex < sourceNodes.length; nodeIndex++) {
+        while (nodeIndex < sourceNodes.length) {
           targetNodes.add(sourceNodes[nodeIndex]);
+          nodeIndex++;
         }
         break;
       }
@@ -122,8 +128,7 @@ public class SelectIntoUtils {
   public static List<Pair<String, PartialPath>> bindTypeForSourceTargetPathPairList(
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
       Map<String, TSDataType> sourceToDataTypeMap,
-      ISchemaTree targetSchemaTree,
-      Map<String, Boolean> targetDeviceToAlignedMap) {
+      ISchemaTree targetSchemaTree) {
     List<Pair<String, PartialPath>> sourceTypeBoundTargetPathPairList = new ArrayList<>();
     for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
       String sourceColumn = sourceTargetPathPair.left;
@@ -172,7 +177,7 @@ public class SelectIntoUtils {
   public static Map<PartialPath, Map<String, TSDataType>>
       convertSourceTargetPathPairListToTargetPathDataTypeMap(
           List<Pair<String, PartialPath>> sourceTargetPathPairList) {
-    // targetDevice -> { targetMeasurement -> dataType }
+    // targetDevice -> ( targetMeasurement -> dataType )
     Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap = new HashMap<>();
 
     for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {

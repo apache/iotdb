@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -27,12 +28,12 @@ import io.airlift.units.Duration;
 
 /**
  * IDriver encapsulates some methods which are necessary for FragmentInstanceTaskExecutor to run a
- * fragment instance
+ * fragment instance.
  */
 public interface IDriver {
 
   /**
-   * Used to judge whether this IDriver should be scheduled for execution anymore
+   * Used to judge whether this IDriver should be scheduled for execution anymore.
    *
    * @return true if the IDriver is done or terminated due to failure, otherwise false.
    */
@@ -40,14 +41,15 @@ public interface IDriver {
 
   /**
    * run the IDriver for {@param duration} time slice, the time of this run is likely not to be
-   * equal to {@param duration}, the actual run time should be calculated by the caller
+   * equal to {@param duration}, the actual run time should be calculated by the caller.
    *
    * @param duration how long should this IDriver run
-   * @return the returned ListenableFuture<Void> is used to represent status of this processing if
+   * @return the returned ListenableFuture is used to represent status of this processing if
    *     isDone() return true, meaning that this IDriver is not blocked and is ready for next
    *     processing. Otherwise, meaning that this IDriver is blocked and not ready for next
    *     processing.
    */
+  @SuppressWarnings("squid:S1452")
   ListenableFuture<?> processFor(Duration duration);
 
   /**
@@ -63,17 +65,17 @@ public interface IDriver {
 
   void setDriverTaskId(DriverTaskId driverTaskId);
 
-  /** clear resource used by this fragment instance */
+  /** clear resource used by this fragment instance. */
   void close();
 
   /**
-   * fail current driver
+   * fail current driver.
    *
    * @param t reason cause this failure
    */
   void failed(Throwable t);
 
-  /** @return get Sink of current IDriver */
+  /** return get Sink of current IDriver. */
   ISink getSink();
 
   DriverContext getDriverContext();

@@ -73,6 +73,7 @@ public class ShowClusterDetailsTask implements IConfigTask {
     builder.declarePosition();
   }
 
+  @SuppressWarnings("squid:S107")
   private static void buildDataNodesTsBlock(
       TsBlockBuilder builder,
       int nodeId,

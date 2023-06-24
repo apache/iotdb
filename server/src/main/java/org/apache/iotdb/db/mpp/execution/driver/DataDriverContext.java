@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -28,7 +29,6 @@ import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import java.util.ArrayList;
 import java.util.List;
 
-/** TODO Add javadoc for context */
 public class DataDriverContext extends DriverContext {
 
   private final List<PartialPath> paths;

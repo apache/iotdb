@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -286,7 +287,7 @@ class NormalSchemaFetcher {
     for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
       Pair<List<Integer>, List<String>> missedIndexAndPathString =
           schemaCache.computeSourceOfLogicalView(schemaComputationWithAutoCreationList.get(i));
-      if (missedIndexAndPathString.left.size() > 0) {
+      if (!missedIndexAndPathString.left.isEmpty()) {
         hasUnFetchedLogicalView = true;
       }
       missedIndexAndPathStringOfViewList.get(i).left = missedIndexAndPathString.left;
@@ -399,7 +400,7 @@ class NormalSchemaFetcher {
         msg =
             "Timeseries under this device is not aligned, please use createTimeseries or change device.";
       }
-      throw new RuntimeException(new AlignedTimeseriesException(msg, devicePath.getFullPath()));
+      throw new SemanticException(new AlignedTimeseriesException(msg, devicePath.getFullPath()));
     }
   }
 }

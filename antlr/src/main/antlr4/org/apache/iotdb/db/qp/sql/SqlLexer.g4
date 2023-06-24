@@ -129,10 +129,6 @@ CLUSTER
     : C L U S T E R
     ;
 
-COLLECTOR
-    : C O L L E C T O R
-    ;
-
 CONCAT
     : C O N C A T
     ;
@@ -260,6 +256,10 @@ EVERY
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+EXTRACTOR
+    : E X T R A C T O R
     ;
 
 FILL

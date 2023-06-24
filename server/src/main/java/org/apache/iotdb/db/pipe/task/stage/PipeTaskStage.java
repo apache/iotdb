@@ -24,6 +24,15 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public abstract class PipeTaskStage {
 
+  private static final String MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_STARTED =
+      "The PipeTaskStage has been started";
+  private static final String MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_DROPPED =
+      "The PipeTaskStage has been dropped";
+  private static final String MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_STOPPED =
+      "The PipeTaskStage has been externally stopped";
+  private static final String MESSAGE_PIPE_TASK_STAGE_HAS_NOT_BEEN_CREATED =
+      "The PipeTaskStage has not been created";
+
   protected PipeStatus status = null;
   protected boolean hasBeenExternallyStopped = false;
 
@@ -35,14 +44,14 @@ public abstract class PipeTaskStage {
   public synchronized void create() {
     if (status != null) {
       if (status == PipeStatus.RUNNING) {
-        throw new PipeException("The PipeTaskStage has been started");
+        throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_STARTED);
       }
       if (status == PipeStatus.DROPPED) {
-        throw new PipeException("The PipeTaskStage has been dropped");
+        throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_DROPPED);
       }
       // status == PipeStatus.STOPPED
       if (hasBeenExternallyStopped) {
-        throw new PipeException("The PipeTaskStage has been externally stopped");
+        throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_STOPPED);
       }
       // otherwise, do nothing to allow retry strategy
       return;
@@ -63,14 +72,14 @@ public abstract class PipeTaskStage {
    */
   public synchronized void start() {
     if (status == null) {
-      throw new PipeException("The PipeTaskStage has not been created");
+      throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_NOT_BEEN_CREATED);
     }
     if (status == PipeStatus.RUNNING) {
       // do nothing to allow retry strategy
       return;
     }
     if (status == PipeStatus.DROPPED) {
-      throw new PipeException("The PipeTaskStage has been dropped");
+      throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_DROPPED);
     }
 
     // status == PipeStatus.STOPPED, start the subtask
@@ -88,14 +97,14 @@ public abstract class PipeTaskStage {
    */
   public synchronized void stop() {
     if (status == null) {
-      throw new PipeException("The PipeTaskStage has not been created");
+      throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_NOT_BEEN_CREATED);
     }
     if (status == PipeStatus.STOPPED) {
       // do nothing to allow retry strategy
       return;
     }
     if (status == PipeStatus.DROPPED) {
-      throw new PipeException("The PipeTaskStage has been dropped");
+      throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_DROPPED);
     }
 
     // status == PipeStatus.RUNNING, stop the connector
@@ -114,7 +123,7 @@ public abstract class PipeTaskStage {
    */
   public synchronized void drop() {
     if (status == null) {
-      throw new PipeException("The PipeTaskStage has not been created");
+      throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_NOT_BEEN_CREATED);
     }
     if (status == PipeStatus.DROPPED) {
       // do nothing to allow retry strategy

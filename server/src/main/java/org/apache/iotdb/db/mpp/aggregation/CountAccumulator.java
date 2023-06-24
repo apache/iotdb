@@ -31,7 +31,9 @@ public class CountAccumulator implements Accumulator {
 
   private long countValue = 0;
 
-  public CountAccumulator() {}
+  public CountAccumulator() {
+    // do nothing
+  }
 
   // Column should be like: | Time | Value |
 

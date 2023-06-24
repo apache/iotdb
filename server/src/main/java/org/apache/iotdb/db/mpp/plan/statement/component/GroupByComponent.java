@@ -25,13 +25,13 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
 public abstract class GroupByComponent extends StatementNode {
 
-  protected Expression ControlColumnExpression;
+  protected Expression controlColumnExpression;
 
   private boolean ignoringNull;
 
   private final WindowType windowType;
 
-  public GroupByComponent(WindowType windowType) {
+  protected GroupByComponent(WindowType windowType) {
     this.windowType = windowType;
   }
 
@@ -40,11 +40,11 @@ public abstract class GroupByComponent extends StatementNode {
   }
 
   public void setControlColumnExpression(Expression controlColumnExpression) {
-    ControlColumnExpression = controlColumnExpression;
+    this.controlColumnExpression = controlColumnExpression;
   }
 
   public Expression getControlColumnExpression() {
-    return ControlColumnExpression;
+    return controlColumnExpression;
   }
 
   public void setIgnoringNull(boolean ignoringNull) {

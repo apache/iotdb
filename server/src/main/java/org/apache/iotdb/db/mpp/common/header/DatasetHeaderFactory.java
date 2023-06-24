@@ -21,6 +21,10 @@ package org.apache.iotdb.db.mpp.common.header;
 
 public class DatasetHeaderFactory {
 
+  private DatasetHeaderFactory() {
+    // forbidding instantiation
+  }
+
   public static DatasetHeader getCountStorageGroupHeader() {
     return new DatasetHeader(ColumnHeaderConstant.countStorageGroupColumnHeaders, true);
   }

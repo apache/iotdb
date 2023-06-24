@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
@@ -254,6 +253,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private static final String GROUP_BY_COMMON_ONLY_ONE_MSG =
       "Only one of group by time or group by variation/series/session can be supported at a time";
+
+  private static final String NEGATIVE_TIMESTAMP_ERROR_MSG =
+      "Please set the time >=0 or after 1970-01-01 00:00:00";
+  private static final String LIMIT_CONFIGURATION_ENABLED_ERROR_MSG =
+      "Limit configuration is not enabled, please enable it first.";
 
   private static final String IGNORENULL = "IgnoreNull";
   private ZoneId zoneId;
@@ -1127,7 +1131,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       BiConsumer<PartialPath, List<PartialPath>> setTargetPathsGroup,
       Consumer<IntoItem> setTargetIntoItem) {
     // full paths
-    if (ctx.fullPath() != null && ctx.fullPath().size() > 0) {
+    if (ctx.fullPath() != null && !ctx.fullPath().isEmpty()) {
       List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
       List<PartialPath> pathList = new ArrayList<>();
       for (IoTDBSqlParser.FullPathContext pathContext : fullPathContextList) {
@@ -1138,7 +1142,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // prefix path and suffix paths
     if (ctx.prefixPath() != null
         && ctx.viewSuffixPaths() != null
-        && ctx.viewSuffixPaths().size() > 0) {
+        && !ctx.viewSuffixPaths().isEmpty()) {
       IoTDBSqlParser.PrefixPathContext prefixPathContext = ctx.prefixPath();
       List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList = ctx.viewSuffixPaths();
       List<PartialPath> suffixPathList = new ArrayList<>();
@@ -1178,7 +1182,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       BiConsumer<PartialPath, List<PartialPath>> setSourcePathsGroup,
       Consumer<QueryStatement> setSourceQueryStatement) {
     // full paths
-    if (ctx.fullPath() != null && ctx.fullPath().size() > 0) {
+    if (ctx.fullPath() != null && !ctx.fullPath().isEmpty()) {
       List<IoTDBSqlParser.FullPathContext> fullPathContextList = ctx.fullPath();
       List<PartialPath> pathList = new ArrayList<>();
       for (IoTDBSqlParser.FullPathContext pathContext : fullPathContextList) {
@@ -1189,7 +1193,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // prefix path and suffix paths
     if (ctx.prefixPath() != null
         && ctx.viewSuffixPaths() != null
-        && ctx.viewSuffixPaths().size() > 0) {
+        && !ctx.viewSuffixPaths().isEmpty()) {
       IoTDBSqlParser.PrefixPathContext prefixPathContext = ctx.prefixPath();
       PartialPath prefixPath = parsePrefixPath(prefixPathContext);
       List<IoTDBSqlParser.ViewSuffixPathsContext> suffixPathContextList = ctx.viewSuffixPaths();
@@ -1547,10 +1551,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       GroupByAttributeClauseContext ctx, WindowType windowType) {
 
     boolean ignoringNull = true;
-    if (ctx.attributePair() != null && !ctx.attributePair().isEmpty()) {
-      if (ctx.attributePair().key.getText().equalsIgnoreCase(IGNORENULL)) {
-        ignoringNull = Boolean.parseBoolean(ctx.attributePair().value.getText());
-      }
+    if (ctx.attributePair() != null
+        && !ctx.attributePair().isEmpty()
+        && ctx.attributePair().key.getText().equalsIgnoreCase(IGNORENULL)) {
+      ignoringNull = Boolean.parseBoolean(ctx.attributePair().value.getText());
     }
     List<ExpressionContext> expressions = ctx.expression();
     if (windowType == WindowType.VARIATION_WINDOW) {
@@ -1951,10 +1955,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new PartialPath(path);
   }
 
-  private PartialPath convertConstantToPath(String src) throws IllegalPathException {
-    return new PartialPath(src);
-  }
-
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
     if (!useWildcard && !ctx.wildcard().isEmpty()) {
       useWildcard = true;
@@ -2083,11 +2083,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseStringLiteralInInsertValue(String src) {
-    if (2 <= src.length()) {
-      if ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
-          || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'')) {
-        return "'" + parseStringLiteral(src) + "'";
-      }
+    if (2 <= src.length()
+        && ((src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"')
+            || (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\''))) {
+      return "'" + parseStringLiteral(src) + "'";
     }
     return src;
   }
@@ -2389,7 +2388,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey = attribute.databaseAttributeKey();
       if (attributeKey.TTL() != null) {
         long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
-        databaseSchemaStatement.setTTL(ttl);
+        databaseSchemaStatement.setTtl(ttl);
       } else if (attributeKey.SCHEMA_REPLICATION_FACTOR() != null) {
         int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setSchemaReplicationFactor(schemaReplicationFactor);
@@ -3125,7 +3124,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.READONLY() != null) {
       setSystemStatusStatement.setStatus(NodeStatus.ReadOnly);
     } else {
-      throw new RuntimeException("Unknown system status in set system command.");
+      throw new SemanticException("Unknown system status in set system command.");
     }
     return setSystemStatusStatement;
   }
@@ -3493,17 +3492,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return attributes;
   }
 
-  private PartialPath parsePathFromExpression(Expression expression) {
-    if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath();
-    } else if (expression instanceof TimestampOperand) {
-      return SqlConstant.TIME_PATH;
-    } else {
-      throw new IllegalArgumentException(
-          "Unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
   // PIPE
 
   @Override
@@ -3517,11 +3505,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       throw new SemanticException(
           "Not support for this sql in CREATEPIPE, please enter pipename or pipesinkname.");
     }
-    if (ctx.collectorAttributesClause() != null) {
-      createPipeStatement.setCollectorAttributes(
-          parseCollectorAttributesClause(ctx.collectorAttributesClause()));
+    if (ctx.extractorAttributesClause() != null) {
+      createPipeStatement.setExtractorAttributes(
+          parseExtractorAttributesClause(ctx.extractorAttributesClause()));
     } else {
-      createPipeStatement.setCollectorAttributes(new HashMap<>());
+      createPipeStatement.setExtractorAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
@@ -3534,14 +3522,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return createPipeStatement;
   }
 
-  private Map<String, String> parseCollectorAttributesClause(
-      IoTDBSqlParser.CollectorAttributesClauseContext ctx) {
+  private Map<String, String> parseExtractorAttributesClause(
+      IoTDBSqlParser.ExtractorAttributesClauseContext ctx) {
     final Map<String, String> collectorMap = new HashMap<>();
-    for (IoTDBSqlParser.CollectorAttributeClauseContext singleCtx :
-        ctx.collectorAttributeClause()) {
+    for (IoTDBSqlParser.ExtractorAttributeClauseContext singleCtx :
+        ctx.extractorAttributeClause()) {
       collectorMap.put(
-          parseStringLiteral(singleCtx.collectorKey.getText()),
-          parseStringLiteral(singleCtx.collectorValue.getText()));
+          parseStringLiteral(singleCtx.extractorKey.getText()),
+          parseStringLiteral(singleCtx.extractorValue.getText()));
     }
     return collectorMap;
   }
@@ -3634,7 +3622,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.time != null) {
       long timestamp = parseTimeValue(ctx.time, DateTimeUtils.currentTime());
       if (timestamp < 0) {
-        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
       } else {
         getRegionIdStatement.setTimeStamp(timestamp);
       }
@@ -3662,7 +3650,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.startTime != null) {
       long timestamp = parseTimeValue(ctx.startTime, DateTimeUtils.currentTime());
       if (timestamp < 0) {
-        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
       } else {
         getTimeSlotListStatement.setStartTime(timestamp);
       }
@@ -3670,7 +3658,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.endTime != null) {
       long timestamp = parseTimeValue(ctx.endTime, DateTimeUtils.currentTime());
       if (timestamp < 0) {
-        throw new SemanticException("Please set the time >=0 or after 1970-01-01 00:00:00");
+        throw new SemanticException(NEGATIVE_TIMESTAMP_ERROR_MSG);
       } else {
         getTimeSlotListStatement.setEndTime(timestamp);
       }
@@ -3709,7 +3697,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetSpaceQuota(IoTDBSqlParser.SetSpaceQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SemanticException("Limit configuration is not enabled, please enable it first.");
+      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
     }
     SetSpaceQuotaStatement setSpaceQuotaStatement = new SetSpaceQuotaStatement();
     List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
@@ -3776,7 +3764,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitSetThrottleQuota(IoTDBSqlParser.SetThrottleQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SemanticException("Limit configuration is not enabled, please enable it first.");
+      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
     }
     if (parseIdentifier(ctx.userName.getText()).equals(IoTDBConstant.PATH_ROOT)) {
       throw new SemanticException("Cannot set throttle quota for user root.");
@@ -3876,7 +3864,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowThrottleQuota(IoTDBSqlParser.ShowThrottleQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SemanticException("Limit configuration is not enabled, please enable it first.");
+      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
     }
     ShowThrottleQuotaStatement showThrottleQuotaStatement = new ShowThrottleQuotaStatement();
     if (ctx.userName != null) {
@@ -3950,7 +3938,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowSpaceQuota(IoTDBSqlParser.ShowSpaceQuotaContext ctx) {
     if (!IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-      throw new SemanticException("Limit configuration is not enabled, please enable it first.");
+      throw new SemanticException(LIMIT_CONFIGURATION_ENABLED_ERROR_MSG);
     }
     ShowSpaceQuotaStatement showSpaceQuotaStatement = new ShowSpaceQuotaStatement();
     if (ctx.prefixPath() != null) {

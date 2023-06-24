@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.query.executor;
 
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
