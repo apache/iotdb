@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,9 +68,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     initAlignedChunkMetaFromTsBlock();
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S6541"})
   private void initAlignedChunkMetaFromTsBlock() throws QueryProcessException {
     // time chunk
-    Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
+    Statistics<? extends Serializable> timeStatistics =
+        Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
         new ChunkMetadata(timeChunkName, TSDataType.VECTOR, 0, timeStatistics);
     List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
@@ -80,7 +83,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     timeStatistics.setEmpty(false);
     // update value chunk
     for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-      Statistics valueStatistics = Statistics.getStatsByType(dataTypes.get(column));
+      Statistics<? extends Serializable> valueStatistics =
+          Statistics.getStatsByType(dataTypes.get(column));
       valueStatistics.setEmpty(true);
       switch (dataTypes.get(column)) {
         case BOOLEAN:

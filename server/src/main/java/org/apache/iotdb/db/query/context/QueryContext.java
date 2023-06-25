@@ -138,14 +138,14 @@ public class QueryContext {
         });
     List<Modification> result = new ArrayList<>();
     if (!modifications.isEmpty()) {
-      Deletion current = ((Deletion) modifications.get(0)).clone();
+      Deletion current = ((Deletion) modifications.get(0)).copy();
       for (int i = 1; i < modifications.size(); i++) {
         Deletion del = (Deletion) modifications.get(i);
         if (current.intersects(del)) {
           current.merge(del);
         } else {
           result.add(current);
-          current = del.clone();
+          current = del.copy();
         }
       }
       result.add(current);

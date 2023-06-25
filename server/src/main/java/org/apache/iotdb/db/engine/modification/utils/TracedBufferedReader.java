@@ -223,6 +223,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#readLine(boolean)} */
+  @SuppressWarnings("squid:S3776")
   String readLine(boolean ignoreLF) throws IOException {
     StringBuilder s = null;
     int startChar;
@@ -231,7 +232,6 @@ public class TracedBufferedReader extends Reader {
       ensureOpen();
       boolean omitLF = ignoreLF || skipLF;
 
-      bufferLoop:
       for (; ; ) {
 
         if (nextChar >= nChars) {
@@ -256,12 +256,11 @@ public class TracedBufferedReader extends Reader {
         skipLF = false;
         omitLF = false;
 
-        charLoop:
         for (i = nextChar; i < nChars; i++) {
           c = cb[i];
           if ((c == '\n') || (c == '\r')) {
             eol = true;
-            break charLoop;
+            break;
           }
         }
 
@@ -300,6 +299,7 @@ public class TracedBufferedReader extends Reader {
   }
 
   /** {@link BufferedReader#skip(long)} */
+  @SuppressWarnings("squid:S135")
   @Override
   public long skip(long n) throws IOException {
     if (n < 0L) {

@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 /** Deletion is a delete operation on a timeseries. */
-public class Deletion extends Modification implements Cloneable {
+public class Deletion extends Modification {
 
   /** data within the interval [startTime, endTime] are to be deleted. */
   private TimeRange timeRange;
@@ -141,8 +141,7 @@ public class Deletion extends Modification implements Cloneable {
         + '}';
   }
 
-  @Override
-  public Deletion clone() {
+  public Deletion copy() {
     return new Deletion(getPath(), getFileOffset(), getStartTime(), getEndTime());
   }
 }
