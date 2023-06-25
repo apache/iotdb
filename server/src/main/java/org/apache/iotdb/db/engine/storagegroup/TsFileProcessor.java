@@ -1078,6 +1078,7 @@ public class TsFileProcessor {
   }
 
   /** This method will synchronize the memTable and release its flushing resources */
+  @SuppressWarnings("squid:S2445")
   private void syncReleaseFlushedMemTable(IMemTable memTable) {
     synchronized (memTable) {
       releaseFlushedMemTable(memTable);
@@ -1097,7 +1098,7 @@ public class TsFileProcessor {
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
    * the flush manager pool
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776", "squid:S2142"}) // Suppress high Cognitive Complexity warning
   public void flushOneMemTable() {
     IMemTable memTableToFlush = flushingMemTables.getFirst();
 

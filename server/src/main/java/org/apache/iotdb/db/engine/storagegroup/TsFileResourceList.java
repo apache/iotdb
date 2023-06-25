@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.NoSuchElementException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileResourceList implements List<TsFileResource> {
@@ -378,6 +379,9 @@ public class TsFileResourceList implements List<TsFileResource> {
 
     @Override
     public TsFileResource next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
       return this.tsFileResourceList.get(currentIndex++);
     }
   }
@@ -398,6 +402,9 @@ public class TsFileResourceList implements List<TsFileResource> {
 
     @Override
     public TsFileResource next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
       return tsFileResourceList.get(currentIndex--);
     }
   }
