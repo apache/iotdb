@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.io;
 
 import org.apache.iotdb.db.utils.SerializedSize;
@@ -31,13 +32,12 @@ import static org.apache.iotdb.db.wal.node.WALNode.DEFAULT_SEARCH_INDEX;
  * entry and the number of entries.
  */
 public class WALMetaData implements SerializedSize {
-  /** search index 8 byte, wal entries' number 4 bytes */
+  // search index 8 byte, wal entries' number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES + Integer.BYTES;
 
-  /** search index of first entry */
+  // search index of first entry
   private long firstSearchIndex;
-
-  /** each entry's size */
+  // each entry's size
   private final List<Integer> buffersSize;
 
   public WALMetaData() {

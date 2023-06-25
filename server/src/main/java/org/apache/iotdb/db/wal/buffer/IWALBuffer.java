@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.buffer;
 
 import java.util.concurrent.TimeUnit;
@@ -32,24 +33,32 @@ public interface IWALBuffer extends AutoCloseable {
    */
   void write(WALEntry walEntry);
 
-  /** Get current log version id */
+  /** Get current log version id. */
   long getCurrentWALFileVersion();
 
-  /** Get current wal file's size */
+  /** Get current wal file's size. */
   long getCurrentWALFileSize();
 
-  /** Get current search index */
+  /** Get current search index. */
   long getCurrentSearchIndex();
 
   @Override
   void close();
 
-  /** Wait for next flush operation done */
+  /**
+   * Wait for next flush operation done.
+   *
+   * @throws InterruptedException when interrupted by the flush thread
+   */
   void waitForFlush() throws InterruptedException;
 
-  /** Wait for next flush operation done */
+  /**
+   * Wait for next flush operation done.
+   *
+   * @throws InterruptedException when interrupted by the flush thread
+   */
   boolean waitForFlush(long time, TimeUnit unit) throws InterruptedException;
 
-  /** Return true when all wal entries all consumed and flushed */
+  /** Return true when all wal entries all consumed and flushed. */
   boolean isAllWALEntriesConsumed();
 }

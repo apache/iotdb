@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -44,16 +44,14 @@ import java.util.Objects;
 public abstract class WALEntry implements SerializedSize {
   private static final Logger logger = LoggerFactory.getLogger(WALEntry.class);
 
-  /** type of value */
+  // type of value
   protected final WALEntryType type;
-  /** memTable id */
+  // memTable id
   protected final long memTableId;
-  /** value(physical plan or memTable snapshot) */
+  // value(physical plan or memTable snapshot)
   protected final WALEntryValue value;
-  /**
-   * listen whether this WALEntry has been written to the filesystem, null iff this WALEntry is
-   * deserialized from .wal file
-   */
+  // listen whether this WALEntry has been written to the filesystem
+  // null iff this WALEntry is deserialized from .wal file
   protected final WALFlushListener walFlushListener;
 
   protected WALEntry(long memTableId, WALEntryValue value, boolean wait) {
@@ -82,8 +80,7 @@ public abstract class WALEntry implements SerializedSize {
 
   public abstract void serialize(IWALByteBufferView buffer);
 
-  public static WALEntry deserialize(DataInputStream stream)
-      throws IllegalPathException, IOException {
+  public static WALEntry deserialize(DataInputStream stream) throws IOException {
     byte typeNum = stream.readByte();
     WALEntryType type = WALEntryType.valueOf(typeNum);
 
@@ -121,7 +118,7 @@ public abstract class WALEntry implements SerializedSize {
 
   /**
    * This deserialization method is only for iot consensus and just deserializes InsertRowNode and
-   * InsertTabletNode
+   * InsertTabletNode.
    */
   public static PlanNode deserializeForConsensus(ByteBuffer buffer) {
     logger.debug(
@@ -131,9 +128,14 @@ public abstract class WALEntry implements SerializedSize {
         buffer.position());
     // wal entry type
     buffer.get();
-    // memtable id
+    // memTable id
     buffer.getLong();
     return PlanNodeType.deserializeFromWAL(buffer);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, memTableId, value);
   }
 
   @Override

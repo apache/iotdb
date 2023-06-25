@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.io;
 
 import java.io.Closeable;
@@ -60,7 +61,7 @@ public interface ILogWriter extends Closeable {
   long size();
 
   /**
-   * Gets the log file
+   * Gets the log file.
    *
    * @return log file
    */

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.utils;
 
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -28,7 +29,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 
-/** Like {@link org.apache.iotdb.tsfile.utils.ReadWriteIOUtils} */
+/** Like {@link org.apache.iotdb.tsfile.utils.ReadWriteIOUtils}. */
 public class WALWriteUtils {
   public static final int BOOLEAN_LEN = ReadWriteIOUtils.BOOLEAN_LEN;
   public static final int SHORT_LEN = ReadWriteIOUtils.SHORT_LEN;
@@ -41,7 +42,7 @@ public class WALWriteUtils {
 
   private WALWriteUtils() {}
 
-  /** write a byte to byteBuffer according to flag. If flag is true, write 1, else write 0. */
+  /** Write a byte to byteBuffer according to flag. If flag is true, write 1, else write 0. */
   public static int write(Boolean flag, IWALByteBufferView buffer) {
     byte a;
     if (Boolean.TRUE.equals(flag)) {
@@ -55,7 +56,7 @@ public class WALWriteUtils {
   }
 
   /**
-   * write a byte n to byteBuffer.
+   * Write a byte n to byteBuffer.
    *
    * @return The number of bytes used to represent a {@code byte} value in two's complement binary
    *     form.
@@ -66,7 +67,7 @@ public class WALWriteUtils {
   }
 
   /**
-   * write a short n to byteBuffer.
+   * Write a short n to byteBuffer.
    *
    * @return The number of bytes used to represent n.
    */
@@ -76,7 +77,7 @@ public class WALWriteUtils {
   }
 
   /**
-   * write a short n to byteBuffer.
+   * Write a short n to byteBuffer.
    *
    * @return The number of bytes used to represent n.
    */
@@ -87,7 +88,7 @@ public class WALWriteUtils {
   }
 
   /**
-   * write a int n to byteBuffer.
+   * Write a int n to byteBuffer.
    *
    * @return The number of bytes used to represent n.
    */
@@ -96,26 +97,26 @@ public class WALWriteUtils {
     return INT_LEN;
   }
 
-  /** write a long n to byteBuffer. */
+  /** Write a long n to byteBuffer. */
   public static int write(long n, IWALByteBufferView buffer) {
     buffer.putLong(n);
     return LONG_LEN;
   }
 
-  /** write a float n to byteBuffer. */
+  /** Write a float n to byteBuffer. */
   public static int write(float n, IWALByteBufferView buffer) {
     buffer.putFloat(n);
     return FLOAT_LEN;
   }
 
-  /** write a double n to byteBuffer. */
+  /** Write a double n to byteBuffer. */
   public static int write(double n, IWALByteBufferView buffer) {
     buffer.putDouble(n);
     return DOUBLE_LEN;
   }
 
   /**
-   * write string to byteBuffer.
+   * Write string to byteBuffer.
    *
    * @return the length of string represented by byte[].
    */
