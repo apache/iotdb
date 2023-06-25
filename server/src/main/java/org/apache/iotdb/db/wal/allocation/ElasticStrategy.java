@@ -52,6 +52,8 @@ public class ElasticStrategy extends AbstractNodeAllocationStrategy {
     this.walNodes = new ArrayList<>();
   }
 
+  // it's safe to not close WALNode here, we use clear method to close all WALNodes.
+  @SuppressWarnings("squid:S2095")
   @Override
   public IWALNode applyForWALNode(String applicantUniqueId) {
     nodesLock.lock();
