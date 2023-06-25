@@ -120,6 +120,16 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google
 4. 将“将 import 与‘*’搭配使用的类计数”改成 999 或者一个比较大的值。
 5. 将“将静态 import 与‘*’搭配使用的名称计数”改成 999 或者一个比较大的值。
 
+## 使用 git-hooks 自动检查(可选)
+
+为简化每次 commit 的工作，我们提供了一个基于 git-hooks 的自动代码检查脚本。
+
+在使用我们预定义的 git-hooks 时，每次 commit 代码时，都会触发代码检查。如果代码风格不符合要求，那么 commit 将被本地拒绝，减少 CI/CD 进行双重检查的时间。
+
+此外，预定义 git-hooks 中的智能选择机制只会检查更改过的模块，以减少代码检查的时间。
+
+git-hooks 工具位于 `tools/git-hooks` 目录下。更多详情请参阅 [Guide to to git-hooks](https://github.com/apache/iotdb/blob/master/tools/git-hooks/README.md)。
+
 ## 贡献代码
 
 可以到 jira 上领取现有 issue 或者自己创建 issue 再领取，评论说我要做这个 issue 就可以。

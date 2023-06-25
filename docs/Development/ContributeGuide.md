@@ -139,6 +139,16 @@ In IDEA, you can follow these steps to change those inconsistent style formattin
 4. Change 'Class count to use import with '\*'' to 999 or another very large number.
 5. Change 'Names to count to use static import with '\*'' to 999 or another very large number.
 
+## Use git-hooks(Optional)
+
+Fortunately, IoTDB has pre-commit git-hooks to automatically do the code checks. 
+
+With the help of these pre-defined hooks, each time you commit your code, the code style check will be triggered. And if the code style is incorrect, the commit will be rejected locally, reducing the double check time by CI/CD.
+
+Besides, the smart selection mechanism will check only the changed modules to decrease the time of the code check.
+
+The hooks are under `tools/git-hooks`. See [Guide to to git-hooks](https://github.com/apache/iotdb/blob/master/tools/git-hooks/README.md) for more details.
+
 ## Contributing code
 
 You can go to jira to pick up the existing issue or create your own issue and get it. The comment says that I can do this issue.

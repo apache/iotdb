@@ -1,0 +1,139 @@
+#!/bin/sh
+
+################################################################################
+##
+##  Licensed to the Apache Software Foundation (ASF) under one or more
+##  contributor license agreements.  See the NOTICE file distributed with
+##  this work for additional information regarding copyright ownership.
+##  The ASF licenses this file to You under the Apache License, Version 2.0
+##  (the "License"); you may not use this file except in compliance with
+##  the License.  You may obtain a copy of the License at
+##
+##      http://www.apache.org/licenses/LICENSE-2.0
+##
+##  Unless required by applicable law or agreed to in writing, software
+##  distributed under the License is distributed on an "AS IS" BASIS,
+##  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+##  See the License for the specific language governing permissions and
+##  limitations under the License.
+##
+################################################################################
+
+PROJECT_DIR="../.."
+REL_HOOKS_DIR=".git/hooks"
+
+cd "$(dirname $0)/$PROJECT_DIR" || exit 1
+
+PROMPT="Pre-commit-hooks:"
+
+# default 0 level log path
+LOG_OUT_PATH="/dev/null"
+
+exec_with_log() {
+    if [ "$IOTDB_VERBOSE" -le 1 ]; then
+        eval "$*" > "$LOG_OUT_PATH" 2>&1
+    elif [ "$IOTDB_VERBOSE" -eq 2 ]; then
+        # compatible with git bash
+        eval "$*" 2>&1
+    else
+        eval "$*" 2>&1 | tee "$LOG_OUT_PATH"
+    fi
+}
+
+# update all the file indices after the hook modified the files
+update_changed_file_indices() {
+    echo "$PROMPT Updating changed files indices..."
+    for line in $("$IOTDB_GIT_PATH" diff --name-only --cached); do
+        if [ -f "$line" ]; then
+            "$IOTDB_GIT_PATH" add -u "$line"
+        fi
+    done
+}
+
+on_error() {
+    if [ "$#" -eq 0 ]; then
+        echo "ERROR: 'on_error' must have at least 1 args."
+        exit 1
+    fi
+    echo "$PROMPT [ERROR] $*"
+    if [ "$IOTDB_VERBOSE" -eq 1 ] || [ "$IOTDB_VERBOSE" -ge 3 ]; then
+        echo "$PROMPT Log of last step is saved at $LOG_OUT_PATH"
+    fi
+    exit 1
+}
+
+load_config() {
+    . "./$REL_HOOKS_DIR/config.sh"
+}
+
+main() {
+    load_config
+
+    # enable hooks
+    if [ "$IOTDB_GIT_HOOKS" -eq 0 ]; then
+        echo "$PROMPT Skip git hooks."
+        exit 0
+    fi
+
+    # get all changed module path
+    changed_files=$("$IOTDB_GIT_PATH" diff --name-only --cached)
+    changed_java_modules=""
+    smart_args=""
+    for line in $changed_files; do
+        mod=$(echo "$line" | cut -d '/' -f 1)
+        if [ -f "$mod/pom.xml" ]; then
+            changed_java_modules="${changed_java_modules}${mod},"
+        fi
+    done
+    if [ "$IOTDB_SMART_JAVA_MODULES" -ne 0 ]; then
+        # prepare the smart module selection args
+        echo "$PROMPT Changed java module: $changed_java_modules"
+        if [ -n "$changed_java_modules" ]; then
+            smart_args="-pl $changed_java_modules"
+        fi
+    fi
+
+    # change log level
+    if [ "$IOTDB_VERBOSE" -eq 1 ]; then
+        LOG_OUT_PATH="$(mktemp --suff .log)"
+    elif [ "$IOTDB_VERBOSE" -eq 2 ]; then
+        # not used in git bash
+        LOG_OUT_PATH="/dev/stdout"
+    elif [ "$IOTDB_VERBOSE" -ge 3 ]; then
+        LOG_OUT_PATH="$(mktemp --suff .log)"
+    fi
+
+    # spotless:apply
+    if [ "$IOTDB_SPOTLESS_APPLY" -ne 0 ]; then
+        echo "$PROMPT Apply spotless:apply..."
+        if [ "$IOTDB_SMART_JAVA_MODULES" -eq 0 ] || [ -n "$smart_args" ]; then
+            exec_with_log "\"$IOTDB_MAVEN_PATH\" $smart_args spotless:apply"
+        else
+            echo "$PROMPT No changed module for spotless:apply."
+        fi
+        if [ "$?" -ne 0 ]; then
+            on_error "spotless:apply failed."
+        fi
+        update_changed_file_indices
+    fi
+
+    # maven validate
+    if [ "$IOTDB_VALIDATE" -ne 0 ]; then
+        echo "$PROMPT Validating with 'mvn validate'..."
+        if [ "$IOTDB_SMART_JAVA_MODULES" -eq 0 ] || [ -n "$smart_args" ]; then
+            exec_with_log "\"$IOTDB_MAVEN_PATH\" $smart_args validate"
+        else
+            echo "$PROMPT No changed module for validating."
+        fi
+        if [ "$?" -ne 0 ]; then
+            on_error "maven validate failed."
+        fi
+    fi
+
+    # remove useless log
+    if [ "$IOTDB_VERBOSE" -eq 1 ] || [ "$IOTDB_VERBOSE" -ge 3 ]; then
+        rm "$LOG_OUT_PATH"
+    fi
+}
+
+main
