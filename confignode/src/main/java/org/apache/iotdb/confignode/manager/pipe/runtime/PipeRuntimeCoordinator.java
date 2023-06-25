@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.runtime;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
@@ -39,9 +40,13 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   private static final AtomicReference<ExecutorService> procedureSubmitterHolder =
       new AtomicReference<>();
   private final ExecutorService procedureSubmitter;
+  private static final boolean enablePipeHeartbeat =
+      PipeConfig.getInstance().isEnablePipeHeartbeat();
 
   private final PipeLeaderChangeHandler pipeLeaderChangeHandler;
+  private final PipeHeartbeatParser pipeHeartbeatParser;
   private final PipeMetaSyncer pipeMetaSyncer;
+  private final PipeHeartbeatScheduler pipeHeartbeatScheduler;
 
   public PipeRuntimeCoordinator(ConfigManager configManager) {
     if (procedureSubmitterHolder.get() == null) {
@@ -56,7 +61,9 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     procedureSubmitter = procedureSubmitterHolder.get();
 
     pipeLeaderChangeHandler = new PipeLeaderChangeHandler(configManager);
+    pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
     pipeMetaSyncer = new PipeMetaSyncer(configManager);
+    pipeHeartbeatScheduler = new PipeHeartbeatScheduler(configManager);
   }
 
   public ExecutorService getProcedureSubmitter() {
@@ -84,5 +91,17 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
 
   public void stopPipeMetaSync() {
     pipeMetaSyncer.stop();
+  }
+
+  public void startPipeHeartbeat() {
+    if (enablePipeHeartbeat) {
+      pipeHeartbeatScheduler.start();
+    }
+  }
+
+  public void stopPipeHeartbeat() {
+    if (enablePipeHeartbeat) {
+      pipeHeartbeatScheduler.stop();
+    }
   }
 }

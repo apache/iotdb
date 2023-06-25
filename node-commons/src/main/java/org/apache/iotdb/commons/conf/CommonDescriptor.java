@@ -299,6 +299,10 @@ public class CommonDescriptor {
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
 
+    config.setEnablePipeHeartbeat(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_pipe_heartbeat", String.valueOf(config.isEnablePipeHeartbeat()))));
     config.setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
         Integer.parseInt(
             properties.getProperty(

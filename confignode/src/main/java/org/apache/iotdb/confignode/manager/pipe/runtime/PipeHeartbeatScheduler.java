@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
@@ -31,12 +30,10 @@ import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -48,9 +45,9 @@ public class PipeHeartbeatScheduler {
 
   private static final ScheduledExecutorService HEARTBEAT_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_RUNTIME_META_SYNCER.getName());
+          ThreadName.PIPE_RUNTIME_HEARTBEAT.getName());
   private static final long HEARTBEAT_INTERVAL_SECONDS =
-      PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes();
+      PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta();
 
   private final ConfigManager configManager;
 
@@ -83,19 +80,16 @@ public class PipeHeartbeatScheduler {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
+    LOGGER.info(String.format("Pipe heartbeat %s from ConfigNode", request.heartbeatId));
 
     final AsyncClientHandler<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.PIPE_HEARTBEAT, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    final List<TPipeHeartbeatResp> respList = clientHandler.getResponseList();
-
-    final TSStatus status = configManager.getProcedureManager().pipeMetaSync();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "PipeMetaSyncer meets error in syncing pipe meta, code: {}, message: {}",
-          status.getCode(),
-          status.getMessage());
-    }
+    clientHandler
+        .getResponseMap()
+        .forEach(
+            (dataNodeId, resp) ->
+                pipeHeartbeatParser.parseHeartbeat(dataNodeId, resp.getPipeMetaList()));
   }
 
   public synchronized void stop() {

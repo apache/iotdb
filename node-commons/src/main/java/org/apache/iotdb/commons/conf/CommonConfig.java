@@ -161,6 +161,7 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 1024;
 
+  private boolean enablePipeHeartbeat = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
@@ -500,8 +501,16 @@ public class CommonConfig {
     this.pipeConnectorReadFileBufferSize = pipeConnectorReadFileBufferSize;
   }
 
+  public boolean isEnablePipeHeartbeat() {
+    return enablePipeHeartbeat;
+  }
+
   public int getPipeHeartbeatIntervalSecondsForCollectingPipeMeta() {
     return pipeHeartbeatIntervalSecondsForCollectingPipeMeta;
+  }
+
+  public void setEnablePipeHeartbeat(boolean enablePipeHeartbeat) {
+    this.enablePipeHeartbeat = enablePipeHeartbeat;
   }
 
   public void setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(

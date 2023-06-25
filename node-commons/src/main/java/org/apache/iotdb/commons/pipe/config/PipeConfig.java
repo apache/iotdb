@@ -87,6 +87,10 @@ public class PipeConfig {
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
+  public boolean isEnablePipeHeartbeat() {
+    return COMMON_CONFIG.isEnablePipeHeartbeat();
+  }
+
   public int getPipeHeartbeatIntervalSecondsForCollectingPipeMeta() {
     return COMMON_CONFIG.getPipeHeartbeatIntervalSecondsForCollectingPipeMeta();
   }
