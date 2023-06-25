@@ -27,6 +27,8 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 class ResponseMessage implements Message {
 
   /**
@@ -35,12 +37,11 @@ class ResponseMessage implements Message {
    */
   private final Object contentHolder;
 
-  private volatile ByteString serializedData;
+  private AtomicReference<ByteString> serializedData = new AtomicReference<>();
   private final Logger logger = LoggerFactory.getLogger(ResponseMessage.class);
 
   ResponseMessage(Object content) {
     this.contentHolder = content;
-    this.serializedData = null;
   }
 
   Object getContentHolder() {
@@ -49,19 +50,20 @@ class ResponseMessage implements Message {
 
   @Override
   public ByteString getContent() {
-    if (serializedData == null) {
+    if (serializedData.get() == null) {
       synchronized (this) {
-        if (serializedData == null) {
+        if (serializedData.get() == null) {
           assert contentHolder instanceof TSStatus;
           TSStatus status = (TSStatus) contentHolder;
           try {
-            serializedData = ByteString.copyFrom(Utils.serializeTSStatus(status));
+            serializedData =
+                new AtomicReference<>(ByteString.copyFrom(Utils.serializeTSStatus(status)));
           } catch (TException e) {
             logger.warn("serialize TSStatus failed {}", status);
           }
         }
       }
     }
-    return serializedData;
+    return serializedData.get();
   }
 }
