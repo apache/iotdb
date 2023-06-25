@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,6 +33,9 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 
 public class PatternTreeMapFactory {
+
+  private PatternTreeMapFactory() {}
+
   public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
     return new PatternTreeMap<>(
         HashSet::new,
