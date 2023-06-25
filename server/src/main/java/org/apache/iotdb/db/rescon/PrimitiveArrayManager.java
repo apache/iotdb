@@ -69,6 +69,10 @@ public class PrimitiveArrayManager {
         new AtomicLong(0),
         new AtomicLong(0),
         new AtomicLong(0),
+        new AtomicLong(0),
+        new AtomicLong(0),
+        new AtomicLong(0),
+        new AtomicLong(0),
         new AtomicLong(0)
       };
 
