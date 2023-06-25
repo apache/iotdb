@@ -35,8 +35,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import java.util.concurrent.ExecutorService;
 
