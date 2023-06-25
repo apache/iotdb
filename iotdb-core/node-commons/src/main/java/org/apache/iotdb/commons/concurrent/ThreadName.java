@@ -31,19 +31,19 @@ public enum ThreadName {
   QUERY_WORKER("Query-Worker-Thread"),
   QUERY_SENTINEL("Query-Sentinel-Thread"),
   TIMED_QUERY_SQL_COUNT("Timed-Query-SQL-Count"),
-  MPP_DATA_EXCHANGE_TASK_EXECUTOR("MPP-Data-Exchange-Task-Executors"),
   FRAGMENT_INSTANCE_MANAGEMENT("Fragment-Instance-Management"),
   FRAGMENT_INSTANCE_NOTIFICATION("Fragment-Instance-Notification"),
-  DATANODE_INTERNAL_RPC_SERVICE("DataNodeInternalRPC-Service"),
-  DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
   // -------------------------- MPP --------------------------
   MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),
-
+  MPP_DATA_EXCHANGE_TASK_EXECUTOR("MPP-Data-Exchange-Task-Executors"),
   ASYNC_DATANODE_CLIENT_POOL("AsyncDataNodeInternalServiceClientPool"),
   MPP_DATA_EXCHANGE_RPC_SERVICE("MPPDataExchangeRPC-Service"),
   MPP_DATA_EXCHANGE_RPC_PROCESSOR("MPPDataExchangeRPC-Processor"),
   MPP_COORDINATOR_EXECUTOR_POOL("MPP-Coordinator-Executor"),
+  DATANODE_INTERNAL_RPC_SERVICE("DataNodeInternalRPC-Service"),
+  DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
+  MPP_COORDINATOR_WRITE_EXECUTOR("MPP-Coordinator-Write-Executor"),
   ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
 
   // -------------------------- Compaction --------------------------
@@ -56,8 +56,6 @@ public enum ThreadName {
   WAL_DELETE("WAL-Delete"),
   WAL_RECOVER("WAL-Recover"),
   TSFILE_RECOVER("TsFile-Recover"),
-  // -------------------------- Write --------------------------
-  MPP_COORDINATOR_WRITE_EXECUTOR("MPP-Coordinator-Write-Executor"),
   // -------------------------- Flush --------------------------
   FLUSH("Flush"),
   FLUSH_SUB_TASK("Flush-SubTask"),
@@ -77,19 +75,16 @@ public enum ThreadName {
   // -------------------------- ConfigNode-RPC --------------------------
   CONFIGNODE_RPC_SERVICE("ConfigNodeRPC-Service"),
   CONFIGNODE_RPC_PROCESSOR("ConfigNodeRPC-Processor"),
-  ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL("AsyncConfigNodeHeartbeatServiceClientPool"),
-  ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   ASYNC_CONFIGNODE_CLIENT_POOL("AsyncConfigNodeIServiceClientPool"),
   // -------------------------- ConfigNode-Query --------------------------
-  CQ_MANAGER("CQ-Scheduler"),
   CQ_SCHEDULER("CQ-Scheduler"),
-  TRIGGER_STATISTIC_UPDATER("Stateful-Trigger-Statistics-Updater"),
-  CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
   // -------------------------- ConfigNode-Write --------------------------
   CONFIG_NODE_SAMPLE_CONSENSUS_WAL_FLUSH("ConfigNode-Simple-Consensus-WAL-Flush-Thread"),
   // -------------------------- ConfigNode-Heartbeat --------------------------
   CONFIG_NODE_HEART_BEAT_SERVICE("Cluster-Heartbeat-Service"),
-  // -------------------------- ConfigNode-Compute --------------------------
+  ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL("AsyncConfigNodeHeartbeatServiceClientPool"),
+  ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
+  // -------------------------- ConfigNode-LoadBalance --------------------------
   CONFIG_NODE_LOAD_STATISTIC("Cluster-LoadStatistics-Service"),
   // -------------------------- ConfigNode-RegionManagement --------------------------
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
@@ -154,8 +149,8 @@ public enum ThreadName {
   // -------------------------- Metrics --------------------------
   SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
   RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
-  PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_REACTOR_HTTP_EPOLL("reactor-http-epoll"),
+  PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
   // -------------------------- Other --------------------------
   TTL_CHECK("TTL-CHECK"),
@@ -179,29 +174,28 @@ public enum ThreadName {
               QUERY_WORKER,
               QUERY_SENTINEL,
               TIMED_QUERY_SQL_COUNT,
-              MPP_DATA_EXCHANGE_TASK_EXECUTOR,
               FRAGMENT_INSTANCE_MANAGEMENT,
               FRAGMENT_INSTANCE_NOTIFICATION,
-              DATANODE_INTERNAL_RPC_SERVICE,
-              DATANODE_INTERNAL_RPC_PROCESSOR,
               DRIVER_TASK_SCHEDULER_NOTIFICATION));
   private static Set<ThreadName> mppThreadNames =
       new HashSet<>(
           Arrays.asList(
               MPP_COORDINATOR_SCHEDULED_EXECUTOR,
+              MPP_DATA_EXCHANGE_TASK_EXECUTOR,
               ASYNC_DATANODE_CLIENT_POOL,
-              MPP_COORDINATOR_WRITE_EXECUTOR,
               MPP_DATA_EXCHANGE_RPC_SERVICE,
               MPP_DATA_EXCHANGE_RPC_PROCESSOR,
               MPP_COORDINATOR_EXECUTOR_POOL,
+              DATANODE_INTERNAL_RPC_SERVICE,
+              DATANODE_INTERNAL_RPC_PROCESSOR,
+              MPP_COORDINATOR_WRITE_EXECUTOR,
               ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL));
   private static Set<ThreadName> compactionThreadNames =
       new HashSet<>(Arrays.asList(COMPACTION_WORKER, COMPACTION_SUB_TASK, COMPACTION_SCHEDULE));
 
   private static Set<ThreadName> walThreadNames =
       new HashSet<>(
-          Arrays.asList(
-              WAL_DELETE, WAL_SERIALIZE, WAL_SYNC, WAL_DELETE, WAL_RECOVER, TSFILE_RECOVER));
+          Arrays.asList(WAL_SERIALIZE, WAL_SYNC, WAL_DELETE, WAL_RECOVER, TSFILE_RECOVER));
 
   private static Set<ThreadName> flushThreadNames =
       new HashSet<>(
@@ -211,15 +205,15 @@ public enum ThreadName {
               FLUSH_TASK_SUBMIT,
               TIMED_FLUSH_SEQ_MEMTABLE,
               TIMED_FLUSH_UNSEQ_MEMTABLE));
-
   private static Set<ThreadName> schemaEngineThreadNames =
       new HashSet<>(
           Arrays.asList(
-              SCHEMA_REGION_FLUSH_PROCESSOR,
-              SCHEMA_RELEASE_MONITOR,
               SCHEMA_REGION_RELEASE_PROCESSOR,
+              SCHEMA_REGION_RECOVER_TASK,
+              SCHEMA_RELEASE_MONITOR,
+              SCHEMA_REGION_FLUSH_PROCESSOR,
               SCHEMA_FLUSH_MONITOR,
-              SCHEMA_REGION_RECOVER_TASK));
+              SCHEMA_FORCE_MLOG));
 
   private static Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
@@ -238,6 +232,7 @@ public enum ThreadName {
               RAFT_SERVER_PROXY_EXECUTOR,
               RAFT_SERVER_EXECUTOR,
               RAFT_SERVER_CLIENT_EXECUTOR,
+              RATIS_ADD,
               SEGMENT_RAFT_WORKER,
               STATE_MACHINE_UPDATER,
               FOLLOWER_STATE,
@@ -260,7 +255,8 @@ public enum ThreadName {
               PIPE_RUNTIME_META_SYNCER,
               PIPE_RUNTIME_PROCEDURE_SUBMITTER,
               PIPE_WAL_RESOURCE_TTL_CHECKER,
-              WINDOW_EVALUATION_SERVICE));
+              WINDOW_EVALUATION_SERVICE,
+              STATEFUL_TRIGGER_INFORMATION_UPDATER));
 
   private static Set<ThreadName> jvmThreadNames =
       new HashSet<>(
@@ -280,12 +276,39 @@ public enum ThreadName {
               SIGNAL_DISPATCHER,
               DESTROY_JVM,
               COMMON_CLEANER));
+  private static Set<ThreadName> configNodeRpcThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              CONFIGNODE_RPC_SERVICE, CONFIGNODE_RPC_PROCESSOR, ASYNC_CONFIGNODE_CLIENT_POOL));
+
+  private static Set<ThreadName> configNodeQueryThreadNames =
+      new HashSet<>(Arrays.asList(CQ_SCHEDULER));
+
+  private static Set<ThreadName> configNodeWriteThreadNames =
+      new HashSet<>(Arrays.asList(CONFIG_NODE_SAMPLE_CONSENSUS_WAL_FLUSH));
+
+  private static Set<ThreadName> configNodeHeartbeatThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              CONFIG_NODE_HEART_BEAT_SERVICE,
+              ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL,
+              ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL));
+
+  private static Set<ThreadName> configNodeLoadBalanceThreadNames =
+      new HashSet<>(Arrays.asList(CONFIG_NODE_LOAD_STATISTIC));
+
+  private static Set<ThreadName> configNodeRegionManagementThreadNames =
+      new HashSet<>(Arrays.asList(CONFIG_NODE_REGION_MAINTAINER));
+
+  private static Set<ThreadName> configNodeRecoverThreadNames =
+      new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER));
 
   private static Set<ThreadName> metricsThreadNames =
       new HashSet<>(
           Arrays.asList(
               SYSTEM_SCHEDULE_METRICS,
               RESOURCE_CONTROL_DISK_STATISTIC,
+              PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_REACTOR_HTTP_NIO,
               PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_BOUNDED_ELASTIC));
@@ -297,7 +320,11 @@ public enum ThreadName {
               INFLUXDB_RPC_SERVICE,
               INFLUXDB_RPC_PROCESSOR,
               STORAGE_ENGINE_CACHED_POOL,
-              MLNODE_RPC_SERVICE));
+              MLNODE_RPC_SERVICE,
+              IOTDB_SHUTDOWN_HOOK,
+              UPGRADE_TASK,
+              REGION_MIGRATE,
+              STORAGE_ENGINE_RECOVER_TRIGGER));
 
   private static Set<ThreadName>[] threadNameSetList =
       new Set[] {
@@ -313,25 +340,39 @@ public enum ThreadName {
         computeThreadNames,
         jvmThreadNames,
         metricsThreadNames,
+        configNodeRpcThreadNames,
+        configNodeQueryThreadNames,
+        configNodeWriteThreadNames,
+        configNodeHeartbeatThreadNames,
+        configNodeLoadBalanceThreadNames,
+        configNodeRegionManagementThreadNames,
+        configNodeRecoverThreadNames,
         otherThreadNames
       };
 
-  private static DataNodeThreadModule[] modules =
-      new DataNodeThreadModule[] {
-        DataNodeThreadModule.QUERY,
-        DataNodeThreadModule.MPP,
-        DataNodeThreadModule.COMPACTION,
-        DataNodeThreadModule.WAL,
-        DataNodeThreadModule.FLUSH,
-        DataNodeThreadModule.SCHEMA_ENGINE,
-        DataNodeThreadModule.CLIENT_SERVICE,
-        DataNodeThreadModule.IOT_CONSENSUS,
-        DataNodeThreadModule.RATIS_CONSENSUS,
-        DataNodeThreadModule.COMPUTE,
-        DataNodeThreadModule.SYNC,
-        DataNodeThreadModule.JVM,
-        DataNodeThreadModule.METRICS,
-        DataNodeThreadModule.OTHER
+  private static ThreadModule[] modules =
+      new ThreadModule[] {
+        ThreadModule.QUERY,
+        ThreadModule.MPP,
+        ThreadModule.COMPACTION,
+        ThreadModule.WAL,
+        ThreadModule.FLUSH,
+        ThreadModule.SCHEMA_ENGINE,
+        ThreadModule.CLIENT_SERVICE,
+        ThreadModule.IOT_CONSENSUS,
+        ThreadModule.RATIS_CONSENSUS,
+        ThreadModule.COMPUTE,
+        ThreadModule.SYNC,
+        ThreadModule.JVM,
+        ThreadModule.METRICS,
+        ThreadModule.RPC,
+        ThreadModule.QUERY,
+        ThreadModule.WRITE,
+        ThreadModule.HEARTBEAT,
+        ThreadModule.LOAD_BALANCE,
+        ThreadModule.REGION_MANAGEMENT,
+        ThreadModule.RECOVER,
+        ThreadModule.OTHER
       };
 
   ThreadName(String name) {
@@ -342,21 +383,21 @@ public enum ThreadName {
     return name;
   }
 
-  public static DataNodeThreadModule getDataNodeModuleTheThreadBelongs(String givenThreadName) {
+  public static ThreadModule getModuleTheThreadBelongs(String givenThreadName) {
     for (int i = 0, length = modules.length; i < length; ++i) {
       if (matchModuleWithThreadNames(threadNameSetList[i], modules[i], givenThreadName) != null) {
         return modules[i];
       }
     }
     if (givenThreadName.contains(LOG_BACK.getName())) {
-      return DataNodeThreadModule.LOG_BACK;
+      return ThreadModule.LOG_BACK;
     }
 
-    return DataNodeThreadModule.UNKNOWN;
+    return ThreadModule.UNKNOWN;
   }
 
-  private static DataNodeThreadModule matchModuleWithThreadNames(
-      Set<ThreadName> threadNames, DataNodeThreadModule module, String givenThreadName) {
+  private static ThreadModule matchModuleWithThreadNames(
+      Set<ThreadName> threadNames, ThreadModule module, String givenThreadName) {
     for (ThreadName threadName : threadNames) {
       if (threadName.getName().contains("\\d")) {
         if (Pattern.compile(threadName.getName()).matcher(givenThreadName).find()) {

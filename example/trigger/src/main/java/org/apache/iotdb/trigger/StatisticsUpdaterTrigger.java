@@ -20,7 +20,6 @@
 package org.apache.iotdb.trigger;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -61,7 +60,7 @@ public class StatisticsUpdaterTrigger implements Trigger {
 
   private final ScheduledExecutorService triggerInformationUpdateExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.TRIGGER_STATISTIC_UPDATER.getName());
+          "Stateful-Trigger-Statistics-Updater");
 
   private static final long UPDATE_INTERVAL = 1000 * 20L;
 

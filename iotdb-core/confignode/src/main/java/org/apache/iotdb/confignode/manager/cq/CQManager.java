@@ -64,7 +64,7 @@ public class CQManager {
     this.lock = new ReentrantReadWriteLock();
     this.executor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(
-            CONF.getCqSubmitThread(), ThreadName.CQ_MANAGER.getName());
+            CONF.getCqSubmitThread(), ThreadName.CQ_SCHEDULER.getName());
   }
 
   public TSStatus createCQ(TCreateCQReq req) {
