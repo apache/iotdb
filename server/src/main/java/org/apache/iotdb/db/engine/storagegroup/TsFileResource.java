@@ -196,7 +196,7 @@ public class TsFileResource {
     this.isSeq = FilePathUtils.isSequence(this.file.getAbsolutePath());
     // This method is invoked when DataNode recovers, so the tierLevel should be calculated when
     // restarting
-    this.tierLevel.set(TierManager.getInstance().getFileTierLevel(file));
+    this.tierLevel = new AtomicInteger(TierManager.getInstance().getFileTierLevel(file));
   }
 
   /** Used for compaction to create target files. */
@@ -214,7 +214,7 @@ public class TsFileResource {
     this.isSeq = processor.isSequence();
     // this method is invoked when a new TsFile is created and a newly created TsFile's the
     // tierLevel is 0 by default
-    this.tierLevel.set(0);
+    this.tierLevel = new AtomicInteger(0);
   }
 
   /** unsealed TsFile, for query */
