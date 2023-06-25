@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.pipe.config.plugin.configuraion;
 
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeCollectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 
 public class PipeTaskRuntimeConfiguration
-    implements PipeCollectorRuntimeConfiguration,
+    implements PipeExtractorRuntimeConfiguration,
         PipeProcessorRuntimeConfiguration,
         PipeConnectorRuntimeConfiguration {
 

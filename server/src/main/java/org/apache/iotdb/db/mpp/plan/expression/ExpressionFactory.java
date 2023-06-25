@@ -41,6 +41,10 @@ import java.util.LinkedHashMap;
 
 public class ExpressionFactory {
 
+  private ExpressionFactory() {
+    // forbidden construction
+  }
+
   public static PartialPath path(String pathStr) throws IllegalPathException {
     return new PartialPath(pathStr);
   }

@@ -39,7 +39,9 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
   private Map<String, String> attributes;
   private QueryStatement queryStatement;
 
-  public CreateModelStatement() {}
+  public CreateModelStatement() {
+    // do nothing
+  }
 
   public String getModelId() {
     return modelId;
@@ -91,7 +93,7 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

@@ -41,7 +41,7 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ShuffleSinkHandle.class);
 
-  /** Each ISinkChannel in the list matches one downStream ISourceHandle */
+  /** Each ISinkChannel in the list matches one downstream ISourceHandle. */
   private final List<ISinkChannel> downStreamChannelList;
 
   private final boolean[] hasSetNoMoreTsBlocks;
@@ -53,8 +53,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
   private final int channelNum;
 
   private final ShuffleStrategy shuffleStrategy;
-
-  private final String localPlanNodeId;
 
   private final TFragmentInstanceId localFragmentInstanceId;
 
@@ -77,12 +75,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
       List<ISinkChannel> downStreamChannelList,
       DownStreamChannelIndex downStreamChannelIndex,
       ShuffleStrategyEnum shuffleStrategyEnum,
-      String localPlanNodeId,
       MPPDataExchangeManager.SinkListener sinkListener) {
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.downStreamChannelList = Validate.notNull(downStreamChannelList);
     this.downStreamChannelIndex = Validate.notNull(downStreamChannelIndex);
-    this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.sinkListener = Validate.notNull(sinkListener);
     this.channelNum = downStreamChannelList.size();
     this.shuffleStrategy = getShuffleStrategy(shuffleStrategyEnum);
@@ -278,9 +274,10 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   @FunctionalInterface
   interface ShuffleStrategy {
-    /*
-     SinkHandle may have multiple channels, we need to choose the next channel each time we send a TsBlock.
-    */
+    /**
+     * SinkHandle may have multiple channels. we need to choose the next channel each time we send a
+     * TsBlock.
+     */
     void shuffle();
   }
 

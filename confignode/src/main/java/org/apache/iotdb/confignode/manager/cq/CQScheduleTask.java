@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.cq;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -103,6 +104,7 @@ public class CQScheduleTask implements Runnable {
         entry.getLastExecutionTime() + entry.getEveryInterval());
   }
 
+  @SuppressWarnings("squid:S107")
   public CQScheduleTask(
       String cqId,
       long everyInterval,
@@ -137,7 +139,6 @@ public class CQScheduleTask implements Runnable {
   }
 
   public static long getFirstExecutionTime(long boundaryTime, long everyInterval, long now) {
-    // TODO may need to consider nano precision
     if (now <= boundaryTime) {
       return boundaryTime;
     } else {
@@ -172,7 +173,7 @@ public class CQScheduleTask implements Runnable {
         AsyncDataNodeInternalServiceClient client =
             AsyncDataNodeClientPool.getInstance().getAsyncClient(targetDataNode.get());
         client.executeCQ(executeCQReq, new AsyncExecuteCQCallback(startTime, endTime));
-      } catch (Throwable t) {
+      } catch (Exception t) {
         LOGGER.warn("Execute CQ {} failed", cqId, t);
         if (needSubmit()) {
           submitSelf(retryWaitTimeInMS, TimeUnit.MILLISECONDS);
@@ -185,13 +186,13 @@ public class CQScheduleTask implements Runnable {
     submitSelf(Math.max(0, executionTime - System.currentTimeMillis()), TimeUnit.MILLISECONDS);
   }
 
+  private void submitSelf(long delay, TimeUnit unit) {
+    executor.schedule(this, delay, unit);
+  }
+
   private boolean needSubmit() {
     // current node is still leader and thread pool is not shut down.
     return configManager.getConsensusManager().isLeader() && !executor.isShutdown();
-  }
-
-  private void submitSelf(long delay, TimeUnit unit) {
-    executor.schedule(this, delay, unit);
   }
 
   private class AsyncExecuteCQCallback implements AsyncMethodCallback<TSStatus> {

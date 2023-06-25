@@ -41,8 +41,9 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * This class is inspired by Trino <a
- * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/ExecutionFailureInfo.java">...</a>
+ * href="https://github.com/trinodb/trino/blob/master/core/trino-main/src/main/java/io/trino/execution/ExecutionFailureInfo.java">...</a>.
  */
+@SuppressWarnings("squid:S5852")
 public class FragmentInstanceFailureInfo implements Serializable {
   private static final Pattern STACK_TRACE_PATTERN =
       Pattern.compile("(.*)\\.(.*)\\(([^:]*)(?::(.*))?\\)");
@@ -85,19 +86,6 @@ public class FragmentInstanceFailureInfo implements Serializable {
     return toException(this);
   }
 
-  public static FragmentInstanceFailureInfo toFragmentInstanceFailureInfo(Throwable throwable) {
-    if (throwable == null) {
-      return null;
-    }
-    return new FragmentInstanceFailureInfo(
-        throwable.getMessage(),
-        toFragmentInstanceFailureInfo(throwable.getCause()),
-        Arrays.stream(throwable.getSuppressed())
-            .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
-            .collect(Collectors.toList()),
-        Arrays.stream(throwable.getStackTrace()).map(Objects::toString).collect(toImmutableList()));
-  }
-
   private static FailureException toException(FragmentInstanceFailureInfo failureInfo) {
     if (failureInfo == null) {
       return null;
@@ -114,6 +102,19 @@ public class FragmentInstanceFailureInfo implements Serializable {
     ImmutableList<StackTraceElement> stackTrace = stackTraceBuilder.build();
     failure.setStackTrace(stackTrace.toArray(new StackTraceElement[0]));
     return failure;
+  }
+
+  public static FragmentInstanceFailureInfo toFragmentInstanceFailureInfo(Throwable throwable) {
+    if (throwable == null) {
+      return null;
+    }
+    return new FragmentInstanceFailureInfo(
+        throwable.getMessage(),
+        toFragmentInstanceFailureInfo(throwable.getCause()),
+        Arrays.stream(throwable.getSuppressed())
+            .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
+            .collect(Collectors.toList()),
+        Arrays.stream(throwable.getStackTrace()).map(Objects::toString).collect(toImmutableList()));
   }
 
   public static StackTraceElement toStackTraceElement(String stack) {
@@ -162,7 +163,7 @@ public class FragmentInstanceFailureInfo implements Serializable {
   }
 
   public static FragmentInstanceFailureInfo deserialize(ByteBuffer byteBuffer) {
-    String message = ReadWriteIOUtils.readString(byteBuffer);
+    final String message = ReadWriteIOUtils.readString(byteBuffer);
     FragmentInstanceFailureInfo cause;
     List<FragmentInstanceFailureInfo> suppressed = new ArrayList<>();
     List<String> stack = new ArrayList<>();
@@ -184,6 +185,11 @@ public class FragmentInstanceFailureInfo implements Serializable {
   }
 
   // end region
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(message, cause, suppressed, stack);
+  }
 
   @Override
   public boolean equals(Object o) {

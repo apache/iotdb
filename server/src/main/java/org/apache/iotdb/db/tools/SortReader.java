@@ -24,14 +24,25 @@ import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 
 public interface SortReader {
 
-  /** output the cached data in sortReader, it needs to be called after hasNext() returns true. */
+  /**
+   * output the cached data in sortReader, it needs to be called after hasNext() returns true.
+   *
+   * @return next sortKey from branch
+   */
   MergeSortKey next();
 
   /**
    * Check if there is cached data in sortReader, cache more data if current ones are run out. This
    * method should be called before next() to ensure that there is data to read.
+   *
+   * @throws IoTDBException the error occurs when reading data from fileChannel
    */
   boolean hasNext() throws IoTDBException;
 
+  /**
+   * Close the sortReader and release resources.
+   *
+   * @throws IoTDBException the error occurs when closing fileChannel
+   */
   void close() throws IoTDBException;
 }

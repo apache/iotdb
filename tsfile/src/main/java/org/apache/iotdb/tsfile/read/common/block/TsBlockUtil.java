@@ -41,7 +41,9 @@ public class TsBlockUtil {
       TsBlock tsBlock, TimeRange targetTimeRange, boolean ascending) {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     long targetTime = ascending ? targetTimeRange.getMin() : targetTimeRange.getMax();
-    int left = 0, right = timeColumn.getPositionCount() - 1, mid;
+    int left = 0;
+    int right = timeColumn.getPositionCount() - 1;
+    int mid;
 
     while (left < right) {
       mid = (left + right) >> 1;

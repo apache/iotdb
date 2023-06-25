@@ -39,7 +39,7 @@ public class ExplainStatement extends Statement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return queryStatement.getPaths();
   }
 

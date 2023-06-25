@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.cq;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -79,9 +80,15 @@ public class DropCQPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     DropCQPlan that = (DropCQPlan) o;
     return cqId.equals(that.cqId) && Objects.equals(md5, that.md5);
   }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter.basic;
 
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
@@ -39,7 +40,7 @@ public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Se
 
   protected FilterType filterType;
 
-  public UnaryFilter() {}
+  protected UnaryFilter() {}
 
   protected UnaryFilter(T value, FilterType filterType) {
     this.value = value;
@@ -60,9 +61,6 @@ public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Se
 
   @Override
   public abstract String toString();
-
-  @Override
-  public abstract Filter copy();
 
   @Override
   public void serialize(DataOutputStream outputStream) {

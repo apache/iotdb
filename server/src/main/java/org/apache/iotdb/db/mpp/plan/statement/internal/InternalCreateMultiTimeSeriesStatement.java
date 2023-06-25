@@ -46,7 +46,7 @@ public class InternalCreateMultiTimeSeriesStatement extends Statement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return new ArrayList<>(deviceMap.keySet());
   }
 

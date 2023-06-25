@@ -28,6 +28,10 @@ import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 
 public class PredicateRemoveNotRewriter {
 
+  private PredicateRemoveNotRewriter() {
+    // forbidden to construct
+  }
+
   public static Filter rewrite(Filter filter) {
     return removeNot(filter);
   }

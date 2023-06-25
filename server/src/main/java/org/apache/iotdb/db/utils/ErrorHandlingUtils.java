@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -41,31 +42,32 @@ import java.util.concurrent.ExecutionException;
 
 public class ErrorHandlingUtils {
 
+  private ErrorHandlingUtils() {}
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ErrorHandlingUtils.class);
-  private static final Logger DETAILED_FAILURE_QUERY_TRACE_LOGGER =
-      LoggerFactory.getLogger("DETAILED_FAILURE_QUERY_TRACE");
 
   private static final String INFO_PARSING_SQL_ERROR =
       "Error occurred while parsing SQL to physical plan: ";
-  private static final String INFO_CHECK_METADATA_ERROR = "Check metadata error: ";
   private static final String INFO_QUERY_PROCESS_ERROR = "Error occurred in query process: ";
   private static final String INFO_NOT_ALLOWED_IN_BATCH_ERROR =
       "The query statement is not allowed in batch: ";
 
-  public static TSStatus onNPEOrUnexpectedException(
+  private static final String ERROR_OPERATION_LOG = "Status code: {}, operation: {} failed";
+
+  public static TSStatus onNpeOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
     String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
     if (e instanceof IOException || e instanceof NullPointerException) {
-      LOGGER.error("Status code: " + statusCode + ", operation: " + operation + " failed", e);
+      LOGGER.error(ERROR_OPERATION_LOG, statusCode, operation, e);
     } else {
-      LOGGER.warn("Status code: " + statusCode + ", operation: " + operation + " failed", e);
+      LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
 
-  public static TSStatus onNPEOrUnexpectedException(
+  public static TSStatus onNpeOrUnexpectedException(
       Exception e, OperationType operation, TSStatusCode statusCode) {
-    return onNPEOrUnexpectedException(e, operation.getName(), statusCode);
+    return onNpeOrUnexpectedException(e, operation.getName(), statusCode);
   }
 
   public static Throwable getRootCause(Throwable e) {
@@ -91,7 +93,7 @@ public class ErrorHandlingUtils {
       }
       return status;
     } else {
-      return onNPEOrUnexpectedException(e, operation, statusCode);
+      return onNpeOrUnexpectedException(e, operation, statusCode);
     }
   }
 
@@ -127,6 +129,10 @@ public class ErrorHandlingUtils {
     } else if (t instanceof TsFileRuntimeException) {
       return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, rootCause.getMessage());
     } else if (t instanceof SemanticException) {
+      if (t.getCause() instanceof IoTDBException) {
+        return RpcUtils.getStatus(
+            ((IoTDBException) t.getCause()).getErrorCode(), rootCause.getMessage());
+      }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     }
 
@@ -142,7 +148,7 @@ public class ErrorHandlingUtils {
     TSStatus status = tryCatchNonQueryException(e);
     return status != null
         ? status
-        : onNPEOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
+        : onNpeOrUnexpectedException(e, operation, TSStatusCode.INTERNAL_SERVER_ERROR);
   }
 
   public static TSStatus onNonQueryException(Exception e, OperationType operation) {
@@ -177,7 +183,7 @@ public class ErrorHandlingUtils {
     String message =
         String.format(
             "[%s] Exception occurred: %s failed. %s", statusCode, operation, e.getMessage());
-    LOGGER.warn("Status code: " + statusCode + ", operation: " + operation + " failed", e);
+    LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     return RpcUtils.getStatus(errorCode, message);
   }
 

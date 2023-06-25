@@ -62,16 +62,16 @@ public enum ExpressionType {
   WHEN_THEN((short) 22, (short) 1000), // priority not sure
   ;
 
-  private final short expressionType;
+  private final short type;
   private final short priority;
 
-  ExpressionType(short expressionType, short priority) {
-    this.expressionType = expressionType;
+  ExpressionType(short type, short priority) {
+    this.type = type;
     this.priority = priority;
   }
 
   public short getExpressionTypeInShortEnum() {
-    return expressionType;
+    return type;
   }
 
   public short getPriority() {

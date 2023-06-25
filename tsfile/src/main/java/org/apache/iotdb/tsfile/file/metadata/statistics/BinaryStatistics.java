@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
@@ -42,10 +43,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     return TSDataType.TEXT;
   }
 
-  /**
-   * The output of this method should be identical to the method "serializeStats(OutputStream
-   * outputStream)"
-   */
+  /** The output of this method should be identical to the method "serializeStats(outputStream)". */
   @Override
   public int getStatsSize() {
     return 4 + firstValue.getValues().length + 4 + lastValue.getValues().length;
@@ -62,7 +60,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     this.lastValue = last;
   }
 
-  private void updateStats(Binary firstValue, Binary lastValue) {
+  private void updateLastStats(Binary lastValue) {
     this.lastValue = lastValue;
   }
 
@@ -133,7 +131,7 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value);
+      updateLastStats(value);
     }
   }
 
@@ -171,9 +169,15 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     BinaryStatistics that = (BinaryStatistics) o;
     return Objects.equals(firstValue, that.firstValue) && Objects.equals(lastValue, that.lastValue);
   }

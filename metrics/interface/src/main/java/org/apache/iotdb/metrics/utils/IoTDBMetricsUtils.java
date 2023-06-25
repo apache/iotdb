@@ -30,7 +30,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.DOUBLE_BACK
 public class IoTDBMetricsUtils {
   private static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  public static final String DATABASE = "root.__system";
 
   /** Generate the path of metric by metricInfo. */
   public static String generatePath(MetricInfo metricInfo) {
@@ -71,7 +70,7 @@ public class IoTDBMetricsUtils {
   private static StringBuilder generateMetric(String name) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
-        .append(DATABASE)
+        .append(METRIC_CONFIG.getInternalDatabase())
         .append(".")
         .append(METRIC_CONFIG.getIotdbReporterConfig().getLocation())
         .append(".`")

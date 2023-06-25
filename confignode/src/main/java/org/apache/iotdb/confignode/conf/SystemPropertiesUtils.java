@@ -181,6 +181,21 @@ public class SystemPropertiesUtils {
       conf.setSeriesPartitionExecutorClass(seriesPartitionSlotExecutorClass);
     }
 
+    if (systemProperties.getProperty("time_partition_interval", null) == null) {
+      needReWrite = true;
+    } else {
+      long timePartitionInterval =
+          Long.parseLong(systemProperties.getProperty("time_partition_interval"));
+      if (timePartitionInterval != COMMON_CONFIG.getTimePartitionInterval()) {
+        LOGGER.warn(
+            format,
+            "time_partition_interval",
+            COMMON_CONFIG.getTimePartitionInterval(),
+            timePartitionInterval);
+        COMMON_CONFIG.setTimePartitionInterval(timePartitionInterval);
+      }
+    }
+
     if (needReWrite) {
       // Re-write special parameters if necessary
       storeSystemParameters();
@@ -215,6 +230,7 @@ public class SystemPropertiesUtils {
     Properties systemProperties = getSystemProperties();
 
     systemProperties.setProperty("iotdb_version", IoTDBConstant.VERSION);
+    systemProperties.setProperty("commit_id", IoTDBConstant.BUILD_INFO);
 
     // Cluster configuration
     systemProperties.setProperty("cluster_name", conf.getClusterName());

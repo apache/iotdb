@@ -34,7 +34,7 @@ import java.io.IOException;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.CONSTRUCT_CHUNK_READER_NONALIGNED_DISK;
 import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_NONALIGNED_DISK;
 
-/** To read one chunk from disk, and only used in iotdb server module */
+/** To read one chunk from disk, and only used in iotdb server module. */
 public class DiskChunkLoader implements IChunkLoader {
 
   private final boolean debug;

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -37,8 +38,6 @@ public class Chunk {
   private boolean isFromOldFile = false;
   /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
-
-  private long ramSize;
 
   public Chunk(
       ChunkHeader header,

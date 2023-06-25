@@ -37,6 +37,7 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   private TimeRange curTimeRange;
   private boolean hasCachedTimeRange;
 
+  @SuppressWarnings("squid:S107")
   public PreAggrWindowWithNaturalMonthIterator(
       long startTime,
       long endTime,

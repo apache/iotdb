@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control.clientsession;
 
 import org.apache.iotdb.service.rpc.thrift.TSConnectionType;
 
-import java.io.IOException;
 import java.net.Socket;
 import java.util.Map;
 import java.util.Set;
@@ -87,28 +87,6 @@ public class ClientSession extends IClientSession {
     Set<Long> queryIds = statementIdToQueryId.get(statementId);
     if (queryIds != null) {
       queryIds.remove(queryId);
-    }
-  }
-
-  /**
-   * shutdownStream will close the socket stream directly, which cause a TTransportException with
-   * type = TTransportException.END_OF_FILE. In this case, thrift client thread will be finished
-   * asap.
-   */
-  public void shutdownStream() {
-    if (!clientSocket.isInputShutdown()) {
-      try {
-        clientSocket.shutdownInput();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-    if (!clientSocket.isOutputShutdown()) {
-      try {
-        clientSocket.shutdownOutput();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
     }
   }
 }

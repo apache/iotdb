@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.transformation.datastructure.tv;
 
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
@@ -108,7 +107,7 @@ public class ElasticSerializableTVList implements PointCollector {
     return size;
   }
 
-  public boolean isNull(int index) throws IOException {
+  public boolean isNull(int index) {
     return bitMaps.get(index / internalTVListCapacity).isMarked(index % internalTVListCapacity);
   }
 
@@ -155,7 +154,7 @@ public class ElasticSerializableTVList implements PointCollector {
         .getStringValue();
   }
 
-  public void put(long timestamp, Object value) throws IOException, QueryProcessException {
+  public void put(long timestamp, Object value) throws IOException {
     switch (dataType) {
       case INT32:
         putInt(timestamp, (Integer) value);
@@ -352,6 +351,8 @@ public class ElasticSerializableTVList implements PointCollector {
   }
 
   /**
+   * Set the upper bound.
+   *
    * @param evictionUpperBound the index of the first element that cannot be evicted. in other
    *     words, elements whose index are <b>less than</b> the evictionUpperBound can be evicted.
    */
@@ -367,7 +368,7 @@ public class ElasticSerializableTVList implements PointCollector {
 
     BatchData get(int targetIndex) throws IOException {
       if (!containsKey(targetIndex)) {
-        if (cacheCapacity <= size()) {
+        if (cacheCapacity <= super.size()) {
           int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalTVListCapacity) {
             tvLists.set(lastIndex, null);

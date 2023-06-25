@@ -40,7 +40,7 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
   protected Filter filter;
 
   /** constructor of FileSeriesReader. */
-  public AbstractFileSeriesReader(
+  protected AbstractFileSeriesReader(
       IChunkLoader chunkLoader, List<IChunkMetadata> chunkMetadataList, Filter filter) {
     this.chunkLoader = chunkLoader;
     this.chunkMetadataList = chunkMetadataList;

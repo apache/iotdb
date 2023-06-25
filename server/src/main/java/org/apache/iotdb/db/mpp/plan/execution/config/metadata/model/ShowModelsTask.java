@@ -42,7 +42,9 @@ import java.util.stream.Collectors;
 
 public class ShowModelsTask implements IConfigTask {
 
-  public ShowModelsTask() {}
+  public ShowModelsTask() {
+    // do nothing
+  }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)

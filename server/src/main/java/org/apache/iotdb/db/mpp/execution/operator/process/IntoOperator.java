@@ -42,6 +42,7 @@ public class IntoOperator extends AbstractIntoOperator {
 
   private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
+  @SuppressWarnings("squid:S107")
   public IntoOperator(
       OperatorContext operatorContext,
       Operator child,

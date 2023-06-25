@@ -120,7 +120,7 @@ public class ShowFunctionsTask implements IConfigTask {
   }
 
   private static String getFunctionType(UDFInformation udfInformation) {
-    String functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
+    String functionType = null;
     try {
       if (udfInformation.isBuiltin()) {
         if (UDFManagementService.getInstance().isUDTF(udfInformation.getFunctionName())) {

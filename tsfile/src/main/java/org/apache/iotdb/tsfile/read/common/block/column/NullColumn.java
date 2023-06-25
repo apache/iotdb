@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,7 +97,9 @@ public class NullColumn implements Column {
   }
 
   @Override
-  public void reverse() {}
+  public void reverse() {
+    // do nothing
+  }
 
   public static Column create(TSDataType dataType, int positionCount) {
     requireNonNull(dataType, "dataType is null");

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
@@ -29,7 +30,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-/** an abstract executor for {@link DriverTask} */
+/** an abstract executor for {@link DriverTask}. */
 public abstract class AbstractDriverThread extends Thread implements Closeable {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractDriverThread.class);
@@ -95,7 +96,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
       // unless we have been closed, we need to replace this thread
       if (!closed) {
         logger.warn(
-            "Executor {} exits because it's interrupted, and we will produce another thread to replace.",
+            "Executor {} exits because it's interrupted. We will produce another thread to replace.",
             this.getName());
         producer.produce(getName(), getThreadGroup(), queue, producer);
       } else {
@@ -104,7 +105,12 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
     }
   }
 
-  /** Processing a task. */
+  /**
+   * Processing a task.
+   *
+   * @throws InterruptedException
+   * @throws ExecutionException
+   */
   protected abstract void execute(DriverTask task) throws InterruptedException, ExecutionException;
 
   @Override

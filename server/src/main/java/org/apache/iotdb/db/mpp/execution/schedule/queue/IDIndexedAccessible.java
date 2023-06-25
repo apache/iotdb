@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule.queue;
 
 /**
@@ -38,7 +39,7 @@ package org.apache.iotdb.db.mpp.execution.schedule.queue;
  *   }
  * </pre>
  *
- * If not, there will be unexpected behaviors using {@link IndexedBlockingQueue}.
+ * <p>If not, there will be unexpected behaviors using {@link IndexedBlockingQueue}.
  */
 public interface IDIndexedAccessible {
 

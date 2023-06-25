@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
@@ -29,7 +30,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.Set;
 
@@ -100,40 +100,10 @@ public class ValueFilter {
     }
   }
 
-  public static class VectorValueGt<T extends Comparable<T>> extends ValueGt<T> {
-
-    private final int index;
-
-    private VectorValueGt(T value, int index) {
-      super(value);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
-      return this.value.compareTo((T) v) < 0;
-    }
-  }
-
   public static class ValueGtEq<T extends Comparable<T>> extends GtEq<T> {
 
     private ValueGtEq(T value) {
       super(value, FilterType.VALUE_FILTER);
-    }
-  }
-
-  public static class VectorValueGtEq<T extends Comparable<T>> extends ValueGtEq<T> {
-
-    private final int index;
-
-    private VectorValueGtEq(T value, int index) {
-      super(value);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
-      return this.value.compareTo((T) v) <= 0;
     }
   }
 
@@ -144,40 +114,10 @@ public class ValueFilter {
     }
   }
 
-  public static class VectorValueLt<T extends Comparable<T>> extends ValueLt<T> {
-
-    private final int index;
-
-    private VectorValueLt(T value, int index) {
-      super(value);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
-      return this.value.compareTo((T) v) > 0;
-    }
-  }
-
   public static class ValueLtEq<T extends Comparable<T>> extends LtEq<T> {
 
     private ValueLtEq(T value) {
       super(value, FilterType.VALUE_FILTER);
-    }
-  }
-
-  public static class VectorValueLtEq<T extends Comparable<T>> extends ValueLtEq<T> {
-
-    private final int index;
-
-    private VectorValueLtEq(T value, int index) {
-      super(value);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
-      return this.value.compareTo((T) v) >= 0;
     }
   }
 
@@ -188,40 +128,10 @@ public class ValueFilter {
     }
   }
 
-  public static class VectorValueEq<T extends Comparable<T>> extends ValueEq<T> {
-
-    private final int index;
-
-    private VectorValueEq(T value, int index) {
-      super(value);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
-      return this.value.equals(v);
-    }
-  }
-
   public static class ValueNotEq<T extends Comparable<T>> extends NotEq<T> {
 
     private ValueNotEq(T value) {
       super(value, FilterType.VALUE_FILTER);
-    }
-  }
-
-  public static class VectorValueNotEq<T extends Comparable<T>> extends ValueNotEq<T> {
-
-    private final int index;
-
-    private VectorValueNotEq(T value, int index) {
-      super(value);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
-      return !this.value.equals(v);
     }
   }
 
@@ -232,46 +142,10 @@ public class ValueFilter {
     }
   }
 
-  public static class VectorValueBetween<T extends Comparable<T>> extends ValueBetween<T> {
-
-    private final int index;
-
-    private VectorValueBetween(T value1, T value2, boolean not, int index) {
-      super(value1, value2, not);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      if (filterType != FilterType.VALUE_FILTER) {
-        return false;
-      }
-      Object v = values[index].getValue();
-      return (value1.compareTo((T) v) <= 0 && ((T) v).compareTo(value2) <= 0) ^ not;
-    }
-  }
-
   public static class ValueLike<T extends Comparable<T>> extends Like<T> {
 
     private ValueLike(String value, boolean not) {
       super(value, FilterType.VALUE_FILTER, not);
-    }
-  }
-
-  public static class VectorValueLike<T extends Comparable<T>> extends ValueLike<T> {
-
-    private final int index;
-
-    private VectorValueLike(String value, int index, boolean not) {
-      super(value, not);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      if (filterType != FilterType.VALUE_FILTER) {
-        return false;
-      }
-      Object value = values[index].getValue();
-      return pattern.matcher(value.toString()).find() != not;
     }
   }
 
@@ -281,43 +155,10 @@ public class ValueFilter {
     }
   }
 
-  public static class VectorValueRegexp<T extends Comparable<T>> extends ValueRegexp<T> {
-
-    private final int index;
-
-    private VectorValueRegexp(String value, int index, boolean not) {
-      super(value, not);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      if (filterType != FilterType.VALUE_FILTER) {
-        return false;
-      }
-      Object value = values[index].getValue();
-      return pattern.matcher(new MatcherInput(value.toString(), new AccessCount())).find() != not;
-    }
-  }
-
   public static class ValueIn<T extends Comparable<T>> extends In<T> {
 
     private ValueIn(Set<T> values, boolean not) {
       super(values, FilterType.VALUE_FILTER, not);
-    }
-  }
-
-  public static class VectorValueIn<T extends Comparable<T>> extends ValueIn<T> {
-
-    private final int index;
-
-    private VectorValueIn(Set<T> values, boolean not, int index) {
-      super(values, not);
-      this.index = index;
-    }
-
-    public boolean satisfy(long time, TsPrimitiveType[] values) {
-      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
-      return this.values.contains(v) != not;
     }
   }
 }

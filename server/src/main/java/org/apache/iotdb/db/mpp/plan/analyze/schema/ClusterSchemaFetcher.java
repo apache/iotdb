@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.analyze.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -90,8 +91,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final NormalSchemaFetcher normalSchemaFetcher =
       new NormalSchemaFetcher(schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
   private final TemplateSchemaFetcher templateSchemaFetcher =
-      new TemplateSchemaFetcher(
-          templateManager, schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
+      new TemplateSchemaFetcher(schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
 
   private static final class ClusterSchemaFetcherHolder {
     private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();

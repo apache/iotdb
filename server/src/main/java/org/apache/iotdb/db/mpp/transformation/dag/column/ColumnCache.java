@@ -28,7 +28,9 @@ public class ColumnCache {
   private int referenceCount;
   private Column column;
 
-  public ColumnCache() {}
+  public ColumnCache() {
+    // do nothing
+  }
 
   public Column getColumn() {
     referenceCount--;

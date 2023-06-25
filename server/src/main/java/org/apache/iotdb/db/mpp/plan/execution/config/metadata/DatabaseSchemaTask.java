@@ -53,8 +53,8 @@ public class DatabaseSchemaTask implements IConfigTask {
       DatabaseSchemaStatement databaseSchemaStatement) {
     TDatabaseSchema databaseSchema = new TDatabaseSchema();
     databaseSchema.setName(databaseSchemaStatement.getDatabasePath().getFullPath());
-    if (databaseSchemaStatement.getTTL() != null) {
-      databaseSchema.setTTL(databaseSchemaStatement.getTTL());
+    if (databaseSchemaStatement.getTtl() != null) {
+      databaseSchema.setTTL(databaseSchemaStatement.getTtl());
     }
     if (databaseSchemaStatement.getSchemaReplicationFactor() != null) {
       databaseSchema.setSchemaReplicationFactor(

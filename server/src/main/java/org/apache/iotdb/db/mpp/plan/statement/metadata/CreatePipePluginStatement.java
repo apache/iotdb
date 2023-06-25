@@ -61,7 +61,7 @@ public class CreatePipePluginStatement extends Statement implements IConfigState
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

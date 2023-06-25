@@ -65,8 +65,8 @@ public class SharedTsBlockQueue {
   private SettableFuture<Void> blocked = SettableFuture.create();
 
   /**
-   * this is completed after calling isBlocked for the first time which indicates this queue needs
-   * to output data
+   * this is completed after calling isBlocked for the first time which indicates that this queue
+   * needs to output data.
    */
   private final SettableFuture<Void> canAddTsBlock = SettableFuture.create();
 
@@ -172,6 +172,8 @@ public class SharedTsBlockQueue {
   /**
    * Remove a TsBlock from the head of the queue and return. Should be invoked only when the future
    * returned by {@link #isBlocked()} completes.
+   *
+   * @throws IllegalStateException Cannot remove TsBlock from closed queue.
    */
   public TsBlock remove() {
     if (closed) {
@@ -230,7 +232,7 @@ public class SharedTsBlockQueue {
     bufferRetainedSizeInBytes += tsBlock.getRetainedSizeInBytes();
 
     // reserve memory failed, we should wait until there is enough memory
-    if (!pair.right) {
+    if (!Boolean.TRUE.equals(pair.right)) {
       SettableFuture<Void> channelBlocked = SettableFuture.create();
       blockedOnMemory.addListener(
           () -> {

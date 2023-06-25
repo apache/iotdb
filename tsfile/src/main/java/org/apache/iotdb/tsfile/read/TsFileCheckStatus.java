@@ -24,4 +24,8 @@ public class TsFileCheckStatus {
   public static final long FILE_EXISTS_MISTAKES = -1;
   public static final long INCOMPATIBLE_FILE = -2;
   public static final long FILE_NOT_FOUND = -3;
+
+  private TsFileCheckStatus() {
+    // forbidding instantiation
+  }
 }
