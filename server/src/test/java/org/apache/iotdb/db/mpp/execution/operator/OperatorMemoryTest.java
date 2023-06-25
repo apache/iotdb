@@ -765,8 +765,7 @@ public class OperatorMemoryTest {
     }
 
     SchemaQueryMergeOperator operator =
-        new SchemaQueryMergeOperator(
-            queryId.genPlanNodeId(), Mockito.mock(OperatorContext.class), children);
+        new SchemaQueryMergeOperator(Mockito.mock(OperatorContext.class), children);
 
     assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
@@ -794,8 +793,7 @@ public class OperatorMemoryTest {
     }
 
     CountMergeOperator operator =
-        new CountMergeOperator(
-            queryId.genPlanNodeId(), Mockito.mock(OperatorContext.class), children);
+        new CountMergeOperator(Mockito.mock(OperatorContext.class), children);
 
     assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());

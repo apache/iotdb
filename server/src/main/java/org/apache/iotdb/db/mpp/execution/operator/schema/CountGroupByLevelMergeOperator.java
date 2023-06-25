@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -41,7 +40,6 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class CountGroupByLevelMergeOperator implements ProcessOperator {
 
-  private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
 
   private final List<Operator> children;
@@ -54,9 +52,7 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
 
   private int currentIndex = 0;
 
-  public CountGroupByLevelMergeOperator(
-      PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
-    this.planNodeId = planNodeId;
+  public CountGroupByLevelMergeOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
 
