@@ -53,7 +53,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
       synchronized (PipeRuntimeCoordinator.class) {
         if (procedureSubmitterHolder.get() == null) {
           procedureSubmitterHolder.set(
-              IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              IoTDBThreadPoolFactory.newSingleThreadExecutor(
                   ThreadName.PIPE_RUNTIME_PROCEDURE_SUBMITTER.getName()));
         }
       }
