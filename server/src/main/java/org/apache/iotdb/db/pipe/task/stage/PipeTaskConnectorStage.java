@@ -46,7 +46,9 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
   }
 
   @Override
-  public void createSubtask() throws PipeException {}
+  public void createSubtask() throws PipeException {
+    // do nothing
+  }
 
   @Override
   public void startSubtask() throws PipeException {

@@ -81,6 +81,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
    *
    * @return true if results of all children are ready. Return false if some children is blocked or
    *     return null.
+   * @throws Exception errors happened while getting tsblock from children
    */
   protected boolean prepareInput() throws Exception {
     boolean allReady = true;

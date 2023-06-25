@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common.block;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -29,6 +30,7 @@ import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -108,7 +110,6 @@ public class TsBlock {
   }
 
   public long getRetainedSizeInBytes() {
-    long retainedSizeInBytes = this.retainedSizeInBytes;
     if (retainedSizeInBytes < 0) {
       return updateRetainedSize();
     }
@@ -312,7 +313,9 @@ public class TsBlock {
     }
 
     @Override
-    public void close() {}
+    public void close() {
+      // do nothing
+    }
 
     public long getEndTime() {
       return TsBlock.this.getEndTime();
@@ -350,13 +353,17 @@ public class TsBlock {
     /** @return A row in the TsBlock. The timestamp is at the last column. */
     @Override
     public Object[] next() {
-      int columnCount = getValueColumnCount();
-      Object[] row = new Object[columnCount + 1];
-      for (int i = 0; i < columnCount; ++i) {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+
+      int curColumnCount = getValueColumnCount();
+      Object[] row = new Object[curColumnCount + 1];
+      for (int i = 0; i < curColumnCount; ++i) {
         final Column column = valueColumns[i];
         row[i] = column.isNull(rowIndex) ? null : column.getObject(rowIndex);
       }
-      row[columnCount] = timeColumn.getObject(rowIndex);
+      row[curColumnCount] = timeColumn.getObject(rowIndex);
 
       rowIndex++;
 
@@ -441,7 +448,9 @@ public class TsBlock {
     }
 
     @Override
-    public void close() {}
+    public void close() {
+      // do nothing
+    }
 
     public long getEndTime() {
       return TsBlock.this.getEndTime();
@@ -470,13 +479,13 @@ public class TsBlock {
   }
 
   private long updateRetainedSize() {
-    long retainedSizeInBytes = INSTANCE_SIZE;
-    retainedSizeInBytes += timeColumn.getRetainedSizeInBytes();
+    long newRetainedSizeInBytes = INSTANCE_SIZE;
+    newRetainedSizeInBytes += timeColumn.getRetainedSizeInBytes();
     for (Column column : valueColumns) {
-      retainedSizeInBytes += column.getRetainedSizeInBytes();
+      newRetainedSizeInBytes += column.getRetainedSizeInBytes();
     }
-    this.retainedSizeInBytes = retainedSizeInBytes;
-    return retainedSizeInBytes;
+    this.retainedSizeInBytes = newRetainedSizeInBytes;
+    return newRetainedSizeInBytes;
   }
 
   public int getTotalInstanceSize() {

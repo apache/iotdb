@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -81,7 +82,6 @@ public class OperatorContext {
     this.driverContext = driverContext;
   }
 
-  // TODO forbid get instance context from operator directly
   public FragmentInstanceContext getInstanceContext() {
     return driverContext.getFragmentInstanceContext();
   }

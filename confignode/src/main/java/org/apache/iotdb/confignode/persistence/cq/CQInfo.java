@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.cq;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -25,7 +26,6 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
-import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.response.cq.ShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -58,6 +58,10 @@ public class CQInfo implements SnapshotProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(CQInfo.class);
 
   private static final String SNAPSHOT_FILENAME = "cq_info.snapshot";
+
+  private static final String CQ_NOT_EXIST_FORMAT = "CQ %s doesn't exist.";
+
+  private static final String MD5_NOT_MATCH_FORMAT = "MD5 of CQ %s doesn't match";
 
   private final Map<String, CQEntry> cqMap;
 
@@ -113,11 +117,11 @@ public class CQInfo implements SnapshotProcessor {
       CQEntry cqEntry = cqMap.get(cqId);
       if (cqEntry == null) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format("CQ %s doesn't exist.", cqId);
+        res.message = String.format(CQ_NOT_EXIST_FORMAT, cqId);
         LOGGER.warn("Drop CQ {} failed, because it doesn't exist.", cqId);
       } else if ((md5.isPresent() && !md5.get().equals(cqEntry.md5))) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format("MD5 of CQ %s doesn't match", cqId);
+        res.message = String.format(MD5_NOT_MATCH_FORMAT, cqId);
         LOGGER.warn("Drop CQ {} failed, because its MD5 doesn't match.", cqId);
       } else {
         cqMap.remove(cqId);
@@ -130,7 +134,7 @@ public class CQInfo implements SnapshotProcessor {
     }
   }
 
-  public ShowCQResp showCQ(ShowCQPlan plan) {
+  public ShowCQResp showCQ() {
     lock.readLock().lock();
     try {
       return new ShowCQResp(
@@ -155,10 +159,10 @@ public class CQInfo implements SnapshotProcessor {
       CQEntry cqEntry = cqMap.get(cqId);
       if (cqEntry == null) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format("CQ %s doesn't exist.", cqId);
+        res.message = String.format(CQ_NOT_EXIST_FORMAT, cqId);
       } else if (!md5.equals(cqEntry.md5)) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format("MD5 of CQ %s doesn't match", cqId);
+        res.message = String.format(MD5_NOT_MATCH_FORMAT, cqId);
       } else if (cqEntry.state == CQState.ACTIVE) {
         res.code = TSStatusCode.CQ_ALREADY_ACTIVE.getStatusCode();
         res.message = String.format("CQ %s has already been active", cqId);
@@ -188,10 +192,10 @@ public class CQInfo implements SnapshotProcessor {
       CQEntry cqEntry = cqMap.get(cqId);
       if (cqEntry == null) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format("CQ %s doesn't exist.", cqId);
+        res.message = String.format(CQ_NOT_EXIST_FORMAT, cqId);
       } else if (!md5.equals(cqEntry.md5)) {
         res.code = TSStatusCode.NO_SUCH_CQ.getStatusCode();
-        res.message = String.format("MD5 of CQ %s doesn't match", cqId);
+        res.message = String.format(MD5_NOT_MATCH_FORMAT, cqId);
       } else if (cqEntry.lastExecutionTime >= plan.getExecutionTime()) {
         res.code = TSStatusCode.CQ_UPDATE_LAST_EXEC_TIME_ERROR.getStatusCode();
         res.message =
@@ -270,8 +274,12 @@ public class CQInfo implements SnapshotProcessor {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CQInfo cqInfo = (CQInfo) o;
     return Objects.equals(cqMap, cqInfo.cqMap);
   }
@@ -333,6 +341,7 @@ public class CQInfo implements SnapshotProcessor {
           other.lastExecutionTime);
     }
 
+    @SuppressWarnings("squid:S107")
     private CQEntry(
         String cqId,
         long everyInterval,
@@ -462,8 +471,12 @@ public class CQInfo implements SnapshotProcessor {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       CQEntry cqEntry = (CQEntry) o;
       return everyInterval == cqEntry.everyInterval
           && boundaryTime == cqEntry.boundaryTime

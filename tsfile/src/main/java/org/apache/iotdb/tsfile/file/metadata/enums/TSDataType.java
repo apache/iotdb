@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -25,28 +26,28 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public enum TSDataType {
-  /** BOOLEAN */
+  /** BOOLEAN. */
   BOOLEAN((byte) 0),
 
-  /** INT32 */
+  /** INT32. */
   INT32((byte) 1),
 
-  /** INT64 */
+  /** INT64. */
   INT64((byte) 2),
 
-  /** FLOAT */
+  /** FLOAT. */
   FLOAT((byte) 3),
 
-  /** DOUBLE */
+  /** DOUBLE. */
   DOUBLE((byte) 4),
 
-  /** TEXT */
+  /** TEXT. */
   TEXT((byte) 5),
 
-  /** VECTOR */
+  /** VECTOR. */
   VECTOR((byte) 6),
 
-  /** UNKNOWN */
+  /** UNKNOWN. */
   UNKNOWN((byte) 7);
 
   private final byte type;
@@ -126,12 +127,21 @@ public enum TSDataType {
     }
   }
 
-  /** @return byte number */
+  /**
+   * get type byte.
+   *
+   * @return byte number
+   */
   public byte serialize() {
     return type;
   }
 
-  /** @return whether a numeric datatype */
+  /**
+   * numeric datatype judgement.
+   *
+   * @return whether it is a numeric datatype
+   * @throws UnSupportedDataTypeException when meets unSupported DataType
+   */
   public boolean isNumeric() {
     switch (this) {
       case INT32:
@@ -149,7 +159,12 @@ public enum TSDataType {
     }
   }
 
-  /** @return whether a comparable datatype */
+  /**
+   * comparable datatype judgement.
+   *
+   * @return whether it is a comparable datatype
+   * @throws UnSupportedDataTypeException when meets unSupported DataType
+   */
   public boolean isComparable() {
     switch (this) {
       case INT32:

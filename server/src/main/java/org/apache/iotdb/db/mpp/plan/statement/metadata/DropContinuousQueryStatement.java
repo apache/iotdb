@@ -49,7 +49,7 @@ public class DropContinuousQueryStatement extends Statement implements IConfigSt
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

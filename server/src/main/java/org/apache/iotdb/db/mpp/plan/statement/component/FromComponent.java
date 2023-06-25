@@ -30,7 +30,9 @@ public class FromComponent extends StatementNode {
 
   private final List<PartialPath> prefixPaths = new ArrayList<>();
 
-  public FromComponent() {}
+  public FromComponent() {
+    // do nothing
+  }
 
   public void addPrefixPath(PartialPath prefixPath) {
     prefixPaths.add(prefixPath);

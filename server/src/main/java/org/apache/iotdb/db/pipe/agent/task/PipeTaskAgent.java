@@ -71,6 +71,9 @@ public class PipeTaskAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskAgent.class);
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private static final String MESSAGE_UNKNOWN_PIPE_STATUS = "Unknown pipe status %s for pipe %s";
+  private static final String MESSAGE_UNEXPECTED_PIPE_STATUS = "Unexpected pipe status %s: ";
+
   private final PipeMetaKeeper pipeMetaKeeper;
   private final PipeTaskManager pipeTaskManager;
 
@@ -238,8 +241,7 @@ public class PipeTaskAgent {
         } else {
           throw new IllegalStateException(
               String.format(
-                  "Unknown pipe status %s for pipe %s",
-                  statusOnDataNode, pipeStaticMeta.getPipeName()));
+                  MESSAGE_UNKNOWN_PIPE_STATUS, statusOnDataNode, pipeStaticMeta.getPipeName()));
         }
         break;
       case STOPPED:
@@ -248,8 +250,7 @@ public class PipeTaskAgent {
         } else {
           throw new IllegalStateException(
               String.format(
-                  "Unknown pipe status %s for pipe %s",
-                  statusOnDataNode, pipeStaticMeta.getPipeName()));
+                  MESSAGE_UNKNOWN_PIPE_STATUS, statusOnDataNode, pipeStaticMeta.getPipeName()));
         }
         break;
       case DROPPED:
@@ -259,8 +260,7 @@ public class PipeTaskAgent {
       default:
         throw new IllegalStateException(
             String.format(
-                "Unknown pipe status %s for pipe %s",
-                statusFromConfigNode, pipeStaticMeta.getPipeName()));
+                MESSAGE_UNKNOWN_PIPE_STATUS, statusFromConfigNode, pipeStaticMeta.getPipeName()));
     }
   }
 
@@ -296,27 +296,33 @@ public class PipeTaskAgent {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (existedPipeMeta != null) {
       if (existedPipeMeta.getStaticMeta().getCreationTime() == creationTime) {
-        switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
+        final PipeStatus status = existedPipeMeta.getRuntimeMeta().getStatus().get();
+        switch (status) {
           case STOPPED:
           case RUNNING:
-            LOGGER.info(
-                "Pipe {} (creation time = {}) has already been created. Current status = {}. Skip creating.",
-                pipeName,
-                creationTime,
-                existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+            if (LOGGER.isInfoEnabled()) {
+              LOGGER.info(
+                  "Pipe {} (creation time = {}) has already been created. Current status = {}. Skip creating.",
+                  pipeName,
+                  creationTime,
+                  status.name());
+            }
             return false;
           case DROPPED:
-            LOGGER.info(
-                "Pipe {} (creation time = {}) has already been dropped, but the pipe task meta has not been cleaned up. "
-                    + "Current status = {}. Try dropping the pipe and recreating it.",
-                pipeName,
-                creationTime,
-                existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+            if (LOGGER.isInfoEnabled()) {
+              LOGGER.info(
+                  "Pipe {} (creation time = {}) has already been dropped, but the pipe task meta has not been cleaned up. "
+                      + "Current status = {}. Try dropping the pipe and recreating it.",
+                  pipeName,
+                  creationTime,
+                  status.name());
+            }
             // break to drop the pipe and recreate it
             break;
           default:
             throw new IllegalStateException(
-                "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+                MESSAGE_UNEXPECTED_PIPE_STATUS
+                    + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
         }
       }
 
@@ -440,31 +446,39 @@ public class PipeTaskAgent {
       return;
     }
 
-    switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
+    final PipeStatus status = existedPipeMeta.getRuntimeMeta().getStatus().get();
+    switch (status) {
       case STOPPED:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has been created. Current status = {}. Starting.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Pipe {} (creation time = {}) has been created. Current status = {}. Starting.",
+              pipeName,
+              creationTime,
+              status.name());
+        }
         break;
       case RUNNING:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has already been started. Current status = {}. Skip starting.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Pipe {} (creation time = {}) has already been started. Current status = {}. Skip starting.",
+              pipeName,
+              creationTime,
+              status.name());
+        }
         return;
       case DROPPED:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip starting.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip starting.",
+              pipeName,
+              creationTime,
+              status.name());
+        }
         return;
       default:
         throw new IllegalStateException(
-            "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+            MESSAGE_UNEXPECTED_PIPE_STATUS
+                + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
     }
 
     // trigger start() method for each pipe task
@@ -510,31 +524,37 @@ public class PipeTaskAgent {
       return;
     }
 
-    switch (existedPipeMeta.getRuntimeMeta().getStatus().get()) {
+    final PipeStatus status = existedPipeMeta.getRuntimeMeta().getStatus().get();
+    switch (status) {
       case STOPPED:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has already been stopped. Current status = {}. Skip stopping.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Pipe {} (creation time = {}) has already been stopped. Current status = {}. Skip stopping.",
+              pipeName,
+              creationTime,
+              status.name());
+        }
         return;
       case RUNNING:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has been started. Current status = {}. Stopping.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Pipe {} (creation time = {}) has been started. Current status = {}. Stopping.",
+              pipeName,
+              creationTime,
+              status.name());
+        }
         break;
       case DROPPED:
-        LOGGER.info(
-            "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip stopping.",
-            pipeName,
-            creationTime,
-            existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip stopping.",
+              pipeName,
+              creationTime,
+              status.name());
+        }
         return;
       default:
-        throw new IllegalStateException(
-            "Unexpected status: " + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
+        throw new IllegalStateException(MESSAGE_UNEXPECTED_PIPE_STATUS + status.name());
     }
 
     // trigger stop() method for each pipe task
@@ -590,13 +610,6 @@ public class PipeTaskAgent {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
       pipeTask.start();
-    }
-  }
-
-  private void stopPipeTask(TConsensusGroupId dataRegionGroupId, PipeStaticMeta pipeStaticMeta) {
-    final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, dataRegionGroupId);
-    if (pipeTask != null) {
-      pipeTask.stop();
     }
   }
 

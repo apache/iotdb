@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.util.List;
 
-/** Only maintained when writing, not serialized to TsFile */
+/** Only maintained when writing, not serialized to TsFile. */
 public class ChunkGroupMetadata {
 
   private String device;

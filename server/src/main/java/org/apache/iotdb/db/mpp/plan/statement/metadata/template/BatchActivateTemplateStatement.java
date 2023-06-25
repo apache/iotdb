@@ -37,8 +37,8 @@ public class BatchActivateTemplateStatement extends Statement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return devicePathList;
+  public List<PartialPath> getPaths() {
+    return getDevicePathList();
   }
 
   public List<PartialPath> getDevicePathList() {

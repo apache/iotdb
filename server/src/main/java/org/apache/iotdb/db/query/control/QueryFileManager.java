@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -30,19 +31,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * QueryFileManager records the paths of files that every query uses for QueryResourceManager.
- *
- * <p>
- */
+/** QueryFileManager records the paths of files that every query uses for QueryResourceManager. */
 public class QueryFileManager {
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
-  /** Map<queryId, Map<filePath,filePath>> */
-  private Map<Long, Map<TsFileResource, TsFileResource>> sealedFilePathsMap;
+  /**
+   * QueryId -> TsFileResource -> TsFileResource. Inner Map's key and value are actually the same
+   * object.
+   */
+  private final Map<Long, Map<TsFileResource, TsFileResource>> sealedFilePathsMap;
 
-  private Map<Long, Map<TsFileResource, TsFileResource>> unsealedFilePathsMap;
+  private final Map<Long, Map<TsFileResource, TsFileResource>> unsealedFilePathsMap;
 
   QueryFileManager() {
     sealedFilePathsMap = new ConcurrentHashMap<>();

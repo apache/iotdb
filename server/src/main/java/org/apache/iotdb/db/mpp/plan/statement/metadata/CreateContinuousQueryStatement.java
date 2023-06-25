@@ -140,7 +140,6 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     sqlBuilder.append("RESAMPLE\n");
     sqlBuilder.append('\t').append("EVERY ").append(everyInterval).append("ms\n");
     sqlBuilder.append('\t').append("BOUNDARY ").append(boundaryTime).append("\n");
-    ;
     sqlBuilder.append('\t').append("RANGE ").append(startTimeOffset).append("ms");
     if (endTimeOffset != 0) {
       sqlBuilder.append(", ").append(endTimeOffset).append("ms\n");
@@ -164,7 +163,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

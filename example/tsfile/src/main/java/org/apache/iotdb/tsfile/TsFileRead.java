@@ -30,6 +30,9 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -45,14 +48,17 @@ import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
  */
 public class TsFileRead {
 
+  private static Logger logger = LoggerFactory.getLogger(TsFileRead.class);
+
   private static void queryAndPrint(
       ArrayList<Path> paths, TsFileReader readTsFile, IExpression statement) throws IOException {
     QueryExpression queryExpression = QueryExpression.create(paths, statement);
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
+      String next = queryDataSet.next().toString();
+      logger.info(next);
     }
-    System.out.println("----------------");
+    logger.info("----------------");
   }
 
   public static void main(String[] args) throws IOException {

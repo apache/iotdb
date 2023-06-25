@@ -83,17 +83,17 @@ public class LongLiteral extends Literal {
 
   @Override
   public long getLong() {
-    return value;
+    return getValue();
   }
 
   @Override
   public float getFloat() {
-    return value;
+    return getValue();
   }
 
   @Override
   public double getDouble() {
-    return value;
+    return getValue();
   }
 
   @Override

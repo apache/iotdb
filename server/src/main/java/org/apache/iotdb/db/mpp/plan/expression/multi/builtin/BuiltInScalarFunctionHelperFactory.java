@@ -26,6 +26,11 @@ import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.RoundFunctio
 import org.apache.iotdb.db.mpp.plan.expression.multi.builtin.helper.SubStringFunctionHelper;
 
 public class BuiltInScalarFunctionHelperFactory {
+
+  private BuiltInScalarFunctionHelperFactory() {
+    // forbidden instantiation
+  }
+
   public static BuiltInScalarFunctionHelper createHelper(String functionName) {
     functionName = functionName.toUpperCase();
     switch (functionName) {

@@ -128,11 +128,10 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
       final int fieldSize = fields.size();
       for (int i = 0; i < fieldSize; i++) {
         final Field field = fields.get(i);
-        if (field == null || field.getDataType() == null) {
-          tablet.bitMaps[i].mark(rowIndex);
-        } else {
-          tablet.addValue(measurements.get(i), rowIndex, field.getObjectValue(field.getDataType()));
-        }
+        tablet.addValue(
+            measurements.get(i),
+            rowIndex,
+            field == null ? null : field.getObjectValue(field.getDataType()));
       }
 
       tablet.rowSize++;

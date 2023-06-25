@@ -11,12 +11,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
@@ -36,6 +39,12 @@ import static java.util.Objects.requireNonNull;
 
 @ThreadSafe
 public class StateMachine<T> {
+
+  private static final String LOCK_HELD_ERROR_MSG = "Cannot set state while holding the lock";
+  private static final String STATE_IS_NULL = "newState is null";
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(StateMachine.class);
+
   private final String name;
   private final Executor executor;
   private final Object lock = new Object();
@@ -110,12 +119,12 @@ public class StateMachine<T> {
    * @return the state before the possible state change
    */
   public T trySet(T newState) {
-    checkState(!Thread.holdsLock(lock), "Cannot set state while holding the lock");
-    requireNonNull(newState, "newState is null");
+    checkState(!Thread.holdsLock(lock), LOCK_HELD_ERROR_MSG);
+    requireNonNull(newState, STATE_IS_NULL);
 
     T oldState;
-    FutureStateChange<T> futureStateChange;
-    ImmutableList<StateChangeListener<T>> stateChangeListeners;
+    FutureStateChange<T> oldFutureStateChange;
+    ImmutableList<StateChangeListener<T>> curStateChangeListeners;
     synchronized (lock) {
       if (state.equals(newState) || isTerminalState(state)) {
         return state;
@@ -124,8 +133,8 @@ public class StateMachine<T> {
       oldState = state;
       state = newState;
 
-      futureStateChange = this.futureStateChange.getAndSet(new FutureStateChange<>());
-      stateChangeListeners = ImmutableList.copyOf(this.stateChangeListeners);
+      oldFutureStateChange = this.futureStateChange.getAndSet(new FutureStateChange<>());
+      curStateChangeListeners = ImmutableList.copyOf(this.stateChangeListeners);
 
       // if we are now in a terminal state, free the listeners since this will be the last
       // notification
@@ -134,7 +143,7 @@ public class StateMachine<T> {
       }
     }
 
-    fireStateChanged(newState, futureStateChange, stateChangeListeners);
+    fireStateChanged(newState, oldFutureStateChange, curStateChangeListeners);
     return oldState;
   }
 
@@ -145,8 +154,8 @@ public class StateMachine<T> {
    * @return true if the state is set
    */
   public boolean setIf(T newState, Predicate<T> predicate) {
-    checkState(!Thread.holdsLock(lock), "Cannot set state while holding the lock");
-    requireNonNull(newState, "newState is null");
+    checkState(!Thread.holdsLock(lock), LOCK_HELD_ERROR_MSG);
+    requireNonNull(newState, STATE_IS_NULL);
 
     while (true) {
       // check if the current state passes the predicate
@@ -176,12 +185,12 @@ public class StateMachine<T> {
    * @return true if the state is set
    */
   public boolean compareAndSet(T expectedState, T newState) {
-    checkState(!Thread.holdsLock(lock), "Cannot set state while holding the lock");
+    checkState(!Thread.holdsLock(lock), LOCK_HELD_ERROR_MSG);
     requireNonNull(expectedState, "expectedState is null");
-    requireNonNull(newState, "newState is null");
+    requireNonNull(newState, STATE_IS_NULL);
 
-    FutureStateChange<T> futureStateChange;
-    ImmutableList<StateChangeListener<T>> stateChangeListeners;
+    FutureStateChange<T> oldFutureStateChange;
+    ImmutableList<StateChangeListener<T>> curStateChangeListeners;
     synchronized (lock) {
       if (!state.equals(expectedState)) {
         return false;
@@ -197,8 +206,8 @@ public class StateMachine<T> {
 
       state = newState;
 
-      futureStateChange = this.futureStateChange.getAndSet(new FutureStateChange<>());
-      stateChangeListeners = ImmutableList.copyOf(this.stateChangeListeners);
+      oldFutureStateChange = this.futureStateChange.getAndSet(new FutureStateChange<>());
+      curStateChangeListeners = ImmutableList.copyOf(this.stateChangeListeners);
 
       // if we are now in a terminal state, free the listeners since this will be the last
       // notification
@@ -207,16 +216,17 @@ public class StateMachine<T> {
       }
     }
 
-    fireStateChanged(newState, futureStateChange, stateChangeListeners);
+    fireStateChanged(newState, oldFutureStateChange, curStateChangeListeners);
     return true;
   }
 
+  @SuppressWarnings("squid:S1181")
   private void fireStateChanged(
       T newState,
       FutureStateChange<T> futureStateChange,
       List<StateChangeListener<T>> stateChangeListeners) {
     checkState(!Thread.holdsLock(lock), "Cannot fire state change event while holding the lock");
-    requireNonNull(newState, "newState is null");
+    requireNonNull(newState, STATE_IS_NULL);
 
     // always fire listener callbacks from a different thread
     safeExecute(
@@ -225,7 +235,7 @@ public class StateMachine<T> {
           try {
             futureStateChange.complete(newState);
           } catch (Throwable e) {
-            //                log.error(e, "Error setting future state for %s", name);
+            LOGGER.error("Error setting future state for {}", name, e);
           }
           for (StateChangeListener<T> stateChangeListener : stateChangeListeners) {
             fireStateChangedListener(newState, stateChangeListener);
@@ -233,11 +243,12 @@ public class StateMachine<T> {
         });
   }
 
+  @SuppressWarnings("squid:S1181")
   private void fireStateChangedListener(T newState, StateChangeListener<T> stateChangeListener) {
     try {
       stateChangeListener.stateChanged(newState);
     } catch (Throwable e) {
-      //            log.error(e, "Error notifying state change listener for %s", name);
+      LOGGER.error("Error notifying state change listener for {}", name, e);
     }
   }
 
@@ -303,12 +314,12 @@ public class StateMachine<T> {
     return get().toString();
   }
 
+  @SuppressWarnings("squid:S112")
   private void safeExecute(Runnable command) {
     try {
       executor.execute(command);
     } catch (RejectedExecutionException e) {
       if ((executor instanceof ExecutorService) && ((ExecutorService) executor).isShutdown()) {
-        // TODO: (xingtanzjr) handle the exception
         throw new RuntimeException("Server is shutting down", e);
       }
       throw e;

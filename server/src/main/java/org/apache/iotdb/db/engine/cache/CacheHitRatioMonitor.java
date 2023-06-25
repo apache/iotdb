@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.cache;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -32,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IService {
 
-  private static Logger logger = LoggerFactory.getLogger(CacheHitRatioMonitor.class);
+  private static Logger LOGGER = LoggerFactory.getLogger(CacheHitRatioMonitor.class);
   static final CacheHitRatioMonitor instance = AsyncCacheHitRatioHolder.DISPLAYER;
 
   @Override
@@ -47,7 +48,7 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   @Override
   public void stop() {
     JMXService.deregisterMBean(ServiceType.CACHE_HIT_RATIO_DISPLAY_SERVICE.getJmxName());
-    logger.info("{}: stop {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    LOGGER.info("{}: stop {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
   }
 
   @Override

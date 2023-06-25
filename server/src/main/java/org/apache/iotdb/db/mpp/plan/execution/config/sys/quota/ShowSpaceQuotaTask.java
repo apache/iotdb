@@ -57,7 +57,7 @@ public class ShowSpaceQuotaTask implements IConfigTask {
     return configTaskExecutor.showSpaceQuota(showSpaceQuotaStatement);
   }
 
-  public static void buildTSBlock(TSpaceQuotaResp resp, SettableFuture<ConfigTaskResult> future) {
+  public static void buildTsBlock(TSpaceQuotaResp resp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showSpaceQuotaColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)

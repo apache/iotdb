@@ -61,7 +61,7 @@ public class GetSeriesSlotListTask implements IConfigTask {
     builder.declarePosition();
   }
 
-  public static void buildTSBlock(
+  public static void buildTsBlock(
       TGetSeriesSlotListResp getSeriesSlotListResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.getSeriesSlotListColumnHeaders.stream()

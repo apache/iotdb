@@ -31,7 +31,7 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
 
   protected SchemaTreeVisitor() {}
 
-  public SchemaTreeVisitor(SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
+  protected SchemaTreeVisitor(SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
     super(root, pathPattern, isPrefixMatch);
     initStack();
   }

@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.Collections;
 import java.util.List;
 
 public class AlterSchemaTemplateStatement extends Statement implements IConfigStatement {
@@ -74,8 +75,8 @@ public class AlterSchemaTemplateStatement extends Statement implements IConfigSt
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @Override

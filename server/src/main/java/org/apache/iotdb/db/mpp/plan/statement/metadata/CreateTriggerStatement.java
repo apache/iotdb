@@ -114,7 +114,7 @@ public class CreateTriggerStatement extends Statement implements IConfigStatemen
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.singletonList(pathPattern);
   }
 }

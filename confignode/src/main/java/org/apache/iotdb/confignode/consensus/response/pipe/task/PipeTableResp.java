@@ -116,7 +116,7 @@ public class PipeTableResp implements DataSet {
               staticMeta.getPipeName(),
               staticMeta.getCreationTime(),
               runtimeMeta.getStatus().get().name(),
-              staticMeta.getCollectorParameters().toString(),
+              staticMeta.getExtractorParameters().toString(),
               staticMeta.getProcessorParameters().toString(),
               staticMeta.getConnectorParameters().toString(),
               exceptionMessageBuilder.toString()));

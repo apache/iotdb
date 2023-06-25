@@ -33,6 +33,7 @@ import java.util.List;
 /** This operator is responsible to do the aggregation calculation especially for aligned series. */
 public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregationScanOperator {
 
+  @SuppressWarnings("squid:S107")
   public AlignedSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       AlignedPath seriesPath,

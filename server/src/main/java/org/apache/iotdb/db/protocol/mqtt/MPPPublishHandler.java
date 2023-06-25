@@ -43,7 +43,6 @@ import io.moquette.interception.messages.InterceptDisconnectMessage;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,22 +76,17 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   }
 
   @Override
-  @SuppressWarnings("squid:S112")
   public void onConnect(InterceptConnectMessage msg) {
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
-      try {
-        MqttClientSession session = new MqttClientSession(msg.getClientID());
-        sessionManager.login(
-            session,
-            msg.getUsername(),
-            new String(msg.getPassword()),
-            ZoneId.systemDefault().toString(),
-            TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
-            ClientVersion.V_1_0);
-        clientIdToSessionMap.put(msg.getClientID(), session);
-      } catch (TException e) {
-        throw new RuntimeException(e);
-      }
+      MqttClientSession session = new MqttClientSession(msg.getClientID());
+      sessionManager.login(
+          session,
+          msg.getUsername(),
+          new String(msg.getPassword()),
+          ZoneId.systemDefault().toString(),
+          TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3,
+          ClientVersion.V_1_0);
+      clientIdToSessionMap.put(msg.getClientID(), session);
     }
   }
 

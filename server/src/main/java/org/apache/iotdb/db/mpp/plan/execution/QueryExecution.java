@@ -148,6 +148,7 @@ public class QueryExecution implements IQueryExecution {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
+  @SuppressWarnings("squid:S107")
   public QueryExecution(
       Statement statement,
       MPPQueryContext context,
@@ -601,11 +602,16 @@ public class QueryExecution implements IQueryExecution {
       }
       // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
       return getExecutionResult(state);
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException e) {
       // TODO: (xingtanzjr) use more accurate error handling
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
+      Thread.currentThread().interrupt();
+      return new ExecutionResult(
+          context.getQueryId(),
+          stateMachine.getFailureStatus() == null
+              ? RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage())
+              : stateMachine.getFailureStatus());
+    } catch (ExecutionException e) {
       return new ExecutionResult(
           context.getQueryId(),
           stateMachine.getFailureStatus() == null
