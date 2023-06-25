@@ -125,8 +125,6 @@ public class IoTDBRestServiceDescriptor {
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + "rest"
-                + File.separatorChar
                 + IoTDBRestServiceConfig.CONFIG_NAME;
       } else {
         // If this too wasn't provided, try to find a default config in the root of the classpath.
