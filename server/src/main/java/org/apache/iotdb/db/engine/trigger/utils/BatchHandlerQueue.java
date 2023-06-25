@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @param <T> Subclass of Event
  */
+@SuppressWarnings("squid:S3740")
 public class BatchHandlerQueue<T extends Event> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BatchHandlerQueue.class);
@@ -112,6 +113,7 @@ public class BatchHandlerQueue<T extends Event> {
       handler.onEvent(events);
     }
 
+    @SuppressWarnings("squid:S3776")
     @Override
     public void run() {
       final long maxWaitMillis = 500;
@@ -142,8 +144,8 @@ public class BatchHandlerQueue<T extends Event> {
           startMillis = System.currentTimeMillis();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
-          break;
-        } catch (Throwable t) {
+          return;
+        } catch (Exception t) {
           LOGGER.error("ForwardTaskQueue consumer error", t);
         }
       }

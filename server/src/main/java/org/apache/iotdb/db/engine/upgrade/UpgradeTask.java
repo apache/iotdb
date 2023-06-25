@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class UpgradeTask extends WrappedRunnable {
 
@@ -127,40 +128,39 @@ public class UpgradeTask extends WrappedRunnable {
     return upgradedResources;
   }
 
+  @SuppressWarnings("squid:S3776")
   private void clearTmpFolders(List<String> folders) {
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir);
       if (!fileFolder.isDirectory()) {
         continue;
       }
-      for (File storageGroup : fileFolder.listFiles()) {
+      for (File storageGroup : Objects.requireNonNull(fileFolder.listFiles())) {
         if (!storageGroup.isDirectory()) {
           continue;
         }
         File virtualStorageGroupDir = fsFactory.getFile(storageGroup, "0");
         File upgradeDir = fsFactory.getFile(virtualStorageGroupDir, "upgrade");
-        if (upgradeDir == null) {
-          continue;
-        }
-        File[] tmpPartitionDirList = upgradeDir.listFiles();
-        if (tmpPartitionDirList == null) {
-          continue;
-        }
-        for (File tmpPartitionDir : tmpPartitionDirList) {
-          if (tmpPartitionDir.isDirectory()) {
-            try {
-              Files.delete(tmpPartitionDir.toPath());
-            } catch (IOException e) {
-              logger.error("Delete tmpPartitionDir {} failed", tmpPartitionDir);
+        if (upgradeDir != null) {
+          File[] tmpPartitionDirList = upgradeDir.listFiles();
+          if (tmpPartitionDirList != null) {
+            for (File tmpPartitionDir : tmpPartitionDirList) {
+              if (tmpPartitionDir.isDirectory()) {
+                try {
+                  Files.delete(tmpPartitionDir.toPath());
+                } catch (IOException e) {
+                  logger.error("Delete tmpPartitionDir {} failed", tmpPartitionDir);
+                }
+              }
             }
-          }
-        }
-        // delete upgrade folder when it is empty
-        if (upgradeDir.isDirectory()) {
-          try {
-            Files.delete(upgradeDir.toPath());
-          } catch (IOException e) {
-            logger.error("Delete tmpUpgradeDir {} failed", upgradeDir);
+            // delete upgrade folder when it is empty
+            if (upgradeDir.isDirectory()) {
+              try {
+                Files.delete(upgradeDir.toPath());
+              } catch (IOException e) {
+                logger.error("Delete tmpUpgradeDir {} failed", upgradeDir);
+              }
+            }
           }
         }
       }
