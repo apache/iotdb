@@ -16,30 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-/** The interface is used to indicate where to execute a FragmentInstance */
-public interface ExecutorType {
+import java.util.Objects;
 
-  /** Indicate if ExecutorType is StorageExecutor */
-  boolean isStorageExecutor();
-
-  TDataNodeLocation getDataNodeLocation();
-
-  default TRegionReplicaSet getRegionReplicaSet() {
-    throw new UnsupportedOperationException(getClass().getName());
+/** Utils that extend thrift generated objects. */
+public class ThriftUtils {
+  private ThriftUtils() {
+    // Empty constructor
   }
 
-  /**
-   * Try to update the preferred location to the given EndPoint in the ReplicaSet. Do nothing if the
-   * operation is not supported or the EndPoint is not found within this ReplicaSet.
-   *
-   * @param endPoint associated with the preferred location.
-   */
-  default void updatePreferredLocation(TEndPoint endPoint) {}
+  public static boolean endPointInLocation(TDataNodeLocation location, TEndPoint endPoint) {
+    if (Objects.equals(location.getClientRpcEndPoint(), endPoint)) {
+      return true;
+    }
+    if (Objects.equals(location.getDataRegionConsensusEndPoint(), endPoint)) {
+      return true;
+    }
+    if (Objects.equals(location.getSchemaRegionConsensusEndPoint(), endPoint)) {
+      return true;
+    }
+    if (Objects.equals(location.getMPPDataExchangeEndPoint(), endPoint)) {
+      return true;
+    }
+    if (Objects.equals(location.getInternalEndPoint(), endPoint)) {
+      return true;
+    }
+    return false;
+  }
 }

@@ -131,6 +131,13 @@ public class AsyncPlanNodeSender {
           failureStatusList.add(status);
         }
       }
+
+      if (status != null
+          && status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        int instanceIndex = entry.getKey();
+        FragmentInstance fragmentInstance = instances.get(instanceIndex);
+        fragmentInstance.getExecutorType().updatePreferredLocation(status.getRedirectNode());
+      }
     }
     return failureStatusList;
   }

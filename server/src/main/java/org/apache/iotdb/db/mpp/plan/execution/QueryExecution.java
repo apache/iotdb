@@ -680,7 +680,11 @@ public class QueryExecution implements IQueryExecution {
     if (analysis.getStatement() instanceof InsertBaseStatement
         && !analysis.isFinishQueryAfterAnalyze()
         && (!config.isEnable13DataInsertAdapt()
-            || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion()))) {
+            || IoTDBConstant.ClientVersion.V_1_0.equals(context.getSession().getVersion()))
+        // only redirect here when a redirection is required but not knowing where, otherwise,
+        // the redirection from lower level may be overwritten
+        && (tsstatus.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+            && !tsstatus.isSetRedirectNode())) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
       List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
       if (insertStatement instanceof InsertRowsStatement

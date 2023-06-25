@@ -228,12 +228,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlots);
 
     // collect redirectInfo
+    TRegionReplicaSet tRegionReplicaSet =
+        dataRegionReplicaSets.get(dataRegionReplicaSets.size() - 1);
+    int preferredLocation =
+        tRegionReplicaSet.isSetPreferredLocation() ? tRegionReplicaSet.preferredLocation : 0;
     analysis.addEndPointToRedirectNodeList(
-        dataRegionReplicaSets
-            .get(dataRegionReplicaSets.size() - 1)
-            .getDataNodeLocations()
-            .get(0)
-            .getClientRpcEndPoint());
+        tRegionReplicaSet.getDataNodeLocations().get(preferredLocation).getClientRpcEndPoint());
 
     Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
     for (int i = 0; i < dataRegionReplicaSets.size(); i++) {
@@ -666,6 +666,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   // region serialize & deserialize methods for WAL
+
   /** Serialized size for wal */
   @Override
   public int serializedSize() {
@@ -949,9 +950,15 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     InsertTabletNode that = (InsertTabletNode) o;
     return rowCount == that.rowCount
         && Arrays.equals(times, that.times)
