@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 
-import org.apache.commons.compress.utils.Sets;
+import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
