@@ -27,10 +27,13 @@ import java.util.List;
 
 /** This interface */
 public interface NodeAllocationStrategy {
+
   /** Allocate one wal node for the applicant. */
   IWALNode applyForWALNode(String applicantUniqueId);
+
   /** Get all wal nodes. */
   List<WALNode> getNodesSnapshot();
+
   /** Get all wal nodes num. Not thread-safe, used for metrics only. */
   int getNodesNum();
 

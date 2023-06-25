@@ -94,10 +94,10 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
    */
   protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
     // close file
-    File lastFile = currentWALFileWriter.getLogFile();
     currentWALFileWriter.close();
     addDiskUsage(currentWALFileWriter.size());
     addFileNum(1);
+    File lastFile = currentWALFileWriter.getLogFile();
     String lastName = lastFile.getName();
     if (WALFileUtils.parseStatusCode(lastName) != fileStatus) {
       String targetName =

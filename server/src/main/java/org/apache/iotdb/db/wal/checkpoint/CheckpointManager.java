@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -212,9 +213,7 @@ public class CheckpointManager implements AutoCloseable {
               SystemFileFactory.INSTANCE.getFile(
                   logDirectory,
                   CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion - 1));
-          if (!oldFile.delete()) {
-            logger.info("Fail to delete last checkpoint file {}", oldFile);
-          }
+          Files.delete(oldFile.toPath());
         }
       } catch (IOException e) {
         logger.error(
