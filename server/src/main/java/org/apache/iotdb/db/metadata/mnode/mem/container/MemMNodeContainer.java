@@ -90,5 +90,10 @@ public class MemMNodeContainer extends ConcurrentHashMap<String, IMemMNode>
     public boolean equals(Object o) {
       return o == this;
     }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
+    }
   }
 }
