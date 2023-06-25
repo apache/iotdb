@@ -34,6 +34,7 @@ public enum DataNodeThreadModule {
   JVM,
   LOG_BACK,
   METRICS,
+  SYSTEM,
   OTHER,
   UNKNOWN
 }

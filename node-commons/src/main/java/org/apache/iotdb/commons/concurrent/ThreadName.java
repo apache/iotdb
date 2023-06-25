@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -132,7 +135,11 @@ public enum ThreadName {
   SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
   RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
+  PROMETHEUS_REACTOR_HTTP_EPOLL("reactor-http-epoll"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
+  // -------------------------- System --------------------------
+  FORK_JOIN_POOL("ForkJoinPool"),
+  TIMER("timer"),
   // -------------------------- Other --------------------------
   TTL_CHECK("TTL-CHECK"),
   SETTLE("Settle"),
@@ -145,6 +152,7 @@ public enum ThreadName {
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");
 
+  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
   private final String name;
   private static Set<ThreadName> queryThreadNames =
       new HashSet<>(
@@ -257,7 +265,11 @@ public enum ThreadName {
               SYSTEM_SCHEDULE_METRICS,
               RESOURCE_CONTROL_DISK_STATISTIC,
               PROMETHEUS_REACTOR_HTTP_NIO,
+              PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_BOUNDED_ELASTIC));
+
+  private static Set<ThreadName> systemThreadNames =
+      new HashSet<>(Arrays.asList(FORK_JOIN_POOL, TIMER));
   private static Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -291,6 +303,7 @@ public enum ThreadName {
           computeThreadNames,
           jvmThreadNames,
           metricsThreadNames,
+          systemThreadNames,
           otherThreadNames
         };
     DataNodeThreadModule[] modules =
@@ -307,6 +320,7 @@ public enum ThreadName {
           DataNodeThreadModule.COMPUTE,
           DataNodeThreadModule.JVM,
           DataNodeThreadModule.METRICS,
+          DataNodeThreadModule.SYSTEM,
           DataNodeThreadModule.OTHER
         };
 
@@ -333,6 +347,7 @@ public enum ThreadName {
         return module;
       }
     }
+    log.warn("The module for this thread is unknown: {}", givenThreadName);
     return null;
   }
 
@@ -351,6 +366,7 @@ public enum ThreadName {
         }
       }
     }
+    log.warn("The thread pool for this thread is unknown: {}", givenThreadName);
     return ThreadName.UNKOWN;
   }
 }
