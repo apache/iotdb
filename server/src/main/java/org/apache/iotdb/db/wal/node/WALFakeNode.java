@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -23,19 +24,20 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.wal.exception.WALException;
+import org.apache.iotdb.db.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 /** This class provides fake wal node when wal is disabled or exception happens. */
 public class WALFakeNode implements IWALNode {
-  private final WALFlushListener.Status status;
+  private final Status status;
   private final WALFlushListener successListener;
   private final WALFlushListener failListener;
 
-  private WALFakeNode(WALFlushListener.Status status) {
+  private WALFakeNode(Status status) {
     this(status, null);
   }
 
-  public WALFakeNode(WALFlushListener.Status status, Exception cause) {
+  public WALFakeNode(Status status, Exception cause) {
     this.status = status;
     this.successListener = new WALFlushListener(false, null);
     this.successListener.succeed();
@@ -116,8 +118,7 @@ public class WALFakeNode implements IWALNode {
 
   public static WALFakeNode getFailureInstance(Exception e) {
     return new WALFakeNode(
-        WALFlushListener.Status.FAILURE,
-        new WALException("Cannot write wal into a fake node. ", e));
+        Status.FAILURE, new WALException("Cannot write wal into a fake node. ", e));
   }
 
   public static WALFakeNode getSuccessInstance() {
@@ -125,7 +126,6 @@ public class WALFakeNode implements IWALNode {
   }
 
   private static class WALFakeNodeHolder {
-    private static final WALFakeNode SUCCESS_INSTANCE =
-        new WALFakeNode(WALFlushListener.Status.SUCCESS);
+    private static final WALFakeNode SUCCESS_INSTANCE = new WALFakeNode(Status.SUCCESS);
   }
 }

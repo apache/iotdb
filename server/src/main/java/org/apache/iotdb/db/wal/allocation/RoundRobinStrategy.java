@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.allocation;
 
 import org.apache.iotdb.db.wal.node.IWALNode;
@@ -31,16 +32,16 @@ import java.util.concurrent.locks.ReentrantLock;
  * several identifiers (like data regions) can share one wal node.
  */
 public class RoundRobinStrategy extends AbstractNodeAllocationStrategy {
-  /** max wal nodes number */
+  // max wal nodes number
   private final int maxWalNodeNum;
-  /** protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter */
+  // protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter
   private final Lock nodesLock = new ReentrantLock();
   // region these variables should be protected by nodesLock
-  /** wal nodes, the max number of wal nodes is MAX_WAL_NUM */
+  // wal nodes, the max number of wal nodes is MAX_WAL_NUM
   private final List<WALNode> walNodes;
-  /** help allocate node for users */
+  // help allocate node for users
   private int nodeCursor = -1;
-  /** each wal node has a unique int value identifier */
+  // each wal node has a unique int value identifier
   private int nodeIdCounter = -1;
   // endregion
 
@@ -89,7 +90,6 @@ public class RoundRobinStrategy extends AbstractNodeAllocationStrategy {
     return snapshot;
   }
 
-  /** non-thread-safe, used for metrics only */
   @Override
   public int getNodesNum() {
     return walNodes.size();

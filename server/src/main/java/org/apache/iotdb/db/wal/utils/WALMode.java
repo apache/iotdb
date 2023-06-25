@@ -16,20 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.utils;
 
-/** Write mode of wal */
+/** Write mode of wal. */
 public enum WALMode {
-  /** disable wal */
+  // disable wal
   DISABLE,
-  /**
-   * submit wal synchronously, write request will not return until its wal is flushed to the disk
-   * successfully
-   */
+  // submit wal synchronously
+  // write request will not return until its wal is flushed to the disk successfully
   SYNC,
-  /**
-   * submit wal asynchronously, write request will return immediately no matter its wal is flushed
-   * to the disk successfully
-   */
+  // submit wal asynchronously
+  // write request will return immediately no matter its wal is flushed
   ASYNC,
 }

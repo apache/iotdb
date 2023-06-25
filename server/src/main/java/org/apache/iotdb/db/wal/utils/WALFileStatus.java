@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.utils;
 
 /**
@@ -23,9 +24,9 @@ package org.apache.iotdb.db.wal.utils;
  * this contains search index.
  */
 public enum WALFileStatus {
-  /** This file doesn't contain content needs searching */
+  // This file doesn't contain content needs searching
   CONTAINS_NONE_SEARCH_INDEX(0),
-  /** This file contains content needs searching */
+  // This file contains content needs searching
   CONTAINS_SEARCH_INDEX(1),
   ;
 

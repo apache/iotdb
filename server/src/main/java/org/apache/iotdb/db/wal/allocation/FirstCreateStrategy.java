@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.allocation;
 
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -36,10 +37,10 @@ import java.util.concurrent.locks.ReentrantLock;
  * (like data region) has its own wal node.
  */
 public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
-  /** protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter */
+  // protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter
   private final Lock nodesLock = new ReentrantLock();
   // region these variables should be protected by nodesLock
-  /** wal nodes */
+  // wal nodes
   private final Map<String, WALNode> identifier2Nodes = new HashMap<>();
   // endregion
 
@@ -47,17 +48,17 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
   public IWALNode applyForWALNode(String applicantUniqueId) {
     nodesLock.lock();
     try {
-      if (identifier2Nodes.containsKey(applicantUniqueId)) {
-        return identifier2Nodes.get(applicantUniqueId);
+      if (!identifier2Nodes.containsKey(applicantUniqueId)) {
+        IWALNode walNode = createWALNode(applicantUniqueId);
+        if (walNode instanceof WALNode) {
+          // avoid deletion
+          walNode.setSafelyDeletedSearchIndex(
+              ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
+          identifier2Nodes.put(applicantUniqueId, (WALNode) walNode);
+        }
       }
 
-      IWALNode walNode = createWALNode(applicantUniqueId);
-      if (walNode instanceof WALNode) {
-        // avoid deletion
-        walNode.setSafelyDeletedSearchIndex(ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX);
-        identifier2Nodes.put(applicantUniqueId, (WALNode) walNode);
-      }
-      return walNode;
+      return identifier2Nodes.get(applicantUniqueId);
     } finally {
       nodesLock.unlock();
     }
@@ -112,7 +113,6 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
     return snapshot;
   }
 
-  /** non-thread-safe, used for metrics only */
   @Override
   public int getNodesNum() {
     return identifier2Nodes.size();

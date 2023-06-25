@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.allocation;
 
 import org.apache.iotdb.db.wal.node.IWALNode;
@@ -33,17 +34,17 @@ import java.util.concurrent.locks.ReentrantLock;
  * number of memTables.
  */
 public class ElasticStrategy extends AbstractNodeAllocationStrategy {
-  /** each wal node manages fixed number of memTables */
+  // each wal node manages fixed number of memTables
   public static final int APPLICATION_NODE_RATIO = 4;
 
-  /** protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter */
+  // protect concurrent safety of wal nodes, including walNodes, nodeCursor and nodeIdCounter
   private final Lock nodesLock = new ReentrantLock();
   // region these variables should be protected by nodesLock
-  /** wal nodes, the max number of wal nodes is MAX_WAL_NUM */
+  // wal nodes, the max number of wal nodes is MAX_WAL_NUM
   private final List<WALNode> walNodes;
-  /** help allocate node for users */
+  // help allocate node for users
   private final Map<String, WALNode> uniqueId2Nodes = new HashMap<>();
-  /** each wal node has a unique long value identifier */
+  // each wal node has a unique long value identifier
   private int nodeIdCounter = -1;
   // endregion
 
@@ -86,7 +87,6 @@ public class ElasticStrategy extends AbstractNodeAllocationStrategy {
     return snapshot;
   }
 
-  /** non-thread-safe, used for metrics only */
   @Override
   public int getNodesNum() {
     return walNodes.size();

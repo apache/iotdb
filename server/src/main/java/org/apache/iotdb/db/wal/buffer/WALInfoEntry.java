@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -23,14 +24,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.wal.utils.WALMode;
 
-/** This entry class stores info for persistence */
+import java.util.Objects;
+
+/** This entry class stores info for persistence. */
 public class WALInfoEntry extends WALEntry {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  /** wal entry type 1 byte, memTable id 8 bytes */
+  // wal entry type 1 byte, memTable id 8 bytes
   public static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Long.BYTES;
 
-  /** extra info for InsertTablet type value */
+  // extra info for InsertTablet type value
   private TabletInfo tabletInfo;
 
   public WALInfoEntry(long memTableId, WALEntryValue value, boolean wait) {
@@ -78,9 +80,9 @@ public class WALInfoEntry extends WALEntry {
   }
 
   private static class TabletInfo {
-    /** start row of insert tablet */
+    // start row of insert tablet
     private final int tabletStart;
-    /** end row of insert tablet */
+    // end row of insert tablet
     private final int tabletEnd;
 
     public TabletInfo(int tabletStart, int tabletEnd) {
@@ -92,5 +94,20 @@ public class WALInfoEntry extends WALEntry {
   @Override
   public boolean isSignal() {
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), tabletInfo.tabletStart, tabletInfo.tabletEnd);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!super.equals(obj)) {
+      return false;
+    }
+    WALInfoEntry other = (WALInfoEntry) obj;
+    return this.tabletInfo.tabletStart == other.tabletInfo.tabletStart
+        && this.tabletInfo.tabletEnd == other.tabletInfo.tabletEnd;
   }
 }
