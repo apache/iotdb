@@ -19,7 +19,6 @@
 package org.apache.iotdb.hive;
 
 import org.apache.iotdb.hadoop.filesystem.HDFSOutput;
-import org.apache.iotdb.hadoop.tsfile.TSFRecordWriter;
 import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.TsFileWriter;

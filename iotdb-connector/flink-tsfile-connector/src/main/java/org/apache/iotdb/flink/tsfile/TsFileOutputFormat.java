@@ -91,8 +91,8 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
       }
     } catch (URISyntaxException e) {
       throw new RuntimeException(e);
-    } finally{
-      if (out != null){
+    } finally {
+      if (out != null) {
         out.close();
       }
       if (fos != null) {
