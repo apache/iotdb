@@ -3502,7 +3502,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  // PIPE
+  // PIPE_PRIVILEGE
 
   @Override
   public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) {
@@ -3575,7 +3575,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       dropPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
-      throw new SemanticException("Not support for this sql in DROP PIPE, please enter pipename.");
+      throw new SemanticException(
+          "Not support for this sql in DROP PIPE_PRIVILEGE, please enter pipename.");
     }
 
     return dropPipeStatement;
@@ -3588,7 +3589,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       startPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
-      throw new SemanticException("Not support for this sql in START PIPE, please enter pipename.");
+      throw new SemanticException(
+          "Not support for this sql in START PIPE_PRIVILEGE, please enter pipename.");
     }
 
     return startPipeStatement;
@@ -3601,7 +3603,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.pipeName != null) {
       stopPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
     } else {
-      throw new SemanticException("Not support for this sql in STOP PIPE, please enter pipename.");
+      throw new SemanticException(
+          "Not support for this sql in STOP PIPE_PRIVILEGE, please enter pipename.");
     }
 
     return stopPipeStatement;

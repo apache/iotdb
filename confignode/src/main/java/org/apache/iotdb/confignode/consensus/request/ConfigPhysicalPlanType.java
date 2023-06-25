@@ -175,7 +175,7 @@ public enum ConfigPhysicalPlanType {
 
   /** Pipe Task */
   CreatePipeV2((short) 1500),
-  /** START PIPE & STOP PIPE */
+  /** START PIPE_PRIVILEGE & STOP PIPE_PRIVILEGE */
   SetPipeStatusV2((short) 1501),
   DropPipeV2((short) 1502),
   ShowPipeV2((short) 1503),

@@ -375,8 +375,8 @@ public class IoTDBInterpreterIT {
 
   @Test
   public void testListUser() {
-    interpreter.internalInterpret("CREATE USER user1 'password1'", null);
-    InterpreterResult actual = interpreter.internalInterpret("LIST USER", null);
+    interpreter.internalInterpret("CREATE USER_PRIVILEGE user1 'password1'", null);
+    InterpreterResult actual = interpreter.internalInterpret("LIST USER_PRIVILEGE", null);
     String gt = "user\n" + "root\n" + "user1";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());

@@ -541,11 +541,11 @@ public class IoTDBCQIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege SHOW_CONTINUOUS_QUERIES",
+                  + ": No permissions for this operation, please add privilege CONTINUOUS_QUERY_PRIVILEGE",
               e.getMessage());
         }
 
-        statement.execute("GRANT USER `zmty` PRIVILEGES SHOW_CONTINUOUS_QUERIES");
+        statement.execute("GRANT USER `zmty` PRIVILEGES CONTINUOUS_QUERY_PRIVILEGE");
 
         try (ResultSet resultSet = statement2.executeQuery("show CQS")) {
 

@@ -21,18 +21,17 @@ package org.apache.iotdb.commons.auth.entity;
 
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
-  CREATE_DATABASE(true),
   READ_DATA(true),
   WRITE_DATA(true),
   READ_SCHEMA(true),
   WRITE_SCHEMA(true),
-  USER,
-  ROLE,
+  USER_PRIVILEGE,
+  ROLE_PRIVILEGE,
   GRANT_PRIVILEGE,
   ALTER_PASSWORD,
-  TRIGGER(true),
-  CONTINUOUS_QUERY,
-  PIPE,
+  TRIGGER_PRIVILEGE(true),
+  CONTINUOUS_QUERY_PRIVILEGE,
+  PIPE_PRIVILEGE,
   ALL,
   ;
 

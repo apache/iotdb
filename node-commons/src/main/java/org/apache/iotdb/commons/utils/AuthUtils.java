@@ -200,7 +200,7 @@ public class AuthUtils {
         case WRITE_SCHEMA:
         case READ_DATA:
         case WRITE_DATA:
-        case TRIGGER:
+        case TRIGGER_PRIVILEGE:
           return;
         default:
           throw new AuthException(

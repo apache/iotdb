@@ -248,7 +248,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
         ((Map<String, List<String>>) claims.get("realm_access")).get("roles");
     if (!availableRoles.contains(IOTDB_ADMIN_ROLE_NAME)) {
       logger.warn(
-          "Given Token has no admin rights, is there a ROLE with name {} in 'realm_access' role set?",
+          "Given Token has no admin rights, is there a ROLE_PRIVILEGE with name {} in 'realm_access' role set?",
           IOTDB_ADMIN_ROLE_NAME);
       return false;
     }

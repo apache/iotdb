@@ -40,7 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
+ * This procedure manage 4 kinds of PIPE_PRIVILEGE operations: CREATE, START, STOP and DROP.
  *
  * <p>This class extends AbstractNodeProcedure to make sure that pipe task procedures can be
  * executed in sequence and node procedures can be locked when a pipe task procedure is running.

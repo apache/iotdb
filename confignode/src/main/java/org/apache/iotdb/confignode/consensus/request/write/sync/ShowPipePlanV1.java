@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 // Deprecated, restored for upgrade
 @Deprecated
 public class ShowPipePlanV1 extends ConfigPhysicalPlan {
-  /** empty pipeName means show all PIPE */
+  /** empty pipeName means show all PIPE_PRIVILEGE */
   private String pipeName;
 
   public ShowPipePlanV1() {

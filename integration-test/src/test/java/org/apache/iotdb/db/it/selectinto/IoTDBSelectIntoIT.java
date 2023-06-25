@@ -550,7 +550,7 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser1 'temppw1'");
-      adminStmt.execute("GRANT USER tempuser1 PRIVILEGES INSERT_TIMESERIES on root.sg_bk.**;");
+      adminStmt.execute("GRANT USER tempuser1 PRIVILEGES WRITE_DATA on root.sg_bk.**;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1");
           Statement userStmt = userCon.createStatement()) {
@@ -572,7 +572,7 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser2 'temppw2'");
-      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES READ_TIMESERIES on root.sg.**;");
+      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES READ_SCHEMA on root.sg.**;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2");
           Statement userStmt = userCon.createStatement()) {

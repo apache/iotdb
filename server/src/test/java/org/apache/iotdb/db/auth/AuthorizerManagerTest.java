@@ -54,7 +54,7 @@ public class AuthorizerManagerTest {
     Set<Integer> privilegesIds = new HashSet<>();
     PathPrivilege privilege = new PathPrivilege();
     List<PathPrivilege> privilegeList = new ArrayList<>();
-    privilegesIds.add(PrivilegeType.ROLE.ordinal());
+    privilegesIds.add(PrivilegeType.ROLE_PRIVILEGE.ordinal());
     privilegesIds.add(PrivilegeType.GRANT_PRIVILEGE.ordinal());
     privilege.setPath(new PartialPath("root.ln"));
     privilege.setPrivileges(privilegesIds);
@@ -108,7 +108,7 @@ public class AuthorizerManagerTest {
             .checkUserPrivileges(
                 "user",
                 Collections.singletonList(new PartialPath("root.ln")),
-                PrivilegeType.ROLE.ordinal())
+                PrivilegeType.ROLE_PRIVILEGE.ordinal())
             .getCode());
     // User does not have permission
     Assert.assertEquals(
@@ -117,7 +117,7 @@ public class AuthorizerManagerTest {
             .checkUserPrivileges(
                 "user",
                 Collections.singletonList(new PartialPath("root.ln")),
-                PrivilegeType.USER.ordinal())
+                PrivilegeType.USER_PRIVILEGE.ordinal())
             .getCode());
 
     // Authenticate users with roles
@@ -153,7 +153,7 @@ public class AuthorizerManagerTest {
             .checkUserPrivileges(
                 "user",
                 Collections.singletonList(new PartialPath("root.ln")),
-                PrivilegeType.ROLE.ordinal())
+                PrivilegeType.ROLE_PRIVILEGE.ordinal())
             .getCode());
     // role does not have permission
     Assert.assertEquals(
@@ -162,7 +162,7 @@ public class AuthorizerManagerTest {
             .checkUserPrivileges(
                 "user",
                 Collections.singletonList(new PartialPath("root.ln")),
-                PrivilegeType.USER.ordinal())
+                PrivilegeType.USER_PRIVILEGE.ordinal())
             .getCode());
 
     authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");

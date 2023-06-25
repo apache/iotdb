@@ -38,8 +38,9 @@ public class TriggerClassLoaderManager {
 
   /**
    * activeClassLoader is used to load all classes under libRoot. libRoot may be updated before the
-   * user executes CREATE TRIGGER or after the user executes DROP TRIGGER. Therefore, we need to
-   * continuously maintain the activeClassLoader so that the classes it loads are always up-to-date.
+   * user executes CREATE TRIGGER_PRIVILEGE or after the user executes DROP TRIGGER_PRIVILEGE.
+   * Therefore, we need to continuously maintain the activeClassLoader so that the classes it loads
+   * are always up-to-date.
    */
   private volatile TriggerClassLoader activeClassLoader;
 

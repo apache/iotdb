@@ -86,10 +86,10 @@ public class AuthorInfoTest {
     AuthorPlan authorPlan;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.USER.ordinal());
+    privilegeList.add(PrivilegeType.USER_PRIVILEGE.ordinal());
 
     Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.USER.ordinal());
+    revokePrivilege.add(PrivilegeType.USER_PRIVILEGE.ordinal());
 
     List<String> privilege = new ArrayList<>();
 
@@ -117,7 +117,9 @@ public class AuthorInfoTest {
 
     // check user privileges
     status =
-        authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.USER.ordinal()).getStatus();
+        authorInfo
+            .checkUserPrivileges("user0", paths, PrivilegeType.USER_PRIVILEGE.ordinal())
+            .getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
     // drop user
@@ -208,7 +210,9 @@ public class AuthorInfoTest {
 
     // check user privileges
     status =
-        authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.USER.ordinal()).getStatus();
+        authorInfo
+            .checkUserPrivileges("user0", paths, PrivilegeType.USER_PRIVILEGE.ordinal())
+            .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role
