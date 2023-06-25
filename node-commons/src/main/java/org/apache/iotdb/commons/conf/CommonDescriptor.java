@@ -304,10 +304,11 @@ public class CommonDescriptor {
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
 
-    config.setEnablePipeHeartbeat(
+    config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
-                "enable_pipe_heartbeat", String.valueOf(config.isEnablePipeHeartbeat()))));
+                "pipe_heartbeat_seperated_mode_enabled",
+                String.valueOf(config.isSeperatedPipeHeartbeatEnabled()))));
     config.setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
         Integer.parseInt(
             properties.getProperty(

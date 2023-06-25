@@ -642,7 +642,7 @@ public class PipeTaskAgent {
     if (PipeAgent.runtime().isShutdown()) {
       return;
     }
-    LOGGER.info(String.format("Pipe heartbeat %s arrive DataNode.", req.heartbeatId));
+    LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {

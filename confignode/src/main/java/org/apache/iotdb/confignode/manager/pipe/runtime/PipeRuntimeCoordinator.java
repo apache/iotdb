@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager.pipe.runtime;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
@@ -40,11 +39,8 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   private static final AtomicReference<ExecutorService> procedureSubmitterHolder =
       new AtomicReference<>();
   private final ExecutorService procedureSubmitter;
-  private static final boolean enablePipeHeartbeat =
-      PipeConfig.getInstance().isEnablePipeHeartbeat();
 
   private final PipeLeaderChangeHandler pipeLeaderChangeHandler;
-  private final PipeHeartbeatParser pipeHeartbeatParser;
   private final PipeMetaSyncer pipeMetaSyncer;
   private final PipeHeartbeatScheduler pipeHeartbeatScheduler;
 
@@ -61,7 +57,6 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     procedureSubmitter = procedureSubmitterHolder.get();
 
     pipeLeaderChangeHandler = new PipeLeaderChangeHandler(configManager);
-    pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
     pipeMetaSyncer = new PipeMetaSyncer(configManager);
     pipeHeartbeatScheduler = new PipeHeartbeatScheduler(configManager);
   }
@@ -80,11 +75,6 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     pipeLeaderChangeHandler.onRegionGroupLeaderChanged(event);
   }
 
-  public void parseHeartbeat(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    pipeHeartbeatParser.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
-  }
-
   public void startPipeMetaSync() {
     pipeMetaSyncer.start();
   }
@@ -94,14 +84,15 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   }
 
   public void startPipeHeartbeat() {
-    if (enablePipeHeartbeat) {
-      pipeHeartbeatScheduler.start();
-    }
+    pipeHeartbeatScheduler.start();
   }
 
   public void stopPipeHeartbeat() {
-    if (enablePipeHeartbeat) {
-      pipeHeartbeatScheduler.stop();
-    }
+    pipeHeartbeatScheduler.stop();
+  }
+
+  public void parseHeartbeat(
+      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+    pipeHeartbeatScheduler.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
   }
 }

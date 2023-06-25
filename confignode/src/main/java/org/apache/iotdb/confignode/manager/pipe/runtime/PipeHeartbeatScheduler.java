@@ -34,6 +34,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -43,16 +45,19 @@ public class PipeHeartbeatScheduler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatScheduler.class);
 
-  private static final ScheduledExecutorService HEARTBEAT_EXECUTOR =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_RUNTIME_HEARTBEAT.getName());
+  private static final boolean IS_SEPERATED_PIPE_HEARTBEAT_ENABLED =
+      PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled();
   private static final long HEARTBEAT_INTERVAL_SECONDS =
       PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta();
 
+  private static final ScheduledExecutorService HEARTBEAT_EXECUTOR =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.PIPE_RUNTIME_HEARTBEAT.getName());
+
   private final ConfigManager configManager;
+  private final PipeHeartbeatParser pipeHeartbeatParser;
 
   private Future<?> heartbeatFuture;
-  private final PipeHeartbeatParser pipeHeartbeatParser;
 
   PipeHeartbeatScheduler(ConfigManager configManager) {
     this.configManager = configManager;
@@ -60,11 +65,11 @@ public class PipeHeartbeatScheduler {
   }
 
   public synchronized void start() {
-    if (heartbeatFuture == null) {
+    if (IS_SEPERATED_PIPE_HEARTBEAT_ENABLED && heartbeatFuture == null) {
       heartbeatFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
               HEARTBEAT_EXECUTOR,
-              this::sync,
+              this::heartbeat,
               HEARTBEAT_INTERVAL_SECONDS,
               HEARTBEAT_INTERVAL_SECONDS,
               TimeUnit.SECONDS);
@@ -72,7 +77,7 @@ public class PipeHeartbeatScheduler {
     }
   }
 
-  private synchronized void sync() {
+  private synchronized void heartbeat() {
     if (configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().isEmpty()) {
       return;
     }
@@ -80,7 +85,7 @@ public class PipeHeartbeatScheduler {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
-    LOGGER.info(String.format("Pipe heartbeat %s from ConfigNode", request.heartbeatId));
+    LOGGER.info(String.format("Collecting pipe heartbeat %s from data nodes", request.heartbeatId));
 
     final AsyncClientHandler<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.PIPE_HEARTBEAT, request, dataNodeLocationMap);
@@ -93,10 +98,14 @@ public class PipeHeartbeatScheduler {
   }
 
   public synchronized void stop() {
-    if (heartbeatFuture != null) {
+    if (IS_SEPERATED_PIPE_HEARTBEAT_ENABLED && heartbeatFuture != null) {
       heartbeatFuture.cancel(false);
       heartbeatFuture = null;
       LOGGER.info("PipeHeartbeat is stopped successfully.");
     }
+  }
+
+  public void parseHeartbeat(int dataNodeId, List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+    pipeHeartbeatParser.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
   }
 }

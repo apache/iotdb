@@ -87,8 +87,8 @@ public class PipeConfig {
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
-  public boolean isEnablePipeHeartbeat() {
-    return COMMON_CONFIG.isEnablePipeHeartbeat();
+  public boolean isSeperatedPipeHeartbeatEnabled() {
+    return COMMON_CONFIG.isSeperatedPipeHeartbeatEnabled();
   }
 
   public int getPipeHeartbeatIntervalSecondsForCollectingPipeMeta() {
@@ -133,6 +133,7 @@ public class PipeConfig {
     LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());
     LOGGER.info("PipeConnectorPendingQueueSize: {}", getPipeConnectorPendingQueueSize());
 
+    LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
     LOGGER.info(
         "PipeHeartbeatIntervalSecondsForCollectingPipeMeta: {}",
         getPipeHeartbeatIntervalSecondsForCollectingPipeMeta());
