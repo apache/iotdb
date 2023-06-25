@@ -53,6 +53,9 @@ public class WALInfoEntry extends WALEntry {
 
   WALInfoEntry(WALEntryType type, long memTableId, WALEntryValue value) {
     super(type, memTableId, value, false);
+    if (value instanceof InsertTabletNode) {
+      tabletInfo = new TabletInfo(0, ((InsertTabletNode) value).getRowCount());
+    }
   }
 
   @Override
@@ -89,6 +92,26 @@ public class WALInfoEntry extends WALEntry {
       this.tabletStart = tabletStart;
       this.tabletEnd = tabletEnd;
     }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tabletStart, tabletEnd);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (!(obj instanceof TabletInfo)) {
+        return false;
+      }
+      TabletInfo other = (TabletInfo) obj;
+      return this.tabletStart == other.tabletStart && this.tabletEnd == other.tabletEnd;
+    }
   }
 
   @Override
@@ -98,7 +121,7 @@ public class WALInfoEntry extends WALEntry {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), tabletInfo.tabletStart, tabletInfo.tabletEnd);
+    return Objects.hash(super.hashCode(), tabletInfo);
   }
 
   @Override
@@ -107,7 +130,6 @@ public class WALInfoEntry extends WALEntry {
       return false;
     }
     WALInfoEntry other = (WALInfoEntry) obj;
-    return this.tabletInfo.tabletStart == other.tabletInfo.tabletStart
-        && this.tabletInfo.tabletEnd == other.tabletInfo.tabletEnd;
+    return Objects.equals(this.tabletInfo, other.tabletInfo);
   }
 }
