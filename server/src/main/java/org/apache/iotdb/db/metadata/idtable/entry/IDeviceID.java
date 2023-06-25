@@ -21,15 +21,15 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 
 import java.nio.ByteBuffer;
 
-/** device id interface */
+/** Device id interface. */
 public interface IDeviceID {
 
   /**
-   * to string format
+   * To string format.
    *
    * @return string format device id
    */
-  public String toStringID();
+  String toStringID();
 
-  public void serialize(ByteBuffer byteBuffer);
+  void serialize(ByteBuffer byteBuffer);
 }

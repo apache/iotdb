@@ -94,7 +94,6 @@ public class CountGroupByLevelMergeOperatorTest {
 
       CountGroupByLevelMergeOperator mergeOperator =
           new CountGroupByLevelMergeOperator(
-              planNodeId,
               driverContext.getOperatorContexts().get(0),
               Arrays.asList(timeSeriesCountOperator1, timeSeriesCountOperator2));
 

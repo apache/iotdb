@@ -593,7 +593,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SchemaQueryMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new SchemaQueryMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    return new SchemaQueryMergeOperator(operatorContext, children);
   }
 
   @Override
@@ -608,9 +608,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 CountMergeOperator.class.getSimpleName());
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
     if (node.getChildren().get(0) instanceof LevelTimeSeriesCountNode) {
-      return new CountGroupByLevelMergeOperator(node.getPlanNodeId(), operatorContext, children);
+      return new CountGroupByLevelMergeOperator(operatorContext, children);
     } else {
-      return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
+      return new CountMergeOperator(operatorContext, children);
     }
   }
 

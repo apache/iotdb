@@ -31,8 +31,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 

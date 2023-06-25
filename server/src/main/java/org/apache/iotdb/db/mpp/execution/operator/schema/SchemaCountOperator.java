@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -107,7 +108,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
             return NOT_BLOCKED;
           }
         } catch (Exception e) {
-          throw new RuntimeException(e);
+          throw new SchemaExecutionException(e);
         }
       }
     }
@@ -129,7 +130,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   public boolean hasNext() throws Exception {
     isBlocked().get(); // wait for the next TsBlock
     if (schemaReader != null && !schemaReader.isSuccess()) {
-      throw new RuntimeException(schemaReader.getFailure());
+      throw new SchemaExecutionException(schemaReader.getFailure());
     }
     return !isFinished;
   }

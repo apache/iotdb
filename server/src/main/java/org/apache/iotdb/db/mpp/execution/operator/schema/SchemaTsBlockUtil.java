@@ -34,6 +34,10 @@ public class SchemaTsBlockUtil {
 
   private static final long MAX_SIZE = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
+  private SchemaTsBlockUtil() {
+    // util class
+  }
+
   public static <T> List<TsBlock> transferSchemaResultToTsBlockList(
       Iterator<T> schemaRegionResultIterator,
       List<TSDataType> outputDataTypes,

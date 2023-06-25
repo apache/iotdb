@@ -30,17 +30,17 @@ import java.util.List;
 public interface ISchemaSource<T extends ISchemaInfo> {
 
   /**
-   * Get the SchemaReader for iterating target SchemaInfo from given SchemaRegion
+   * Get the SchemaReader for iterating target SchemaInfo from given SchemaRegion.
    *
    * @return the SchemaReader for SchemaInfo T
    */
   ISchemaReader<T> getSchemaReader(ISchemaRegion schemaRegion);
 
-  /** Get the column headers of the result TsBlock for SchemaInfo query */
+  /** Get the column headers of the result TsBlock for SchemaInfo query. */
   List<ColumnHeader> getInfoQueryColumnHeaders();
 
   /**
-   * Transform the SchemaInfo T to fill the TsBlock
+   * Transform the SchemaInfo T to fill the TsBlock.
    *
    * @param schemaInfo the SchemaInfo need to be processed
    * @param tsBlockBuilder the target TsBlockBuilder using for generating TsBlock

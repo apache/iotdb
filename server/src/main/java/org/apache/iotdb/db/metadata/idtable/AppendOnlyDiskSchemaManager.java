@@ -43,7 +43,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-/** store id table schema in append only file */
+/** Store id table schema in append only file. */
 public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   private static final String FILE_NAME = "SeriesKeyMapping.meta";
@@ -200,7 +200,7 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   }
 
   /**
-   * get DiskSchemaEntries from disk file
+   * Get DiskSchemaEntries from disk file.
    *
    * @param offsets the offset of each record on the disk file
    * @return DiskSchemaEntries
@@ -220,10 +220,10 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   }
 
   /**
-   * delete DiskSchemaEntry on disk
+   * Delete DiskSchemaEntry on disk
    *
    * @param offset the offset of a record on the disk file
-   * @throws MetadataException
+   * @throws MetadataException metadata exception
    */
   @Override
   public void deleteDiskSchemaEntryByOffset(long offset) throws MetadataException {

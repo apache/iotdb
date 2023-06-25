@@ -17,22 +17,19 @@
  * under the License.
  */
 
-package org.testcontainers.containers;
+package org.apache.iotdb.commons.exception.runtime;
 
-import java.io.File;
-import java.lang.reflect.Field;
+public class SchemaExecutionException extends RuntimeException {
 
-public class NoProjectNameDockerComposeContainer extends DockerComposeContainer {
+  public SchemaExecutionException(String message) {
+    super(message);
+  }
 
-  public NoProjectNameDockerComposeContainer(String identifier, File... composeFiles) {
-    super(identifier, composeFiles);
-    Field project = null;
-    try {
-      project = DockerComposeContainer.class.getDeclaredField("project");
-      project.setAccessible(true);
-      project.set(this, "");
-    } catch (NoSuchFieldException | IllegalAccessException e) {
-      e.printStackTrace();
-    }
+  public SchemaExecutionException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public SchemaExecutionException(Throwable cause) {
+    super(cause);
   }
 }

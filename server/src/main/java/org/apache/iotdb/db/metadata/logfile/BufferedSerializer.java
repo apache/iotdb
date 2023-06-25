@@ -28,7 +28,7 @@ import java.io.OutputStream;
 /**
  * This class provides the ability to buffer the data serialized by nested serializer.
  *
- * @param <T>
+ * @param <T> the generic type
  */
 @NotThreadSafe
 public class BufferedSerializer<T> implements ISerializer<T> {

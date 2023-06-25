@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
-        run: mvn -B clean compile test -pl distribution -am -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer'
+        run: mvn -B clean compile test -pl distribution -am -Dtest.port.closed=true -Pcode-coverage
       - name: Coveralls
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
@@ -54,7 +54,7 @@ jobs:
           -Dbranch=$BRANCH_NAME \
           -DpullRequest=$PR_NUMBER \
           -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-          -Pcode-coverage -P '!testcontainer'
+          -Pcode-coverage
 
   sonar:
     runs-on: ubuntu-latest
@@ -77,4 +77,4 @@ jobs:
           -Dsonar.projectKey=apache_incubator-iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
-          -DskipTests -pl '!distribution,!integration-test'  -P '!testcontainer' -am
+          -DskipTests -pl '!distribution,!integration-test' -am
