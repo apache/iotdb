@@ -200,6 +200,7 @@ public class ClusterSchemaTree implements ISchemaTree {
    *
    * @param schemaComputation the statement
    * @param indexOfTargetLogicalView the index list of logicalViewSchemaList that you want to check
+   * @throws SemanticException path not exist or different source path of view
    */
   public void computeSourceOfLogicalView(
       ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView)
@@ -396,6 +397,7 @@ public class ClusterSchemaTree implements ISchemaTree {
    *
    * @param pathName only full path, cannot be path pattern
    * @return database in the given path
+   * @throws SemanticException no matched database
    */
   @Override
   public String getBelongedDatabase(String pathName) {
