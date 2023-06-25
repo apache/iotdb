@@ -81,6 +81,11 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
   }
 
   @Override
+  public SchemaNode getChild(String name) {
+    return null;
+  }
+
+  @Override
   public void replaceChild(String name, SchemaNode newChild) {
     throw new UnsupportedOperationException(
         "This operation is not supported in SchemaMeasurementNode.");
@@ -138,7 +143,7 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     String alias = ReadWriteIOUtils.readString(inputStream);
 
     IMeasurementSchema schema = null;
-    Byte measurementSchemaType = ReadWriteIOUtils.readByte(inputStream);
+    byte measurementSchemaType = ReadWriteIOUtils.readByte(inputStream);
     if (measurementSchemaType
         == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
       schema = MeasurementSchema.deserializeFrom(inputStream);

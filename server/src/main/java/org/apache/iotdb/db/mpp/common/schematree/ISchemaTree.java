@@ -71,6 +71,10 @@ public interface ISchemaTree {
 
   void mergeSchemaTree(ISchemaTree schemaTree);
 
-  /** @return if there is measurementPath in this schema tree, return true; else return false */
+  /**
+   * If there is view in this schema tree, return true, else return false.
+   *
+   * @return whether there's view in this schema tree
+   */
   boolean hasLogicalViewMeasurement();
 }
