@@ -20,7 +20,7 @@
 package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.hadoop.filesystem.HDFSInput;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;

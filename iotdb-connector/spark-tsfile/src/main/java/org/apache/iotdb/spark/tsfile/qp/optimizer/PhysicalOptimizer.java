@@ -99,7 +99,7 @@ public class PhysicalOptimizer {
     }
 
     // query all measurements from TSFile
-    if (selectedSeries.size() == 0) {
+    if (selectedSeries.isEmpty()) {
       selectedSeries.addAll(allMeasurementsInFile.keySet());
     } else {
       // remove paths that doesn't exist in file
@@ -143,10 +143,10 @@ public class PhysicalOptimizer {
     // which should in column names -> now just device_name
     // use delta_object column
     if (columnValues.containsKey(SQLConstant.RESERVED_DELTA_OBJECT)) {
-      Set<String> delta_objects = columnValues.get(SQLConstant.RESERVED_DELTA_OBJECT);
-      for (String delta_object : delta_objects) {
-        if (actualDeltaObjects.contains(delta_object)) {
-          validDeltaObjects.add(delta_object);
+      Set<String> deltaObjects = columnValues.get(SQLConstant.RESERVED_DELTA_OBJECT);
+      for (String deltaObject : deltaObjects) {
+        if (actualDeltaObjects.contains(deltaObject)) {
+          validDeltaObjects.add(deltaObject);
         }
       }
       return;
@@ -178,14 +178,14 @@ public class PhysicalOptimizer {
   }
 
   private Map<String, Set<String>> mergeColumns(List<FilterOperator> columnFilterOperators) {
-    Map<String, Set<String>> column_values_map = new HashMap<>();
+    Map<String, Set<String>> columnValuesMap = new HashMap<>();
     for (FilterOperator filterOperator : columnFilterOperators) {
-      Pair<String, Set<String>> column_values = mergeColumn(filterOperator);
-      if (column_values != null && !column_values.right.isEmpty()) {
-        column_values_map.put(column_values.left, column_values.right);
+      Pair<String, Set<String>> columnValues = mergeColumn(filterOperator);
+      if (columnValues != null && !columnValues.right.isEmpty()) {
+        columnValuesMap.put(columnValues.left, columnValues.right);
       }
     }
-    return column_values_map;
+    return columnValuesMap;
   }
 
   /**

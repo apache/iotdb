@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.hadoop.fileSystem;
+package org.apache.iotdb.hadoop.filesystem;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -27,6 +27,8 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -48,8 +50,8 @@ import java.util.List;
 public class HDFSFile extends File {
 
   private static final long serialVersionUID = -8419827359081949547L;
-  private Path hdfsPath;
-  private FileSystem fs;
+  private transient Path hdfsPath;
+  private transient FileSystem fs;
   private static final Logger logger = LoggerFactory.getLogger(HDFSFile.class);
   private static final String UNSUPPORT_OPERATION = "Unsupported operation.";
 
@@ -117,7 +119,7 @@ public class HDFSFile extends File {
   }
 
   @Override
-  public File[] listFiles() {
+  public @Nullable File[] listFiles() {
     List<HDFSFile> files = new ArrayList<>();
     try {
       for (FileStatus fileStatus : fs.listStatus(hdfsPath)) {
@@ -230,7 +232,7 @@ public class HDFSFile extends File {
     }
   }
 
-  public BufferedWriter getBufferedWriter(String filePath, boolean append) {
+  public BufferedWriter getBufferedWriter(String filePath) {
     try {
       return new BufferedWriter(new OutputStreamWriter(fs.create(new Path(filePath))));
     } catch (IOException e) {

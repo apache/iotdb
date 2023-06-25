@@ -25,7 +25,7 @@ import java.util
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, FileSystem, Path}
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput
+import org.apache.iotdb.hadoop.filesystem.HDFSInput
 import org.apache.iotdb.spark.constant.TestConstant
 import org.apache.iotdb.spark.tool.TsFileWriteTool
 import org.apache.iotdb.tsfile.common.constant.QueryConstant

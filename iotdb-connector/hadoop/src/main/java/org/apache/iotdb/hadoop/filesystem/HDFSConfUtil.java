@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.hadoop.fileSystem;
+package org.apache.iotdb.hadoop.filesystem;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 
 class HDFSConfUtil {
+
+  private HDFSConfUtil() {}
 
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(HDFSConfUtil.class);

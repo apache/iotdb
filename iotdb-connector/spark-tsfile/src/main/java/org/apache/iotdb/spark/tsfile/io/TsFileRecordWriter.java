@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.spark.tsfile.io;
 
-import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
+import org.apache.iotdb.hadoop.filesystem.HDFSOutput;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;

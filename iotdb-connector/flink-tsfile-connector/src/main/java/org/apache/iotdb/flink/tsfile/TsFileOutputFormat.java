@@ -20,7 +20,7 @@
 package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
-import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
+import org.apache.iotdb.hadoop.filesystem.HDFSOutput;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -53,7 +53,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
   @Nullable protected TSFileConfig config;
 
   protected transient Configuration hadoopConf = null;
-  private FileOutputStream fos = null;
+  private transient FileOutputStream fos = null;
   protected transient TsFileWriter writer = null;
 
   protected TsFileOutputFormat(String path, Schema schema, TSFileConfig config) {
@@ -77,7 +77,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
     // Use TsFile API to write instead of FSDataOutputStream.
     this.stream.close();
     Path actualFilePath = getAcutalFilePath();
-    TsFileOutput out;
+    TsFileOutput out = null;
     try {
       if (actualFilePath.getFileSystem().isDistributedFS()) {
         // HDFS
@@ -91,6 +91,13 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
       }
     } catch (URISyntaxException e) {
       throw new RuntimeException(e);
+    } finally{
+      if (out != null){
+        out.close();
+      }
+      if (fos != null) {
+        fos.close();
+      }
     }
     writer = new TsFileWriter(out, schema);
   }

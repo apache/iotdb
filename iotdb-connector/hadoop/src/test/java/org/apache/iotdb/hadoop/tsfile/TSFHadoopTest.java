@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.hadoop.filesystem.HDFSInput;
 import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSType;

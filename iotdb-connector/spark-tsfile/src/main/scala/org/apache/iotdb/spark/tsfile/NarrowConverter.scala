@@ -21,7 +21,7 @@ package org.apache.iotdb.spark.tsfile
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput
+import org.apache.iotdb.hadoop.filesystem.HDFSInput
 import org.apache.iotdb.spark.tsfile.qp.QueryProcessor
 import org.apache.iotdb.spark.tsfile.qp.common.{BasicOperator, FilterOperator, SQLConstant, TSQueryPlan}
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
@@ -310,7 +310,7 @@ object NarrowConverter extends Converter {
         throw new Exception("NOT filter is not supported now")
 
       case SQLConstant.KW_AND =>
-        node.childOperators.foreach((child: FilterOperator) => {
+        node.getChildOperators.foreach((child: FilterOperator) => {
           if (filter == null) {
             filter = transformFilterToExpression(schema, child, device_name)
           }
@@ -322,7 +322,7 @@ object NarrowConverter extends Converter {
         filter
 
       case SQLConstant.KW_OR =>
-        node.childOperators.foreach((child: FilterOperator) => {
+        node.getChildOperators.foreach((child: FilterOperator) => {
           if (filter == null) {
             filter = transformFilterToExpression(schema, child, device_name)
           }
