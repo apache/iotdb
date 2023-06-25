@@ -110,7 +110,7 @@ public class TsFileProcessor {
   private final boolean enableMemControl = config.isEnableMemControl();
 
   /** database info for mem control. */
-  private DataRegionInfo dataRegionInfo;
+  private final DataRegionInfo dataRegionInfo;
   /** tsfile processor info for mem control. */
   private TsFileProcessorInfo tsFileProcessorInfo;
 
@@ -118,7 +118,7 @@ public class TsFileProcessor {
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
 
   /** modification to memtable mapping. */
-  private List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
+  private final List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
 
   /** writer for restore tsfile and flushing. */
   private RestorableTsFileIOWriter writer;
@@ -918,11 +918,11 @@ public class TsFileProcessor {
       }
     }
 
-    synchronized (tmpMemTable) {
+    synchronized (flushingMemTables) {
       try {
         long startWait = System.currentTimeMillis();
         while (flushingMemTables.contains(tmpMemTable)) {
-          tmpMemTable.wait(1000);
+          flushingMemTables.wait(1000);
 
           if ((System.currentTimeMillis() - startWait) > 60_000) {
             logger.warn(
@@ -1078,11 +1078,10 @@ public class TsFileProcessor {
   }
 
   /** This method will synchronize the memTable and release its flushing resources */
-  @SuppressWarnings("squid:S2445")
   private void syncReleaseFlushedMemTable(IMemTable memTable) {
-    synchronized (memTable) {
+    synchronized (flushingMemTables) {
       releaseFlushedMemTable(memTable);
-      memTable.notifyAll();
+      flushingMemTables.notifyAll();
       if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: {} released a memtable (signal={}), flushingMemtables size ={}",
