@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -23,9 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet;
@@ -177,16 +176,4 @@ public class ClusterScheduler implements IScheduler {
   public FragmentInfo getFragmentInfo() {
     return null;
   }
-
-  @Override
-  public void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
-
-  @Override
-  public void cancelFragment(PlanFragmentId planFragmentId) {}
-
-  // Send the instances to other nodes
-  private void sendFragmentInstances() {}
-
-  // After sending, start to collect the states of these fragment instances
-  private void startMonitorInstances() {}
 }

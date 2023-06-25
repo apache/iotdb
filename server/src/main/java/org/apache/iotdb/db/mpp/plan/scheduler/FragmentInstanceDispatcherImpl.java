@@ -81,6 +81,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
+  private static final String DISPATCH_FAILED = "[DispatchFailed]";
+
+  private static final String UNEXPECTED_ERRORS = "Unexpected errors: ";
+
   public FragmentInstanceDispatcherImpl(
       QueryType type,
       MPPQueryContext queryContext,
@@ -119,11 +123,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Throwable t) {
-        logger.warn("[DispatchFailed]", t);
+        logger.warn(DISPATCH_FAILED, t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
-                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+                    TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
       } finally {
         QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
             DISPATCH_READ, System.nanoTime() - startTime);
@@ -149,10 +153,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           }
         }
       } catch (Throwable t) {
-        logger.warn("[DispatchFailed]", t);
+        logger.warn(DISPATCH_FAILED, t);
         failureStatusList.add(
             RpcUtils.getStatus(
-                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+                TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
       }
     }
     if (failureStatusList.isEmpty()) {
@@ -194,10 +198,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         } catch (FragmentInstanceDispatchException e) {
           dataNodeFailureList.add(e.getFailureStatus());
         } catch (Throwable t) {
-          logger.warn("[DispatchFailed]", t);
+          logger.warn(DISPATCH_FAILED, t);
           dataNodeFailureList.add(
               RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
+                  TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
         }
       }
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
