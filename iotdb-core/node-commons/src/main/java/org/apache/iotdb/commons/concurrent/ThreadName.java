@@ -362,7 +362,6 @@ public enum ThreadName {
         ThreadModule.IOT_CONSENSUS,
         ThreadModule.RATIS_CONSENSUS,
         ThreadModule.COMPUTE,
-        ThreadModule.SYNC,
         ThreadModule.JVM,
         ThreadModule.METRICS,
         ThreadModule.RPC,
