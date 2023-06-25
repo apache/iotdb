@@ -71,7 +71,15 @@ public class PathVisitor extends PathParserBaseVisitor<String[]> {
       }
       return unWrapped;
     }
+    checkNodeName(nodeName);
     return nodeName;
+  }
+
+  private void checkNodeName(String src) {
+    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
+      throw new IllegalArgumentException(
+          String.format("%s is illegal, unquoted node name can only consist of digits.", src));
+    }
   }
 
   /** Return true if the str is a real number. Examples: 1.0; +1.0; -1.0; 0011; 011e3; +23e-3 */

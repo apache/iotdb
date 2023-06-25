@@ -132,6 +132,27 @@ public class IoTDBSessionSyntaxConventionIT {
   }
 
   @Test
+  public void insertWithIllegalDeviceTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      String deviceId = "root.sg1.d#1";
+      List<String> measurements = new ArrayList<>();
+      List<String> values = new ArrayList<>();
+      measurements.add("a");
+      values.add("b");
+      try {
+        session.insertRecord(deviceId, 1L, measurements, values);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+      assertFalse(dataSet.hasNext());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void inserRecordWithIllegalMeasurementTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       String deviceId = "root.sg1.d1";
