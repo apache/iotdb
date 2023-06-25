@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -26,7 +27,10 @@ public class SchemaQuotaExceededException extends MetadataException {
   public SchemaQuotaExceededException(ClusterSchemaQuotaLevel level, long limit) {
     super(
         String.format(
-            "The current metadata capacity has exceeded the cluster quota. The cluster quota is set at the %s level, with a limit number of %d. Please review your configuration or delete some existing time series to comply with the quota.",
+            "The current metadata capacity has exceeded the cluster quota. "
+                + "The cluster quota is set at the %s level, with a limit number of %d. "
+                + "Please review your configuration "
+                + "or delete some existing time series to comply with the quota.",
             level.toString(), limit),
         TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
   }

@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class MeasurementAlreadyExistException extends MetadataException {
 
-  private MeasurementPath measurementPath;
+  private final MeasurementPath measurementPath;
 
   public MeasurementAlreadyExistException(String path, MeasurementPath measurementPath) {
     super(

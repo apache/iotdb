@@ -17,6 +17,7 @@
  * under the License.
  *
  */
+
 package org.apache.iotdb.db.exception.metadata.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
