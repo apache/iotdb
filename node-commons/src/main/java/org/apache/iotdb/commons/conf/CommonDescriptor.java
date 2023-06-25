@@ -304,11 +304,16 @@ public class CommonDescriptor {
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
 
-    config.setPipeHeartbeatLoopCyclesForCollectingPipeMeta(
+    config.setSeperatedPipeHeartbeatEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_heartbeat_seperated_mode_enabled",
+                String.valueOf(config.isSeperatedPipeHeartbeatEnabled()))));
+    config.setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_heartbeat_loop_cycles_for_collecting_pipe_meta",
-                String.valueOf(config.getPipeHeartbeatLoopCyclesForCollectingPipeMeta()))));
+                "pipe_heartbeat_interval_seconds_for_collecting_pipe_meta",
+                String.valueOf(config.getPipeHeartbeatIntervalSecondsForCollectingPipeMeta()))));
     config.setPipeMetaSyncerInitialSyncDelayMinutes(
         Long.parseLong(
             properties.getProperty(
