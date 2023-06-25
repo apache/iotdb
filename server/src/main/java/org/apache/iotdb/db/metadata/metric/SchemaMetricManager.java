@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.metric;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -30,11 +31,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaMetricManager {
 
   private final Map<Integer, ISchemaRegionMetric> schemaRegionMetricMap = new ConcurrentHashMap<>();
-  private ISchemaEngineMetric engineMetric;
+  private final ISchemaEngineMetric engineMetric;
 
-  private SchemaMetricManager() {}
-
-  public void init(ISchemaEngineStatistics engineStatistics) {
+  public SchemaMetricManager(ISchemaEngineStatistics engineStatistics) {
     if (CommonDescriptor.getInstance().getConfig().getSchemaEngineMode().equals("Memory")) {
       engineMetric = new SchemaEngineMemMetric(engineStatistics.getAsMemSchemaEngineStatistics());
     } else {
@@ -60,26 +59,10 @@ public class SchemaMetricManager {
   }
 
   public void clear() {
-    if (engineMetric != null) {
-      MetricService.getInstance().removeMetricSet(engineMetric);
-      engineMetric = null;
-    }
+    MetricService.getInstance().removeMetricSet(engineMetric);
     for (ISchemaRegionMetric regionMetric : schemaRegionMetricMap.values()) {
       MetricService.getInstance().removeMetricSet(regionMetric);
     }
     schemaRegionMetricMap.clear();
-  }
-
-  /** SingleTone */
-  private static class SchemaMetricManagerHolder {
-    private static final SchemaMetricManager INSTANCE = new SchemaMetricManager();
-
-    private SchemaMetricManagerHolder() {
-      // Empty constructor
-    }
-  }
-
-  public static SchemaMetricManager getInstance() {
-    return SchemaMetricManager.SchemaMetricManagerHolder.INSTANCE;
   }
 }
