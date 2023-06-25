@@ -154,7 +154,6 @@ public enum ThreadName {
 
   private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
   private final String name;
-  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
   private static Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
