@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.commons.concurrent;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -135,7 +132,6 @@ public enum ThreadName {
   SYSTEM_SCHEDULE_METRICS("SystemScheduleMetrics"),
   RESOURCE_CONTROL_DISK_STATISTIC("ResourceControl-DataRegionDiskStatistics"),
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
-  PROMETHEUS_REACTOR_HTTP_EPOLL("reactor-http-epoll"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
   // -------------------------- Other --------------------------
   TTL_CHECK("TTL-CHECK"),
@@ -150,7 +146,6 @@ public enum ThreadName {
   UNKOWN("UNKNOWN");
 
   private final String name;
-  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
   private static Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -262,7 +257,6 @@ public enum ThreadName {
               SYSTEM_SCHEDULE_METRICS,
               RESOURCE_CONTROL_DISK_STATISTIC,
               PROMETHEUS_REACTOR_HTTP_NIO,
-              PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_BOUNDED_ELASTIC));
   private static Set<ThreadName> otherThreadNames =
       new HashSet<>(
@@ -357,7 +351,6 @@ public enum ThreadName {
         }
       }
     }
-    log.debug("Unknown thread name: {}", givenThreadName);
     return ThreadName.UNKOWN;
   }
 }
