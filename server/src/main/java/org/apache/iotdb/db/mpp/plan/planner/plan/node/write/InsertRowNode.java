@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.runtime.UnSupportedDataTypeException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -55,6 +57,10 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   private static final byte TYPE_RAW_STRING = -1;
 
   private static final byte TYPE_NULL = -2;
+
+  private static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
+
+  private static final String DESERIALIZE_ERROR = "Cannot deserialize InsertRowNode";
 
   private long time;
   private Object[] values;
@@ -114,11 +120,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // no child for InsertRowNode
+  }
 
   @Override
   public PlanNode clone() {
@@ -220,7 +228,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     serializeMeasurementsAndValues(stream);
   }
 
-  /** Serialize measurements and values, ignoring failed time series */
+  /** Serialize measurements and values, ignoring failed time series. */
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
     ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), buffer);
     serializeMeasurementsOrSchemas(buffer);
@@ -229,7 +237,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), buffer);
   }
 
-  /** Serialize measurements and values, ignoring failed time series */
+  /**
+   * Serialize measurements and values, ignoring failed time series.
+   *
+   * @param stream - DataOutputStream.
+   * @throws IOException - If an I/O error occurs.
+   */
   void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(measurements.length - getFailedMeasurementNumber(), stream);
     serializeMeasurementsOrSchemas(stream);
@@ -238,7 +251,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     ReadWriteIOUtils.write((byte) (isAligned ? 1 : 0), stream);
   }
 
-  /** Serialize measurements or measurement schemas, ignoring failed time series */
+  /** Serialize measurements or measurement schemas, ignoring failed time series. */
   private void serializeMeasurementsOrSchemas(ByteBuffer buffer) {
     ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), buffer);
     for (int i = 0; i < measurements.length; i++) {
@@ -255,7 +268,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /** Serialize measurements or measurement schemas, ignoring failed time series */
+  /**
+   * Serialize measurements or measurement schemas, ignoring failed time series.
+   *
+   * @param stream - DataOutputStream
+   * @throws IOException - If an I/O error occurs.
+   */
   private void serializeMeasurementsOrSchemas(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write((byte) (measurementSchemas != null ? 1 : 0), stream);
     for (int i = 0; i < measurements.length; i++) {
@@ -272,7 +290,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  /** Serialize data types and values, ignoring failed time series */
+  /**
+   * Serialize data types and values, ignoring failed time series.
+   *
+   * @param buffer ByteBuffer.
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   private void putDataTypesAndValues(ByteBuffer buffer) {
     for (int i = 0; i < values.length; i++) {
       // ignore failed partial insert
@@ -311,13 +334,19 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             ReadWriteIOUtils.write((Binary) values[i], buffer);
             break;
           default:
-            throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
         }
       }
     }
   }
 
-  /** Serialize data types and values, ignoring failed time series */
+  /**
+   * Serialize data types and values, ignoring failed time series.
+   *
+   * @param stream - DataOutputStream.
+   * @throws IOException - If an I/O error occurs.
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   private void putDataTypesAndValues(DataOutputStream stream) throws IOException {
     for (int i = 0; i < values.length; i++) {
       // ignore failed partial insert
@@ -356,7 +385,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             ReadWriteIOUtils.write((Binary) values[i], stream);
             break;
           default:
-            throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+            throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
         }
       }
     }
@@ -375,7 +404,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     try {
       devicePath = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+      throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
     deserializeMeasurementsAndValues(byteBuffer);
   }
@@ -405,7 +434,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     isAligned = buffer.get() == 1;
   }
 
-  /** Make sure the dataTypes and values have been created before calling this */
+  /**
+   * Make sure the dataTypes and values have been created before calling this.
+   *
+   * @param buffer - ByteBuffer
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   private void fillDataTypesAndValues(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       // types are not determined, the situation mainly occurs when the node uses string values
@@ -436,7 +470,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
-          throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
   }
@@ -447,7 +481,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   // region serialize & deserialize methods for WAL
-  /** Serialized size for wal */
+  /** Serialized size for wal. */
   @Override
   public int serializedSize() {
     return Short.BYTES + subSerializeSize();
@@ -497,6 +531,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         case TEXT:
           size += ReadWriteIOUtils.sizeToWrite((Binary) values[i]);
           break;
+        default:
+          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
 
@@ -521,7 +557,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     serializeMeasurementsAndValues(buffer);
   }
 
-  /** Serialize measurements and values, ignoring failed time series */
+  /** Serialize measurements and values, ignoring failed time series. */
   private void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
     buffer.putInt(measurements.length - getFailedMeasurementNumber());
     serializeMeasurementSchemasToWAL(buffer);
@@ -529,7 +565,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
-  /** Serialize data types and values, ignoring failed time series */
+  /**
+   * Serialize data types and values, ignoring failed time series.
+   *
+   * @param buffer - IWALByteBufferView
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   private void putDataTypesAndValues(IWALByteBufferView buffer) {
     for (int i = 0; i < values.length; i++) {
       // ignore failed partial insert
@@ -562,12 +603,19 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           WALWriteUtils.write((Binary) values[i], buffer);
           break;
         default:
-          throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
   }
 
-  /** Deserialize from wal */
+  /**
+   * Deserialize from wal.
+   *
+   * @param stream - DataInputStream
+   * @return InsertRowNode
+   * @throws IOException - If an I/O error occurs.
+   * @throws IllegalArgumentException - If meets illegal argument.
+   */
   public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
@@ -576,7 +624,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     try {
       insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+      throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
     insertNode.deserializeMeasurementsAndValuesFromWAL(stream);
 
@@ -597,7 +645,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     isAligned = stream.readByte() == 1;
   }
 
-  /** Make sure the dataTypes and values have been created before calling this */
+  /**
+   * Make sure the dataTypes and values have been created before calling this.
+   *
+   * @param stream - DataInputStream
+   * @throws IOException - If an I/O error occurs.
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   public void fillDataTypesAndValuesFromWAL(DataInputStream stream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = stream.readByte();
@@ -625,12 +679,18 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readBinary(stream);
           break;
         default:
-          throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
   }
 
-  /** Deserialize from wal */
+  /**
+   * Deserialize from wal.
+   *
+   * @param buffer - ByteBuffer
+   * @return InsertRowNode
+   * @throws IllegalArgumentException - If meets illegal argument
+   */
   public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
@@ -639,7 +699,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     try {
       insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
     } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+      throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
     insertNode.deserializeMeasurementsAndValuesFromWAL(buffer);
 
@@ -660,7 +720,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     isAligned = buffer.get() == 1;
   }
 
-  /** Make sure the dataTypes and values have been created before calling this */
+  /**
+   * Make sure the dataTypes and values have been created before calling this.
+   *
+   * @param buffer - ByteBuffer
+   * @throws UnSupportedDataTypeException - If meets unsupported data type.
+   */
   public void fillDataTypesAndValuesFromWAL(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = buffer.get();
@@ -688,7 +753,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
-          throw new RuntimeException("Unsupported data type:" + dataTypes[i]);
+          throw new UnSupportedDataTypeException(UNSUPPORTED_DATA_TYPE + dataTypes[i]);
       }
     }
   }
@@ -696,9 +761,15 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     InsertRowNode that = (InsertRowNode) o;
     return time == that.time
         && isNeedInferType == that.isNeedInferType

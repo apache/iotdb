@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.linear;
 
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
@@ -44,7 +45,6 @@ public abstract class LinearFill implements ILinearFill {
   @Override
   public Column fill(TimeColumn timeColumn, Column valueColumn, long startRowIndex) {
     int size = valueColumn.getPositionCount();
-    // if this valueColumn is empty, just return itself;
     if (size == 0) {
       return valueColumn;
     }
@@ -59,16 +59,7 @@ public abstract class LinearFill implements ILinearFill {
 
     // if its values are all null
     if (valueColumn instanceof RunLengthEncodedColumn) {
-      // previous value is null or next value is null, we just return NULL_VALUE_BLOCK
-      if (previousIsNull || nextRowIndex < startRowIndex) {
-        return new RunLengthEncodedColumn(createNullValueColumn(), size);
-      } else {
-        prepareForNextValueInCurrentColumn(
-            startRowIndex + timeColumn.getPositionCount() - 1,
-            timeColumn.getPositionCount(),
-            valueColumn);
-        return new RunLengthEncodedColumn(createFilledValueColumn(), size);
-      }
+      return doWithAllNulls(startRowIndex, size, timeColumn, valueColumn);
     } else {
       Object array = createValueArray(size);
       boolean[] isNull = new boolean[size];
@@ -78,16 +69,7 @@ public abstract class LinearFill implements ILinearFill {
       for (int i = 0; i < size; i++) {
         // current value is null, we need to fill it
         if (valueColumn.isNull(i)) {
-          long currentRowIndex = startRowIndex + i;
-          prepareForNextValueInCurrentColumn(currentRowIndex, i + 1, valueColumn);
-          // we don't fill it, if either previous value or next value is null
-          if (previousIsNull || nextIsNull(currentRowIndex)) {
-            isNull[i] = true;
-            hasNullValue = true;
-          } else {
-            // fill value using previous and next value
-            fillValue(array, i);
-          }
+          hasNullValue = fill(startRowIndex, i, isNull, valueColumn, array) || hasNullValue;
         } else { // current is not null
           // fill value using its own value
           fillValue(valueColumn, i, array);
@@ -100,7 +82,38 @@ public abstract class LinearFill implements ILinearFill {
     }
   }
 
+  private Column doWithAllNulls(
+      long startRowIndex, int size, Column timeColumn, Column valueColumn) {
+    // previous value is null or next value is null, we just return NULL_VALUE_BLOCK
+    if (previousIsNull || nextRowIndex < startRowIndex) {
+      return new RunLengthEncodedColumn(createNullValueColumn(), size);
+    } else {
+      prepareForNextValueInCurrentColumn(
+          startRowIndex + timeColumn.getPositionCount() - 1,
+          timeColumn.getPositionCount(),
+          valueColumn);
+      return new RunLengthEncodedColumn(createFilledValueColumn(), size);
+    }
+  }
+
+  private boolean fill(
+      long startRowIndex, int i, boolean[] isNull, Column valueColumn, Object array) {
+    long currentRowIndex = startRowIndex + i;
+    prepareForNextValueInCurrentColumn(currentRowIndex, i + 1, valueColumn);
+    // we don't fill it, if either previous value or next value is null
+    if (previousIsNull || nextIsNull(currentRowIndex)) {
+      isNull[i] = true;
+      return true;
+    } else {
+      // fill value using previous and next value
+      fillValue(array, i);
+      return false;
+    }
+  }
+
   /**
+   * Whether need prepare for next.
+   *
    * @param rowIndex end time of current valueColumn that need to be filled
    * @param valueColumn valueColumn that need to be filled
    * @return true if valueColumn can't be filled using current information, and we need to get next
@@ -173,6 +186,6 @@ public abstract class LinearFill implements ILinearFill {
 
   abstract void updateNextValueInCurrentColumn(Column nextValueColumn, int index);
 
-  /** update nextValueInCurrentColumn using value of next Column */
+  /** update nextValueInCurrentColumn using value of next Column. */
   abstract void updateNextValueInCurrentColumn();
 }

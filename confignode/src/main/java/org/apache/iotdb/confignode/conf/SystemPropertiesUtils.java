@@ -181,6 +181,21 @@ public class SystemPropertiesUtils {
       conf.setSeriesPartitionExecutorClass(seriesPartitionSlotExecutorClass);
     }
 
+    if (systemProperties.getProperty("time_partition_interval", null) == null) {
+      needReWrite = true;
+    } else {
+      long timePartitionInterval =
+          Long.parseLong(systemProperties.getProperty("time_partition_interval"));
+      if (timePartitionInterval != COMMON_CONFIG.getTimePartitionInterval()) {
+        LOGGER.warn(
+            format,
+            "time_partition_interval",
+            COMMON_CONFIG.getTimePartitionInterval(),
+            timePartitionInterval);
+        COMMON_CONFIG.setTimePartitionInterval(timePartitionInterval);
+      }
+    }
+
     if (needReWrite) {
       // Re-write special parameters if necessary
       storeSystemParameters();

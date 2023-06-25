@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 
 public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSeriesPlan {
@@ -366,6 +367,11 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
         && ((tags == null && that.tags == null) || (tags != null && tags.equals(that.tags)))
         && ((attributes == null && that.attributes == null)
             || (attributes != null && attributes.equals(that.attributes)));
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(path, dataType, encoding, compressor, alias, props, tags, attributes);
   }
 
   @Override

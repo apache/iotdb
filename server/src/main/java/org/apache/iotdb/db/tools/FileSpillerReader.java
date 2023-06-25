@@ -69,7 +69,9 @@ public class FileSpillerReader implements SortReader {
     cacheBlocks.clear();
     while (bufferSize >= DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) {
       long size = read();
-      if (size == -1) break;
+      if (size == -1) {
+        break;
+      }
       bufferSize -= size;
     }
 
@@ -107,7 +109,9 @@ public class FileSpillerReader implements SortReader {
   @Override
   public boolean hasNext() throws IoTDBException {
 
-    if (isEnd) return false;
+    if (isEnd) {
+      return false;
+    }
 
     if (cacheBlocks.isEmpty()
         || (rowIndex == cacheBlocks.get(tsBlockIndex).getPositionCount()

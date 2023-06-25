@@ -36,7 +36,9 @@ import java.util.Map;
 
 public class SlidingWindowAggregatorFactory {
 
-  /** comparators used for MonotonicQueueSlidingWindowAggregator */
+  private SlidingWindowAggregatorFactory() {}
+
+  /** comparators used for MonotonicQueueSlidingWindowAggregator. */
   private static final Map<TSDataType, Comparator<Column>> maxComparators =
       new EnumMap<>(TSDataType.class);
 

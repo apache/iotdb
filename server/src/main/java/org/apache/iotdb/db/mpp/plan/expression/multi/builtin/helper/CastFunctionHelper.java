@@ -37,7 +37,9 @@ import static org.apache.iotdb.db.constant.SqlConstant.CAST_TYPE;
 public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override
   public void checkBuiltInScalarFunctionInputDataType(TSDataType tsDataType)
-      throws SemanticException {}
+      throws SemanticException {
+    // needn't check
+  }
 
   @Override
   public TSDataType getBuiltInScalarFunctionReturnType(FunctionExpression functionExpression) {
@@ -73,7 +75,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
 
   public static int castLongToInt(long value) {
     if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
-      throw new RuntimeException(
+      throw new SemanticException(
           String.format("long value %d is out of range of integer value.", value));
     }
     return (int) value;
@@ -81,7 +83,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
 
   public static int castFloatToInt(float value) {
     if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
-      throw new RuntimeException(
+      throw new SemanticException(
           String.format("Float value %f is out of range of integer value.", value));
     }
     return Math.round(value);
@@ -89,7 +91,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
 
   public static long castFloatToLong(float value) {
     if (value > Long.MAX_VALUE || value < Long.MIN_VALUE) {
-      throw new RuntimeException(
+      throw new SemanticException(
           String.format("Float value %f is out of range of long value.", value));
     }
     return Math.round((double) value);
@@ -97,7 +99,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
 
   public static int castDoubleToInt(double value) {
     if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE) {
-      throw new RuntimeException(
+      throw new SemanticException(
           String.format("Double value %f is out of range of integer value.", value));
     }
     return Math.round((float) value);
@@ -105,7 +107,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
 
   public static long castDoubleToLong(double value) {
     if (value > Long.MAX_VALUE || value < Long.MIN_VALUE) {
-      throw new RuntimeException(
+      throw new SemanticException(
           String.format("Double value %f is out of range of long value.", value));
     }
     return Math.round(value);
@@ -113,7 +115,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
 
   public static float castDoubleToFloat(double value) {
     if (value > Float.MAX_VALUE || value < -Float.MAX_VALUE) {
-      throw new RuntimeException(
+      throw new SemanticException(
           String.format("Double value %f is out of range of float value.", value));
     }
     return (float) value;
@@ -122,7 +124,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
   public static float castTextToFloat(String value) {
     float f = Float.parseFloat(value);
     if (f == Float.POSITIVE_INFINITY || f == Float.NEGATIVE_INFINITY) {
-      throw new RuntimeException(
+      throw new SemanticException(
           String.format("Text value %s is out of range of float value.", value));
     }
     return f;
@@ -131,7 +133,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
   public static Double castTextToDouble(String value) {
     double d = Double.parseDouble(value);
     if (d == Double.POSITIVE_INFINITY || d == Double.NEGATIVE_INFINITY) {
-      throw new RuntimeException(
+      throw new SemanticException(
           String.format("Text value %s is out of range of double value.", value));
     }
     return d;
@@ -144,7 +146,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
     } else if (lowerCase.equals("false")) {
       return false;
     } else {
-      throw new RuntimeException(String.format("Invalid text input for boolean type: %s", value));
+      throw new SemanticException(String.format("Invalid text input for boolean type: %s", value));
     }
   }
 }

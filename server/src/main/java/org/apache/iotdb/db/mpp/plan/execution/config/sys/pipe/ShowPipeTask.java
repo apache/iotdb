@@ -68,7 +68,7 @@ public class ShowPipeTask implements IConfigTask {
           .getColumnBuilder(1)
           .writeBinary(new Binary(DateTimeUtils.convertLongToDate(tPipeInfo.getCreationTime())));
       builder.getColumnBuilder(2).writeBinary(new Binary(tPipeInfo.getState()));
-      builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getPipeCollector()));
+      builder.getColumnBuilder(3).writeBinary(new Binary(tPipeInfo.getPipeExtractor()));
       builder.getColumnBuilder(4).writeBinary(new Binary(tPipeInfo.getPipeProcessor()));
       builder.getColumnBuilder(5).writeBinary(new Binary(tPipeInfo.getPipeConnector()));
       builder.getColumnBuilder(6).writeBinary(new Binary(tPipeInfo.getExceptionMessage()));

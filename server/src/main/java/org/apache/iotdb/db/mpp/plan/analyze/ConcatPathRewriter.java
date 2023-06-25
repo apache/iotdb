@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -70,8 +71,7 @@ public class ConcatPathRewriter {
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
-          concatSelectWithFrom(
-              queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
+          concatSelectWithFrom(queryStatement.getSelectComponent(), prefixPaths);
       queryStatement.getSelectComponent().setResultColumns(resultColumns);
 
       // concat GROUP BY with FROM
@@ -110,7 +110,7 @@ public class ConcatPathRewriter {
    * path pattern. And construct pattern tree.
    */
   private List<ResultColumn> concatSelectWithFrom(
-      SelectComponent selectComponent, List<PartialPath> prefixPaths, boolean isGroupByLevel)
+      SelectComponent selectComponent, List<PartialPath> prefixPaths)
       throws StatementAnalyzeException {
     // resultColumns after concat
     List<ResultColumn> resultColumns = new ArrayList<>();

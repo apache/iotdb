@@ -28,7 +28,7 @@ import java.util.TreeMap;
 
 /**
  * The QueryDataSource contains all the seq and unseq TsFileResources for one timeseries in one
- * query
+ * query.
  */
 public class QueryDataSource {
 
@@ -113,12 +113,12 @@ public class QueryDataSource {
     }
 
     index = 0;
-    int[] unSeqFileOrderIndex = new int[unseqResources.size()];
+    int[] unSeqFileOrderIndexArray = new int[unseqResources.size()];
     for (List<Integer> orderIndexes : orderTimeToIndexMap.values()) {
       for (Integer orderIndex : orderIndexes) {
-        unSeqFileOrderIndex[index++] = orderIndex;
+        unSeqFileOrderIndexArray[index++] = orderIndex;
       }
     }
-    this.unSeqFileOrderIndex = unSeqFileOrderIndex;
+    this.unSeqFileOrderIndex = unSeqFileOrderIndexArray;
   }
 }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -70,19 +71,18 @@ public class AlignedChunkReader implements IChunkReader {
    * Constructor of ChunkReader without deserializing chunk into page. This is used for fast
    * compaction.
    */
-  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) throws IOException {
+  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) {
     this.filter = null;
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
     this.timeChunkHeader = timeChunk.getHeader();
     this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
     this.currentTimestamp = Long.MIN_VALUE;
-    List<Statistics> valueChunkStatisticsList = new ArrayList<>();
+
     valueChunkList.forEach(
         chunk -> {
           valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
           valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
-          valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
   }
@@ -424,7 +424,9 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   @Override
-  public void close() throws IOException {}
+  public void close() throws IOException {
+    // do nothing
+  }
 
   @Override
   public List<IPageReader> loadPageReaderList() {

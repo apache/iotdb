@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -52,7 +53,9 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
   }
 
   @Override
-  public void close() throws IOException {}
+  public void close() throws IOException {
+    // there is no resource need to be closed
+  }
 
   @Override
   public IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter)

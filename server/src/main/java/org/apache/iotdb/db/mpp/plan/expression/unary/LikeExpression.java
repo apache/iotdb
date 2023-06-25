@@ -96,16 +96,17 @@ public class LikeExpression extends UnaryExpression {
    */
   private String unescapeString(String value) {
     StringBuilder stringBuilder = new StringBuilder();
-    for (int i = 0; i < value.length(); i++) {
-      String ch = String.valueOf(value.charAt(i));
+    int curIndex = 0;
+    for (; curIndex < value.length(); curIndex++) {
+      String ch = String.valueOf(value.charAt(curIndex));
       if ("\\".equals(ch)) {
-        if (i < value.length() - 1) {
-          String nextChar = String.valueOf(value.charAt(i + 1));
+        if (curIndex < value.length() - 1) {
+          String nextChar = String.valueOf(value.charAt(curIndex + 1));
           if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
             stringBuilder.append(ch);
           }
           if ("\\".equals(nextChar)) {
-            i++;
+            curIndex++;
           }
         }
       } else {

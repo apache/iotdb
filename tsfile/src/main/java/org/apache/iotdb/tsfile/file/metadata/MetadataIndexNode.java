@@ -38,7 +38,7 @@ public class MetadataIndexNode {
   private final List<MetadataIndexEntry> children;
   private long endOffset;
 
-  /** type of the child node at offset */
+  /** type of the child node at offset. */
   private final MetadataIndexNodeType nodeType;
 
   public MetadataIndexNode(MetadataIndexNodeType nodeType) {

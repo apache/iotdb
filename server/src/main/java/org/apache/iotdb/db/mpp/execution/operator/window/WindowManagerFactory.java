@@ -24,6 +24,10 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public class WindowManagerFactory {
 
+  private WindowManagerFactory() {
+    // util class
+  }
+
   public static IWindowManager genWindowManager(
       WindowParameter windowParameter, ITimeRangeIterator timeRangeIterator, boolean ascending) {
     switch (windowParameter.getWindowType()) {

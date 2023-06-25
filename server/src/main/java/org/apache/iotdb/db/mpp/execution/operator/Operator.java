@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -34,6 +35,7 @@ public interface Operator extends AutoCloseable {
    * Returns a future that will be completed when the operator becomes unblocked. If the operator is
    * not blocked, this method should return {@code NOT_BLOCKED}.
    */
+  @SuppressWarnings("squid:S1452")
   default ListenableFuture<?> isBlocked() {
     return NOT_BLOCKED;
   }
@@ -50,7 +52,12 @@ public interface Operator extends AutoCloseable {
     }
   }
 
-  /** Gets next tsBlock from this operator. If no data is currently available, return null. */
+  /**
+   * Gets next tsBlock from this operator. If no data is currently available, return null.
+   *
+   * @throws Exception Error happened while fetching next batch
+   */
+  @SuppressWarnings("squid:S112")
   TsBlock next() throws Exception;
 
   default boolean hasNextWithTimer() throws Exception {
@@ -64,7 +71,12 @@ public interface Operator extends AutoCloseable {
     }
   }
 
-  /** @return true if the operator has more data, otherwise false */
+  /**
+   * return true if the operator has more data, otherwise false.
+   *
+   * @throws Exception Error happened while judging whether there exists next batch
+   */
+  @SuppressWarnings("squid:S112")
   boolean hasNext() throws Exception;
 
   /** This method will always be called before releasing the Operator reference. */
@@ -73,13 +85,16 @@ public interface Operator extends AutoCloseable {
 
   /**
    * Is this operator completely finished processing and no more output TsBlock will be produced.
+   *
+   * @throws Exception Error happened while judging whether operator is finished
    */
+  @SuppressWarnings("squid:S112")
   boolean isFinished() throws Exception;
 
   /**
    * We should also consider the memory used by its children operator, so the calculation logic may
    * be like: long estimatedOfCurrentOperator = XXXXX; return max(estimatedOfCurrentOperator,
-   * child1.calculateMaxPeekMemory(), child2.calculateMaxPeekMemory(), ....)
+   * child1.calculateMaxPeekMemory(), child2.calculateMaxPeekMemory(), ....).
    *
    * <p>Each operator's MaxPeekMemory should also take retained size of each child operator into
    * account.
@@ -89,12 +104,12 @@ public interface Operator extends AutoCloseable {
    */
   long calculateMaxPeekMemory();
 
-  /** @return estimated max memory footprint for returned TsBlock when calling operator.next() */
+  /** return estimated max memory footprint for returned TsBlock when calling operator.next(). */
   long calculateMaxReturnSize();
 
   /**
-   * @return each operator's retained size(including all its children's retained size) after calling
-   *     its next() method
+   * return each operator's retained size(including all its children's retained size) after calling
+   * its next() method.
    */
   long calculateRetainedSizeAfterCallingNext();
 }

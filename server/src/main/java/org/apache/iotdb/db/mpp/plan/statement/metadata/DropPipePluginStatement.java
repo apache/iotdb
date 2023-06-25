@@ -49,7 +49,7 @@ public class DropPipePluginStatement extends Statement implements IConfigStateme
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

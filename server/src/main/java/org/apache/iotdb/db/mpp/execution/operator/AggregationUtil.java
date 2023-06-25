@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
@@ -106,31 +105,7 @@ public class AggregationUtil {
         inputTsBlock = skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, ascending);
       }
 
-      // Get the row which need to be processed by aggregator
-      IWindow curWindow = new TimeWindow(curTimeRange);
-      TimeColumn timeColumn = inputTsBlock.getTimeColumn();
-      int lastIndexToProcess = 0;
-      for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
-        if (!curWindow.satisfy(timeColumn, i)) {
-          break;
-        }
-        lastIndexToProcess = i;
-      }
-
-      for (Aggregator aggregator : aggregators) {
-        // current agg method has been calculated
-        if (aggregator.hasFinalResult()) {
-          continue;
-        }
-
-        aggregator.processTsBlock(inputTsBlock, null, lastIndexToProcess);
-      }
-      int lastReadRowIndex = lastIndexToProcess + 1;
-      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
-        inputTsBlock = null;
-      } else {
-        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
-      }
+      inputTsBlock = process(inputTsBlock, curTimeRange, aggregators);
     }
 
     // judge whether the calculation finished
@@ -141,6 +116,34 @@ public class AggregationUtil {
                 : inputTsBlock.getEndTime() < curTimeRange.getMin());
     return new Pair<>(
         isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound, inputTsBlock);
+  }
+
+  private static TsBlock process(
+      TsBlock inputTsBlock, TimeRange curTimeRange, List<Aggregator> aggregators) {
+    // Get the row which need to be processed by aggregator
+    IWindow curWindow = new TimeWindow(curTimeRange);
+    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+    int lastIndexToProcess = 0;
+    for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
+      if (!curWindow.satisfy(timeColumn, i)) {
+        break;
+      }
+      lastIndexToProcess = i;
+    }
+
+    for (Aggregator aggregator : aggregators) {
+      // current agg method has been calculated
+      if (aggregator.hasFinalResult()) {
+        continue;
+      }
+      aggregator.processTsBlock(inputTsBlock, null, lastIndexToProcess);
+    }
+    int lastReadRowIndex = lastIndexToProcess + 1;
+    if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+      return null;
+    } else {
+      return inputTsBlock.subTsBlock(lastReadRowIndex);
+    }
   }
 
   /** Append a row of aggregation results to the result tsBlock. */
@@ -162,7 +165,7 @@ public class AggregationUtil {
     tsBlockBuilder.declarePosition();
   }
 
-  /** @return whether the tsBlock contains the data of the current time window */
+  /** return whether the tsBlock contains the data of the current time window. */
   public static boolean satisfiedTimeRange(
       TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
     if (tsBlock == null || tsBlock.isEmpty()) {
@@ -196,9 +199,7 @@ public class AggregationUtil {
               .map(typeProvider::getType)
               .collect(Collectors.toList());
       for (TSDataType tsDataType : outPutDataTypes) {
-        // TODO modify after statistics finish
-        PartialPath mockSeriesPath = new PartialPath();
-        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, mockSeriesPath);
+        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
       }
     }
 
@@ -210,21 +211,19 @@ public class AggregationUtil {
             * timeValueColumnsSizePerLine);
   }
 
-  public static long calculateMaxAggregationResultSizeForLastQuery(
-      List<Aggregator> aggregators, PartialPath inputSeriesPath) {
+  public static long calculateMaxAggregationResultSizeForLastQuery(List<Aggregator> aggregators) {
     long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     List<TSDataType> outPutDataTypes =
         aggregators.stream()
             .flatMap(aggregator -> Arrays.stream(aggregator.getOutputType()))
             .collect(Collectors.toList());
     for (TSDataType tsDataType : outPutDataTypes) {
-      timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
+      timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
     }
     return timeValueColumnsSizePerLine;
   }
 
-  private static long getOutputColumnSizePerLine(
-      TSDataType tsDataType, PartialPath inputSeriesPath) {
+  private static long getOutputColumnSizePerLine(TSDataType tsDataType) {
     switch (tsDataType) {
       case INT32:
         return IntColumn.SIZE_IN_BYTES_PER_POSITION;
@@ -237,7 +236,7 @@ public class AggregationUtil {
       case BOOLEAN:
         return BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
       case TEXT:
-        return StatisticsManager.getInstance().getMaxBinarySizeInBytes(inputSeriesPath);
+        return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
       default:
         throw new UnsupportedOperationException("Unknown data type " + tsDataType);
     }

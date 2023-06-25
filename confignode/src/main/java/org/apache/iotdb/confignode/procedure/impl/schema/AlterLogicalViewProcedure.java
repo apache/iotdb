@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -39,6 +40,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.metadata.view.ViewNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
@@ -167,7 +169,7 @@ public class AlterLogicalViewProcedure
                     ViewExpression.serialize(viewEntry.getValue(), stream);
                   }
                 } catch (IOException e) {
-                  throw new RuntimeException(e);
+                  // won't reach here
                 }
                 viewMapBinaryList.add(ByteBuffer.wrap(stream.toByteArray()));
               }
@@ -175,6 +177,9 @@ public class AlterLogicalViewProcedure
               return req;
             });
     regionTaskExecutor.execute();
+    if (isFailed()) {
+      return;
+    }
 
     invalidateCache(env);
   }
@@ -241,12 +246,11 @@ public class AlterLogicalViewProcedure
     try {
       patternTree.serialize(dataOutputStream);
     } catch (IOException ignored) {
-
+      // won't reach here
     }
-    ByteBuffer patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
     this.pathPatternTree = patternTree;
-    this.patternTreeBytes = patternTreeBytes;
+    this.patternTreeBytes = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   @Override
@@ -298,6 +302,8 @@ public class AlterLogicalViewProcedure
 
     private final String taskName;
 
+    private final List<TSStatus> failureStatusList = new ArrayList<>();
+
     AlterLogicalViewRegionTaskExecutor(
         String taskName,
         ConfigNodeProcedureEnv env,
@@ -319,16 +325,41 @@ public class AlterLogicalViewProcedure
       }
 
       if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
+        List<TSStatus> subStatusList = response.getSubStatus();
+        TSStatus subStatus;
+        for (int i = 0; i < subStatusList.size(); i++) {
+          subStatus = subStatusList.get(i);
+          if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            if (subStatus.getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+              failedRegionList.add(consensusGroupIdList.get(i));
+            } else {
+              collectFailure(subStatus);
+              interruptTask();
+            }
           }
         }
       } else {
         failedRegionList.addAll(consensusGroupIdList);
       }
       return failedRegionList;
+    }
+
+    private void collectFailure(TSStatus failureStatus) {
+      if (failureStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        failureStatusList.addAll(failureStatus.getSubStatus());
+      } else {
+        failureStatusList.add(failureStatus);
+      }
+      if (failureStatusList.size() == 1) {
+        setFailure(
+            new ProcedureException(
+                new IoTDBException(
+                    failureStatusList.get(0).getMessage(), failureStatusList.get(0).getCode())));
+      } else {
+        setFailure(
+            new ProcedureException(
+                new BatchProcessException(failureStatusList.toArray(new TSStatus[0]))));
+      }
     }
 
     @Override

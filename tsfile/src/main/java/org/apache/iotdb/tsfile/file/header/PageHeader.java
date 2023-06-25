@@ -43,7 +43,7 @@ public class PageHeader {
     this.statistics = statistics;
   }
 
-  /** max page header size without statistics */
+  /** max page header size without statistics. */
   public static int estimateMaxPageHeaderSizeWithoutStatistics() {
     // uncompressedSize, compressedSize
     // because we use unsigned varInt to encode these two integer,
@@ -145,7 +145,7 @@ public class PageHeader {
     this.modified = modified;
   }
 
-  /** max page header size without statistics */
+  /** max page header size without statistics. */
   public int getSerializedPageSize() {
     if (uncompressedSize == 0) { // Empty page
       return ReadWriteForEncodingUtils.uVarIntSize(uncompressedSize);

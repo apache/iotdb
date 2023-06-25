@@ -47,9 +47,7 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.NegationViewExp
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpression;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterEqualExpression;
@@ -57,30 +55,24 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
-import org.apache.iotdb.db.mpp.plan.expression.binary.LogicBinaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
-import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import javax.ws.rs.NotSupportedException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -96,16 +88,12 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
 
   @Override
   public ViewExpression visitExpression(Expression expression, Void context) {
-    throw new RuntimeException(
-        new NotSupportedException(
-            "visitExpression in TransformToViewExpressionVisitor is not supported."));
+    throw new UnsupportedOperationException(
+        "Unsupported expression type in TransformToViewExpressionVisitor: "
+            + expression.getExpressionType());
   }
 
   // region leaf operand
-  @Override
-  public ViewExpression visitLeafOperand(LeafOperand leafOperand, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
-  }
 
   @Override
   public ViewExpression visitConstantOperand(ConstantOperand constantOperand, Void context) {
@@ -129,10 +117,6 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   // endregion
 
   // region Unary Expressions
-  @Override
-  public ViewExpression visitUnaryExpression(UnaryExpression unaryExpression, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
-  }
 
   @Override
   public ViewExpression visitInExpression(InExpression inExpression, Void context) {
@@ -177,20 +161,6 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   // endregion
 
   // region Binary Expressions
-  @Override
-  public ViewExpression visitBinaryExpression(BinaryExpression binaryExpression, Void context) {
-    if (binaryExpression instanceof ArithmeticBinaryExpression) {
-      return this.visitArithmeticBinaryExpression(
-          (ArithmeticBinaryExpression) binaryExpression, context);
-    } else if (binaryExpression instanceof CompareBinaryExpression) {
-      return this.visitCompareBinaryExpression((CompareBinaryExpression) binaryExpression, context);
-    } else if (binaryExpression instanceof LogicBinaryExpression) {
-      return this.visitLogicBinaryExpression((LogicBinaryExpression) binaryExpression, context);
-    }
-    throw new RuntimeException(
-        new NotSupportedException(
-            "unsupported expression type:" + binaryExpression.getExpressionType()));
-  }
 
   private Pair<ViewExpression, ViewExpression> getExpressionsForBinaryExpression(
       BinaryExpression binaryExpression) {
@@ -201,26 +171,6 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
 
   // region Binary : Arithmetic Binary Expression
   @Override
-  public ViewExpression visitArithmeticBinaryExpression(
-      ArithmeticBinaryExpression arithmeticBinaryExpression, Void context) {
-    if (arithmeticBinaryExpression instanceof AdditionExpression) {
-      return this.visitAdditionExpression((AdditionExpression) arithmeticBinaryExpression, context);
-    } else if (arithmeticBinaryExpression instanceof DivisionExpression) {
-      return this.visitDivisionExpression((DivisionExpression) arithmeticBinaryExpression, context);
-    } else if (arithmeticBinaryExpression instanceof ModuloExpression) {
-      return this.visitModuloExpression((ModuloExpression) arithmeticBinaryExpression, context);
-    } else if (arithmeticBinaryExpression instanceof MultiplicationExpression) {
-      return this.visitMultiplicationExpression(
-          (MultiplicationExpression) arithmeticBinaryExpression, context);
-    } else if (arithmeticBinaryExpression instanceof SubtractionExpression) {
-      return this.visitSubtractionExpression(
-          (SubtractionExpression) arithmeticBinaryExpression, context);
-    }
-    throw new RuntimeException(
-        new NotSupportedException(
-            "unsupported expression type:" + arithmeticBinaryExpression.getExpressionType()));
-  }
-
   public ViewExpression visitAdditionExpression(
       AdditionExpression additionExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -228,6 +178,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     return new AdditionViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitDivisionExpression(
       DivisionExpression divisionExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -235,12 +186,14 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     return new DivisionViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitModuloExpression(ModuloExpression moduloExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
         this.getExpressionsForBinaryExpression(moduloExpression);
     return new ModuloViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitMultiplicationExpression(
       MultiplicationExpression multiplicationExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -248,6 +201,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     return new MultiplicationViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitSubtractionExpression(
       SubtractionExpression subtractionExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -257,35 +211,15 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   // endregion
 
   // region Binary: Compare Binary Expression
-  @Override
-  public ViewExpression visitCompareBinaryExpression(
-      CompareBinaryExpression compareBinaryExpression, Void context) {
-    if (compareBinaryExpression instanceof EqualToExpression) {
-      return this.visitEqualToExpression((EqualToExpression) compareBinaryExpression, context);
-    } else if (compareBinaryExpression instanceof GreaterEqualExpression) {
-      return this.visitGreaterEqualExpression(
-          (GreaterEqualExpression) compareBinaryExpression, context);
-    } else if (compareBinaryExpression instanceof GreaterThanExpression) {
-      return this.visitGreaterThanExpression(
-          (GreaterThanExpression) compareBinaryExpression, context);
-    } else if (compareBinaryExpression instanceof LessEqualExpression) {
-      return this.visitLessEqualExpression((LessEqualExpression) compareBinaryExpression, context);
-    } else if (compareBinaryExpression instanceof LessThanExpression) {
-      return this.visitLessThanExpression((LessThanExpression) compareBinaryExpression, context);
-    } else if (compareBinaryExpression instanceof NonEqualExpression) {
-      return this.visitNonEqualExpression((NonEqualExpression) compareBinaryExpression, context);
-    }
-    throw new RuntimeException(
-        new NotSupportedException(
-            "unsupported expression type:" + compareBinaryExpression.getExpressionType()));
-  }
 
+  @Override
   public ViewExpression visitEqualToExpression(EqualToExpression equalToExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
         this.getExpressionsForBinaryExpression(equalToExpression);
     return new EqualToViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitGreaterEqualExpression(
       GreaterEqualExpression greaterEqualExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -293,6 +227,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     return new GreaterEqualViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitGreaterThanExpression(
       GreaterThanExpression greaterThanExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -300,6 +235,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     return new GreaterThanViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitLessEqualExpression(
       LessEqualExpression lessEqualExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -307,6 +243,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     return new LessEqualViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitLessThanExpression(
       LessThanExpression lessThanExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -314,6 +251,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     return new LessThanViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitNonEqualExpression(
       NonEqualExpression nonEqualExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -323,19 +261,8 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   // endregion
 
   // region Binary : Logic Binary Expression
-  @Override
-  public ViewExpression visitLogicBinaryExpression(
-      LogicBinaryExpression logicBinaryExpression, Void context) {
-    if (logicBinaryExpression instanceof LogicAndExpression) {
-      return this.visitLogicAndExpression((LogicAndExpression) logicBinaryExpression, context);
-    } else if (logicBinaryExpression instanceof LogicOrExpression) {
-      return this.visitLogicOrExpression((LogicOrExpression) logicBinaryExpression, context);
-    }
-    throw new RuntimeException(
-        new NotSupportedException(
-            "unsupported expression type:" + logicBinaryExpression.getExpressionType()));
-  }
 
+  @Override
   public ViewExpression visitLogicAndExpression(
       LogicAndExpression logicAndExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
@@ -343,6 +270,7 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
     return new LogicAndViewExpression(pair.left, pair.right);
   }
 
+  @Override
   public ViewExpression visitLogicOrExpression(LogicOrExpression logicOrExpression, Void context) {
     Pair<ViewExpression, ViewExpression> pair =
         this.getExpressionsForBinaryExpression(logicOrExpression);
@@ -353,10 +281,6 @@ public class TransformToViewExpressionVisitor extends ExpressionVisitor<ViewExpr
   // endregion
 
   // region Ternary Expressions
-  @Override
-  public ViewExpression visitTernaryExpression(TernaryExpression ternaryExpression, Void context) {
-    throw new RuntimeException(new NotSupportedException("Can not construct abstract class."));
-  }
 
   @Override
   public ViewExpression visitBetweenExpression(BetweenExpression betweenExpression, Void context) {

@@ -19,17 +19,9 @@
 
 package org.apache.iotdb.db.mpp.statistics;
 
-import org.apache.iotdb.commons.path.PartialPath;
-
-import com.google.common.collect.Maps;
-
-import java.util.Map;
-
 public class StatisticsManager {
 
-  private final Map<PartialPath, TimeseriesStats> seriesToStatsMap = Maps.newConcurrentMap();
-
-  public long getMaxBinarySizeInBytes(PartialPath path) {
+  public long getMaxBinarySizeInBytes() {
     return 512L * Byte.BYTES;
   }
 

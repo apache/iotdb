@@ -48,8 +48,8 @@ public class DeactivateTemplateStatement extends Statement implements IConfigSta
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return pathPatternList;
+  public List<PartialPath> getPaths() {
+    return getPathPatternList();
   }
 
   public String getTemplateName() {

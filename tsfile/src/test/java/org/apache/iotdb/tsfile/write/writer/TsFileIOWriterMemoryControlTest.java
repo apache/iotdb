@@ -137,7 +137,7 @@ public class TsFileIOWriterMemoryControlTest {
         TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
         Assert.assertEquals(sortedSeriesId.get(i % 5), timeseriesMetadata.getMeasurementId());
         Assert.assertEquals(
-            originChunkMetadataList.get(i).getDataType(), timeseriesMetadata.getTSDataType());
+            originChunkMetadataList.get(i).getDataType(), timeseriesMetadata.getTsDataType());
         Assert.assertEquals(
             originChunkMetadataList.get(i).getStatistics(), timeseriesMetadata.getStatistics());
       }
@@ -175,7 +175,7 @@ public class TsFileIOWriterMemoryControlTest {
         TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
         Assert.assertEquals(measurementIds.get(i), fullPath);
         Assert.assertEquals(
-            originChunkMetadataList.get(i).getDataType(), timeseriesMetadata.getTSDataType());
+            originChunkMetadataList.get(i).getDataType(), timeseriesMetadata.getTsDataType());
         Assert.assertEquals(
             originChunkMetadataList.get(i).getStatistics(), timeseriesMetadata.getStatistics());
       }
@@ -238,7 +238,7 @@ public class TsFileIOWriterMemoryControlTest {
         Assert.assertEquals(seriesIds.get(i), timeseriesMetadataPair.left.getFullPath());
         Assert.assertEquals(
             originChunkMetadataList.get(i).getDataType(),
-            timeseriesMetadataPair.right.getTSDataType());
+            timeseriesMetadataPair.right.getTsDataType());
         Assert.assertEquals(
             originChunkMetadataList.get(i).getStatistics(),
             timeseriesMetadataPair.right.getStatistics());

@@ -165,6 +165,8 @@ public class LocalTextModificationAccessor
    * index of field endTimestamp is length - 1, startTimestamp is length - 2, TsFile offset is
    * length - 3. Fields in index range [1, length -3) all belong to a timeseries path in case when
    * the path contains comma.
+   *
+   * @throws IOException if there is invalid timestamp.
    */
   private static Deletion decodeDeletion(String[] fields) throws IOException {
     if (fields.length < 4) {
@@ -200,6 +202,8 @@ public class LocalTextModificationAccessor
    * Decode a point deletion record. E.g. "DELETION,root.ln.wf01.wt01.temperature,111,300" the index
    * of field endTimestamp is length - 1, versionNum is length - 2. Fields in index range [1, length
    * - 2) compose timeseries path.
+   *
+   * @throws IOException if there is invalid timestamp.
    */
   private static Deletion decodePointDeletion(String[] fields) throws IOException {
     String path = "";

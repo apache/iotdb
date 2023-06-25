@@ -109,13 +109,12 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     if (memAllowedMaxRowNumber > Integer.MAX_VALUE) {
       memAllowedMaxRowNumber = Integer.MAX_VALUE;
     }
-    int maxRowNumberInStatement =
+    this.maxRowNumberInStatement =
         Math.min(
             (int) memAllowedMaxRowNumber,
             IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit());
     long maxStatementSize = maxRowNumberInStatement * statementSizePerLine;
 
-    this.maxRowNumberInStatement = maxRowNumberInStatement;
     this.maxRetainedSize = child.calculateMaxReturnSize() + maxStatementSize;
     this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
@@ -175,6 +174,9 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
   /**
    * Check whether the last write operation was executed successfully, and throw an exception if the
    * execution failed, otherwise continue to execute the operator.
+   *
+   * @throws IntoProcessException wrap InterruptedException with IntoProcessException while
+   *     Interruption happened
    */
   private void checkLastWriteOperation() {
     if (writeOperationFuture == null) {
@@ -203,8 +205,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
       writeOperationFuture = null;
     } catch (InterruptedException e) {
-      LOGGER.warn(
-          "{}: interrupted when processing write operation future with exception {}", this, e);
       Thread.currentThread().interrupt();
       throw new IntoProcessException(e.getMessage());
     } catch (ExecutionException e) {
@@ -249,7 +249,7 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   /** Return true if write task is submitted successfully. */
   protected boolean insertMultiTabletsInternally(boolean needCheck) {
-    InsertMultiTabletsStatement insertMultiTabletsStatement =
+    final InsertMultiTabletsStatement insertMultiTabletsStatement =
         constructInsertMultiTabletsStatement(needCheck);
     if (insertMultiTabletsStatement == null) {
       return false;
