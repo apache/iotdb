@@ -79,6 +79,7 @@ import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
@@ -472,6 +473,18 @@ public class DataNode implements DataNodeMBean {
       throw new StartupException("Error in activating IoTDB DataNode.");
     }
     logger.info("IoTDB DataNode has started.");
+
+    try {
+      // wait wal recover finish
+      long walRecoverWaitTime = System.currentTimeMillis();
+      logger.info("wait wal recover task start");
+      WALRecoverManager.getInstance().getAllWalRecoverFinishedLatch().await();
+      logger.info(
+          "wal recover task ready: wait time = {} ms",
+          System.currentTimeMillis() - walRecoverWaitTime);
+    } catch (Exception e) {
+      throw new StartupException(e);
+    }
 
     try {
       SchemaRegionConsensusImpl.setupAndGetInstance().start();

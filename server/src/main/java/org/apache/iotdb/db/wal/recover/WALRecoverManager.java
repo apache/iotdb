@@ -60,6 +60,9 @@ public class WALRecoverManager {
   private final Map<String, UnsealedTsFileRecoverPerformer> absolutePath2RecoverPerformer =
       new ConcurrentHashMap<>();
 
+  /** all Recover wal task has finished */
+  private volatile CountDownLatch allWalRecoverFinishedLatch = new CountDownLatch(1);
+
   private WALRecoverManager() {}
 
   public void recover() throws WALRecoverException {
@@ -106,6 +109,9 @@ public class WALRecoverManager {
           throw new WALRecoverException("Fail to recover wal.", e);
         }
       }
+
+      allWalRecoverFinishedLatch.countDown();
+
       // deal with remaining TsFiles which don't have wal
       asyncRecoverLeftTsFiles();
     } catch (Exception e) {
@@ -230,5 +236,9 @@ public class WALRecoverManager {
     private InstanceHolder() {}
 
     private static final WALRecoverManager INSTANCE = new WALRecoverManager();
+  }
+
+  public CountDownLatch getAllWalRecoverFinishedLatch() {
+    return allWalRecoverFinishedLatch;
   }
 }
