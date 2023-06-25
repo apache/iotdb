@@ -31,9 +31,12 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
@@ -65,10 +68,13 @@ public class SchemaBuilderTest {
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
-    int i = 0;
+    Set<String> expected = new HashSet<String>(Arrays.asList(tsDesStrings));
+    List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
-      assertEquals(tsDesStrings[i++], desc.toString());
+      actual.add(desc.toString());
     }
+    assertEquals(expected.size(), actual.size());
+    assertEquals(expected, new HashSet<String>(actual));
   }
 
   @Test
@@ -101,10 +107,13 @@ public class SchemaBuilderTest {
     String[] tsDesStrings = {
       "[s4,DOUBLE,RLE,{max_point_number=3},SNAPPY]", "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]"
     };
-    int i = 0;
+    Set<String> expected = new HashSet<String>(Arrays.asList(tsDesStrings));
+    List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
-      assertEquals(tsDesStrings[i++], desc.toString());
+      actual.add(desc.toString());
     }
+    assertEquals(expected.size(), actual.size());
+    assertEquals(expected, new HashSet<String>(actual));
   }
 
   @Test
@@ -145,9 +154,12 @@ public class SchemaBuilderTest {
       "[s5,INT32,TS_2DIFF,,UNCOMPRESSED]",
       "[s6,INT64,RLE,{max_point_number=3},SNAPPY]"
     };
-    int i = 0;
+    Set<String> expected = new HashSet<String>(Arrays.asList(tsDesStrings));
+    List<String> actual = new ArrayList<String>();
     for (IMeasurementSchema desc : timeseries) {
-      assertEquals(tsDesStrings[i++], desc.toString());
+      actual.add(desc.toString());
     }
+    assertEquals(expected.size(), actual.size());
+    assertEquals(expected, new HashSet<String>(actual));
   }
 }
