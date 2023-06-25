@@ -34,7 +34,9 @@ import java.util.HashSet;
 
 public class PatternTreeMapFactory {
 
-  private PatternTreeMapFactory() {}
+  private PatternTreeMapFactory() {
+    // not allowed construction
+  }
 
   public static PatternTreeMap<String, StringSerializer> getTriggerPatternTreeMap() {
     return new PatternTreeMap<>(

@@ -135,20 +135,16 @@ public class ClusterTemplateManager implements ITemplateManager {
   private TCreateSchemaTemplateReq constructTCreateSchemaTemplateReq(
       CreateSchemaTemplateStatement statement) {
     TCreateSchemaTemplateReq req = new TCreateSchemaTemplateReq();
-    try {
-      Template template =
-          new Template(
-              statement.getName(),
-              statement.getMeasurements(),
-              statement.getDataTypes(),
-              statement.getEncodings(),
-              statement.getCompressors(),
-              statement.isAligned());
-      req.setName(template.getName());
-      req.setSerializedTemplate(template.serialize());
-    } catch (IllegalPathException e) {
-      throw new RuntimeException(e);
-    }
+    Template template =
+        new Template(
+            statement.getName(),
+            statement.getMeasurements(),
+            statement.getDataTypes(),
+            statement.getEncodings(),
+            statement.getCompressors(),
+            statement.isAligned());
+    req.setName(template.getName());
+    req.setSerializedTemplate(template.serialize());
     return req;
   }
 
@@ -157,11 +153,10 @@ public class ClusterTemplateManager implements ITemplateManager {
     List<Template> templatesList = new ArrayList<>();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TGetAllTemplatesResp tGetAllTemplatesResp = configNodeClient.getAllTemplates();
+      TGetAllTemplatesResp resp = configNodeClient.getAllTemplates();
       // Get response or throw exception
-      if (tGetAllTemplatesResp.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        List<ByteBuffer> list = tGetAllTemplatesResp.getTemplateList();
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        List<ByteBuffer> list = resp.getTemplateList();
         list.forEach(
             templateData -> {
               Template template = new Template();
@@ -170,9 +165,7 @@ public class ClusterTemplateManager implements ITemplateManager {
             });
       } else {
         throw new RuntimeException(
-            new IoTDBException(
-                tGetAllTemplatesResp.getStatus().getMessage(),
-                tGetAllTemplatesResp.getStatus().getCode()));
+            new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode()));
       }
     } catch (ClientManagerException | TException e) {
       throw new RuntimeException(
@@ -431,7 +424,7 @@ public class ClusterTemplateManager implements ITemplateManager {
             }
 
           } catch (IllegalPathException ignored) {
-
+            // won't reach here
           }
         }
       }
