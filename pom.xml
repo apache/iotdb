@@ -216,7 +216,6 @@
         <commons-beanutils.version>1.9.4</commons-beanutils.version>
         <commons-compress.version>1.21</commons-compress.version>
         <error_prone_annotations.version>2.7.1</error_prone_annotations.version>
-        <testcontainers.version>1.15.3</testcontainers.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <awaitility.version>4.0.3</awaitility.version>
         <!-- JDK1.8 only support google java format 1.7-->
@@ -655,12 +654,6 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
-            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -1194,30 +1187,6 @@
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
             </properties>
-        </profile>
-        <!-- for TestContainer. As it requires docker, we have to detect whether docker exists.-->
-        <profile>
-            <!-- Mac and Unix-->
-            <id>unixDockerCheck</id>
-            <activation>
-                <file>
-                    <exists>/var/run/docker.sock</exists>
-                </file>
-            </activation>
-            <modules>
-                <module>testcontainer</module>
-            </modules>
-        </profile>
-        <profile>
-            <id>WinDockerCheck</id>
-            <activation>
-                <file>
-                    <exists>C:\Program Files\Docker\Docker\resources\bin\docker.exe</exists>
-                </file>
-            </activation>
-            <modules>
-                <module>testcontainer</module>
-            </modules>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>
