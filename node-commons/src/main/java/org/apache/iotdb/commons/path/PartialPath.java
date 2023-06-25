@@ -797,7 +797,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @Override
   protected void serializeWithoutType(ByteBuffer byteBuffer) {
-    super.serializeWithoutType(byteBuffer);
+    // we do not need to serialize Path since we can lazy-load the variables serialized in
+    // Path.serializeWithoutType
+    // super.serializeWithoutType(byteBuffer);
     ReadWriteIOUtils.write(nodes.length, byteBuffer);
     for (String node : nodes) {
       ReadWriteIOUtils.write(node, byteBuffer);
@@ -806,7 +808,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @Override
   protected void serializeWithoutType(OutputStream stream) throws IOException {
-    super.serializeWithoutType(stream);
+    // we do not need to serialize Path since we can lazy-load the variables serialized in
+    // Path.serializeWithoutType
+    // super.serializeWithoutType(stream);
     ReadWriteIOUtils.write(nodes.length, stream);
     for (String node : nodes) {
       ReadWriteIOUtils.write(node, stream);
@@ -816,7 +820,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   // Attention!!! If you want to use serialize and deserialize of partialPath, must invoke
   // PathDeserializeUtil.deserialize
   public static PartialPath deserialize(ByteBuffer byteBuffer) {
-    Path path = Path.deserialize(byteBuffer);
     PartialPath partialPath = new PartialPath();
     int nodeSize = ReadWriteIOUtils.readInt(byteBuffer);
     String[] nodes = new String[nodeSize];
@@ -824,9 +827,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       nodes[i] = ReadWriteIOUtils.readString(byteBuffer);
     }
     partialPath.nodes = nodes;
-    partialPath.setMeasurement(path.getMeasurement());
-    partialPath.device = path.getDevice();
-    partialPath.fullPath = path.getFullPath();
     return partialPath;
   }
 
