@@ -32,7 +32,7 @@ import java.nio.file.Files;
 /**
  * This class provides the common ability to write a log storing T.
  *
- * @param <T>
+ * @param <T> the generic type
  */
 public class SchemaLogWriter<T> implements AutoCloseable {
 

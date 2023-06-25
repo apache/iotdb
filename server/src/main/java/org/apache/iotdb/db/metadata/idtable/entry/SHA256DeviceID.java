@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-/** Using sha 256 hash value of device path as device ID */
+/** Using sha 256 hash value of device path as device ID. */
 public class SHA256DeviceID implements IDeviceID {
   // four long value form a 32 bytes sha 256 value
   long l1;
@@ -38,13 +38,13 @@ public class SHA256DeviceID implements IDeviceID {
 
   private static final String SEPARATOR = "_";
 
-  /** using lots of message digest for improving parallelism */
+  // using lots of message digest for improving parallelism
   private static MessageDigest[] md;
 
-  /** number of message digest, for improve parallelism */
+  // number of message digest, for improve parallelism
   private static final int MD_NUM = 256;
 
-  /** logger */
+  // logger
   private static Logger logger = LoggerFactory.getLogger(IDTable.class);
 
   static {
@@ -70,7 +70,7 @@ public class SHA256DeviceID implements IDeviceID {
   }
 
   /**
-   * build device id from a sha 256 string, like "1#1#1#1"
+   * Build device id from a sha 256 string, like "1#1#1#1".
    *
    * @param deviceID a sha 256 string
    */
@@ -86,7 +86,7 @@ public class SHA256DeviceID implements IDeviceID {
   }
 
   /**
-   * build device id from a device path
+   * Build device id from a device path.
    *
    * @param deviceID device path
    */
@@ -105,7 +105,7 @@ public class SHA256DeviceID implements IDeviceID {
     l4 = toLong(hashVal, 24);
   }
 
-  /** The probability that each bit of sha 256 is 0 or 1 is equal */
+  /** The probability that each bit of sha 256 is 0 or 1 is equal. */
   public int hashCode() {
     return (int) l1;
   }
@@ -133,7 +133,7 @@ public class SHA256DeviceID implements IDeviceID {
   }
 
   /**
-   * calculate slot that this deviceID should in
+   * Calculate slot that this deviceID should in.
    *
    * @param deviceID device id
    * @return slot number
