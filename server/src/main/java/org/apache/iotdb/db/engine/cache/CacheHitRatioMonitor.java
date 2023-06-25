@@ -31,9 +31,10 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("squid:S6548")
 public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IService {
 
-  private static Logger LOGGER = LoggerFactory.getLogger(CacheHitRatioMonitor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CacheHitRatioMonitor.class);
   static final CacheHitRatioMonitor instance = AsyncCacheHitRatioHolder.DISPLAYER;
 
   @Override

@@ -59,6 +59,7 @@ import static org.apache.iotdb.db.mpp.metric.SeriesScanCostMetricSet.READ_TIMESE
  * This class is used to cache <code>TimeSeriesMetadata</code> in IoTDB. The caching strategy is
  * LRU.
  */
+@SuppressWarnings("squid:S6548")
 public class TimeSeriesMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
@@ -116,7 +117,7 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
-  @SuppressWarnings("squid:S1860") // Suppress synchronize warning
+  @SuppressWarnings({"squid:S1860", "squid:S6541", "squid:S3776"}) // Suppress synchronize warning
   public TimeseriesMetadata get(
       TimeSeriesMetadataCacheKey key,
       Set<String> allSensors,
