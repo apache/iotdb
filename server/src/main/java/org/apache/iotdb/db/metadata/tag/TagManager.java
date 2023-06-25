@@ -35,6 +35,7 @@ import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -238,6 +239,11 @@ public class TagManager {
 
       @Override
       public void close() {}
+
+      @Override
+      public ListenableFuture<?> isBlocked() {
+        return NOT_BLOCKED;
+      }
 
       @Override
       public boolean hasNext() {

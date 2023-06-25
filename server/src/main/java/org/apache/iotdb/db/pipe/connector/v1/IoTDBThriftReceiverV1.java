@@ -170,18 +170,25 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       writingFileWriter = null;
     }
     if (writingFile != null && writingFile.exists()) {
-      final boolean ignored = writingFile.delete();
-      LOGGER.info(String.format("original file %s was deleted.", writingFile.getPath()));
+      if (writingFile.delete()) {
+        LOGGER.info("original file {} was deleted.", writingFile.getPath());
+      } else {
+        LOGGER.warn("failed to delete original file {}.", writingFile.getPath());
+      }
       writingFile = null;
     }
 
     final File receiveDir = new File(RECEIVER_FILE_DIR);
     if (!receiveDir.exists()) {
-      boolean ignored = receiveDir.mkdirs();
+      if (receiveDir.mkdirs()) {
+        LOGGER.info("receiver file dir {} was created.", receiveDir.getPath());
+      } else {
+        LOGGER.warn("failed to create receiver file dir {}.", receiveDir.getPath());
+      }
     }
     writingFile = new File(RECEIVER_FILE_DIR, fileName);
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
-    LOGGER.info(String.format("start to write transferring file %s.", writingFile.getPath()));
+    LOGGER.info("start to write transferring file {}.", writingFile.getPath());
   }
 
   private boolean isFileExistedAndNameCorrect(String fileName) {
@@ -288,13 +295,9 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       if (writingFileWriter != null) {
         writingFileWriter.close();
       }
-      if (writingFile != null) {
-        if (!writingFile.delete()) {
-          LOGGER.warn(
-              String.format(
-                  "IoTDBThriftReceiverV1#handleExit: delete file %s error.",
-                  writingFile.getPath()));
-        }
+      if (writingFile != null && !writingFile.delete()) {
+        LOGGER.warn(
+            "IoTDBThriftReceiverV1#handleExit: delete file {} error.", writingFile.getPath());
       }
     } catch (IOException e) {
       LOGGER.warn("IoTDBThriftReceiverV1#handleExit: meeting errors on handleExit().", e);

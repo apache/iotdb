@@ -25,9 +25,10 @@ import org.apache.iotdb.pipe.api.event.Event;
 public interface EventSupplier {
 
   /**
-   * @return the event to be supplied. the event may be null if the collector has no more events at
-   *     the moment, but the collector is still running for more events.
+   * @return the event to be supplied. the event may be null if the extractor has no more events at
+   *     the moment, but the extractor is still running for more events.
    * @throws Exception if the supplier fails to supply the event.
    */
+  @SuppressWarnings("squid:S00112") // Exception is thrown by the interface
   Event supply() throws Exception;
 }

@@ -52,10 +52,14 @@ public class DeletionPipeData extends PipeData {
   }
 
   @Override
-  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+  public void deserialize(DataInputStream stream) throws IOException {
     super.deserialize(stream);
     database = ReadWriteIOUtils.readString(stream);
-    deletion = Deletion.deserializeWithoutFileOffset(stream);
+    try {
+      deletion = Deletion.deserializeWithoutFileOffset(stream);
+    } catch (IllegalPathException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override

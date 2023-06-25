@@ -316,6 +316,11 @@ public class LogDispatcher {
                 pendingEntries.poll(PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC, TimeUnit.SECONDS);
             if (request != null) {
               bufferedEntries.add(request);
+              // If write pressure is low, we simply sleep a little to reduce the number of RPC
+              if (pendingEntries.size() <= config.getReplication().getMaxLogEntriesNumPerBatch()
+                  && bufferedEntries.isEmpty()) {
+                Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
+              }
             }
           }
           logDispatcherThreadMetrics.recordConstructBatchTime(

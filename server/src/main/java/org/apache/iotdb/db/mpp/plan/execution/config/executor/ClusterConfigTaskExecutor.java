@@ -1518,7 +1518,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TCreatePipeReq req =
           new TCreatePipeReq()
               .setPipeName(createPipeStatement.getPipeName())
-              .setCollectorAttributes(createPipeStatement.getCollectorAttributes())
+              .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
               .setConnectorAttributes(createPipeStatement.getConnectorAttributes());
       TSStatus tsStatus = configNodeClient.createPipe(req);

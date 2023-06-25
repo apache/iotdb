@@ -154,6 +154,7 @@ public enum ThreadName {
 
   private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
   private final String name;
+  private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
   private static Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -347,7 +348,7 @@ public enum ThreadName {
         return module;
       }
     }
-    log.warn("The module for this thread is unknown: {}", givenThreadName);
+    log.debug("The module for this thread is unknown: {}", givenThreadName);
     return null;
   }
 
@@ -366,7 +367,7 @@ public enum ThreadName {
         }
       }
     }
-    log.warn("The thread pool for this thread is unknown: {}", givenThreadName);
+    log.debug("Unknown thread name: {}", givenThreadName);
     return ThreadName.UNKOWN;
   }
 }

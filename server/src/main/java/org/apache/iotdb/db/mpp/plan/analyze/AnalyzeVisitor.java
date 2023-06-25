@@ -282,6 +282,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         QueryPlanCostMetricSet.getInstance()
             .recordPlanCost(SCHEMA_FETCHER, System.nanoTime() - startTime);
       }
+      analysis.setSchemaTree(schemaTree);
 
       // extract global time filter from query filter and determine if there is a value filter
       analyzeGlobalTimeFilter(analysis, queryStatement);
@@ -2118,11 +2119,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertTabletStatement);
-    InsertBaseStatement realStatement = insertTabletStatement.removeLogicalView();
-    analysis.setStatement(realStatement);
+    InsertBaseStatement realStatement = removeLogicalView(analysis, insertTabletStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realStatement);
 
     if (realStatement instanceof InsertTabletStatement) {
       InsertTabletStatement realInsertTabletStatement = (InsertTabletStatement) realStatement;
@@ -2143,11 +2144,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowStatement);
-    InsertBaseStatement realInsertStatement = insertRowStatement.removeLogicalView();
-    analysis.setStatement(realInsertStatement);
+    InsertBaseStatement realInsertStatement = removeLogicalView(analysis, insertRowStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowStatement) {
       InsertRowStatement realInsertRowStatement = (InsertRowStatement) realInsertStatement;
@@ -2190,11 +2191,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowsStatement);
     InsertRowsStatement realInsertRowsStatement =
-        (InsertRowsStatement) insertRowsStatement.removeLogicalView();
-    analysis.setStatement(realInsertRowsStatement);
+        (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realInsertRowsStatement);
 
     return computeAnalysisForInsertRows(analysis, realInsertRowsStatement);
   }
@@ -2228,11 +2229,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertMultiTabletsStatement);
     InsertMultiTabletsStatement realStatement =
-        (InsertMultiTabletsStatement) insertMultiTabletsStatement.removeLogicalView();
-    analysis.setStatement(realStatement);
+        (InsertMultiTabletsStatement) removeLogicalView(analysis, insertMultiTabletsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realStatement);
 
     return computeAnalysisForMultiTablets(analysis, realStatement);
   }
@@ -2243,11 +2244,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     validateSchema(analysis, insertRowsOfOneDeviceStatement);
-    InsertBaseStatement realInsertStatement = insertRowsOfOneDeviceStatement.removeLogicalView();
-    analysis.setStatement(realInsertStatement);
+    InsertBaseStatement realInsertStatement =
+        removeLogicalView(analysis, insertRowsOfOneDeviceStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+    analysis.setStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowsOfOneDeviceStatement) {
       InsertRowsOfOneDeviceStatement realStatement =
@@ -2289,6 +2291,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       logger.warn(partialInsertMessage);
       analysis.setFailStatus(
           RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
+    }
+  }
+
+  private InsertBaseStatement removeLogicalView(
+      Analysis analysis, InsertBaseStatement insertBaseStatement) {
+    try {
+      return insertBaseStatement.removeLogicalView();
+    } catch (SemanticException e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      if (e.getCause() instanceof IoTDBException) {
+        IoTDBException exception = (IoTDBException) e.getCause();
+        analysis.setFailStatus(
+            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+      } else {
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+      }
+      return insertBaseStatement;
     }
   }
 
@@ -3224,23 +3243,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   /**
    * Compute how many paths exist, get the schema tree and the number of existed paths.
    *
-   * @param pathList the path you want to check
-   * @param context the context of your analyzer
    * @return a pair of ISchemaTree, and the number of exist paths.
    */
   private Pair<ISchemaTree, Integer> fetchSchemaOfPathsAndCount(
-      List<PartialPath> pathList, MPPQueryContext context) {
-    PathPatternTree pathPatternTree = new PathPatternTree();
-    for (PartialPath path : pathList) {
-      pathPatternTree.appendPathPattern(path);
+      List<PartialPath> pathList, Analysis analysis, MPPQueryContext context) {
+    ISchemaTree schemaTree = analysis.getSchemaTree();
+    if (schemaTree == null) {
+      // source is not represented by query, thus has not done fetch schema.
+      PathPatternTree pathPatternTree = new PathPatternTree();
+      for (PartialPath path : pathList) {
+        pathPatternTree.appendPathPattern(path);
+      }
+      schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
     }
-    ISchemaTree schemaTree = this.schemaFetcher.fetchSchema(pathPatternTree, context);
 
     // search each path, make sure they all exist.
     int numOfExistPaths = 0;
     for (PartialPath path : pathList) {
       Pair<List<MeasurementPath>, Integer> pathPair = schemaTree.searchMeasurementPaths(path);
-      numOfExistPaths += pathPair.left.size() > 0 ? 1 : 0;
+      numOfExistPaths += !pathPair.left.isEmpty() ? 1 : 0;
     }
     return new Pair<>(schemaTree, numOfExistPaths);
   }
@@ -3272,6 +3293,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Pair<List<Expression>, Analysis> analyzeQueryInLogicalViewStatement(
       Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
     Analysis queryAnalysis = this.visitQuery(queryStatement, context);
+    analysis.setSchemaTree(queryAnalysis.getSchemaTree());
     // get all expression from resultColumns
     List<Pair<Expression, String>> outputExpressions = queryAnalysis.getOutputExpressions();
     if (queryAnalysis.isFailed()) {
@@ -3311,7 +3333,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     Pair<ISchemaTree, Integer> schemaOfNeedToCheck =
-        fetchSchemaOfPathsAndCount(pathsNeedCheck, context);
+        fetchSchemaOfPathsAndCount(pathsNeedCheck, analysis, context);
     if (schemaOfNeedToCheck.right != pathsNeedCheck.size()) {
       // some source paths is not exist, and could not fetch schema.
       analysis.setFinishQueryAfterAnalyze(true);

@@ -102,9 +102,9 @@ public class PipeRuntimeAgent implements IService {
 
   public void report(PipeTaskMeta pipeTaskMeta, PipeRuntimeException pipeRuntimeException) {
     LOGGER.warn(
-        String.format(
-            "PipeRuntimeException: pipe task meta %s, exception %s",
-            pipeTaskMeta, pipeRuntimeException),
+        "Report PipeRuntimeException to local PipeTaskMeta({}), exception message: {}",
+        pipeTaskMeta,
+        pipeRuntimeException.getMessage(),
         pipeRuntimeException);
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
   }

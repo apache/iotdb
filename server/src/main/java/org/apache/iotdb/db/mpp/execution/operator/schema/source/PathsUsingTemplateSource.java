@@ -29,8 +29,11 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -96,6 +99,11 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     }
 
     @Override
+    public ListenableFuture<?> isBlocked() {
+      return NOT_BLOCKED;
+    }
+
+    @Override
     public boolean hasNext() {
       try {
         if (throwable != null) {
@@ -132,6 +140,9 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
 
     @Override
     public IDeviceSchemaInfo next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
       return currentDeviceReader.next();
     }
 
