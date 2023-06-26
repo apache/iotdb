@@ -263,6 +263,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         } else {
           schemaTree = schemaFetcher.fetchSchema(patternTree, context);
         }
+
         // If there is no leaf node in the schema tree, the query should be completed immediately
         if (schemaTree.isEmpty()) {
           return finishQuery(queryStatement, analysis);
@@ -270,14 +271,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         // make sure paths in logical view is fetched
         updateSchemaTreeByViews(analysis, schemaTree);
-        if (analysis.useLogicalView()) {
-          if (queryStatement.isAlignByDevice()) {
-            throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
-          }
-          if (queryStatement.isGroupByTag()) {
-            throw new SemanticException("Views cannot be used in GROUP BY TAGS query yet.");
-          }
-        }
       } finally {
         logger.debug("[EndFetchSchema]");
         QueryPlanCostMetricSet.getInstance()
@@ -483,6 +476,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } catch (Exception e) {
       throw new SemanticException(e);
     }
+    analysis.setUseLogicalView(useLogicalView);
+    if (useLogicalView && ((QueryStatement) analysis.getStatement()).isGroupByTag()) {
+      throw new SemanticException("Views cannot be used in GROUP BY TAGS query yet.");
+    }
+
     if (needToReFetch) {
       ISchemaTree viewSchemaTree = this.schemaFetcher.fetchSchema(patternTree, null);
       originSchemaTree.mergeSchemaTree(viewSchemaTree);
@@ -490,7 +488,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       allDatabases.addAll(originSchemaTree.getDatabases());
       originSchemaTree.setDatabases(allDatabases);
     }
-    analysis.setUseLogicalView(useLogicalView);
   }
 
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
@@ -599,10 +596,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         noMeasurementDevices.remove(device);
         for (Expression expression : selectExpressionsOfOneDevice) {
           Expression measurementExpression =
-              ExpressionAnalyzer.getMeasurementExpression(expression);
+              ExpressionAnalyzer.getMeasurementExpression(expression, analysis);
           measurementToDeviceSelectExpressions
               .computeIfAbsent(measurementExpression, key -> new LinkedHashMap<>())
-              .put(device.getFullPath(), ExpressionAnalyzer.removeAliasFromExpression(expression));
+              .put(device.getFullPath(), expression);
         }
       }
 
@@ -645,13 +642,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               deviceToSelectExpressionsOfOneMeasurement.entrySet()) {
             String deviceName = deviceNameSelectExpressionEntry.getKey();
             Expression expression = deviceNameSelectExpressionEntry.getValue();
-
-            Expression expressionWithoutAlias =
-                ExpressionAnalyzer.removeAliasFromExpression(expression);
-            analyzeExpression(analysis, expressionWithoutAlias);
+            analyzeExpression(analysis, expression);
             deviceToSelectExpressions
                 .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-                .add(expressionWithoutAlias);
+                .add(expression);
           }
           paginationController.consumeLimit();
         } else {
@@ -714,7 +708,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       conJunctions.addAll(
           expressionsInHaving.stream()
-              .map(ExpressionAnalyzer::getMeasurementExpression)
+              .map(expression -> ExpressionAnalyzer.getMeasurementExpression(expression, analysis))
               .collect(Collectors.toList()));
 
       for (Expression expression : expressionsInHaving) {
@@ -892,7 +886,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Pair<Expression, String> outputExpressionAndAlias : outputExpressions) {
       FunctionExpression rawExpression = (FunctionExpression) outputExpressionAndAlias.getLeft();
       FunctionExpression measurementExpression =
-          (FunctionExpression) ExpressionAnalyzer.getMeasurementExpression(rawExpression);
+          (FunctionExpression) ExpressionAnalyzer.getMeasurementExpression(rawExpression, analysis);
       outputExpressionToRawExpressionsMap
           .computeIfAbsent(measurementExpression, v -> new HashSet<>())
           .add(rawExpression);
@@ -1084,7 +1078,32 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             .addAll(ExpressionAnalyzer.searchSourceExpressions(whereExpression));
       }
     }
+
+    Map<String, List<String>> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
+    for (Map.Entry<String, Set<Expression>> deviceSourceExpressionsEntry :
+        deviceToSourceExpressions.entrySet()) {
+      String deviceName = deviceSourceExpressionsEntry.getKey();
+      Set<Expression> sourceExpressionsUnderDevice = deviceSourceExpressionsEntry.getValue();
+      Set<Expression> actualSourceExpressions = new HashSet<>();
+
+      Set<String> queriedDevices = new HashSet<>();
+      for (Expression expression : sourceExpressionsUnderDevice) {
+        queriedDevices.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
+        actualSourceExpressions.add(ExpressionAnalyzer.removeAliasFromExpression(expression));
+      }
+      if (queriedDevices.size() > 1) {
+        throw new SemanticException(
+            "Cross-device queries are not supported in ALIGN BY DEVICE queries.");
+      }
+      if (actualSourceExpressions.size() < sourceExpressionsUnderDevice.size()) {
+        throw new SemanticException(
+            "Views representing the same data source cannot be queried concurrently in ALIGN BY DEVICE queries.");
+      }
+      outputDeviceToQueriedDevicesMap.put(deviceName, new ArrayList<>(queriedDevices));
+    }
+
     analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
+    analysis.setOutputDeviceToQueriedDevicesMap(outputDeviceToQueriedDevicesMap);
   }
 
   private void analyzeSource(Analysis analysis, QueryStatement queryStatement) {
@@ -1233,7 +1252,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       for (Expression expression : outputExpressionsUnderDevice) {
         outputColumns.add(
-            ExpressionAnalyzer.getMeasurementExpression(expression).getOutputSymbol());
+            ExpressionAnalyzer.getMeasurementExpression(expression, analysis).getOutputSymbol());
       }
       deviceToOutputColumnsMap.put(deviceName, outputColumns);
     }
@@ -1356,8 +1375,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private TSDataType analyzeExpression(Analysis analysis, Expression expression) {
-    ExpressionTypeAnalyzer.analyzeExpression(analysis, expression);
-    return analysis.getType(expression);
+    return ExpressionTypeAnalyzer.analyzeExpression(analysis, expression);
+  }
+
+  private void setExpressionType(Analysis analysis, Expression expression, TSDataType type) {
+    analysis.setExpressionType(expression, type);
   }
 
   private void analyzeDeviceToGroupBy(
@@ -1476,7 +1498,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
 
         Expression devicerViewExpression =
-            ExpressionAnalyzer.getMeasurementExpression(expressionForItem);
+            ExpressionAnalyzer.getMeasurementExpression(expressionForItem, analysis);
         analyzeExpression(analysis, devicerViewExpression);
 
         deviceViewOrderByExpression.add(devicerViewExpression);
@@ -1629,7 +1651,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Set<String> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
-      deviceSet = analysis.getDeviceToSourceExpressions().keySet();
+      deviceSet =
+          analysis.getOutputDeviceToQueriedDevicesMap().values().stream()
+              .flatMap(List::stream)
+              .collect(Collectors.toSet());
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));

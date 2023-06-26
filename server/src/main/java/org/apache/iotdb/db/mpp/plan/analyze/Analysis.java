@@ -126,6 +126,9 @@ public class Analysis {
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // map from output device name to queried devices
+  private Map<String, List<String>> outputDeviceToQueriedDevicesMap;
+
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> deviceToSourceExpressions;
 
@@ -577,6 +580,10 @@ public class Analysis {
     this.expressionTypes.putAll(types);
   }
 
+  public void setExpressionType(Expression expression, TSDataType type) {
+    this.expressionTypes.put(NodeRef.of(expression), type);
+  }
+
   public Set<Expression> getDeviceViewOutputExpressions() {
     return deviceViewOutputExpressions;
   }
@@ -708,5 +715,14 @@ public class Analysis {
 
   public void setTimeseriesOrderingForLastQuery(Ordering timeseriesOrderingForLastQuery) {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
+  }
+
+  public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {
+    return outputDeviceToQueriedDevicesMap;
+  }
+
+  public void setOutputDeviceToQueriedDevicesMap(
+      Map<String, List<String>> outputDeviceToQueriedDevicesMap) {
+    this.outputDeviceToQueriedDevicesMap = outputDeviceToQueriedDevicesMap;
   }
 }

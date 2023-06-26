@@ -58,11 +58,14 @@ public class ExpressionTypeAnalyzer {
 
   private ExpressionTypeAnalyzer() {}
 
-  public static void analyzeExpression(Analysis analysis, Expression expression) {
-    ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-    analyzer.analyze(expression);
+  public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
+    if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
+      ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
+      analyzer.analyze(expression);
 
-    updateAnalysis(analysis, analyzer);
+      updateAnalysis(analysis, analyzer);
+    }
+    return analysis.getType(expression);
   }
 
   public static void analyzeExpression(

@@ -705,8 +705,8 @@ public class ExpressionAnalyzer {
     return ((TimeSeriesOperand) expression).getPath().getDevice();
   }
 
-  public static Expression getMeasurementExpression(Expression expression) {
-    return new GetMeasurementExpressionVisitor().process(expression, null);
+  public static Expression getMeasurementExpression(Expression expression, Analysis analysis) {
+    return new GetMeasurementExpressionVisitor().process(expression, analysis);
   }
 
   public static Expression evaluatePredicate(Expression predicate) {
