@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
+@SuppressWarnings("squid:S6548")
 public enum CrossCompactionSelector {
   REWRITE;
 
@@ -29,9 +31,10 @@ public enum CrossCompactionSelector {
     if (REWRITE.toString().equalsIgnoreCase(name)) {
       return REWRITE;
     }
-    throw new RuntimeException("Illegal Cross Compaction Selector " + name);
+    throw new IllegalCompactionSelectorNameException("Illegal Cross Compaction Selector " + name);
   }
 
+  @SuppressWarnings("squid:S1301")
   public ICrossSpaceSelector createInstance(
       String logicalStorageGroupName,
       String virtualGroupId,

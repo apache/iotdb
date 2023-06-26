@@ -23,6 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
+@SuppressWarnings("squid:S6548")
 public enum InnerSequenceCompactionSelector {
   SIZE_TIERED;
 
@@ -30,9 +31,10 @@ public enum InnerSequenceCompactionSelector {
     if (SIZE_TIERED.toString().equalsIgnoreCase(name)) {
       return SIZE_TIERED;
     }
-    throw new RuntimeException("Illegal Compaction Selector " + name);
+    throw new IllegalCompactionSelectorNameException("Illegal Compaction Selector " + name);
   }
 
+  @SuppressWarnings("squid:S1301")
   public IInnerSeqSpaceSelector createInstance(
       String storageGroupName,
       String dataRegionId,
