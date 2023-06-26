@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
-        run: mvn -B clean compile test -pl distribution -am -Dtest.port.closed=true -Pcode-coverage
+        run: mvn -B clean compile test -pl distribution,cli,session,jdbc -am -Dtest.port.closed=true -Pcode-coverage
       - name: Coveralls
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
