@@ -291,7 +291,8 @@ public abstract class InsertBaseStatement extends Statement {
         indexMapToLogicalViewList[realIndex] = i;
       }
     }
-    // construct map from device to measurements and record the index of its measurement schemaengine
+    // construct map from device to measurements and record the index of its measurement
+    // schemaengine
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
         new HashMap<>();
     for (int i = 0; i < this.measurements.length; i++) {

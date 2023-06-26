@@ -117,8 +117,8 @@ public class Session implements ISession {
   protected int fetchSize;
   private static final byte TYPE_NULL = -2;
   /**
-   * Timeout of read can be set by users. A negative number means using the default configuration
-   * of server. And value 0 will disable the function of read timeout.
+   * Timeout of read can be set by users. A negative number means using the default configuration of
+   * server. And value 0 will disable the function of read timeout.
    */
   private long queryTimeoutInMs = -1;
 

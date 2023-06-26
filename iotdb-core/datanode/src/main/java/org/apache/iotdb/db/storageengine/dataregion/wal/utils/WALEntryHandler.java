@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

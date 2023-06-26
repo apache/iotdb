@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -33,8 +33,8 @@ import java.util.List;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 
 /**
- * One dataDriver is responsible for one FragmentInstance which is for data read, which may
- * contains several series.
+ * One dataDriver is responsible for one FragmentInstance which is for data read, which may contains
+ * several series.
  */
 @NotThreadSafe
 public class DataDriver extends Driver {
@@ -69,8 +69,8 @@ public class DataDriver extends Driver {
   /**
    * init seq file list and unseq file list in QueryDataSource and set it into each SourceNode.
    *
-   * @throws QueryProcessException while failed to init read resource, QueryProcessException will
-   *     be thrown
+   * @throws QueryProcessException while failed to init read resource, QueryProcessException will be
+   *     thrown
    * @throws IllegalStateException if QueryDataSource is null after initialization,
    *     IllegalStateException will be thrown
    */
@@ -115,8 +115,8 @@ public class DataDriver extends Driver {
    * The method is called in mergeLock() when executing read. This method will get all the
    * QueryDataSource needed for this read.
    *
-   * @throws QueryProcessException while failed to init read resource, QueryProcessException will
-   *     be thrown
+   * @throws QueryProcessException while failed to init read resource, QueryProcessException will be
+   *     thrown
    */
   private QueryDataSource initQueryDataSource() throws QueryProcessException {
     return ((DataDriverContext) driverContext).getSharedQueryDataSource();

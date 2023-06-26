@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.EntityTraverser;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.EntityTraverser;
 
 public abstract class EntityUpdater<N extends IMNode<N>> extends EntityTraverser<Void, N>
     implements Updater {

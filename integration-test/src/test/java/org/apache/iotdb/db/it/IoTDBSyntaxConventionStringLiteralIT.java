@@ -670,27 +670,33 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //      // trigger attribute should be STRING_LITERAL
   //      statement.execute(
   //          "create trigger trigger_1 before insert on root.vehicle.d1.s1 "
-  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with ('k1'='v1')");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // ('k1'='v1')");
   //
   //      statement.execute(
   //          "create trigger trigger_2 before insert on root.vehicle.d1.s2 "
-  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with (k1='v1')");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // (k1='v1')");
   //
   //      statement.execute(
   //          "create trigger trigger_3 before insert on root.vehicle.d1.s3 "
-  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with ('k1'=v1)");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // ('k1'=v1)");
   //
   //      statement.execute(
   //          "create trigger trigger_4 before insert on root.vehicle.d1.s4 "
-  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with (k1=v1)");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // (k1=v1)");
   //
   //      statement.execute(
   //          "create trigger trigger_5 before insert on root.vehicle.d1.s5 "
-  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with (`k1`=`v1`)");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // (`k1`=`v1`)");
   //
   //      statement.execute(
   //          "create trigger trigger_6 before insert on root.vehicle.d1.s6 "
-  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with (`k1`=v1)");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // (`k1`=v1)");
   //
   //      boolean hasResult = statement.execute("show triggers");
   //      assertTrue(hasResult);

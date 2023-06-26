@@ -26,9 +26,9 @@ public class RollbackPreDeleteLogicalViewPlanImpl implements IRollbackPreDeleteL
 
   private PartialPath path;
 
-  RollbackPreDeleteLogicalViewPlanImpl() {}
+  public RollbackPreDeleteLogicalViewPlanImpl() {}
 
-  RollbackPreDeleteLogicalViewPlanImpl(PartialPath path) {
+  public RollbackPreDeleteLogicalViewPlanImpl(PartialPath path) {
     this.path = path;
   }
 

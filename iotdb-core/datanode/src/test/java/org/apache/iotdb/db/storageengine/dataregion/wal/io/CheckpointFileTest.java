@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
-import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
+import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.junit.After;
 import org.junit.Before;

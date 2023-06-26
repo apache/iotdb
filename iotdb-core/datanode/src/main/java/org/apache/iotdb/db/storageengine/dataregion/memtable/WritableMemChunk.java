@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;

@@ -94,8 +94,8 @@ import java.util.stream.Collectors;
 
 /**
  * The PartitionInfo stores cluster PartitionTable. The PartitionTable including: 1. regionMap:
- * location of Region member 2. schemaPartition: location of schemaengine 3. dataPartition: location of
- * data
+ * location of Region member 2. schemaPartition: location of schemaengine 3. dataPartition: location
+ * of data
  */
 public class PartitionInfo implements SnapshotProcessor {
 

@@ -69,7 +69,8 @@ public abstract class PageManager implements IPageManager {
 
   // optimize retrieval of the smallest applicable DIRTY segmented page
   // tiered by: MIN_SEG_SIZE, PAGE/16, PAGE/8, PAGE/4, PAGE/2, PAGE_SIZE
-  protected final LinkedList<Integer>[] tieredDirtyPageIndex = new LinkedList[SchemaFileConfig.SEG_SIZE_LST.length];
+  protected final LinkedList<Integer>[] tieredDirtyPageIndex =
+      new LinkedList[SchemaFileConfig.SEG_SIZE_LST.length];
 
   protected final ReentrantLock evictLock;
   protected final PageLocks pageLocks;
@@ -90,7 +91,8 @@ public abstract class PageManager implements IPageManager {
 
   PageManager(FileChannel channel, File pmtFile, int lastPageIndex, String logPath)
       throws IOException, MetadataException {
-    this.pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(SchemaFileConfig.PAGE_CACHE_SIZE, 1, true));
+    this.pageInstCache =
+        Collections.synchronizedMap(new LinkedHashMap<>(SchemaFileConfig.PAGE_CACHE_SIZE, 1, true));
     this.dirtyPages = new ConcurrentHashMap<>();
     for (int i = 0; i < tieredDirtyPageIndex.length; i++) {
       tieredDirtyPageIndex[i] = new LinkedList<>();
@@ -112,7 +114,8 @@ public abstract class PageManager implements IPageManager {
 
     // construct first page if file to init
     if (lastPageIndex < 0) {
-      ISegmentedPage rootPage = ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
+      ISegmentedPage rootPage =
+          ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), 0);
       rootPage.allocNewSegment(SchemaFileConfig.SEG_MAX_SIZ);
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
       markDirty(rootPage);
@@ -182,7 +185,9 @@ public abstract class PageManager implements IPageManager {
       curPage = getPageInstance(SchemaFile.getPageIndex(actualAddress));
 
       try {
-        curPage.getAsSegmentedPage().write(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
+        curPage
+            .getAsSegmentedPage()
+            .write(SchemaFile.getSegIndex(actualAddress), entry.getKey(), childBuffer);
         markDirty(curPage);
         addPageToCache(curPage.getPageIndex(), curPage);
 
@@ -248,7 +253,8 @@ public abstract class PageManager implements IPageManager {
       childBuffer = RecordUtils.node2Buffer(child);
 
       curPage = getPageInstance(SchemaFile.getPageIndex(actualAddress));
-      if (curPage.getAsSegmentedPage().read(SchemaFile.getSegIndex(actualAddress), entry.getKey()) == null) {
+      if (curPage.getAsSegmentedPage().read(SchemaFile.getSegIndex(actualAddress), entry.getKey())
+          == null) {
         throw new MetadataException(
             String.format(
                 "Node[%s] has no child[%s] in pbtree file.", node.getName(), entry.getKey()));
@@ -261,7 +267,10 @@ public abstract class PageManager implements IPageManager {
         alias = null;
       }
       if (node.isDevice()) {
-        oldChild = curPage.getAsSegmentedPage().read(SchemaFile.getSegIndex(actualAddress), entry.getKey());
+        oldChild =
+            curPage
+                .getAsSegmentedPage()
+                .read(SchemaFile.getSegIndex(actualAddress), entry.getKey());
         oldAlias = oldChild.isMeasurement() ? oldChild.getAsMeasurementMNode().getAlias() : null;
       } else {
         oldAlias = null;
@@ -555,7 +564,10 @@ public abstract class PageManager implements IPageManager {
     short availableSize =
         newSegSize < 0
             ? (short) (page.getAsSegmentedPage().getSpareSize() - SchemaFileConfig.SEG_OFF_DIG)
-            : (short) (page.getAsSegmentedPage().getSpareSize() - newSegSize - SchemaFileConfig.SEG_OFF_DIG);
+            : (short)
+                (page.getAsSegmentedPage().getSpareSize()
+                    - newSegSize
+                    - SchemaFileConfig.SEG_OFF_DIG);
 
     // too small to index
     if (availableSize < SchemaFileConfig.SEG_HEADER_SIZE) {
@@ -575,7 +587,8 @@ public abstract class PageManager implements IPageManager {
   protected synchronized ISchemaPage allocateNewSegmentedPage() {
     lastPageIndex.incrementAndGet();
     ISchemaPage newPage =
-        ISchemaPage.initSegmentedPage(ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), lastPageIndex.get());
+        ISchemaPage.initSegmentedPage(
+            ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH), lastPageIndex.get());
     markDirty(newPage);
     return addPageToCache(newPage.getPageIndex(), newPage);
   }
@@ -652,8 +665,8 @@ public abstract class PageManager implements IPageManager {
   }
 
   private static long getPageAddress(int pageIndex) {
-    return (
-        SchemaFileConfig.PAGE_INDEX_MASK & pageIndex) * SchemaFileConfig.PAGE_LENGTH + SchemaFileConfig.FILE_HEADER_SIZE;
+    return (SchemaFileConfig.PAGE_INDEX_MASK & pageIndex) * SchemaFileConfig.PAGE_LENGTH
+        + SchemaFileConfig.FILE_HEADER_SIZE;
   }
 
   /**
@@ -679,7 +692,9 @@ public abstract class PageManager implements IPageManager {
           totalSize += 16; // slightly larger
         }
       }
-      return (short) totalSize > SchemaFileConfig.SEG_MIN_SIZ ? (short) totalSize : SchemaFileConfig.SEG_MIN_SIZ;
+      return (short) totalSize > SchemaFileConfig.SEG_MIN_SIZ
+          ? (short) totalSize
+          : SchemaFileConfig.SEG_MIN_SIZ;
     }
 
     int tier = SchemaFileConfig.SEG_SIZE_LST.length - 1;

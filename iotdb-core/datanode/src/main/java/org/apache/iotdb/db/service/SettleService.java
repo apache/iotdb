@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleLog;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 
 import org.slf4j.Logger;

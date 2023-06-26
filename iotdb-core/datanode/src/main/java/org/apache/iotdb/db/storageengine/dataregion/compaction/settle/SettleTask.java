@@ -21,9 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 
 import org.slf4j.Logger;

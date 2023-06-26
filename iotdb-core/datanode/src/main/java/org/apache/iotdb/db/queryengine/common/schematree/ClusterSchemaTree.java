@@ -49,9 +49,9 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
+import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class ClusterSchemaTree implements ISchemaTree {
 

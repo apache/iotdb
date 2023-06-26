@@ -278,12 +278,9 @@ public class ConfigMTreeTest {
           i, newTree.getNodeWithAutoCreate(pathList[i].concatNode("a")).getSchemaTemplateId());
     }
 
-    assertEquals(
-        3, newTree.getMatchedDatabases(new PartialPath("root.**.sg"), false).size());
-    assertEquals(
-        2, newTree.getMatchedDatabases(new PartialPath("root.**.b.sg"), false).size());
-    assertEquals(
-        1, newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), false).size());
+    assertEquals(3, newTree.getMatchedDatabases(new PartialPath("root.**.sg"), false).size());
+    assertEquals(2, newTree.getMatchedDatabases(new PartialPath("root.**.b.sg"), false).size());
+    assertEquals(1, newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), false).size());
   }
 
   @Test

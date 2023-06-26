@@ -50,7 +50,8 @@ public class SchemaRegionUtils {
     if (schemaRegionDir.delete()) {
       logger.info("delete schemaengine region folder {}", schemaRegionDir.getAbsolutePath());
     } else {
-      logger.info("delete schemaengine region folder {} failed.", schemaRegionDir.getAbsolutePath());
+      logger.info(
+          "delete schemaengine region folder {} failed.", schemaRegionDir.getAbsolutePath());
       throw new MetadataException(
           String.format(
               "Failed to delete schemaengine region folder %s", schemaRegionDir.getAbsolutePath()));

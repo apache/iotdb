@@ -19,10 +19,10 @@
 package org.apache.iotdb.confignode.persistence.schema.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.basic.ConfigBasicMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.info.ConfigDatabaseInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 public class ConfigDatabaseMNode extends AbstractDatabaseMNode<IConfigMNode, ConfigBasicMNode>
     implements IConfigMNode {

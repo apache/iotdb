@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.statement.internal;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;

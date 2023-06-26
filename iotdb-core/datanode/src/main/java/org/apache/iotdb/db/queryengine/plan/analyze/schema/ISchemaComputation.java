@@ -27,8 +27,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.List;
 
 /**
- * This interface defines the required behaviour invoked during schemaengine fetch/computation, which is
- * executed by schemaengine fetcher.
+ * This interface defines the required behaviour invoked during schemaengine fetch/computation,
+ * which is executed by schemaengine fetcher.
  */
 public interface ISchemaComputation {
 
@@ -49,8 +49,8 @@ public interface ISchemaComputation {
   boolean hasLogicalViewNeedProcess();
 
   /**
-   * @return the logical view schemaengine list recorded by this statement. It may be NULL if it is not
-   *     used before.
+   * @return the logical view schemaengine list recorded by this statement. It may be NULL if it is
+   *     not used before.
    */
   List<LogicalViewSchema> getLogicalViewSchemaList();
 
@@ -62,9 +62,9 @@ public interface ISchemaComputation {
   List<Integer> getIndexListOfLogicalViewPaths();
 
   /**
-   * Record the beginning and ending of logical schemaengine list. After calling this interface, the range
-   * should be record. For example, the range is [0,4) which means 4 schemas exist. Later, more 3
-   * schemas are added, this function is called, then it records [4,7).
+   * Record the beginning and ending of logical schemaengine list. After calling this interface, the
+   * range should be record. For example, the range is [0,4) which means 4 schemas exist. Later,
+   * more 3 schemas are added, this function is called, then it records [4,7).
    */
   void recordRangeOfLogicalViewSchemaListNow();
 

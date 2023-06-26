@@ -21,7 +21,7 @@
 <#list allDataTypes.types as type>
 
     <#assign className = "${type.dataType?cap_first}ModeAccumulator">
-    <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/aggregation/${className}.java" />
+    <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/aggregation/${className}.java" />
 
 package org.apache.iotdb.db.queryengine.aggregation;
 

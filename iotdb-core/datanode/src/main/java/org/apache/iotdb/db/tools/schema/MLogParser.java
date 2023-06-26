@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.tools.schema;
 
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.BufferedSerializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogReader;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogWriter;
-import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanDeserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor.SchemaRegionPlanTxtSerializer;
 

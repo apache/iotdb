@@ -27,8 +27,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The schemaengine of timeseries that exist in this file. The schemaTemplates is a simplified manner to
- * batch create schemaengine of timeseries.
+ * The schemaengine of timeseries that exist in this file. The schemaTemplates is a simplified
+ * manner to batch create schemaengine of timeseries.
  */
 public class Schema implements Serializable {
 

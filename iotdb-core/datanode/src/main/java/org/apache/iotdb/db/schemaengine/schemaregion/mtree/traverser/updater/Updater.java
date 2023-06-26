@@ -21,7 +21,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.updater;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 
-// TODO: In schemaengine file mode, since the updated node won't be cache evicted until it been flushed to
+// TODO: In schemaengine file mode, since the updated node won't be cache evicted until it been
+// flushed to
 // disk and currently the flush won't happen during traversing which takes the read lock, we need to
 // consider the concurrency of flush and traverse for better memory control in future work.
 public interface Updater {

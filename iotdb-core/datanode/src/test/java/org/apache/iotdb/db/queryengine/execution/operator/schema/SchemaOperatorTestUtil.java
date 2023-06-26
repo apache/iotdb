@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
-import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaSource;
 
 import org.mockito.Mockito;
 

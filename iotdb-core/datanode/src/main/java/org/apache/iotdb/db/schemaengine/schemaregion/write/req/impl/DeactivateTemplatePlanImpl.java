@@ -29,9 +29,9 @@ public class DeactivateTemplatePlanImpl implements IDeactivateTemplatePlan {
 
   private Map<PartialPath, List<Integer>> templateSetInfo;
 
-  DeactivateTemplatePlanImpl() {}
+  public DeactivateTemplatePlanImpl() {}
 
-  DeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
+  public DeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
     this.templateSetInfo = templateSetInfo;
   }
 

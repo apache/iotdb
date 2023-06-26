@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.protocol.thrift.handler;
 
-import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.session.ClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.external.api.thrift.JudgableServerContext;
 import org.apache.iotdb.external.api.thrift.ServerContextFactory;
 import org.apache.iotdb.rpc.TElasticFramedTransport;

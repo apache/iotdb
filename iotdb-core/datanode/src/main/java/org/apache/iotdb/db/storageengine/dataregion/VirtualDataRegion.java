@@ -28,8 +28,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * It's a virtual data region used for read which contains time series that don't belong to any
- * data region.
+ * It's a virtual data region used for read which contains time series that don't belong to any data
+ * region.
  */
 public class VirtualDataRegion implements IDataRegionForQuery {
 

@@ -26,9 +26,9 @@ public class ChangeAliasPlanImpl implements IChangeAliasPlan {
   private PartialPath path;
   private String alias;
 
-  ChangeAliasPlanImpl() {}
+  public ChangeAliasPlanImpl() {}
 
-  ChangeAliasPlanImpl(PartialPath path, String alias) {
+  public ChangeAliasPlanImpl(PartialPath path, String alias) {
     this.path = path;
     this.alias = alias;
   }

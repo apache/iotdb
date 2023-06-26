@@ -23,9 +23,8 @@ import org.apache.iotdb.db.utils.SerializedSize;
 /** A class implements this interface can be written into .wal file. */
 public interface WALEntryValue extends SerializedSize {
   /**
-   * Serialize using {@link IWALByteBufferView}, which encapsulates
-   * some actions to deal with {@link java.nio.BufferOverflowException} occurs in {@link
-   * java.nio.ByteBuffer}.
+   * Serialize using {@link IWALByteBufferView}, which encapsulates some actions to deal with {@link
+   * java.nio.BufferOverflowException} occurs in {@link java.nio.ByteBuffer}.
    */
   void serializeToWAL(IWALByteBufferView buffer);
 }

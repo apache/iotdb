@@ -37,9 +37,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This class is used to convert information given by sparkSQL to construct TSFile's read plans.
- * For TSFile's schemaengine differ from SparkSQL's table schemaengine e.g. TSFile's SQL: select s1,s2 from
- * root.car.d1 where s1 = 10 SparkSQL's SQL: select s1,s2 from XXX where delta_object = d1
+ * This class is used to convert information given by sparkSQL to construct TSFile's read plans. For
+ * TSFile's schemaengine differ from SparkSQL's table schemaengine e.g. TSFile's SQL: select s1,s2
+ * from root.car.d1 where s1 = 10 SparkSQL's SQL: select s1,s2 from XXX where delta_object = d1
  */
 public class QueryProcessor {
 

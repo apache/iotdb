@@ -20,20 +20,20 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionClearUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionOverlapType;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionClearUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionOverlapType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -378,49 +378,75 @@ public class InnerUnseqCompactionWithFastPerformerTest {
                   if (compactionBeforeHasMod) {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1200L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 3000L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 650L);
                         break;
                     }
                   } else {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1200L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 3000L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 650L);
                         break;
                     }
                   }
@@ -428,49 +454,75 @@ public class InnerUnseqCompactionWithFastPerformerTest {
                   if (compactionBeforeHasMod) {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1749L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1749L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1749L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1749L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1749L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1749L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1749L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1749L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1749L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1749L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1749L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1749L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1749L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1749L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1749L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1749L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 3549L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1250L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1250L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1199L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1250L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1250L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1199L);
                         break;
                     }
                   } else {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1800L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 3600L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1250L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1250L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1250L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 1250L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1250L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1250L);
                         break;
                     }
                   }
@@ -480,57 +532,91 @@ public class InnerUnseqCompactionWithFastPerformerTest {
                   if (compactionBeforeHasMod) {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 549L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3000L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 3000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 549L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
                         break;
                     }
                   } else {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3000L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 3000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
                         break;
                     }
                   }
@@ -538,65 +624,107 @@ public class InnerUnseqCompactionWithFastPerformerTest {
                   if (compactionBeforeHasMod) {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 549L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1149L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 3600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 1149L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 549L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1250L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1250L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 549L);
                         break;
                     }
                   } else {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 3600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1250L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1200L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 650L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 1250L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 1200L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
                         break;
                     }
                   }
@@ -606,73 +734,123 @@ public class InnerUnseqCompactionWithFastPerformerTest {
                   if (compactionBeforeHasMod) {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 549L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 2349L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 2349L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 549L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
                         break;
                     }
                   } else {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 2400L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 2400L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
                         break;
                     }
                   }
@@ -680,97 +858,171 @@ public class InnerUnseqCompactionWithFastPerformerTest {
                   if (compactionBeforeHasMod) {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[6], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[7], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[8], 549L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[6], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[7], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[8], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 2349L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 2349L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[6], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[7], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[8], 549L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 549L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[6], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[7], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[8], 549L);
                         break;
                     }
                   } else {
                     switch (compactionOverlapType) {
                       case FILE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[6], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[7], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[8], 600L);
                         break;
                       case FILE_OVERLAP_CHUNK_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[6], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[7], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[8], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
                       case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 2400L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 2400L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[6], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[7], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[8], 600L);
                         break;
                       case PAGE_OVERLAP:
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                        CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[0], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[1], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[2], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[3], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[4], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[5], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[6], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[7], 600L);
+                        CompactionCheckerUtils.putOnePageChunk(
+                            chunkPagePointsNumMerged, fullPaths[8], 600L);
                         break;
                     }
                   }

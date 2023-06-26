@@ -38,9 +38,9 @@ import java.util.Objects;
  * DeviceViewNode is responsible for constructing a device-based view of a set of series. And output
  * the result with specific order. The order could be 'order by device' or 'order by timestamp'
  *
- * <p>Each output from its children should have the same schemaengine. That means, the columns should be
- * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
- * contain n+1 columns where the new column is Device column.
+ * <p>Each output from its children should have the same schemaengine. That means, the columns
+ * should be same between these TsBlocks. If the input TsBlock contains n columns, the device-based
+ * view will contain n+1 columns where the new column is Device column.
  */
 public class DeviceViewNode extends MultiChildProcessNode {
 

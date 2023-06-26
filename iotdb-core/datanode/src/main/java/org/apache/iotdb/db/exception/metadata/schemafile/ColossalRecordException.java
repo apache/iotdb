@@ -24,9 +24,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafil
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
- * Record is the element stored in {@link
- * ISegment}. Huge record is expected to be
- * supported further.
+ * Record is the element stored in {@link ISegment}. Huge record is expected to be supported
+ * further.
  */
 public class ColossalRecordException extends MetadataException {
 

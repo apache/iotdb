@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -54,10 +54,10 @@ public interface ISchemaFetcher {
   ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree);
 
   /**
-   * Fetch and compute the schemaengine of target timeseries, with device and measurement defined in given
-   * schemaComputationWithAutoCreation. The computation defined in given
-   * schemaComputationWithAutoCreation will be executed during scanning the fetched schemaengine. If some
-   * target timeseries doesn't exist, they will be auto created.
+   * Fetch and compute the schemaengine of target timeseries, with device and measurement defined in
+   * given schemaComputationWithAutoCreation. The computation defined in given
+   * schemaComputationWithAutoCreation will be executed during scanning the fetched schemaengine. If
+   * some target timeseries doesn't exist, they will be auto created.
    *
    * @param schemaComputationWithAutoCreation define the target device, measurements and computation
    */
@@ -65,10 +65,10 @@ public interface ISchemaFetcher {
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation);
 
   /**
-   * Fetch and compute the schemaengine of target timeseries, with device and measurement defined in given
-   * schemaComputationWithAutoCreation. The computation defined in given
-   * schemaComputationWithAutoCreation will be executed during scanning the fetched schemaengine. If some
-   * target timeseries doesn't exist, they will be auto created.
+   * Fetch and compute the schemaengine of target timeseries, with device and measurement defined in
+   * given schemaComputationWithAutoCreation. The computation defined in given
+   * schemaComputationWithAutoCreation will be executed during scanning the fetched schemaengine. If
+   * some target timeseries doesn't exist, they will be auto created.
    *
    * @param schemaComputationWithAutoCreationList define the target devices, measurements and
    *     computation

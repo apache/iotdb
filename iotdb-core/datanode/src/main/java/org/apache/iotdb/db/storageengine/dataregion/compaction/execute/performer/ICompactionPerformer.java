@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.List;
 

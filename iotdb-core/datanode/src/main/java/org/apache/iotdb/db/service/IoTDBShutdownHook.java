@@ -24,18 +24,18 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
-import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
-import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -71,7 +71,8 @@ public class IoTDBShutdownHook extends Thread {
     WALManager.getInstance().deleteOutdatedWALFiles();
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
-    // consensus algorithms, which will replace the underlying storage storageengine based on its own
+    // consensus algorithms, which will replace the underlying storage storageengine based on its
+    // own
     // latest snapshot, while other consensus algorithms will not. This judgement ensures that
     // compaction work is not discarded even if there are frequent restarts
     if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()

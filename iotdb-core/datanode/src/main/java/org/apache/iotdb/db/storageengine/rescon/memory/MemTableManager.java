@@ -20,9 +20,9 @@ package org.apache.iotdb.db.storageengine.rescon.memory;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.exception.WriteProcessException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

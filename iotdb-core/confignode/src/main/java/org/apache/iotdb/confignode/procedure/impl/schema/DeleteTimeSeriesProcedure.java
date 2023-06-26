@@ -194,7 +194,8 @@ public class DeleteTimeSeriesProcedure
       // all dataNodes must clear the related schemaengine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Failed to invalidate schemaengine cache of timeseries {}", requestMessage);
-        setFailure(new ProcedureException(new MetadataException("Invalidate schemaengine cache failed")));
+        setFailure(
+            new ProcedureException(new MetadataException("Invalidate schemaengine cache failed")));
         return;
       }
     }

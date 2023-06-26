@@ -119,13 +119,16 @@ public class SetTemplateProcedure
           validateTimeSeriesExistence(env);
           break;
         case COMMIT_SET:
-          LOGGER.info("Commit set schemaengine template {} on path {}", templateName, templateSetPath);
+          LOGGER.info(
+              "Commit set schemaengine template {} on path {}", templateName, templateSetPath);
           commitSetTemplate(env);
           setNextState(SetTemplateState.COMMIT_RELEASE);
           break;
         case COMMIT_RELEASE:
           LOGGER.info(
-              "Commit release schemaengine template {} set on path {}", templateName, templateSetPath);
+              "Commit release schemaengine template {} set on path {}",
+              templateName,
+              templateSetPath);
           commitReleaseTemplate(env);
           return Flow.NO_MORE_STATE;
         default:

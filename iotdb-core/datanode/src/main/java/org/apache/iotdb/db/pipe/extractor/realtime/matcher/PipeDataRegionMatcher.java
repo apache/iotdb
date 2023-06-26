@@ -27,8 +27,8 @@ import java.util.Set;
 public interface PipeDataRegionMatcher {
 
   /**
-   * Register a extractor. If the extractor's pattern matches the event's schemaengine info, the event
-   * will be assigned to the extractor.
+   * Register a extractor. If the extractor's pattern matches the event's schemaengine info, the
+   * event will be assigned to the extractor.
    */
   void register(PipeRealtimeDataRegionExtractor extractor);
 
@@ -39,8 +39,8 @@ public interface PipeDataRegionMatcher {
   int getRegisterCount();
 
   /**
-   * Match the event's schemaengine info with the registered extractors' patterns. If the event's schemaengine
-   * info matches the pattern of a extractor, the extractor will be returned.
+   * Match the event's schemaengine info with the registered extractors' patterns. If the event's
+   * schemaengine info matches the pattern of a extractor, the extractor will be returned.
    *
    * @param event the event to be matched
    * @return the matched extractors

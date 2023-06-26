@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.allocation.ElasticStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.wal.allocation.FirstCreateStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.wal.allocation.NodeAllocationStrategy;
@@ -37,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFakeNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
-import org.apache.iotdb.db.service.metrics.WritingMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

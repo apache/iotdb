@@ -426,7 +426,9 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     tempBuffer.position(tempBuffer.capacity() - accSiz);
     this.pageBuffer.position(this.spareOffset);
     this.pageBuffer.put(tempBuffer);
-    this.spareSize = (short) (this.spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE - OFFSET_LEN * this.memberNum);
+    this.spareSize =
+        (short)
+            (this.spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE - OFFSET_LEN * this.memberNum);
   }
 
   /**

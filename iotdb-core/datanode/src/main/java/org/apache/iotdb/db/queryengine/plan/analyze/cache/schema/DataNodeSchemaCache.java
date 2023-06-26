@@ -24,11 +24,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -134,10 +134,10 @@ public class DataNodeSchemaCache {
   }
 
   /**
-   * This function is used to process logical view schemaengine list in statement. It will try to find the
-   * source paths of those views in cache. If it found sources, measurement schemas of sources will
-   * be recorded in measurement schemaengine list; else the views will be recorded as missed. The indexes
-   * of missed views and full paths of their source paths will be returned.
+   * This function is used to process logical view schemaengine list in statement. It will try to
+   * find the source paths of those views in cache. If it found sources, measurement schemas of
+   * sources will be recorded in measurement schemaengine list; else the views will be recorded as
+   * missed. The indexes of missed views and full paths of their source paths will be returned.
    *
    * @param schemaComputation the statement you want to process
    * @return The indexes of missed views and full paths of their source paths will be returned.
@@ -155,8 +155,8 @@ public class DataNodeSchemaCache {
   }
 
   /**
-   * Store the fetched schemaengine in either the schemaCache or templateSchemaCache, depending on its
-   * associated device.
+   * Store the fetched schemaengine in either the schemaCache or templateSchemaCache, depending on
+   * its associated device.
    */
   public void put(ClusterSchemaTree tree) {
     Optional<Pair<Template, ?>> templateInfo;

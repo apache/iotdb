@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.audit.AuditLogOperation;
 import org.apache.iotdb.db.audit.AuditLogStorage;
+import org.apache.iotdb.db.exception.LoadConfigurationException;
+import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionValidationLevel;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
@@ -35,10 +37,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerSequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
-import org.apache.iotdb.db.exception.LoadConfigurationException;
-import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
-import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -559,8 +559,8 @@ public class IoTDBConfig {
   private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
 
   /**
-   * If true, we will estimate each read's possible memory footprint before executing it and deny
-   * it if its estimated memory exceeds current free memory
+   * If true, we will estimate each read's possible memory footprint before executing it and deny it
+   * if its estimated memory exceeds current free memory
    */
   private boolean enableQueryMemoryEstimation = true;
 
@@ -881,9 +881,9 @@ public class IoTDBConfig {
   private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /**
-   * The consensus protocol class for schemaengine region. The Datanode should communicate with ConfigNode
-   * on startup and set this variable so that the correct class name can be obtained later when the
-   * schemaengine region consensus layer singleton is initialized
+   * The consensus protocol class for schemaengine region. The Datanode should communicate with
+   * ConfigNode on startup and set this variable so that the correct class name can be obtained
+   * later when the schemaengine region consensus layer singleton is initialized
    */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
@@ -1054,7 +1054,9 @@ public class IoTDBConfig {
   /** This configuration parameter sets the level at which the time series limit is applied.* */
   private String clusterSchemaLimitLevel = "timeseries";
 
-  /** This configuration parameter sets the maximum number of schemaengine allowed in the cluster.* */
+  /**
+   * This configuration parameter sets the maximum number of schemaengine allowed in the cluster.*
+   */
   private long clusterSchemaLimitThreshold = -1;
 
   /** Output location of audit logs * */

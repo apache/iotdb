@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.schemaengine.rescon;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
 
 public class SchemaResourceManager {
 

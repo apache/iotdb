@@ -24,11 +24,11 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
+import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -126,8 +126,8 @@ public class DeviceUsingTemplateSchemaCache {
 
   /**
    * CONFORM indicates that the provided devicePath had been cached as a template activated path,
-   * ensuring that the alignment of the device, as well as the name and schemaengine of every measurement
-   * are consistent with the cache.
+   * ensuring that the alignment of the device, as well as the name and schemaengine of every
+   * measurement are consistent with the cache.
    *
    * @param computation
    * @return true if conform to template cache, which means no need to fetch or create anymore

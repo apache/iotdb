@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.storageengine.upgrade;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.tools.upgrade.TsFileOnlineUpgradeTool;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;

@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.pipe.connector.legacy.loader.DeletionLoader;
 import org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;

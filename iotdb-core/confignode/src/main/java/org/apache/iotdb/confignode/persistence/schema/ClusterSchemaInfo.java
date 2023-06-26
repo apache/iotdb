@@ -87,8 +87,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_TEMPLATE;
 
 /**
- * The ClusterSchemaInfo stores cluster schemaengine. The cluster schemaengine including: 1. StorageGroupSchema
- * 2. Template (Not implement yet)
+ * The ClusterSchemaInfo stores cluster schemaengine. The cluster schemaengine including: 1.
+ * StorageGroupSchema 2. Template (Not implement yet)
  */
 public class ClusterSchemaInfo implements SnapshotProcessor {
 

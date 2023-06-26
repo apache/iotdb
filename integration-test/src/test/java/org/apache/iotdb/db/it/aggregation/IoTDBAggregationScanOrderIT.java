@@ -30,10 +30,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.utils.constant.TestConstant.firstValue;
-import static org.apache.iotdb.db.utils.constant.TestConstant.lastValue;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
+import static org.apache.iotdb.db.utils.constant.TestConstant.firstValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.lastValue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})

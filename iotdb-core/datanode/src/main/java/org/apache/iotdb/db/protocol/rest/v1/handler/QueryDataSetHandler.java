@@ -18,6 +18,7 @@
 package org.apache.iotdb.db.protocol.rest.v1.handler;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.protocol.rest.v1.model.ExecutionStatus;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -26,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.db.protocol.rest.v1.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;

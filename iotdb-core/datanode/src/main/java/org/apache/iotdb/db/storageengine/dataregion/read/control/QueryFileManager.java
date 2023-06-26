@@ -50,8 +50,8 @@ public class QueryFileManager {
   }
 
   /**
-   * Set job id for current request thread. When a read request is created firstly, this method
-   * must be invoked.
+   * Set job id for current request thread. When a read request is created firstly, this method must
+   * be invoked.
    */
   void addQueryId(long queryId) {
     sealedFilePathsMap.computeIfAbsent(queryId, x -> new ConcurrentHashMap<>());

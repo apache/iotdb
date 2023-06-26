@@ -20,7 +20,7 @@
 <#list allDataTypes.types as type>
 
   <#assign className = "${type.dataType?cap_first}ConstantFill">
-  <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/execution/operator/process/fill/constant/${className}.java" />
+  <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/operator/process/fill/constant/${className}.java" />
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;

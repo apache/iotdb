@@ -37,10 +37,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-/**
- * parse the {@linkplain SchemaFile} to
- * text
- */
+/** parse the {@linkplain SchemaFile} to text */
 public class PBTreeFileSketchTool {
 
   private static final Logger logger = LoggerFactory.getLogger(PBTreeFileSketchTool.class);

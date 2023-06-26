@@ -95,7 +95,9 @@ public class UnsetTemplateProcedure
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
           LOGGER.info(
-              "Construct schemaengine black list of template {} set on {}", template.getName(), path);
+              "Construct schemaengine black list of template {} set on {}",
+              template.getName(),
+              path);
           constructBlackList(env);
           break;
         case CLEAN_DATANODE_TEMPLATE_CACHE:

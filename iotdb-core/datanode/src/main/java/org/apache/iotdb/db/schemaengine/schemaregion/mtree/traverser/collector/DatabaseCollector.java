@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.DatabaseTraverser;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.DatabaseTraverser;
 
 // This class implements database path collection function.
 public abstract class DatabaseCollector<R, N extends IMNode<N>> extends DatabaseTraverser<R, N> {

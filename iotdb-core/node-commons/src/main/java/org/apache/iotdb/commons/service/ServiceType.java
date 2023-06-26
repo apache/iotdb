@@ -51,7 +51,8 @@ public enum ServiceType {
   QUERY_TIME_MANAGER("Query time manager", "Query time"),
 
   FLUSH_SERVICE(
-      "Flush ServerService", generateJmxName("org.apache.iotdb.db.storageengine.pool", "Flush Manager")),
+      "Flush ServerService",
+      generateJmxName("org.apache.iotdb.db.storageengine.pool", "Flush Manager")),
   CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor"),
   SYSTEMINFO_SERVICE("MemTable Monitor Service", "MemTable, Monitor"),
   CONTINUOUS_QUERY_SERVICE("Continuous Query Service", "Continuous Query Service"),

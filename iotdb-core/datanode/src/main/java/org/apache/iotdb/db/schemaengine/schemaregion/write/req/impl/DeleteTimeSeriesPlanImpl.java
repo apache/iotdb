@@ -27,9 +27,9 @@ public class DeleteTimeSeriesPlanImpl implements IDeleteTimeSeriesPlan {
 
   private List<PartialPath> deletePathList;
 
-  DeleteTimeSeriesPlanImpl() {}
+  public DeleteTimeSeriesPlanImpl() {}
 
-  DeleteTimeSeriesPlanImpl(List<PartialPath> deletePathList) {
+  public DeleteTimeSeriesPlanImpl(List<PartialPath> deletePathList) {
     this.deletePathList = deletePathList;
   }
 

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
-import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 public class SchemaDriverContext extends DriverContext {
 

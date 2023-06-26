@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
-import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -197,10 +197,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   /**
-   * Check schemaengine of columns and return array that mapping existed schemaengine to index of data column
+   * Check schemaengine of columns and return array that mapping existed schemaengine to index of
+   * data column
    *
-   * @param schemaListInInsertPlan Contains all existed schemaengine in InsertPlan. If some timeseries
-   *     have been deleted, there will be null in its slot.
+   * @param schemaListInInsertPlan Contains all existed schemaengine in InsertPlan. If some
+   *     timeseries have been deleted, there will be null in its slot.
    * @return columnIndexArray: schemaList[i] is schemaengine of columns[columnIndexArray[i]]
    */
   private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(

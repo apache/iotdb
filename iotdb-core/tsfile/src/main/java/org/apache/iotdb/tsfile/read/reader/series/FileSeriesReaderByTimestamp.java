@@ -35,8 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Series reader is used to read one series of one tsfile, using this reader to read the value of
- * a series with given timestamps.
+ * Series reader is used to read one series of one tsfile, using this reader to read the value of a
+ * series with given timestamps.
  */
 public class FileSeriesReaderByTimestamp {
 

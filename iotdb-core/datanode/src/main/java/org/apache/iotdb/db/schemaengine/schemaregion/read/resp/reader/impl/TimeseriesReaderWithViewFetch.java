@@ -23,18 +23,18 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.Traverser;
-import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
-import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
-import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.TimeseriesFilterVisitor;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.Traverser;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.TimeseriesFilterVisitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayDeque;
@@ -131,7 +131,8 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
       }
     }
     if (next == null && !cachedViewList.isEmpty()) {
-      // all schemaengine info has been fetched, but there mau be still some view schemaengine info in
+      // all schemaengine info has been fetched, but there mau be still some view schemaengine info
+      // in
       // cachedViewList
       fetchViewTimeSeriesSchemaInfo();
     }

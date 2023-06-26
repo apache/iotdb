@@ -21,9 +21,9 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -846,8 +846,7 @@ public class ImportCsv extends AbstractCsvTool {
           }
         }
       } catch (StatementExecutionException | IllegalPathException e) {
-        System.out.println(
-            "Meet error when read the type of timeseries because " + e.getMessage());
+        System.out.println("Meet error when read the type of timeseries because " + e.getMessage());
         return false;
       }
     }
@@ -880,8 +879,8 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   /**
-   * if data type of timeseries is not defined in headers of schemaengine, this method will be called to
-   * do type inference
+   * if data type of timeseries is not defined in headers of schemaengine, this method will be
+   * called to do type inference
    *
    * @param strValue
    * @return

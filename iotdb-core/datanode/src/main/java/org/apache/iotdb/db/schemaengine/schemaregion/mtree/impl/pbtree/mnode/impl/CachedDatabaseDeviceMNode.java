@@ -20,9 +20,9 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.im
 
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.DatabaseDeviceInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 
 public class CachedDatabaseDeviceMNode
     extends AbstractDatabaseDeviceMNode<ICachedMNode, CachedBasicMNode> implements ICachedMNode {

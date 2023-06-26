@@ -94,8 +94,8 @@ public class DistributionPlanner {
   /**
    * Adjust upStream of exchangeNodes, generate {@link
    * org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode} or {@link
-   * org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode} for the children of
-   * ExchangeNodes with Same DataRegion.
+   * org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode} for the children
+   * of ExchangeNodes with Same DataRegion.
    */
   private void adjustUpStream(PlanNode root, NodeGroupContext context) {
     if (!context.hasExchangeNode) {

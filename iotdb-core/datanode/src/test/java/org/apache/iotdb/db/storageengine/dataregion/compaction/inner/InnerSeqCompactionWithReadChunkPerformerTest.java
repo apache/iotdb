@@ -22,26 +22,26 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionClearUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
-import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionClearUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -236,91 +236,151 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
               if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
                 if (toMergeFileNum == 2) {
                   if (compactionBeforeHasMod) {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1149L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1149L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 1149L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 1200L);
                   } else {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 1200L);
                   }
                 } else if (toMergeFileNum == 3) {
                   if (compactionBeforeHasMod) {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1749L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1749L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1749L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 1749L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1749L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 1749L);
                   } else {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1800L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1800L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 1800L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1800L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 1800L);
                   }
                 }
               } else if (compactionTimeseriesType == CompactionTimeseriesType.PART_SAME) {
                 if (toMergeFileNum == 2) {
                   if (compactionBeforeHasMod) {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[3], 549L);
                   } else {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[3], 600L);
                   }
                 } else if (toMergeFileNum == 3) {
                   if (compactionBeforeHasMod) {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1149L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[3], 1149L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[4], 549L);
                   } else {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1200L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[3], 1200L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[4], 600L);
                   }
                 }
               } else {
                 if (toMergeFileNum == 2) {
                   if (compactionBeforeHasMod) {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[3], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[4], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[5], 549L);
                   } else {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[3], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[4], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[5], 600L);
                   }
                 } else if (toMergeFileNum == 3) {
                   if (compactionBeforeHasMod) {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[3], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[4], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[5], 549L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[6], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[7], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[8], 549L);
                   } else {
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
-                    CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[0], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[1], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[2], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[3], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[4], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[5], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[6], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[7], 600L);
+                    CompactionCheckerUtils.putOnePageChunk(
+                        chunkPagePointsNumMerged, fullPaths[8], 600L);
                   }
                 }
               }
@@ -463,8 +523,10 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
               if (toMergeFileNum == 2) {
                 if (compactionBeforeHasMod) {
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1149L);
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1149L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], 1149L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[1], 1149L);
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[2],
@@ -485,9 +547,12 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 }
               } else if (toMergeFileNum == 3) {
                 if (compactionBeforeHasMod) {
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1749L);
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1749L);
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1749L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], 1749L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[1], 1749L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[2], 1749L);
                 } else {
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
@@ -506,7 +571,8 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             } else if (compactionTimeseriesType == CompactionTimeseriesType.PART_SAME) {
               if (toMergeFileNum == 2) {
                 if (compactionBeforeHasMod) {
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], 549L);
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[1],
@@ -515,9 +581,11 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                       chunkPagePointsNumMerged,
                       fullPaths[2],
                       new long[] {100L, 200L, 300L, 100L, 200L, 300L});
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[3], 549L);
                 } else {
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[1],
@@ -526,11 +594,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                       chunkPagePointsNumMerged,
                       fullPaths[2],
                       new long[] {100L, 200L, 300L, 100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
                 }
               } else if (toMergeFileNum == 3) {
                 if (compactionBeforeHasMod) {
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], 549L);
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[1],
@@ -539,10 +609,13 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                       chunkPagePointsNumMerged,
                       fullPaths[2],
                       new long[] {100L, 200L, 300L, 100L, 200L, 300L, 100L, 200L, 300L});
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1149L);
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[3], 1149L);
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[4], 549L);
                 } else {
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
                   CompactionCheckerUtils.putChunk(
                       chunkPagePointsNumMerged,
                       fullPaths[1],
@@ -555,47 +628,78 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                       chunkPagePointsNumMerged,
                       fullPaths[3],
                       new long[] {100L, 200L, 300L, 100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
                 }
               }
             } else {
               if (toMergeFileNum == 2) {
                 if (compactionBeforeHasMod) {
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[2], 549L);
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[5], 549L);
                 } else {
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[2], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[5], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[2], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[5], new long[] {100L, 200L, 300L});
                 }
               } else if (toMergeFileNum == 3) {
                 if (compactionBeforeHasMod) {
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[6], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[7], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[2], 549L);
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[5], 549L);
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[6], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[7], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putOnePageChunk(
+                      chunkPagePointsNumMerged, fullPaths[8], 549L);
                 } else {
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[2], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[5], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[6], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[7], new long[] {100L, 200L, 300L});
-                  CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, fullPaths[8], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[2], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[5], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[6], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[7], new long[] {100L, 200L, 300L});
+                  CompactionCheckerUtils.putChunk(
+                      chunkPagePointsNumMerged, fullPaths[8], new long[] {100L, 200L, 300L});
                 }
               }
             }

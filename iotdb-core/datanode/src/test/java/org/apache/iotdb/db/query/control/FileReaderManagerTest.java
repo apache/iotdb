@@ -23,8 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryFileManager;
-import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.junit.After;
 import org.junit.Assert;

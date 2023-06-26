@@ -29,9 +29,9 @@ public class RollbackPreDeactivateTemplatePlanImpl implements IRollbackPreDeacti
 
   private Map<PartialPath, List<Integer>> templateSetInfo;
 
-  RollbackPreDeactivateTemplatePlanImpl() {}
+  public RollbackPreDeactivateTemplatePlanImpl() {}
 
-  RollbackPreDeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
+  public RollbackPreDeactivateTemplatePlanImpl(Map<PartialPath, List<Integer>> templateSetInfo) {
     this.templateSetInfo = templateSetInfo;
   }
 

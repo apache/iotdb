@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

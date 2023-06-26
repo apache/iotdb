@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
-import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MaxDiskUsableSpaceFirstStrategy;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.MinFolderOccupiedSpaceFirstStrategy;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.RandomOnDiskUsableSpaceStrategy;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.SequenceStrategy;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.junit.After;
 import org.junit.Before;

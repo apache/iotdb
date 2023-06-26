@@ -70,7 +70,11 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   @Override
   public int insertRecord(String key, Integer pointer) throws RecordDuplicatedException {
     // TODO: remove debug parameter INTERNAL_SPLIT_VALVE
-    if (spareSize < COMPOUND_POINT_LENGTH + 4 + key.getBytes().length + SchemaFileConfig.INTERNAL_SPLIT_VALVE) {
+    if (spareSize
+        < COMPOUND_POINT_LENGTH
+            + 4
+            + key.getBytes().length
+            + SchemaFileConfig.INTERNAL_SPLIT_VALVE) {
       return -1;
     }
 
@@ -80,7 +84,10 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       return spareSize;
     }
 
-    if (SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (memberNum + 1) + 4 + key.getBytes().length
+    if (SchemaFileConfig.PAGE_HEADER_SIZE
+            + COMPOUND_POINT_LENGTH * (memberNum + 1)
+            + 4
+            + key.getBytes().length
         > spareOffset) {
       compactKeys();
     }
@@ -96,10 +103,12 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       // move compound pointers
       ByteBuffer buf = ByteBuffer.allocate(migNum * COMPOUND_POINT_LENGTH);
       this.pageBuffer.limit(SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * memberNum);
-      this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (pos + 1));
+      this.pageBuffer.position(
+          SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (pos + 1));
       buf.put(this.pageBuffer);
 
-      this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (pos + 1));
+      this.pageBuffer.position(
+          SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * (pos + 1));
       ReadWriteIOUtils.write(compoundPointer(pointer, spareOffset), this.pageBuffer);
 
       buf.clear();
@@ -108,7 +117,8 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     } else {
       // append compound pointer
       this.pageBuffer.limit(this.pageBuffer.capacity());
-      this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_SIZE + memberNum * COMPOUND_POINT_LENGTH);
+      this.pageBuffer.position(
+          SchemaFileConfig.PAGE_HEADER_SIZE + memberNum * COMPOUND_POINT_LENGTH);
       ReadWriteIOUtils.write(compoundPointer(pointer, spareOffset), this.pageBuffer);
     }
 
@@ -261,7 +271,8 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       // migrate p1 to p_n-1, offset of each pointer shall not be modified
       dstBuffer.position(SchemaFileConfig.PAGE_HEADER_SIZE);
       this.pageBuffer.position(SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH);
-      this.pageBuffer.limit(SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * this.memberNum);
+      this.pageBuffer.limit(
+          SchemaFileConfig.PAGE_HEADER_SIZE + COMPOUND_POINT_LENGTH * this.memberNum);
       dstBuffer.put(this.pageBuffer);
 
       // k1 is the search key for split segment, and not valid key in split segment
@@ -279,7 +290,10 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       this.memberNum = 2;
       this.spareOffset = (short) (this.pageBuffer.capacity() - key.getBytes().length - 4);
       this.spareSize =
-          (short) (this.spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE - this.memberNum * COMPOUND_POINT_LENGTH);
+          (short)
+              (this.spareOffset
+                  - SchemaFileConfig.PAGE_HEADER_SIZE
+                  - this.memberNum * COMPOUND_POINT_LENGTH);
 
       this.pageBuffer.clear();
       this.pageBuffer.position(this.spareOffset);
@@ -296,7 +310,9 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       ReadWriteIOUtils.write(compoundPointer(pk, spareOffset), dstBuffer);
 
       memberNum = 2;
-      spareSize = (short) (spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE - memberNum * COMPOUND_POINT_LENGTH);
+      spareSize =
+          (short)
+              (spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE - memberNum * COMPOUND_POINT_LENGTH);
 
       // remove k_n-1 and p_n-1 from this.pageBuffer
       String removedKey = getKeyByIndex(this.memberNum - 1);
@@ -363,7 +379,9 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
       tempPtrBuffer.flip();
       dstBuffer.position(SchemaFileConfig.PAGE_HEADER_SIZE);
       dstBuffer.put(tempPtrBuffer);
-      spareSize = (short) (spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE - COMPOUND_POINT_LENGTH * memberNum);
+      spareSize =
+          (short)
+              (spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE - COMPOUND_POINT_LENGTH * memberNum);
 
       // compact this buffer
       if (pos < splitPos - 1) {
@@ -440,7 +458,11 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
   @Override
   public ByteBuffer resetBuffer(int ptr) {
     memberNum = 1;
-    spareSize = (short) (this.pageBuffer.capacity() - SchemaFileConfig.PAGE_HEADER_SIZE - COMPOUND_POINT_LENGTH);
+    spareSize =
+        (short)
+            (this.pageBuffer.capacity()
+                - SchemaFileConfig.PAGE_HEADER_SIZE
+                - COMPOUND_POINT_LENGTH);
     spareOffset = (short) this.pageBuffer.capacity();
     firstLeaf = ptr;
 
@@ -480,7 +502,10 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
     this.pageBuffer.position(this.spareOffset);
     this.pageBuffer.put(tempBuffer);
     this.spareSize =
-        (short) (this.spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE - COMPOUND_POINT_LENGTH * this.memberNum);
+        (short)
+            (this.spareOffset
+                - SchemaFileConfig.PAGE_HEADER_SIZE
+                - COMPOUND_POINT_LENGTH * this.memberNum);
   }
 
   /**
@@ -531,13 +556,16 @@ public class InternalPage extends SchemaPage implements ISegment<Integer, Intege
    * </ul>
    */
   private long compoundPointer(int pageIndex, short offset) {
-    return (((SchemaFileConfig.PAGE_INDEX_MASK & pageIndex) << SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT)
+    return (((SchemaFileConfig.PAGE_INDEX_MASK & pageIndex)
+            << SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT)
         | (offset & SchemaFileConfig.SEG_INDEX_MASK));
   }
 
   private int pageIndex(long pointer) {
     return (int)
-        ((pointer & (SchemaFileConfig.PAGE_INDEX_MASK << SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT)) >> SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT);
+        ((pointer
+                & (SchemaFileConfig.PAGE_INDEX_MASK << SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT))
+            >> SchemaFileConfig.COMP_POINTER_OFFSET_DIGIT);
   }
 
   private short keyOffset(long pointer) {

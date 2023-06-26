@@ -40,9 +40,9 @@ public class CreateTimeSeriesPlanImpl implements ICreateTimeSeriesPlan {
   private Map<String, String> attributes = null;
   private long tagOffset = -1;
 
-  CreateTimeSeriesPlanImpl() {}
+  public CreateTimeSeriesPlanImpl() {}
 
-  CreateTimeSeriesPlanImpl(
+  public CreateTimeSeriesPlanImpl(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,

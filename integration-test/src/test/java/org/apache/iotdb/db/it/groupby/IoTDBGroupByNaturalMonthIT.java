@@ -41,10 +41,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
 
-import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
 

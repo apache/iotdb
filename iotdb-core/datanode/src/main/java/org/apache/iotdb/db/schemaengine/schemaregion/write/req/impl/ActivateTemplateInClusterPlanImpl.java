@@ -29,9 +29,9 @@ public class ActivateTemplateInClusterPlanImpl implements IActivateTemplateInClu
   private int templateId;
   private boolean isAligned;
 
-  ActivateTemplateInClusterPlanImpl() {}
+  public ActivateTemplateInClusterPlanImpl() {}
 
-  ActivateTemplateInClusterPlanImpl(
+  public ActivateTemplateInClusterPlanImpl(
       PartialPath activatePath, int templateSetLevel, int templateId) {
     this.activatePath = activatePath;
     this.templateSetLevel = templateSetLevel;

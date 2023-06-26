@@ -35,9 +35,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * This class define multiple modes for schemaengine storageengine. All IT class extends AbstractSchemaIT will be
- * run in both Memory and PBTree modes. In PBTree mode, there are three kinds of test environment:
- * full memory, partial memory and non memory.
+ * This class define multiple modes for schemaengine storageengine. All IT class extends
+ * AbstractSchemaIT will be run in both Memory and PBTree modes. In PBTree mode, there are three
+ * kinds of test environment: full memory, partial memory and non memory.
  *
  * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link
  * AbstractSchemaIT#setUpEnvironment} before test env initialization and call {@link

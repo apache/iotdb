@@ -21,7 +21,7 @@
 <#list allDataTypes.types as type>
 
   <#assign className = "${type.dataType?cap_first}PreviousFill">
-  <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/execution/operator/process/fill/previous/${className}.java" />
+  <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/operator/process/fill/previous/${className}.java" />
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;

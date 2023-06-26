@@ -388,9 +388,7 @@ public class IoTDBStatement implements Statement {
         }
       } else {
         throw new SQLException(
-            "Fail to reconnect to server when execute read "
-                + sql
-                + ". please check server status",
+            "Fail to reconnect to server when execute read " + sql + ". please check server status",
             e);
       }
     }

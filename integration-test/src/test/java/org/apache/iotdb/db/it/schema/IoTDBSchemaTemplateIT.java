@@ -550,7 +550,8 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // insert twice to make sure the timeseries in template has been cached
       statement.execute("INSERT INTO root.sg1.d1(time,s1,s2) VALUES (2,1,1)");
 
-      // insert data with extra measurement s3 which should be checked by schemaengine fetch and auto
+      // insert data with extra measurement s3 which should be checked by schemaengine fetch and
+      // auto
       // created
       statement.execute("INSERT INTO root.sg1.d1(time,s1,s2,s3) VALUES (2,1,1,1)");
 

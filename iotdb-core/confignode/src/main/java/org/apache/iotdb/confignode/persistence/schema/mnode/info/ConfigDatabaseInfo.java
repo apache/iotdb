@@ -20,8 +20,8 @@ package org.apache.iotdb.confignode.persistence.schema.mnode.info;
 
 import org.apache.iotdb.commons.schema.node.info.IDatabaseInfo;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
 public class ConfigDatabaseInfo implements IDatabaseInfo<IConfigMNode> {
 

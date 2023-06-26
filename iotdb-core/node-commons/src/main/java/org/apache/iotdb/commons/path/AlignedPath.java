@@ -115,8 +115,8 @@ public class AlignedPath extends PartialPath {
   }
 
   /**
-   * This method is used by last read. Comparator<Binary> and Comparator<String> behaves
-   * differently and that is why we use Comparator<Binary> here.
+   * This method is used by last read. Comparator<Binary> and Comparator<String> behaves differently
+   * and that is why we use Comparator<Binary> here.
    *
    * @param comparator
    */

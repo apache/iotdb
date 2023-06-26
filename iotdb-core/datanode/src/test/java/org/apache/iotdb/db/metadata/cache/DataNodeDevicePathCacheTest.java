@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

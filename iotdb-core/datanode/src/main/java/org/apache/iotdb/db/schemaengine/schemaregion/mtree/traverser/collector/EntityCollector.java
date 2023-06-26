@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.EntityTraverser;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.EntityTraverser;
 
 // This class defines EntityMNode as target node and defines the Entity process framework.
 // TODO: set R is IDeviceSchemaInfo

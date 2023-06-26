@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.common.AbstractAboveDatabaseMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.basic.CachedBasicMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheEntry;
 
 public class CachedAboveDatabaseMNode
     extends AbstractAboveDatabaseMNode<ICachedMNode, CachedBasicMNode> implements ICachedMNode {

@@ -130,8 +130,8 @@ public class SchemaEngine {
   }
 
   /**
-   * Scan the database and schemaengine region directories to recover schemaengine regions and return the
-   * collected local schemaengine partition info for localSchemaPartitionTable recovery.
+   * Scan the database and schemaengine region directories to recover schemaengine regions and
+   * return the collected local schemaengine partition info for localSchemaPartitionTable recovery.
    */
   private void initSchemaRegion() {
     File schemaDir = new File(config.getSchemaDir());
@@ -363,9 +363,9 @@ public class SchemaEngine {
   }
 
   /**
-   * Update total count in schemaengine quota manager and generate local count map response. If limit is
-   * not -1 and deviceNumMap/timeSeriesNumMap is null, fill deviceNumMap/timeSeriesNumMap of the
-   * SchemaRegion whose current node is the leader
+   * Update total count in schemaengine quota manager and generate local count map response. If
+   * limit is not -1 and deviceNumMap/timeSeriesNumMap is null, fill deviceNumMap/timeSeriesNumMap
+   * of the SchemaRegion whose current node is the leader
    *
    * @param totalCount cluster schemaengine usage
    * @param resp heartbeat response

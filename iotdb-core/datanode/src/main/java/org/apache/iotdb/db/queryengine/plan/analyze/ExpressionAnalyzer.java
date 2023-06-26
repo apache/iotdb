@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -56,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatD
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatDeviceAndBindSchemaForPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.ConcatExpressionWithSuffixPathsVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -421,8 +421,8 @@ public class ExpressionAnalyzer {
 
   /**
    * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
-   * then, bind schemaengine ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
-   * Expression. Logical view will be replaced.
+   * then, bind schemaengine ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards
+   * in Expression. Logical view will be replaced.
    *
    * @param prefixPaths prefix paths in the FROM clause
    * @param schemaTree interface for querying schemaengine information
@@ -458,8 +458,8 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Concat measurement in WHERE and HAVING clause with device path. And then, bind schemaengine ({@link
-   * PartialPath} -> {@link MeasurementPath}) and removes wildcards.
+   * Concat measurement in WHERE and HAVING clause with device path. And then, bind schemaengine
+   * ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards.
    *
    * @return the expression list with full path and after binding schemaengine
    */

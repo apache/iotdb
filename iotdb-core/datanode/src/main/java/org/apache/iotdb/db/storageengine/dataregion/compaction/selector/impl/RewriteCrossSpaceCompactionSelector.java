@@ -21,16 +21,16 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
-import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.slf4j.Logger;
@@ -126,8 +126,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
   }
 
-  private boolean isAllFileCandidateValid(List<CrossSpaceCompactionCandidate.TsFileResourceCandidate> tsFileResourceCandidates) {
-    for (CrossSpaceCompactionCandidate.TsFileResourceCandidate candidate : tsFileResourceCandidates) {
+  private boolean isAllFileCandidateValid(
+      List<CrossSpaceCompactionCandidate.TsFileResourceCandidate> tsFileResourceCandidates) {
+    for (CrossSpaceCompactionCandidate.TsFileResourceCandidate candidate :
+        tsFileResourceCandidates) {
       if (!candidate.isValidCandidate) {
         return false;
       }
@@ -186,7 +188,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private CrossSpaceCompactionCandidate.TsFileResourceCandidate getLatestSealedSeqFile(
       List<CrossSpaceCompactionCandidate.TsFileResourceCandidate> seqResourceCandidateList) {
     for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
-      CrossSpaceCompactionCandidate.TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
+      CrossSpaceCompactionCandidate.TsFileResourceCandidate seqResourceCandidate =
+          seqResourceCandidateList.get(i);
       if (seqResourceCandidate.resource.isClosed()) {
         // We must select the latest sealed and valid seq file to compact with, in order to avoid
         // overlapping of the new compacted files with the subsequent seq files.

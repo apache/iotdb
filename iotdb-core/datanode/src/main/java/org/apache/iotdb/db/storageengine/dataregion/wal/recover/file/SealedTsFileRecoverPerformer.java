@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
 

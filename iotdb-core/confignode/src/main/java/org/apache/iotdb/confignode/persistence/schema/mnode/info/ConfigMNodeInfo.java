@@ -24,9 +24,9 @@ import static org.apache.iotdb.db.schemaengine.SchemaConstant.NON_TEMPLATE;
 
 public class ConfigMNodeInfo extends BasicMNodeInfo {
   /**
-   * This field is mainly used in cluster schemaengine template features. In InternalMNode of ConfigMTree,
-   * this field represents the template set on this node. The normal usage value range is [0,
-   * Int.MaxValue], since this is implemented as auto inc id. The default value -1 means
+   * This field is mainly used in cluster schemaengine template features. In InternalMNode of
+   * ConfigMTree, this field represents the template set on this node. The normal usage value range
+   * is [0, Int.MaxValue], since this is implemented as auto inc id. The default value -1 means
    * NON_TEMPLATE. This value will be set negative to implement some pre-delete features.
    */
   protected int schemaTemplateId = NON_TEMPLATE;

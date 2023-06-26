@@ -32,11 +32,11 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
+import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
-import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -76,8 +76,7 @@ public class MemMTreeSnapshotUtil {
   public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
     File snapshotTmp =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT_TMP);
-    File snapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
+    File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
 
     try {
       try (BufferedOutputStream outputStream =
@@ -114,8 +113,7 @@ public class MemMTreeSnapshotUtil {
       Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
       MemSchemaRegionStatistics regionStatistics)
       throws IOException {
-    File snapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
+    File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.MTREE_SNAPSHOT);
     try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(snapshot))) {
       return deserializeFrom(inputStream, measurementProcess, deviceProcess, regionStatistics);
     } catch (Throwable e) {

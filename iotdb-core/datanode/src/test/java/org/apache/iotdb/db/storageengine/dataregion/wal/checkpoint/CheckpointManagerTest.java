@@ -20,12 +20,12 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointReader;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.CheckpointRecoverUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.junit.After;
 import org.junit.Before;

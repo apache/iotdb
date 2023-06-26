@@ -31,7 +31,7 @@
         </#if>
 
         <#assign className = "${compareType.compareType?cap_first}${dataType.dataType?cap_first}Window">
-        <@pp.changeOutputFile name="/org/apache/iotdb/db/mpp/execution/operator/window/${className}.java" />
+        <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/execution/operator/window/${className}.java" />
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 

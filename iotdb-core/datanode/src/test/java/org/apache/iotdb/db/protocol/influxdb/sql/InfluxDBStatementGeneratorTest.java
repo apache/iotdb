@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.sql;
 
+import org.apache.iotdb.db.protocol.influxdb.parser.InfluxDBStatementGenerator;
+import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
-import org.apache.iotdb.db.protocol.influxdb.parser.InfluxDBStatementGenerator;
-import org.apache.iotdb.db.protocol.influxdb.statement.InfluxQueryStatement;
 
 import org.junit.Test;
 

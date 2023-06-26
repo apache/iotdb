@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.MeasurementTraverser;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.MeasurementTraverser;
 
 // This class defines MeasurementMNode as target node and defines the measurement process framework.
 // TODO: set R is ITimeseriesInfo

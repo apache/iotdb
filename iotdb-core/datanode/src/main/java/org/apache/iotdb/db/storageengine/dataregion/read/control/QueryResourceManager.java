@@ -22,8 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.read.control;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * QueryResourceManager manages resource (file streams) used by each read job, and assign Ids to
- * the jobs. During the life cycle of a read, the following methods must be called in strict order:
+ * QueryResourceManager manages resource (file streams) used by each read job, and assign Ids to the
+ * jobs. During the life cycle of a read, the following methods must be called in strict order:
  *
  * <p>1. assignQueryId - get an Id for the new read.
  *

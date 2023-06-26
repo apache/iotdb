@@ -200,8 +200,10 @@ public class DeactivateTemplateProcedure
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schemaengine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaengine cache of template timeseries {}", requestMessage);
-        setFailure(new ProcedureException(new MetadataException("Invalidate schemaengine cache failed")));
+        LOGGER.error(
+            "Failed to invalidate schemaengine cache of template timeseries {}", requestMessage);
+        setFailure(
+            new ProcedureException(new MetadataException("Invalidate schemaengine cache failed")));
         return;
       }
     }

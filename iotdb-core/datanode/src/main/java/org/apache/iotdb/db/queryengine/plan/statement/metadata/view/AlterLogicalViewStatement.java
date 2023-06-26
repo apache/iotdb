@@ -20,14 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.view;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPathType;
-import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPaths;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPathType;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPaths;
 
 import java.util.List;
 

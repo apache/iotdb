@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime.listener;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.assigner.PipeDataRegionAssigner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,7 +34,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * PipeInsertionEventListener is a singleton in each data node.
  *
- * <p>It is used to listen to events from storage storageengine and publish them to pipe storageengine.
+ * <p>It is used to listen to events from storage storageengine and publish them to pipe
+ * storageengine.
  *
  * <p>2 kinds of events are extracted: 1. level-0 tsfile sealed event 2. insertion operation event
  *

@@ -26,9 +26,9 @@ public class PreDeleteTimeSeriesPlanImpl implements IPreDeleteTimeSeriesPlan {
 
   private PartialPath path;
 
-  PreDeleteTimeSeriesPlanImpl() {}
+  public PreDeleteTimeSeriesPlanImpl() {}
 
-  PreDeleteTimeSeriesPlanImpl(PartialPath path) {
+  public PreDeleteTimeSeriesPlanImpl(PartialPath path) {
     this.path = path;
   }
 

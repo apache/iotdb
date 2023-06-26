@@ -20,14 +20,14 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -189,7 +189,8 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
             .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
 
     if (!hasStartMeasurement) {
-      // for nonAligned sensors, only after getting chunkMetadatas can we create schemaengine to start
+      // for nonAligned sensors, only after getting chunkMetadatas can we create schemaengine to
+      // start
       // measurement; for aligned sensors, we get all schemas of value sensors and
       // startMeasurement() in the previous process, because we need to get all chunk metadatas of
       // sensors and their schemas under the current device, but since the compaction process is

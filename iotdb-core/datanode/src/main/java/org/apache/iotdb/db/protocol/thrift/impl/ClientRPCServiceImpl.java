@@ -31,8 +31,12 @@ import org.apache.iotdb.db.audit.AuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncReceiver;
+import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -62,13 +66,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncReceiver;
-import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.OperationQuota;
-import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -1911,7 +1911,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (enableAuditLog) {
         AuditLogger.log(
-            String.format("set schemaengine template %s.%s", req.getTemplateName(), req.getPrefixPath()),
+            String.format(
+                "set schemaengine template %s.%s", req.getTemplateName(), req.getPrefixPath()),
             statement);
       }
 
@@ -1959,7 +1960,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (enableAuditLog) {
         AuditLogger.log(
             String.format(
-                "unset schemaengine template %s from %s", req.getTemplateName(), req.getPrefixPath()),
+                "unset schemaengine template %s from %s",
+                req.getTemplateName(), req.getPrefixPath()),
             statement);
       }
 
@@ -2005,7 +2007,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       if (enableAuditLog) {
-        AuditLogger.log(String.format("drop schemaengine template %s", req.getTemplateName()), statement);
+        AuditLogger.log(
+            String.format("drop schemaengine template %s", req.getTemplateName()), statement);
       }
 
       // permission check
@@ -2049,7 +2052,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (enableAuditLog) {
         AuditLogger.log(
-            String.format("batch activate schemaengine template %s", req.getDevicePathList()), statement);
+            String.format("batch activate schemaengine template %s", req.getDevicePathList()),
+            statement);
       }
 
       // permission check

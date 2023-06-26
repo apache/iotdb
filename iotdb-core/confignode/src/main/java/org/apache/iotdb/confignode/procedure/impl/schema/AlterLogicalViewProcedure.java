@@ -130,9 +130,11 @@ public class AlterLogicalViewProcedure
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schemaengine cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schemaengine cache of view {}", viewPathToSourceMap.keySet());
+        LOGGER.error(
+            "Failed to invalidate schemaengine cache of view {}", viewPathToSourceMap.keySet());
         setFailure(
-            new ProcedureException(new MetadataException("Invalidate view schemaengine cache failed")));
+            new ProcedureException(
+                new MetadataException("Invalidate view schemaengine cache failed")));
         return;
       }
     }

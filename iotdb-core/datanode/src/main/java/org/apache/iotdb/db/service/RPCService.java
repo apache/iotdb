@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.metrics.RPCServiceMetrics;
 import org.apache.iotdb.db.protocol.thrift.ProcessorWithMetrics;
 import org.apache.iotdb.db.protocol.thrift.handler.RPCServiceThriftHandler;
 import org.apache.iotdb.db.protocol.thrift.impl.IClientRPCServiceWithHandler;
+import org.apache.iotdb.db.service.metrics.RPCServiceMetrics;
 
 import java.lang.reflect.InvocationTargetException;
 

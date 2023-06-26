@@ -21,10 +21,9 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.co
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
-import org.jetbrains.annotations.NotNull;
-
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.validation.constraints.NotNull;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;

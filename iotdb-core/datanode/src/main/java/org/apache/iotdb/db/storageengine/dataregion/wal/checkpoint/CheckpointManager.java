@@ -22,12 +22,12 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.ILogWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.CheckpointFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALInsertNodeCache;
-import org.apache.iotdb.db.service.metrics.WritingMetrics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

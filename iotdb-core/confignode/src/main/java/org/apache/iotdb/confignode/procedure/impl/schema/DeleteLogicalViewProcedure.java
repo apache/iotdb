@@ -189,7 +189,8 @@ public class DeleteLogicalViewProcedure
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Failed to invalidate schemaengine cache of view {}", requestMessage);
         setFailure(
-            new ProcedureException(new MetadataException("Invalidate view schemaengine cache failed")));
+            new ProcedureException(
+                new MetadataException("Invalidate view schemaengine cache failed")));
         return;
       }
     }

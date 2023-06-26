@@ -26,9 +26,9 @@ public class DeleteLogicalViewPlanImpl implements IDeleteLogicalViewPlan {
 
   private PartialPath path;
 
-  DeleteLogicalViewPlanImpl() {}
+  public DeleteLogicalViewPlanImpl() {}
 
-  DeleteLogicalViewPlanImpl(PartialPath path) {
+  public DeleteLogicalViewPlanImpl(PartialPath path) {
     this.path = path;
   }
 

@@ -26,9 +26,9 @@ public class ChangeTagOffsetPlanImpl implements IChangeTagOffsetPlan {
   private PartialPath path;
   private long offset;
 
-  ChangeTagOffsetPlanImpl() {}
+  public ChangeTagOffsetPlanImpl() {}
 
-  ChangeTagOffsetPlanImpl(PartialPath partialPath, long offset) {
+  public ChangeTagOffsetPlanImpl(PartialPath partialPath, long offset) {
     path = partialPath;
     this.offset = offset;
   }

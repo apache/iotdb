@@ -31,10 +31,10 @@ import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerMetrics;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
-import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
-import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
+import org.apache.iotdb.consensus.iot.thrift.TLogEntry;
+import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
 public enum InnerSequenceCompactionSelector {
   SIZE_TIERED;

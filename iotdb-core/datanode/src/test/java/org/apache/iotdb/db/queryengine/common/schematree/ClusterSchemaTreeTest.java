@@ -428,10 +428,10 @@ public class ClusterSchemaTreeTest {
   }
 
   /**
-   * Generate complex schemaengine tree with specific deep and width. For example, if deep=2 and width=3,
-   * the schemaengine tree contains timeseries: root.d0.s, root.d1.s, root.s2.s, root.d0.d0.s,
-   * root.d0.d1.s, root.d0.d2.s, root.d1.d0.s, root.d1.d1.s, root.d1.d2.s, root.d2.d0.s,
-   * root.d2.d1.s, root.d2.d2.s
+   * Generate complex schemaengine tree with specific deep and width. For example, if deep=2 and
+   * width=3, the schemaengine tree contains timeseries: root.d0.s, root.d1.s, root.s2.s,
+   * root.d0.d0.s, root.d0.d1.s, root.d0.d2.s, root.d1.d0.s, root.d1.d1.s, root.d1.d2.s,
+   * root.d2.d0.s, root.d2.d1.s, root.d2.d2.s
    *
    * @param deep deep
    * @param width width

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
 public enum CrossCompactionSelector {
   REWRITE;

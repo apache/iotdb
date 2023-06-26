@@ -561,7 +561,8 @@ public class ConfigPlanExecutor {
         needMatchedNode = new HashSet<>();
         for (PartialPath databasePath : matchedChildInNextLevel.right) {
           if (databasePath.getNodeLength() == partialPath.getNodeLength() + 1) {
-            // this database node is already the target child node, no need to traverse its schemaengine
+            // this database node is already the target child node, no need to traverse its
+            // schemaengine
             // region
             continue;
           }

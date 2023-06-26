@@ -88,7 +88,8 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg4");
 
       for (int j = 1; j <= 4; j++) {
-        statement.execute(String.format("create timeseries of schemaengine template on root.sg%d.d1", j));
+        statement.execute(
+            String.format("create timeseries of schemaengine template on root.sg%d.d1", j));
       }
     }
   }

@@ -26,9 +26,9 @@ public class PreDeleteLogicalViewPlanImpl implements IPreDeleteLogicalViewPlan {
 
   private PartialPath path;
 
-  PreDeleteLogicalViewPlanImpl() {}
+  public PreDeleteLogicalViewPlanImpl() {}
 
-  PreDeleteLogicalViewPlanImpl(PartialPath path) {
+  public PreDeleteLogicalViewPlanImpl(PartialPath path) {
     this.path = path;
   }
 

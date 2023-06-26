@@ -26,9 +26,9 @@ public class RollbackPreDeleteTimeSeriesPlanImpl implements IRollbackPreDeleteTi
 
   private PartialPath path;
 
-  RollbackPreDeleteTimeSeriesPlanImpl() {}
+  public RollbackPreDeleteTimeSeriesPlanImpl() {}
 
-  RollbackPreDeleteTimeSeriesPlanImpl(PartialPath path) {
+  public RollbackPreDeleteTimeSeriesPlanImpl(PartialPath path) {
     this.path = path;
   }
 

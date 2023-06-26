@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
-import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 
 @FunctionalInterface
 public interface CloseFileListener {

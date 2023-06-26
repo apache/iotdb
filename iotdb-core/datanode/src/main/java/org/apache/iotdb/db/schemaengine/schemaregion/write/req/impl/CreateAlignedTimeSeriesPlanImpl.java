@@ -43,9 +43,9 @@ public class CreateAlignedTimeSeriesPlanImpl implements ICreateAlignedTimeSeries
   private List<Map<String, String>> attributesList;
   private List<Long> tagOffsets = null;
 
-  CreateAlignedTimeSeriesPlanImpl() {}
+  public CreateAlignedTimeSeriesPlanImpl() {}
 
-  CreateAlignedTimeSeriesPlanImpl(
+  public CreateAlignedTimeSeriesPlanImpl(
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> dataTypes,

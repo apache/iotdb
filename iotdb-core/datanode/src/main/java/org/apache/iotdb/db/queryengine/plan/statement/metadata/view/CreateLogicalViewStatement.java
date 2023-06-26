@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPathType;
-import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPaths;
 import org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -34,6 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPathType;
+import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPaths;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;

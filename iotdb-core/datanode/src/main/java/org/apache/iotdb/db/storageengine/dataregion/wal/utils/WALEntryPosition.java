@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
-import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
 import java.io.File;
 import java.io.IOException;

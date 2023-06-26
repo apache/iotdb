@@ -22,9 +22,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.validation.constraints.NotNull;
 
 import java.io.BufferedInputStream;
 import java.io.EOFException;

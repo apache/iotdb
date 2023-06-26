@@ -136,9 +136,7 @@ public class SchemaFile implements ISchemaFile {
       throws IOException, MetadataException {
     File pmtFile =
         SystemFileFactory.INSTANCE.getFile(
-            getDirPath(sgName, schemaRegionId)
-                + File.separator
-                + SchemaConstant.PBTREE_FILE_NAME);
+            getDirPath(sgName, schemaRegionId) + File.separator + SchemaConstant.PBTREE_FILE_NAME);
     return new SchemaFile(
         sgName,
         schemaRegionId,
@@ -464,8 +462,7 @@ public class SchemaFile implements ISchemaFile {
 
   public static ISchemaFile loadSnapshot(File snapshotDir, String sgName, int schemaRegionId)
       throws IOException, MetadataException {
-    File snapshot =
-        SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.PBTREE_SNAPSHOT);
+    File snapshot = SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.PBTREE_SNAPSHOT);
     if (!snapshot.exists()) {
       throw new SchemaFileNotExists(snapshot.getPath());
     }

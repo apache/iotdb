@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

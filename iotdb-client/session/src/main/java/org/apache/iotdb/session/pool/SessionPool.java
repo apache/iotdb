@@ -102,8 +102,8 @@ public class SessionPool implements ISessionPool {
   private int thriftMaxFrameSize;
 
   /**
-   * Timeout of read can be set by users. A negative number means using the default configuration
-   * of server. And value 0 will disable the function of read timeout.
+   * Timeout of read can be set by users. A negative number means using the default configuration of
+   * server. And value 0 will disable the function of read timeout.
    */
   private long queryTimeoutInMs = -1;
 
