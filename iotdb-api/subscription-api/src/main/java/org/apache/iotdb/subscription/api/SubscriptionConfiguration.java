@@ -33,7 +33,9 @@ public class SubscriptionConfiguration {
   private DisorderHandlingStrategy disorderHandlingStrategy;
   private TopicsStrategy topicStrategy;
 
-  private SubscriptionConfiguration() {}
+  private SubscriptionConfiguration() {
+    // allowed to be constructed by builder
+  }
 
   private void check() throws SubscriptionException {
     if (host == null) {

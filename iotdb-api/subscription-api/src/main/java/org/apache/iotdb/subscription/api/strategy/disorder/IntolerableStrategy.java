@@ -28,5 +28,7 @@ public class IntolerableStrategy extends DisorderHandlingStrategy {
   }
 
   @Override
-  public void check() throws SubscriptionStrategyNotValidException {}
+  public void check() throws SubscriptionStrategyNotValidException {
+    // do nothing
+  }
 }
