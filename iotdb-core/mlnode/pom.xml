@@ -104,13 +104,13 @@
                             <outputDirectory>${basedir}/iotdb/thrift/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/../../thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
                                 </resource>
                                 <resource>
-                                    <directory>${basedir}/../../thrift-confignode/target/generated-sources-python/iotdb/thrift/</directory>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift-confignode/target/generated-sources-python/iotdb/thrift/</directory>
                                 </resource>
                                 <resource>
-                                    <directory>${basedir}/../../thrift-mlnode/target/generated-sources-python/iotdb/thrift/</directory>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift-mlnode/target/generated-sources-python/iotdb/thrift/</directory>
                                 </resource>
                             </resources>
                         </configuration>
@@ -127,7 +127,7 @@
                             <outputDirectory>${basedir}/iotdb/thrift/datanode</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/../../thrift/target/generated-sources-python/iotdb/thrift/datanode/</directory>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift/target/generated-sources-python/iotdb/thrift/datanode/</directory>
                                 </resource>
                             </resources>
                         </configuration>
@@ -142,10 +142,10 @@
                         </goals>
                         <configuration>
                             <encoding>utf-8</encoding>
-                            <outputDirectory/>
+                            <outputDirectory>${basedir}/</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/../..</directory>
+                                    <directory>${basedir}/..</directory>
                                     <includes>
                                         <include>LICENSE</include>
                                     </includes>
