@@ -297,7 +297,7 @@ public class AlignedTimeseriesSessionExample {
   /** Method 1 for insert tablet with aligned timeseries */
   private static void insertTabletWithAlignedTimeseriesMethod1()
       throws IoTDBConnectionException, StatementExecutionException {
-    // The schema of measurements of one device
+    // The schemaengine of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
@@ -331,7 +331,7 @@ public class AlignedTimeseriesSessionExample {
   /** Method 2 for insert tablet with aligned timeseries */
   private static void insertTabletWithAlignedTimeseriesMethod2()
       throws IoTDBConnectionException, StatementExecutionException {
-    // The schema of measurements of one device
+    // The schemaengine of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
@@ -367,7 +367,7 @@ public class AlignedTimeseriesSessionExample {
 
   private static void insertNullableTabletWithAlignedTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
-    // The schema of measurements of one device
+    // The schemaengine of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));

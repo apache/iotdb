@@ -95,7 +95,7 @@ class Cursor(object):
 
     def execute(self, operation, parameters=None):
         """
-        Prepare and execute a database operation (query or command).
+        Prepare and execute a database operation (read or command).
         :param operation: a database operation
         :param parameters: parameters of the operation
         """
@@ -168,7 +168,7 @@ class Cursor(object):
 
     def executemany(self, operation, seq_of_parameters=None):
         """
-        Prepare a database operation (query or command) and then execute it
+        Prepare a database operation (read or command) and then execute it
         against all parameter sequences or mappings found in the sequence
         ``seq_of_parameters``
         :param operation: a database operation
@@ -194,7 +194,7 @@ class Cursor(object):
 
     def fetchone(self):
         """
-        Fetch the next row of a query result set, returning a single sequence,
+        Fetch the next row of a read result set, returning a single sequence,
         or None when no more data is available.
         Alias for ``next()``.
         """
@@ -205,7 +205,7 @@ class Cursor(object):
 
     def fetchmany(self, count=None):
         """
-        Fetch the next set of rows of a query result, returning a sequence of
+        Fetch the next set of rows of a read result, returning a sequence of
         sequences (e.g. a list of tuples). An empty sequence is returned when
         no more rows are available.
         """
@@ -223,7 +223,7 @@ class Cursor(object):
 
     def fetchall(self):
         """
-        Fetch all (remaining) rows of a query result, returning them as a
+        Fetch all (remaining) rows of a read result, returning them as a
         sequence of sequences (e.g. a list of tuples). Note that the cursor's
         arraysize attribute can affect the performance of this operation.
         """
@@ -238,7 +238,7 @@ class Cursor(object):
 
     def next(self):
         """
-        Return the next row of a query result set, respecting if cursor was
+        Return the next row of a read result set, respecting if cursor was
         closed.
         """
         if self.__result is None:

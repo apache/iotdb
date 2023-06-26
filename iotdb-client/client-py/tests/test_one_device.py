@@ -101,7 +101,7 @@ def test_one_device():
             test_fail()
             print_message("insert aligned record of one device failed")
 
-        # execute raw data query sql statement
+        # execute raw data read sql statement
         session_data_set = session.execute_raw_data_query(
             ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1, 4
         )
@@ -116,14 +116,14 @@ def test_one_device():
         if actual_count != expect_count:
             test_fail()
             print_message(
-                "query count mismatch: expect count: "
+                "read count mismatch: expect count: "
                 + str(expect_count)
                 + " actual count: "
                 + str(actual_count)
             )
         assert actual_count == expect_count
 
-        # execute last data query sql statement
+        # execute last data read sql statement
         session_data_set = session.execute_last_data_query(
             ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 0
         )
@@ -135,7 +135,7 @@ def test_one_device():
         if actual_time != expect_time:
             test_fail()
             print_message(
-                "query count mismatch: expect count: "
+                "read count mismatch: expect count: "
                 + str(expect_time)
                 + " actual count: "
                 + str(actual_time)

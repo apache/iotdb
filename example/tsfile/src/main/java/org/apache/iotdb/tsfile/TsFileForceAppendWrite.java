@@ -49,7 +49,7 @@ public class TsFileForceAppendWrite {
 
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
 
-      // add measurements into file schema
+      // add measurements into file schemaengine
       for (int i = 0; i < 4; i++) {
         tsFileWriter.registerTimeseries(
             new Path(Constant.DEVICE_PREFIX + i),
@@ -91,7 +91,7 @@ public class TsFileForceAppendWrite {
 
   private static void write(ForceAppendTsFileWriter fwriter) {
     try (TsFileWriter tsFileWriter1 = new TsFileWriter(fwriter)) {
-      // add measurements into file schema
+      // add measurements into file schemaengine
       for (int i = 0; i < 4; i++) {
         tsFileWriter1.registerTimeseries(
             new Path(Constant.DEVICE_PREFIX + i),

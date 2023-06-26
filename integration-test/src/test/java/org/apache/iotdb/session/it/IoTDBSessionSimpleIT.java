@@ -19,7 +19,7 @@
 package org.apache.iotdb.session.it;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -1291,7 +1291,7 @@ public class IoTDBSessionSimpleIT {
         "8\t4\t5\t4.0\t8.0\ttrue"
       };
 
-      // query
+      // read
       String[] casts = new String[targetTypes.length];
       StringBuffer buffer = new StringBuffer();
       buffer.append("select ");

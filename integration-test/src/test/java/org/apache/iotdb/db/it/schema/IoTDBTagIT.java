@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -1155,7 +1155,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
     } catch (Exception e) {
       e.printStackTrace();
       assertEquals(
-          "411: Error occurred in query process: Query for measurement and its alias at the same time!",
+          "411: Error occurred in read process: Query for measurement and its alias at the same time!",
           e.getMessage());
     }
   }

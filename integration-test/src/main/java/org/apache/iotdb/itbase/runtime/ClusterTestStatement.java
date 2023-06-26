@@ -177,7 +177,7 @@ public class ClusterTestStatement implements Statement {
   @Override
   public ResultSet getResultSet() {
     throw new UnsupportedOperationException(
-        "In integration-test you must use Statement.executeQuery() to query data");
+        "In integration-test you must use Statement.executeQuery() to read data");
   }
 
   @Override

@@ -89,7 +89,7 @@ public class DatabaseConnectController {
   }
 
   /**
-   * query and return data in JSON format.
+   * read and return data in JSON format.
    *
    * @return data in JSON format
    */
@@ -124,10 +124,10 @@ public class DatabaseConnectController {
         }
         result.add(obj);
       }
-      logger.info("query finished");
+      logger.info("read finished");
       return result.toString();
     } catch (Exception e) {
-      logger.error("/query failed, request body is {}", json.replaceAll("[\n\r\t]", "_"), e);
+      logger.error("/read failed, request body is {}", json.replaceAll("[\n\r\t]", "_"), e);
     }
     return null;
   }
@@ -170,7 +170,7 @@ public class DatabaseConnectController {
   private void setJsonTimeseries(
       JsonObject obj, String target, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     List<TimeValues> timeValues = databaseConnectService.querySeries(target, timeRange);
-    logger.info("query size: {}", timeValues.size());
+    logger.info("read size: {}", timeValues.size());
 
     JsonArray dataPoints = new JsonArray();
     for (TimeValues tv : timeValues) {

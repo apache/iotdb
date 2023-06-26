@@ -62,7 +62,7 @@ public class TsFileTestHelper {
       // the number of values to include in the tablet
       int sensorNum = 10;
 
-      // add measurements into file schema (all with INT64 data type)
+      // add measurements into file schemaengine (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
             new MeasurementSchema(

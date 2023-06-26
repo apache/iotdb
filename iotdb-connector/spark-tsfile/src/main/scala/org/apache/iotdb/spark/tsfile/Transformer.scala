@@ -78,7 +78,7 @@ object Transformer {
     // +---------+-----------+---+---+----+
     var res: org.apache.spark.sql.DataFrame = null
     map.keys.foreach { deviceName =>
-      // build query
+      // build read
       var query = "select " + QueryConstant.RESERVED_TIME + ", \"" + deviceName + "\" as device_name"
       val measurement_name = map(deviceName)
       mMap.keySet.foreach { m =>

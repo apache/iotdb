@@ -315,9 +315,9 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
       ...
     ],
     [
-      "org.apache.iotdb.db.query.udf.builtin.UDTFAbs",
-      "org.apache.iotdb.db.query.udf.builtin.UDTFAcos",
-      "org.apache.iotdb.db.query.udf.builtin.UDTFAsin",
+      "org.apache.iotdb.db.read.udf.builtin.UDTFAbs",
+      "org.apache.iotdb.db.read.udf.builtin.UDTFAcos",
+      "org.apache.iotdb.db.read.udf.builtin.UDTFAsin",
       ...
     ]
   ]

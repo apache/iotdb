@@ -137,7 +137,7 @@ public class SessionConcurrentExample {
      * 2,   2,  2,  2
      * 3,   3,  3,  3
      */
-    // The schema of measurements of one device
+    // The schemaengine of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));

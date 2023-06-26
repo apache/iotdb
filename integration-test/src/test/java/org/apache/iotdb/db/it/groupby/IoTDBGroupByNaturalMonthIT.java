@@ -41,7 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TimeZone;
 
-import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
@@ -167,7 +167,7 @@ public class IoTDBGroupByNaturalMonthIT {
 
   /** StartTime: now() - 1mo, EndTime: now(). */
   @Test
-  @Ignore // TODO add it back after we can query with no DataRegion
+  @Ignore // TODO add it back after we can read with no DataRegion
   @Category(LocalStandaloneIT.class) // datasets are inconsistent in cluster
   public void groupByNaturalMonthWithNowTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();

@@ -415,7 +415,7 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
             e.getMessage()
                 .contains(
                     TSStatusCode.PATH_NOT_EXIST.getStatusCode()
-                        + ": Timeseries [root.**] does not exist or is represented by schema template"));
+                        + ": Timeseries [root.**] does not exist or is represented by schemaengine template"));
       }
 
       String[] retArray1 = new String[] {"0,4,4,4,4"};
@@ -447,7 +447,7 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
             e.getMessage()
                 .contains(
                     TSStatusCode.PATH_NOT_EXIST.getStatusCode()
-                        + ": Timeseries [root.*.d1.s3] does not exist or is represented by schema template"));
+                        + ": Timeseries [root.*.d1.s3] does not exist or is represented by schemaengine template"));
       }
     }
   }

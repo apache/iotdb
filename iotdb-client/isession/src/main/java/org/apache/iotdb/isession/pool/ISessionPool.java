@@ -434,9 +434,9 @@ public interface ISessionPool {
       throws IoTDBConnectionException, StatementExecutionException;
 
   /**
-   * execute non query statement
+   * execute non read statement
    *
-   * @param sql non query statement
+   * @param sql non read statement
    */
   void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException;

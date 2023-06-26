@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -337,7 +337,7 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (1,100)"));
-        // grant privilege to query
+        // grant privilege to read
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES READ_TIMESERIES on root.**");
@@ -346,7 +346,7 @@ public class IoTDBAuthIT {
         resultSet = userStmt.executeQuery("SELECT LAST b from root.a");
         resultSet.close();
 
-        // revoke privilege to query
+        // revoke privilege to read
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES READ_TIMESERIES on root.**");
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
       }

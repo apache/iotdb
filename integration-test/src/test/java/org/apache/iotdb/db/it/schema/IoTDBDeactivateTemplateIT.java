@@ -77,18 +77,18 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       statement.execute("CREATE DATABASE root.sg3");
       statement.execute("CREATE DATABASE root.sg4");
 
-      // create schema template
+      // create schemaengine template
       statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
       statement.execute("CREATE SCHEMA TEMPLATE t2 (s1 INT64, s2 DOUBLE)");
 
-      // set schema template
+      // set schemaengine template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1");
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg3");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg4");
 
       for (int j = 1; j <= 4; j++) {
-        statement.execute(String.format("create timeseries of schema template on root.sg%d.d1", j));
+        statement.execute(String.format("create timeseries of schemaengine template on root.sg%d.d1", j));
       }
     }
   }
@@ -242,7 +242,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode()
-                + ": Target schema Template is not activated on any path matched by given path pattern",
+                + ": Target schemaengine Template is not activated on any path matched by given path pattern",
             e.getMessage());
       }
     }
@@ -292,7 +292,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
-                    "Target schema Template is not activated on any path matched by given path pattern"));
+                    "Target schemaengine Template is not activated on any path matched by given path pattern"));
       }
     }
   }

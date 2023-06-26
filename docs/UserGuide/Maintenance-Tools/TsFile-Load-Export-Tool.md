@@ -86,7 +86,7 @@ Run rewrite-tsfile.bat if you are in a Windows environment, or rewrite-tsfile.sh
 -u 			IoTDB user name, optional field, root by default
 -pw 		IoTDB password, optional field, root by default
 --sgLevel 	Sg level of loading Tsfile, optional field, default_storage_group_level in 				iotdb-common.properties by default
---verify 	Verify schema or not, optional field, True by default
+--verify 	Verify schemaengine or not, optional field, True by default
 --onSuccess Delete or remain origin TsFile after loading, optional field, none by default
 ```
 
@@ -119,10 +119,10 @@ TsFile can help you export the result set in the format of TsFile file to the sp
 
 ```shell
 # Unix/OS X
-> tools/export-tsfile.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <query command> -s <sql file>]
+> tools/export-tsfile.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <read command> -s <sql file>]
 
 # Windows
-> tools\export-tsfile.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <query command> -s <sql file>]
+> tools\export-tsfile.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <read command> -s <sql file>]
 ```
 
 * `-h <host>`:

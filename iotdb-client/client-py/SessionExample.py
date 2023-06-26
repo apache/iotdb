@@ -301,19 +301,19 @@ session.insert_records_of_one_device(
     "root.sg_test_01.d_01", time_list, measurements_list, data_types_list, values_list
 )
 
-# execute non-query sql statement
+# execute non-read sql statement
 session.execute_non_query_statement(
     "insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)"
 )
 
-# execute sql query statement
+# execute sql read statement
 with session.execute_query_statement(
     "select * from root.sg_test_01.d_01"
 ) as session_data_set:
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
         print(session_data_set.next())
-# execute sql query statement
+# execute sql read statement
 with session.execute_query_statement(
     "select s_01, s_02, s_03, s_04, s_05, s_06 from root.sg_test_01.d_02"
 ) as session_data_set:

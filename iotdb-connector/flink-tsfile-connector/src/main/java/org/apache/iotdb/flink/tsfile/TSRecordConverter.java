@@ -38,7 +38,7 @@ public interface TSRecordConverter<T> extends Serializable {
   /**
    * Opens current converter.
    *
-   * @param schema The schema of the TSRecord.
+   * @param schema The schemaengine of the TSRecord.
    */
   void open(Schema schema) throws IOException;
 

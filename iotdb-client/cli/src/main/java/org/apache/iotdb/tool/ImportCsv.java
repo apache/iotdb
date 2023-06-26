@@ -21,8 +21,8 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.constant.SqlConstant;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -599,7 +599,7 @@ public class ImportCsv extends AbstractCsvTool {
               // Get the data type directly if the CSV column have data type.
               if (!headerTypeMap.containsKey(headerNameWithoutType)) {
                 boolean hasResult = false;
-                // query the data type in iotdb
+                // read the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
                     if (headerTypeMap.isEmpty()) {
@@ -812,7 +812,7 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   /**
-   * query data type of timeseries from IoTDB
+   * read data type of timeseries from IoTDB
    *
    * @param deviceNames
    * @param headerTypeMap
@@ -847,7 +847,7 @@ public class ImportCsv extends AbstractCsvTool {
         }
       } catch (StatementExecutionException | IllegalPathException e) {
         System.out.println(
-            "Meet error when query the type of timeseries because " + e.getMessage());
+            "Meet error when read the type of timeseries because " + e.getMessage());
         return false;
       }
     }
@@ -880,7 +880,7 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   /**
-   * if data type of timeseries is not defined in headers of schema, this method will be called to
+   * if data type of timeseries is not defined in headers of schemaengine, this method will be called to
    * do type inference
    *
    * @param strValue

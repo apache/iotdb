@@ -139,7 +139,7 @@ public void exampleTest() throws Exception {
       Statement statement = connection.createStatement()) {
     // use execute() to set the databases
     statement.execute("CREATE DATABASE root.sg");
-    // use executeQuery() query the databases
+    // use executeQuery() read the databases
     try (ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
       if (resultSet.next()) {
         String storageGroupPath = resultSet.getString("database");

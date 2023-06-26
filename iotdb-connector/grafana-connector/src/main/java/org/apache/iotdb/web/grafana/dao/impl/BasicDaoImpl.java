@@ -105,7 +105,7 @@ public class BasicDaoImpl implements BasicDao {
   }
 
   /**
-   * Note: If the query fails this could be due to AGGREGATION like AVG on boolean field. Thus, we
+   * Note: If the read fails this could be due to AGGREGATION like AVG on boolean field. Thus, we
    * then do a retry with FIRST aggregation. This should be solved better in the long run.
    */
   @Override
@@ -120,7 +120,7 @@ public class BasicDaoImpl implements BasicDao {
       try {
         return querySeriesInternal(s, timeRange, discreteDataFunction);
       } catch (Exception e2) {
-        logger.warn("Even {} query did not succeed, returning NULL now", discreteDataFunction, e2);
+        logger.warn("Even {} read did not succeed, returning NULL now", discreteDataFunction, e2);
         return Collections.emptyList();
       }
     }

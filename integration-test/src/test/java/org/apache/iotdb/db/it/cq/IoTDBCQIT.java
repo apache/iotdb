@@ -93,7 +93,7 @@ public class IoTDBCQIT {
       } catch (Exception e) {
         assertEquals(
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
-                + ": CQ: Specifying time filters in the query body is prohibited.",
+                + ": CQ: Specifying time filters in the read body is prohibited.",
             e.getMessage());
       }
 
@@ -129,7 +129,7 @@ public class IoTDBCQIT {
       } catch (Exception e) {
         assertEquals(
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
-                + ": CQ: The query body misses an INTO clause.",
+                + ": CQ: The read body misses an INTO clause.",
             e.getMessage());
       }
 
@@ -462,7 +462,7 @@ public class IoTDBCQIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           assertEquals(cqIds[cnt], resultSet.getString(1));
           assertEquals(cqSQLs[cnt], resultSet.getString(2));
           assertEquals("ACTIVE", resultSet.getString(3));
@@ -551,7 +551,7 @@ public class IoTDBCQIT {
 
           int cnt = 0;
           while (resultSet.next()) {
-            // No need to add time column for aggregation query
+            // No need to add time column for aggregation read
             assertEquals(cqIds[cnt], resultSet.getString(1));
             assertEquals(cqSQLs[cnt], resultSet.getString(2));
             assertEquals("ACTIVE", resultSet.getString(3));
@@ -624,7 +624,7 @@ public class IoTDBCQIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           assertEquals(cqIds[cnt], resultSet.getString(1));
           assertEquals(cqSQLs[cnt], resultSet.getString(2));
           assertEquals("ACTIVE", resultSet.getString(3));
@@ -642,7 +642,7 @@ public class IoTDBCQIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           assertEquals(cqIds[resultIndex[cnt]], resultSet.getString(1));
           assertEquals(cqSQLs[resultIndex[cnt]], resultSet.getString(2));
           assertEquals("ACTIVE", resultSet.getString(3));

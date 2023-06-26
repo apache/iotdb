@@ -98,7 +98,7 @@ public interface BaseEnv {
   /**
    * Ensure all the nodes being in the corresponding status.
    *
-   * @param nodes the nodes list to query.
+   * @param nodes the nodes list to read.
    * @param targetStatus the target {@link NodeStatus} of each node. It should have the same length
    *     with nodes.
    * @throws IllegalStateException if there are some nodes not in the targetStatus after a period

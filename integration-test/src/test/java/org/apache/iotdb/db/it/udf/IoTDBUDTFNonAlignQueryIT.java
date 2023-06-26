@@ -105,7 +105,7 @@ public class IoTDBUDTFNonAlignQueryIT {
   private static void registerUDF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

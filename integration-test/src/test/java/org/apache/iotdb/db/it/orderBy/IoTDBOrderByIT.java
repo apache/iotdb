@@ -397,7 +397,7 @@ public class IoTDBOrderByIT {
     }
   }
 
-  // 3. aggregation query
+  // 3. aggregation read
   @Test
   public void orderByInAggregationTest() {
     String sql = "select avg(num) from root.sg.d group by session(10000ms) order by avg(num) desc";
@@ -629,7 +629,7 @@ public class IoTDBOrderByIT {
     }
   }
 
-  // 4. raw data query with align by device
+  // 4. raw data read with align by device
   private void testNormalOrderByAlignByDevice(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -968,7 +968,7 @@ public class IoTDBOrderByIT {
     orderByBigNumAlignByDevice(sql, ans);
   }
 
-  // 5. aggregation query align by device
+  // 5. aggregation read align by device
   @Test
   public void orderByInAggregationAlignByDeviceTest() {
     String sql =
@@ -1237,14 +1237,14 @@ public class IoTDBOrderByIT {
   public void errorTest1() {
     errorTest(
         "select num from root.sg.d order by avg(bigNum)",
-        "701: Raw data and aggregation hybrid query is not supported.");
+        "701: Raw data and aggregation hybrid read is not supported.");
   }
 
   @Test
   public void errorTest2() {
     errorTest(
         "select avg(num) from root.sg.d order by bigNum",
-        "701: Raw data and aggregation hybrid query is not supported.");
+        "701: Raw data and aggregation hybrid read is not supported.");
   }
 
   @Test
@@ -1279,10 +1279,10 @@ public class IoTDBOrderByIT {
   public void errorTest7() {
     errorTest(
         "select last bigNum,floatNum from root.** order by root.sg.d.bigNum",
-        "701: root.sg.d.bigNum in order by clause doesn't exist in the result of last query.");
+        "701: root.sg.d.bigNum in order by clause doesn't exist in the result of last read.");
   }
 
-  // last query
+  // last read
   public void testLastQueryOrderBy(String sql, String[][] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

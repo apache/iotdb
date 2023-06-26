@@ -36,13 +36,13 @@ CREATE SCHEMA TEMPLATE <templateName> ALIGNED? '(' <measurementId> <attributeCla
 **Example 1:** Create a template containing two non-aligned timeseires
 
 ```shell
-IoTDB> create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+IoTDB> create schemaengine template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
 **Example 2:** Create a template containing a group of aligned timeseires
 
 ```shell
-IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)
+IoTDB> create schemaengine template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)
 ```
 
 The` lat` and `lon` measurements are aligned.
@@ -60,7 +60,7 @@ After a schema template is created, it should be set to specific path before cre
 The SQL Statement for setting schema template is as follow:
 
 ```shell
-IoTDB> set schema template t1 to root.sg1.d1
+IoTDB> set schemaengine template t1 to root.sg1.d1
 ```
 
 ## Activate Schema Template
@@ -71,15 +71,15 @@ After setting the schema template, with the system enabled to auto create schema
 **Attention**: Before inserting data or the system not enabled to auto create schema, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries or activate the schema template, act before inserting data:
 
 ```shell
-IoTDB> create timeseries using schema template on root.sg1.d1
+IoTDB> create timeseries using schemaengine template on root.sg1.d1
 ```
 
 **Example:** Execute the following statement
 ```shell
-IoTDB> set schema template t1 to root.sg1.d1
-IoTDB> set schema template t2 to root.sg1.d2
-IoTDB> create timeseries using schema template on root.sg1.d1
-IoTDB> create timeseries using schema template on root.sg1.d2
+IoTDB> set schemaengine template t1 to root.sg1.d1
+IoTDB> set schemaengine template t2 to root.sg1.d2
+IoTDB> create timeseries using schemaengine template on root.sg1.d1
+IoTDB> create timeseries using schemaengine template on root.sg1.d2
 ```
 
 Show the time series:
@@ -119,7 +119,7 @@ show devices root.sg1.**
 The SQL statement looks like this:
 
 ```shell
-IoTDB> show schema templates
+IoTDB> show schemaengine templates
 ```
 
 The execution result is as follows:
@@ -137,7 +137,7 @@ The execution result is as follows:
 The SQL statement looks like this:
 
 ```shell
-IoTDB> show nodes in schema template t1
+IoTDB> show nodes in schemaengine template t1
 ```
 
 The execution result is as follows:
@@ -153,7 +153,7 @@ The execution result is as follows:
 - Show the path prefix where a schema template is set
 
 ```shell
-IoTDB> show paths set schema template t1
+IoTDB> show paths set schemaengine template t1
 ```
 
 The execution result is as follows:
@@ -168,7 +168,7 @@ The execution result is as follows:
 - Show the path prefix where a schema template is used (i.e. the time series has been created)
 
 ```shell
-IoTDB> show paths using schema template t1
+IoTDB> show paths using schemaengine template t1
 ```
 
 The execution result is as follows:
@@ -185,25 +185,25 @@ The execution result is as follows:
 To delete a group of timeseries represented by schema template, namely deactivate the schema template, use the following SQL statement:
 
 ```shell
-IoTDB> delete timeseries of schema template t1 from root.sg1.d1
+IoTDB> delete timeseries of schemaengine template t1 from root.sg1.d1
 ```
 
 or
 
 ```shell
-IoTDB> deactivate schema template t1 from root.sg1.d1
+IoTDB> deactivate schemaengine template t1 from root.sg1.d1
 ```
 
 The deactivation supports batch process. 
 
 ```shell
-IoTDB> delete timeseries of schema template t1 from root.sg1.*, root.sg2.*
+IoTDB> delete timeseries of schemaengine template t1 from root.sg1.*, root.sg2.*
 ```
 
 or
 
 ```shell
-IoTDB> deactivate schema template t1 from root.sg1.*, root.sg2.*
+IoTDB> deactivate schemaengine template t1 from root.sg1.*, root.sg2.*
 ```
 
 If the template name is not provided in sql, all template activation on paths matched by given path pattern will be removed.
@@ -213,7 +213,7 @@ If the template name is not provided in sql, all template activation on paths ma
 The SQL Statement for unsetting schema template is as follow:
 
 ```shell
-IoTDB> unset schema template t1 from root.sg1.d1
+IoTDB> unset schemaengine template t1 from root.sg1.d1
 ```
 
 **Attention**: It should be guaranteed that none of the timeseries represented by the target schema template exists, before unset it. It can be achieved by deactivation operation.
@@ -223,7 +223,7 @@ IoTDB> unset schema template t1 from root.sg1.d1
 The SQL Statement for dropping schema template is as follow:
 
 ```shell
-IoTDB> drop schema template t1
+IoTDB> drop schemaengine template t1
 ```
 
 **Attention**: Dropping an already set template is not supported.
@@ -235,7 +235,7 @@ In a scenario where measurements need to be added, you can modify the schema tem
 The SQL Statement for altering schema template is as follow:
 
 ```shell
-IoTDB> alter schema template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
+IoTDB> alter schemaengine template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
 ```
 
 **When executing data insertion to devices with schema template set on related prefix path and there are measurements not present in this schema template, the measurements will be auto added to this schema template.**

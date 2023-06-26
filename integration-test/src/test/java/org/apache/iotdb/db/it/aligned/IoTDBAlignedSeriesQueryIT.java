@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -40,15 +40,15 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.iotdb.db.constant.TestConstant.avg;
-import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.firstValue;
-import static org.apache.iotdb.db.constant.TestConstant.lastValue;
-import static org.apache.iotdb.db.constant.TestConstant.maxTime;
-import static org.apache.iotdb.db.constant.TestConstant.maxValue;
-import static org.apache.iotdb.db.constant.TestConstant.minTime;
-import static org.apache.iotdb.db.constant.TestConstant.minValue;
-import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.apache.iotdb.db.utils.constant.TestConstant.avg;
+import static org.apache.iotdb.db.utils.constant.TestConstant.count;
+import static org.apache.iotdb.db.utils.constant.TestConstant.firstValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.lastValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.maxTime;
+import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.minTime;
+import static org.apache.iotdb.db.utils.constant.TestConstant.minValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.sum;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -1237,7 +1237,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1282,7 +1282,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1324,7 +1324,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1374,7 +1374,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1424,7 +1424,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1459,7 +1459,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (String columnName : columnNames) {
             int index = map.get(columnName);
             if (builder.length() != 0) {
@@ -1496,7 +1496,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (String columnName : columnNames) {
             int index = map.get(columnName);
             if (builder.length() != 0) {
@@ -1534,7 +1534,7 @@ public class IoTDBAlignedSeriesQueryIT {
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
           StringBuilder builder = new StringBuilder();
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1570,7 +1570,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1619,7 +1619,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1660,7 +1660,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1701,7 +1701,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -1718,7 +1718,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
-  // ---------------------------------Align by device query ------------------------------------
+  // ---------------------------------Align by device read ------------------------------------
   @Test
   public void selectAllAlignedWithoutValueFilterAlignByDeviceTest() {
     String[] retArray =
@@ -2451,7 +2451,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -2526,7 +2526,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -2578,7 +2578,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 1; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -2615,7 +2615,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -2668,7 +2668,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -2707,7 +2707,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -2747,7 +2747,7 @@ public class IoTDBAlignedSeriesQueryIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);

@@ -30,7 +30,7 @@ fluctuation in the massive metadata scenario, we provide a metadata storage type
 Firstly, you should package **schema-engine-rocksdb** by the following command:
 
 ```shell
-mvn clean package -pl schema-engine-rocksdb -am -DskipTests
+mvn clean package -pl schemaengine-storageengine-rocksdb -am -DskipTests
 ```
 
 After that, you can get a **conf** directory and a **lib** directory in

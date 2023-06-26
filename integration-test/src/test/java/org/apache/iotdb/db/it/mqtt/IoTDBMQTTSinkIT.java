@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.it.mqtt;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
-import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
-import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
+import org.apache.iotdb.db.storageengine.trigger.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.storageengine.trigger.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.storageengine.trigger.sink.mqtt.MQTTHandler;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;

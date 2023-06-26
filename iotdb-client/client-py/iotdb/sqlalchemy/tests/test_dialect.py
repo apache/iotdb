@@ -81,7 +81,7 @@ def test_dialect():
             print_message("test get_columns failed!")
         eng.execute("delete database root.cursor")
         eng.execute("delete database root.cursor_s1")
-        # close engine
+        # close storageengine
         eng.dispose()
 
 

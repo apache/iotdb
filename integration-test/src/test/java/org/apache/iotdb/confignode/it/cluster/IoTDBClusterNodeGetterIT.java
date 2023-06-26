@@ -270,7 +270,7 @@ public class IoTDBClusterNodeGetterIT {
       dataNodeLocation.setSchemaRegionConsensusEndPoint(
           new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort() + 4));
 
-      /* Test query one DataNodeInfo */
+      /* Test read one DataNodeInfo */
       TDataNodeConfigurationResp dataNodeConfigurationResp =
           client.getDataNodeConfiguration(dataNodeLocation.getDataNodeId());
       Map<Integer, TDataNodeConfiguration> configurationMap =
@@ -286,7 +286,7 @@ public class IoTDBClusterNodeGetterIT {
       assertEquals(1, configurationMap.size());
       assertEquals(dataNodeLocation, dnLocation);
 
-      /* Test query all DataNodeConfiguration */
+      /* Test read all DataNodeConfiguration */
       dataNodeConfigurationResp = client.getDataNodeConfiguration(-1);
       configurationMap = dataNodeConfigurationResp.getDataNodeConfigurationMap();
       assertEquals(

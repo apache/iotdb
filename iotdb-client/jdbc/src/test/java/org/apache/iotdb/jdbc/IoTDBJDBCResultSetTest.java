@@ -58,7 +58,7 @@ import static org.mockito.Mockito.when;
 
 /*
    This class is designed to test the function of TsfileQueryResultSet.
-   This class also sheds light on the complete execution process of a query sql from the jdbc perspective.
+   This class also sheds light on the complete execution process of a read sql from the jdbc perspective.
 
    The test utilizes the mockito framework to mock responses from an IoTDB server.
    The status of the IoTDB server mocked here is determined by the following sql commands:

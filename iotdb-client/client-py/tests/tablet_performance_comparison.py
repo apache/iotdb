@@ -120,10 +120,10 @@ def create_open_session():
 
 def check_count(expect, _session, _sql):
     """
-    check out the line number of the given SQL's query result.
+    check out the line number of the given SQL's read result.
     :param expect: expected number
     :param _session: IoTDB session
-    :param _sql: query SQL
+    :param _sql: read SQL
     """
     session_data_set = _session.execute_query_statement(_sql)
     session_data_set.set_fetch_size(1)
@@ -144,10 +144,10 @@ def check_count(expect, _session, _sql):
 
 def check_query_result(expect, _session, _sql):
     """
-    check out the query result of given query.
+    check out the read result of given read.
     :param expect: expected result
     :param _session: IoTDB session
-    :param _sql: query SQL
+    :param _sql: read SQL
     """
     session_data_set = _session.execute_query_statement(_sql)
     session_data_set.set_fetch_size(1)
@@ -240,7 +240,7 @@ def performance_test(
             check_query_result(
                 expect, session, f"select {','.join(measurements)} from {device_id}"
             )
-            print("query validation have passed")
+            print("read validation have passed")
     end = time.perf_counter()
 
     # clean data and close the session

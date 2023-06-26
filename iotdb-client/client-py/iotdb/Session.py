@@ -429,7 +429,7 @@ class Session(object):
 
     def delete_time_series(self, paths_list):
         """
-        delete multiple time series, including data and schema
+        delete multiple time series, including data and schemaengine
         :param paths_list: List of time series path, which should be complete (starts from root)
         """
         try:
@@ -1344,10 +1344,10 @@ class Session(object):
 
     def execute_query_statement(self, sql, timeout=0):
         """
-        execute query sql statement and returns SessionDataSet
-        :param sql: String, query sql statement
+        execute read sql statement and returns SessionDataSet
+        :param sql: String, read sql statement
         :param timeout:
-        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py):
+        :return: SessionDataSet, contains read results and relevant info (see SessionDataSet.py):
         """
         request = TSExecuteStatementReq(
             self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout
@@ -1381,8 +1381,8 @@ class Session(object):
 
     def execute_non_query_statement(self, sql):
         """
-        execute non-query sql statement
-        :param sql: String, non-query sql statement
+        execute non-read sql statement
+        :param sql: String, non-read sql statement
         """
         request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id)
         try:
@@ -1572,11 +1572,11 @@ class Session(object):
         self, paths: list, start_time: int, end_time: int
     ) -> SessionDataSet:
         """
-        execute query statement and returns SessionDataSet
+        execute read statement and returns SessionDataSet
         :param paths: String path list
         :param start_time: Query start time
         :param end_time: Query end time
-        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        :return: SessionDataSet, contains read results and relevant info (see SessionDataSet.py)
         """
         request = TSRawDataQueryReq(
             self.__session_id,
@@ -1615,10 +1615,10 @@ class Session(object):
 
     def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
         """
-        execute query statement and returns SessionDataSet
+        execute read statement and returns SessionDataSet
         :param paths: String path list
         :param last_time: Query last time
-        :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
+        :return: SessionDataSet, contains read results and relevant info (see SessionDataSet.py)
         """
         request = TSLastDataQueryReq(
             self.__session_id,
@@ -1847,7 +1847,7 @@ class Session(object):
 
     def create_schema_template(self, template: Template):
         """
-        create schema template, users using this method should use the template class as an argument
+        create schemaengine template, users using this method should use the template class as an argument
         :param template: The template contains multiple child node(see Template.py)
         """
         bytes_array = template.serialize
@@ -1870,7 +1870,7 @@ class Session(object):
 
     def drop_schema_template(self, template_name: str):
         """
-        drop schema template, this method should be used to the template unset anything
+        drop schemaengine template, this method should be used to the template unset anything
         :param template_name: template name
         """
         request = TSDropSchemaTemplateReq(self.__session_id, template_name)
@@ -1974,7 +1974,7 @@ class Session(object):
 
     def unset_schema_template(self, template_name, prefix_path):
         """
-        unset schema template from prefix path, this method unsetting the template from entities,
+        unset schemaengine template from prefix path, this method unsetting the template from entities,
         which have already inserted records using the template, is not supported.
         :param template_name: template name
         :param prefix_path:
@@ -1998,7 +1998,7 @@ class Session(object):
 
     def count_measurements_in_template(self, template_name: str):
         """
-        drop schema template, this method should be used to the template unset anything
+        drop schemaengine template, this method should be used to the template unset anything
         :param template_name: template name
         """
         request = TSQueryTemplateReq(
@@ -2104,7 +2104,7 @@ class Session(object):
 
     def show_all_templates(self):
         """
-        show all schema templates
+        show all schemaengine templates
         """
         request = TSQueryTemplateReq(
             self.__session_id,
@@ -2129,7 +2129,7 @@ class Session(object):
 
     def show_paths_template_set_on(self, template_name):
         """
-        show the path prefix where a schema template is set
+        show the path prefix where a schemaengine template is set
         :param template_name:
         """
         request = TSQueryTemplateReq(
@@ -2153,7 +2153,7 @@ class Session(object):
 
     def show_paths_template_using_on(self, template_name):
         """
-        show the path prefix where a schema template is used
+        show the path prefix where a schemaengine template is used
         :param template_name:
         """
         request = TSQueryTemplateReq(

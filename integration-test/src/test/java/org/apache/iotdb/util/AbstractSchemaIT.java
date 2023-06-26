@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.util;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParametersFactory;
 
@@ -35,7 +35,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * This class define multiple modes for schema engine. All IT class extends AbstractSchemaIT will be
+ * This class define multiple modes for schemaengine storageengine. All IT class extends AbstractSchemaIT will be
  * run in both Memory and PBTree modes. In PBTree mode, there are three kinds of test environment:
  * full memory, partial memory and non memory.
  *

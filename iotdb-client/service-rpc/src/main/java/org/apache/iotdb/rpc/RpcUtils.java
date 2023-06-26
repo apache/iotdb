@@ -71,14 +71,6 @@ public class RpcUtils {
             new SynchronizedHandler(client));
   }
 
-  public static InfluxDBService.Iface newSynchronizedClient(InfluxDBService.Iface client) {
-    return (InfluxDBService.Iface)
-        Proxy.newProxyInstance(
-            RpcUtils.class.getClassLoader(),
-            new Class[] {InfluxDBService.Iface.class},
-            new InfluxDBSynchronizedHandler(client));
-  }
-
   /**
    * verify success.
    *

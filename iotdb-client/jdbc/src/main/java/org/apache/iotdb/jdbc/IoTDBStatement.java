@@ -58,8 +58,8 @@ public class IoTDBStatement implements Statement {
   private int maxRows = 0;
 
   /**
-   * Timeout of query can be set by users. Unit: s. A negative number means using the default
-   * configuration of server. And value 0 will disable the function of query timeout.
+   * Timeout of read can be set by users. Unit: s. A negative number means using the default
+   * configuration of server. And value 0 will disable the function of read timeout.
    */
   private int queryTimeout = -1;
 
@@ -245,7 +245,7 @@ public class IoTDBStatement implements Statement {
   }
 
   /**
-   * There are two kinds of sql here: (1) query sql (2) update sql.
+   * There are two kinds of sql here: (1) read sql (2) update sql.
    *
    * <p>(1) return IoTDBJDBCResultSet or IoTDBNonAlignJDBCResultSet (2) simply get executed
    */
@@ -374,7 +374,7 @@ public class IoTDBStatement implements Statement {
   }
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
-    checkConnection("execute query");
+    checkConnection("execute read");
     isClosed = false;
     try {
       return executeQuerySQL(sql, timeoutInMS);
@@ -388,7 +388,7 @@ public class IoTDBStatement implements Statement {
         }
       } else {
         throw new SQLException(
-            "Fail to reconnect to server when execute query "
+            "Fail to reconnect to server when execute read "
                 + sql
                 + ". please check server status",
             e);

@@ -81,10 +81,10 @@ abstract class Converter {
   def toSqlField(tsfileSchema: util.ArrayList[Series], addTimeField: Boolean): ListBuffer[StructField]
 
   /**
-    * Convert TSFile columns to SparkSQL schema.
+    * Convert TSFile columns to SparkSQL schemaengine.
     *
     * @param tsfileSchema all time series information in TSFile
-    * @return SparkSQL table schema with the time field added
+    * @return SparkSQL table schemaengine with the time field added
     */
   def toSqlSchema(tsfileSchema: util.ArrayList[Series]): Option[StructType] = {
     val fields = toSqlField(tsfileSchema, true) // true to add the time field
@@ -92,7 +92,7 @@ abstract class Converter {
     SchemaType(StructType(fields.toList), nullable = false).dataType match {
       case t: StructType => Some(t)
       case _ => throw new RuntimeException(
-        s"""TSFile schema cannot be converted to a Spark SQL StructType:
+        s"""TSFile schemaengine cannot be converted to a Spark SQL StructType:
            |${tsfileSchema.toString}
            |""".stripMargin)
     }

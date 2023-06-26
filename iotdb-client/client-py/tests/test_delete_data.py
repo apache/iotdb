@@ -106,7 +106,7 @@ def test_delete_date():
             ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1
         )
 
-        # execute raw data query sql statement
+        # execute raw data read sql statement
         session_data_set = session.execute_raw_data_query(
             ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1, 4
         )
@@ -121,7 +121,7 @@ def test_delete_date():
         if actual_count != expect_count:
             test_fail()
             print_message(
-                "query count mismatch: expect count: "
+                "read count mismatch: expect count: "
                 + str(expect_count)
                 + " actual count: "
                 + str(actual_count)
@@ -133,7 +133,7 @@ def test_delete_date():
             ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 2, 3
         )
 
-        # execute raw data query sql statement
+        # execute raw data read sql statement
         session_data_set = session.execute_raw_data_query(
             ["root.str_test_01.d_02.s_01", "root.str_test_01.d_02.s_02"], 1, 4
         )
@@ -148,7 +148,7 @@ def test_delete_date():
         if actual_count != expect_count:
             test_fail()
             print_message(
-                "query count mismatch: expect count: "
+                "read count mismatch: expect count: "
                 + str(expect_count)
                 + " actual count: "
                 + str(actual_count)

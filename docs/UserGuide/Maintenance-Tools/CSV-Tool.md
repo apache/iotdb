@@ -29,10 +29,10 @@ The CSV tool can help you import data in CSV format to IoTDB or export data from
 
 ```shell
 # Unix/OS X
-> tools/export-csv.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <query command> -s <sql file> -linesPerFile <int>]
+> tools/export-csv.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <read command> -s <sql file> -linesPerFile <int>]
 
 # Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <query command> -s <sql file> -linesPerFile <int>]
+> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <read command> -s <sql file> -linesPerFile <int>]
 ```
 
 Description:

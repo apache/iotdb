@@ -49,7 +49,7 @@ Below are basic constraints of identifiers, specific identifiers may have other 
 
 ```sql
 # create template t1't"t
-create schema template `t1't"t` 
+create schemaengine template `t1't"t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 
 # create template t1`t
@@ -68,7 +68,7 @@ Examples of case in which quoted identifier is used ：
   CREATE TRIGGER `alert.``listener-sg1d1s1`
   AFTER INSERT
   ON root.sg1.d1.s1
-  AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
+  AS 'org.apache.iotdb.db.storageengine.trigger.example.AlertListener'
   WITH (
     'lo' = '0', 
     'hi' = '100.0'

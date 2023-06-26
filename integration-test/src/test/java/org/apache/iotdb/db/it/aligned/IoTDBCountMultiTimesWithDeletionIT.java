@@ -93,7 +93,7 @@ public class IoTDBCountMultiTimesWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -116,7 +116,7 @@ public class IoTDBCountMultiTimesWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);

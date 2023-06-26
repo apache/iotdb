@@ -528,7 +528,7 @@ public class IoTDBTagAggregationIT {
       }
     } catch (SQLException e) {
       Assert.assertTrue(
-          e.getMessage().contains("Only time filters are supported in GROUP BY TAGS query"));
+          e.getMessage().contains("Only time filters are supported in GROUP BY TAGS read"));
     }
   }
 
@@ -544,7 +544,7 @@ public class IoTDBTagAggregationIT {
       }
     } catch (SQLException e) {
       Assert.assertTrue(
-          e.getMessage().contains("Having clause is not supported yet in GROUP BY TAGS query"));
+          e.getMessage().contains("Having clause is not supported yet in GROUP BY TAGS read"));
     }
   }
 

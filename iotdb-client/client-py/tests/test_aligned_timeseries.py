@@ -247,7 +247,7 @@ def test_aligned_timeseries():
             test_fail()
             print_message("insert records of one device failed")
 
-        # execute non-query sql statement
+        # execute non-read sql statement
         try:
             session.execute_non_query_statement(
                 "insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
@@ -258,7 +258,7 @@ def test_aligned_timeseries():
                 "execute 'insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)' failed"
             )
 
-        # execute sql query statement
+        # execute sql read statement
         session_data_set = session.execute_query_statement(
             "select * from root.sg_test_01.d_02"
         )
@@ -273,7 +273,7 @@ def test_aligned_timeseries():
         if actual_count != expect_count:
             test_fail()
             print_message(
-                "query count mismatch: expect count: "
+                "read count mismatch: expect count: "
                 + str(expect_count)
                 + " actual count: "
                 + str(actual_count)

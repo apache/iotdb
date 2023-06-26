@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -105,11 +105,11 @@ public class IoTDBNestedQueryIT {
   private static void registerUDF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
+      statement.execute("create function adder as 'org.apache.iotdb.db.read.udf.example.Adder'");
       statement.execute(
-          "create function time_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
+          "create function time_window_counter as 'org.apache.iotdb.db.read.udf.example.Counter'");
       statement.execute(
-          "create function size_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
+          "create function size_window_counter as 'org.apache.iotdb.db.read.udf.example.Counter'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

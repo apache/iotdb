@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -552,7 +552,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       String[] resultNames = {"udf", "udf.test", "012", "udf`"};
 
-      String createSql = "create function %s as 'org.apache.iotdb.db.query.udf.example.Adder'";
+      String createSql = "create function %s as 'org.apache.iotdb.db.read.udf.example.Adder'";
       for (String udfName : udfNames) {
         statement.execute(String.format(createSql, udfName));
       }
@@ -588,20 +588,20 @@ public class IoTDBSyntaxConventionIdentifierIT {
       }
 
       try {
-        statement.execute("create function 111 as 'org.apache.iotdb.db.query.udf.example.Adder'");
+        statement.execute("create function 111 as 'org.apache.iotdb.db.read.udf.example.Adder'");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create function 'udf' as 'org.apache.iotdb.db.query.udf.example.Adder'");
+        statement.execute("create function 'udf' as 'org.apache.iotdb.db.read.udf.example.Adder'");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
         statement.execute(
-            "create function \"udf\" as 'org.apache.iotdb.db.query.udf.example.Adder'");
+            "create function \"udf\" as 'org.apache.iotdb.db.read.udf.example.Adder'");
         fail();
       } catch (Exception ignored) {
       }
@@ -814,7 +814,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      String createTimeSereisSql = "CREATE TIMESERIES %s FLOAT";
   //      String createTriggerSql =
   //          "create trigger %s before insert on %s "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'";
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'";
   //      for (int i = 0; i < timeseries.length; ++i) {
   //        statement.execute(String.format(createTimeSereisSql, timeseries[i]));
   //        statement.execute(String.format(createTriggerSql, triggerNames[i], timeseries[i]));
@@ -840,14 +840,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger trigger` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //      } catch (Exception ignored) {
   //      }
   //
   //      try {
   //        statement.execute(
   //            "create trigger `trigger`` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -855,7 +855,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger 111 before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -863,7 +863,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger 'tri' before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -871,7 +871,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger \"tri\" before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -995,7 +995,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       for (String templateName : templateNames) {
         String createTemplateSql =
             String.format(
-                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
+                "create schemaengine template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
                 templateName);
         statement.execute(createTemplateSql);
       }

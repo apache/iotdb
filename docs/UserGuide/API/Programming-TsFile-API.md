@@ -548,7 +548,7 @@ public class TsFileRead {
     paths.add(new Path("device_1.sensor_2"));
     paths.add(new Path("device_1.sensor_3"));
 
-    // no query statement
+    // no read statement
     queryAndPrint(paths, readTsFile, null);
 
     //close the reader when you left

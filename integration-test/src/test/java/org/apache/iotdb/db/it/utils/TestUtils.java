@@ -91,7 +91,7 @@ public class TestUtils {
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
-          // No need to add time column for aggregation query
+          // No need to add time column for aggregation read
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);

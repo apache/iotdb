@@ -857,7 +857,7 @@ service IConfigNodeRPCService {
   common.TSStatus setDatabase(TDatabaseSchema databaseSchema)
 
   /**
-   * Alter a Database's schema, including
+   * Alter a Database's schemaengine, including
    * TTL, ReplicationFactor, timePartitionInterval and RegionGroupNum
    *
    * @return SUCCESS_STATUS if the specified DatabaseSchema is altered successfully
@@ -930,7 +930,7 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-   * Get the partition info used for schema node query and get the node info in CluterSchemaInfo.
+   * Get the partition info used for schemaengine node read and get the node info in CluterSchemaInfo.
    */
   TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req)
 
@@ -1182,7 +1182,7 @@ service IConfigNodeRPCService {
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
 
-  /** Kill query */
+  /** Kill read */
   common.TSStatus killQuery(string queryId, i32 dataNodeId)
 
   /** Get all DataNodeLocations of Running DataNodes */
@@ -1225,42 +1225,42 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /**
-   * Create schema template
+   * Create schemaengine template
    */
   common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
   /**
-   * Get all schema template info and template set info for DataNode registeration
+   * Get all schemaengine template info and template set info for DataNode registeration
    */
   TGetAllTemplatesResp getAllTemplates()
 
   /**
-   * Get one schema template info
+   * Get one schemaengine template info
    */
   TGetTemplateResp getTemplate(string req)
 
   /**
-   * Set given schema template to given path
+   * Set given schemaengine template to given path
    */
   common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
 
   /**
-   * Get paths setting given schema template
+   * Get paths setting given schemaengine template
    */
   TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
   /**
-   * Deactivate schema template from paths matched by given pattern tree in cluster
+   * Deactivate schemaengine template from paths matched by given pattern tree in cluster
    */
   common.TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req)
 
   /**
-   * Unset schema template from given path
+   * Unset schemaengine template from given path
    */
   common.TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req)
 
   /**
-   * Drop schema template
+   * Drop schemaengine template
    */
   common.TSStatus dropSchemaTemplate(string req)
 

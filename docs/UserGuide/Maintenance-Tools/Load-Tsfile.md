@@ -85,7 +85,7 @@ Run rewrite-tsfile.bat if you are in a Windows environment, or rewrite-tsfile.sh
 -u 			IoTDB user name, optional field, root by default
 -pw 		IoTDB password, optional field, root by default
 --sgLevel 	Sg level of loading Tsfile, optional field, default_storage_group_level in 				iotdb-common.properties by default
---verify 	Verify schema or not, optional field, True by default
+--verify 	Verify schemaengine or not, optional field, True by default
 --onSuccess Delete or remain origin TsFile after loading, optional field, none by default
 ```
 

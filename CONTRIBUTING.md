@@ -140,7 +140,7 @@ Mark `antlr/target/generated-sources/antlr4` and `thrift/target/generated-source
 * native Write interface：`insertRecord(TSInsertRecordReq req)`
 `insertTablet(TSInsertTabletReq req)`
 
-* Storage engine`org.apache.iotdb.db.engine.StorageEngine`
+* Storage engine`org.apache.iotdb.db.storageengine.StorageEngine`
 * Query engine `org.apache.iotdb.db.qp.QueryProcessor`
 
 

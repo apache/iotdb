@@ -115,8 +115,8 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
       readTsFile = new TsFileReader(reader);
       queryDataSet =
           readTsFile.query(
-              // The query method call will change the content of the param query expression,
-              // the original query expression should not be passed to the query method as it may
+              // The read method call will change the content of the param read expression,
+              // the original read expression should not be passed to the read method as it may
               // be used several times.
               QueryExpression.create(expression.getSelectedSeries(), expression.getExpression()),
               currentSplit.getStart(),

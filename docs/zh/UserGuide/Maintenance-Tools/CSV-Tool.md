@@ -29,10 +29,10 @@ CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoT
 
 ```shell
 # Unix/OS X
-> tools/export-csv.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <query command> -s <sql file>]
+> tools/export-csv.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <read command> -s <sql file>]
 
 # Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <query command> -s <sql file>]
+> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -datatype <true/false> -q <read command> -s <sql file>]
 ```
 
 参数:

@@ -62,9 +62,9 @@ public class IoTDBClusterMeasurementQuotaIT extends AbstractSchemaIT {
       // create database
       statement.execute("CREATE DATABASE root.sg1");
       statement.execute("CREATE DATABASE root.sg2");
-      // create schema template
+      // create schemaengine template
       statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
-      // set schema template
+      // set schemaengine template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2");
       statement.execute(
           "create timeseries root.sg1.d0.s0 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");

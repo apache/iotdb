@@ -117,8 +117,8 @@ public class Session implements ISession {
   protected int fetchSize;
   private static final byte TYPE_NULL = -2;
   /**
-   * Timeout of query can be set by users. A negative number means using the default configuration
-   * of server. And value 0 will disable the function of query timeout.
+   * Timeout of read can be set by users. A negative number means using the default configuration
+   * of server. And value 0 will disable the function of read timeout.
    */
   private long queryTimeoutInMs = -1;
 
@@ -705,9 +705,9 @@ public class Session implements ISession {
   }
 
   /**
-   * execute query sql
+   * execute read sql
    *
-   * @param sql query statement
+   * @param sql read statement
    * @return result set
    */
   @Override
@@ -717,10 +717,10 @@ public class Session implements ISession {
   }
 
   /**
-   * execute query sql with explicit timeout
+   * execute read sql with explicit timeout
    *
-   * @param sql query statement
-   * @param timeoutInMs the timeout of this query, in milliseconds
+   * @param sql read statement
+   * @param timeoutInMs the timeout of this read, in milliseconds
    * @return result set
    */
   @Override
@@ -730,9 +730,9 @@ public class Session implements ISession {
   }
 
   /**
-   * execute the query, may redirect query to other node.
+   * execute the read, may redirect read to other node.
    *
-   * @param sql the query statement
+   * @param sql the read statement
    * @param timeoutInMs time in ms
    * @return data set
    * @throws StatementExecutionException statement is not right
@@ -759,9 +759,9 @@ public class Session implements ISession {
   }
 
   /**
-   * execute non query statement
+   * execute non read statement
    *
-   * @param sql non query statement
+   * @param sql non read statement
    */
   @Override
   public void executeNonQueryStatement(String sql)
@@ -770,7 +770,7 @@ public class Session implements ISession {
   }
 
   /**
-   * query eg. select * from paths where time >= startTime and time < endTime time interval include
+   * read eg. select * from paths where time >= startTime and time < endTime time interval include
    * startTime and exclude endTime
    *
    * @param paths series path
@@ -815,7 +815,7 @@ public class Session implements ISession {
   }
 
   /**
-   * query e.g. select last data from paths where time >= lastTime
+   * read e.g. select last data from paths where time >= lastTime
    *
    * @param paths timeSeries eg. root.ln.d1.s1,root.ln.d1.s2
    * @param lastTime get the last data, whose timestamp is greater than or equal lastTime e.g.
@@ -843,7 +843,7 @@ public class Session implements ISession {
   }
 
   /**
-   * query eg. select last status from root.ln.wf01.wt01; <PrefixPath> + <suffixPath> = <TimeSeries>
+   * read eg. select last status from root.ln.wf01.wt01; <PrefixPath> + <suffixPath> = <TimeSeries>
    *
    * @param paths timeSeries. eg.root.ln.d1.s1,root.ln.d1.s2
    */
@@ -2777,7 +2777,7 @@ public class Session implements ISession {
   }
 
   /**
-   * delete a timeseries, including data and schema
+   * delete a timeseries, including data and schemaengine
    *
    * @param path timeseries to delete, should be a whole path
    */
@@ -2788,7 +2788,7 @@ public class Session implements ISession {
   }
 
   /**
-   * delete some timeseries, including data and schema
+   * delete some timeseries, including data and schemaengine
    *
    * @param paths timeseries to delete, should be a whole path
    */
@@ -3043,7 +3043,7 @@ public class Session implements ISession {
     if (len != dataTypes.size() || len != encodings.size() || len != compressors.size()) {
       throw new StatementExecutionException(
           "Different length of measurements, datatypes, encodings "
-              + "or compressors when create schema tempalte.");
+              + "or compressors when create schemaengine tempalte.");
     }
     for (int idx = 0; idx < measurements.size(); idx++) {
       MeasurementNode mNode =
@@ -3334,7 +3334,7 @@ public class Session implements ISession {
   }
 
   /**
-   * Create timeseries represented by schema template under given device paths.
+   * Create timeseries represented by schemaengine template under given device paths.
    *
    * @param devicePathList the target device paths used for timeseries creation
    */

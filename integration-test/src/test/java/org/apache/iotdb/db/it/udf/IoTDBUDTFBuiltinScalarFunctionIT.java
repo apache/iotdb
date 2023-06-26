@@ -1235,7 +1235,7 @@ public class IoTDBUDTFBuiltinScalarFunctionIT {
       e.printStackTrace();
     }
 
-    // query tests
+    // read tests
     test_M4_firstWindowEmpty();
     test_M4_slidingTimeWindow();
     test_M4_slidingSizeWindow();

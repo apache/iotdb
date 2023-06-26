@@ -75,7 +75,7 @@ public class IoTDBConnection implements Connection {
   private SQLWarning warningChain = null;
   private TTransport transport;
   /**
-   * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
+   * Timeout of read can be set by users. Unit: s If not set, default value 0 will be used, which
    * will use server configuration.
    */
   private int queryTimeout = 0;

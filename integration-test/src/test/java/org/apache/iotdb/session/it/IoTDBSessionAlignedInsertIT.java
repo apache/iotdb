@@ -289,7 +289,7 @@ public class IoTDBSessionAlignedInsertIT {
   /** Method 1 for insert tablet with aligned timeseries */
   private void insertTabletWithAlignedTimeseriesMethod(ISession session)
       throws IoTDBConnectionException, StatementExecutionException {
-    // The schema of measurements of one device
+    // The schemaengine of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));

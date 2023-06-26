@@ -61,7 +61,7 @@ public class ParallelRequestDelegate<T> extends RequestDelegate<T> {
           resultFutures.get(j).cancel(true);
         }
         throw new ParallelRequestTimeoutException(
-            String.format("Waiting for query results of %s timeout", getEndpoints().get(i)), e);
+            String.format("Waiting for read results of %s timeout", getEndpoints().get(i)), e);
       }
     }
     handleExceptions(exceptions);

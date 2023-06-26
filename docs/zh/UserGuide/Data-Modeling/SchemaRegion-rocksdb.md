@@ -28,7 +28,7 @@
 首先使用下面的命令将 `schema-engine-rocksdb` 打包
 
 ```shell
-mvn clean package -pl schema-engine-rocksdb -am -DskipTests
+mvn clean package -pl schemaengine-storageengine-rocksdb -am -DskipTests
 ```
 
 命令运行结束后，在其 target/schema-engine-rocksdb 中会有一个 lib 文件夹和 conf 文件夹。将 conf 文件夹下的文件拷贝到 server 的 conf 文件夹中，将 lib 文件夹下的文件也拷贝到
