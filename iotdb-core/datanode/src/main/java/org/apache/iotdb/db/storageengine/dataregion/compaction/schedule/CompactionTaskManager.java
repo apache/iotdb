@@ -53,6 +53,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
+@SuppressWarnings("squid:S6548")
 public class CompactionTaskManager implements IService {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
@@ -70,7 +71,7 @@ public class CompactionTaskManager implements IService {
   // The thread pool that executes the sub compaction task.
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
-  public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
+  public static final AtomicInteger currentTaskNum = new AtomicInteger(0);
 
   private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(
@@ -97,7 +98,7 @@ public class CompactionTaskManager implements IService {
             || config.isEnableUnseqSpaceCompaction()
             || config.isEnableCrossSpaceCompaction())) {
       initThreadPool();
-      currentTaskNum = new AtomicInteger(0);
+      currentTaskNum.set(0);
       candidateCompactionTaskQueue.regsitPollLastHook(
           AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
       init = true;
@@ -145,9 +146,9 @@ public class CompactionTaskManager implements IService {
     }
   }
 
+  @SuppressWarnings({"squid:S2142", "squid:S135", "VariableDeclarationUsageDistanceCheck"})
   @TestOnly
   public void waitAllCompactionFinish() {
-    long sleepingStartTime = 0;
     if (taskExecutionPool != null) {
       WrappedThreadPoolExecutor tmpThreadPool = taskExecutionPool;
       taskExecutionPool = null;
@@ -216,6 +217,7 @@ public class CompactionTaskManager implements IService {
    * This method submit the compaction task to the PriorityQueue in CompactionTaskManager. Notice!
    * The task will not be submitted immediately. If the queue size is larger than max size, the task
    * with last priority will be removed from the task.
+   * @throws InterruptedException if there is an issue when put compaction task
    */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask)
       throws InterruptedException {
@@ -230,7 +232,7 @@ public class CompactionTaskManager implements IService {
   }
 
   private boolean isTaskRunning(AbstractCompactionTask task) {
-    String regionWithSG = getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
+    String regionWithSG = getSgWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
     return storageGroupTasks
         .computeIfAbsent(regionWithSG, x -> new ConcurrentHashMap<>())
         .containsKey(task);
@@ -254,7 +256,7 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized void removeRunningTaskFuture(AbstractCompactionTask task) {
-    String regionWithSG = getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
+    String regionWithSG = getSgWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
     if (storageGroupTasks.containsKey(regionWithSG)) {
       storageGroupTasks.get(regionWithSG).remove(task);
     }
@@ -330,7 +332,7 @@ public class CompactionTaskManager implements IService {
   public void recordTask(AbstractCompactionTask task, Future<CompactionTaskSummary> summary) {
     storageGroupTasks
         .computeIfAbsent(
-            getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId()),
+            getSgWithRegionId(task.getStorageGroupName(), task.getDataRegionId()),
             x -> new ConcurrentHashMap<>())
         .put(task, summary);
   }
@@ -391,7 +393,7 @@ public class CompactionTaskManager implements IService {
     return statistic;
   }
 
-  public static String getSGWithRegionId(String storageGroupName, String dataRegionId) {
+  public static String getSgWithRegionId(String storageGroupName, String dataRegionId) {
     return storageGroupName + "-" + dataRegionId;
   }
 
@@ -422,7 +424,7 @@ public class CompactionTaskManager implements IService {
       candidateCompactionTaskQueue.clear();
       init = true;
     }
-    currentTaskNum = new AtomicInteger(0);
+    currentTaskNum.set(0);
     init = true;
     logger.info("Compaction task manager started.");
   }
@@ -435,7 +437,7 @@ public class CompactionTaskManager implements IService {
   @TestOnly
   public Future<CompactionTaskSummary> getCompactionTaskFutureMayBlock(AbstractCompactionTask task)
       throws InterruptedException, TimeoutException {
-    String regionWithSG = getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
+    String regionWithSG = getSgWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
     long startTime = System.currentTimeMillis();
     while (!storageGroupTasks.containsKey(regionWithSG)
         || !storageGroupTasks.get(regionWithSG).containsKey(task)) {
