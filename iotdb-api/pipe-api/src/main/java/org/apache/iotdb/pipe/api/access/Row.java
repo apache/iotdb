@@ -24,7 +24,6 @@ import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.pipe.api.type.Type;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-import java.io.IOException;
 import java.util.List;
 
 public interface Row {
@@ -54,7 +53,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the long value at the specified column in this row
    */
-  long getLong(int columnIndex) throws IOException;
+  long getLong(int columnIndex);
 
   /**
    * Returns the float value at the specified column in this row.
@@ -131,7 +130,7 @@ public interface Row {
   boolean isNull(int columnIndex);
 
   /**
-   * Returns the number of columns (excluding the timestamp column)
+   * Returns the number of columns (excluding the timestamp column).
    *
    * @return the number of columns (excluding the timestamp column)
    */
@@ -141,20 +140,20 @@ public interface Row {
    * Returns the actual column index of the given column name.
    *
    * @param columnName the column name in Path form
-   * @throws PipeParameterNotValidException if the given column name is not existed in the Row
    * @return the actual column index of the given column name
+   * @throws PipeParameterNotValidException if the given column name is not existed in the Row
    */
   int getColumnIndex(Path columnName) throws PipeParameterNotValidException;
 
   /**
-   * Returns the column data types in the Row
+   * Returns the column data types in the Row.
    *
    * @return the column data types in the Row
    */
   List<Type> getColumnTypes();
 
   /**
-   * Returns the device id of the Row
+   * Returns the device id of the Row.
    *
    * @return the device id of the Row
    */

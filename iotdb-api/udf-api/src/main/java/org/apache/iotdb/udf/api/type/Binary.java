@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.udf.api.type;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
@@ -30,7 +32,7 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 1250049718612917815L;
   public static final String STRING_ENCODING = "UTF-8";
-  public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
+  public static final Charset STRING_CHARSET = StandardCharsets.UTF_8;
 
   private final byte[] values;
 

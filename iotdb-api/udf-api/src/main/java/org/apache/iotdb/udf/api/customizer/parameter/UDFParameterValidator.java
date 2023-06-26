@@ -59,6 +59,8 @@ public class UDFParameterValidator {
    *
    * @param index index of the specified column
    * @param expectedDataType the expected data type
+   * @throws UDFException there are two exceptions that may be thrown:
+   *     UDFInputSeriesIndexNotValidException and UDFInputSeriesDataTypeNotValidException
    * @throws UDFInputSeriesIndexNotValidException if the index of the specified column is out of
    *     bound
    * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
@@ -82,6 +84,8 @@ public class UDFParameterValidator {
    *
    * @param index index of the specified column
    * @param expectedDataTypes the expected data types
+   * @throws UDFException there are two exceptions that may be thrown:
+   *     UDFInputSeriesIndexNotValidException and UDFInputSeriesDataTypeNotValidException
    * @throws UDFInputSeriesIndexNotValidException if the index of the specified column is out of
    *     bound
    * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
