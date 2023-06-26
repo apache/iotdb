@@ -114,6 +114,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     return memChunkMap;
   }
 
+  @SuppressWarnings("squid:S3776")
   @Override
   public int delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
