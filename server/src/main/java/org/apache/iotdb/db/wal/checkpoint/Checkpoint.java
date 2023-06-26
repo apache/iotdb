@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.checkpoint;
 
 import org.apache.iotdb.db.utils.SerializedSize;
@@ -32,12 +33,12 @@ import java.util.Objects;
  * brief information of each memTable.
  */
 public class Checkpoint implements SerializedSize {
-  /** checkpoint type 1 byte, checkpoint number 4 bytes */
+  // checkpoint type 1 byte, checkpoint number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Integer.BYTES;
 
-  /** checkpoint type */
+  // checkpoint type
   private final CheckpointType type;
-  /** memTable information */
+  // memTable information
   private final List<MemTableInfo> memTableInfos;
 
   public Checkpoint(CheckpointType type, List<MemTableInfo> memTableInfos) {
@@ -75,6 +76,11 @@ public class Checkpoint implements SerializedSize {
       memTableInfos.add(memTableInfo);
     }
     return new Checkpoint(type, memTableInfos);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, memTableInfos);
   }
 
   @Override

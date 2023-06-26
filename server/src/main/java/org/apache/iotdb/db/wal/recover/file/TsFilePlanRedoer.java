@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,9 +33,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -44,14 +42,12 @@ import java.util.List;
  * guarantee concurrency safety.
  */
 public class TsFilePlanRedoer {
-  private static final Logger logger = LoggerFactory.getLogger(TsFilePlanRedoer.class);
-
   private final TsFileResource tsFileResource;
-  /** only unsequence file tolerates duplicated data */
+  // only unsequence file tolerates duplicated data
   private final boolean sequence;
-  /** virtual database's idTable of this tsFile */
+  // virtual database's idTable of this tsFile
   private final IDTable idTable;
-  /** store data when redoing logs */
+  // store data when redoing logs
   private IMemTable recoveryMemTable = new PrimitiveMemTable();
 
   public TsFilePlanRedoer(TsFileResource tsFileResource, boolean sequence, IDTable idTable) {
@@ -80,7 +76,6 @@ public class TsFilePlanRedoer {
     }
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   void redoInsert(InsertNode node) throws WriteProcessException {
     if (!node.hasValidMeasurements()) {
       return;
@@ -105,8 +100,7 @@ public class TsFilePlanRedoer {
     }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-      // TODO get device id by idTable
-      // idTable.getSeriesSchemas(node);
+      // TODO get device id by idTable - idTable.getSeriesSchemas(node)
     } else {
       node.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(node.getDevicePath()));
     }
