@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SchemaRegionLoader {
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionLoader.class);
 
-  private static final String PACKAGE_NAME = "org.apache.iotdb.db.metadata";
+  private static final String PACKAGE_NAME = "org.apache.iotdb.db.schemaengine";
 
   private final Map<String, Constructor<ISchemaRegion>> constructorMap = new ConcurrentHashMap<>();
 
