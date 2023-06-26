@@ -23,7 +23,7 @@
     <#assign className = "${type.dataType?cap_first}ModeAccumulator">
     <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/aggregation/${className}.java" />
 
-package org.apache.iotdb.db.queryengine.aggregation;
+package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.commons.collections4.comparators.ComparatorChain;
