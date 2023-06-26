@@ -24,14 +24,15 @@ import org.apache.ratis.protocol.Message;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.ratis.thirdparty.com.google.protobuf.UnsafeByteOperations;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 class RequestMessage implements Message {
 
   private final IConsensusRequest actualRequest;
-  private volatile ByteString serializedContent;
+  private AtomicReference<ByteString> serializedContent = new AtomicReference<>();
 
   RequestMessage(IConsensusRequest request) {
     this.actualRequest = request;
-    serializedContent = null;
   }
 
   IConsensusRequest getActualRequest() {
@@ -40,14 +41,15 @@ class RequestMessage implements Message {
 
   @Override
   public ByteString getContent() {
-    if (serializedContent == null) {
+    if (serializedContent.get() == null) {
       synchronized (this) {
-        if (serializedContent == null) {
+        if (serializedContent.get() == null) {
           serializedContent =
-              UnsafeByteOperations.unsafeWrap(actualRequest.serializeToByteBuffer());
+              new AtomicReference<>(
+                  UnsafeByteOperations.unsafeWrap(actualRequest.serializeToByteBuffer()));
         }
       }
     }
-    return serializedContent;
+    return serializedContent.get();
   }
 }
